@@ -1,0 +1,22 @@
+#!/bin/tcsh
+
+
+# Given a list of tag names in versions.log and a list of git commit SHA values in commits.log
+# outputs a file gittags.log that contains the commands necessary to create the appropriate git
+# tags. 
+#
+# To automatically fill versions.log and commits.log with ALE3D version numbers using UPDATE_LOG: 
+#
+#  git log -p src/UPDATE_LOG > updates.log
+#  grep +4.18.\[0-9\] updates.log | sed 's/+//' > versions.log
+#  grep '^commit ' updates.log | sed 's/commit //' > commits.log
+#
+
+rm gittags.log
+touch gittags.log
+set VERSIONS = `cat versions.log `
+set COMMITS = `cat commits.log`
+foreach commit ( $COMMITS )
+echo "git tag v$VERSIONS[1] -m 'Autotagged as version $VERSIONS[1]' $commit" >> gittags.log
+shift VERSIONS
+end

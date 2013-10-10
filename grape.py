@@ -1,0 +1,945 @@
+#!/usr/bin/env python
+
+import os,sys,string
+import subprocess
+import sh
+import StringIO
+import shutil
+import stashy
+import keyring
+import getpass
+
+#*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
+
+#**** GETTING STARTED  ***********************
+#init) Clone the ale3d repo and initialize your git config  
+#config) Initialize a repo you've already cloned without using GRAPE
+
+#**** GITFLOW TASKS ************************
+
+#dev)  Create a new feature development branch (branch off of develop) 
+
+#rel)  Create a new Release bugfix branch  (branch off of a Stable Release branch)
+
+#minor) Checkout a minor Release branch (for fixing nightly/ build failures)
+
+#hot)  Create a hotfix branch (for fixing weekly test failures on master) 
+
+#help) Display a gitflow diagram to help make a decision
+
+#*** PERFORCE COMPATABILITY *** 
+#p4import) Import recent p4 changes into a hotfix branch
+
+#p4export) Prepare a feature branch in a p4 maindev client, ready for precommit --TODO
+
+#**** CODE REVIEWS  ****
+
+#w) walkthrough diffs between branches 
+
+#review) Prepare current branch for a code review using a Pull Request--TODO
+
+#**** MERGES *********************************
+#md) Merge latest changes on develop into your current feature branch
+#m)  Merge another local branch into your current branch 
+#resolve) Resolve conflicts
+
+#*** ADMINISTRATION  ***
+
+#fis) fastFIS recent changes in master and develop --TODO
+#offsite)  Create an Offsite Branch --TODO
+
+# *** You need admin privileges for the Stash repo to do these ***
+
+#release)  Create a new Release Branch -- TODO
+#mergeMinor) Merge a minor release branch into master and develop TODO
+#mergeHotfix) Merge a hotfix branch into master and develop TODO
+#updateStable) Update the Stable pointer to Head of develop TODO
+
+
+
+#**** MISCELLANEOUS ***************************
+#ce) Create a standard eclipse workspace for this git repo --TODO
+#b)  List all of your branches  --TODO
+#cv) Create a custom sparse checkout view in a new working tree--TODO
+#uv) Update your sparse checkout view in your current working tree--TODO
+
+#*** OTHER ***********************************
+#q)  Quit --DONE
+
+# choice                time --------->                                            Branch Type
+#____________________________________________________________________________________________________
+#
+#           [4.20.0] ---- [4.20.1,Release_4_20]                                    Stable Release
+#           /       \     /
+#rel)      /         []--[]                                                        Release bugfix 
+#         /                \
+#       [4.19.last] --[4.21.1] ------[4.21.2]------[4.21.3] ---- [4.21.4 ]         master 
+#          \            \             /            /     \       /
+#hot)       \            \           /            /       []---[]                  hotfix  (fix weekly)
+#            \            \         /            /              \
+#minor)       \            \       /       []--- []              \                 minor Release Branch (fix nightly)
+#              \            \     /       /        \              \
+#               [] --------- []--[] ---- []------- [] ------- [STABLE]----[TEST]   develop (shared history)
+#                 \          |   / \     /                       \           /
+#                  \          \ /   \   /                         \         /
+#rev)               []------ [F1]   []-[F2]                       [] ---- [F3]     feature (new development)
+#
+#
+#  What's going on here? This depicts the flow of commits through various situations. 
+#  To understand what's going on, let's explore how each of the four 4.21 versions
+#  came to be. 
+#
+#  Version 4.21.1: 
+#  A bug was discovered in 4.20.0 (in the Stable Release Branch). The fix was implemented
+#  in a Release bugfix branch. The resulting fix was merged both with the Stable Release
+#  Branch and with master, resulting in 4.21.1.  The fix is also merged down to develop. 
+#
+#  Version 4.21.2: 
+#  A new feature is developed on a feature branch named F1. After 4.21.1 gets merged in (via a 
+#  git rebase STABLE) and all update tests pass,  F1 is merged into develop using a Pull Request 
+#  on Stash. The test system determines that nightly tests pass, marks the head of develop
+#  as stable and merges the changes to master, where it is versioned as 4.21.2. 
+#  
+#  Version 4.21.3: 
+#  A new feature is developed on a feature branch named F2. Once all update tests pass, F2 is 
+#  merged into develop using a Pull Request on Stash. The test system determines that one or
+#  more nightly tests or builds fail, and creates a minor release Branch for developers to 
+#  address the issue. A developer checks out the branch using grape minor, and performs necessary
+#  fixes in the branch. Once all nightly tests pass, the minor Release branch is merged both back
+#  into develop, where it is marked as stable, and into master, where it is versioned as 4.21.3. 
+#  
+#  Version 4.21.4: 
+#  Version 4.21.3 is show to fail weekly and/or class tests. Since this is a bug in the master branch, 
+#  and the fix is likely small and quick, the fix is performed in a hotfix branch. Depending on the
+#  urgency of the issue and complexity of the fix, at least  update and possibly nightly tests are
+#  performed before merging the fix back into master, via a Pull Request on Stash, where it is versioned
+#  as 4.21.4. It is also merged back into develop, where it is marked as STABLE. 
+#  
+#  Feature F3:
+#  F3 has just been merged into develop using a Pull Request on Stash. It's marked for nightly testing, 
+#  but has yet to be marked as stable given the lack of nightly testing results. 
+#  
+
+
+sh.print_commands = True
+git = sh.git.bake( _out = sys.stdout,_err = sys.stderr)
+
+
+class Option: 
+    def Description(self): 
+        pass
+
+    def Execute(self): 
+        pass
+
+    def BlockName(self):
+        return self.section
+
+    def KeyWord(self): 
+        return self.key
+
+
+options = {}
+menuOrder = []
+
+#######      GETTING STARTED    #########################################################################
+section = " GETTING STARTED " 
+
+# clone the remote repo
+class Clone(Option):
+    """Clones the ALE3D repo into a new local repo"""
+    key = "init"
+    section = section
+    def Description(self): 
+        return "Clone the ale3d repo and initialize your git config"
+    
+    def Execute(self): 
+        user = GetUserName()
+ 
+        remotePath = userInput("Enter Remote Repo address:",
+                               "https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user)
+
+        destPath = userInput("Enter destination directory:",os.path.join(os.getcwd(),"ale3d"))
+
+        print("calling git clone %s %s" % (remotePath,destPath))
+        print("you may need to authenticate using your CRYPTOCARD")
+        print(git.clone(remotePath,destPath))
+        os.chdir(destPath)
+        return GetOption("config").Execute()
+        
+options[Clone.key] = Clone()
+menuOrder.append(Clone.key)
+
+def DefineView(sparseFile):
+    include = {}
+    include["src"] = True
+    include["scripts"] = True
+    
+    directories = ["imports","exports","test","testbaselines","ALE3D.xcodeproj",
+                   "deploy","doc","tools"]
+
+    accept = userInput("Do you want everything? [y/n]","y")
+    text = []
+    while not accept:
+        accept = userInput("Do you only want src? [y/n]","y")
+        for d in directories:
+            use = False if accept else userInput("Do you want %s? [y/n]" % d,"n")
+            if (use):
+                include[d] = True
+            else:
+                include[d] = False
+
+        # build sample text file for display
+        text = []
+        for key in include:
+            if not include[key]:
+                text.append("!%s/*\n" %key)
+        text.append("/*")
+
+        # display sample text
+        print("sample sparse checkout file:")
+        for l in text:
+            print(l)
+        
+        accept = userInput("does this look OK? [y/n]","y")
+        
+    #end while
+    #write accepted sparse-checkout file
+    sparseFile.writelines(text)
+
+# Configure current repo
+class Config(Option):
+    """Configures the repo to be optimized for LC and GRAPE"""
+    key = "config"
+    section  =section
+    def Description(self):
+        return "Initialize a repo you've already cloned without using GRAPE"
+    def Execute(self):
+        base = GitDir()
+        dotGit = os.path.join(base,".git")
+
+        print("optimizing git performance...")
+        #runs file system intensive tasks such as git status and git commit
+        # in parallel (important for NFS systems such as LC)
+        git.config("core.preloadindex","true")
+
+        #have git automatically do some garbage collection / optimizatoin
+        git.config("gc.auto","1")
+
+        #prevents false conflict detection due to differences in filesystem
+        # time stamps
+        git.config("core.trustctime","false")
+
+        # stores login info for 12 hrs (max allowed by RZStash)
+        git.config("credential.helper","cache --timeout=43200")
+
+        # enables 'as' option for merge strategies -forces a conflict if two branches
+        # modify the same file
+        git.config("merge.verify.name","merge and verify driver")
+        git.config("merge.verify.driver","./scripts/git/merge-and-verify-driver %A %O %B")
+        
+        # enables lg as an alias to print a pretty-font summary of
+        # key junctions in the history for this branch.
+        print("setting lg as an alias for a pretty log call...")
+        git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
+                 #enable sparse checkouts, something GRAPE needs for custom views
+        git.config("core.sparseCheckout","true")
+
+        # perform a sparse checkout if asked of us
+        updateView = userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n","n")
+        if updateView: 
+            sparseFile = os.path.join(dotGit,"info","sparse-checkout")
+            with open(sparseFile,'w') as f:
+                DefineView(f)
+            checkout = userInput("check out updated view? [y/n]","y")
+
+            if checkout: 
+                git("read-tree","-mu","HEAD")
+        
+        # configure git to use p4merge for conflict resolution
+        # and diffing
+        useP4Merge = userInput("Would you like to use p4merge as your merge tool? [y/n]","y")
+        # note that this relies on p4merge being in your path somewhere
+        if (useP4Merge):
+            git.config("merge.keepBackup","false")
+            git.config("merge.tool","p4merge")
+            git.config("mergetool.keepBackup","false")
+            git.config("mergetool.p4merge.cmd", "p4merge \"$BASE\" \"$LOCAL\" \"$REMOTE\" \"$MERGED\"")
+            git.config("mergetool.p4merge.keepTemporaries","false")
+            git.config("mergetool.p4merge.trustExitCode","false")
+            git.config("mergetool.p4merge.keepBackup","false")
+            print("configured repo to use p4merge for conflict resolution")
+            
+        useP4Diff = userInput("Would you like to use p4merge as your diff tool? [y/n]","y")
+        # this relies on p4diff being defined as a custom bash script, with the following one-liner: 
+        # [ $# -eq 7 ] && p4merge "$2" "$5"
+        if (useP4Diff):
+            git.config("diff.external","./scripts/git/p4diff")
+            print("configured repo to use p4merge for diff calls")        
+
+        useGitP4 = userInput("Would you like to use git-p4 to manage a perforce-git interface? [y/n]","n")
+        if (useGitP4 ):
+            git.config("git-p4.useclientspec","true")
+            # create p4 references to enable imports from p4
+            p4remotes =os.path.join(dotGit,"refs","remotes","p4","") 
+            ensure_dir(p4remotes)
+            commit = userInput("Please enter a descriptor of the current git commit that mirrors the p4 repo","master")
+            sha = GetSHA(commit)
+            with open(os.path.join(p4remotes,"HEAD"),'w') as f:
+                f.write(sha)
+            with open(os.path.join(p4remotes,"master"),'w') as f:
+                f.write(sha)
+
+            # to enable exports to p4, a maindev client needs to be set up
+            haveCopied = False
+            while (not haveCopied):
+                p4settings = userInput("Enter a path to a .p4settings file describing the maindev client you'd like to use for p4 updates",".p4settings")
+                try:
+                    shutil.copyfile(p4settings,os.path.join(base,".p4settings"))
+                    haveCopied = True
+                except:
+                    print("could not find p4settings file, please check your path and try again")
+        return True
+
+options[Config.key] = Config()
+menuOrder.append(Config.key)
+
+        
+#######     GITFLOW TASKS    #######################################################################
+section = "GITFLOW TASKS"
+# create new feature branch
+
+# create a new branch
+def CreateBranch(branchPoint,prefix):
+    branch = userInput("Enter new branch name",None)
+    user = GetUserName()
+    fullBranch = prefix+"/"+user+"/"+branch    
+    proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
+    if (proceed):
+        git.checkout("-b",fullBranch,branchPoint)
+    else:
+        print("Branch not created")
+        
+# option that creates a new feature branch
+class Feature(Option): 
+    key = "dev"
+    section=section
+    def Description(self):
+        return "Create a new feature development branch"            
+    def Execute(self):
+        CreateBranch("develop","feature")
+        return True
+
+options[Feature.key] = Feature()
+menuOrder.append(Feature.key)
+
+
+
+# option that creates a new minor Release Branch
+class MinorRelease(Option):
+    key = "minor"
+    section=section
+    def Description(self):
+        return "Create a new minor Release branch (for fixing nightly/build failures)"            
+    
+    def Execute(self):
+        branchPoint = userInput("Where do you want this Release to branch from?","FIRSTFAIL")
+        CreateBranch(branchPoint,"minor")
+        return True
+
+options[MinorRelease.key] = MinorRelease()
+menuOrder.append(MinorRelease.key)
+
+
+
+#option that creates a hotfix branch
+class Hotfix(Option):
+    key ="hot"
+    section = section
+    def Description(self):
+        return "Create a hotfix branch (for fixing weekly test failures on master)"
+    def Execute(self):
+        git.fetch("origin","master")
+        CreateBranch("master","hot")
+        return True
+
+options[Hotfix.key] = Hotfix()
+menuOrder.append(Hotfix.key)
+
+
+
+
+# Display a help image for gitflow tasks
+class GitflowHelp(Option):
+    key = "help"
+    section = section
+    def Description(self):
+        return "Display a gitflow diagram to help make a decision"
+
+    def Execute(self):
+        diagram = ""+ \
+        " choice                time --------->                                            Branch Type       \n"+\
+        "____________________________________________________________________________________________________\n"+\
+        "\n"+\
+        "           [4.20.0] ---- [4.20.1,Release_4_20]                                    Stable Release    \n"+\
+        "           /       \     /                                                                          \n"+\
+        "rel)      /         []--[]                                                        Release bugfix    \n"+\
+        "         /                \                                                                         \n"+\
+        "       [4.19.last] --[4.21.1] ------[4.21.2]------[4.21.3] ---- [4.21.4 ]         master            \n"+\
+        "          \            \             /            /     \       /                                   \n"+\
+        "hot)       \            \           /            /       []---[]                  hotfix  (fix weekly)\n"+\
+        "            \            \         /            /              \                                    \n"+\
+        "minor)       \            \       /       []--- []              \                 minor Release Branch (fix nightly)\n"+\
+        "              \            \     /       /        \              \                                  \n"+\
+        "               [] --------- []--[] ---- []------- [] ------- [STABLE]----[TEST]   develop (shared history)\n"+\
+        "                 \          |   / \     /                       \           /                       \n"+\
+        "                  \          \ /   \   /                         \         /                        \n"+\
+        "rev)               []------ [F1]   []-[F2]                       [] ---- [F3]     feature (new development)\n"
+        
+        print(diagram)
+        # return False as we expect the user will want to do something else after seeing this diagram
+        # Returning False gives them a new prompt instead of exiting out. 
+        return False
+
+options[GitflowHelp.key] = GitflowHelp()
+menuOrder.append(GitflowHelp.key)
+
+####################################################################################################
+#####    CODE REVIEWS ##############################################################################
+####################################################################################################
+
+section = " CODE REVIEWS "
+
+class Walkthrough(Option):
+    section = section
+    key = 'w'
+    def Description(self):
+        return "Walk through diffs between branches"
+
+    def Execute(self):
+        b1 = userInput("Enter name of first branch to compare","HEAD")
+        b2 = userInput("Enter name of second branch to compare", "develop")
+        print("Running git diff %s %s..., use Ctrl-C to stop diff" %(b1,b2))
+
+        # may want to exit out of diffs early, need to make sure to pass the
+        # signal down
+        try: 
+            p = git.diff(b1,b2,_bg=True)
+            p.wait()
+        except KeyboardInterrupt:
+            p.kill()
+        return True
+    
+options[Walkthrough.key] = Walkthrough()
+menuOrder.append(Walkthrough.key)
+
+
+# Prepare Feature Branch for review
+class Review(Option):
+    key = "review"
+    section = section
+    def Description(self): 
+        return "Prepare current development branch for review"
+
+    def Execute(self):
+        print("Logging into RZStash")
+        rzAtlassian = Atlassian()
+        rzStash = rzAtlassian.stash
+        repo = rzStash.projects['ALE'].repos['ale3d']
+
+        currentBranch = GetCurrentBranch()
+
+        # hack to work around possible corner case where userInput would return
+        # True / False if we happen to be working on a branch called 'y','Y',
+        # 'N', or 'n'. Appending a space to the name should force userInput
+        # to return the actual string if the default is selected. 
+        if (currentBranch.lower() == 'n' or currentBranch.lower() == 'y'):
+            currentBranch+=" "
+            
+        branch = userInput("Branch to Review:",currentBranch)
+        targetBranch = userInput("Destination branch?","develop")
+
+        # check to see if pull request already exists for this
+        # branch
+
+        #pullRequests = repo.pull_requests.list()
+        pullRequests = repo.pull_requests.all()
+
+        count = 0 
+        for request in pullRequests:
+            count += 1
+            print(request["title"],request["fromRef"]['id'],request["toRef"]['id'])
+        if (count == 0):
+            # safe to create a new pull request
+            print("safe")
+        else:
+            print(count)
+            
+            
+        
+        
+        return True
+
+options[Review.key] = Review()
+menuOrder.append(Review.key)
+
+
+
+
+####################################################################################################
+#######     MERGES           #######################################################################
+####################################################################################################
+section = " MERGES "
+
+def GitMerge(repoName,branchName,option=""):
+    choice = None
+    if (option != ""):
+        pull = git.pull.bake(option)
+    else:
+        pull = git.pull
+    try:
+        pull(repoName,branchName)
+
+    except sh.ErrorReturnCode_1 as error: 
+        choice = userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]","resolve")
+        
+    except sh.ErrorReturnCode as error:
+        print("unknown return code during merge")
+        print error
+    return choice
+
+
+def MergeIntoCurrent(repoName,branchName):
+
+    git.fetch(repoName,branchName)
+    choice = None
+    strategy = userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
+                         "am: Auto Merge (default) \n"+
+                         "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
+                         "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
+                         "ay: Accept Theirs - resolves conflicts by using changes in current branch." ,"am")
+ 
+    
+    if (strategy == 'am'):
+        print("merging using git's default strategy")
+        git.pull(repoName,branchName)
+    elif (strategy == 'as'):
+        # this employs using the custom low-level merge driver "verify" and
+        # appending a "* merge=verify" to the .gitattributes file.
+        #
+        # see http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file for details. 
+        print("merging forcing conflicts whenever both branches edited the same file...")
+        base = GitDir()
+        attributes = os.path.join(base,".gitattributes")
+        tmpattributes = os.path.join(base,".gitattributes.tmp")
+        # save original attributes file
+        shutil.copyfile(attributes,tmpattributes)
+        #append merge driver strategy to the attributes file
+        with open(attributes,'a') as f:
+            f.write("* merge=verify")        
+
+        # perform the merge
+        choice = GitMerge(repoName,branchName)
+
+        # restore original attributes file
+        shutil.copyfile(tmpattributes,attributes)
+        os.remove(tmpattributes)
+
+    elif (strategy == 'at'):
+        print("merging using recursive strategy, resolving conflicts cleanly with %s's changes"%branchName)
+        choice = GitMerge(repoName,branchName,"-Xtheirs")
+
+    elif (strategy == 'ay'):
+        print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
+        choice = GitMerge(repoName,branchName,"-Xours")
+
+    if (choice):
+        return options[choice].Execute()
+
+    return True
+
+
+
+
+# pull and merge in an up-to-date development branch
+class MergeDevelop(Option):
+    key = "md"
+    section = section
+    def Description(self):
+        return "Merge latest changes on develop into your current feature branch"
+    def Execute(self):
+        print("Pulling changes from origin/develop into your repo...")
+        MergeIntoCurrent("origin","develop")
+        MergeIntoCurrent(".","develop")
+        return True
+        
+options[MergeDevelop.key] = MergeDevelop()
+menuOrder.append(MergeDevelop.key)
+
+
+# merge in a local branch into this branch
+class Merge(Option):
+    key = 'm'
+    section = section
+    def Description(self):
+        return "Merge another local branch into your current branch."
+    def Execute(self):
+        otherBranch = userInput("Enter name of branch you would like to merge into this branch",None)
+        MergeIntoCurrent(".",otherBranch)
+        return True
+
+options[Merge.key] = Merge()
+menuOrder.append(Merge.key)
+
+
+#merge a remote branch into this branch
+class MergeRemote(Option):
+    key = 'mr'
+    section = section
+    def Description(self):
+        return "Merge a remote branch into your current branch."
+    def Execute(self):
+        otherBranch = userInput("Enter name of branch you would like to merge into this branch",None)
+        MergeIntoCurrent("origin",otherBranch)
+        return True
+
+options[MergeRemote.key] = MergeRemote()
+menuOrder.append(MergeRemote.key)
+
+
+
+# resolve conflicts using git mergetool
+class ResolveConflicts(Option):
+    key = 'resolve'
+    section = section
+    def Description(self):
+        return "Resolve Conflicts that arose as result of a merge or a rebase"
+    def Execute(self):
+        p = subprocess.Popen("git mergetool",shell=True)
+        p.wait()
+        # print out git status, which contains instructions to complete a merge
+        git.status()
+        return True
+
+options[ResolveConflicts.key] = ResolveConflicts()
+menuOrder.append(ResolveConflicts.key)
+
+
+
+
+# abort a merge
+class MergeAbort(Option):
+    key = 'abort'
+    section = section
+    def Description(self):
+        return "abort current merge"
+
+    def Execute(self):
+        git.merge("--abort")
+
+options[MergeAbort.key] = MergeAbort()
+# Intentionally don't add to menu
+#menuOrder.append(MergeAbbort.key)
+
+####################################################################################################
+##### P4 Integration ###############################################################################
+####################################################################################################
+section = "Perforce Integration"
+
+
+#imports recent changes in perforce into a hotfix branch ready for tagging and merging to master
+class P4Import(Option):
+    section = section
+    key = "p4import"
+    def Description(self):
+        return "Import recent p4 changes into a hotfix branch"
+
+    def Execute(self):
+        print("calling Grape hot")
+        proceed = options['hot'].Execute()
+        assert proceed == True
+        print("importing recent p4 changes into p4 master...")
+        git.p4("sync")
+        print("merging recent p4 changes into current branch")
+        options["m"].Execute("p4/master")
+        print("Changes in p4 not in master should now be in your current branch.")
+        print("Review changes, tag versions (e.g. git tag -a v4.xx.xx, and then commit to master.")
+
+        return True
+
+options[P4Import.key] = P4Import()
+menuOrder.append(P4Import.key)
+
+
+# prepares all changes since the last p4 commit viewable from HEAD in your P4CLIENT (typically maindev)
+class P4Export(Option):
+    section = section
+    key = "p4export"
+    def Description(self):
+        return "Prepare changes in current branch in your perforce maindev client"
+    def Execute(self):
+        #First, create a new branch and prepare it with a squashed version of your current branch. 
+        print("Preparing temporary branch to hold squashed version of current branch.")
+        originalBranch = GetCurrentBranch()
+        options['dev'].Execute()
+        tmpBranch = GetCurrentBranch()
+        git.merge("--squash",originalBranch)
+        git.commit("-m","\"Squashed Merge from %s in preparation for p4 submit.\"" % originalBranch)
+        print("Ready to perform git.p4 submit")
+        #git.p4("submit","-M","--prepare-p4-only")
+        print("P4 client prepared, no submit has occurred yet. Use precommit maindev to submit.")
+        return True
+
+options[P4Export.key] = P4Export()
+menuOrder.append(P4Export.key)
+
+
+###################################################################################################
+#######   MISCELLANEOUS  #######################################################################
+####################################################################################################
+section = " MISCELLANEOUS "
+
+# list local branches (git branch)
+class Branches(Option):
+    section = section
+    key = 'b'
+    def Description(self):
+        return "List all of your local repo's branches"
+
+    def Execute(self):
+        git.branch()
+        return True
+
+options[Branches.key] = Branches()
+menuOrder.append(Branches.key)
+
+# Create a custom sparse checkout view in a new working tree
+class NewWorkingTree(Option):
+    section = section
+    key = 'cv'
+    def Description(self):
+        return "Create a custom sparse checkout view in a new working tree"
+
+    def Execute(self):
+        
+        clonePath = ""
+        try:
+            clonePath = GitDir()
+        except:
+            pass
+
+        clonePath = userInput("Enter path to original clone",clonePath)
+
+        newTree = userInput("Enter name of new working tree",None)
+
+        newTreePath = userInput("Enter desired location of new working tree (must exist)",
+                                os.path.abspath(os.path.join(clonePath,"../")))
+
+        newRepo = os.path.join(newTreePath,newTree)
+        #TODO: When grape is installed to PUBLIC, the first argument here should be the
+        # publically available git-new-workdir, instead of the version in the local repo. 
+        p = subprocess.Popen(os.path.join(clonePath,"scripts","git","git-new-workdir")
+                             + " "+clonePath+" "+newRepo,shell = True)
+        p.wait()
+        
+        os.chdir(newRepo)
+
+        return options['uv'].Execute()
+
+options[NewWorkingTree.key] = NewWorkingTree()
+menuOrder.append(NewWorkingTree.key)
+
+
+# update your custom sparse checkout view
+class UpdateView(Option):
+    section = section
+    key = 'uv'
+    def Description(self):
+        return "Update the view of your current working tree"
+
+    def Execute(self):
+        base = GitDir()
+        dotGit = os.path.join(base,".git")
+        sparseFile = os.path.join(dotGit,"info","sparse-checkout")
+        with open(sparseFile,'w') as f:
+            DefineView(f)
+        checkout = userInput("check out updated view? [y/n]","y")
+        if (checkout):
+            git("read-tree","-mu","HEAD")
+        else:
+            print("call 'git read-tree -mu HEAD' when you are ready to update your working tree")
+
+        return True
+
+options[UpdateView.key] = UpdateView()
+menuOrder.append(UpdateView.key)
+####################################################################################################
+#######     OTHER            #######################################################################
+####################################################################################################
+
+
+# Quit menu option
+section = " OTHER "
+class Quit(Option):
+    key = "q"
+    section = section
+    def Description(self): 
+        return "Quit."
+
+    def Execute(self): 
+        return True
+
+options[Quit.key] = Quit()
+menuOrder.append(Quit.key)
+
+######################## Atlassian Session Manager ####################
+
+class Atlassian:
+    rzstashURL = "https://rzlc.llnl.gov/stash"
+    def auth(self,service,username,password):
+        self.userName = username
+        self.service = service
+        self.stash = stashy.connect(service,username,password)
+        numAttempts = 0
+        success = False
+        while (numAttempts < 3 and not success): 
+            try:
+                project = self.stash.projects.list()
+                success = True
+            except stashy.errors.AuthenticationException:
+                if (numAttempts == 0):
+                    print("session expired...")
+
+                else:
+                    print("incorrect username / password...")
+                    self.userName = GetUserName(self.userName)
+                keyring.set_password(service,self.userName,getpass.getpass("Enter password for %s: " % service))
+                self.stash = stashy.connect(service,self.userName,keyring.get_password(service,self.userName))
+                numAttempts+=1
+
+        return success
+            
+    
+    
+    def __init__(self):
+        self.userName = GetUserName()
+        #self.keyring = keyring.get_keyring()
+        service = Atlassian.rzstashURL
+        if self.auth(service,self.userName,keyring.get_password(service,self.userName)):
+            print("Connected to RZStash...")
+        else:
+            self.stash = None
+            print("Could not connect to RZStash...")
+
+    
+
+######################### Utility functions  ###################################################
+section = None
+
+def  GetOption(choice): 
+    return options[choice]
+
+# ask the user for something and return what they put in
+# NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
+# if default is 'y', 'n', 'Y', or 'N', this will evaluate
+# to True if the user inputs anything that starts with a 'y' or 'Y', 
+# and will evaluate to False if the user inputs anything that starts
+# with a 'N' or 'n'. 
+def userInput(message,default): 
+    print(message)
+    if (default is "" or default is None): 
+        return string.strip(raw_input('==> ') )
+    else:
+        value = string.strip(raw_input("(def: %s) ==> " % (default)))
+        value = default if value is "" else value
+        value = value.lower()[0] if default.lower() is 'y' or default.lower() is 'n' else value
+        if (value == 'y'):
+            value = True
+        if (value == 'n'):
+            value = False
+        return value
+
+
+# Present the main menu
+def present_text_menu(): 
+    width = 60
+    print("")
+    print(string.center("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment",width,'*'))
+
+    currentBlock = ""
+    for key in menuOrder: 
+        option  = options[key];
+        block = option.BlockName()
+        if (not block is currentBlock):
+            currentBlock = block
+            line = string.center(" %s " % block,width,'*')
+            print ("")
+            print (line)
+        print ("%s) %s" % (option.KeyWord(),option.Description()))
+    
+
+def ApplyMenuChoice(choice):     
+    option = GetOption(choice)
+    if (option is None): 
+        return False
+    return option.Execute()
+
+def GetUserName(defaultName = os.getlogin()):
+    return userInput("Enter LC User Name:",defaultName)
+
+def GetSHA(desc):
+    out = StringIO.StringIO()
+    git("rev-parse",desc,_out=out)
+    toReturn = string.strip(out.getvalue()).encode('ascii')
+    out.close()
+    return toReturn
+
+def GitDir():
+    out = StringIO.StringIO()
+    git("rev-parse","--show-toplevel",_out=out)
+    toReturn = string.strip(out.getvalue()).encode('ascii')
+    out.close()
+    return toReturn
+
+def GetCurrentBranch():
+    out = StringIO.StringIO()
+    git("rev-parse","--abbrev-ref","HEAD",_out=out)
+    toReturn = string.strip(out.getvalue()).encode('ascii')
+    out.close()
+    return toReturn
+
+def ensure_dir(f):
+    d = os.path.dirname(f)
+    print("d:"+d)
+    if not os.path.exists(d):
+        print("making "+d)
+        os.makedirs(d)
+
+############################################################################
+# BEGINNING OF SCRIPT
+############################################################################
+def startup():
+    # If they specified a command line argument, then assume that it's
+    # a menu option, and bypass the menu
+    try:
+        if (len(sys.argv) == 1):
+            done = 0 
+            while not done:
+                present_text_menu()
+                choice = userInput("Please select an option from the above menu",None)
+                done = ApplyMenuChoice(choice)
+        elif (len(sys.argv) == 2):
+                ApplyMenuChoice(sys.argv[1])
+        else:
+            print ("Command line must contain zero or one arguments")
+    except KeyboardInterrupt:
+        print ("Operation interrupted by user...")
+
+    # Exit the script
+    print ("Thank you - good bye")
+
+                                                                             
+## If this file is being run as a script, then run the main menu.
+## If it's being imported, then don't
+if __name__ == '__main__':
+    startup()

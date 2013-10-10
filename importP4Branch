@@ -1,0 +1,69 @@
+#!/bin/tcsh
+
+
+# Recipe for importing branches from p4
+
+
+# First, clone the branch with full history into a new git repo: 
+
+# git p4 clone //ale3d/BRANCH_NAME/...@all
+
+# cd BRANCH_NAME
+
+# figure out the <commit_id> of the first commit in the repo, and create a patch file for each 
+# commit in the repo
+
+# git format-patch <commit_id>
+
+# This creates a bunch of number patch files, BRANCH_NAME/00xxx.<description>.patch
+#
+# go to the main repo
+#
+# cd ../ale3d_develop/
+#
+# figure out the commit id of the place where the branch should come off, <branch_point>
+# 
+# checkout a new branch starting at <branch_point> : 
+# git checkout -b BRANCH_NAME <branch_point>
+#
+# make sure the first patch would work: 
+#
+# git apply --check ../BRANCH_NAME/0001.*.patch
+#
+# apply all patches: 
+#
+# git am ../BRANCH_NAME/0*.patch
+#
+#     troubleshooting - I've found this fails on some patches when it really shouldn't: 
+#     apply the patch to the workspace, renaming files that don't work so it's easy to resolve: 
+#
+#     git apply --reject ../BRANCH_NAME/<patchTHatFailedIngit_am>
+#
+#     Add all the changes
+#
+#     git add .
+#
+#     resume the patch
+#
+#     git am --resolves
+#
+# ALmost there - now we want to make sure we didn't change perforce time data: 
+#
+#
+# git filter-branch --env-filter 'export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"' <branch_point>...BRANCH_NAME
+#
+## MAKE SURE YOU DO THE git filter-branch STEP ABOVE BEFORE YOU PUSH, as that rewrites history - OK when contained to your repo, but terrifynig if others have to deal with it.: 
+#
+# Tag any versions you feel are appropriate using maketags (in this directory, see additional instructions there)
+#
+# Make sure everything looks good in a GUI such as gitk or using your favorite git log tricks. 
+#
+# Finally, push the changes 
+#
+# git push --tags origin BRANCH_NAME
+#
+
+
+
+
+
