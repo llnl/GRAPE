@@ -8,6 +8,7 @@ import shutil
 import stashy
 import keyring
 import getpass
+import PyGitUp
 
 #*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 
@@ -366,8 +367,22 @@ class Hotfix(Option):
 options[Hotfix.key] = Hotfix()
 menuOrder.append(Hotfix.key)
 
+# update the repo from the remote using the PyGitUp module
+class UpdateLocal(Option):
+    key = "up"
+    section = section
+    def Description(self):
+        return "Update local branches that are tracked in your remote repo"
 
-
+    def Execute(self):
+        gitup = os.path.join(os.path.dirname(__file__),"PyGitUp","gitup.py")
+        
+        p = subprocess.Popen(gitup,shell=True)
+        p.wait()
+        return True
+    
+options[UpdateLocal.key] = UpdateLocal()
+menuOrder.append(UpdateLocal.key)
 
 # Display a help image for gitflow tasks
 class GitflowHelp(Option):
@@ -403,6 +418,8 @@ class GitflowHelp(Option):
 
 options[GitflowHelp.key] = GitflowHelp()
 menuOrder.append(GitflowHelp.key)
+
+
 
 ####################################################################################################
 #####    CODE REVIEWS ##############################################################################
