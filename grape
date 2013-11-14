@@ -9,6 +9,7 @@ import stashy
 import keyring
 import getpass
 import PyGitUp
+import ConfigParser
 
 #*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 
@@ -124,6 +125,7 @@ import PyGitUp
 
 sh.print_commands = True
 git = sh.git.bake( _out = sys.stdout,_err = sys.stderr)
+config = ConfigParser.ConfigParser()
 
 
 class Option: 
@@ -152,7 +154,8 @@ class Clone(Option):
     key = "init"
     section = section
     def Description(self): 
-        return "Clone the ale3d repo and initialize your git config"
+        name = config.get("repo","name")
+        return "Clone the %s repo and initialize your git config" % name
     
     def Execute(self): 
         user = GetUserName()
@@ -938,6 +941,7 @@ def ensure_dir(f):
 def startup():
     # If they specified a command line argument, then assume that it's
     # a menu option, and bypass the menu
+    config.read(".grapeconfig",".grapeuserconfig")
     try:
         if (len(sys.argv) == 1):
             done = 0 
