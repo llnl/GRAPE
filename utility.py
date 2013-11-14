@@ -1,11 +1,5 @@
 import os, StringIO, subprocess, tempfile
 
-def ApplyMenuChoice(choice):
-    option = GetOption(choice)
-    if (option is None):
-        return False
-    return option.Execute()
-
 def ensure_dir(f):
     d = os.path.dirname(f)
     print("d:"+d)
@@ -51,7 +45,7 @@ def GitDir():
     return toReturn
 
 # Present the main menu
-def presentTextMenu():
+def presentTextMenu(menuOrder):
     width = 60
     print("")
     print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
