@@ -139,9 +139,19 @@ class Option:
     def KeyWord(self):
         return self.key
 
-
+#######      MENU STUFF         #########################################################################
 options = {}
 menuOrder = []
+
+def GetOption(choice):
+    return options[choice]
+
+def ApplyMenuChoice(choice):
+    option = GetOption(choice)
+    if (option is None):
+        return False
+    return option.Execute()
+
 
 #######      GETTING STARTED    #########################################################################
 section = " GETTING STARTED "
@@ -873,11 +883,11 @@ def startup():
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                utility.presentTextMenu()
+                utility.presentTextMenu(menuOrder)
                 choice = utility.userInput("Please select an option from the above menu",None)
-                done = utility.ApplyMenuChoice(choice)
+                done = ApplyMenuChoice(choice)
         elif (len(sys.argv) == 2):
-                utility.ApplyMenuChoice(sys.argv[1])
+                ApplyMenuChoice(sys.argv[1])
         else:
             print("Command line must contain zero or one arguments")
     except KeyboardInterrupt:
