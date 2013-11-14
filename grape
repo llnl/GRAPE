@@ -908,7 +908,7 @@ class Atlassian:
 def startup():
     # If they specified a command line argument, then assume that it's
     # a menu option, and bypass the menu
-    config.read(".grapeconfig",".grapeuserconfig")
+    config.read([".grapeconfig",".grapeuserconfig"])
     try:
         if (len(sys.argv) == 1):
             done = 0
