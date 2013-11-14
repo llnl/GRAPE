@@ -27,8 +27,6 @@ class Test_help(unittest.TestCase):
         self.assertTrue( "minor)" in contents)
         self.assertTrue( "rev)" in contents)
 
-    def test_fail(self):
-        self.assertFalse( True )
         
 def main():
     suite = unittest.TestSuite()

@@ -846,12 +846,15 @@ class Test(Option):
         good = GrapeTest.main()
         if not good:
             print "*"*80
+            print "*"*80
             if os.environ["USER"] == "white238":
                 print "Chris, a test failed.  That means don't push this up.  Thanks"
             else:
                 print "Hey, a test has failed"
 
             print "*"*80
+            print "*"*80
+
         return True
 
 options[Test.key] = Test()
