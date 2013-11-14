@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,sys,string
+import os,sys
 import subprocess
 import sh
 import StringIO
@@ -865,9 +865,9 @@ def  GetOption(choice):
 def userInput(message,default): 
     print(message)
     if (default is "" or default is None): 
-        return string.strip(raw_input('==> ') )
+        return raw_input('==> ').strip()
     else:
-        value = string.strip(raw_input("(def: %s) ==> " % (default)))
+        value = raw_input("(def: %s) ==> " % (default)).strip()
         value = default if value is "" else value
         value = value.lower()[0] if default.lower() is 'y' or default.lower() is 'n' else value
         if (value == 'y'):
@@ -881,7 +881,7 @@ def userInput(message,default):
 def present_text_menu(): 
     width = 60
     print("")
-    print(string.center("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment",width,'*'))
+    print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
 
     currentBlock = ""
     for key in menuOrder: 
@@ -889,7 +889,7 @@ def present_text_menu():
         block = option.BlockName()
         if (not block is currentBlock):
             currentBlock = block
-            line = string.center(" %s " % block,width,'*')
+            line = (" %s " % block).center(width,'*')
             print ("")
             print (line)
         print ("%s) %s" % (option.KeyWord(),option.Description()))
@@ -907,21 +907,21 @@ def GetUserName(defaultName = os.getlogin()):
 def GetSHA(desc):
     out = StringIO.StringIO()
     git("rev-parse",desc,_out=out)
-    toReturn = string.strip(out.getvalue()).encode('ascii')
+    toReturn = out.getvalue().strip().encode('ascii')
     out.close()
     return toReturn
 
 def GitDir():
     out = StringIO.StringIO()
     git("rev-parse","--show-toplevel",_out=out)
-    toReturn = string.strip(out.getvalue()).encode('ascii')
+    toReturn = out.getvalue().strip().encode('ascii')
     out.close()
     return toReturn
 
 def GetCurrentBranch():
     out = StringIO.StringIO()
     git("rev-parse","--abbrev-ref","HEAD",_out=out)
-    toReturn = string.strip(out.getvalue()).encode('ascii')
+    toReturn = out.getvalue().strip().encode('ascii')
     out.close()
     return toReturn
 
