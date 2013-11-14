@@ -6,6 +6,7 @@ import unittest
 import grape
 import StringIO
 
+
 class Test_help(unittest.TestCase):
     def setUp(self):
         self.output = StringIO.StringIO()

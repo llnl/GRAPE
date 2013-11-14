@@ -48,6 +48,7 @@ import PyGitUp
 
 #fis) fastFIS recent changes in master and develop --TODO
 #offsite)  Create an Offsite Branch --TODO
+#test ) Run the grape test suite
 
 # *** You need admin privileges for the Stash repo to do these ***
 
@@ -808,6 +809,21 @@ class Quit(Option):
 
 options[Quit.key] = Quit()
 menuOrder.append(Quit.key)
+
+class Test(Option):
+    key = "test"
+    section = section
+    def Description(self): 
+        return "Test Grape."
+
+    def Execute(self): 
+        sys.path.append("test")
+        import GrapeTest
+        GrapeTest.main()
+        return True
+
+options[Test.key] = Test()
+menuOrder.append(Test.key)
 
 ######################## Atlassian Session Manager ####################
 
