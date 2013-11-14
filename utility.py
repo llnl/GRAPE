@@ -70,3 +70,7 @@ def Cascade(list, op):
         exec op
         ancestor = descendent
    
+def Cmerge(list):
+    Cascade(list, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
+
+
