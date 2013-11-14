@@ -816,9 +816,12 @@ class Test(Option):
         return "Test Grape."
 
     def Execute(self): 
-        sys.path.append("test")
-        import GrapeTest
-        GrapeTest.main()
+        from test import GrapeTest
+        good = GrapeTest.main()
+        if not good:
+            if os.environ["USER"] == "white238":
+                print "Chris, a test failed.  That means don't push this up.  Thanks"
+                
         return True
 
 options[Test.key] = Test()

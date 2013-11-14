@@ -26,11 +26,15 @@ class Test_help(unittest.TestCase):
         self.assertTrue( "minor)" in contents)
         self.assertTrue( "rev)" in contents)
 
+    def test_fail(self):
+        self.assertFalse( True )
+        
 def main():
     suite = unittest.TestSuite()
-
     suite.addTest(unittest.makeSuite(Test_help))
-    unittest.TextTestRunner(verbosity=2).run(suite)
+    result = unittest.TextTestRunner(verbosity=2).run(suite)
+    return result.wasSuccessful()
+
 
 if __name__ == "__main__":
     main()
