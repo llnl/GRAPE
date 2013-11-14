@@ -44,23 +44,6 @@ def GitDir():
     out.close()
     return toReturn
 
-# Present the main menu
-def presentTextMenu(menuOrder):
-    width = 60
-    print("")
-    print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
-
-    currentBlock = ""
-    for key in menuOrder:
-        option  = options[key];
-        block = option.BlockName()
-        if (not block is currentBlock):
-            currentBlock = block
-            line = (" %s " % block).center(width,'*')
-            print("")
-            print(line)
-        print("%s) %s" % (option.KeyWord(),option.Description()))
-
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate
