@@ -152,6 +152,22 @@ def ApplyMenuChoice(choice):
         return False
     return option.Execute()
 
+# Present the main menu
+def presentTextMenu():
+    width = 60
+    print("")
+    print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
+
+    currentBlock = ""
+    for key in menuOrder:
+        option  = options[key];
+        block = option.BlockName()
+        if (not block is currentBlock):
+            currentBlock = block
+            line = (" %s " % block).center(width,'*')
+            print("")
+            print(line)
+        print("%s) %s" % (option.KeyWord(),option.Description()))
 
 #######      GETTING STARTED    #########################################################################
 section = " GETTING STARTED "
@@ -890,7 +906,7 @@ def startup():
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                utility.presentTextMenu(menuOrder)
+                presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu",None)
                 done = ApplyMenuChoice(choice)
         elif (len(sys.argv) == 2):
