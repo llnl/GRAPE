@@ -838,10 +838,10 @@ menuOrder.append(Quit.key)
 class Test(Option):
     key = "test"
     section = section
-    def Description(self): 
+    def Description(self):
         return "Test Grape."
 
-    def Execute(self): 
+    def Execute(self):
         from test import GrapeTest
         good = GrapeTest.main()
         if not good:
