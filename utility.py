@@ -64,7 +64,7 @@ def userInput(message,default):
             value = False
         return value
 
-def cascade(list, op):
+def Cascade(list, op):
     ancestor = list[0]
     for descendent in list[1:]:
         exec op
