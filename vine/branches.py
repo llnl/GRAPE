@@ -1,8 +1,5 @@
 import sys, os
-import option, utility
-if not ".." in sys.path:
-    sys.path.append( ".." )
-
+import grapeGit, option, utility
 
 # list local branches (git branch)
 class Branches(option.Option):
@@ -15,5 +12,6 @@ class Branches(option.Option):
 
     def execute(self):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        utility.executeSubProcess("git branch",os.getcwd())
+        g = grapeGit.GrapeGit()
+        g.branch()
         return True
