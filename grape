@@ -14,7 +14,7 @@ import ConfigParser
 #*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 
 #**** GETTING STARTED  ***********************
-#init) Clone the ale3d repo and initialize your git config
+#init) Clone the  repo and initialize your git config
 #config) Initialize a repo you've already cloned without using GRAPE
 
 #**** GITFLOW TASKS ************************
@@ -180,14 +180,13 @@ def DefineView(sparseFile):
     include = {}
     include["src"] = True
     include["scripts"] = True
-
-    directories = ["imports","exports","test","testbaselines","ALE3D.xcodeproj",
-                   "deploy","doc","tools"]
+    alldirs = config.get("view","alldirs")
+    directories = alldirs.split(" ")
 
     accept = utility.userInput("Do you want everything? [y/n]","y")
     text = []
     while not accept:
-        accept = utility.userInput("Do you only want src? [y/n]","y")
+        accept = utility.userInput("Do you only want the required view? [y/n]","y")
         for d in directories:
             use = False if accept else utility.userInput("Do you want %s? [y/n]" % d,"n")
             if (use):
