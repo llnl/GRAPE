@@ -65,12 +65,14 @@ def userInput(message,default):
         return value
 
 def Cascade(list, op):
+    """Apply an operation to a chain of interdependent pairs in a list"""
     ancestor = list[0]
     for descendent in list[1:]:
-        exec op
+        exec op # this should be an eval so we can return an 'error' and exit
         ancestor = descendent
    
-def Cmerge(list):
+def Cmerge(list):  # this should return 'success' or an error code
+    """Apply a git merge across several branches"""
     Cascade(list, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
 
 
