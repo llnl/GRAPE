@@ -1,17 +1,23 @@
-import option
+from __future__ import absolute_import
+import os,sys
+from vine import option, utility
+from .grapeConfig import grapeConfig
+if not ".." in sys.path:
+    sys.path.append( ".." )
+import git
 
 class Test(option.Option):
-    key = "test"
-    section = " OTHER "
+    def __init__(self):
+        self._key = "test"
+        self._section = "Other"
 
-    def Description(self):
+    def description(self):
         return "Test Grape."
 
-    def Execute(self):
-        if not ".." in sys.path:
-            sys.path.append( ".." )
-        from test import GrapeTest
-        good = GrapeTest.main()
+    def execute(self):
+
+        from test import testGrape
+        good = testGrape.main()
         if not good:
             print "*"*80
             print "*"*80

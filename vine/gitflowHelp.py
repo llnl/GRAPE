@@ -2,13 +2,14 @@ import option
 
 # Display a help image for gitflow tasks
 class GitflowHelp(option.Option):
-    key = "help"
-    section = "GITFLOW TASKS"
+    def __init__(self):
+        self._key = "help"
+        self._section = "Gitflow Tasks"
 
-    def Description(self):
+    def description(self):
         return "Display a gitflow diagram to help make a decision"
 
-    def Execute(self):
+    def execute(self):
         diagram = ""+ \
         " choice                time --------->                                            Branch Type       \n"+\
         "____________________________________________________________________________________________________\n"+\

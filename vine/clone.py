@@ -1,31 +1,30 @@
+import os, sys
 from grapeConfig import grapeConfig
-import option
+import option, utility
+if not ".." in sys.path:
+    sys.path.append( ".." )
+import git
 
 class Clone(option.Option):
-    key = "clone"
-    section = " GETTING STARTED "
+    def __init__(self):
+        self._key = "clone"
+        self._section = "Getting Started"
 
     """Clones the ALE3D repo into a new local repo"""
-    def Description(self):
+    def description(self):
         name = grapeConfig().get("repo","name")
         return "Clone the %s repo and initialize your git config" % name
 
-    def Execute(self):
-        user = utility.GetUserName()
+    def execute(self):
+        user = utility.getUserName()
 
         remotePath = utility.userInput("Enter Remote Repo address:",
-                               "https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user)
+                               ("https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user))
 
-        destPath = utility.userInput("Enter destination directory:",os.path.join(os.getcwd(),"ale3d"))
-
-        print("calling git clone %s %s" % (remotePath,destPath))
-        print("you may need to authenticate using your CRYPTOCARD")
-        repo = git.Repo(destPath)
-        try:
-            repo = repo.clone(remotePath)
-        except git.GitCommandError as error:
-            print("Error: %s: git clone failed", remotePath)
-            print(error)
+        destPath = utility.userInput("Enter destination directory:", os.path.join(os.getcwd(), "ale3d"))
+        process = utility.executeSubProcess("git clone %s %s" % (remotePath, destPath))
+        if process.returncode != 0:
+            print("Error: Git Clone failed.")
             return False
-
+        print("Clone succeeded!")
         return True

@@ -3,13 +3,15 @@ import option, utility
 # Configure current repo
 class Config(option.Option):
     """Configures the repo to be optimized for LC and GRAPE"""
-    key = "config"
-    section = " GETTING STARTED "
 
-    def Description(self):
+    def __init__(self):
+        self._key = "config"
+        self._section = "Getting Started"
+
+    def description(self):
         return "Initialize a repo you've already cloned without using GRAPE"
 
-    def Execute(self):
+    def execute(self):
         base = utility.gitDir()
         if base == "":
             return False

@@ -5,13 +5,14 @@ import git
 
 #option that creates a hotfix branch
 class Hotfix(option.Option):
-    key = "hot"
-    section = "GITFLOW TASKS"
+    def __init__(self):
+        self._key = "hot"
+        self._section = "Gitflow Tasks"
 
-    def Description(self):
+    def description(self):
         return "Create a hotfix branch (for fixing weekly test failures on master)"
 
-    def Execute(self):
+    def execute(self):
         git.fetch("origin","master")
         utility.createBranch("master","hot")
         return True

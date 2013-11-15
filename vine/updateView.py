@@ -2,13 +2,14 @@ import option, utility
 
 # update your custom sparse checkout view
 class UpdateView(option.Option):
-    key = 'uv'
-    section = " MISCELLANEOUS "
+    def __init__(self):
+        self._key = "uv"
+        self._section = "Miscellaneous"
 
-    def Description(self):
+    def description(self):
         return "Update the view of your current working tree"
 
-    def Execute(self):
+    def execute(self):
         base = utility.gitDir()
         if base == "":
             return False

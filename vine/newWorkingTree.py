@@ -2,13 +2,14 @@ import option, utility
 
 # Create a custom sparse checkout view in a new working tree
 class NewWorkingTree(option.Option):
-    key = 'cv'
-    section = " MISCELLANEOUS "
+    def __init__(self):
+        self._key = "cv"
+        self._section = "Miscellaneous"
 
-    def Description(self):
+    def description(self):
         return "Create a custom sparse checkout view in a new working tree"
 
-    def Execute(self):
+    def execute(self):
 
         clonePath = ""
         try:
@@ -20,7 +21,7 @@ class NewWorkingTree(option.Option):
 
         clonePath = utility.userInput("Enter path to original clone",clonePath)
 
-        newTree = utility.userInput("Enter name of new working tree",None)
+        newTree = utility.userInput("Enter name of new working tree")
 
         newTreePath = utility.userInput("Enter desired location of new working tree (must exist)",
                                 os.path.abspath(os.path.join(clonePath,"../")))
@@ -34,4 +35,4 @@ class NewWorkingTree(option.Option):
 
         os.chdir(newRepo)
 
-        return options['uv'].Execute()
+        return options['uv'].execute()

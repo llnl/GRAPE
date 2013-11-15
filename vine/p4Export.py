@@ -2,17 +2,18 @@ import option
 
 # prepares all changes since the last p4 commit viewable from HEAD in your P4CLIENT (typically maindev)
 class P4Export(option.Option):
-    key = "p4export"
-    section = "Perforce Integration"
+    def __init__(self):
+        self._key = "p4export"
+        self._section = "Perforce Integration"
 
-    def Description(self):
+    def description(self):
         return "Prepare changes in current branch in your perforce maindev client"
 
-    def Execute(self):
+    def execute(self):
         #First, create a new branch and prepare it with a squashed version of your current branch.
         print("Preparing temporary branch to hold squashed version of current branch.")
         originalBranch = utility.GetCurrentBranch()
-        options['dev'].Execute()
+        options['dev'].execute()
         tmpBranch = utility.GetCurrentBranch()
         git.merge("--squash",originalBranch)
         git.commit("-m","\"Squashed Merge from %s in preparation for p4 submit.\"" % originalBranch)

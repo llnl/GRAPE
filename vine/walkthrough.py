@@ -1,16 +1,18 @@
+import sys
 import option
 if not ".." in sys.path:
     sys.path.append( ".." )
 import git
 
 class Walkthrough(option.Option):
-    key = 'w'
-    section = " CODE REVIEWS "
+    def __init__(self):
+        self._key = "w"
+        self._section = "Code Reviews"
 
-    def Description(self):
+    def description(self):
         return "Walk through diffs between branches"
 
-    def Execute(self):
+    def execute(self):
         b1 = utility.userInput("Enter name of first branch to compare","HEAD")
         b2 = utility.userInput("Enter name of second branch to compare", "develop")
         print("Running git diff %s %s..., use Ctrl-C to stop diff" %(b1,b2))

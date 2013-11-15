@@ -1,3 +1,4 @@
+import sys
 import option
 if not ".." in sys.path:
     sys.path.append( ".." )
@@ -5,11 +6,12 @@ import git
 
 # abort a merge
 class MergeAbort(option.Option):
-    key = 'abort'
-    section = " MERGE "
+    def __init__(self):
+        self._key = "abort"
+        self._section = "Merge"
 
-    def Description(self):
+    def description(self):
         return "abort current merge"
 
-    def Execute(self):
+    def execute(self):
         git.merge("--abort")

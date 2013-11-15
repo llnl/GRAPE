@@ -1,4 +1,4 @@
-import os, StringIO, subprocess, tempfile
+import os, StringIO, subprocess, sys, tempfile
 if not ".." in sys.path:
     sys.path.append( ".." )
 import git
@@ -15,7 +15,7 @@ def cmerge(l):  # this should return 'success' or an error code
     Cascade(l, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
 
 def createBranch(branchPoint, prefix):
-    branch = userInput("Enter new branch name",None)
+    branch = userInput("Enter new branch name")
     user = GetUserName()
     fullBranch = prefix+"/"+user+"/"+branch
     proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
@@ -58,8 +58,8 @@ def GetSHA(desc):
     out.close()
     return toReturn
 
-def GetUserName(defaultName = os.getlogin()):
-    return userInput("Enter LC User Name:",defaultName)
+def getUserName(defaultName=os.getlogin()):
+    return userInput("Enter LC User Name:", defaultName)
 
 def gitMerge(repoName, branchName, option=""):
     choice = None
@@ -69,18 +69,25 @@ def gitMerge(repoName, branchName, option=""):
         pull = git.pull
     try:
         pull(repoName,branchName)
-
     except sh.ErrorReturnCode_1 as error:
-        choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]","resolve")
-
+        choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]", "resolve")
     except sh.ErrorReturnCode as error:
         print("unknown return code during merge")
         print(error)
+        return None
+
     return choice
+
+def gitMergeAbort():
+    process = executeSubProcess("git merge --abort", os.getcwd())
+    if process.returncode != 0:
+        print("Error: Could not determine top level git directory.")
+        return False
+    return True
 
 def gitDir():
     process = executeSubProcess("git rev-parse --show-toplevel", os.getcwd(), subprocess.PIPE)
-    if process.returncode:
+    if process.returncode != 0:
         print("Error: Could not determine top level git directory.")
         return ""
     output = process.communicate()[0]
@@ -117,22 +124,28 @@ def mergeIntoCurrent(repoName,branchName):
             f.write("* merge=verify")
 
         # perform the merge
-        choice = GitMerge(repoName,branchName)
+        choice = gitMerge(repoName, branchName)
 
         # restore original attributes file
         shutil.copyfile(tmpattributes,attributes)
         os.remove(tmpattributes)
 
     elif (strategy == 'at'):
-        print("merging using recursive strategy, resolving conflicts cleanly with %s's changes"%branchName)
-        choice = GitMerge(repoName,branchName,"-Xtheirs")
+        print("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
+        choice = gitMerge(repoName, branchName, "-Xtheirs")
 
     elif (strategy == 'ay'):
         print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
-        choice = GitMerge(repoName,branchName,"-Xours")
+        choice = gitMerge(repoName, branchName, "-Xours")
 
-    if (choice):
-        return options[choice].Execute()
+    if choice == None:
+        return False
+    choice = choice.strip().lower()
+    if choice == "abort":
+        if not gitMergeAbort():
+            return False
+    elif choice:
+        return options[choice].execute()
 
     return True
 
@@ -142,18 +155,19 @@ def mergeIntoCurrent(repoName,branchName):
 # to True if the user inputs anything that starts with a 'y' or 'Y',
 # and will evaluate to False if the user inputs anything that starts
 # with a 'N' or 'n'.
-def userInput(message,default):
-    print(message)
+def userInput(message, default=None):
+    print("\n" + message)
     if (default is "" or default is None):
         return raw_input('==> ').strip()
     else:
         value = raw_input("(def: %s) ==> " % (default)).strip()
-        value = default if value is "" else value
-        value = value.lower()[0] if default.lower() is 'y' or default.lower() is 'n' else value
-        if (value == 'y'):
-            value = True
-        if (value == 'n'):
-            value = False
+        if value == "":
+            return default
+        if default.lower() == "y" or default.lower() == "n":
+            if value.lower()[0] == "y":
+                return True
+            if value.lower()[0] == "n":
+                return False
         return value
 
 # writes a config file with default options
