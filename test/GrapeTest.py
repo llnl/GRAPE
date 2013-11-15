@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-import sys
-sys.path.append( ".." )
+import sys, unittest, StringIO
+import testUtility
 
-import unittest
+if not ".." in sys.path:
+    sys.path.append( ".." )
 import grape
-import StringIO
-
 
 class Test_help(unittest.TestCase):
     def setUp(self):
@@ -27,13 +26,12 @@ class Test_help(unittest.TestCase):
         self.assertTrue( "minor)" in contents)
         self.assertTrue( "rev)" in contents)
 
-        
 def main():
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(Test_help))
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
-    return result.wasSuccessful()
 
+    suite.addTest(unittest.makeSuite(Test_help))
+    suite.addTest(testUtility.suite())
+    unittest.TextTestRunner(verbosity=2).run(suite)
 
 if __name__ == "__main__":
     main()

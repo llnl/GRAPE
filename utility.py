@@ -1,4 +1,5 @@
 import os, StringIO, subprocess, tempfile
+import git
 
 def ensure_dir(f):
     d = os.path.dirname(f)
@@ -18,7 +19,7 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     process.wait()
     if process.returncode != 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
-    return process.returncode
+    return process
 
 def GetCurrentBranch():
     out = StringIO.StringIO()
@@ -37,12 +38,13 @@ def GetSHA(desc):
 def GetUserName(defaultName = os.getlogin()):
     return userInput("Enter LC User Name:",defaultName)
 
-def GitDir():
-    out = StringIO.StringIO()
-    git("rev-parse","--show-toplevel",_out=out)
-    toReturn = out.getvalue().strip().encode('ascii')
-    out.close()
-    return toReturn
+def gitDir():
+    process = executeSubProcess("git rev-parse --show-toplevel", os.getcwd(), subprocess.PIPE)
+    if process.returncode:
+        print("Error: Could not determine top level git directory.")
+        return ""
+    output = process.communicate()[0]
+    return output.strip()
 
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
