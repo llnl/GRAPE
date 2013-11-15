@@ -3,13 +3,14 @@ import option
 
 # Prepare Feature Branch for review
 class Review(option.Option):
-    key = "review"
-    section = " CODE REVIEWS "
+    def __init__(self):
+        self._key = "review"
+        self._section = "Code Reviews"
 
-    def Description(self):
+    def description(self):
         return "Prepare current development branch for review"
 
-    def Execute(self):
+    def execute(self):
         print("Logging into RZStash")
         rzAtlassian = Atlassian()
         rzStash = rzAtlassian.stash

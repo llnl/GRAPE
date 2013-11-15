@@ -1,13 +1,18 @@
 class Option:
-    def Description(self):
+    def __init__(self):
+        self._key = "UNSET KEY"
+        self._section = "UNSET SECTION"
+
+    def description(self):
         pass
 
-    def Execute(self):
+    def execute(self):
         pass
 
-    def BlockName(self):
-        return self.section
+    @property
+    def key(self):
+        return self._key
 
-    def KeyWord(self):
-        return self.key
-
+    @property
+    def section(self):
+        return self._section

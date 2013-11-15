@@ -3,13 +3,14 @@ import option
 
 # update the repo from the remote using the PyGitUp module
 class UpdateLocal(option.Option):
-    key = "up"
-    section = "GITFLOW TASKS"
+    def __init__(self):
+        self._key = "up"
+        self._section = "Gitflow Tasks"
 
-    def Description(self):
+    def description(self):
         return "Update local branches that are tracked in your remote repo"
 
-    def Execute(self):
+    def execute(self):
         gitup = os.path.join(os.path.dirname(__file__),"PyGitUp","gitup.py")
 
         p = subprocess.Popen(gitup,shell=True)

@@ -6,12 +6,13 @@ import git
 
 # list local branches (git branch)
 class Branches(option.Option):
-    key = 'b'
-    section = " MISCELLANEOUS "
+    def __init__(self):
+        self._key = "b"
+        self._section = "Miscellaneous"
 
-    def Description(self):
+    def description(self):
         return "List all of your local repo's branches"
 
-    def Execute(self):
+    def execute(self):
         git.branch()
         return True

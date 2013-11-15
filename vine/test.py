@@ -1,13 +1,14 @@
 import option
 
 class Test(option.Option):
-    key = "test"
-    section = " OTHER "
+    def __init__(self):
+        self._key = "test"
+        self._section = "Other"
 
-    def Description(self):
+    def description(self):
         return "Test Grape."
 
-    def Execute(self):
+    def execute(self):
         if not ".." in sys.path:
             sys.path.append( ".." )
         from test import GrapeTest

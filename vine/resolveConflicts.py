@@ -6,13 +6,14 @@ import git
 
 # resolve conflicts using git mergetool
 class ResolveConflicts(option.Option):
-    key = 'resolve'
-    section = " MERGE "
+    def __init__(self):
+        self._key = "resolve"
+        self._section = "Merge"
 
-    def Description(self):
+    def description(self):
         return "Resolve Conflicts that arose as result of a merge or a rebase"
 
-    def Execute(self):
+    def execute(self):
         p = subprocess.Popen("git mergetool",shell=True)
         p.wait()
         # print out git status, which contains instructions to complete a merge

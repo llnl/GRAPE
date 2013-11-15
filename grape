@@ -126,35 +126,32 @@ import PyGitUp
 #
 
 #######      MENU STUFF         #########################################################################
-def GetOption(choice):
+def getOption(choice, options):
     try:
         return options[choice]
     except:
         print("Unknown option '%s'" % choice)
         return None
 
-def ApplyMenuChoice(choice):
-    option = GetOption(choice)
-    if (option is None):
+def applyMenuChoice(choice, options):
+    chosenOption = getOption(choice, options)
+    if chosenOption is None:
         return False
-    return option.Execute()
+    return chosenOption.execute()
 
 # Present the main menu
-def presentTextMenu(options, menuOrder):
+def presentTextMenu(options, sections):
     width = 60
-    print("")
     print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
 
-    currentBlock = ""
-    for key in menuOrder:
-        option  = options[key];
-        block = option.BlockName()
-        if (not block is currentBlock):
-            currentBlock = block
-            line = (" %s " % block).center(width,'*')
-            print("")
-            print(line)
-        print("%s) %s" % (option.KeyWord(),option.Description()))
+    for currSection in sections:
+        loweredSection = currSection.strip().lower()
+        print("\n" + (" %s " % currSection).center(width,'*'))
+        for currKey in options.keys():
+            currOption = options[currKey]
+            if currOption.section.strip().lower() != loweredSection:
+                continue
+            print("%s: %s" % (currOption.key, currOption.description()))
 
 #######      GETTING STARTED    #########################################################################
 
@@ -245,30 +242,33 @@ def startup():
     options = {}
     menuOrder = []
 
-    menuOptions = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+    #Add/order your menu option here
+    optionsToBeAddedToMenu = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
                gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
                merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
                minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
                quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal(), \
                updateView.UpdateView(), walkthrough.Walkthrough()]
 
-    for currOption in menuOptions:
+    #Add/order the menu sections here
+    sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
+                    'Merge', 'Gitflow Tasks', 'Perforce Integration', 'Other']
+
+    for currOption in optionsToBeAddedToMenu:
         options[currOption.key] = currOption
-        menuOrder.append(currOption.key)
 
     ma = mergeAbort.MergeAbort()
     options[ma.key] = ma
-    #Don't add mergeAbort to menu
 
     try:
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                presentTextMenu(options, menuOrder)
-                choice = utility.userInput("Please select an option from the above menu",None)
-                done = ApplyMenuChoice(choice)
+                presentTextMenu(options, sections)
+                choice = utility.userInput("Please select an option from the above menu", None)
+                done = applyMenuChoice(choice, options)
         elif (len(sys.argv) == 2):
-                ApplyMenuChoice(sys.argv[1])
+                applyMenuChoice(sys.argv[1])
         else:
             print("Command line must contain zero or one arguments")
     except KeyboardInterrupt:

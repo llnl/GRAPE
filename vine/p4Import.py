@@ -2,13 +2,14 @@ import option
 
 #imports recent changes in perforce into a hotfix branch ready for tagging and merging to master
 class P4Import(option.Option):
-    key = "p4import"
-    section = "Perforce Integration"
+    def __init__(self):
+        self._key = "p4import"
+        self._section = "Perforce Integration"
 
-    def Description(self):
+    def description(self):
         return "Import recent p4 changes into a hotfix branch"
 
-    def Execute(self):
+    def execute(self):
         print("calling Grape hot")
         proceed = options['hot'].Execute()
         assert proceed == True

@@ -2,12 +2,13 @@ import option, utility
 
 # option that creates a new feature branch
 class Feature(option.Option):
-    key = "dev"
-    section = "GITFLOW TASKS"
+    def __init__(self):
+        self._key = "dev"
+        self._section = "Gitflow Tasks"
 
-    def Description(self):
+    def description(self):
         return "Create a new feature development branch"
 
-    def Execute(self):
+    def execute(self):
         utility.createBranch("develop","feature")
         return True

@@ -1,11 +1,12 @@
 import option
 
 class Quit(option.Option):
-    key = "q"
-    section = " OTHER "
+    def __init__(self):
+        self._key = "q"
+        self._section = "Other"
 
-    def Description(self):
+    def description(self):
         return "Quit."
 
-    def Execute(self):
+    def execute(self):
         return True

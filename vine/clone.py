@@ -2,15 +2,16 @@ from grapeConfig import grapeConfig
 import option
 
 class Clone(option.Option):
-    key = "clone"
-    section = " GETTING STARTED "
+    def __init__(self):
+        self._key = "clone"
+        self._section = "Getting Started"
 
     """Clones the ALE3D repo into a new local repo"""
-    def Description(self):
+    def description(self):
         name = grapeConfig().get("repo","name")
         return "Clone the %s repo and initialize your git config" % name
 
-    def Execute(self):
+    def execute(self):
         user = utility.GetUserName()
 
         remotePath = utility.userInput("Enter Remote Repo address:",
