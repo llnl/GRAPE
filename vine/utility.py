@@ -61,22 +61,7 @@ def GetSHA(desc):
 def getUserName(defaultName=os.getlogin()):
     return userInput("Enter LC User Name:", defaultName)
 
-def gitMerge(repoName, branchName, option=""):
-    choice = None
-    if (option != ""):
-        pull = git.pull.bake(option)
-    else:
-        pull = git.pull
-    try:
-        pull(repoName,branchName)
-    except sh.ErrorReturnCode_1 as error:
-        choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]", "resolve")
-    except sh.ErrorReturnCode as error:
-        print("unknown return code during merge")
-        print(error)
-        return None
 
-    return choice
 
 
 

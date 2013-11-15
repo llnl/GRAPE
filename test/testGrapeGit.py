@@ -2,14 +2,31 @@ import os, sys, unittest, shutil,subprocess
 import testGrape
 if not ".." in sys.path:
     sys.path.append( ".." )
-from vine import utility, grapeGit
+from vine import utility
+from vine import grapeGit as git
 
+
+str1 = "a \n b\n c\n"
+str2 = "a \n c\n c\n"
+str3 = "a \n d\n c\n" 
+
+def writeFile1(path):
+    with open(path,'w') as f: 
+        f.write(str1)
+
+def writeFile2(path):
+    with open(path,'w') as f: 
+        f.write(str2)
+
+def writeFile3(path):
+    with open(path,'w') as f: 
+        f.write(str3)
 
 class TestGrapeGit(testGrape.TestGrape):
     def __init__(self,superArg):
         super(TestGrapeGit,self).__init__(superArg)
         self.repo = os.path.join(os.getcwd(),"testGrapeGitRepo")
-        self.git = grapeGit.GrapeGit()
+
 
     def setUp(self):
         super(TestGrapeGit,self).setUp()
@@ -32,8 +49,8 @@ class TestGrapeGit(testGrape.TestGrape):
             grapeBaseDir = os.path.abspath(os.path.join(os.getcwd(), ".."))
         self.assertTrue(os.path.exists(os.path.join(grapeBaseDir, "grape")), "Something went horribly wrong and could not find the base directory of the grape repo")
 
-        myGit = grapeGit.GrapeGit()
-        self.assertEquals(myGit.dir(), grapeBaseDir, "Could not determine git directory")
+
+        self.assertEquals(git.dir(), grapeBaseDir, "Could not determine git directory")
 
     def testMergeAbort(self):
         self.assertTrue(False)
@@ -57,6 +74,7 @@ class TestGrapeGit(testGrape.TestGrape):
         self.assertTrue(False)
 
     def testCommit(self):
+        
         self.assertTrue(False)
 
     def testCheckout(self):
