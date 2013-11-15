@@ -191,44 +191,6 @@ def DefineView(sparseFile):
     #write accepted sparse-checkout file
     sparseFile.writelines(text)
 
-######################## Atlassian Session Manager ####################
-
-class Atlassian:
-    rzstashURL = "https://rzlc.llnl.gov/stash"
-    def auth(self,service,username,password):
-        self.userName = username
-        self.service = service
-        self.stash = stashy.connect(service,username,password)
-        numAttempts = 0
-        success = False
-        while (numAttempts < 3 and not success):
-            try:
-                project = self.stash.projects.list()
-                success = True
-            except stashy.errors.AuthenticationException:
-                if (numAttempts == 0):
-                    print("session expired...")
-
-                else:
-                    print("incorrect username / password...")
-                    self.userName = utility.GetUserName(self.userName)
-                keyring.set_password(service,self.userName,getpass.getpass("Enter password for %s: " % service))
-                self.stash = stashy.connect(service,self.userName,keyring.get_password(service,self.userName))
-                numAttempts += 1
-
-        return success
-
-
-
-    def __init__(self):
-        self.userName = utility.GetUserName()
-        #self.keyring = keyring.get_keyring()
-        service = Atlassian.rzstashURL
-        if self.auth(service,self.userName,keyring.get_password(service,self.userName)):
-            print("Connected to RZStash...")
-        else:
-            self.stash = None
-            print("Could not connect to RZStash...")
 
 #######################################################################
 #The Grape class - encapsulates menu options and sections.
