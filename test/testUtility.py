@@ -1,9 +1,10 @@
 import os, sys, unittest
+import testGrape
 if not ".." in sys.path:
     sys.path.append( ".." )
 import utility
 
-class TestUtility(unittest.TestCase):
+class TestUtility(testGrape.TestGrape):
     def testGitDir(self):
         grapeBaseDir = os.getcwd()
         if not os.path.exists(os.path.join(grapeBaseDir, "grape")):
@@ -12,7 +13,9 @@ class TestUtility(unittest.TestCase):
 
         self.assertEquals(utility.gitDir(), grapeBaseDir, "Could not determine git directory")
 
-def suite():
-    suite = unittest.TestSuite()
+def suite(appendTo = None):
+    suite = appendTo
+    if suite == None:
+        suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(TestUtility))
     return suite

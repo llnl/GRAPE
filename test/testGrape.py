@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 
 import sys, unittest, StringIO
-import testUtility
 
 if not ".." in sys.path:
     sys.path.append( ".." )
 from grape import Grape
 
-class Test_help(unittest.TestCase):
+class TestGrape(unittest.TestCase):
     def setUp(self):
         self.output = StringIO.StringIO()
         self.stdout = sys.stdout
@@ -17,7 +16,15 @@ class Test_help(unittest.TestCase):
         sys.stdout = self.stdout
         self.output.close()
 
-    def test_command1(self):
+def buildSuite(cls,appendTo = None):
+    suite = appendTo
+    if suite == None:
+        suite = unittest.TestSuite()
+    suite.addTest(unittest.makeSuite(cls))
+    return suite
+
+class TestHelp(TestGrape):
+    def testHelp(self):
         grape = Grape()
         ret = grape.options["help"].execute()
         contents = self.output.getvalue()
@@ -28,17 +35,8 @@ class Test_help(unittest.TestCase):
         self.assertTrue( "rev)" in contents)
 
 
-class Test_branch(unittest.TestCase):
-    def setUp(self):
-        self.output = StringIO.StringIO()
-        self.stdout = sys.stdout
-        sys.stdout = self.output
-
-    def tearDown(self):
-        sys.stdout = self.stdout
-        self.output.close()
-
-    def test_command1(self):
+class TestBranch(TestGrape):
+    def testBranch(self):
         grape = Grape()
         ret = grape.options["b"].execute()
         contents = self.output.getvalue()
@@ -46,10 +44,13 @@ class Test_branch(unittest.TestCase):
 
         
 def main():
+    import testUtility
+    testClasses = [TestHelp,TestBranch,testUtility.TestUtility]
     suite = unittest.TestSuite()
+    for cls in testClasses:
+        suite = buildSuite(cls,suite)
 
-    suite.addTest(unittest.makeSuite(Test_help))
-    suite.addTest(unittest.makeSuite(Test_branch))
+
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 

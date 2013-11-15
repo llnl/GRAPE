@@ -16,8 +16,8 @@ class Test(option.Option):
 
     def execute(self):
 
-        from test import GrapeTest
-        good = GrapeTest.main()
+        from test import testGrape
+        good = testGrape.main()
         if not good:
             print "*"*80
             print "*"*80
