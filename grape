@@ -191,12 +191,16 @@ class Clone(Option):
 
         destPath = utility.userInput("Enter destination directory:",os.path.join(os.getcwd(),"ale3d"))
 
+        return self.ExecuteBatch(user, remotePath, destPath )
+        
+
+    def ExecuteBatch(self, user, remotePath, destPath ):
         print("calling git clone %s %s" % (remotePath,destPath))
         print("you may need to authenticate using your CRYPTOCARD")
         print(git.clone(remotePath,destPath))
         os.chdir(destPath)
         return GetOption("config").Execute()
-
+        
 options[Clone.key] = Clone()
 menuOrder.append(Clone.key)
 
