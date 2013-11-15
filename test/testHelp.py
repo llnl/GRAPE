@@ -3,8 +3,9 @@ import testGrape
 if not ".." in sys.path:
     sys.path.append( ".." )
 import utility
+from grape import Grape
 
-class TestHelp(TestGrape):
+class TestHelp(testGrape.TestGrape):
     def testHelp(self):
         grape = Grape()
         ret = grape.options["help"].execute()
