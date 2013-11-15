@@ -213,8 +213,6 @@ def DefineView(sparseFile):
     sparseFile.writelines(text)
 
 
-options[Config.key] = Config()
-menuOrder.append(Config.key)
 
 
 #######     GITFLOW TASKS    #######################################################################
@@ -801,10 +799,9 @@ def startup():
     if len(readFiles) == 0:
         utility.writeDefaultConfig(globalconfigfile)
 
-    #Add menu class
+    #Add menu classes
     options[Clone.key] = Clone()
     menuOrder.append(Clone.key)
-
 
     try:
         if (len(sys.argv) == 1):

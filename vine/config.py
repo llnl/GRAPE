@@ -1,5 +1,7 @@
+import option
+
 # Configure current repo
-class Config(Option):
+class Config(option.Option):
     """Configures the repo to be optimized for LC and GRAPE"""
     key = "config"
     section = section
@@ -39,7 +41,7 @@ class Config(Option):
         git.config("core.sparseCheckout","true")
 
         # perform a sparse checkout if asked of us
-        updateView = utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n","n")
+        updateView = utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n]","n")
         if updateView:
             sparseFile = os.path.join(dotGit,"info","sparse-checkout")
             with open(sparseFile,'w') as f:
