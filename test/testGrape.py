@@ -23,29 +23,10 @@ def buildSuite(cls,appendTo = None):
     suite.addTest(unittest.makeSuite(cls))
     return suite
 
-class TestHelp(TestGrape):
-    def testHelp(self):
-        grape = Grape()
-        ret = grape.options["help"].execute()
-        contents = self.output.getvalue()
-        self.assertFalse( ret )
-        self.assertTrue( "rel)" in contents)
-        self.assertTrue( "hot)" in contents)
-        self.assertTrue( "minor)" in contents)
-        self.assertTrue( "rev)" in contents)
 
-
-class TestBranch(TestGrape):
-    def testBranch(self):
-        grape = Grape()
-        ret = grape.options["b"].execute()
-        contents = self.output.getvalue()
-        self.assertTrue( ret )
-
-        
 def main():
-    import testUtility
-    testClasses = [TestHelp,TestBranch,testUtility.TestUtility]
+    import testUtility, testBranch,testHelp
+    testClasses = [testHelp.TestHelp,testBranch.TestBranch,testUtility.TestUtility]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls,suite)
