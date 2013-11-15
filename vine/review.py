@@ -1,6 +1,7 @@
 import option
 import Atlassian
 import utility
+from grapeConfig import grapeConfig
 
 # Prepare Feature Branch for review
 class Review(option.Option):
@@ -16,16 +17,10 @@ class Review(option.Option):
         name = utility.getUserName()
         rzAtlassian = Atlassian.Atlassian(name)
         rzStash = rzAtlassian.stash
-        print "Projects:", rzAtlassian.projectlist()
-
-        repo = rzAtlassian.project('ALE').repo('ale3d')
-        for pull in repo.pullrequests():
-            if pull.author() == name:
-                print " my review     ", pull.title()
-            else:
-                print " other review  ", pull.title()
-
-
+        
+        projectName = grapeConfig().get("project","name")
+        repoName = grapeConfig().get("repo","name")
+        repo = rzAtlassian.project( projectName ).repo( repoName )
         currentBranch = utility.GetCurrentBranch()
 
         # hack to work around possible corner case where utility.userInput would return
@@ -42,12 +37,12 @@ class Review(option.Option):
         # branch
 
         #pullRequests = repo.pull_requests.list()
-        pullRequests = repo.pull_requests.all()
+        pullRequests = repo.pullrequests()
 
         count = 0
         for request in pullRequests:
             count += 1
-            print(request["title"],request["fromRef"]['id'],request["toRef"]['id'])
+            print(request.title(),request.fromRef(),request.toRef())
         if (count == 0):
             # safe to create a new pull request
             print("safe")
