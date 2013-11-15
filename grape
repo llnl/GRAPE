@@ -276,13 +276,18 @@ class Grape(object):
         width = 60
         print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
 
+        longestKey = 0
+        for currOption in self._options:
+            if len(currOption.key) > longestKey:
+                longestKey = len(currOption.key)
+
         for currSection in self._sections:
             loweredSection = currSection.strip().lower()
             print("\n" + (" %s " % currSection).center(width,'*'))
             for currOption in self._options:
                 if currOption.section.strip().lower() != loweredSection:
                     continue
-                print("%s: %s" % (currOption.key, currOption.description()))
+                print("%s: %s" % (currOption.key.ljust(longestKey), currOption.description()))
 
 ############################################################################
 # BEGINNING OF SCRIPT
