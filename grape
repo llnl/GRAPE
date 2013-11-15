@@ -125,34 +125,6 @@ import PyGitUp
 #  but has yet to be marked as stable given the lack of nightly testing results.
 #
 
-#######      MENU STUFF         #########################################################################
-def getOption(choice, options):
-    try:
-        return options[choice]
-    except:
-        print("Unknown option '%s'" % choice)
-        return None
-
-def applyMenuChoice(choice, options):
-    chosenOption = getOption(choice, options)
-    if chosenOption is None:
-        return False
-    return chosenOption.execute()
-
-# Present the main menu
-def presentTextMenu(options, sections):
-    width = 60
-    print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
-
-    for currSection in sections:
-        loweredSection = currSection.strip().lower()
-        print("\n" + (" %s " % currSection).center(width,'*'))
-        for currKey in options.keys():
-            currOption = options[currKey]
-            if currOption.section.strip().lower() != loweredSection:
-                continue
-            print("%s: %s" % (currOption.key, currOption.description()))
-
 #######      GETTING STARTED    #########################################################################
 
 def DefineView(sparseFile):

@@ -1,20 +1,32 @@
-import utility
+import utility, os, subprocess
 
+class GrapeGit():
+    class GrapeGitError(Exception):
+        def __init__(self,errmsg,returnCode):
+            self.msg = errmsg
+            self.code = returnCode
 
-class GrapeGit(): 
-    def dir(self): 
-        process = utility.executeSubProcess("git rev-parse --show-toplevel", os.getcwd(), subprocess.PIPE)
+    def gitcmd(self,cmd,errmsg):
+        _cmd = "git %s" % cmd
+        process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE)
         if process.returncode != 0:
-            print("Error: Could not determine top level git directory.")
-            return ""
+            raise GrapeGitError("Error: %s",errmsg,process.returncode)
         output = process.communicate()[0]
-        return output.strip()        
+        print output
+        return output.strip()
 
-    def mergeAbort(self): 
+    def branch(self):
+        return self.gitcmd("branch", "Could not list branches")
+
+    def dir(self):
+        return self.gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")
+
+
+    def mergeAbort(self):
         process = utility.executeSubProcess("git merge --abort", os.getcwd())
         if process.returncode != 0:
             print("Error: Could not determine top level git directory.")
-            return False        
+            return False
 
     def mergeIntoCurrent(self,repoName,branchName):
         self.fetch(repoName,branchName)
