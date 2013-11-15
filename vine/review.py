@@ -18,9 +18,10 @@ class Review(option.Option):
         rzAtlassian = Atlassian.Atlassian(name)
         rzStash = rzAtlassian.stash
         
+
         projectName = grapeConfig().get("project","name")
         repoName = grapeConfig().get("repo","name")
-        repo = rzAtlassian.project( projectName ).repo( repoName )
+        repo = rzStash.projects[ projectName ].repos[repoName ]
         currentBranch = utility.GetCurrentBranch()
 
         # hack to work around possible corner case where utility.userInput would return
@@ -37,16 +38,23 @@ class Review(option.Option):
         # branch
 
         #pullRequests = repo.pull_requests.list()
-        pullRequests = repo.pullrequests()
-
+        pullRequests = repo.pull_requests
+        
         count = 0
         for request in pullRequests:
             count += 1
-            print(request.title(),request.fromRef(),request.toRef())
+            print(request["title"],request["fromRef"]["id"],request["toRef"]["id"])
         if (count == 0):
             # safe to create a new pull request
             print("safe")
+            title = "title"
+            description = ""
+            reviewers = []
+            print "some work to do to get options"
+            pr.create(title, branch, targetBranch, description=description,
+                      reviewers = reviewers )
+
         else:
-            print(count)
+            print "not safe to create a pull request"
 
         return True
