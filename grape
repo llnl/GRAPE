@@ -2,7 +2,7 @@
 
 import os, shutil, subprocess, sys
 import utility
-import sh
+import git
 import StringIO
 import stashy
 import keyring
@@ -122,9 +122,6 @@ import ConfigParser
 #  but has yet to be marked as stable given the lack of nightly testing results.
 #
 
-
-sh.print_commands = True
-git = sh.git.bake( _out = sys.stdout,_err = sys.stderr)
 config = ConfigParser.ConfigParser()
 
 
@@ -197,6 +194,19 @@ class Clone(Option):
         if ("stash" in remotePath): 
             print("you may need to authenticate using your CRYPTOCARD")
         git.clone(remotePath)
+        return True
+
+        print("calling git clone %s %s" % (remotePath,destPath))
+        print("you may need to authenticate using your CRYPTOCARD")
+        repo = git.Repo(destPath)
+        try:
+            repo = repo.clone(remotePath)
+        except git.GitCommandError as error:
+            print("Error: %s: git clone failed", remotePath)
+            print(error)
+            return False
+
+        
         return True
 
 options[Clone.key] = Clone()
@@ -918,10 +928,9 @@ def startup():
     # If they specified a command line argument, then assume that it's
     # a menu option, and bypass the menu
     globalconfigfile = os.path.join(os.environ["HOME"],".grapeconfig")
-    try: 
-        config.read([globalconfigfile,".grapeconfig",".grapeuserconfig"])
-    except:
-        WriteDefaultConfig(globalconfigfile)
+    readFiles = config.read([globalconfigfile,".grapeconfig",".grapeuserconfig"])
+    if len(readFiles) == 0:
+        utility.writeDefaultConfig(globalconfigfile)
 
     try:
         if (len(sys.argv) == 1):

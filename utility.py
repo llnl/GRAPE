@@ -72,7 +72,7 @@ def Cascade(list, op):
     for descendent in list[1:]:
         exec op # this should be an eval so we can return an 'error' and exit
         ancestor = descendent
-   
+
 def Cmerge(list):  # this should return 'success' or an error code
     """Apply a git merge across several branches"""
     Cascade(list, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
@@ -80,9 +80,9 @@ def Cmerge(list):  # this should return 'success' or an error code
 
 
 # writes a config file with default options
-def WriteDefaultConfig(filename): 
+def writeDefaultConfig(filename):
     with open(filename,'w') as f:
-        f.write("[Repo]\n")
+        f.write("[repo]\n")
         f.write("name:unknown\n")
         f.write("url:unknown\n")
 
