@@ -58,8 +58,8 @@ def GetSHA(desc):
     out.close()
     return toReturn
 
-def GetUserName(defaultName = os.getlogin()):
-    return userInput("Enter LC User Name:",defaultName)
+def getUserName(defaultName=os.getlogin()):
+    return userInput("Enter LC User Name:", defaultName)
 
 def gitMerge(repoName, branchName, option=""):
     choice = None
@@ -161,12 +161,13 @@ def userInput(message, default=None):
         return raw_input('==> ').strip()
     else:
         value = raw_input("(def: %s) ==> " % (default)).strip()
-        value = default if value is "" else value
-        value = value.lower()[0] if default.lower() is 'y' or default.lower() is 'n' else value
-        if (value == 'y'):
-            value = True
-        if (value == 'n'):
-            value = False
+        if value == "":
+            return default
+        if default.lower() == "y" or default.lower() == "n":
+            if value.lower()[0] == "y":
+                return True
+            if value.lower()[0] == "n":
+                return False
         return value
 
 # writes a config file with default options

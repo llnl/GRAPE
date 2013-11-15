@@ -1,5 +1,9 @@
+import os, sys
 from grapeConfig import grapeConfig
-import option
+import option, utility
+if not ".." in sys.path:
+    sys.path.append( ".." )
+import git
 
 class Clone(option.Option):
     def __init__(self):
@@ -12,12 +16,12 @@ class Clone(option.Option):
         return "Clone the %s repo and initialize your git config" % name
 
     def execute(self):
-        user = utility.GetUserName()
+        user = utility.getUserName()
 
         remotePath = utility.userInput("Enter Remote Repo address:",
-                               "https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user)
+                               ("https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user))
 
-        destPath = utility.userInput("Enter destination directory:",os.path.join(os.getcwd(),"ale3d"))
+        destPath = utility.userInput("Enter destination directory:", os.path.join(os.getcwd(), "ale3d"))
 
         print("calling git clone %s %s" % (remotePath,destPath))
         print("you may need to authenticate using your CRYPTOCARD")
