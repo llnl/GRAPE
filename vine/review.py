@@ -25,10 +25,6 @@ class Review(option.Option):
             else:
                 print " other review  ", pull.title()
 
-        if 1:
-            return
-
-        # none of this stuff works.
 
         currentBranch = utility.GetCurrentBranch()
 
