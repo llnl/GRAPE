@@ -2,10 +2,6 @@
 
 import sys, unittest, StringIO
 
-if not ".." in sys.path:
-    sys.path.append( ".." )
-from grape import Grape
-
 class TestGrape(unittest.TestCase):
     def setUp(self):
         self.output = StringIO.StringIO()
