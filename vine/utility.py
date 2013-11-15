@@ -1,5 +1,18 @@
 import os, StringIO, subprocess, tempfile
+if not ".." in sys.path:
+    sys.path.append( ".." )
 import git
+
+def cascade(l, op):
+    """Apply an operation to a chain of interdependent pairs in a list"""
+    ancestor = l[0]
+    for descendent in l[1:]:
+        exec op # this should be an eval so we can return an 'error' and exit
+        ancestor = descendent
+
+def cmerge(l):  # this should return 'success' or an error code
+    """Apply a git merge across several branches"""
+    Cascade(l, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
 
 def createBranch(branchPoint, prefix):
     branch = userInput("Enter new branch name",None)
@@ -48,6 +61,23 @@ def GetSHA(desc):
 def GetUserName(defaultName = os.getlogin()):
     return userInput("Enter LC User Name:",defaultName)
 
+def gitMerge(repoName, branchName, option=""):
+    choice = None
+    if (option != ""):
+        pull = git.pull.bake(option)
+    else:
+        pull = git.pull
+    try:
+        pull(repoName,branchName)
+
+    except sh.ErrorReturnCode_1 as error:
+        choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]","resolve")
+
+    except sh.ErrorReturnCode as error:
+        print("unknown return code during merge")
+        print(error)
+    return choice
+
 def gitDir():
     process = executeSubProcess("git rev-parse --show-toplevel", os.getcwd(), subprocess.PIPE)
     if process.returncode:
@@ -55,6 +85,56 @@ def gitDir():
         return ""
     output = process.communicate()[0]
     return output.strip()
+
+def mergeIntoCurrent(repoName,branchName):
+    git.fetch(repoName,branchName)
+    choice = None
+    strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
+                         "am: Auto Merge (default) \n"+
+                         "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
+                         "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
+                         "ay: Accept Theirs - resolves conflicts by using changes in current branch." ,"am")
+
+
+    if (strategy == 'am'):
+        print("merging using git's default strategy")
+        git.pull(repoName,branchName)
+    elif (strategy == 'as'):
+        # this employs using the custom low-level merge driver "verify" and
+        # appending a "* merge=verify" to the .gitattributes file.
+        #
+        # see http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file for details.
+        print("merging forcing conflicts whenever both branches edited the same file...")
+        base = utility.gitDir()
+        if base == "":
+            return False
+        attributes = os.path.join(base,".gitattributes")
+        tmpattributes = os.path.join(base,".gitattributes.tmp")
+        # save original attributes file
+        shutil.copyfile(attributes,tmpattributes)
+        #append merge driver strategy to the attributes file
+        with open(attributes,'a') as f:
+            f.write("* merge=verify")
+
+        # perform the merge
+        choice = GitMerge(repoName,branchName)
+
+        # restore original attributes file
+        shutil.copyfile(tmpattributes,attributes)
+        os.remove(tmpattributes)
+
+    elif (strategy == 'at'):
+        print("merging using recursive strategy, resolving conflicts cleanly with %s's changes"%branchName)
+        choice = GitMerge(repoName,branchName,"-Xtheirs")
+
+    elif (strategy == 'ay'):
+        print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
+        choice = GitMerge(repoName,branchName,"-Xours")
+
+    if (choice):
+        return options[choice].Execute()
+
+    return True
 
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
@@ -75,19 +155,6 @@ def userInput(message,default):
         if (value == 'n'):
             value = False
         return value
-
-def Cascade(list, op):
-    """Apply an operation to a chain of interdependent pairs in a list"""
-    ancestor = list[0]
-    for descendent in list[1:]:
-        exec op # this should be an eval so we can return an 'error' and exit
-        ancestor = descendent
-
-def Cmerge(list):  # this should return 'success' or an error code
-    """Apply a git merge across several branches"""
-    Cascade(list, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
-
-
 
 # writes a config file with default options
 def writeDefaultConfig(filename):
