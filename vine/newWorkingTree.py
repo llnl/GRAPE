@@ -35,4 +35,4 @@ class NewWorkingTree(option.Option):
 
         os.chdir(newRepo)
 
-        return options['uv'].Execute()
+        return options['uv'].execute()

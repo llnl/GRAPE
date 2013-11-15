@@ -19,7 +19,7 @@ class Test_help(unittest.TestCase):
 
     def test_command1(self):
         grape = Grape()
-        ret = grape.options["help"].Execute()
+        ret = grape.options["help"].execute()
         contents = self.output.getvalue()
         self.assertFalse( ret )
         self.assertTrue( "rel)" in contents)
@@ -40,7 +40,7 @@ class Test_branch(unittest.TestCase):
 
     def test_command1(self):
         grape = Grape()
-        ret = grape.options["b"].Execute()
+        ret = grape.options["b"].execute()
         contents = self.output.getvalue()
         self.assertTrue( ret )
         self.assertTrue( "branch" in contents )

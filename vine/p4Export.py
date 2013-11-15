@@ -13,7 +13,7 @@ class P4Export(option.Option):
         #First, create a new branch and prepare it with a squashed version of your current branch.
         print("Preparing temporary branch to hold squashed version of current branch.")
         originalBranch = utility.GetCurrentBranch()
-        options['dev'].Execute()
+        options['dev'].execute()
         tmpBranch = utility.GetCurrentBranch()
         git.merge("--squash",originalBranch)
         git.commit("-m","\"Squashed Merge from %s in preparation for p4 submit.\"" % originalBranch)

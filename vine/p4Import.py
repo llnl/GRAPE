@@ -11,12 +11,12 @@ class P4Import(option.Option):
 
     def execute(self):
         print("calling Grape hot")
-        proceed = options['hot'].Execute()
+        proceed = options['hot'].execute()
         assert proceed == True
         print("importing recent p4 changes into p4 master...")
         git.p4("sync")
         print("merging recent p4 changes into current branch")
-        options["m"].Execute("p4/master")
+        options["m"].execute("p4/master")
         print("Changes in p4 not in master should now be in your current branch.")
         print("Review changes, tag versions (e.g. git tag -a v4.xx.xx, and then commit to master.")
 
