@@ -64,3 +64,13 @@ def userInput(message,default):
             value = False
         return value
 
+def Cascade(list, op):
+    ancestor = list[0]
+    for descendent in list[1:]:
+        exec op
+        ancestor = descendent
+   
+def Cmerge(list):
+    Cascade(list, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
+
+
