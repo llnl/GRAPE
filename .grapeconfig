@@ -7,6 +7,6 @@ name=grape
 url=https://rzlc.llnl.gov/stash/scm/ale/grape.git
 
 [view]
-alldirs: GitPython PyGitUp decorator-3.4.0 keyring-3.0.5 requests-1.1.0 sh-1.09 stashy-0.1 termcolor test
-required: test
+alldirs: GitPython PyGitUp decorator-3.4.0 keyring-3.0.5 requests-1.1.0 sh-1.09 stashy-0.1 termcolor test vine
+required: test vine
 
