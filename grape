@@ -3,7 +3,7 @@
 import os, shutil, subprocess, sys
 import git
 from vine import branches, clone, config, feature, gitflowHelp, grapeConfig
-from vine import hotFix, merge, mergeAbort, mergeDevelop, mergeRemote
+from vine import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 from vine import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
 from vine import resolveConflicts, review, test
 from vine import updateLocal, updateView, utility, walkthrough
@@ -140,7 +140,7 @@ def ApplyMenuChoice(choice):
     return option.Execute()
 
 # Present the main menu
-def presentTextMenu():
+def presentTextMenu(options, menuOrder):
     width = 60
     print("")
     print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
@@ -245,14 +245,14 @@ def startup():
     options = {}
     menuOrder = []
 
-    options = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+    menuOptions = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
                gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
-               merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), mergeRelease.mergeRelease(), \
+               merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
                minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
-               quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal, \
+               quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal(), \
                updateView.UpdateView(), walkthrough.Walkthrough()]
 
-    for currOption in options:
+    for currOption in menuOptions:
         options[currOption.key] = currOption
         menuOrder.append(currOption.key)
 
@@ -264,7 +264,7 @@ def startup():
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                presentTextMenu()
+                presentTextMenu(options, menuOrder)
                 choice = utility.userInput("Please select an option from the above menu",None)
                 done = ApplyMenuChoice(choice)
         elif (len(sys.argv) == 2):

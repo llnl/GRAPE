@@ -4,7 +4,7 @@ if not ".." in sys.path:
 import git
 
 #option that creates a hotfix branch
-class HotFix(option.Option):
+class Hotfix(option.Option):
     key = "hot"
     section = "GITFLOW TASKS"
 

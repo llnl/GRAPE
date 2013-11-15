@@ -14,4 +14,4 @@ class Branches(option.Option):
 
     def Execute(self):
         git.branch()
-        return Tru
+        return True
