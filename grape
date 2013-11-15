@@ -265,7 +265,7 @@ def startup():
                 choice = utility.userInput("Please select an option from the above menu", None)
                 done = applyMenuChoice(choice, options)
         elif (len(sys.argv) == 2):
-                applyMenuChoice(sys.argv[1])
+                applyMenuChoice(sys.argv[1],options)
         else:
             print("Command line must contain zero or one arguments")
     except KeyboardInterrupt:
