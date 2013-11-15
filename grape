@@ -249,7 +249,9 @@ class Config(Option):
     def Description(self):
         return "Initialize a repo you've already cloned without using GRAPE"
     def Execute(self):
-        base = utility.GitDir()
+        base = utility.gitDir()
+        if base == "":
+            return False
         dotGit = os.path.join(base,".git")
 
         print("optimizing git performance...")
@@ -579,7 +581,9 @@ def MergeIntoCurrent(repoName,branchName):
         #
         # see http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file for details.
         print("merging forcing conflicts whenever both branches edited the same file...")
-        base = utility.GitDir()
+        base = utility.gitDir()
+        if base == "":
+            return False
         attributes = os.path.join(base,".gitattributes")
         tmpattributes = os.path.join(base,".gitattributes.tmp")
         # save original attributes file
@@ -774,7 +778,9 @@ class NewWorkingTree(Option):
 
         clonePath = ""
         try:
-            clonePath = utility.GitDir()
+            clonePath = utility.gitDir()
+            if clonePath == "":
+                return False
         except:
             pass
 
@@ -808,7 +814,9 @@ class UpdateView(Option):
         return "Update the view of your current working tree"
 
     def Execute(self):
-        base = utility.GitDir()
+        base = utility.gitDir()
+        if base == "":
+            return False
         dotGit = os.path.join(base,".git")
         sparseFile = os.path.join(dotGit,"info","sparse-checkout")
         with open(sparseFile,'w') as f:
@@ -912,7 +920,12 @@ class Atlassian:
 def startup():
     # If they specified a command line argument, then assume that it's
     # a menu option, and bypass the menu
-    config.read([".grapeconfig",".grapeuserconfig"])
+    globalconfigfile = os.path.join(os.environ["HOME"],".grapeconfig")
+    try: 
+        config.read([globalconfigfile,".grapeconfig",".grapeuserconfig"])
+    except:
+        WriteDefaultConfig(globalconfigfile)
+
     try:
         if (len(sys.argv) == 1):
             done = 0
