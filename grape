@@ -2,7 +2,11 @@
 
 import os, shutil, subprocess, sys
 import git
-from vine import clone, config, feature, grapeConfig, hotFix, minorRelease, updateLocal, utility
+from vine import branches, clone, config, feature, gitFlowHelp, grapeConfig
+from vine import hotFix, merge, mergeAbort, mergeDevelop, mergeRemote, mergeRelease
+from vine import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
+from vine import resolveConflicts, review, test
+from vine import updateLocal, updateView, utility, walkthrough
 import StringIO
 import stashy
 import keyring
@@ -155,6 +159,10 @@ def presentTextMenu():
         print("%s) %s" % (option.KeyWord(),option.Description()))
 
 #######      GETTING STARTED    #########################################################################
+<<<<<<< HEAD
+=======
+
+>>>>>>> fe83165d1197bfcc74c9db26419f046805d70ab3
 def DefineView(sparseFile):
     include = {}
     include["src"] = True
@@ -191,6 +199,7 @@ def DefineView(sparseFile):
     #write accepted sparse-checkout file
     sparseFile.writelines(text)
 
+<<<<<<< HEAD
 
 #######     GITFLOW TASKS    #######################################################################
 # Display a help image for gitflow tasks
@@ -649,6 +658,46 @@ class Test(Option):
 options[Test.key] = Test()
 menuOrder.append(Test.key)
 
+=======
+######################## Atlassian Session Manager ####################
+
+class Atlassian:
+    rzstashURL = "https://rzlc.llnl.gov/stash"
+    def auth(self,service,username,password):
+        self.userName = username
+        self.service = service
+        self.stash = stashy.connect(service,username,password)
+        numAttempts = 0
+        success = False
+        while (numAttempts < 3 and not success):
+            try:
+                project = self.stash.projects.list()
+                success = True
+            except stashy.errors.AuthenticationException:
+                if (numAttempts == 0):
+                    print("session expired...")
+
+                else:
+                    print("incorrect username / password...")
+                    self.userName = utility.GetUserName(self.userName)
+                keyring.set_password(service,self.userName,getpass.getpass("Enter password for %s: " % service))
+                self.stash = stashy.connect(service,self.userName,keyring.get_password(service,self.userName))
+                numAttempts += 1
+
+        return success
+
+
+
+    def __init__(self):
+        self.userName = utility.GetUserName()
+        #self.keyring = keyring.get_keyring()
+        service = Atlassian.rzstashURL
+        if self.auth(service,self.userName,keyring.get_password(service,self.userName)):
+            print("Connected to RZStash...")
+        else:
+            self.stash = None
+            print("Could not connect to RZStash...")
+>>>>>>> fe83165d1197bfcc74c9db26419f046805d70ab3
 
 ############################################################################
 # BEGINNING OF SCRIPT
@@ -662,11 +711,20 @@ def startup():
     options = {}
     menuOrder = []
 
-    options = [clone.Clone(), config.Config(), feature.Feature(), hotFix.HotFix(), minorRelease.MinorRelease(), updateLocal.UpdateLocal]
+    options = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+               gitFlowHelp.GitFlowHelp(), hotFix.HotFix(), \
+               merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), mergeRelease.mergeRelease(), \
+               minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
+               quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal, \
+               updateView.UpdateView(), walkthrough.Walkthrough()]
 
     for currOption in options:
         options[currOption.key] = currOption
         menuOrder.append(currOption.key)
+
+    ma = mergeAbort.MergeAbort()
+    options[ma.key] = ma
+    #Don't add mergeAbort to menu
 
     try:
         if (len(sys.argv) == 1):
