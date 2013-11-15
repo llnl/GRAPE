@@ -146,7 +146,11 @@ options = {}
 menuOrder = []
 
 def GetOption(choice):
-    return options[choice]
+    try:
+        return options[choice]
+    except:
+        print("Unknown option '%s'" % choice)
+        return None
 
 def ApplyMenuChoice(choice):
     option = GetOption(choice)
