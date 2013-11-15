@@ -21,9 +21,13 @@ def buildSuite(cls,appendTo = None):
 
 
 def main():
-    import testUtility, testBranch,testHelp,testGrapeGit
-    testClasses = [testHelp.TestHelp,testBranch.TestBranch,testUtility.TestUtility,
-                   testGrapeGit.TestGrapeGit]
+    import testBranch, testClone, testConfig, testDev, testHelp
+    import testGrapeGit, testReview, testUtility
+    testClasses = [testBranch.TestBranch, testClone.TestClone,
+                   testConfig.TestConfig, testDev.TestDev,
+                   testHelp.TestHelp, testGrapeGit.TestGrapeGit,
+                   testReview.TestReview,
+                   testUtility.TestUtility]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls,suite)
