@@ -1,10 +1,14 @@
+import option, utility
+
 # Configure current repo
-class Config(Option):
+class Config(option.Option):
     """Configures the repo to be optimized for LC and GRAPE"""
     key = "config"
-    section = section
+    section = " GETTING STARTED "
+
     def Description(self):
         return "Initialize a repo you've already cloned without using GRAPE"
+
     def Execute(self):
         base = utility.gitDir()
         if base == "":
@@ -92,4 +96,5 @@ class Config(Option):
                     haveCopied = True
                 except:
                     print("could not find p4settings file, please check your path and try again")
+                    return False
         return True

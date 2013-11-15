@@ -1,9 +1,11 @@
 from grapeConfig import grapeConfig
+import option
 
-class Clone(Option):
-    """Clones the ALE3D repo into a new local repo"""
+class Clone(option.Option):
     key = "clone"
     section = " GETTING STARTED "
+
+    """Clones the ALE3D repo into a new local repo"""
     def Description(self):
         name = grapeConfig().get("repo","name")
         return "Clone the %s repo and initialize your git config" % name
