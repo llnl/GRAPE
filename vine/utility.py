@@ -45,11 +45,13 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     return process
 
 def GetCurrentBranch():
-    out = StringIO.StringIO()
-    git("rev-parse","--abbrev-ref","HEAD",_out=out)
-    toReturn = out.getvalue().strip().encode('ascii')
-    out.close()
-    return toReturn
+    process = executeSubProcess("git rev-parse --abbrev-ref HEAD", os.getcwd(), subprocess.PIPE )
+    if process.returncode != 0:
+        print("Error: Could not determine current  branch.")
+        return False
+    output = process.communicate()[0]
+    return output.strip()
+
 
 def GetSHA(desc):
     out = StringIO.StringIO()
