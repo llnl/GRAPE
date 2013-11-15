@@ -1,8 +1,8 @@
 import sys,os
-import option
+import option,grapeGit
 if not ".." in sys.path:
     sys.path.append( ".." )
-from PyGitUp import git_wrapper
+
 
 # list local branches (git branch)
 class Branches(option.Option):
@@ -15,6 +15,6 @@ class Branches(option.Option):
 
     def execute(self):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        g = git_wrapper.GitWrapper()
+        g = grapeGit.GrapeGit()
         g.branch()
         return True
