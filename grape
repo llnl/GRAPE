@@ -841,10 +841,10 @@ menuOrder.append(Quit.key)
 class Test(Option):
     key = "test"
     section = section
-    def Description(self): 
+    def Description(self):
         return "Test Grape."
 
-    def Execute(self): 
+    def Execute(self):
         from test import GrapeTest
         good = GrapeTest.main()
         if not good:
@@ -908,7 +908,12 @@ class Atlassian:
 def startup():
     # If they specified a command line argument, then assume that it's
     # a menu option, and bypass the menu
-    config.read([".grapeconfig",".grapeuserconfig"])
+    globalconfigfile = os.path.join(os.environ["HOME"],".grapeconfig")
+    try: 
+        config.read([globalconfigfile,".grapeconfig",".grapeuserconfig"])
+    except:
+        WriteDefaultConfig(globalconfigfile)
+
     try:
         if (len(sys.argv) == 1):
             done = 0

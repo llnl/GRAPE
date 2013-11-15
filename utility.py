@@ -76,3 +76,11 @@ def Cmerge(list):  # this should return 'success' or an error code
     Cascade(list, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
 
 
+
+# writes a config file with default options
+def WriteDefaultConfig(filename): 
+    with open(filename,'w') as f:
+        f.write("[Repo]\n")
+        f.write("name:unknown\n")
+        f.write("url:unknown\n")
+
