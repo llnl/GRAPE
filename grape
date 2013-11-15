@@ -233,39 +233,74 @@ class Atlassian:
 ############################################################################
 # BEGINNING OF SCRIPT
 ############################################################################
-def startup():
-    # If they specified a command line argument, then assume that it's
-    # a menu option, and bypass the menu
-    grapeConfig.read()
-
-    #Add menu classes
-    options = {}
-    menuOrder = []
-
-    #Add/order your menu option here
-    optionsToBeAddedToMenu = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
-               gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
-               merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
-               minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
-               quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal(), \
-               updateView.UpdateView(), walkthrough.Walkthrough()]
+class Grape(object): 
+    def __init__(self, additionalConfigFiles = []):
+        grapeConfig.read(additionalConfigFiles)
+        self.options = {}
+        #Add menu classes
+        self.options = {}
+        self.menuOrder = []
+        #Add/order your menu option here
+        optionsToBeAddedToMenu = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+                                      gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
+                                      merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
+                                      minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
+                                      quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal(), \
+                                      updateView.UpdateView(), walkthrough.Walkthrough()]
 
     #Add/order the menu sections here
-    sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
-                    'Merge', 'Gitflow Tasks', 'Perforce Integration', 'Other']
+        self.sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
+                        'Merge', 'Gitflow Tasks', 'Perforce Integration', 'Other']
+        
+        for currOption in optionsToBeAddedToMenu:
+            self.options[currOption.key] = currOption
 
-    for currOption in optionsToBeAddedToMenu:
-        options[currOption.key] = currOption
+    #######      MENU STUFF         #########################################################################
+    def getOption(self,choice):  
+        try:
+            return self.options[choice]
+        except:
+            print("Unknown option '%s'" % choice)
+            return None
+
+    def applyMenuChoice(self,choice):
+        chosenOption = self.getOption(choice)
+        if chosenOption is None:
+            return False
+        return chosenOption.execute()
+
+    # Present the main menu
+    def presentTextMenu(self):
+        width = 60
+        print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
+
+        for currSection in self.sections:
+            loweredSection = currSection.strip().lower()
+            print("\n" + (" %s " % currSection).center(width,'*'))
+            for currKey in self.options.keys():
+                currOption = self.options[currKey]
+                if currOption.section.strip().lower() != loweredSection:
+                    continue
+                print("%s: %s" % (currOption.key, currOption.description()))
+
+
+def startup():
+    #TODO - allow addition grape config file to be specified at command line
+    grapeconfigfile = []
+    grape = Grape(grapeconfigfile)
+
 
     try:
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                presentTextMenu(options, sections)
+                grape.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None)
-                done = applyMenuChoice(choice, options)
+                done = grape.applyMenuChoice(choice)
+        # If they specified a command line argument, then assume that it's
+        # a menu option, and bypass the menu
         elif (len(sys.argv) == 2):
-                applyMenuChoice(sys.argv[1],options)
+            grape.applyMenuChoice(sys.argv[1])
         else:
             print("Command line must contain zero or one arguments")
     except KeyboardInterrupt:

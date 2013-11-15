@@ -5,7 +5,7 @@ import testUtility
 
 if not ".." in sys.path:
     sys.path.append( ".." )
-import grape
+from grape import Grape
 
 class Test_help(unittest.TestCase):
     def setUp(self):
@@ -18,6 +18,7 @@ class Test_help(unittest.TestCase):
         self.output.close()
 
     def test_command1(self):
+        grape = Grape()
         ret = grape.options["help"].Execute()
         contents = self.output.getvalue()
         self.assertFalse( ret )
@@ -38,6 +39,7 @@ class Test_branch(unittest.TestCase):
         self.output.close()
 
     def test_command1(self):
+        grape = Grape()
         ret = grape.options["b"].Execute()
         contents = self.output.getvalue()
         self.assertTrue( ret )
