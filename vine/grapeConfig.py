@@ -1,6 +1,6 @@
 __configInstance = None
 
-def Config():
+def grapeConfig():
     if __configInstance == None:
         __configInstance = ConfigParser.ConfigParser()
     return __configInstance
