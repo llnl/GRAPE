@@ -154,6 +154,8 @@ def presentTextMenu():
         print("%s) %s" % (option.KeyWord(),option.Description()))
 
 #######      GETTING STARTED    #########################################################################
+section = " GETTING STARTED "
+
 def DefineView(sparseFile):
     include = {}
     include["src"] = True

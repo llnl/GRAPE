@@ -43,7 +43,7 @@ class Config(option.Option):
         git.config("core.sparseCheckout","true")
 
         # perform a sparse checkout if asked of us
-        updateView = utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n","n")
+        updateView = utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n]","n")
         if updateView:
             sparseFile = os.path.join(dotGit,"info","sparse-checkout")
             with open(sparseFile,'w') as f:
