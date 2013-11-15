@@ -154,41 +154,6 @@ def presentTextMenu():
         print("%s) %s" % (option.KeyWord(),option.Description()))
 
 #######      GETTING STARTED    #########################################################################
-section = " GETTING STARTED "
-
-<<<<<<< HEAD
-# clone the remote repo
-class Clone(Option):
-    """Clones the ALE3D repo into a new local repo"""
-    key = "init"
-    section = section
-    def Description(self):
-        name = config.get("repo","name")
-        return "Clone the %s repo and initialize your git config" % name
-
-    def Execute(self):
-        user = utility.GetUserName()
-
-        remotePath = utility.userInput("Enter Remote Repo address:",
-                               "https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user)
-
-        destPath = utility.userInput("Enter destination directory:",os.path.join(os.getcwd(),"ale3d"))
-
-        return self.ExecuteBatch(user, remotePath, destPath )
-        
-
-    def ExecuteBatch(self, user, remotePath, destPath ):
-        print("calling git clone %s %s" % (remotePath,destPath))
-        print("you may need to authenticate using your CRYPTOCARD")
-        print(git.clone(remotePath,destPath))
-        os.chdir(destPath)
-        return GetOption("config").Execute()
-        
-options[Clone.key] = Clone()
-menuOrder.append(Clone.key)
-
-=======
->>>>>>> 1cb437de0551d1c960db18620a68711ec4847f32
 def DefineView(sparseFile):
     include = {}
     include["src"] = True
