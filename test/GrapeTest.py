@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 
-import sys
-sys.path.append( ".." )
+import sys, unittest, StringIO
+import testUtility
 
-import unittest
+if not ".." in sys.path:
+    sys.path.append( ".." )
 import grape
-import StringIO
-
 
 class Test_help(unittest.TestCase):
     def setUp(self):
@@ -22,10 +21,10 @@ class Test_help(unittest.TestCase):
         ret = grape.options["help"].Execute()
         contents = self.output.getvalue()
         self.assertFalse( ret )
-        self.assertTrue( "rel)" in contents )
-        self.assertTrue( "hot)" in contents )
-        self.assertTrue( "minor)" in contents )
-        self.assertTrue( "rev)" in contents )
+        self.assertTrue( "rel)" in contents)
+        self.assertTrue( "hot)" in contents)
+        self.assertTrue( "minor)" in contents)
+        self.assertTrue( "rev)" in contents)
 
 
 class Test_branch(unittest.TestCase):
@@ -47,11 +46,11 @@ class Test_branch(unittest.TestCase):
         
 def main():
     suite = unittest.TestSuite()
+
     suite.addTest(unittest.makeSuite(Test_help))
     suite.addTest(unittest.makeSuite(Test_branch))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
-
 
 if __name__ == "__main__":
     main()
