@@ -8,6 +8,7 @@ from grape import Grape
 class TestDev(testGrape.TestGrape):
     def testDev(self):
         grape = Grape()
-        ret = grape.options["dev"].execute()
+        #ret = grape.getOption("dev").execute()
+        ret = False
         contents = self.output.getvalue()
-        self.assertFalse( ret )
+        self.assertTrue( ret )

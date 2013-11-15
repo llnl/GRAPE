@@ -2,7 +2,7 @@ import sys, os
 import option, utility
 if not ".." in sys.path:
     sys.path.append( ".." )
-from PyGitUp import git_wrapper
+
 
 # list local branches (git branch)
 class Branches(option.Option):
