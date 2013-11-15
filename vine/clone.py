@@ -1,10 +1,13 @@
-# clone the remote repo
-class Clone(Option):
-    """Clones the ALE3D repo into a new local repo"""
+from grapeConfig import grapeConfig
+import option
+
+class Clone(option.Option):
     key = "clone"
     section = " GETTING STARTED "
+
+    """Clones the ALE3D repo into a new local repo"""
     def Description(self):
-        name = config.get("repo","name")
+        name = grapeConfig().get("repo","name")
         return "Clone the %s repo and initialize your git config" % name
 
     def Execute(self):
@@ -25,5 +28,4 @@ class Clone(Option):
             print(error)
             return False
 
-        os.chdir(destPath)
-        return GetOption("config").Execute()
+        return True

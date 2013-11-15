@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 
 import os, shutil, subprocess, sys
-import utility
 import git
-from vine import clone
+from vine import clone, config, grapeConfig, utility
 import StringIO
 import stashy
 import keyring
@@ -123,26 +122,7 @@ import ConfigParser
 #  but has yet to be marked as stable given the lack of nightly testing results.
 #
 
-config = ConfigParser.ConfigParser()
-
-
-class Option:
-    def Description(self):
-        pass
-
-    def Execute(self):
-        pass
-
-    def BlockName(self):
-        return self.section
-
-    def KeyWord(self):
-        return self.key
-
 #######      MENU STUFF         #########################################################################
-options = {}
-menuOrder = []
-
 def GetOption(choice):
     try:
         return options[choice]
@@ -794,14 +774,17 @@ class Atlassian:
 def startup():
     # If they specified a command line argument, then assume that it's
     # a menu option, and bypass the menu
-    globalconfigfile = os.path.join(os.environ["HOME"],".grapeconfig")
-    readFiles = config.read([globalconfigfile,".grapeconfig",".grapeuserconfig"])
-    if len(readFiles) == 0:
-        utility.writeDefaultConfig(globalconfigfile)
+    grapeConfig.read()
 
     #Add menu classes
-    options[Clone.key] = Clone()
-    menuOrder.append(Clone.key)
+    options = {}
+    menuOrder = []
+
+    options = [clone.Clone(), config.Config()]
+
+    for currOption in options:
+        options[currOption.key] = currOption
+        menuOrder.append(currOption.key)
 
     try:
         if (len(sys.argv) == 1):
