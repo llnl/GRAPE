@@ -1,8 +1,8 @@
-import sys
+import sys,os
 import option
 if not ".." in sys.path:
     sys.path.append( ".." )
-import git
+from PyGitUp import git_wrapper
 
 # list local branches (git branch)
 class Branches(option.Option):
@@ -14,6 +14,7 @@ class Branches(option.Option):
         return "List all of your local repo's branches"
 
     def execute(self):
-        g = git.Git()
+        os.environ["GIT_PYTHON_TRACE"] = "full"
+        g = git_wrapper.GitWrapper()
         g.branch()
         return True

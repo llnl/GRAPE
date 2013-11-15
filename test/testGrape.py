@@ -2,10 +2,6 @@
 
 import sys, unittest, StringIO
 
-if not ".." in sys.path:
-    sys.path.append( ".." )
-from grape import Grape
-
 class TestGrape(unittest.TestCase):
     def setUp(self):
         self.output = StringIO.StringIO()
@@ -25,8 +21,9 @@ def buildSuite(cls,appendTo = None):
 
 
 def main():
-    import testUtility, testBranch,testHelp
-    testClasses = [testHelp.TestHelp,testBranch.TestBranch,testUtility.TestUtility]
+    import testUtility, testBranch,testHelp,testGrapeGit
+    testClasses = [testHelp.TestHelp,testBranch.TestBranch,testUtility.TestUtility,
+                   testGrapeGit.TestGrapeGit]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls,suite)

@@ -1,4 +1,5 @@
 import ConfigParser, os
+import utility
 
 __configInstance = None
 
