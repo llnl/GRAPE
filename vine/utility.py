@@ -1,4 +1,4 @@
-import os, StringIO, subprocess, tempfile
+import os, StringIO, subprocess, sys, tempfile
 if not ".." in sys.path:
     sys.path.append( ".." )
 import git

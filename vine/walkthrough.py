@@ -1,3 +1,4 @@
+import sys
 import option
 if not ".." in sys.path:
     sys.path.append( ".." )

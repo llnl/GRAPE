@@ -1,6 +1,9 @@
+import ConfigParser, os
+
 __configInstance = None
 
 def grapeConfig():
+    global __configInstance
     if __configInstance == None:
         __configInstance = ConfigParser.ConfigParser()
     return __configInstance

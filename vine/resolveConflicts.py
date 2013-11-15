@@ -1,4 +1,4 @@
-import subprocess
+import subprocess, sys
 import option
 if not ".." in sys.path:
     sys.path.append( ".." )

@@ -2,8 +2,8 @@
 
 import os, shutil, subprocess, sys
 import git
-from vine import branches, clone, config, feature, gitFlowHelp, grapeConfig
-from vine import hotFix, merge, mergeAbort, mergeDevelop, mergeRemote, mergeRelease
+from vine import branches, clone, config, feature, gitflowHelp, grapeConfig
+from vine import hotFix, merge, mergeAbort, mergeDevelop, mergeRemote
 from vine import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
 from vine import resolveConflicts, review, test
 from vine import updateLocal, updateView, utility, walkthrough
@@ -12,7 +12,6 @@ import stashy
 import keyring
 import getpass
 import PyGitUp
-import ConfigParser
 
 #*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 
@@ -247,7 +246,7 @@ def startup():
     menuOrder = []
 
     options = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
-               gitFlowHelp.GitFlowHelp(), hotFix.HotFix(), \
+               gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
                merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), mergeRelease.mergeRelease(), \
                minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
                quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal, \
