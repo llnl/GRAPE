@@ -22,15 +22,9 @@ class Clone(option.Option):
                                ("https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user))
 
         destPath = utility.userInput("Enter destination directory:", os.path.join(os.getcwd(), "ale3d"))
-
-        print("calling git clone %s %s" % (remotePath,destPath))
-        print("you may need to authenticate using your CRYPTOCARD")
-        repo = git.Repo(destPath)
-        try:
-            repo = repo.clone(remotePath)
-        except git.GitCommandError as error:
-            print("Error: %s: git clone failed", remotePath)
-            print(error)
+        process = utility.executeSubProcess("git clone %s %s" % (remotePath, destPath))
+        if process.returncode != 0:
+            print("Error: Git Clone failed.")
             return False
-
+        print("Clone succeeded!")
         return True

@@ -80,14 +80,14 @@ def gitMerge(repoName, branchName, option=""):
 
 def gitMergeAbort():
     process = executeSubProcess("git merge --abort", os.getcwd())
-    if process.returncode:
+    if process.returncode != 0:
         print("Error: Could not determine top level git directory.")
         return False
     return True
 
 def gitDir():
     process = executeSubProcess("git rev-parse --show-toplevel", os.getcwd(), subprocess.PIPE)
-    if process.returncode:
+    if process.returncode != 0:
         print("Error: Could not determine top level git directory.")
         return ""
     output = process.communicate()[0]
