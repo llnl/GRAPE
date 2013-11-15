@@ -1,5 +1,6 @@
-import utility
 import option
+import Atlassian
+import utility
 
 # Prepare Feature Branch for review
 class Review(option.Option):
@@ -12,9 +13,22 @@ class Review(option.Option):
 
     def execute(self):
         print("Logging into RZStash")
-        rzAtlassian = Atlassian()
+        name = utility.getUserName()
+        rzAtlassian = Atlassian.Atlassian(name)
         rzStash = rzAtlassian.stash
-        repo = rzStash.projects['ALE'].repos['ale3d']
+        print "Projects:", rzAtlassian.projectlist()
+
+        repo = rzAtlassian.project('ALE').repo('ale3d')
+        for pull in repo.pullrequests():
+            if pull.author() == name:
+                print " my review     ", pull.title()
+            else:
+                print " other review  ", pull.title()
+
+        if 1:
+            return
+
+        # none of this stuff works.
 
         currentBranch = utility.GetCurrentBranch()
 

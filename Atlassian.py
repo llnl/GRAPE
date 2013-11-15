@@ -1,12 +1,32 @@
 
 import stashy
-import utility
 import keyring
 import getpass
 import time
+import utility
 
 class Atlassian:
     rzstashURL = "https://rzlc.llnl.gov/stash"
+
+    def __init__(self, username = None):
+
+        if username is None:
+            self.userName = utility.getUserName()
+        else:
+            self.userName = username
+
+        self.keyring = keyring.get_keyring()
+        service = Atlassian.rzstashURL
+        password = keyring.get_password(service,self.userName)
+
+        if self.auth(service,self.userName, password):
+            print("Connected to RZStash...")
+        else:
+            self.stash = None
+            print("Could not connect to RZStash...")
+
+    
+
     def auth(self,service,username,password):
         self.userName = username
         self.service = service
@@ -30,19 +50,6 @@ class Atlassian:
 
         return success
 
-    def __init__(self):
-        self.userName = utility.GetUserName()
-        self.keyring = keyring.get_keyring()
-        service = Atlassian.rzstashURL
-        password = keyring.get_password(service,self.userName)
-
-        if self.auth(service,self.userName, password):
-            print("Connected to RZStash...")
-        else:
-            self.stash = None
-            print("Could not connect to RZStash...")
-
-    
     def projectlist(self):
         projects = self.stash.projects.list()
         return [r["key"] for r in projects]
