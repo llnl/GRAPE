@@ -193,36 +193,36 @@ def DefineView(sparseFile):
 
 
 #######################################################################
-#The Grape class - encapsulates menu options and sections. 
-# Menu Options are the objects that perform git-related or stash-related tasks. 
-# sections are groupings of menu options that are displayed together. 
+#The Grape class - encapsulates menu options and sections.
+# Menu Options are the objects that perform git-related or stash-related tasks.
+# sections are groupings of menu options that are displayed together.
 ######################################################################
-class Grape(object): 
+class Grape(object):
     def __init__(self, additionalConfigFiles = []):
         grapeConfig.read(additionalConfigFiles)
-        self.options = {}
+        self._options = {}
         #Add menu classes
-        self.options = {}
-        self.menuOrder = []
+        self._optionLookup = {}
         #Add/order your menu option here
-        optionsToBeAddedToMenu = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
-                                      gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
-                                      merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
-                                      minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), p4Import.P4Import(), \
-                                      quit.Quit(), resolveConflicts.ResolveConflicts(), review.Review(), test.Test(), updateLocal.UpdateLocal(), \
-                                      updateView.UpdateView(), walkthrough.Walkthrough()]
+        self._options = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+                          gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
+                          merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
+                          minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), \
+                          p4Import.P4Import(), resolveConflicts.ResolveConflicts(), \
+                          review.Review(), test.Test(), updateLocal.UpdateLocal(), \
+                          updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
 
     #Add/order the menu sections here
-        self.sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
+        self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
                         'Merge', 'Gitflow Tasks', 'Perforce Integration', 'Other']
-        
-        for currOption in optionsToBeAddedToMenu:
-            self.options[currOption.key] = currOption
+
+        for currOption in self._options:
+            self._optionLookup[currOption.key] = currOption
 
     #######      MENU STUFF         #########################################################################
-    def getOption(self,choice):  
+    def getOption(self,choice):
         try:
-            return self.options[choice]
+            return self._optionLookup[choice]
         except:
             print("Unknown option '%s'" % choice)
             return None
@@ -238,11 +238,10 @@ class Grape(object):
         width = 60
         print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
 
-        for currSection in self.sections:
+        for currSection in self._sections:
             loweredSection = currSection.strip().lower()
             print("\n" + (" %s " % currSection).center(width,'*'))
-            for currKey in self.options.keys():
-                currOption = self.options[currKey]
+            for currOption in self._options:
                 if currOption.section.strip().lower() != loweredSection:
                     continue
                 print("%s: %s" % (currOption.key, currOption.description()))
@@ -254,7 +253,6 @@ def startup():
     #TODO - allow addition grape config file to be specified at command line
     grapeconfigfile = []
     grape = Grape(grapeconfigfile)
-
 
     try:
         if (len(sys.argv) == 1):
