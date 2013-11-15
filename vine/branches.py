@@ -14,5 +14,6 @@ class Branches(option.Option):
         return "List all of your local repo's branches"
 
     def execute(self):
-        git.branch()
+        g = git.Git()
+        g.branch()
         return True

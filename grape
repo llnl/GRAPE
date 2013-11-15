@@ -230,9 +230,11 @@ class Atlassian:
             self.stash = None
             print("Could not connect to RZStash...")
 
-############################################################################
-# BEGINNING OF SCRIPT
-############################################################################
+#######################################################################
+#The Grape class - encapsulates menu options and sections. 
+# Menu Options are the objects that perform git-related or stash-related tasks. 
+# sections are groupings of menu options that are displayed together. 
+######################################################################
 class Grape(object): 
     def __init__(self, additionalConfigFiles = []):
         grapeConfig.read(additionalConfigFiles)
@@ -283,7 +285,9 @@ class Grape(object):
                     continue
                 print("%s: %s" % (currOption.key, currOption.description()))
 
-
+############################################################################
+# BEGINNING OF SCRIPT
+############################################################################
 def startup():
     #TODO - allow addition grape config file to be specified at command line
     grapeconfigfile = []

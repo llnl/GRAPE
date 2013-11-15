@@ -43,7 +43,6 @@ class Test_branch(unittest.TestCase):
         ret = grape.options["b"].execute()
         contents = self.output.getvalue()
         self.assertTrue( ret )
-        self.assertTrue( "branch" in contents )
 
         
 def main():
