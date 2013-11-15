@@ -1,4 +1,10 @@
-import option
+from __future__ import absolute_import
+import os,sys
+from vine import option, utility
+from .grapeConfig import grapeConfig
+if not ".." in sys.path:
+    sys.path.append( ".." )
+import git
 
 class Test(option.Option):
     def __init__(self):
@@ -9,8 +15,7 @@ class Test(option.Option):
         return "Test Grape."
 
     def execute(self):
-        if not ".." in sys.path:
-            sys.path.append( ".." )
+
         from test import GrapeTest
         good = GrapeTest.main()
         if not good:
