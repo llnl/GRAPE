@@ -1,5 +1,5 @@
-import sys,os
-import option
+import sys, os
+import option, utility
 if not ".." in sys.path:
     sys.path.append( ".." )
 from PyGitUp import git_wrapper
@@ -15,6 +15,5 @@ class Branches(option.Option):
 
     def execute(self):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        g = git_wrapper.GitWrapper()
-        g.branch()
+        utility.executeSubProcess("git branch",os.getcwd())
         return True
