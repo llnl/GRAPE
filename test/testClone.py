@@ -8,6 +8,7 @@ from grape import Grape
 class TestClone(testGrape.TestGrape):
     def testClone(self):
         grape = Grape()
-        ret = grape.options["clone"].execute()
+        #ret = grape.getOption("clone").execute()
+        ret = False
         contents = self.output.getvalue()
-        self.assertFalse( ret )
+        self.assertTrue( ret )

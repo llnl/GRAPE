@@ -8,6 +8,7 @@ from grape import Grape
 class TestConfig(testGrape.TestGrape):
     def testConfig(self):
         grape = Grape()
-        ret = grape.options["config"].execute()
+        #ret = grape.getOption("config").execute()
+        ret = False
         contents = self.output.getvalue()
-        self.assertFalse( ret )
+        self.assertTrue( ret )
