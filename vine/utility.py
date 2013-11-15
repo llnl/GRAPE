@@ -1,6 +1,16 @@
 import os, StringIO, subprocess, tempfile
 import git
 
+def createBranch(branchPoint, prefix):
+    branch = userInput("Enter new branch name",None)
+    user = GetUserName()
+    fullBranch = prefix+"/"+user+"/"+branch
+    proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
+    if (proceed):
+        git.checkout("-b",fullBranch,branchPoint)
+    else:
+        print("Branch not created")
+
 def ensure_dir(f):
     d = os.path.dirname(f)
     print("d:"+d)

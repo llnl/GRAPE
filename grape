@@ -2,7 +2,7 @@
 
 import os, shutil, subprocess, sys
 import git
-from vine import clone, config, grapeConfig, utility
+from vine import clone, config, feature, grapeConfig, hotFix, minorRelease, updateLocal, utility
 import StringIO
 import stashy
 import keyring
@@ -154,8 +154,6 @@ def presentTextMenu():
         print("%s) %s" % (option.KeyWord(),option.Description()))
 
 #######      GETTING STARTED    #########################################################################
-section = " GETTING STARTED "
-
 def DefineView(sparseFile):
     include = {}
     include["src"] = True
@@ -193,92 +191,11 @@ def DefineView(sparseFile):
     sparseFile.writelines(text)
 
 
-options[Config.key] = Config()
-menuOrder.append(Config.key)
-
-
 #######     GITFLOW TASKS    #######################################################################
-section = "GITFLOW TASKS"
-# create new feature branch
-
-# create a new branch
-def CreateBranch(branchPoint,prefix):
-    branch = utility.userInput("Enter new branch name",None)
-    user = utility.GetUserName()
-    fullBranch = prefix+"/"+user+"/"+branch
-    proceed = utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
-    if (proceed):
-        git.checkout("-b",fullBranch,branchPoint)
-    else:
-        print("Branch not created")
-
-# option that creates a new feature branch
-class Feature(Option):
-    key = "dev"
-    section = section
-    def Description(self):
-        return "Create a new feature development branch"
-    def Execute(self):
-        CreateBranch("develop","feature")
-        return True
-
-options[Feature.key] = Feature()
-menuOrder.append(Feature.key)
-
-
-
-# option that creates a new minor Release Branch
-class MinorRelease(Option):
-    key = "minor"
-    section = section
-    def Description(self):
-        return "Create a new minor Release branch (for fixing nightly/build failures)"
-
-    def Execute(self):
-        branchPoint = utility.userInput("Where do you want this Release to branch from?","FIRSTFAIL")
-        CreateBranch(branchPoint,"minor")
-        return True
-
-options[MinorRelease.key] = MinorRelease()
-menuOrder.append(MinorRelease.key)
-
-
-
-#option that creates a hotfix branch
-class Hotfix(Option):
-    key = "hot"
-    section = section
-    def Description(self):
-        return "Create a hotfix branch (for fixing weekly test failures on master)"
-    def Execute(self):
-        git.fetch("origin","master")
-        CreateBranch("master","hot")
-        return True
-
-options[Hotfix.key] = Hotfix()
-menuOrder.append(Hotfix.key)
-
-# update the repo from the remote using the PyGitUp module
-class UpdateLocal(Option):
-    key = "up"
-    section = section
-    def Description(self):
-        return "Update local branches that are tracked in your remote repo"
-
-    def Execute(self):
-        gitup = os.path.join(os.path.dirname(__file__),"PyGitUp","gitup.py")
-
-        p = subprocess.Popen(gitup,shell=True)
-        p.wait()
-        return True
-
-options[UpdateLocal.key] = UpdateLocal()
-menuOrder.append(UpdateLocal.key)
-
 # Display a help image for gitflow tasks
 class GitflowHelp(Option):
     key = "help"
-    section = section
+    section = "GITFLOW TASKS"
     def Description(self):
         return "Display a gitflow diagram to help make a decision"
 
@@ -782,7 +699,7 @@ def startup():
     options = {}
     menuOrder = []
 
-    options = [clone.Clone(), config.Config()]
+    options = [clone.Clone(), config.Config(), feature.Feature(), hotFix.HotFix(), minorRelease.MinorRelease(), updateLocal.UpdateLocal]
 
     for currOption in options:
         options[currOption.key] = currOption
