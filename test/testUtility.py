@@ -13,9 +13,4 @@ class TestUtility(testGrape.TestGrape):
 
         self.assertEquals(utility.gitDir(), grapeBaseDir, "Could not determine git directory")
 
-def suite(appendTo = None):
-    suite = appendTo
-    if suite == None:
-        suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(TestUtility))
-    return suite
+
