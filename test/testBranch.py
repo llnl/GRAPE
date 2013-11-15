@@ -2,7 +2,7 @@ import os, sys, unittest
 import testGrape
 if not ".." in sys.path:
     sys.path.append( ".." )
-import utility
+from vine import utility
 from grape import Grape
 
 class TestBranch(testGrape.TestGrape):
