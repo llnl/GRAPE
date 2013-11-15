@@ -13,7 +13,7 @@ import ConfigParser
 #*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 
 #**** GETTING STARTED  ***********************
-#init) Clone the ale3d repo and initialize your git config
+#init) Clone the  repo and initialize your git config
 #config) Initialize a repo you've already cloned without using GRAPE
 
 #**** GITFLOW TASKS ************************
@@ -189,17 +189,15 @@ class Clone(Option):
 
     def Execute(self):
         user = utility.GetUserName()
+        url  = config.get("repo","url")
+        name = config.get("repo","name")
+        remotePath = utility.userInput("Enter Remote Repo address:", url)
 
-        remotePath = utility.userInput("Enter Remote Repo address:",
-                               "https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user)
-
-        destPath = utility.userInput("Enter destination directory:",os.path.join(os.getcwd(),"ale3d"))
-
-        print("calling git clone %s %s" % (remotePath,destPath))
-        print("you may need to authenticate using your CRYPTOCARD")
-        print(git.clone(remotePath,destPath))
-        os.chdir(destPath)
-        return GetOption("config").Execute()
+        print("calling git clone %s " % (remotePath))
+        if ("stash" in remotePath): 
+            print("you may need to authenticate using your CRYPTOCARD")
+        git.clone(remotePath)
+        return True
 
 options[Clone.key] = Clone()
 menuOrder.append(Clone.key)
@@ -208,14 +206,13 @@ def DefineView(sparseFile):
     include = {}
     include["src"] = True
     include["scripts"] = True
-
-    directories = ["imports","exports","test","testbaselines","ALE3D.xcodeproj",
-                   "deploy","doc","tools"]
+    alldirs = config.get("view","alldirs")
+    directories = alldirs.split(" ")
 
     accept = utility.userInput("Do you want everything? [y/n]","y")
     text = []
     while not accept:
-        accept = utility.userInput("Do you only want src? [y/n]","y")
+        accept = utility.userInput("Do you only want the required view? [y/n]","y")
         for d in directories:
             use = False if accept else utility.userInput("Do you want %s? [y/n]" % d,"n")
             if (use):
