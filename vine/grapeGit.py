@@ -1,7 +1,5 @@
-import utility, os, subprocess,sys
-if not ".." in sys.path:
-    sys.path.append( ".." )
-#from grape import Grape
+import os, subprocess, sys
+import grapeMenu, utility
 
 class GrapeGitError(Exception):
     def __init__(self,errmsg,returnCode):
@@ -26,24 +24,20 @@ def dir():
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
 
-def merge( branch,strategy = ""): 
-    try: 
+def merge( branch,strategy = ""):
+    try:
         gitcmd("merge %s %s" % (branch,strategy), "merge failed")
         return 'q'
-    except GrapeGitError as error: 
-        if error.code == 1: 
+    except GrapeGitError as error:
+        if error.code == 1:
             choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]", "resolve")
         return choice
 
-
-
-def mergeAbort():  
+def mergeAbort():
     return getcmd("merge --abort", "Could not determine top level git directory.")
 
 def mergeIntoCurrent(repoName,branchName):
-    from grape import Grape
-    grp = Grape()
-    grp.getOption('up').execute()
+    grapeMenu.menu().getOption('up').execute()
     choice = None
     strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
                          "am: Auto Merge (default) \n"+
@@ -94,9 +88,7 @@ def mergeIntoCurrent(repoName,branchName):
         if not mergeAbort():
             return False
     elif choice:
-        from grape import Grape
-        return Grape().getOption(choice).execute()
-
+        return grapeMenu.menu().getOption(choice).execute()
 
     return True
 

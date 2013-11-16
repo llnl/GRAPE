@@ -1,12 +1,8 @@
 #!/usr/bin/env python
 
 import os, shutil, subprocess, sys
+from vine import grapeConfig, grapeMenu, utility
 import git
-from vine import branches, clone, config, feature, gitflowHelp, grapeConfig
-from vine import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
-from vine import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
-from vine import resolveConflicts, review, test
-from vine import updateLocal, updateView, utility, walkthrough
 import StringIO
 import stashy
 import keyring
@@ -125,123 +121,23 @@ import PyGitUp
 #  but has yet to be marked as stable given the lack of nightly testing results.
 #
 
-#######      GETTING STARTED    #########################################################################
-
-def DefineView(sparseFile):
-    include = {}
-    include["src"] = True
-    include["scripts"] = True
-    alldirs = config.get("view","alldirs")
-    directories = alldirs.split(" ")
-
-    accept = utility.userInput("Do you want everything? [y/n]","y")
-    text = []
-    while not accept:
-        accept = utility.userInput("Do you only want the required view? [y/n]","y")
-        for d in directories:
-            use = False if accept else utility.userInput("Do you want %s? [y/n]" % d,"n")
-            if (use):
-                include[d] = True
-            else:
-                include[d] = False
-
-        # build sample text file for display
-        text = []
-        for key in include:
-            if not include[key]:
-                text.append("!%s/*\n" %key)
-        text.append("/*")
-
-        # display sample text
-        print("sample sparse checkout file:")
-        for l in text:
-            print(l)
-
-        accept = utility.userInput("does this look OK? [y/n]","y")
-
-    #end while
-    #write accepted sparse-checkout file
-    sparseFile.writelines(text)
-
-
-#######################################################################
-#The Grape class - encapsulates menu options and sections.
-# Menu Options are the objects that perform git-related or stash-related tasks.
-# sections are groupings of menu options that are displayed together.
-######################################################################
-class Grape(object):
-    def __init__(self, additionalConfigFiles = []):
-        grapeConfig.read(additionalConfigFiles)
-        self._options = {}
-        #Add menu classes
-        self._optionLookup = {}
-        #Add/order your menu option here
-        self._options = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
-                          gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
-                          merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
-                          minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), \
-                          p4Import.P4Import(), resolveConflicts.ResolveConflicts(), \
-                          review.Review(), test.Test(), updateLocal.UpdateLocal(), \
-                          updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
-
-    #Add/order the menu sections here
-        self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
-                        'Merge', 'Gitflow Tasks', 'Perforce Integration', 'Other']
-
-        for currOption in self._options:
-            self._optionLookup[currOption.key] = currOption
-
-    #######      MENU STUFF         #########################################################################
-    def getOption(self,choice):
-        try:
-            return self._optionLookup[choice]
-        except:
-            print("Unknown option '%s'" % choice)
-            return None
-
-    def applyMenuChoice(self,choice):
-        chosenOption = self.getOption(choice)
-        if chosenOption is None:
-            return False
-        return chosenOption.execute()
-
-    # Present the main menu
-    def presentTextMenu(self):
-        width = 60
-        print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width,'*'))
-
-        longestKey = 0
-        for currOption in self._options:
-            if len(currOption.key) > longestKey:
-                longestKey = len(currOption.key)
-
-        for currSection in self._sections:
-            loweredSection = currSection.strip().lower()
-            print("\n" + (" %s " % currSection).center(width,'*'))
-            for currOption in self._options:
-                if currOption.section.strip().lower() != loweredSection:
-                    continue
-                print("%s: %s" % (currOption.key.ljust(longestKey), currOption.description()))
-
-############################################################################
-# BEGINNING OF SCRIPT
-############################################################################
 def startup():
     #TODO - allow addition grape config file to be specified at command line
-    grapeconfigfile = []
-    grape = Grape(grapeconfigfile)
+    additionalConfigFiles = []
+    grapeConfig.read(additionalConfigFiles)
+    myMenu = grapeMenu.menu()
 
     try:
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                grape.presentTextMenu()
+                myMenu.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None)
-                done = grape.applyMenuChoice(choice)
+                done = myMenu.applyMenuChoice(choice)
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif (len(sys.argv) == 2):
-            grape.applyMenuChoice(sys.argv[1])
+            myMenu.applyMenuChoice(sys.argv[1])
         else:
             print("Command line must contain zero or one arguments")
     except KeyboardInterrupt:
@@ -249,7 +145,6 @@ def startup():
 
     # Exit the script
     print("Thank you - good bye")
-
 
 ## If this file is being run as a script, then run the main menu.
 ## If it's being imported, then don't

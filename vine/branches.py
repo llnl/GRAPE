@@ -1,5 +1,5 @@
 import sys, os
-import grapeGit, option, utility
+import grapeGit, option
 
 # list local branches (git branch)
 class Branches(option.Option):
@@ -12,6 +12,5 @@ class Branches(option.Option):
 
     def execute(self):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        g = grapeGit.GrapeGit()
-        g.branch()
+        grapeGit.branch()
         return True

@@ -49,7 +49,7 @@ class Config(option.Option):
         if updateView:
             sparseFile = os.path.join(dotGit,"info","sparse-checkout")
             with open(sparseFile,'w') as f:
-                DefineView(f)
+                utility.defineView(f)
             checkout = utility.userInput("check out updated view? [y/n]","y")
 
             if checkout:

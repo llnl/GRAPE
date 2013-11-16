@@ -24,6 +24,42 @@ def createBranch(branchPoint, prefix):
     else:
         print("Branch not created")
 
+def defineView(sparseFile):
+    include = {}
+    include["src"] = True
+    include["scripts"] = True
+    alldirs = config.get("view","alldirs")
+    directories = alldirs.split(" ")
+
+    accept = userInput("Do you want everything? [y/n]","y")
+    text = []
+    while not accept:
+        accept = userInput("Do you only want the required view? [y/n]","y")
+        for d in directories:
+            use = False if accept else userInput("Do you want %s? [y/n]" % d,"n")
+            if (use):
+                include[d] = True
+            else:
+                include[d] = False
+
+        # build sample text file for display
+        text = []
+        for key in include:
+            if not include[key]:
+                text.append("!%s/*\n" %key)
+        text.append("/*")
+
+        # display sample text
+        print("sample sparse checkout file:")
+        for l in text:
+            print(l)
+
+        accept = userInput("does this look OK? [y/n]","y")
+
+    #end while
+    #write accepted sparse-checkout file
+    sparseFile.writelines(text)
+
 def ensure_dir(f):
     d = os.path.dirname(f)
     print("d:"+d)

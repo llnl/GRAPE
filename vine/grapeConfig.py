@@ -10,8 +10,8 @@ def grapeConfig():
     return __configInstance
 
 def read(additionalFileNames = []):
-    globalconfigfile = os.path.join(os.environ["HOME"],".grapeconfig")
-    defaultFiles = [globalconfigfile,".grapeconfig",".grapeuserconfig"]
+    globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
+    defaultFiles = [globalconfigfile, ".grapeconfig", ".grapeuserconfig"]
     files = defaultFiles + additionalFileNames
     readFiles = grapeConfig().read(files)
     if len(readFiles) == 0:

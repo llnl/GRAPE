@@ -16,7 +16,7 @@ class UpdateView(option.Option):
         dotGit = os.path.join(base,".git")
         sparseFile = os.path.join(dotGit,"info","sparse-checkout")
         with open(sparseFile,'w') as f:
-            DefineView(f)
+            utility.defineView(f)
         checkout = utility.userInput("check out updated view? [y/n]","y")
         if (checkout):
             git("read-tree","-mu","HEAD")
