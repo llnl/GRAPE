@@ -8,18 +8,18 @@ from vine import grapeGit as git
 
 str1 = "a \n b\n c\n"
 str2 = "a \n c\n c\n"
-str3 = "a \n d\n c\n" 
+str3 = "a \n d\n c\n"
 
 def writeFile1(path):
-    with open(path,'w') as f: 
+    with open(path,'w') as f:
         f.write(str1)
 
 def writeFile2(path):
-    with open(path,'w') as f: 
+    with open(path,'w') as f:
         f.write(str2)
 
 def writeFile3(path):
-    with open(path,'w') as f: 
+    with open(path,'w') as f:
         f.write(str3)
 
 class TestGrapeGit(testGrape.TestGrape):
@@ -74,7 +74,6 @@ class TestGrapeGit(testGrape.TestGrape):
         self.assertTrue(False)
 
     def testCommit(self):
-        
         self.assertTrue(False)
 
     def testCheckout(self):
