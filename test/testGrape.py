@@ -6,10 +6,12 @@ class TestGrape(unittest.TestCase):
     def setUp(self):
         self.output = StringIO.StringIO()
         self.stdout = sys.stdout
+        self.stderr = sys.stderr
         sys.stdout = self.output
 
     def tearDown(self):
         sys.stdout = self.stdout
+        sys.stderr = self.stderr
         self.output.close()
 
 def buildSuite(cls,appendTo = None):

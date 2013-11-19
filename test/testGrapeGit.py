@@ -25,9 +25,9 @@ def writeFile3(path):
 class TestGrapeGit(testGrape.TestGrape):
     def __init__(self,superArg):
         super(TestGrapeGit,self).__init__(superArg)
-        self.repo = os.path.join(os.getcwd(),"testGrapeGitRepo")
-
-
+        self.repos = [os.path.join(os.getcwd(),"testGrapeGitRepo"),os.path.join(os.getcwd(),"testGrapeGitRepo2")]
+        self.repo = self.repos[0]
+        
     def setUp(self):
         super(TestGrapeGit,self).setUp()
         try:
@@ -41,6 +41,12 @@ class TestGrapeGit(testGrape.TestGrape):
     def tearDown(self):
         os.chdir(os.path.join(self.repo,".."))
         shutil.rmtree(self.repo)
+        for repo in self.repos:
+            try:
+                shutil.rmtree(repo)
+            except:
+                pass
+
         super(TestGrapeGit,self).tearDown()
 
     def testDir(self):
@@ -70,8 +76,21 @@ class TestGrapeGit(testGrape.TestGrape):
     def testBranch(self):
         self.assertTrue(False)
 
-    def testShowRemote(self):
-        self.assertTrue(False)
+    def testCloneAndShowRemote(self):
+        localSource = self.repo
+        localClone = self.repos[1]
+        try: 
+            self.assertTrue(git.clone("%s %s" % (localSource,localClone) ))
+            os.chdir(localClone)
+            self.assertTrue(git.showRemote())
+            contents = self.output.getvalue()
+        except git.GrapeGitError as error:
+            contents = self.output.getvalue()
+            self.assertTrue(False,"Error %d caught: %s \n %s " % (error.code,error.msg,error.gitOutput) )
+        fetchLine = "Fetch URL: %s" % localSource
+        
+        self.assertTrue(fetchLine in contents,"coud not find %s in output" % fetchLine)
+            
 
     def testCommit(self):
         self.assertTrue(False)

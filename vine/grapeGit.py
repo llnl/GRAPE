@@ -2,21 +2,26 @@ import os, subprocess, sys
 import grapeMenu, utility
 
 class GrapeGitError(Exception):
-    def __init__(self,errmsg,returnCode):
+    def __init__(self,errmsg,returnCode,gitOutput):
         self.msg = errmsg
         self.code = returnCode
+        self.gitOutput = gitOutput
+        print "Error %d raised with msg: %s \n %s" % (self.code, self.msg,self.gitOutput)
 
 def gitcmd(cmd,errmsg):
     _cmd = "git %s" % cmd
     process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s",errmsg,process.returncode)
+        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0])
     output = process.communicate()[0]
     print output
     return output.strip()
 
 def branch():
     return gitcmd("branch", "Could not list branches")
+
+def clone(argstr):
+    return gitcmd("clone %s" % argstr, "Clone failed")
 
 def dir():
     return gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")
@@ -94,3 +99,6 @@ def mergeIntoCurrent(repoName,branchName):
 
 def pull(repo = "", branch = ""):
     return gitcmd("pull %s %s" %(repo,branch),"Fetch failed")
+
+def showRemote():
+    return gitcmd("remote show origin","unable to show remote")
