@@ -6,9 +6,9 @@ from vine import utility
 from vine import grapeGit as git
 
 
-str1 = "a \n b\n c\n"
-str2 = "a \n c\n c\n"
-str3 = "a \n d\n c\n"
+str1 = "str1 \n a \n b\n c\n"
+str2 = "str2 \n a \n c\n c\n"
+str3 = "str3 \n a \n d\n c\n"
 
 def writeFile1(path):
     with open(path,'w') as f:
@@ -49,6 +49,26 @@ class TestGrapeGit(testGrape.TestGrape):
 
         super(TestGrapeGit,self).tearDown()
 
+
+    def testAdd(self):
+        try:
+            os.chdir(self.repo)
+            f1name = os.path.join(self.repo,"f1")
+            writeFile1(f1name)
+            git.add("f1")
+            git.status()
+        except git.GrapeGitError as error:
+            self.handleGitError(error)
+
+        self.assertTrue("new file:   f1" in self.output.getvalue())
+                
+
+    def testCommit(self):
+        self.assertTrue(False)
+
+    def testCheckout(self):
+        self.assertTrue(False)
+
     def testDir(self):
         grapeBaseDir = os.getcwd()
         if not os.path.exists(os.path.join(grapeBaseDir, "grape")):
@@ -85,20 +105,21 @@ class TestGrapeGit(testGrape.TestGrape):
             self.assertTrue(git.showRemote())
             contents = self.output.getvalue()
         except git.GrapeGitError as error:
-            contents = self.output.getvalue()
-            self.assertTrue(False,"Error %d caught: %s \n %s " % (error.code,error.msg,error.gitOutput) )
+            self.handleGitError(error)
         fetchLine = "Fetch URL: %s" % localSource
         
         self.assertTrue(fetchLine in contents,"coud not find %s in output" % fetchLine)
             
 
-    def testCommit(self):
-        self.assertTrue(False)
 
-    def testCheckout(self):
-        self.assertTrue(False)
 
     def testRebase(self):
+        try:
+            os.chdir(self.repo)
+        except:
+            pass
         self.assertTrue(False)
 
 
+    def handleGitError(self,error):
+        self.assertTrue(False,"Error %d caught: %s \n %s " % (error.code,error.msg,error.gitOutput))

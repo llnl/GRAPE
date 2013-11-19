@@ -17,6 +17,9 @@ def gitcmd(cmd,errmsg):
     print output
     return output.strip()
 
+def add(filedescription):
+    return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
+
 def branch():
     return gitcmd("branch", "Could not list branches")
 
@@ -39,7 +42,7 @@ def merge( branch,strategy = ""):
         return choice
 
 def mergeAbort():
-    return getcmd("merge --abort", "Could not determine top level git directory.")
+    return gitcmd("merge --abort", "Could not determine top level git directory.")
 
 def mergeIntoCurrent(repoName,branchName):
     grapeMenu.menu().getOption('up').execute()
@@ -102,3 +105,6 @@ def pull(repo = "", branch = ""):
 
 def showRemote():
     return gitcmd("remote show origin","unable to show remote")
+
+def status():
+    return gitcmd("status", "git status failed for some reason")
