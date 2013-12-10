@@ -1,8 +1,6 @@
 import subprocess, sys
 import option
-if not ".." in sys.path:
-    sys.path.append( ".." )
-import git
+import grapeGit as git
 
 # resolve conflicts using git mergetool
 class ResolveConflicts(option.Option):

@@ -1,7 +1,5 @@
 import os, StringIO, subprocess, sys, tempfile
-if not ".." in sys.path:
-    sys.path.append( ".." )
-import git
+import grapeGit as git
 
 def cascade(l, op):
     """Apply an operation to a chain of interdependent pairs in a list"""

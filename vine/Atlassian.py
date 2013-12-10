@@ -1,4 +1,9 @@
-
+import sys
+import os
+filedir = os.path.dirname(os.path.abspath(__file__))
+grapedir = os.path.join(filedir,"..")
+if not grapedir in sys.path:
+    sys.path.append( grapedir )
 import stashy
 import keyring
 import getpass

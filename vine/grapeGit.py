@@ -20,11 +20,17 @@ def gitcmd(cmd,errmsg):
 def add(filedescription):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
+def baseDir(): 
+    return gitcmd("rev-parse --show-toplevel", "Not in a git repo")
+
 def branch():
     return gitcmd("branch", "Could not list branches")
 
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")
+
+def currentBranch(): 
+    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
 def dir():
     return gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")

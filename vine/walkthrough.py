@@ -1,8 +1,6 @@
 import sys
 import option
-if not ".." in sys.path:
-    sys.path.append( ".." )
-import git
+import grapeGit as git
 
 class Walkthrough(option.Option):
     def __init__(self):

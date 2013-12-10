@@ -1,8 +1,6 @@
 import sys
 import option
-if not ".." in sys.path:
-    sys.path.append( ".." )
-import git
+import grapeGit as git
 
 # abort a merge
 class MergeAbort(option.Option):

@@ -1,7 +1,5 @@
 import option, sys, utility
-if not ".." in sys.path:
-    sys.path.append( ".." )
-import git
+import grapeGit as git
 
 #option that creates a hotfix branch
 class Hotfix(option.Option):

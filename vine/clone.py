@@ -1,9 +1,11 @@
 import os, sys
 from grapeConfig import grapeConfig
 import option, utility
-if not ".." in sys.path:
-    sys.path.append( ".." )
-import git
+filedir = os.path.dirname(os.path.abspath(__file__))
+grapedir = os.path.join(filedir,"..")
+if not grapedir in sys.path:
+    sys.path.append( grapedir )
+import grapeGit as git
 
 class Clone(option.Option):
     def __init__(self):
