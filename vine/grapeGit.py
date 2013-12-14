@@ -38,6 +38,9 @@ def dir():
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
 
+def log(args):
+    return gitcmd("log %s" % args,"git log failed")
+
 def merge( branch,strategy = ""):
     try:
         gitcmd("merge %s %s" % (branch,strategy), "merge failed")
@@ -105,6 +108,10 @@ def mergeIntoCurrent(repoName,branchName):
         return grapeMenu.menu().getOption(choice).execute()
 
     return True
+
+def numberCommitsSince(commit):
+    strCount = gitcmd("rev-list --count %s..HEAD" % commit, "Rev-list failed")
+    return int(strCount)
 
 def pull(repo = "", branch = ""):
     return gitcmd("pull %s %s" %(repo,branch),"Fetch failed")
