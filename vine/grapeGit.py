@@ -52,6 +52,10 @@ def dir():
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
 
+def isWorkingDirectoryClean():
+    statusOutput = status()
+    return "nothing to commit, working directory clean" in statusOutput
+
 def log(args):
     return gitcmd("log %s" % args,"git log failed")
 
