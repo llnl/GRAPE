@@ -43,6 +43,9 @@ def branchUpToDateWith(branch,targetBranch):
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")
 
+def config(argstr): 
+    return gitcmd("config %s" % argstr, "Config failed")
+
 def currentBranch(): 
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
