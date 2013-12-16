@@ -140,6 +140,10 @@ def numberCommitsSince(commit):
     strCount = gitcmd("rev-list --count %s..HEAD" % commit, "Rev-list failed")
     return int(strCount)
 
+def numberCommitsSinceRoot():
+    root = gitcmd("rev-list --max-parents=0 HEAD", "rev-list failed")
+    return numberCommitsSince(root)
+    
 def pull(repo = "", branch = ""):
     return gitcmd("pull %s %s" %(repo,branch),"Fetch failed")
 
