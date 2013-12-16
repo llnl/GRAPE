@@ -43,6 +43,9 @@ def branchUpToDateWith(branch,targetBranch):
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")
 
+def commit(argstr): 
+    return gitcmd("commit %s" % argstr, "Commit failed")
+
 def config(argstr): 
     return gitcmd("config %s" % argstr, "Config failed")
 
