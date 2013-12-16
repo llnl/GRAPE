@@ -55,6 +55,9 @@ def config(argstr):
 def currentBranch(): 
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
+def diff(argstr): 
+    return getcmd("diff %s" % argstr,"could not perform diff")
+
 def dir():
     return gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")
 
