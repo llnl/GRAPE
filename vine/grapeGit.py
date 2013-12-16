@@ -143,6 +143,9 @@ def numberCommitsSince(commit):
 def pull(repo = "", branch = ""):
     return gitcmd("pull %s %s" %(repo,branch),"Fetch failed")
 
+def shortSHA(): 
+    return gitcmd("rev-parse --short HEAD", "rev-parse of HEAD failed!")
+
 def showRemote():
     return gitcmd("remote show origin","unable to show remote")
 
