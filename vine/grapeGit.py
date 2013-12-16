@@ -1,4 +1,4 @@
-import os, subprocess, sys
+import os, subprocess, sys,string
 import grapeMenu, utility
 
 class GrapeGitError(Exception):
@@ -25,6 +25,20 @@ def baseDir():
 
 def branch():
     return gitcmd("branch", "Could not list branches")
+
+def branchUpToDateWith(branch,targetBranch):
+    allUpToDateBranches = gitcmd("branch --contains %s" % targetBranch, "branch contains failed")
+    allUpToDateBranches = string.split(allUpToDateBranches,"\n")
+    upToDate = False
+    for b in allUpToDateBranches:
+        # remove the * prefix from the active branch
+        cleanB = b
+        if b[0] is '*': 
+            cleanB = b[1:]
+        upToDate = cleanB == b
+        if upToDate:
+            break
+    return upToDate
 
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")
