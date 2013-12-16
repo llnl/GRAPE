@@ -40,6 +40,9 @@ def branchUpToDateWith(branch,targetBranch):
             break
     return upToDate
 
+def checkout(argstr): 
+    return  gitcmd("checkout %s" % argstr, "Checkout failed")
+
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")
 
