@@ -148,3 +148,7 @@ def showRemote():
 
 def status():
     return gitcmd("status", "git status failed for some reason")
+
+def tag(argstr):
+    return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)
+
