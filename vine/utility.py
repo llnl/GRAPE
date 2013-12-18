@@ -99,9 +99,6 @@ def getUserName(defaultName=os.getlogin()):
 
 
 
-
-
-
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate

@@ -2,17 +2,18 @@ import os, subprocess, sys,string
 import grapeMenu, utility
 
 class GrapeGitError(Exception):
-    def __init__(self,errmsg,returnCode,gitOutput):
+    def __init__(self,errmsg,returnCode,gitOutput,gitCommand):
         self.msg = errmsg
         self.code = returnCode
         self.gitOutput = gitOutput
-        print "Error %d raised with msg: %s \n %s" % (self.code, self.msg,self.gitOutput)
+        self.gitCommand = gitCommand
+        print "When executing %s,Error %d raised with msg: %s \n %s" % (self.gitCommand,self.code, self.msg,self.gitOutput)
 
 def gitcmd(cmd,errmsg):
     _cmd = "git %s" % cmd
     process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0])
+        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0],_cmd)
     output = process.communicate()[0]
     print output
     return output.strip()
@@ -23,8 +24,11 @@ def add(filedescription):
 def baseDir(): 
     return gitcmd("rev-parse --show-toplevel", "Not in a git repo")
 
-def branch():
-    return gitcmd("branch", "Could not list branches")
+def baseDir():
+    return gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
+
+def branch(argstr=""):
+    return gitcmd("branch %s" % argstr, "Could not list branches")
 
 def branchUpToDateWith(branch,targetBranch):
     allUpToDateBranches = gitcmd("branch --contains %s" % targetBranch, "branch contains failed")
@@ -102,7 +106,7 @@ def mergeIntoCurrent(repoName,branchName):
         #
         # see http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file for details.
         print("merging forcing conflicts whenever both branches edited the same file...")
-        base = utility.gitDir()
+        base = baseDir()
         if base == "":
             return False
         attributes = os.path.join(base,".gitattributes")

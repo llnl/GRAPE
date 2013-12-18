@@ -34,6 +34,10 @@ class TestGrapeGit(testGrape.TestGrape):
             os.mkdir(self.repo)
             os.chdir(self.repo)
             utility.executeSubProcess("git init",os.getcwd(), subprocess.PIPE)
+            fname = os.path.join(self.repo,"testRepoFile")
+            writeFile1(fname)
+            utility.executeSubProcess("git add %s" % fname,os.getcwd(), subprocess.PIPE)
+            utility.executeSubProcess("git commit -m 'initial commit'",os.getcwd(), subprocess.PIPE)
             os.chdir(os.path.join(self.repo,".."))
         except:
             pass
@@ -94,7 +98,15 @@ class TestGrapeGit(testGrape.TestGrape):
         self.assertTrue(False)
 
     def testBranch(self):
-        self.assertTrue(False)
+        local = self.repo 
+        try:
+           os.chdir(local) 
+           git.branch("testBranch/newBranch HEAD")
+           branches = git.branch()
+           self.assertTrue("testBranch/newBranch" in branches, "new branch not in returned string")
+           self.assertTrue("testBranch/newBranch" in self.output.getvalue(), "new branch not output")
+	except git.GrapeGitError as error: 
+           self.handleGitError(error)
 
     def testCloneAndShowRemote(self):
         localSource = self.repo
@@ -122,4 +134,4 @@ class TestGrapeGit(testGrape.TestGrape):
 
 
     def handleGitError(self,error):
-        self.assertTrue(False,"Error %d caught: %s \n %s " % (error.code,error.msg,error.gitOutput))
+        self.assertTrue(False,"When executing \n%s\nError %d caught: %s \n %s " % (error.gitCommand,error.code,error.msg,error.gitOutput))
