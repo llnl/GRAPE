@@ -71,7 +71,17 @@ class TestGrapeGit(testGrape.TestGrape):
         self.assertTrue(False)
 
     def testCheckout(self):
-        self.assertTrue(False)
+        try: 
+           os.chdir(self.repo)
+           git.checkout("-b testCheckout/tmpBranch")
+           self.assertTrue(git.currentBranch() == "testCheckout/tmpBranch","checkout of new branch failed")
+	   git.checkout("master")
+	   self.assertTure(git.currentBranch() == "master","switching to master did not work")
+	   
+        except git.GrapeGitError as error:
+           self.handleGitError(error)
+
+           
 
     def testDir(self):
         grapeBaseDir = os.getcwd()
