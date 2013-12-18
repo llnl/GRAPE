@@ -68,7 +68,17 @@ class TestGrapeGit(testGrape.TestGrape):
                 
 
     def testCommit(self):
-        self.assertTrue(False)
+       try:
+          os.chdir(self.repo)
+          f1name = os.path.join(self.repo,"f1")
+          writeFile1(f1name)
+          commitStr = "testCommit: added f1"
+          git.commit("f1 -m '%s'" % commitStr)
+          log = git.log() 
+          self.assertTrue(commitStr in log)
+       except git.GrapeGitError as error:
+          self.handleGitError(error)
+
 
     def testCheckout(self):
         try: 
