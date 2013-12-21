@@ -1,5 +1,5 @@
 import os, sys
-from grapeConfig import grapeConfig
+import grapeConfig
 import option, utility
 filedir = os.path.dirname(os.path.abspath(__file__))
 grapedir = os.path.join(filedir,"..")

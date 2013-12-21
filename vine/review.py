@@ -1,7 +1,7 @@
 import option
 import Atlassian
 import utility
-from grapeConfig import grapeConfig
+import grapeConfig
 
 # Prepare Feature Branch for review
 class Review(option.Option):

@@ -73,6 +73,7 @@ class TestGrapeGit(testGrape.TestGrape):
           f1name = os.path.join(self.repo,"f1")
           writeFile1(f1name)
           commitStr = "testCommit: added f1"
+          git.add("f1")
           git.commit("f1 -m '%s'" % commitStr)
           log = git.log() 
           self.assertTrue(commitStr in log)
@@ -86,7 +87,7 @@ class TestGrapeGit(testGrape.TestGrape):
            git.checkout("-b testCheckout/tmpBranch")
            self.assertTrue(git.currentBranch() == "testCheckout/tmpBranch","checkout of new branch failed")
 	   git.checkout("master")
-	   self.assertTure(git.currentBranch() == "master","switching to master did not work")
+	   self.assertTrue(git.currentBranch() == "master","switching to master did not work")
 	   
         except git.GrapeGitError as error:
            self.handleGitError(error)
@@ -102,14 +103,94 @@ class TestGrapeGit(testGrape.TestGrape):
 
         self.assertEquals(git.dir(), grapeBaseDir, "Could not determine git directory")
 
-    def testMergeAbort(self):
-        self.assertTrue(False)
 
     def testMerge(self):
-        self.assertTrue(False)
+        # First, test to see if a merge that should work does.
+        try:
+          os.chdir(self.repo)
+          #add a file on the master branch.
+          f1name = os.path.join(self.repo, "f1")
+          writeFile1(f1name)
+          git.add("f1")
+          commitStr = "testMerge: added f1"
+          git.commit(" -m '%s'" % commitStr)
+          # edit it on branch testMerge/tmp1
+          git.checkout("-b testMerge/tmp1")
+          writeFile2(f1name)
+          git.commit("-a -m 'edited f1'")
+          # perform same editon master
+          git.checkout("master")
+          writeFile2(f1name)
+          git.commit("-a -m 'edited f1 on master'")
+          # switch back to tmp, merge changes from master down
+          git.checkout("testMerge/tmp1")
+	  output = git.merge("master -m 'merged identical change from master'")
+          log = git.log()
+          self.assertTrue("identical change from master" in log) 
+        except git.GrapeGitError as error:
+          self.handleGitError(error)
+
+        # Second, test that a merge that should result in a conflict throws an appropriate GrapeGitError exception. 
+        try:
+          git.checkout("master")
+          f2name = os.path.join(self.repo,"f2")
+          writeFile3(f2name)
+          git.add(f2name)
+          git.commit("-m 'added f2'")
+          git.checkout("testMerge/tmp1")
+          writeFile2(f2name)
+          git.add(f2name)
+          git.commit("-m 'added f2 in tmp branch'")
+          git.merge("master -m 'merged master branch into testmerge/tmp1'")
+          self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
+        except git.GrapeGitError as error:
+          status = git.status()
+          self.assertTrue("conflict" in status, "'conflict' not in status message %s" % status) 
+
+    def testMergeAbort(self):
+         try:
+           os.chdir(self.repo)
+           git.branch("testMergeAbort/tmp1 HEAD")
+           #add a file on the master branch.
+           f1name = os.path.join(self.repo, "f1")
+           writeFile1(f1name)
+           git.add("f1")
+           commitStr = "testMergeAbort: added f1"
+           git.commit(" -m '%s'" % commitStr)
+           # also add it on the tmp branch
+           git.checkout("testMergeAbort/tmp1")
+           writeFile2(f1name)
+           git.add("f1")
+           git.commit(" -m 'testMergeAbort/tmp1 : added f1'")
+           # a merge should generate a conflict
+           git.merge("master -m 'merging from master'")
+           self.assertTrue(False,"conflict did not throw exception")
+         except:
+           status = git.status()
+           self.assertTrue("conflict" in status, "'conflict' not in status message %s " % status)
+           git.mergeAbort()
+           status = git.status()
+           self.assertFalse("conflict" in status, "conflict not removed by aborting merge")
+
 
     def testFetch(self):
-        self.assertTrue(False)
+        try:
+          git.clone("%s %s" %(self.repo,self.repos[1]))
+          os.chdir(self.repo)
+          f1name = os.path.join(self.repo,"f1")
+          writeFile1(f1name)
+          git.add("f1")
+          commitStr = "testFetch: added f1"
+          git.commit(" -m '%s'" % commitStr)
+	  os.chdir(self.repos[1])
+          log = git.log("--all")
+          self.assertFalse(commitStr in log,"commit message in log before it should be")
+          git.fetch("origin")
+ 	  log = git.log("--all")
+          self.assertTrue(commitStr in log, "commit message not in log --al affter fetch")
+
+	except git.GrapeGitError as error: 
+           self.handleGitError(error)
 
     def testPull(self):
         self.assertTrue(False)
@@ -127,6 +208,8 @@ class TestGrapeGit(testGrape.TestGrape):
            self.assertTrue("testBranch/newBranch" in self.output.getvalue(), "new branch not output")
 	except git.GrapeGitError as error: 
            self.handleGitError(error)
+
+
 
     def testCloneAndShowRemote(self):
         localSource = self.repo
