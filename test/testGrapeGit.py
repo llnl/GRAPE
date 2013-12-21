@@ -187,16 +187,50 @@ class TestGrapeGit(testGrape.TestGrape):
           self.assertFalse(commitStr in log,"commit message in log before it should be")
           git.fetch("origin")
  	  log = git.log("--all")
-          self.assertTrue(commitStr in log, "commit message not in log --al affter fetch")
+          self.assertTrue(commitStr in log, "commit message not in log --all affter fetch")
 
 	except git.GrapeGitError as error: 
            self.handleGitError(error)
 
     def testPull(self):
-        self.assertTrue(False)
+        try:
+          git.clone("%s %s" %(self.repo,self.repos[1]))
+          os.chdir(self.repo)
+          f1name = os.path.join(self.repo,"f1")
+          writeFile1(f1name)
+          git.add("f1")
+          commitStr = "testPull: added f1"
+          git.commit(" -m '%s'" % commitStr)
+	  os.chdir(self.repos[1])
+          log = git.log("--all")
+          self.assertFalse(commitStr in log,"commit message in log before it should be")
+          git.pull("origin master")
+ 	  log = git.log()
+          self.assertTrue(commitStr in log, "commit message not in log  affter pull")
+
+        except git.GrapeGitError as error: 
+          self.handleGitError(error)
 
     def testPush(self):
-        self.assertTrue(False)
+        try:
+          git.clone("%s %s" %(self.repo,self.repos[1]))
+          os.chdir(self.repos[1])
+          f1name = os.path.join(self.repos[1],"f1")
+          writeFile1(f1name)
+          git.add("f1")
+          commitStr = "testPush: added f1"
+          git.commit(" -m '%s'" % commitStr)
+          os.chdir(self.repo)
+          log = git.log("--all")
+          self.assertFalse(commitStr in log,"commit message in log before it should be")
+          os.chdir(self.repos[1])
+          git.push("origin master")
+ 	  log = git.log()
+          self.assertTrue(commitStr in log, "commit message not in log  affter push")
+
+	except git.GrapeGitError as error: 
+          self.handleGitError(error)
+
 
     def testBranch(self):
         local = self.repo 

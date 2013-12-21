@@ -89,8 +89,11 @@ def numberCommitsSinceRoot():
     root = gitcmd("rev-list --max-parents=0 HEAD", "rev-list failed")
     return numberCommitsSince(root)
     
-def pull(repo = "", branch = ""):
-    return gitcmd("pull %s %s" %(repo,branch),"Fetch failed")
+def pull(args):
+    return gitcmd("pull %s" %args ,"Pull failed")
+
+def push(args):
+    return gitcmd("push %s" % args, "Push failed")
 
 def shortSHA(): 
     return gitcmd("rev-parse --short HEAD", "rev-parse of HEAD failed!")
