@@ -213,7 +213,13 @@ class TestGrapeGit(testGrape.TestGrape):
 
     def testPush(self):
         try:
+          os.chdir(self.repo)
+          f2name = os.path.join(self.repo, "f2")
+          writeFile2(f2name)
+          git.add(f2name)
+          git.commit(" -m 'initial commit for testPush'")
           git.clone("%s %s" %(self.repo,self.repos[1]))
+          git.checkout("-b testPush/tmpBranchToAllowPushesToMaster")
           os.chdir(self.repos[1])
           f1name = os.path.join(self.repos[1],"f1")
           writeFile1(f1name)
@@ -224,13 +230,14 @@ class TestGrapeGit(testGrape.TestGrape):
           log = git.log("--all")
           self.assertFalse(commitStr in log,"commit message in log before it should be")
           os.chdir(self.repos[1])
-          git.push("origin master")
- 	  log = git.log()
+          pushOutput = git.push("origin master")
+          os.chdir(self.repo)
+ 	  git.checkout("master")
+          log = git.log()
           self.assertTrue(commitStr in log, "commit message not in log  affter push")
 
 	except git.GrapeGitError as error: 
           self.handleGitError(error)
-
 
     def testBranch(self):
         local = self.repo 
