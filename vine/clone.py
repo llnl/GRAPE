@@ -14,7 +14,7 @@ class Clone(option.Option):
 
     """Clones the ALE3D repo into a new local repo"""
     def description(self):
-        name = grapeConfig().get("repo","name")
+        name = grapeConfig.grapeConfig().get("repo","name")
         return "Clone the %s repo and initialize your git config" % name
 
     def execute(self):

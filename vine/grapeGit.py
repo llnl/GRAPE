@@ -38,7 +38,7 @@ def branchUpToDateWith(branch,targetBranch):
         # remove the * prefix from the active branch
         cleanB = b
         if b[0] is '*': 
-            cleanB = b[1:]
+            cleanB = b[1:].strip()
         upToDate = cleanB == branch
         if upToDate:
             break
@@ -94,6 +94,9 @@ def pull(args):
 
 def push(args):
     return gitcmd("push %s" % args, "Push failed")
+
+def rebase(args):
+    return gitcmd("rebase %s" % args, "Rebase failed")
 
 def shortSHA(): 
     return gitcmd("rev-parse --short HEAD", "rev-parse of HEAD failed!")
