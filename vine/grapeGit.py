@@ -39,7 +39,7 @@ def branchUpToDateWith(branch,targetBranch):
         cleanB = b
         if b[0] is '*': 
             cleanB = b[1:]
-        upToDate = cleanB == b
+        upToDate = cleanB == branch
         if upToDate:
             break
     return upToDate

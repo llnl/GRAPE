@@ -271,10 +271,30 @@ class TestGrapeGit(testGrape.TestGrape):
 
     def testRebase(self):
         try:
-            os.chdir(self.repo)
-        except:
-            pass
-        self.assertTrue(False)
+           os.chdir(self.repo)
+           f1name = os.path.join(self.repo,"f1")
+           writeFile1(f1name)
+           git.add(f1name)
+           git.commit("-m 'initial commit'")
+           git.branch("testRebase/branchToRebase HEAD")
+           # while still on master add another commit. 
+           writeFile2(f1name)
+           git.add(f1name)
+           git.commit("-m 'edited f1'")
+           # switch to new branch, add a new file, commit, rebase onto master.
+           git.checkout("testRebase/branchToRebase") 
+           f2name = os.path.join(self.repo,"f2")
+           writeFile2(f2name)
+           git.add(f2name)
+           git.commit("-m 'added f2' ")
+           self.assertFalse(git.branchUpToDateWith("testRebase/branchToRebase","master"),"attempting rebase in situation where rebase will not do anything.")
+           try: 
+             git.rebase("master") 
+             self.assertTrue(git.branchUpToDateWith("testRebase/branchToRebase","master"),"rebase did not bring current branch up to date with master")
+           except git.GrapeGitError as error: 
+             self.assertTrue(False,"rebase that should not have generated a conflict failed")
+        except git.GrapeGitError as error:
+	   handleGitError(error)
 
 
     def handleGitError(self,error):
