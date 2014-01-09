@@ -1,4 +1,4 @@
-import option, utility
+import option,merge 
 
 # pull and merge in an up-to-date development branch
 class MergeDevelop(option.Option):
@@ -11,8 +11,8 @@ class MergeDevelop(option.Option):
 
     def execute(self):
         print("Pulling changes from origin/develop into your repo...")
-        if not utility.mergeIntoCurrent("origin", "develop"):
+        if not merge.mergeIntoCurrent("origin", "develop"):
             return False
-        if not utility.mergeIntoCurrent(".", "develop"):
+        if not merge.mergeIntoCurrent(".", "develop"):
             return False
         return True

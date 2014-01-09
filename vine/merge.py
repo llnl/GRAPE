@@ -1,4 +1,6 @@
-import option, utility
+import os,shutil
+import option, utility, grapeMenu
+import grapeGit as git
 
 # merge in a local branch into this branch
 class Merge(option.Option):
@@ -18,9 +20,12 @@ def merge( branch,strategy = ""):
     try:
         git.merge("%s %s" % (branch,strategy))
         return 'q'
-    except GrapeGitError as error:
+    except git.GrapeGitError as error:
         if error.code == 1:
             choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]", "resolve")
+        else:
+            print("Merge failed for unknown reason. Quitting.")
+            choice = 'q'
         return choice
 
 def mergeIntoCurrent(repoName,branchName):
@@ -30,7 +35,7 @@ def mergeIntoCurrent(repoName,branchName):
                          "am: Auto Merge (default) \n"+
                          "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
                          "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
-                         "ay: Accept Theirs - resolves conflicts by using changes in current branch." ,"am")
+                         "ay: Accept Yours - resolves conflicts by using changes in current branch." ,"am")
 
 
     if (strategy == 'am'):
@@ -42,7 +47,7 @@ def mergeIntoCurrent(repoName,branchName):
         #
         # see http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file for details.
         print("merging forcing conflicts whenever both branches edited the same file...")
-        base = baseDir()
+        base = git.baseDir()
         if base == "":
             return False
         attributes = os.path.join(base,".gitattributes")
