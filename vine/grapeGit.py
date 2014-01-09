@@ -32,14 +32,14 @@ def branch(argstr=""):
 
 def branchUpToDateWith(branch,targetBranch):
     allUpToDateBranches = gitcmd("branch --contains %s" % targetBranch, "branch contains failed")
-    allUpToDateBranches = string.split(allUpToDateBranches,"\n")
+    allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
         # remove the * prefix from the active branch
-        cleanB = b
+        cleanB = b.strip()
         if b[0] is '*': 
             cleanB = b[1:].strip()
-        upToDate = cleanB == branch
+        upToDate = cleanB == branch.strip()
         if upToDate:
             break
     return upToDate
