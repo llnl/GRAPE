@@ -1,5 +1,6 @@
-import os, StringIO, subprocess, sys, tempfile
+import os, StringIO, subprocess, sys, tempfile, ConfigParser
 import grapeGit as git
+import grapeMenu
 
 def cascade(l, op):
     """Apply an operation to a chain of interdependent pairs in a list"""
@@ -125,8 +126,8 @@ def userInput(message, default=None):
 
 # writes a config file with default options
 def writeDefaultConfig(filename):
-    with open(filename,'w') as f:
-        f.write("[repo]\n")
-        f.write("name:unknown\n")
-        f.write("url:unknown\n")
+   config = ConfigParser.RawConfigParser()
+   grapeMenu.menu().setDefaultConfig(config)
+   with open(filename,'w') as f:
+      config.write(f)
 

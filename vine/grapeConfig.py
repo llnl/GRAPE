@@ -1,5 +1,6 @@
 import ConfigParser, os
 import utility
+import grapeMenu
 
 __configInstance = None
 
@@ -10,6 +11,8 @@ def grapeConfig():
     return __configInstance
 
 def read(additionalFileNames = []):
+    # initialize a ConfigParser with all defaults needed by the grapeMenu
+    grapeMenu.menu().setDefaultConfig(grapeConfig())
     globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
     defaultFiles = [globalconfigfile, ".grapeconfig", ".grapeuserconfig"]
     files = defaultFiles + additionalFileNames

@@ -25,3 +25,7 @@ class UpdateView(option.Option):
 
         return True
 
+    def setDefaultConfig(self,config):
+        config.add_section("view")
+        config.set("view","alldirs","src")
+        config.set("view","required","src")

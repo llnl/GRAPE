@@ -1,4 +1,4 @@
-import branches, clone, config, feature, gitflowHelp
+import bundle, branches, clone, config, feature, gitflowHelp
 import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
 import resolveConflicts, review, test
@@ -23,7 +23,7 @@ class _Menu(object):
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here
-        self._options = [branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+        self._options = [bundle.Bundle(), branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
                           gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
                           merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
                           minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), \
@@ -33,7 +33,7 @@ class _Menu(object):
 
     #Add/order the menu sections here
         self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
-                        'Merge', 'Gitflow Tasks', 'Perforce Integration', 'Other']
+                        'Merge', 'Gitflow Tasks', 'Patches', 'Perforce Integration', 'Other']
 
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption
@@ -69,3 +69,13 @@ class _Menu(object):
                 if currOption.section.strip().lower() != loweredSection:
                     continue
                 print("%s: %s" % (currOption.key.ljust(longestKey), currOption.description()))
+
+    # configures a ConfigParser object with all default values and sections needed by our Option objects
+    def setDefaultConfig(self,config):
+      config.add_section("repo")
+      config.set("repo","name","repo_name_not.yet.configured")
+      config.set("repo","url","https://not.yet.configured/scm/project/unknown.git")
+      config.set("repo","httpsbase","https://not.yet.configured")
+      config.set("repo","sshbase","ssh://git@not.yet.configured")
+      for currOption in self._options:
+         currOption.setDefaultConfig(config)

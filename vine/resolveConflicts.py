@@ -16,4 +16,5 @@ class ResolveConflicts(option.Option):
         p.wait()
         # print out git status, which contains instructions to complete a merge
         git.status()
-        return Tru
+        return True
+

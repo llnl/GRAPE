@@ -11,8 +11,8 @@ class MergeDevelop(option.Option):
 
     def execute(self):
         print("Pulling changes from origin/develop into your repo...")
-        if not merge.mergeIntoCurrent("origin", "develop"):
-            return False
-        if not merge.mergeIntoCurrent(".", "develop"):
+#       if not merge.mergeIntoCurrent("origin", "develop"):
+#           return False
+        if not merge.mergeIntoCurrent(".", "origin/develop"):
             return False
         return True
