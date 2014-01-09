@@ -78,6 +78,9 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
 
+def grapeDir(): 
+    return os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
+
 def GetCurrentBranch():
     process = executeSubProcess("git rev-parse --abbrev-ref HEAD", os.getcwd(), subprocess.PIPE )
     if process.returncode != 0:

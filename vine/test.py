@@ -1,5 +1,6 @@
 import os, sys
 import option
+import utility
 
 class Test(option.Option):
     def __init__(self):
@@ -10,8 +11,10 @@ class Test(option.Option):
         return "Test Grape."
 
     def execute(self):
-        if not "test" in sys.path:
-            sys.path.append("test")
+        testDir = os.path.join(utility.grapeDir(),"test")
+        if not testDir in sys.path:
+            print "appending %s to path" % testDir
+            sys.path.append(testDir)
         import testGrape
 
         good = testGrape.main()

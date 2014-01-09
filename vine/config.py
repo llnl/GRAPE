@@ -17,31 +17,40 @@ class Config(option.Option):
             return False
         dotGit = os.path.join(base,".git")
 
-        print("optimizing git performance...")
+        print("optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
         #have git automatically do some garbage collection / optimizatoin
+        print("setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
         #prevents false conflict detection due to differences in filesystem
         # time stamps
+        print("Optimizing cross platform portability...")
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZStash)
+        print("Enabling 12 hr caching of https credentials...")
         git.config("credential.helper","cache --timeout=43200")
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
-        git.config("merge.verify.name","merge and verify driver")
-        git.config("merge.verify.driver","./scripts/git/merge-and-verify-driver %A %O %B")
-
+        mergeVerifyPath = os.path.join(__file__,"..","merge-and-verify-driver")
+        if os.path.exists(mergeVerifyPath): 
+           print("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
+           git.config("merge.verify.name","merge and verify driver")
+           git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
+        else:
+           print("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
         print("setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
-                 #enable sparse checkouts, something GRAPE needs for custom views
+        
+        #enable sparse checkouts, something GRAPE needs for custom views
+        print("Enabling sparse checkouts...")
         git.config("core.sparseCheckout","true")
 
         # perform a sparse checkout if asked of us
@@ -73,8 +82,12 @@ class Config(option.Option):
         # this relies on p4diff being defined as a custom bash script, with the following one-liner:
         # [ $# -eq 7 ] && p4merge "$2" "$5"
         if (useP4Diff):
-            git.config("diff.external","./scripts/git/p4diff")
-            print("configured repo to use p4merge for diff calls")
+            p4diffScript = os.path.join(__file__,"..","p4diff")
+            if os.path.exists(p4diffScript): 
+               git.config("diff.external",p4diffScript)
+               print("configured repo to use p4merge for diff calls - p4merge must be in your path")
+            else: 
+               print("Could not find p4diff script at %s" % p4diffScript)
 
         useGitP4 = utility.userInput("Would you like to use git-p4 to manage a perforce-git interface? [y/n]","n")
         if (useGitP4 ):
@@ -82,7 +95,7 @@ class Config(option.Option):
             # create p4 references to enable imports from p4
             p4remotes = os.path.join(dotGit,"refs","remotes","p4","")
             utility.ensure_dir(p4remotes)
-            commit = utility.userInput("Please enter a descriptor of the current git commit that mirrors the p4 repo","master")
+            commit = utility.userInput("Please enter a descriptor (e.g. SHA, branch if tip, tag name) of the current git commit that mirrors the p4 repo","master")
             sha = utility.GetSHA(commit)
             with open(os.path.join(p4remotes,"HEAD"),'w') as f:
                 f.write(sha)
