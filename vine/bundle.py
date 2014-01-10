@@ -56,7 +56,6 @@ class Unbundle(option.Option):
         self._section = "Patches"
 
     def description(self):
-       name = grapeConfig.grapeConfig().get("patch","tagnames") 
        return "Unbundle the given bundle into this repo, update all updated branches" 
 
     def execute(self,args = None):
