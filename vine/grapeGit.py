@@ -54,7 +54,7 @@ def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
 def config(argstr, arg2=""): 
-    return gitcmd("config %s %s" % (argstr,arg2), "Config failed")
+    return gitcmd('config %s "%s"' % (argstr,arg2), "Config failed")
 
 def currentBranch(): 
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")

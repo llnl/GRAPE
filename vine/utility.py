@@ -1,6 +1,7 @@
 import os, StringIO, subprocess, sys, tempfile, ConfigParser
 import grapeGit as git
 import grapeMenu
+import grapeConfig
 
 def cascade(l, op):
     """Apply an operation to a chain of interdependent pairs in a list"""
@@ -25,16 +26,20 @@ def createBranch(branchPoint, prefix):
 
 def defineView(sparseFile):
     include = {}
-    include["src"] = True
-    include["scripts"] = True
-    alldirs = config.get("view","alldirs")
+    requiredDirs = grapeConfig.grapeConfig().get("view","required")
+    reqdirs = requiredDirs.split(" ")
+    for r in reqdirs:
+       include[r] = True
+    alldirs = grapeConfig.grapeConfig().get("view","alldirs")
     directories = alldirs.split(" ")
-
+    print directories
     accept = userInput("Do you want everything? [y/n]","y")
     text = []
     while not accept:
         accept = userInput("Do you only want the required view? [y/n]","y")
         for d in directories:
+            if d in reqdirs:
+               continue
             use = False if accept else userInput("Do you want %s? [y/n]" % d,"n")
             if (use):
                 include[d] = True
@@ -116,7 +121,7 @@ def userInput(message, default=None):
     else:
         value = raw_input("(def: %s) ==> " % (default)).strip()
         if value == "":
-            return default
+            value = default
         if default.lower() == "y" or default.lower() == "n":
             if value.lower()[0] == "y":
                 return True

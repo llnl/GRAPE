@@ -1,5 +1,6 @@
 import option, utility
-
+import grapeGit as git
+import os
 # Configure current repo
 class Config(option.Option):
     """Configures the repo to be optimized for LC and GRAPE"""
@@ -12,7 +13,7 @@ class Config(option.Option):
         return "Initialize a repo you've already cloned without using GRAPE"
 
     def execute(self):
-        base = utility.gitDir()
+        base = git.baseDir()
         if base == "":
             return False
         dotGit = os.path.join(base,".git")
@@ -33,11 +34,12 @@ class Config(option.Option):
 
         # stores login info for 12 hrs (max allowed by RZStash)
         print("Enabling 12 hr caching of https credentials...")
-        git.config("credential.helper","cache --timeout=43200")
+        git.config("--global credential.helper","cache --timeout=43200")
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
-        mergeVerifyPath = os.path.join(__file__,"..","merge-and-verify-driver")
+        mergeVerifyPath = os.path.join(os.path.dirname(__file__),"..","merge-and-verify-driver")
+        
         if os.path.exists(mergeVerifyPath): 
            print("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
            git.config("merge.verify.name","merge and verify driver")
@@ -82,7 +84,7 @@ class Config(option.Option):
         # this relies on p4diff being defined as a custom bash script, with the following one-liner:
         # [ $# -eq 7 ] && p4merge "$2" "$5"
         if (useP4Diff):
-            p4diffScript = os.path.join(__file__,"..","p4diff")
+            p4diffScript = os.path.join(__file__,"..","..","p4diff")
             if os.path.exists(p4diffScript): 
                git.config("diff.external",p4diffScript)
                print("configured repo to use p4merge for diff calls - p4merge must be in your path")

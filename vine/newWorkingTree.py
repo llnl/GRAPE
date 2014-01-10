@@ -1,5 +1,7 @@
+import os
+import subprocess
 import option, utility
-
+import grapeGit as git
 # Create a custom sparse checkout view in a new working tree
 class NewWorkingTree(option.Option):
     def __init__(self):
@@ -13,7 +15,7 @@ class NewWorkingTree(option.Option):
 
         clonePath = ""
         try:
-            clonePath = utility.gitDir()
+            clonePath = git.baseDir()
             if clonePath == "":
                 return False
         except:
