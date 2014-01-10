@@ -1,6 +1,7 @@
 import option
 import grapeGit as git
-import grapeConfig
+import grapeConfig, config
+import ConfigParser
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
@@ -9,29 +10,65 @@ class Bundle(option.Option):
         self._section = "Patches"
 
     def description(self):
-      name = grapeConfig.grapeConfig().get("patch","tagnames") 
-      return "Create a bundle of the current branch since the '%s' tag" % name
+      name = grapeConfig.grapeConfig().get("patch","tagprefix") 
+      return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
     def execute(self):
       config = grapeConfig.grapeConfig()
-      tagnames = config.get("patch","tagnames")
+      tagprefix = config.get("patch","tagprefix")
       branches = config.get("patch","branches")
       reponame = config.get("repo","name")
       describePattern = config.get("patch","describePattern")
-      taglist = tagnames.split(" ")
+            
       branchlist = branches.split(" ")
       revlists = ""
-      for pair in zip(taglist,branchlist):
-         revlists = revlists + " %s..%s"%(pair[0],pair[1])
-      previousLocation = git.describe("--match %s %s" % (describePattern,name))
-      currentLocation = git.describe("--match %s HEAD" % describePattern)
-      git.bundle("create %s-%s-from%s-to%s.bundle %s..HEAD" % (reponame,currentBranch,previousLocation))
+      previousLocations = []
+      currentLocations = []
+      changedBranches = []
+      for branch in branchlist:
+          tagname = "%s/%s" % (tagprefix,branch)
+          previousLocation = git.describe("--match %s %s" % (describePattern,tagname))
+          currentLocation = git.describe("--match %s %s" % (describePattern,branch))
+          revlists = revlists + " %s..%s"%(tagname,branch)
+          if (previousLocation.strip() != currentLocation.strip()):
+              previousLocations.append(previousLocation)
+              currentLocations.append(currentLocation)
+              changedBranches.append(branch)
+      rangeString = ""
+      for b in zip(changedBranches,previousLocations,currentLocations):
+          rangeString = rangeString + "%s-%s-%s." % (b[0],b[1],b[2]) 
+      bundlename = "%s.%sbundle" % (reponame,rangeString)
+      git.bundle("create %s %s --tags --branches" % (bundlename,revlists))
       return True
 
     def setDefaultConfig(self,config):
-      config.add_section('patch')
-      config.set('patch','tagnames','patched')
+      try: 
+          config.add_section('patch')
+      except ConfigParser.DuplicateSectionError:
+          pass
+      config.set('patch','tagprefix','patched')
       config.set('patch','describePattern','v*')
       config.set('patch','branches','master')
+
+class Unbundle(option.Option): 
+    def __init__(self):
+        self._key = "unbundle"
+        self._section = "Patches"
+
+    def description(self):
+       name = grapeConfig.grapeConfig().get("patch","tagnames") 
+       return "Unbundle the given bundle into this repo, update all updated branches" 
+
+    def execute(self,args = None):
+        bundleName = args[0] if args else utility.getUserInput("Enter name of bundle to bundle")
+        fetchOutput = git.fetch("%s %s" % (bundleName,grapeConfig.grapeConfig().get('patch','branchMappings'))) 
+        
+
+    def setDefaultConfig(self,config): 
+        try: 
+            config.add_section('patch')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('patch','branchMappings','master:master')
 
 

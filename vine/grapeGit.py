@@ -44,6 +44,9 @@ def branchUpToDateWith(branch,targetBranch):
             break
     return upToDate
 
+def bundle(argstr): 
+    return  gitcmd("bundle %s" % argstr, "Bundle failed")
+
 def checkout(argstr): 
     return  gitcmd("checkout %s" % argstr, "Checkout failed")
 

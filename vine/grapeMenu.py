@@ -23,7 +23,8 @@ class _Menu(object):
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here
-        self._options = [bundle.Bundle(), branches.Branches(), clone.Clone(), config.Config(), feature.Feature(), \
+        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), clone.Clone(),
+                          config.Config(), feature.Feature(), \
                           gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
                           merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
                           minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), \
@@ -46,11 +47,14 @@ class _Menu(object):
             print("Unknown option '%s'" % choice)
             return None
 
-    def applyMenuChoice(self,choice):
+    def applyMenuChoice(self,choice,args = None):
         chosenOption = self.getOption(choice)
         if chosenOption is None:
             return False
-        return chosenOption.execute()
+        if (args): 
+           return chosenOption.execute(args)
+        else:
+           return chosenOption.execute()
 
     # Present the main menu
     def presentTextMenu(self):

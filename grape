@@ -138,8 +138,8 @@ def startup():
         # a menu option, and bypass the menu
         elif (len(sys.argv) == 2):
             myMenu.applyMenuChoice(sys.argv[1])
-        else:
-            print("Command line must contain zero or one arguments")
+        elif (len(sys.argv) > 2): 
+            myMenu.applyMenuChoice(sys.argv[1],sys.argv[2:])
     except KeyboardInterrupt:
         print("Operation interrupted by user...")
 
