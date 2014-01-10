@@ -59,6 +59,9 @@ def config(argstr, arg2=""):
 def currentBranch(): 
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
+def describe(argstr):
+    return gitcmd("describe %s" % argstr, "could not describe commit")
+
 def diff(argstr): 
     return gitcmd("diff %s" % argstr,"could not perform diff")
 
