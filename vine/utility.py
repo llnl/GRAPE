@@ -16,11 +16,11 @@ def cmerge(l):  # this should return 'success' or an error code
 
 def createBranch(branchPoint, prefix):
     branch = userInput("Enter new branch name")
-    user = GetUserName()
+    user = getUserName()
     fullBranch = prefix+"/"+user+"/"+branch
     proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
     if (proceed):
-        git.checkout("-b",fullBranch,branchPoint)
+        git.checkout("-b %s %s " % (fullBranch,branchPoint))
     else:
         print("Branch not created")
 

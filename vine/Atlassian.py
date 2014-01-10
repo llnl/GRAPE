@@ -48,7 +48,7 @@ class Atlassian:
 
                 else:
                     print("incorrect username / password...")
-                    self.userName = utility.GetUserName(self.userName)
+                    self.userName = utility.getUserName(self.userName)
                 keyring.set_password(service,self.userName,getpass.getpass("Enter password for %s: " % service))
                 self.stash = stashy.connect(service,self.userName,keyring.get_password(service,self.userName))
                 numAttempts += 1
