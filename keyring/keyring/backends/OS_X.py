@@ -3,10 +3,10 @@ import subprocess
 import re
 import binascii
 
-from keyring.backend import KeyringBackend
-from keyring.errors import PasswordSetError
-from keyring.errors import PasswordDeleteError
-from keyring.util import properties
+from keyring.keyring.backend import KeyringBackend
+from keyring.keyring.errors import PasswordSetError
+from keyring.keyring.errors import PasswordDeleteError
+from keyring.keyring.util import properties
 
 
 class SecurityCommand(unicode):

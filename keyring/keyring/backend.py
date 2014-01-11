@@ -7,10 +7,10 @@ from __future__ import absolute_import
 import abc
 import itertools
 
-from keyring import errors
-from keyring.util import properties
+from keyring.keyring import errors
+from keyring.keyring.util import properties
 
-import keyring.util
+from keyring.keyring import util
 
 class KeyringBackendMeta(abc.ABCMeta):
     """
@@ -102,7 +102,7 @@ class NullCrypter(Crypter):
     def decrypt(self, value):
         return value
 
-@keyring.util.once
+@util.once
 def get_all_keyring():
     """
     Return a list of all implemented keyrings that can be constructed without
@@ -112,7 +112,7 @@ def get_all_keyring():
     for mod_name in ('file', 'Gnome', 'Google', 'keyczar', 'kwallet', 'multi',
             'OS_X', 'pyfs', 'SecretService', 'Windows'):
         # use fromlist to cause the module to resolve under Demand Import
-        __import__('keyring.backends.'+mod_name, fromlist=('__name__',))
+        __import__('keyring.keyring.backends.'+mod_name, fromlist=('__name__',))
 
     def is_class_viable(keyring_cls):
         try:
@@ -123,5 +123,5 @@ def get_all_keyring():
 
     all_classes = KeyringBackend._classes
     viable_classes = itertools.ifilter(is_class_viable, all_classes)
-    return list(keyring.util.suppress_exceptions(viable_classes,
+    return list(util.suppress_exceptions(viable_classes,
         exceptions=TypeError))

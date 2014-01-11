@@ -8,8 +8,8 @@ try:
 except ImportError:
     pass
 
-from keyring.backend import Crypter
-from keyring import errors
+from keyring.keyring.backend import Crypter
+from keyring.keyring import errors
 
 def has_keyczar():
     with errors.ExceptionRaisedContext() as exc:

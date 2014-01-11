@@ -1,8 +1,8 @@
 import itertools
 
-from keyring.util import properties
-from keyring.backend import KeyringBackend
-from keyring import errors
+from keyring.keyring.util import properties
+from keyring.keyring.backend import KeyringBackend
+from keyring.keyring import errors
 
 class MultipartKeyringWrapper(KeyringBackend):
 

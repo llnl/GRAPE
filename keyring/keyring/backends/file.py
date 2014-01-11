@@ -9,11 +9,11 @@ import abc
 
 from ..py27compat import configparser
 
-import keyring.util.platform_
-from keyring.errors import PasswordDeleteError
-from keyring.backend import KeyringBackend
-from keyring.util import properties
-from keyring.util.escape import escape as escape_for_ini
+import keyring.keyring.util.platform_
+from keyring.keyring.errors import PasswordDeleteError
+from keyring.keyring.backend import KeyringBackend
+from keyring.keyring.util import properties
+from keyring.keyring.util.escape import escape as escape_for_ini
 
 class BaseKeyring(KeyringBackend):
     """

@@ -3,11 +3,11 @@ import base64
 
 from ..py27compat import configparser
 
-import keyring.util.platform_
-from keyring import errors
-from keyring.util.escape import escape as escape_for_ini
-from keyring.util import properties
-from keyring.backend import KeyringBackend, NullCrypter
+import keyring.keyring.util.platform_
+from keyring.keyring import errors
+from keyring.keyring.util.escape import escape as escape_for_ini
+from keyring.keyring.util import properties
+from keyring.keyring.backend import KeyringBackend, NullCrypter
 from . import keyczar
 
 try:

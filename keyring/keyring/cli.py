@@ -5,8 +5,8 @@ import getpass
 from optparse import OptionParser
 import sys
 
-import keyring
-import keyring.core
+import keyring.keyring
+import keyring.keyring.core
 
 
 class CommandLineTool(object):

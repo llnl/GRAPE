@@ -7,9 +7,9 @@ try:
 except ImportError:
     pass
 
-from keyring.backend import KeyringBackend
-from keyring.errors import PasswordSetError, PasswordDeleteError
-from keyring.util import properties
+from keyring.keyring.backend import KeyringBackend
+from keyring.keyring.errors import PasswordSetError, PasswordDeleteError
+from keyring.keyring.util import properties
 
 class Keyring(KeyringBackend):
     """Gnome Keyring"""

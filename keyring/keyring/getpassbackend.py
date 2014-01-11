@@ -2,7 +2,7 @@
 import os
 import getpass
 
-import keyring.core
+import keyring.keyring.core
 
 
 def get_password(prompt='Password: ', stream=None,

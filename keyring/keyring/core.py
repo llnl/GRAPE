@@ -9,9 +9,9 @@ import warnings
 
 from .py27compat import configparser
 
-from keyring import logger
-from keyring import backend
-from keyring.util import platform_ as platform
+from keyring.keyring import logger
+from keyring.keyring import backend
+from keyring.keyring.util import platform_ as platform
 
 
 

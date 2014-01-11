@@ -14,12 +14,12 @@ except ImportError:
     pass
 
 from . import keyczar
-from keyring import errors
-from keyring import credentials
-import keyring.py27compat
-from keyring.backend import KeyringBackend
-from keyring.util import properties
-from keyring.errors import ExceptionRaisedContext
+from keyring.keyring import errors
+from keyring.keyring import credentials
+from keyring.keyring  import py27compat
+from keyring.keyring.backend import KeyringBackend
+from keyring.keyring.util import properties
+from keyring.keyring.errors import ExceptionRaisedContext
 
 class EnvironCredential(credentials.EnvironCredential):
     """Retrieve credentials from specifically named environment variables
@@ -44,7 +44,7 @@ class DocsKeyring(KeyringBackend):
 
     def __init__(self, credential, source, crypter,
                  collection=None, client=None,
-                 can_create=True, input_getter=keyring.py27compat.input
+                 can_create=True, input_getter=py27compat.input
                 ):
         self.credential = credential
         self.crypter = crypter

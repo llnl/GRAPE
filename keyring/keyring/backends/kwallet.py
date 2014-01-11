@@ -1,9 +1,9 @@
 import os
 
-from keyring.backend import KeyringBackend
-from keyring.errors import PasswordDeleteError
-from keyring.errors import PasswordSetError, ExceptionRaisedContext
-from keyring.util import properties
+from keyring.keyring.backend import KeyringBackend
+from keyring.keyring.errors import PasswordDeleteError
+from keyring.keyring.errors import PasswordSetError, ExceptionRaisedContext
+from keyring.keyring.util import properties
 
 try:
     from PyKDE4.kdeui import KWallet
