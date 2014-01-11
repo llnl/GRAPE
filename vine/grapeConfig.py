@@ -1,6 +1,7 @@
 import ConfigParser, os
 import utility
 import grapeMenu
+import grapeGit as git
 
 __configInstance = None
 
@@ -14,8 +15,12 @@ def read(additionalFileNames = []):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
     grapeMenu.menu().setDefaultConfig(grapeConfig())
     globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
-    defaultFiles = [globalconfigfile, ".grapeconfig", ".grapeuserconfig"]
+    grapeConfigFile = os.path.join(git.baseDir(),".grapeconfig")
+    grapeUserConfigFile = os.path.join(git.baseDir(),".grapeuserconfig")
+    defaultFiles = [globalconfigfile, grapeConfigFile, grapeUserConfigFile]
     files = defaultFiles + additionalFileNames
     readFiles = grapeConfig().read(files)
     if len(readFiles) == 0:
         utility.writeDefaultConfig(globalconfigfile)
+
+

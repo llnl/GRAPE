@@ -31,7 +31,7 @@ def branch(argstr=""):
     return gitcmd("branch %s" % argstr, "Could not list branches")
 
 def branchUpToDateWith(branch,targetBranch):
-    allUpToDateBranches = gitcmd("branch --contains %s" % targetBranch, "branch contains failed")
+    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
@@ -104,6 +104,37 @@ def push(args):
 def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
 
+def safeForceBranchToOriginRef(branchToSync): 
+    # first, check to see that branch exists
+    branchExists = False
+    remoteRefExists = False
+    branches = branch("-a").split("\n")
+    remoteRef = "remotes/origin/%s" % branchToSync
+    for b in branches: 
+        b = b.replace('*','')
+        branchExists = branchExists or b.strip() == branchToSync.strip()
+        remoteRefExists = remoteRefExists or b.strip() == remoteRef.strip()
+        if (branchExists and remoteRefExists): 
+            continue
+
+    if (branchExists and not remoteRefExists): 
+        print("origin does not have branch %s" % branchToSync)
+        return False
+    if (branchExists and remoteRefExists):
+        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef,branchToSync)
+        localUpToDateWithRemote = branchUpToDateWith(branchToSync,remoteRef)
+        if remoteUpToDateWithLocal and not localUpToDateWithRemote: 
+            branch("-f %s %s" % (branchToSync, remoteRef))
+            return True
+        elif remoteUpToDateWithLocal and localUpToDateWithRemote: 
+            return True
+        else: 
+            return False
+    if (not branchExists and remoteRefExists):
+        print("local branch did not exist. Creating it now. ")
+        branch("%s %s" % (branchToSync, remoteRef))
+        return True
+    
 def shortSHA(): 
     return gitcmd("rev-parse --short HEAD", "rev-parse of HEAD failed!")
 
