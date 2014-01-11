@@ -27,8 +27,8 @@ class Bundle(option.Option):
       changedBranches = []
       for branch in branchlist:
           tagname = "%s/%s" % (tagprefix,branch)
-          previousLocation = git.describe("--match %s %s" % (describePattern,tagname))
-          currentLocation = git.describe("--match %s %s" % (describePattern,branch))
+          previousLocation = git.describe("--match '%s' %s" % (describePattern,tagname))
+          currentLocation = git.describe("--match '%s' %s" % (describePattern,branch))
           revlists = revlists + " %s..%s"%(tagname,branch)
           if (previousLocation.strip() != currentLocation.strip()):
               previousLocations.append(previousLocation)
