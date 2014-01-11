@@ -2,10 +2,10 @@
 
 import os, shutil, subprocess, sys
 from vine import grapeConfig, grapeMenu, utility
-import git
+from vine import grapeGit as git
 import StringIO
-import stashy
-import keyring
+import stashy.stashy as stashy
+import keyring.keyring as keyring
 import getpass
 import PyGitUp
 
