@@ -1,5 +1,5 @@
 from functools import wraps
-from decorator import decorator
+from decorator.src.decorator import decorator
 
 
 class NotFoundException(Exception):
