@@ -1,17 +1,20 @@
-
 [project]
 name=ALE
 
 [repo]
 name=grape
-url=https://rzlc.llnl.gov/stash/scm/ale/grape.git
+url=ssh://git@rz-stash.llnl.gov:7999/ale/grape.git
+httpsbase=https://rzlc.llnl.gov/stash/scm/ale/
+sshbase=ssh://git@rz-stash.llnl.gov:7999/ale/
 
 [view]
-alldirs: GitPython PyGitUp decorator-3.4.0 keyring-3.0.5 requests-1.1.0 sh-1.09 stashy-0.1 termcolor test vine
-required: test vine
+alldirs: *
+required: *
 
 [patch]
-tagprefix = bundled
+tagprefix = bundled 
 branches = develop master
 describePattern = v*
 branchMappings = develop:develop master:master
+
+
