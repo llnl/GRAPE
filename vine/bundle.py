@@ -47,7 +47,8 @@ class Bundle(option.Option):
         for b in zip(changedBranches,previousLocations,currentLocations):
             rangeString = rangeString + "%s-%s-%s." % (b[0],b[1],b[2]) 
         bundlename = "%s.%sbundle" % (reponame,rangeString)
-        git.bundle("create %s %s --tags --branches" % (bundlename,revlists))
+        if len(previousLocations) > 0: 
+            git.bundle("create %s %s --tags --branches" % (bundlename,revlists))
         return True
 
     def setDefaultConfig(self,config):
