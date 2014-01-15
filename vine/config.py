@@ -84,7 +84,7 @@ class Config(option.Option):
         # this relies on p4diff being defined as a custom bash script, with the following one-liner:
         # [ $# -eq 7 ] && p4merge "$2" "$5"
         if (useP4Diff):
-            p4diffScript = os.path.join(__file__,"..","..","p4diff")
+            p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
             if os.path.exists(p4diffScript): 
                git.config("diff.external",p4diffScript)
                print("configured repo to use p4merge for diff calls - p4merge must be in your path")
