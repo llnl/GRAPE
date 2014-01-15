@@ -14,9 +14,7 @@ def gitcmd(cmd,errmsg):
     process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE)
     if process.returncode != 0:
         raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0],_cmd)
-    output = process.communicate()[0]
-    print output
-    return output.strip()
+    return process.output.strip()
 
 def add(filedescription):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)

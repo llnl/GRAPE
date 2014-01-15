@@ -16,7 +16,8 @@ class Bundle(option.Option):
 
     def execute(self):
         os.chdir(git.baseDir())
-        git.gitcmd("submodule foreach 'grape bundle'","recursive submodule bundle failed") 
+        grapecmd = os.path.join(os.path.dirname(__file__),"..","grape")
+        git.gitcmd("submodule foreach '%s bundle'" % grapecmd,"recursive submodule bundle failed") 
         git.fetch()
         git.fetch("--tags")
         config = grapeConfig.grapeConfig()

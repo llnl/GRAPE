@@ -71,7 +71,7 @@ def ensure_dir(f):
         print("making "+d)
         os.makedirs(d)
 
-def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHandle=1, verbose=True):
+def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHandle=subprocess.PIPE, verbose=True):
     if verbose:
         print("Executing: " + command + ": Working Directory: " + workingDirectory)
     #***************************************************************************************************************
@@ -79,7 +79,15 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
     process = subprocess.Popen(command, stdout=outFileHandle, stderr=outFileHandle, shell=True, cwd=workingDirectory)
+    output = ""
+    for  line in iter(process.stdout.readline, ''): 
+        line = line.replace('\r', '').replace('\n', '')
+        print line
+        sys.stdout.flush()
+        line = line + "\n"
+        output = output+line
     process.wait()
+    process.output = output
     if process.returncode != 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
@@ -92,8 +100,7 @@ def GetCurrentBranch():
     if process.returncode != 0:
         print("Error: Could not determine current  branch.")
         return False
-    output = process.communicate()[0]
-    return output.strip()
+    return process.output.strip()
 
 
 def GetSHA(desc):
