@@ -21,6 +21,7 @@ def createBranch(branchPoint, prefix):
     proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
     if (proceed):
         git.checkout("-b %s %s " % (fullBranch,branchPoint))
+        git.push("-u origin %s" % fullBranch)
     else:
         print("Branch not created")
 
