@@ -24,5 +24,5 @@ class DeleteBranch(option.Option):
             branch = utility.userInput("Enter name of branch to delete")
                                
         git.branch("-d %s" % branch)
-        git.push("--delete %s" % branch)
+        git.push("--delete origin %s" % branch)
         return True
