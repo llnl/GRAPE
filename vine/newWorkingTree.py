@@ -2,6 +2,7 @@ import os
 import subprocess
 import option, utility
 import grapeGit as git
+import grapeMenu
 # Create a custom sparse checkout view in a new working tree
 class NewWorkingTree(option.Option):
     def __init__(self):
@@ -31,10 +32,10 @@ class NewWorkingTree(option.Option):
         newRepo = os.path.join(newTreePath,newTree)
         #TODO: When grape is installed to PUBLIC, the first argument here should be the
         # publically available git-new-workdir, instead of the version in the local repo.
-        p = subprocess.Popen(os.path.join(clonePath,"scripts","git","git-new-workdir")
+        p = subprocess.Popen(os.path.join(os.path.dirname(__file__),"..","git-new-workdir")
                              + " "+clonePath+" "+newRepo,shell = True)
         p.wait()
 
         os.chdir(newRepo)
-
-        return options['uv'].execute()
+        menu = grapeMenu.menu()
+        return menu.getOption('uv').execute()

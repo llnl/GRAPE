@@ -21,7 +21,7 @@ class UpdateView(option.Option):
             utility.defineView(f)
         checkout = utility.userInput("check out updated view? [y/n]","y")
         if (checkout):
-            git.gitcmd("read-tree -mu HEAD")
+            git.gitcmd("read-tree -mu HEAD","sparse checkout returned with non-zero exit code")
         else:
             print("call 'git read-tree -mu HEAD' when you are ready to update your working tree")
 
