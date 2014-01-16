@@ -3,7 +3,7 @@ import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
 import resolveConflicts, review, test
 import updateLocal, updateView, utility, walkthrough
-
+import deleteBranch
 #######################################################################
 #The Menu class - encapsulates menu options and sections.
 # Menu Options are the objects that perform git-related or stash-related tasks.
@@ -27,7 +27,8 @@ class _Menu(object):
                           config.Config(), feature.Feature(), \
                           gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
                           merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
-                          minorRelease.MinorRelease(), newWorkingTree.NewWorkingTree(), p4Export.P4Export(), \
+                          minorRelease.MinorRelease(), deleteBranch.DeleteBranch(),newWorkingTree.NewWorkingTree(),
+                          p4Export.P4Export(), \
                           p4Import.P4Import(), resolveConflicts.ResolveConflicts(), \
                           review.Review(), test.Test(), updateLocal.UpdateLocal(), \
                           updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]

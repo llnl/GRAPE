@@ -7,14 +7,14 @@ if not grapedir in sys.path:
     sys.path.append( grapedir )
 import grapeGit as git
 
-class deleteBranch(option.Option):
+class DeleteBranch(option.Option):
     def __init__(self):
         self._key = "db"
         self._section = "Gitflow Tasks"
 
     """ Deletes a branch both here and on the remote. """
     def description(self):
-        return "Delete a branch both here and on the remote"
+        return "Delete a branch on both your local repo and on origin"
 
     def execute(self,args=None):
         branch = None
