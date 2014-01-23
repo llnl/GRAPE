@@ -95,7 +95,7 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     return process
 
 def grapeDir(): 
-    return os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
+    return os.path.join(os.path.realpath(os.path.dirname(__file__)),"..")
 
 def GetCurrentBranch():
     process = executeSubProcess("git rev-parse --abbrev-ref HEAD", os.getcwd(), subprocess.PIPE )
