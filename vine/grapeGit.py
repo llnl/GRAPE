@@ -55,7 +55,7 @@ def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
 def config(argstr, arg2=None): 
-    if arg2 not None:
+    if not arg2 == None:
         return gitcmd('config %s "%s"' % (argstr,arg2), "Config failed")
     else:
         return gitcmd('config %s ' % argstr, "Config failed")
