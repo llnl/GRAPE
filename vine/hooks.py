@@ -24,6 +24,7 @@ class InstallHooks(option.Option):
                 f.write("#!/bin/sh\n")
                 grapeCmd = utility.getGrapeExec()
                 f.write("%s %s \"$@\" \n" % (grapeCmd,h+"-hook"))
+            os.chmod(h,0755)
         return True
 
 #option that is called by the grape installed git post-commit hook
