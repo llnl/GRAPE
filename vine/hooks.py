@@ -38,10 +38,41 @@ class PostCommit(option.Option):
 
     def execute(self,args = None):
         cfg = grapeConfig.grapeConfig()
+        
+        #applies the autoPush hook
         autoPush = cfg.get('post-commit','autopush')
         if autoPush.lower().strip() != "false": 
-            git.push("origin HEAD")
-        return True
+            git.push("-u origin HEAD")
+            autoPush = True
+        else:
+            autoPush = False
+        #applies the cascade hook
+        cascades = cfg.get('post-commit','cascade').split(' ')
+        if cascades[0].strip().lower() != "none": 
+            cascadeDict = {}
+            for c in cascades:
+                clist = c.split(':')
+                cascadeDict[clist[0]] = clist[1]
+            currentBranch = git.currentBranch()
+            while currentBranch in cascadeDict:
+                source = currentBranch
+                target = cascadeDict[source]
+                fastForward = False
+                print("GRAPE: Cascading commit from %s to %s..." % (source,target))
+                if git.branchUpToDateWith(source,target): 
+                    fastForward = True
+                    print("GRAPE: should be a fastforward cascade...")
+                git.checkout("%s" % target)
+                git.merge("%s -m 'Cascade from %s to %s'" % (source,source,target))
+                # we need to kick off the next one if it was a fast forward merge. 
+                # otherwise, another post-commit hook should be called from the merge commit. 
+                if fastForward:
+                    if autoPush: 
+                        git.push("origin %s" % target)
+                    currentBranch = target
+                else:
+                    currentBranch = None
+        exit(0)
 
     def setDefaultConfig(self,config):
         try: 
@@ -49,6 +80,7 @@ class PostCommit(option.Option):
         except ConfigParser.DuplicateSectionError:
             pass
         config.set('post-commit','autopush','False')
+        config.set('post-commit','cascade','None')
 
 #option that is called by the grape installed git pre-commit hook
 class PreCommit(option.Option): 
@@ -60,7 +92,7 @@ class PreCommit(option.Option):
         return "Runs the grape pre-commit hook."
 
     def execute(self,args = None):
-        return True
+        exit(0)
 
     def setDefaultConfig(self,config):
         try: 
@@ -79,7 +111,7 @@ class PrePush(option.Option):
         return "Runs the grape pre-push hook."
 
     def execute(self,args=None):
-        return True
+        exit(0)
 
     def setDefaultConfig(self,config):
         try: 
@@ -98,7 +130,7 @@ class PreRebase(option.Option):
         return "Runs the grape pre-rebase hook."
 
     def execute(self,args= None):
-        return True
+        exit(0)
 
     def setDefaultConfig(self,config):
         try: 

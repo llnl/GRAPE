@@ -19,3 +19,4 @@ branchMappings = develop:develop master:master
 
 [post-commit]
 autopush = True
+cascade = master:develop 
