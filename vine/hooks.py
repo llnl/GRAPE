@@ -36,7 +36,7 @@ class PostCommit(option.Option):
     def description(self): 
         return "Runs the grape post-commit hook."
 
-    def execute(self):
+    def execute(self,args = None):
         cfg = grapeConfig.grapeConfig()
         autoPush = cfg.get('post-commit','autopush')
         if autoPush.lower().strip() != "false": 
@@ -59,7 +59,7 @@ class PreCommit(option.Option):
     def description(self): 
         return "Runs the grape pre-commit hook."
 
-    def execute(self):
+    def execute(self,args = None):
         return True
 
     def setDefaultConfig(self,config):
@@ -78,7 +78,7 @@ class PrePush(option.Option):
     def description(self): 
         return "Runs the grape pre-push hook."
 
-    def execute(self):
+    def execute(self,args=None):
         return True
 
     def setDefaultConfig(self,config):
@@ -97,7 +97,7 @@ class PreRebase(option.Option):
     def description(self): 
         return "Runs the grape pre-rebase hook."
 
-    def execute(self):
+    def execute(self,args= None):
         return True
 
     def setDefaultConfig(self,config):
