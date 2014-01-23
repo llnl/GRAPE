@@ -3,7 +3,7 @@ import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
 import resolveConflicts, review, test
 import updateLocal, updateView, utility, walkthrough
-import deleteBranch
+import deleteBranch, hooks
 #######################################################################
 #The Menu class - encapsulates menu options and sections.
 # Menu Options are the objects that perform git-related or stash-related tasks.
@@ -31,11 +31,13 @@ class _Menu(object):
                           p4Export.P4Export(), \
                           p4Import.P4Import(), resolveConflicts.ResolveConflicts(), \
                           review.Review(), test.Test(), updateLocal.UpdateLocal(), \
+                          hooks.InstallHooks(),hooks.PostCommit(), hooks.PrePush(), hooks.PreRebase(), 
+                          hooks.PreCommit()\
                           updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
 
     #Add/order the menu sections here
         self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
-                        'Merge', 'Gitflow Tasks', 'Patches', 'Perforce Integration', 'Other']
+                        'Merge', 'Gitflow Tasks', 'Hooks','Patches', 'Perforce Integration', 'Other']
 
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption

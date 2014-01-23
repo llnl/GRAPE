@@ -144,3 +144,7 @@ def writeDefaultConfig(filename):
    with open(filename,'w') as f:
       config.write(f)
 
+# returns the absolute path to the grape executable this file is bundled with
+def getGrapeExec(): 
+    return os.path.join(os.path.dirname(__file__),"..","grape")
+

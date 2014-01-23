@@ -17,4 +17,5 @@ branches = develop master
 describePattern = v*
 branchMappings = develop:develop master:master
 
-
+[post-commit]
+autopush = True
