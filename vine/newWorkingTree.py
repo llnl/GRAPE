@@ -27,7 +27,7 @@ class NewWorkingTree(option.Option):
         newTree = utility.userInput("Enter name of new working tree")
 
         newTreePath = utility.userInput("Enter desired location of new working tree (must exist)",
-                                os.path.abspath(os.path.join(clonePath,"../")))
+                                os.path.realpath(os.path.join(clonePath,"../")))
 
         newRepo = os.path.join(newTreePath,newTree)
         #TODO: When grape is installed to PUBLIC, the first argument here should be the

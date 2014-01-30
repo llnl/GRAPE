@@ -1,7 +1,7 @@
 import os, sys
 import grapeConfig
 import option, utility
-filedir = os.path.dirname(os.path.abspath(__file__))
+filedir = os.path.dirname(os.path.realpath(__file__))
 grapedir = os.path.join(filedir,"..")
 if not grapedir in sys.path:
     sys.path.append( grapedir )

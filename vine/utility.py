@@ -72,8 +72,8 @@ def ensure_dir(f):
         print("making "+d)
         os.makedirs(d)
 
-def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHandle=subprocess.PIPE, verbose=True):
-    if verbose:
+def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHandle=subprocess.PIPE, verbose=2):
+    if verbose > 1:
         print("Executing: " + command + ": Working Directory: " + workingDirectory)
     #***************************************************************************************************************
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
@@ -83,8 +83,9 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     output = ""
     for  line in iter(process.stdout.readline, ''): 
         line = line.replace('\r', '').replace('\n', '')
-        print line
-        sys.stdout.flush()
+        if verbose > 0: 
+            print line
+            sys.stdout.flush()
         line = line + "\n"
         output = output+line
     process.wait()
@@ -94,7 +95,7 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     return process
 
 def grapeDir(): 
-    return os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
+    return os.path.join(os.path.realpath(os.path.dirname(__file__)),"..")
 
 def GetCurrentBranch():
     output = git.gitcmd("rev-parse --abbrev-ref HEAD", "Error: Could not determine current  branch.")
@@ -146,4 +147,8 @@ def writeDefaultConfig(filename):
    grapeMenu.menu().setDefaultConfig(config)
    with open(filename,'w') as f:
       config.write(f)
+
+# returns the absolute path to the grape executable this file is bundled with
+def getGrapeExec(): 
+    return os.path.join(os.path.dirname(__file__),"..","grape")
 

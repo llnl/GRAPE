@@ -9,24 +9,26 @@ class GrapeGitError(Exception):
         self.gitCommand = gitCommand
         print "When executing %s,Error %d raised with msg: %s \n %s" % (self.gitCommand,self.code, self.msg,self.gitOutput)
 
-def gitcmd(cmd,errmsg):
+def gitcmd(cmd,errmsg,quiet=False):
     if os.name == "nt" :
        _cmd = "\"C:\\Program Files (x86)\\Git\\bin\\git.exe\" %s" % cmd
     else :
        _cmd = "git %s" % cmd
-    process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE)
+    if quiet:
+        verbose = 0
+    else:
+        verbose = 2
+    process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE,verbose=verbose)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0], _cmd)
+        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.output,_cmd)
     return process.output.strip()
 
 def add(filedescription):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
-def baseDir(): 
-    return gitcmd("rev-parse --show-toplevel", "Not in a git repo")
-
 def baseDir():
-    return gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
+    beQuiet = True
+    return gitcmd("rev-parse --show-toplevel", "Could not locate base directory",beQuiet)
 
 def branch(argstr=""):
     return gitcmd("branch %s" % argstr, "Could not list branches")
@@ -57,8 +59,11 @@ def clone(argstr):
 def commit(argstr): 
     return gitcmd("commit %s" % argstr, "Commit failed")
 
-def config(argstr, arg2=""): 
-    return gitcmd('config %s "%s"' % (argstr,arg2), "Config failed")
+def config(argstr, arg2=None): 
+    if not arg2 == None:
+        return gitcmd('config %s "%s"' % (argstr,arg2), "Config failed")
+    else:
+        return gitcmd('config %s ' % argstr, "Config failed")
 
 def currentBranch(): 
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
