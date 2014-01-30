@@ -5,3 +5,4 @@ build/
 *.wpr
 *.wpu
 \#*\#
+*.suo

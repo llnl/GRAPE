@@ -10,10 +10,13 @@ class GrapeGitError(Exception):
         print "When executing %s,Error %d raised with msg: %s \n %s" % (self.gitCommand,self.code, self.msg,self.gitOutput)
 
 def gitcmd(cmd,errmsg):
-    _cmd = "git %s" % cmd
+    if os.name == "nt" :
+       _cmd = "\"C:\\Program Files (x86)\\Git\\bin\\git.exe\" %s" % cmd
+    else :
+       _cmd = "git %s" % cmd
     process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0],_cmd)
+        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.communicate()[0], _cmd)
     return process.output.strip()
 
 def add(filedescription):
@@ -67,7 +70,12 @@ def diff(argstr):
     return gitcmd("diff %s" % argstr,"could not perform diff")
 
 def dir():
-    return gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")
+    temp = gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")
+    if os.name == "nt" :
+       newPath = temp.replace("/","\\")
+    else :
+       newPath = temp
+    return newPath
 
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")

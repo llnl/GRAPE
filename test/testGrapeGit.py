@@ -33,21 +33,40 @@ class TestGrapeGit(testGrape.TestGrape):
         try:
             os.mkdir(self.repo)
             os.chdir(self.repo)
-            utility.executeSubProcess("git init",os.getcwd(), subprocess.PIPE)
+            cwd = os.getcwd()
+            git.gitcmd("init", "Setup Failed")
             fname = os.path.join(self.repo,"testRepoFile")
             writeFile1(fname)
-            utility.executeSubProcess("git add %s" % fname,os.getcwd(), subprocess.PIPE)
-            utility.executeSubProcess("git commit -m 'initial commit'",os.getcwd(), subprocess.PIPE)
+            git.gitcmd("add %s" % fname,"Add Failed")
+            git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
             os.chdir(os.path.join(self.repo,".."))
         except:
             pass
 
     def tearDown(self):
+        def onError(func, path, exc_info):
+             """
+             Error handler for ``shutil.rmtree``.
+
+             If the error is due to an access error (read only file)
+             it attempts to add write permission and then retries.
+
+             If the error is for another reason it re-raises the error.
+
+             Usage : ``shutil.rmtree(path, onerror=onerror)``
+             """
+             import stat
+             if not os.access(path, os.W_OK):
+                 # Is the error an access error ?
+                 os.chmod(path, stat.S_IWUSR)
+                 func(path)
+             else:
+                 raise 
         os.chdir(os.path.join(self.repo,".."))
-        shutil.rmtree(self.repo)
+        shutil.rmtree(self.repo, False, onError)
         for repo in self.repos:
             try:
-                shutil.rmtree(repo)
+                shutil.rmtree(repo, False, onError)
             except:
                 pass
 
@@ -74,7 +93,7 @@ class TestGrapeGit(testGrape.TestGrape):
           writeFile1(f1name)
           commitStr = "testCommit: added f1"
           git.add("f1")
-          git.commit("f1 -m '%s'" % commitStr)
+          git.commit("f1 -m \"%s\"" % commitStr)
           log = git.log() 
           self.assertTrue(commitStr in log)
        except git.GrapeGitError as error:
@@ -86,9 +105,9 @@ class TestGrapeGit(testGrape.TestGrape):
            os.chdir(self.repo)
            git.checkout("-b testCheckout/tmpBranch")
            self.assertTrue(git.currentBranch() == "testCheckout/tmpBranch","checkout of new branch failed")
-	   git.checkout("master")
-	   self.assertTrue(git.currentBranch() == "master","switching to master did not work")
-	   
+           git.checkout("master")
+           self.assertTrue(git.currentBranch() == "master","switching to master did not work")
+ 
         except git.GrapeGitError as error:
            self.handleGitError(error)
 
@@ -113,18 +132,18 @@ class TestGrapeGit(testGrape.TestGrape):
           writeFile1(f1name)
           git.add("f1")
           commitStr = "testMerge: added f1"
-          git.commit(" -m '%s'" % commitStr)
+          git.commit(" -m \"%s\"" % commitStr)
           # edit it on branch testMerge/tmp1
           git.checkout("-b testMerge/tmp1")
           writeFile2(f1name)
-          git.commit("-a -m 'edited f1'")
+          git.commit("-a -m \"edited f1\"")
           # perform same editon master
           git.checkout("master")
           writeFile2(f1name)
-          git.commit("-a -m 'edited f1 on master'")
+          git.commit("-a -m \"edited f1 on master\"")
           # switch back to tmp, merge changes from master down
           git.checkout("testMerge/tmp1")
-	  output = git.merge("master -m 'merged identical change from master'")
+          output = git.merge("master -m \"merged identical change from master\"")
           log = git.log()
           self.assertTrue("identical change from master" in log) 
         except git.GrapeGitError as error:
@@ -136,12 +155,12 @@ class TestGrapeGit(testGrape.TestGrape):
           f2name = os.path.join(self.repo,"f2")
           writeFile3(f2name)
           git.add(f2name)
-          git.commit("-m 'added f2'")
+          git.commit("-m \"added f2\"")
           git.checkout("testMerge/tmp1")
           writeFile2(f2name)
           git.add(f2name)
-          git.commit("-m 'added f2 in tmp branch'")
-          git.merge("master -m 'merged master branch into testmerge/tmp1'")
+          git.commit("-m \"added f2 in tmp branch\"")
+          git.merge("master -m \"merged master branch into testmerge/tmp1\"")
           self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
         except git.GrapeGitError as error:
           status = git.status()
@@ -156,14 +175,14 @@ class TestGrapeGit(testGrape.TestGrape):
            writeFile1(f1name)
            git.add("f1")
            commitStr = "testMergeAbort: added f1"
-           git.commit(" -m '%s'" % commitStr)
+           git.commit(" -m \"%s\"" % commitStr)
            # also add it on the tmp branch
            git.checkout("testMergeAbort/tmp1")
            writeFile2(f1name)
            git.add("f1")
-           git.commit(" -m 'testMergeAbort/tmp1 : added f1'")
+           git.commit(" -m \"testMergeAbort/tmp1 : added f1\"")
            # a merge should generate a conflict
-           git.merge("master -m 'merging from master'")
+           git.merge("master -m \"merging from master\"")
            self.assertTrue(False,"conflict did not throw exception")
          except:
            status = git.status()
@@ -181,15 +200,15 @@ class TestGrapeGit(testGrape.TestGrape):
           writeFile1(f1name)
           git.add("f1")
           commitStr = "testFetch: added f1"
-          git.commit(" -m '%s'" % commitStr)
-	  os.chdir(self.repos[1])
+          git.commit(" -m \"%s\"" % commitStr)
+          os.chdir(self.repos[1])
           log = git.log("--all")
           self.assertFalse(commitStr in log,"commit message in log before it should be")
           git.fetch("origin")
- 	  log = git.log("--all")
+          log = git.log("--all")
           self.assertTrue(commitStr in log, "commit message not in log --all affter fetch")
 
-	except git.GrapeGitError as error: 
+        except git.GrapeGitError as error: 
            self.handleGitError(error)
 
     def testPull(self):
@@ -200,12 +219,12 @@ class TestGrapeGit(testGrape.TestGrape):
           writeFile1(f1name)
           git.add("f1")
           commitStr = "testPull: added f1"
-          git.commit(" -m '%s'" % commitStr)
-	  os.chdir(self.repos[1])
+          git.commit(" -m \"%s\"" % commitStr)
+          os.chdir(self.repos[1])
           log = git.log("--all")
           self.assertFalse(commitStr in log,"commit message in log before it should be")
           git.pull("origin master")
- 	  log = git.log()
+          log = git.log()
           self.assertTrue(commitStr in log, "commit message not in log  affter pull")
 
         except git.GrapeGitError as error: 
@@ -217,7 +236,7 @@ class TestGrapeGit(testGrape.TestGrape):
           f2name = os.path.join(self.repo, "f2")
           writeFile2(f2name)
           git.add(f2name)
-          git.commit(" -m 'initial commit for testPush'")
+          git.commit(" -m \"initial commit for testPush\"")
           git.clone("%s %s" %(self.repo,self.repos[1]))
           git.checkout("-b testPush/tmpBranchToAllowPushesToMaster")
           os.chdir(self.repos[1])
@@ -225,18 +244,18 @@ class TestGrapeGit(testGrape.TestGrape):
           writeFile1(f1name)
           git.add("f1")
           commitStr = "testPush: added f1"
-          git.commit(" -m '%s'" % commitStr)
+          git.commit(" -m \"%s\"" % commitStr)
           os.chdir(self.repo)
           log = git.log("--all")
           self.assertFalse(commitStr in log,"commit message in log before it should be")
           os.chdir(self.repos[1])
           pushOutput = git.push("origin master")
           os.chdir(self.repo)
- 	  git.checkout("master")
+          git.checkout("master")
           log = git.log()
           self.assertTrue(commitStr in log, "commit message not in log  affter push")
 
-	except git.GrapeGitError as error: 
+        except git.GrapeGitError as error: 
           self.handleGitError(error)
 
     def testBranch(self):
@@ -247,7 +266,7 @@ class TestGrapeGit(testGrape.TestGrape):
            branches = git.branch()
            self.assertTrue("testBranch/newBranch" in branches, "new branch not in returned string")
            self.assertTrue("testBranch/newBranch" in self.output.getvalue(), "new branch not output")
-	except git.GrapeGitError as error: 
+        except git.GrapeGitError as error: 
            self.handleGitError(error)
 
 
@@ -275,18 +294,18 @@ class TestGrapeGit(testGrape.TestGrape):
            f1name = os.path.join(self.repo,"f1")
            writeFile1(f1name)
            git.add(f1name)
-           git.commit("-m 'initial commit'")
+           git.commit("-m \"initial commit\"")
            git.branch("testRebase/branchToRebase HEAD")
            # while still on master add another commit. 
            writeFile2(f1name)
            git.add(f1name)
-           git.commit("-m 'edited f1'")
+           git.commit("-m \"edited f1\"")
            # switch to new branch, add a new file, commit, rebase onto master.
            git.checkout("testRebase/branchToRebase") 
            f2name = os.path.join(self.repo,"f2")
            writeFile2(f2name)
            git.add(f2name)
-           git.commit("-m 'added f2' ")
+           git.commit("-m \"added f2\" ")
            self.assertFalse(git.branchUpToDateWith("testRebase/branchToRebase","master"),"attempting rebase in situation where rebase will not do anything.")
            try: 
              git.rebase("master") 
@@ -294,7 +313,7 @@ class TestGrapeGit(testGrape.TestGrape):
            except git.GrapeGitError as error: 
              self.assertTrue(False,"rebase that should not have generated a conflict failed")
         except git.GrapeGitError as error:
-	   handleGitError(error)
+           self.handleGitError(error)
 
 
     def handleGitError(self,error):

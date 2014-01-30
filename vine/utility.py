@@ -97,11 +97,8 @@ def grapeDir():
     return os.path.join(os.path.abspath(os.path.dirname(__file__)),"..")
 
 def GetCurrentBranch():
-    process = executeSubProcess("git rev-parse --abbrev-ref HEAD", os.getcwd(), subprocess.PIPE )
-    if process.returncode != 0:
-        print("Error: Could not determine current  branch.")
-        return False
-    return process.output.strip()
+    output = git.gitcmd("rev-parse --abbrev-ref HEAD", "Error: Could not determine current  branch.")
+    return output.strip()
 
 
 def GetSHA(desc):
@@ -111,7 +108,13 @@ def GetSHA(desc):
     out.close()
     return toReturn
 
-def getUserName(defaultName=os.getlogin()):
+def getDefaultName() :
+    if (os.name == "nt") :
+        return os.getenv("USERNAME")
+    else :
+        return os.getenv("USER")
+
+def getUserName(defaultName=getDefaultName()):
     return userInput("Enter LC User Name:", defaultName)
 
 

@@ -12,8 +12,7 @@ class ResolveConflicts(option.Option):
         return "Resolve Conflicts that arose as result of a merge or a rebase"
 
     def execute(self):
-        p = subprocess.Popen("git mergetool",shell=True)
-        p.wait()
+        git.gitcmd("mergetool", "Mergetool Failed")
         # print out git status, which contains instructions to complete a merge
         git.status()
         return True
