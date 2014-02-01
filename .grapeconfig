@@ -20,3 +20,9 @@ branchMappings = develop:develop master:master
 [post-commit]
 autopush = True
 cascade = master:develop 
+
+[post-rebase]
+submoduleUpdate = True
+
+[post-merge]
+submoduleUpdate = True

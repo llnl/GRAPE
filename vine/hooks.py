@@ -18,7 +18,9 @@ class InstallHooks(option.Option):
                 "pre-commit",
                 "pre-push",
                 "pre-rebase",
-                "post-commit"]
+                "post-commit",
+                "post-rebase",
+                "post-merge"]
         for h in hooks: 
             with open(h,'w') as f: 
                 f.write("#!/bin/sh\n")
@@ -119,6 +121,54 @@ class PrePush(option.Option):
         except ConfigParser.DuplicateSectionError:
             pass
        # config.set('post-commit','autopush','False')
+
+#option that is called by the grape installed git pre-rebase hook
+class PostRebase(option.Option): 
+    def __init__(self):
+        self._key = "post-rebase-hook"
+        self._section = "Hooks"
+
+    def description(self): 
+        return "Runs the grape post-rebase hook."
+
+    def execute(self,args= None):
+        cfg = grapeConfig.grapeConfig()
+        updateSubmodule = cfg.get('post-rebase','submoduleUpdate')
+        if updateSubmodule.lower() == 'true': 
+            git.submodule("update --rebase")
+        exit(0)
+
+    def setDefaultConfig(self,config):
+        try: 
+            config.add_section('post-rebase')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-rebase','submoduleUpdate','False')
+
+
+#option that is called by the grape installed git pre-merge hook
+class PostMerge(option.Option): 
+    def __init__(self):
+        self._key = "post-merge-hook"
+        self._section = "Hooks"
+
+    def description(self): 
+        return "Runs the grape post-merge hook."
+
+    def execute(self,args= None):
+        cfg = grapeConfig.grapeConfig()
+        updateSubmodule = cfg.get('post-merge','submoduleUpdate')
+        if updateSubmodule.lower() == 'true': 
+            git.submodule("update --merge")
+        exit(0)
+
+    def setDefaultConfig(self,config):
+        try: 
+            config.add_section('post-merge')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-merge','submoduleUpdate','False')
+
 
 #option that is called by the grape installed git pre-rebase hook
 class PreRebase(option.Option): 

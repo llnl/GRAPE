@@ -155,6 +155,9 @@ def showRemote():
 def status():
     return gitcmd("status", "git status failed for some reason")
 
+def submodule(argstr):
+    return gitcmd("submodule %s" % argstr,"git submodule %s failed" % argstr)
+
 def tag(argstr):
     return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)
 
