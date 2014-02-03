@@ -33,6 +33,7 @@ class _Menu(object):
                           review.Review(), test.Test(), updateLocal.UpdateLocal(), \
                           hooks.InstallHooks(),hooks.PostCommit(), hooks.PrePush(), hooks.PreRebase(), 
                           hooks.PreCommit(),hooks.PostRebase(),hooks.PostMerge(),\
+                          hooks.PostCheckout(),\
                           updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
 
     #Add/order the menu sections here

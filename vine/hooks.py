@@ -190,3 +190,28 @@ class PreRebase(option.Option):
        # config.set('post-commit','autopush','False')
 
 
+
+#option that is called by the grape installed git pre-checkout hook
+class PostCheckout(option.Option): 
+    def __init__(self):
+        self._key = "post-checkout-hook"
+        self._section = "Hooks"
+
+    def description(self): 
+        return "Runs the grape post-checkout hook."
+
+    def execute(self,args= None):
+        cfg = grapeConfig.grapeConfig()
+        updateSubmodule = cfg.get('post-checkout','submoduleUpdate')
+        if updateSubmodule.lower() == 'true': 
+            git.submodule("update")
+        exit(0)
+
+    def setDefaultConfig(self,config):
+        try: 
+            config.add_section('post-checkout')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-checkout','submoduleUpdate','False')
+
+
