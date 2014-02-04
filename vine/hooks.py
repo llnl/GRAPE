@@ -13,7 +13,7 @@ class InstallHooks(option.Option):
         return "Installs grape as your hook manager for this repo. (May overwrite existing hooks you have installed in this repo)"
 
     def execute(self):
-        os.chdir(os.path.join(git.baseDir(),".git","hooks"))
+        os.chdir(os.path.join(git.gitDir(),"hooks"))
         hooks = [#"commit-msg",
                 "pre-commit",
                 "pre-push",

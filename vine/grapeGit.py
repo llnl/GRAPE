@@ -28,7 +28,9 @@ def add(filedescription):
 
 def baseDir():
     beQuiet = True
-    return gitcmd("rev-parse --show-toplevel", "Could not locate base directory",beQuiet)
+    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory",beQuiet)
+    path = utility.makePathPortable(unixStylePath)
+    return path
 
 def branch(argstr=""):
     return gitcmd("branch %s" % argstr, "Could not list branches")
@@ -75,15 +77,28 @@ def diff(argstr):
     return gitcmd("diff %s" % argstr,"could not perform diff")
 
 def dir():
-    temp = gitcmd("rev-parse --show-toplevel", "Could not determine top level git directory.")
-    if os.name == "nt" :
-       newPath = temp.replace("/","\\")
-    else :
-       newPath = temp
-    return newPath
+    return baseDir() 
 
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
+
+def gitDir(): 
+    base = baseDir()
+    gitPath = os.path.join(base,".git")
+    if os.path.isdir(gitPath): 
+        return gitPath
+    elif os.path.isfile(gitPath): 
+        with open(gitPath) as f:
+            line = f.read()
+            words= line.split()
+            if words[0] == 'gitdir:': 
+                relUnixPath = words[1]
+                return utility.makePathPortable(relUnixPath)
+            else:
+                raise grapeGitError("print .git file does not have gitdir: prefix as expected",1,"","grape gitDir()")
+
+
+
 
 def isWorkingDirectoryClean():
     statusOutput = status()

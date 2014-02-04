@@ -72,6 +72,15 @@ def ensure_dir(f):
         print("making "+d)
         os.makedirs(d)
 
+#ensures the path string is windows compatibile if necessary
+def makePathPortable(path): 
+    if os.name == "nt" :
+       newPath = path.replace("/","\\")
+    else :
+       newPath = path
+    return newPath
+
+
 def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHandle=subprocess.PIPE, verbose=2):
     if verbose > 1:
         print("Executing: " + command + ": Working Directory: " + workingDirectory)
