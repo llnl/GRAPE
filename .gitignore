@@ -6,3 +6,6 @@ build/
 *.wpu
 \#*\#
 *.suo
+*.a
+*.o
+*.lo
