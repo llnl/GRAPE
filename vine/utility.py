@@ -88,7 +88,7 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    process = subprocess.Popen(command, stdout=outFileHandle, stderr=outFileHandle, shell=True, cwd=workingDirectory)
+    process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=True, cwd=workingDirectory)
     output = ""
     for  line in iter(process.stdout.readline, ''): 
         line = line.replace('\r', '').replace('\n', '')
