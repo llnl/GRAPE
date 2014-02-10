@@ -3,6 +3,7 @@ import option
 import grapeGit as git
 import grapeConfig, config
 import ConfigParser
+import utility
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
