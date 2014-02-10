@@ -72,7 +72,17 @@ class Unbundle(option.Option):
 
     def execute(self,args = None):
         bundleName = args[0] if args else utility.getUserInput("Enter name of bundle to bundle")
-        fetchOutput = git.fetch("-u %s %s" % (bundleName,grapeConfig.grapeConfig().get('patch','branchMappings'))) 
+        mappings = grapeConfig.grapeConfig().get('patch','branchMappings')
+        mapTokens = mappings.split(' ')
+        mappings = ""
+        for token in mapTokens:
+            sourceDestPair = token.split(":") 
+            source = sourceDestPair[0]
+            dest = sourceDestPair[1]
+            if source in bundleName: 
+               mappings = mappings + "%s:%s " % (source,dest)
+        git.bundle("verify %s" % bundleName)
+        fetchOutput = git.fetch("-u %s %s" % (bundleName,mappings)) 
         
 
     def setDefaultConfig(self,config): 
