@@ -150,14 +150,18 @@ def safeForceBranchToOriginRef(branchToSync):
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef,branchToSync)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync,remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote: 
-            branch("-f %s %s" % (branchToSync, remoteRef))
+            if branchToSync == currentBranch():
+                printf("Current branch %s is out of date with origin. Pulling new changes." % branchToSync) 
+                pull("origin %s" % branchToSync)
+            else:
+                branch("-f %s %s" % (branchToSync, remoteRef))
             return True
         elif remoteUpToDateWithLocal and localUpToDateWithRemote: 
             return True
         else: 
             return False
     if (not branchExists and remoteRefExists):
-        print("local branch did not exist. Creating it now. ")
+        print("local branch did not exist. Creating %s off of %s now. " % (branchToSync,remoteRef))
         branch("%s %s" % (branchToSync, remoteRef))
         return True
     

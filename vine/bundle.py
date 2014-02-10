@@ -35,7 +35,7 @@ class Bundle(option.Option):
         for branch in branchlist:
             # ensure branch can be fast forwardable to origin/branch and do so
             if not git.safeForceBranchToOriginRef(branch):
-                print("Branch %s has diverged from or is ahead of origin. Sync branches before bundling.") 
+                print("Branch %s has diverged from or is ahead of origin. Sync branches before bundling." % branch) 
                 return False
             tagname = "%s/%s" % (tagprefix,branch)
             previousLocation = git.describe("--match '%s' %s" % (describePattern,tagname))
@@ -72,7 +72,7 @@ class Unbundle(option.Option):
 
     def execute(self,args = None):
         bundleName = args[0] if args else utility.getUserInput("Enter name of bundle to bundle")
-        fetchOutput = git.fetch("%s %s" % (bundleName,grapeConfig.grapeConfig().get('patch','branchMappings'))) 
+        fetchOutput = git.fetch("-u %s %s" % (bundleName,grapeConfig.grapeConfig().get('patch','branchMappings'))) 
         
 
     def setDefaultConfig(self,config): 
