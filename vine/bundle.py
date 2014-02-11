@@ -51,8 +51,7 @@ name = None
         name = grapeConfig.grapeConfig().get("patch","tagprefix") 
         return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
-    def execute(self,argv):
-        args = utility.parseArgs(Bundle.__doc__,argv)
+    def execute(self,args):
         tagprefix = args["--tagprefix"]
         branches = args["--branches"]
         reponame = args["--name"]
@@ -125,8 +124,7 @@ Options:
     def description(self):
        return "Unbundle the given bundle into this repo, update all updated branches" 
 
-    def execute(self,argv):
-        args = utility.parseArgs(Unbundle.__doc__,argv)
+    def execute(self,args):
         bundleName = args["<grapebundlefile>"]
         mappings = args["--branchMappings"]
         

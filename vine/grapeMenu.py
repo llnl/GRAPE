@@ -55,7 +55,10 @@ class _Menu(object):
         chosenOption = self.getOption(choice)
         if chosenOption is None:
             return False
-        return chosenOption.execute(args[1:])
+        # use optdoc to parse arguments to the chosenOption. 
+        # utility.argParse also does the magic of filling in defaults from the config files as appropriate. 
+        optionArgs = utility.parseArgs(chosenOption.__doc__,args[1:])
+        return chosenOption.execute(optionArgs)
 
     # Present the main menu
     def presentTextMenu(self):

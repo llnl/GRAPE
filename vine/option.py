@@ -6,7 +6,7 @@ class Option:
     def description(self):
         pass
 
-    def execute(self):
+    def execute(self,args):
         pass
     
     def setDefaultConfig(self,config): 

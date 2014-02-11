@@ -14,14 +14,20 @@ def grapeConfig():
 def read(additionalFileNames = []):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
     grapeMenu.menu().setDefaultConfig(grapeConfig())
+    defaultFiles = []
     if os.name=="nt" :
-      globalconfigfile = os.path.join(os.environ["USERPROFILE"], ".grapeconfig")
+      defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
     else :
-      globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
+      defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
 
-    grapeConfigFile = os.path.join(git.baseDir(),".grapeconfig")
-    grapeUserConfigFile = os.path.join(git.baseDir(),".grapeuserconfig")
-    defaultFiles = [globalconfigfile, grapeConfigFile, grapeUserConfigFile]
+    try:
+        defaultFiles.append(os.path.join(git.baseDir(),".grapeconfig"))
+    except:
+        pass
+    try:
+        defaultFiles.append(os.path.join(git.baseDir(),".grapeuserconfig"))
+    except:
+        pass
     files = defaultFiles + additionalFileNames
     readFiles = grapeConfig().read(files)
     if len(readFiles) == 0:

@@ -3,7 +3,21 @@ import grapeGit as git
 import os
 # Configure current repo
 class Config(option.Option):
-    """Configures the repo to be optimized for LC and GRAPE"""
+    """
+    Configures the current repo to be optimized for GRAPE on LC
+    Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
+
+    Options:
+        --cv            walks you through setting up a sparse checkout for this repo. (interactive)
+        --nocv          skips custom-view questions
+        --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
+        --p4merge       will set up p4merge as your merge tool. 
+        --nop4merge     will skip p4merge questions.
+        --p4diff        will set up p4merge as your diff tool. 
+        --nop4diff      will skip p4diff questions.
+        --git-p4        will configure your repo for use with git-p4 (deprecated)
+
+    """
 
     def __init__(self):
         self._key = "config"
@@ -12,12 +26,13 @@ class Config(option.Option):
     def description(self):
         return "Initialize a repo you've already cloned without using GRAPE"
 
-    def execute(self):
+    def execute(self,args):
+        print args
         base = git.baseDir()
         if base == "":
             return False
-        dotGit = os.path.join(base,".git")
-
+        dotGit = git.gitDir()
+         
         print("optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
@@ -33,8 +48,9 @@ class Config(option.Option):
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZStash)
-        print("Enabling 12 hr caching of https credentials...")
-        git.config("--global credential.helper","cache --timeout=43200")
+        if not args["--nocredcache"]: 
+            print("Enabling 12 hr caching of https credentials...")
+            git.config("--global credential.helper","cache --timeout=43200")
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
@@ -56,7 +72,8 @@ class Config(option.Option):
         git.config("core.sparseCheckout","true")
 
         # perform a sparse checkout if asked of us
-        updateView = utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n]","n")
+        ask = not args["--nocv"]
+        updateView = ask and (args["--cv"] or utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n]","n") )
         if updateView:
             sparseFile = os.path.join(dotGit,"info","sparse-checkout")
             with open(sparseFile,'w') as f:
@@ -64,11 +81,12 @@ class Config(option.Option):
             checkout = utility.userInput("check out updated view? [y/n]","y")
 
             if checkout:
-                git("read-tree","-mu","HEAD")
+                git.gitcmd("read-tree -mu HEAD","Sparse checkout failed")
 
         # configure git to use p4merge for conflict resolution
         # and diffing
-        useP4Merge = utility.userInput("Would you like to use p4merge as your merge tool? [y/n]","y")
+
+        useP4Merge = not args["--nop4merge"] and (args["--p4merge"] or utility.userInput("Would you like to use p4merge as your merge tool? [y/n]","y"))
         # note that this relies on p4merge being in your path somewhere
         if (useP4Merge):
             git.config("merge.keepBackup","false")
@@ -79,8 +97,10 @@ class Config(option.Option):
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
             print("configured repo to use p4merge for conflict resolution")
+        else:
+            git.config("merge.tool","tkdiff")
 
-        useP4Diff = utility.userInput("Would you like to use p4merge as your diff tool? [y/n]","y")
+        useP4Diff = not args["--nop4diff"] and (args["--p4diff"] or utility.userInput("Would you like to use p4merge as your diff tool? [y/n]","y"))
         # this relies on p4diff being defined as a custom bash script, with the following one-liner:
         # [ $# -eq 7 ] && p4merge "$2" "$5"
         if (useP4Diff):
@@ -90,8 +110,10 @@ class Config(option.Option):
                print("configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
                print("Could not find p4diff script at %s" % p4diffScript)
-
-        useGitP4 = utility.userInput("Would you like to use git-p4 to manage a perforce-git interface? [y/n]","n")
+        else:
+            #revert diff.external to the default value
+            git.config("diff.external","")
+        useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
             # create p4 references to enable imports from p4

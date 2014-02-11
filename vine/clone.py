@@ -1,32 +1,38 @@
 import os, sys
 import grapeConfig
 import option, utility
-filedir = os.path.dirname(os.path.realpath(__file__))
-grapedir = os.path.join(filedir,"..")
-if not grapedir in sys.path:
-    sys.path.append( grapedir )
 import grapeGit as git
-
 class Clone(option.Option):
+    """ grape-clone
+    Clones a git repo and configures it for use with git.
+
+    Usage: grape-clone <url> <path> [--recursive]
+
+    Arguments:
+        <url>       The URL of the remote repository 
+        <path>      The directory where you want to clone the repo to. 
+
+    Options:
+        --recursive   Recursively clone submodules. 
+    """
+
     def __init__(self):
         self._key = "clone"
         self._section = "Getting Started"
 
-    """Clones the ALE3D repo into a new local repo"""
+    #Clones the default repo into a new local repo
     def description(self):
         name = grapeConfig.grapeConfig().get("repo","name")
-        return "Clone the %s repo and initialize your git config" % name
+        return "Clone a repo and configure it for grape" 
 
-    def execute(self):
-        user = utility.getUserName()
+    def execute(self,args):
+        remotePath = args["<url>"]
+        destPath = args["<path>"]
+        rStr = "--recursive" if args["--recursive"] else ""
 
-        remotePath = utility.userInput("Enter Remote Repo address:",
-                               ("https://%s@rzlc.llnl.gov/stash/scm/ale/ale3d.git" % user))
-
-        destPath = utility.userInput("Enter destination directory:", os.path.join(os.getcwd(), "ale3d"))
-        try :
-           git.gitcmd("clone %s %s" % (remotePath, destPath), "Error: Git Clone failed.")
-           print("Clone succeeded!")
-           return True
-        except :
-           return True
+        git.gitcmd("clone %s %s %s" % (rStr,remotePath, destPath), "Error: Git Clone failed.")
+        print("Clone succeeded!")
+        os.chdir(destPath)
+        grapecmd = os.path.join(os.path.dirname(__file__),"..","grape")
+        utility.executeSubProcess("%s config" % grapecmd)
+        return True
