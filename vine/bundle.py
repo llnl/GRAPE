@@ -1,14 +1,16 @@
 import os
+import ConfigParser
+# vine imports
 import option
 import grapeGit as git
 import utility
-import ConfigParser
+import grapeConfig
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
 
     """
-grape [un]bundle
+grape bundle
 
     
 Usage:
@@ -91,7 +93,6 @@ name = None
         return True
 
     def setDefaultConfig(self,config):
-        print "setting default config in bundle"
         try: 
             config.add_section('patch')
         except ConfigParser.DuplicateSectionError:
@@ -102,7 +103,7 @@ name = None
 
 class Unbundle(option.Option):
     """
-grape [un]bundle
+grape unbundle
 
     
 Usage:
