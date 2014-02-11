@@ -1,42 +1,8 @@
 import os
 import option
 import grapeGit as git
-import grapeConfig, config
-import ConfigParser
 import utility
-
-#if utility.grapeDir() not in sys.path(): 
-#    sys.path.append(utility.grapeDir())
-from docopt.docopt import docopt
-
-
-"""
-grape [un]bundle
-
-Usage:
-    grape bundle [--recurse  | --norecurse] [--branches=<config.patch.branches>] 
-                 [--tagprefix=<config.patch.tagprefix>]
-                 [--describePattern=<config.patch.describePattern>]
-                 [--name=<config.repo.name>]
-                  
-    grape unbundle <grapebundlefile> [--mappings=master:master]
-
-Generic options:
-    -h, --help
-
-Options:
-    --recurse               recurse into submodules (default)
-    --norecurse             bundle only current level
-    --branches              the space delimited list of branches to bundle. 
-                            Default from .grapeconfig  patch.branches . 
-    --tagprefix             the prefix used to tag start points to bundle
-                            Default from .grapeconfig patch.tagprefix . 
-    --describePattern       passed to git describe to aid in naming the bundle. 
-                            Default from .grapeconfig patch.describePattern. 
-    --name                  Name used as a prefix to the bundle file. 
-                            Default from .grapeconfig repo.name
-
-"""
+import ConfigParser
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
@@ -51,19 +17,17 @@ Usage:
                 [--describePattern=<config.patch.describePattern>]
                 [--name=<config.repo.name>]
 
-Generic options:
-   -h, --help
 
 Options:
    --norecurse                      bundle only current level 
    --branches=<list>                the space delimited list of branches to bundle. 
-                                    Default from .grapeconfig  patch.branches . 
+                                    [default: .grapeconfig.patch.branches] 
    --tagprefix=<str>                the prefix used to tag start points to bundle
-                                    Default from .grapeconfig patch.tagprefix . 
+                                    [default: .grapeconfig.patch.tagprefix]
    --describePattern=<pattern>      passed to git describe to aid in naming the bundle. 
-                                    Default from .grapeconfig patch.describePattern. 
+                                    [default: .grapeconfig.patch.describePattern] 
    --name=<str>                     Name used as a prefix to the bundle file. 
-                                    Default from .grapeconfig repo.name
+                                    [default: .grapeconfig.repo.name]
 
 .grapeConfig Defaults: 
 
@@ -77,17 +41,6 @@ name = None
 
 
     """
-#    """
-#grape [un]bundle
-#    
-#Usage: grape-bundle 
-#
-#Generic options:
-#   -h, --help
-#
-#
-#    """
-
     def __init__(self):
         self._key = "bundle"
         self._section = "Patches"
@@ -97,18 +50,20 @@ name = None
         return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
     def execute(self,argv):
-        args = docopt(Bundle.__doc__,argv=argv[1:])
-        os.chdir(git.baseDir())
+        args = utility.parseArgs(Bundle.__doc__,argv)
+        tagprefix = args["--tagprefix"]
+        branches = args["--branches"]
+        reponame = args["--name"]
+        describePattern = args["--describePattern"]
+        branchlist = branches.split(" ")
+
+
         if not args["--norecurse"]: 
+            os.chdir(git.baseDir())
             grapecmd = os.path.join(os.path.dirname(__file__),"..","grape")
             git.gitcmd("submodule foreach '%s bundle %s'" % (grapecmd,' '.join(argv)),"recursive submodule bundle failed") 
         git.fetch()
         git.fetch("--tags")
-        config = grapeConfig.grapeConfig()
-        tagprefix = config.get("patch","tagprefix")
-        branches = config.get("patch","branches")
-        reponame = config.get("repo","name")
-        describePattern = config.get("patch","describePattern")
         branchlist = branches.split(" ")
         revlists = ""
         previousLocations = []
@@ -136,6 +91,7 @@ name = None
         return True
 
     def setDefaultConfig(self,config):
+        print "setting default config in bundle"
         try: 
             config.add_section('patch')
         except ConfigParser.DuplicateSectionError:
@@ -144,7 +100,23 @@ name = None
         config.set('patch','describePattern','v*')
         config.set('patch','branches','master')
 
-class Unbundle(option.Option): 
+class Unbundle(option.Option):
+    """
+grape [un]bundle
+
+    
+Usage:
+   grape-unbundle <grapebundlefile> [--branchMappings=<config.patch.branchMappings>] 
+
+Arguments:
+    <grapebundlefile>             The name of the grape bundle file to unbundle. 
+
+Options:
+    --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
+                                  objects from the bundle file. 
+                                  [default: .grapeconfig.patch.branchMappings]
+
+    """
     def __init__(self):
         self._key = "unbundle"
         self._section = "Patches"
@@ -152,9 +124,11 @@ class Unbundle(option.Option):
     def description(self):
        return "Unbundle the given bundle into this repo, update all updated branches" 
 
-    def execute(self,args = None):
-        bundleName = args[0] if args else utility.getUserInput("Enter name of bundle to bundle")
-        mappings = grapeConfig.grapeConfig().get('patch','branchMappings')
+    def execute(self,argv):
+        args = utility.parseArgs(Unbundle.__doc__,argv)
+        bundleName = args["<grapebundlefile>"]
+        mappings = args["--branchMappings"]
+        
         mapTokens = mappings.split(' ')
         mappings = ""
         for token in mapTokens:

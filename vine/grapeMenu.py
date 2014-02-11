@@ -51,14 +51,11 @@ class _Menu(object):
             print("Unknown option '%s'" % choice)
             return None
 
-    def applyMenuChoice(self,choice,args = None):
+    def applyMenuChoice(self,choice,args):
         chosenOption = self.getOption(choice)
         if chosenOption is None:
             return False
-        if (args): 
-           return chosenOption.execute(args)
-        else:
-           return chosenOption.execute()
+        return chosenOption.execute(args[1:])
 
     # Present the main menu
     def presentTextMenu(self):

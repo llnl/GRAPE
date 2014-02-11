@@ -2,6 +2,8 @@ import os, StringIO, subprocess, sys, tempfile, ConfigParser
 import grapeGit as git
 import grapeMenu
 import grapeConfig
+from docopt.docopt import docopt
+
 
 def cascade(l, op):
     """Apply an operation to a chain of interdependent pairs in a list"""
@@ -127,7 +129,14 @@ def getDefaultName() :
 def getUserName(defaultName=getDefaultName()):
     return userInput("Enter LC User Name:", defaultName)
 
-
+def parseArgs(docstr,arguments): 
+    args = docopt(docstr,argv=arguments)
+    config = grapeConfig.grapeConfig()
+    for key in args:
+       if type(args[key]) is str and ".grapeconfig." in args[key]:
+           tokens = args[key].split('.') 
+           args[key] = config.get(tokens[2].strip(),tokens[3].strip())
+    return args
 
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
