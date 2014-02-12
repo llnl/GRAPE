@@ -136,10 +136,8 @@ def startup():
                 done = myMenu.applyMenuChoice(choice)
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
-        elif (len(sys.argv) == 2):
-            myMenu.applyMenuChoice(sys.argv[1])
-        elif (len(sys.argv) > 2): 
-            myMenu.applyMenuChoice(sys.argv[1],sys.argv[2:])
+        elif (len(sys.argv) > 1):
+            myMenu.applyMenuChoice(sys.argv[1],sys.argv[1:])
     except KeyboardInterrupt:
         print("Operation interrupted by user...")
 
