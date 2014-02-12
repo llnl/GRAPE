@@ -5,7 +5,8 @@ import os
 class Config(option.Option):
     """
     Configures the current repo to be optimized for GRAPE on LC
-    Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
+    Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] 
+                        [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --cv            walks you through setting up a sparse checkout for this repo. (interactive)
@@ -27,7 +28,6 @@ class Config(option.Option):
         return "Initialize a repo you've already cloned without using GRAPE"
 
     def execute(self,args):
-        print args
         base = git.baseDir()
         if base == "":
             return False
@@ -92,7 +92,7 @@ class Config(option.Option):
             git.config("merge.keepBackup","false")
             git.config("merge.tool","p4merge")
             git.config("mergetool.keepBackup","false")
-            git.config("mergetool.p4merge.cmd", "'p4merge \\\"\$BASE\\\" \\\"\$LOCAL\\\" \\\"\$REMOTE\\\" \\\"\$MERGED\\\"'")
+            git.config("mergetool.p4merge.cmd", "\"p4merge \\\"\$BASE\\\" \\\"\$LOCAL\\\" \\\"\$REMOTE\\\" \\\"\$MERGED\\\"\"")
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")

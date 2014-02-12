@@ -38,13 +38,16 @@ class PostCommit(option.Option):
     def description(self): 
         return "Runs the grape post-commit hook."
 
-    def execute(self,args = None):
+    def execute(self,args):
         cfg = grapeConfig.grapeConfig()
         
         #applies the autoPush hook
         autoPush = cfg.get('post-commit','autopush')
         if autoPush.lower().strip() != "false": 
-            git.push("-u origin HEAD")
+            try: 
+                git.push("-u origin HEAD")
+            except:
+                pass
             autoPush = True
         else:
             autoPush = False

@@ -5,6 +5,11 @@ import grapeConfig
 
 # Prepare Feature Branch for review
 class Review(option.Option):
+    """
+    grape review
+    Usage: grape-review 
+
+    """
     def __init__(self):
         self._key = "review"
         self._section = "Code Reviews"
@@ -12,7 +17,10 @@ class Review(option.Option):
     def description(self):
         return "Prepare current development branch for review"
 
-    def execute(self):
+    def execute(self,args):
+        print("Grape review is still under construction.")
+        return True
+                
         print("Logging into RZStash")
         name = utility.getUserName()
         rzAtlassian = Atlassian.Atlassian(name)

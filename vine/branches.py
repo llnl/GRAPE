@@ -10,7 +10,7 @@ class Branches(option.Option):
     def description(self):
         return "List all of your local repo's branches"
 
-    def execute(self):
+    def execute(self,args):
         os.environ["GIT_PYTHON_TRACE"] = "full"
         grapeGit.branch()
         return True

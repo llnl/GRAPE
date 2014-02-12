@@ -1,8 +1,21 @@
 import sys
 import option
 import grapeGit as git
+import utility
 
 class Walkthrough(option.Option):
+    """ 
+    grape w(alkthrough)
+    Usage: grape-w [--b1=<branch> [--b2=<branch>]] [<filetree-ish>] 
+
+    Options:
+        --b1=<branch>   The branch to compare the current branch to. 
+        --b2=<branch>   The branch to compare against b1. [default: HEAD]
+    
+    Optional Arguments:
+        <filetree-ish>  The files to compare.  
+
+    """
     def __init__(self):
         self._key = "w"
         self._section = "Code Reviews"
@@ -10,15 +23,21 @@ class Walkthrough(option.Option):
     def description(self):
         return "Walk through diffs between branches"
 
-    def execute(self):
-        b1 = utility.userInput("Enter name of first branch to compare","HEAD")
-        b2 = utility.userInput("Enter name of second branch to compare", "develop")
-        print("Running git diff %s %s..., use Ctrl-C to stop diff" %(b1,b2))
+    def execute(self,args):
+        b1 =  args["--b1"]
+        if not b1: 
+            b1 = utility.userInput("Enter name of branch to compare","develop")
+        b2 = args["--b2"]
+       
 
         # may want to exit out of diffs early, need to make sure to pass the
         # signal down
+        files = args["<filetree-ish>"]
+        if (not files): 
+            files = ""
         try:
-            p = git.diff(b1,b2,_bg=True)
+            print("diffing files. Use Ctrl-C to stop.")
+            p = git.diff("%s %s %s" % (b1,b2,files))
             p.wait()
         except KeyboardInterrupt:
             p.kill()

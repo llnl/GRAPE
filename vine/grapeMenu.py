@@ -57,7 +57,9 @@ class _Menu(object):
             return False
         # use optdoc to parse arguments to the chosenOption. 
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate. 
-        optionArgs = utility.parseArgs(chosenOption.__doc__,args[1:])
+        optionArgs = None
+        if chosenOption.__doc__: 
+            optionArgs = utility.parseArgs(chosenOption.__doc__,args[1:])
         return chosenOption.execute(optionArgs)
 
     # Present the main menu

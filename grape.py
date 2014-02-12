@@ -133,7 +133,7 @@ def startup():
             while not done:
                 myMenu.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None)
-                done = myMenu.applyMenuChoice(choice)
+                done = myMenu.applyMenuChoice(choice,sys.argv[1:])
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif (len(sys.argv) > 1):
