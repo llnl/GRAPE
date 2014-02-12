@@ -92,7 +92,7 @@ class Config(option.Option):
             git.config("merge.keepBackup","false")
             git.config("merge.tool","p4merge")
             git.config("mergetool.keepBackup","false")
-            git.config("mergetool.p4merge.cmd", "\"p4merge \\\"\$BASE\\\" \\\"\$LOCAL\\\" \\\"\$REMOTE\\\" \\\"\$MERGED\\\"\"")
+            git.config("mergetool.p4merge.cmd", "\\\"p4merge \\\"\$BASE\\\" \\\"\$LOCAL\\\" \\\"\$REMOTE\\\" \\\"\$MERGED\\\"\\\"")
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
