@@ -45,16 +45,13 @@ class PostCommit(option.Option):
         autoPush = cfg.get('post-commit','autopush')
         if autoPush.lower().strip() != "false": 
             try:
-                print "calling git.push"
                 git.push("-u origin HEAD")
-                print "out of git push"
             except:
                 pass
             autoPush = True
         else:
             autoPush = False
         #applies the cascade hook
-        print "looking up cascades info"
         cascades = cfg.get('post-commit','cascade').split(' ')
         if cascades[0].strip().lower() != "none": 
             cascadeDict = {}
