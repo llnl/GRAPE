@@ -11,8 +11,5 @@ class UpdateLocal(option.Option):
         return "Update local branches that are tracked in your remote repo"
 
     def execute(self,args):
-       #gitup = os.path.join(os.path.dirname(__file__),"..","PyGitUp","gitup.py")
-       #p = subprocess.Popen(gitup,shell=True)
-       #p.wait()
        git.fetch()
        return True
