@@ -7,11 +7,18 @@ class Merge(option.Option):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>]
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay]
+
+    Options:
+        --am            Use git's default merge. 
+        --as            Do a safe merge - force git to issue conflicts for files that
+                        are touched by both branches. 
+        --at            Git accept their changes in the event of a conflict (the branch you're merging from)
+        --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
 
     Arguments:
         <branch>        The branch you want to merge in. 
-
+        
     """
     def __init__(self):
         self._key = "m"
@@ -21,9 +28,17 @@ class Merge(option.Option):
         return "Merge another local branch into your current branch."
 
     def execute(self,args):
-    
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like to merge into this branch")
-        return mergeIntoCurrent(".", otherBranch)
+        strategy = None
+        if args['--am']:
+            strategy = 'am'
+        elif args['--as']: 
+            strategy = 'as' 
+        elif args['--at']: 
+            strategy = 'at'
+        elif args['--ay']: 
+            strategy = 'ay'
+        return mergeIntoCurrent(".", otherBranch, strategy)
 
 
 def merge( branch,strategy = ""):
@@ -38,14 +53,15 @@ def merge( branch,strategy = ""):
             choice = 'q'
         return choice
 
-def mergeIntoCurrent(repoName,branchName):
+def mergeIntoCurrent(repoName,branchName,strategy):
     grapeMenu.menu().getOption('up').execute()
     choice = None
-    strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
-                         "am: Auto Merge (default) \n"+
-                         "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
-                         "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
-                         "ay: Accept Yours - resolves conflicts by using changes in current branch." ,"am")
+    if not strategy: 
+        strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
+                             "am: Auto Merge (default) \n"+
+                             "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
+                             "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
+                             "ay: Accept Yours - resolves conflicts by using changes in current branch." ,"am")
 
 
     if (strategy == 'am'):
