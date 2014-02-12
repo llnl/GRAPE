@@ -44,12 +44,12 @@ class PostCommit(option.Option):
         #applies the autoPush hook
         autoPush = cfg.get('post-commit','autopush')
         if autoPush.lower().strip() != "false": 
-            #try:
-            print "calling git.push"
-            git.push("-u origin HEAD")
-            print "out of git push"
-            #except:
-            #pass
+            try:
+                print "calling git.push"
+                git.push("-u origin HEAD")
+                print "out of git push"
+            except:
+                pass
             autoPush = True
         else:
             autoPush = False
