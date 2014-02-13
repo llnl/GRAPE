@@ -29,16 +29,7 @@ class Merge(option.Option):
 
     def execute(self,args):
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like to merge into this branch")
-        strategy = None
-        if args['--am']:
-            strategy = 'am'
-        elif args['--as']: 
-            strategy = 'as' 
-        elif args['--at']: 
-            strategy = 'at'
-        elif args['--ay']: 
-            strategy = 'ay'
-        return mergeIntoCurrent(".", otherBranch, strategy)
+        return mergeIntoCurrent( otherBranch, args)
 
 
 def merge( branch,strategy = ""):
@@ -53,9 +44,19 @@ def merge( branch,strategy = ""):
             choice = 'q'
         return choice
 
-def mergeIntoCurrent(repoName,branchName,strategy):
-    grapeMenu.menu().getOption('up').execute()
+def mergeIntoCurrent(branchName,args):
+    grapeMenu.menu().applyMenuChoice('up',['up']) 
     choice = None
+    strategy = None
+    if args['--am']:
+        strategy = 'am'
+    elif args['--as']: 
+        strategy = 'as' 
+    elif args['--at']: 
+        strategy = 'at'
+    elif args['--ay']: 
+        strategy = 'ay'
+
     if not strategy: 
         strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
                              "am: Auto Merge (default) \n"+

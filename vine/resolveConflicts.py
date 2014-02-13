@@ -11,7 +11,7 @@ class ResolveConflicts(option.Option):
     def description(self):
         return "Resolve Conflicts that arose as result of a merge or a rebase"
 
-    def execute(self):
+    def execute(self,args):
         git.gitcmd("mergetool", "Mergetool Failed")
         # print out git status, which contains instructions to complete a merge
         git.status()

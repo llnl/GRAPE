@@ -11,5 +11,5 @@ class MergeAbort(option.Option):
     def description(self):
         return "abort current merge"
 
-    def execute(self):
+    def execute(self,args):
         git.merge("--abort")

@@ -78,16 +78,7 @@ class MergeDevelop(option.Option):
                           "your .grapeconfig or .grapeuserconfig. " % (branchPrefix,branchPrefix))
                     exit(1)
         print("Merging changes from %s into your current branch..." % branch)
-        strategy = None
-        if args['--am']:
-            strategy = 'am'
-        elif args['--as']: 
-            strategy = 'as' 
-        elif args['--at']: 
-            strategy = 'at'
-        elif args['--ay']: 
-            strategy = 'ay'
-        return merge.mergeIntoCurrent(".", branch,strategy)
+        return merge.mergeIntoCurrent( branch,args)
 
     def setDefaultConfig(self,config):
         try:
