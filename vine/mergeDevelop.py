@@ -72,7 +72,7 @@ class MergeDevelop(option.Option):
             config.add_section("flow")
         except ConfigParser.DuplicateSectionError:
             pass
-        config.set("flow","publicBranches","master")
-        config.set("flow","topicPrefixMappings","?:master")
+        config.set("flow","publicBranches","develop master")
+        config.set("flow","topicPrefixMappings","?:develop")
 
         
