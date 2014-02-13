@@ -5,44 +5,121 @@ import grapeConfig
 
 #option that installs wrapper calls to grape as git hooks in this repo. 
 class InstallHooks(option.Option):
+    """ grape installHooks
+    Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used 
+    in this repo. 
+
+    Usage: grape-installHooks [--toInstall=<hook>]...
+
+    Options:
+    --toInstall=<hook>    the list of hook-types to install
+                          [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge]
+
+    """
     def __init__(self):
         self._key = "installHooks"
         self._section = "Hooks"
 
     def description(self):
-        return "Installs grape as your hook manager for this repo. \n           (May overwrite existing hooks you have installed in this repo)"
+        return "Installs grape as your hook manager for this repo. \n\t\t(May overwrite existing hooks you have installed in this repo)"
 
-    def execute(self):
+    def execute(self,args):
         os.chdir(os.path.join(git.gitDir(),"hooks"))
-        hooks = [#"commit-msg",
-                "pre-commit",
-                "pre-push",
-                "pre-rebase",
-                "post-commit",
-                "post-rebase",
-                "post-merge"]
+        hooks = args["--toInstall"]
         for h in hooks: 
             with open(h,'w') as f: 
                 f.write("#!/bin/sh\n")
                 grapeCmd = utility.getGrapeExec()
-                f.write("%s %s \"$@\" \n" % (grapeCmd,h+"-hook"))
+                f.write("%s runHook %s \"$@\" \n" % (grapeCmd,h))
             os.chmod(h,0755)
         return True
 
-#option that is called by the grape installed git post-commit hook
-class PostCommit(option.Option): 
-    def __init__(self):
-        self._key = "post-commit-hook"
-        self._section = "Hooks"
+class RunHook(option.Option): 
+    """ grape runHook
 
-    def description(self): 
-        return "Runs the grape post-commit hook."
+    Usage: grape-runHook 
+           grape-runHook pre-commit 
+           grape-runHook pre-push <dest> <url> 
+           grape-runHook pre-rebase 
+           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>]
+           grape-runHook post-rebase [--rebaseSubmodule=<bool>]
+           grape-runHook post-merge [--mergeSubmodule=<bool>]
+           grape-runHook post-checkout [--checkoutSubmodule=<bool>]
 
-    def execute(self,args):
-        cfg = grapeConfig.grapeConfig()
+    Options:
+        --autopush=<bool>           autopushes commits to origin
+                                    [default: .grapeconfig.post-commit.autopush]
+        --cascade=<pairs>           performs a post commit cascade 
+                                    [default: .grapeconfig.post-commit.cascade]
+        --rebaseSubmodule=<bool>    [default: .grapeconfig.post-rebase.submoduleUpdate]
+        --mergeSubmodule=<bool>     [default: .grapeconfig.post-merge.submoduleUpdate]
+        --checkoutSubmodule=<bool>  [default: .grapeconfig.post-checkout.submoduleUpdate]
+
+    Arguments:
+        <dest>                      (pre-push only) The destination repo. 
+        <url>                       (pre-push only) The destination's URL. 
+
         
+
+
+    """
+    def __init__(self): 
+        self._key = "runHook"
+        self._section = "Hooks"
+        self.commands = {"pre-commit":self.preCommit,
+                    "post-commit":self.postCommit,
+                    "pre-push":self.prePush,
+                    "pre-rebase":self.preRebase,
+                    "post-rebase":self.postRebase,
+                    "post-merge":self.postMerge,
+                    "post-checkout":self.postCheckout}
+
+    def description(self):
+        return "Runs a grape hook"
+
+    def execute(self,args): 
+        for command in args.keys(): 
+            try:
+                if args[command]:
+                    self.commands[command](args)
+            except KeyError:
+                pass
+        exit(0)
+    
+    def setDefaultConfig(self,config):
+        # post-commit
+        try: 
+            config.add_section('post-commit')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-commit','autopush','False')
+        config.set('post-commit','cascade','None')
+
+        # post-rebase
+        try: 
+            config.add_section('post-rebase')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-rebase','submoduleUpdate','False')
+        
+        # post-merge
+        try: 
+            config.add_section('post-merge')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-merge','submoduleUpdate','False')
+
+        #post-checkout
+        try: 
+            config.add_section('post-checkout')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('post-checkout','submoduleUpdate','False')
+
+
+    def postCommit(self,args):
         #applies the autoPush hook
-        autoPush = cfg.get('post-commit','autopush')
+        autoPush = args["--autopush"]
         if autoPush.lower().strip() != "false": 
             try:
                 git.push("-u origin HEAD")
@@ -52,7 +129,7 @@ class PostCommit(option.Option):
         else:
             autoPush = False
         #applies the cascade hook
-        cascadeDict = utility.parseConfigPairList(cfg.get('post-commit','cascade'))
+        cascadeDict = utility.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
             while currentBranch in cascadeDict:
@@ -73,144 +150,35 @@ class PostCommit(option.Option):
                     currentBranch = target
                 else:
                     currentBranch = None
-        exit(0)
 
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('post-commit')
-        except ConfigParser.DuplicateSectionError:
-            pass
-        config.set('post-commit','autopush','False')
-        config.set('post-commit','cascade','None')
 
-#option that is called by the grape installed git pre-commit hook
-class PreCommit(option.Option): 
-    def __init__(self):
-        self._key = "pre-commit-hook"
-        self._section = "Hooks"
+    def preCommit(self,args):
+        pass
 
-    def description(self): 
-        return "Runs the grape pre-commit hook."
+    def prePush(self,args):
+        pass
 
-    def execute(self,args = None):
-        exit(0)
+    def preRebase(self,args):
+        pass
 
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('pre-commit')
-        except ConfigParser.DuplicateSectionError:
-            pass
-       # config.set('post-commit','autopush','False')
-
-#option that is called by the grape installed git pre-push hook
-class PrePush(option.Option): 
-    def __init__(self):
-        self._key = "pre-push-hook"
-        self._section = "Hooks"
-
-    def description(self): 
-        return "Runs the grape pre-push hook."
-
-    def execute(self,args=None):
-        exit(0)
-
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('pre-push')
-        except ConfigParser.DuplicateSectionError:
-            pass
-       # config.set('post-commit','autopush','False')
-
-#option that is called by the grape installed git pre-rebase hook
-class PostRebase(option.Option): 
-    def __init__(self):
-        self._key = "post-rebase-hook"
-        self._section = "Hooks"
-
-    def description(self): 
-        return "Runs the grape post-rebase hook."
-
-    def execute(self,args= None):
-        cfg = grapeConfig.grapeConfig()
-        updateSubmodule = cfg.get('post-rebase','submoduleUpdate')
+    def postRebase(self,args):
+        updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule.lower() == 'true': 
             git.submodule("update --rebase")
-        exit(0)
 
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('post-rebase')
-        except ConfigParser.DuplicateSectionError:
-            pass
-        config.set('post-rebase','submoduleUpdate','False')
-
-
-#option that is called by the grape installed git pre-merge hook
-class PostMerge(option.Option): 
-    def __init__(self):
-        self._key = "post-merge-hook"
-        self._section = "Hooks"
-
-    def description(self): 
-        return "Runs the grape post-merge hook."
-
-    def execute(self,args= None):
-        cfg = grapeConfig.grapeConfig()
-        updateSubmodule = cfg.get('post-merge','submoduleUpdate')
+    def postMerge(self,args):
+        updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule.lower() == 'true': 
             git.submodule("update --merge")
-        exit(0)
 
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('post-merge')
-        except ConfigParser.DuplicateSectionError:
-            pass
-        config.set('post-merge','submoduleUpdate','False')
-
-
-#option that is called by the grape installed git pre-rebase hook
-class PreRebase(option.Option): 
-    def __init__(self):
-        self._key = "pre-rebase-hook"
-        self._section = "Hooks"
-
-    def description(self): 
-        return "Runs the grape pre-rebase hook."
-
-    def execute(self,args= None):
-        exit(0)
-
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('pre-rebase')
-        except ConfigParser.DuplicateSectionError:
-            pass
-       # config.set('post-commit','autopush','False')
-
-
-
-#option that is called by the grape installed git pre-checkout hook
-class PostCheckout(option.Option): 
-    def __init__(self):
-        self._key = "post-checkout-hook"
-        self._section = "Hooks"
-
-    def description(self): 
-        return "Runs the grape post-checkout hook."
-
-    def execute(self,args= None):
-        cfg = grapeConfig.grapeConfig()
-        updateSubmodule = cfg.get('post-checkout','submoduleUpdate')
+    def postCheckout(self,args): 
+        print "made it!"
+        updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule.lower() == 'true': 
             git.submodule("update")
-        exit(0)
 
-    def setDefaultConfig(self,config):
-        try: 
-            config.add_section('post-checkout')
-        except ConfigParser.DuplicateSectionError:
-            pass
-        config.set('post-checkout','submoduleUpdate','False')
+
+
+
 
 

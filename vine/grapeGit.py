@@ -67,7 +67,7 @@ def config(argstr, arg2=None):
     else:
         return gitcmd('config %s ' % argstr, "Config failed")
 
-def currentBranch(quiet = False): 
+def currentBranch(quiet = True): 
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch",quiet)
 
 def describe(argstr):

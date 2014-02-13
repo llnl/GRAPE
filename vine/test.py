@@ -10,7 +10,7 @@ class Test(option.Option):
     def description(self):
         return "Test Grape."
 
-    def execute(self):
+    def execute(self,args):
         testDir = os.path.join(utility.grapeDir(),"test")
         if not testDir in sys.path:
             print "appending %s to path" % testDir

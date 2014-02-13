@@ -32,9 +32,7 @@ class _Menu(object):
                           #p4Import.P4Import(),
                           resolveConflicts.ResolveConflicts(), \
                           review.Review(), test.Test(), updateLocal.UpdateLocal(), \
-                          hooks.InstallHooks(),hooks.PostCommit(), hooks.PrePush(), hooks.PreRebase(), 
-                          hooks.PreCommit(),hooks.PostRebase(),hooks.PostMerge(),\
-                          hooks.PostCheckout(),\
+                          hooks.InstallHooks(),hooks.RunHook(), \
                           updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
 
     #Add/order the menu sections here
@@ -60,6 +58,7 @@ class _Menu(object):
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate. 
         optionArgs = None
         if chosenOption.__doc__: 
+            #print("applyMenuCHoice:",args)
             optionArgs = utility.parseArgs(chosenOption.__doc__,args[1:])
         return chosenOption.execute(optionArgs)
 
