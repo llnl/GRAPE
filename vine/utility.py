@@ -138,6 +138,18 @@ def parseArgs(docstr,arguments):
            args[key] = config.get(tokens[2].strip(),tokens[3].strip())
     return args
 
+def parseConfigPairList(string):
+    pairs = string.split(' ')
+    pairDict = None
+    if pairs[0].strip().lower() != "none": 
+        pairDict = {}
+        for pair in pairs:
+            plist = pair.split(':')
+            pairDict[plist[0]] = plist[1]
+    return pairDict
+
+
+
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate

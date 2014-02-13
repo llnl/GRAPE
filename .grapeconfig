@@ -29,3 +29,9 @@ submoduleUpdate = True
 
 [post-checkout]
 submoduleUpdate = True
+
+[flow]
+publicBranches = master develop release
+topicPrefixMappings = hotfix:master feature:develop bugfix:develop rc:release ?:develop
+
+

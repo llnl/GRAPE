@@ -52,12 +52,8 @@ class PostCommit(option.Option):
         else:
             autoPush = False
         #applies the cascade hook
-        cascades = cfg.get('post-commit','cascade').split(' ')
-        if cascades[0].strip().lower() != "none": 
-            cascadeDict = {}
-            for c in cascades:
-                clist = c.split(':')
-                cascadeDict[clist[0]] = clist[1]
+        cascadeDict = utility.parseConfigPairList(cfg.get('post-commit','cascade'))
+        if cascadeDict:
             currentBranch = git.currentBranch()
             while currentBranch in cascadeDict:
                 source = currentBranch
