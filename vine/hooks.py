@@ -10,7 +10,7 @@ class InstallHooks(option.Option):
         self._section = "Hooks"
 
     def description(self):
-        return "Installs grape as your hook manager for this repo. (May overwrite existing hooks you have installed in this repo)"
+        return "Installs grape as your hook manager for this repo. \n           (May overwrite existing hooks you have installed in this repo)"
 
     def execute(self):
         os.chdir(os.path.join(git.gitDir(),"hooks"))

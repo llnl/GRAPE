@@ -29,8 +29,32 @@ class MergeDevelop(option.Option):
         self._key = "md"
         self._section = "Merge"
 
+    def lookupPublicBranch(self,mappings):
+        currentBranch = git.currentBranch(quiet=True)
+        if currentBranch in grapeConfig.grapeConfig().get('flow','publicBranches'):
+            return currentBranch
+        branchPrefix = currentBranch.split('/')[0]
+        prefixMappings = utility.parseConfigPairList(mappings)
+        try: 
+            branch = prefixMappings[branchPrefix]
+        except KeyError:
+            try: 
+                branch = prefixMappings['?']
+                print("WARNING: prefix %s does not have an associated topic branch. \n" 
+                      "         using the default branch of %s" % (branchPrefix,branch) )
+            except KeyError:    
+                print("WARNING: prefix %s does not have an associated topic branch. \n" 
+                      "use --public=<branch> to define, or add %s:<branch> to \n" 
+                      "your .grapeconfig or .grapeuserconfig. " % (branchPrefix,branchPrefix))
+                branch = None
+        return branch
+           
+    
     def description(self):
-        return "Merge latest changes on develop into your current feature branch"
+        currentBranch = git.currentBranch(quiet=True)
+        publicBranch = self.lookupPublicBranch(grapeConfig.grapeConfig().get('flow','topicPrefixMappings'))
+
+        return "Merge latest changes on %s into %s" % (publicBranch,currentBranch)
 
     def execute(self,args):
         branch = args["--public"]
@@ -63,9 +87,7 @@ class MergeDevelop(option.Option):
             strategy = 'at'
         elif args['--ay']: 
             strategy = 'ay'
-        if not merge.mergeIntoCurrent(".", branch,strategy):
-            return False
-        return True
+        return merge.mergeIntoCurrent(".", branch,strategy)
 
     def setDefaultConfig(self,config):
         try:

@@ -109,15 +109,10 @@ def mergeIntoCurrent(repoName,branchName,strategy):
         print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
         choice = merge(branchName, "-Xours")
 
-    if choice == 'q':
-        return False
-    choice = choice.strip().lower()
-    if choice == "abort":
-        if not mergeAbort():
-            return False
-    elif choice:
-        return grapeMenu.menu().getOption(choice).execute()
+    if choice:
+        choice = choice.strip().lower()
+        return grapeMenu.menu().applyMenuChoice(choice,[choice])
 
-    return True
+    return False
 
 
