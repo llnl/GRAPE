@@ -39,7 +39,7 @@ class _Menu(object):
 
     #Add/order the menu sections here
         self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
-                        'Merge', 'Gitflow Tasks', 'Hooks','Patches', 'Perforce Integration', 'Other']
+                        'Merge', 'Gitflow Tasks', 'Hooks','Patches', 'Other' ] #'Perforce Integration', 'Other']
 
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption
