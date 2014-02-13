@@ -9,7 +9,7 @@ class P4Export(option.Option):
     def description(self):
         return "Prepare changes in current branch in your perforce maindev client"
 
-    def execute(self):
+    def execute(self,args):
         #First, create a new branch and prepare it with a squashed version of your current branch.
         print("Preparing temporary branch to hold squashed version of current branch.")
         originalBranch = utility.GetCurrentBranch()

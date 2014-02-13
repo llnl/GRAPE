@@ -28,8 +28,9 @@ class _Menu(object):
                           gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
                           merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
                           minorRelease.MinorRelease(), deleteBranch.DeleteBranch(),newWorkingTree.NewWorkingTree(),
-                          p4Export.P4Export(), \
-                          p4Import.P4Import(), resolveConflicts.ResolveConflicts(), \
+                          #p4Export.P4Export(), \
+                          #p4Import.P4Import(),
+                          resolveConflicts.ResolveConflicts(), \
                           review.Review(), test.Test(), updateLocal.UpdateLocal(), \
                           hooks.InstallHooks(),hooks.PostCommit(), hooks.PrePush(), hooks.PreRebase(), 
                           hooks.PreCommit(),hooks.PostRebase(),hooks.PostMerge(),\

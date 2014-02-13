@@ -9,7 +9,7 @@ class P4Import(option.Option):
     def description(self):
         return "Import recent p4 changes into a hotfix branch"
 
-    def execute(self):
+    def execute(self,args):
         print("calling Grape hot")
         proceed = options['hot'].execute()
         assert proceed == True
