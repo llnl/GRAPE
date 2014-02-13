@@ -15,7 +15,7 @@ class MergeDevelop(option.Option):
         --public=<branch>       Overrides the public branch to merge from. 
                                 Default behavior is to merge according to 
                                 flow.topicPrefixMappings. 
-        --mappings=<pairs>      Defines the mappings to determine which public
+        --mappings=<pairs>      Defines the prefix to branch mappings to determine which public
                                 branch to merge from, e.g. "feature:develop hotfix:master". 
                                 [default: .grapeconfig.flow.topicPrefixMappings]
         --am                    Perform the merge using git's default strategy. 
@@ -33,8 +33,6 @@ class MergeDevelop(option.Option):
         return "Merge latest changes on develop into your current feature branch"
 
     def execute(self,args):
-        print args
-        print grapeConfig.grapeConfig().get('flow','topicPrefixMappings')
         branch = args["--public"]
         if not branch:
             currentBranch = git.currentBranch()
