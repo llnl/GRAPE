@@ -40,7 +40,7 @@ class RunHook(option.Option):
     Usage: grape-runHook 
            grape-runHook pre-commit 
            grape-runHook pre-push <dest> <url> 
-           grape-runHook pre-rebase 
+           grape-runHook pre-rebase <basebranch> [<rebasebranch>]
            grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>]
            grape-runHook post-merge [--mergeSubmodule=<bool>]
@@ -58,6 +58,8 @@ class RunHook(option.Option):
     Arguments:
         <dest>                      (pre-push only) The destination repo. 
         <url>                       (pre-push only) The destination's URL. 
+        <basebranch>                (pre-rebase only) The upstream commit this branch was forked from. 
+        <rebasebranch>              (pre-rebase only) The branch being rebased (empty when rebasing current branch)
 
         
 
