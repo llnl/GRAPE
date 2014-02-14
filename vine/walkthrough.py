@@ -38,8 +38,7 @@ class Walkthrough(option.Option):
         try:
             print("diffing files. Use Ctrl-C to stop.")
             p = git.diff("%s %s %s" % (b1,b2,files))
-            p.wait()
-        except KeyboardInterrupt:
-            p.kill()
+        except:
+            pass
         return True
 
