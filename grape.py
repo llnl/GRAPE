@@ -123,8 +123,8 @@ import PyGitUp
 
 def startup():
     #TODO - allow addition grape config file to be specified at command line
-    additionalConfigFiles = []
-    grapeConfig.read(additionalConfigFiles)
+    #additionalConfigFiles = []
+    #grapeConfig.read(additionalConfigFiles)
     myMenu = grapeMenu.menu()
 
     try:

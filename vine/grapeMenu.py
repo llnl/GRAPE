@@ -1,6 +1,7 @@
-import bundle, branches, clone, config, feature, gitflowHelp
+import bundle, branches, clone, config, feature, gitflowHelp, grapeConfig
 import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
-import minorRelease, newWorkingTree, option, p4Import, p4Export, quit
+import minorRelease, newFlowBranch, newWorkingTree, option, p4Import 
+import p4Export, quit
 import resolveConflicts, review, test
 import updateLocal, updateView, utility, walkthrough
 import deleteBranch, hooks
@@ -15,6 +16,8 @@ def menu():
     global __menuInstance
     if __menuInstance == None:
         __menuInstance = _Menu()
+        grapeConfig.read()
+        __menuInstance.postInit()
     return __menuInstance
 
 class _Menu(object):
@@ -23,22 +26,33 @@ class _Menu(object):
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here
-        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), clone.Clone(),
-                          config.Config(), feature.Feature(), \
-                          gitflowHelp.GitflowHelp(), hotfix.Hotfix(), \
-                          merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), \
-                          minorRelease.MinorRelease(), deleteBranch.DeleteBranch(),newWorkingTree.NewWorkingTree(),
-                          #p4Export.P4Export(), \
+        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), clone.Clone(), 
+                          config.Config(), 
+                          #feature.Feature(), 
+                          #gitflowHelp.GitflowHelp(), hotfix.Hotfix(), 
+                          merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), 
+                          #minorRelease.MinorRelease(),
+                          deleteBranch.DeleteBranch(),newWorkingTree.NewWorkingTree(),
+                          #p4Export.P4Export(), 
                           #p4Import.P4Import(),
-                          resolveConflicts.ResolveConflicts(), \
-                          review.Review(), test.Test(), updateLocal.UpdateLocal(), \
-                          hooks.InstallHooks(),hooks.RunHook(), \
+                          resolveConflicts.ResolveConflicts(), 
+                          review.Review(), test.Test(), updateLocal.UpdateLocal(), 
+                          hooks.InstallHooks(),hooks.RunHook(), 
                           updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
+
+
 
     #Add/order the menu sections here
         self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
                         'Merge', 'Gitflow Tasks', 'Hooks','Patches', 'Other' ] #'Perforce Integration', 'Other']
 
+    
+
+
+
+    def postInit(self): 
+         # add dynamically generated (dependent on grapeConfig) options here
+        self._options = self._options + newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(grapeConfig.grapeConfig()) 
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption
 
