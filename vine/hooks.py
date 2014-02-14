@@ -43,7 +43,7 @@ class RunHook(option.Option):
            grape-runHook pre-rebase <basebranch> [<rebasebranch>]
            grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>]
-           grape-runHook post-merge [--mergeSubmodule=<bool>]
+           grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>]
            grape-runHook post-checkout [--checkoutSubmodule=<bool>]
 
     Options:
@@ -60,7 +60,7 @@ class RunHook(option.Option):
         <url>                       (pre-push only) The destination's URL. 
         <basebranch>                (pre-rebase only) The upstream commit this branch was forked from. 
         <rebasebranch>              (pre-rebase only) The branch being rebased (empty when rebasing current branch)
-
+        <wasSquashed>               (post-merge only) Status flag indicating whether the merge was a squash merge. 
         
 
 
