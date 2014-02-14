@@ -23,7 +23,6 @@ class NewBranchOptionFactory():
     def createNewBranchOptions(self,config):
         
         topicPublicMapping = utility.parseConfigPairList(config.get('flow','topicPrefixMappings'))
-        print(topicPublicMapping)
         options = []
         for topic in topicPublicMapping.keys():
             if topic != '?': 

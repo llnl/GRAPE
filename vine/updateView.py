@@ -28,7 +28,6 @@ class UpdateView(option.Option):
         return "Update the view of your current working tree"
 
     def execute(self,args):
-        print(args)
         base = git.baseDir()
         if base == "":
             return False

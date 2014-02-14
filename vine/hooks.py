@@ -172,7 +172,6 @@ class RunHook(option.Option):
             git.submodule("update --merge")
 
     def postCheckout(self,args): 
-        print "made it!"
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule.lower() == 'true': 
             git.submodule("update")
