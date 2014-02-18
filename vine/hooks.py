@@ -13,7 +13,7 @@ class InstallHooks(option.Option):
 
     Options:
     --toInstall=<hook>    the list of hook-types to install
-                          [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge]
+                          [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
     """
     def __init__(self):
