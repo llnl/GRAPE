@@ -2,6 +2,9 @@ import os, StringIO, subprocess, sys, tempfile, ConfigParser
 import grapeGit as git
 import grapeMenu
 import grapeConfig
+toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)),"..")
+if toplevel not in sys.path:
+    sys.path.append(toplevel)
 from docopt.docopt import docopt
 
 
