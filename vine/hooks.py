@@ -44,7 +44,7 @@ class RunHook(option.Option):
            grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>]
            grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>]
-           grape-runHook post-checkout [--checkoutSubmodule=<bool>]
+           grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>]
 
     Options:
         --autopush=<bool>           autopushes commits to origin
