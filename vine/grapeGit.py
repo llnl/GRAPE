@@ -101,7 +101,7 @@ def gitDir():
 
 
 def isWorkingDirectoryClean():
-    statusOutput = status()
+    statusOutput = status("-u")
     return "nothing to commit, working directory clean" in statusOutput
 
 def log(args=""):
