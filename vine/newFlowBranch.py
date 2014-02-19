@@ -2,6 +2,7 @@ import option
 import utility
 import types
 import grapeGit as git
+import grapeMenu
 
 class NewBranchOption(option.Option): 
     def __init__(self,topic,public): 
@@ -13,7 +14,7 @@ class NewBranchOption(option.Option):
         return "Create and switch to a %s branch off of %s" % (self._key,self._public)
 
     def execute(self,args): 
-        git.fetch("origin %s:%s" % (self._public, self._public))
+        grapeMenu.menu().applyMenuChoice('up',['up'])
         utility.createBranch(self._public,self._key)
 
 class NewBranchOptionFactory():
