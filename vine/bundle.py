@@ -62,7 +62,7 @@ name = None
         if not args["--norecurse"]: 
             os.chdir(git.baseDir())
             grapecmd = os.path.join(os.path.dirname(__file__),"..","grape")
-            git.gitcmd("submodule foreach '%s bundle %s'" % (grapecmd,' '.join(argv)),"recursive submodule bundle failed") 
+            git.gitcmd("submodule foreach '%s bundle '" % (grapecmd),"recursive submodule bundle failed") 
         git.fetch()
         git.fetch("--tags")
         branchlist = branches.split(" ")
