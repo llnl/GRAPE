@@ -30,7 +30,10 @@ class MergeDevelop(option.Option):
         self._section = "Merge"
 
     def lookupPublicBranch(self,mappings):
-        currentBranch = git.currentBranch(quiet=True)
+        try:
+            currentBranch = git.currentBranch(quiet=True)
+        except:
+            return 'unknown'
         if currentBranch in grapeConfig.grapeConfig().get('flow','publicBranches'):
             return currentBranch
         branchPrefix = currentBranch.split('/')[0]
@@ -51,7 +54,10 @@ class MergeDevelop(option.Option):
            
     
     def description(self):
-        currentBranch = git.currentBranch(quiet=True)
+        try: 
+            currentBranch = git.currentBranch(quiet=True)
+        except:
+            currentBranch = 'unknown'
         publicBranch = self.lookupPublicBranch(grapeConfig.grapeConfig().get('flow','topicPrefixMappings'))
 
         return "Merge latest changes on %s into %s" % (publicBranch,currentBranch)

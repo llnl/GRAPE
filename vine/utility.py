@@ -104,7 +104,7 @@ def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHa
         output = output+line
     process.wait()
     process.output = output
-    if process.returncode != 0:
+    if process.returncode != 0 and verbose > 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
 
