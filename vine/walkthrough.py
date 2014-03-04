@@ -6,12 +6,13 @@ import utility
 class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
-    Usage: grape-w [--b1=<branch> [--b2=<branch>]] [<filetree-ish>] 
+    Usage: grape-w [--b1=<branch> [--b2=<branch>]] [<filetree-ish>] [--nogui]
 
     Options:
         --b1=<branch>   The branch to compare the current branch to. 
         --b2=<branch>   The branch to compare against b1. [default: HEAD]
-    
+        --nogui         Don't use kompare to do the walkthrough. 
+
     Optional Arguments:
         <filetree-ish>  The files to compare.  
 
