@@ -1,4 +1,4 @@
-import sys
+import sys,os,tempfile
 import option
 import grapeGit as git
 import utility
@@ -30,16 +30,28 @@ class Walkthrough(option.Option):
             b1 = utility.userInput("Enter name of branch to compare","develop")
         b2 = args["--b2"]
        
-
+        nogui = args["--nogui"] or os.name == "nt"
         # may want to exit out of diffs early, need to make sure to pass the
         # signal down
         files = args["<filetree-ish>"]
         if (not files): 
             files = ""
-        try:
-            print("diffing files. Use Ctrl-C to stop.")
-            p = git.diff("%s %s %s" % (b1,b2,files))
-        except:
-            pass
+        #try:
+        if nogui:
+            try: 
+                p = git.diff("%s...%s -- %s" % (b1,b2,files) )
+            except:
+                pass
+        else:
+            try: 
+                p = git.diff("--no-ext-diff -U2000 %s...%s -- %s" % (b1,b2,files),quiet=True)
+                fname = os.path.join(tempfile.gettempdir(),"gitdifftmp")
+                with open(fname,'w') as f:
+                    f.write(p)
+                with open(fname,'r') as f: 
+                    p2 = utility.executeSubProcess("kompare -",stdin = f)
+            except:
+                pass
+        
         return True
 

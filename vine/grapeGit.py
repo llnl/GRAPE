@@ -22,7 +22,7 @@ def gitcmd(cmd,errmsg,quiet=False):
     process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE,verbose=verbose)
     if process.returncode != 0:
         raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.output,_cmd,quiet)
-    return process.output.strip()
+    return process 
 
 def add(filedescription):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
@@ -74,8 +74,8 @@ def currentBranch(quiet = True):
 def describe(argstr):
     return gitcmd("describe %s" % argstr, "could not describe commit")
 
-def diff(argstr): 
-    return gitcmd("diff %s" % argstr,"could not perform diff")
+def diff(argstr,quiet = False)
+    return gitcmd("diff %s" % argstr,"could not perform diff",quiet = quiet)
 
 def dir():
     return baseDir() 
