@@ -172,11 +172,11 @@ def shortSHA():
 def showRemote():
     return gitcmd("remote show origin","unable to show remote")
 
-def status(argstr = ""):
-    return gitcmd("status %s" % argstr, "git status failed for some reason")
+def status(argstr = "",quiet=False):
+    return gitcmd("status %s" % argstr, "git status failed for some reason",quiet = quiet)
 
-def submodule(argstr):
-    return gitcmd("submodule %s" % argstr,"git submodule %s failed" % argstr)
+def submodule(argstr,quiet=False):
+    return gitcmd("submodule %s" % argstr,"git submodule %s failed" % argstr,quiet=quiet)
 
 def tag(argstr):
     return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)
