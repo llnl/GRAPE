@@ -20,7 +20,7 @@ def read(additionalFileNames = []):
       defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
     else :
       defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
-
+    globalconfigfile = defaultFiles[0]
     try:
         defaultFiles.append(os.path.join(git.baseDir(),".grapeconfig"))
     except:
