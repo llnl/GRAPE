@@ -187,7 +187,6 @@ def workspaceDir():
     while True: 
         try: 
             dir = git.baseDir()
-            print("in %s, cd'ing to %s" % (dir,os.path.join(dir,"..")))
             os.chdir(os.path.join(dir,".."))
         except:
             break
