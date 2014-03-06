@@ -1,6 +1,7 @@
 import os
 import option
 import grapeGit as git
+import utility
 
 class Commit(option.Option):
     """
@@ -33,7 +34,7 @@ class Commit(option.Option):
         if args['-m']: 
             commitargs = commitargs + " -m \"%s\""%args["<message>"]
          
-        baseDir =  git.baseDir()
+        baseDir =  utility.workspaceDir()
         os.chdir(baseDir)
         submodules = git.getSubmodules()
         submodulesString = ' '.join(submodules)
@@ -44,7 +45,6 @@ class Commit(option.Option):
                 os.chdir(os.path.join(baseDir,file))
                 git.commit(commitargs)
         os.chdir(baseDir)
-#        git.submodule("foreach \"git commit %s\"" % commitargs,quiet=quiet)
         git.commit(commitargs)
         return True
     

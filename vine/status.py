@@ -1,6 +1,7 @@
 import os
 import option
 import grapeGit as git
+import utility
 
 class Status(option.Option):
     """
@@ -20,12 +21,12 @@ class Status(option.Option):
 
     def execute(self,args):
         print("gathering status on outer level project")
+        cwd = utility.workspaceDir() 
+        os.chdir(cwd)
         quiet = not args["-v"]
         status = git.status("--porcelain",quiet).split('\n')
         if status[0][0] != ' ':
             status[0] = ' ' + status[0]
-        cwd = git.baseDir()
-        os.chdir(cwd)
 
         print("gathering status on submodules")
         submodules = git.submodule("foreach --quiet \"echo \$path\"",quiet).split('\n')

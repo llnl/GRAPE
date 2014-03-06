@@ -181,6 +181,22 @@ def writeDefaultConfig(filename):
    with open(filename,'w') as f:
       config.write(f)
 
+# return the path to the base level of the current workspace. (outermost git repo)
+def workspaceDir(): 
+    dir = None
+    while True: 
+        try: 
+            dir = git.baseDir()
+            print("in %s, cd'ing to %s" % (dir,os.path.join(dir,"..")))
+            os.chdir(os.path.join(dir,".."))
+        except:
+            break
+    if not dir:
+        print("GRAPE WARNING: expected to be in your workspace, no .git found")
+    return dir
+    
+
+
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 
     return os.path.join(os.path.dirname(__file__),"..","grape")
