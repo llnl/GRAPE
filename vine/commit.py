@@ -39,7 +39,7 @@ class Commit(option.Option):
         submodules = git.getSubmodules()
         submodulesString = ' '.join(submodules)
         status = git.status("--porcelain %s"%submodulesString,quiet=quiet).split('\n')
-        print("Performing commits in modified submodules")
+        print("GRAPE: Performing commits in modified submodules")
         for l in status: 
             file = l.split()[1]
             if file in submodules: 
@@ -47,7 +47,7 @@ class Commit(option.Option):
                 git.commit(commitargs)
                 print(' ')
         os.chdir(baseDir)
-        print("Performing commit in outer level project")
+        print("GRAPE: Performing commit in outer level project")
         git.commit(commitargs)
         return True
     
