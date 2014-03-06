@@ -38,13 +38,16 @@ class Commit(option.Option):
         os.chdir(baseDir)
         submodules = git.getSubmodules()
         submodulesString = ' '.join(submodules)
-        status = git.status("--porcelain %s"%submodulesString).split('\n')
+        status = git.status("--porcelain %s"%submodulesString,quiet=quiet).split('\n')
+        print("Performing commits in modified submodules")
         for l in status: 
             file = l.split()[1]
             if file in submodules: 
                 os.chdir(os.path.join(baseDir,file))
                 git.commit(commitargs)
+                print(' ')
         os.chdir(baseDir)
+        print("Performing commit in outer level project")
         git.commit(commitargs)
         return True
     
