@@ -2,51 +2,49 @@ import os
 import option
 import grapeGit as git
 
-class Status(option.Option):
+class Commit(option.Option):
     """
-    Usage: grape-status [-v]
+    Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
 
     Options:
     -v      Show git commands being issued. 
+    -a      Commit modified files that have not been staged. 
+    
+
+    Arguments:
+    <filetree> The relative path of files to include in this commit. 
 
     """
     def __init__(self):
-        self._key = "status"
+        self._key = "commit"
         self._section = "Miscellaneous"
 
     def description(self):
-        return "Gives the status for this workspace"
+        return "runs git commit in all projects in this workspace"
 
 
     def execute(self,args):
-        print("gathering status on outer level project")
         quiet = not args["-v"]
-        status = git.status("--porcelain",quiet).split('\n')
-        if status[0][0] != ' ':
-            status[0] = ' ' + status[0]
-        cwd = git.baseDir()
-        os.chdir(cwd)
-
-        print("gathering status on submodules")
-        submodules = git.submodule("foreach --quiet \"echo \$path\"",quiet).split('\n')
-
-        for sub in submodules:
-            if not sub.strip():
-                continue
-            os.chdir(sub)
-            subStatus = git.status("--porcelain",quiet).split('\n')
-            for line in subStatus: 
-                strippedL = line.strip()
-                if strippedL:
-                    tokens = strippedL.split()
-                    tokens[0] = tokens[0].strip()
-                    if len(tokens[0]) == 1: 
-                        tokens[0] = " %s" % tokens[0] 
-                    status.append(' '.join([tokens[0],'/'.join([sub,tokens[1]])]))
-            os.chdir(cwd)
-        
-        for line in status: 
-            print line
+        commitargs = ""
+        if args['-a']: 
+            commitargs = commitargs +  " -a"
+        elif args["<filetree>"]:
+            commitargs = commitargs + " %s"% args["<filetree>"]
+        if args['-m']: 
+            commitargs = commitargs + " -m \"%s\""%args["<message>"]
+         
+        baseDir =  git.baseDir()
+        os.chdir(baseDir)
+        submodules = git.getSubmodules()
+        submodulesString = ' '.join(submodules)
+        status = git.status("--porcelain %s"%submodulesString).split('\n')
+        for l in status: 
+            file = l.split()[1]
+            if file in submodules: 
+                os.chdir(os.path.join(baseDir,file))
+                git.commit(commitargs)
+#        git.submodule("foreach \"git commit %s\"" % commitargs,quiet=quiet)
+        git.commit(commitargs)
         return True
     
     def setDefaultConfig(self,config): 

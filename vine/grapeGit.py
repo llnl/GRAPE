@@ -83,6 +83,9 @@ def dir():
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
 
+def getSubmodules(): 
+    return submodule("foreach --quiet \"echo \$path\"",quiet=True).split('\n')
+ 
 def gitDir(): 
     base = baseDir()
     gitPath = os.path.join(base,".git")
