@@ -25,7 +25,7 @@ class Status(option.Option):
         os.chdir(cwd)
         quiet = not args["-v"]
         status = git.status("--porcelain",quiet).split('\n')
-        if status[0][0] != ' ':
+        if status[0] and status[0][0] != ' ':
             status[0] = ' ' + status[0]
 
         print("gathering status on submodules")
