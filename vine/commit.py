@@ -43,6 +43,7 @@ class Commit(option.Option):
             if file in submodules: 
                 os.chdir(os.path.join(baseDir,file))
                 git.commit(commitargs)
+        os.chdir(baseDir)
 #        git.submodule("foreach \"git commit %s\"" % commitargs,quiet=quiet)
         git.commit(commitargs)
         return True
