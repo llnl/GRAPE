@@ -18,7 +18,7 @@ class Commit(option.Option):
     """
     def __init__(self):
         self._key = "commit"
-        self._section = "Miscellaneous"
+        self._section = "Workspace"
 
     def description(self):
         return "runs git commit in all projects in this workspace"

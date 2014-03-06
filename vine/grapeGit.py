@@ -53,8 +53,8 @@ def branchUpToDateWith(branch,targetBranch):
 def bundle(argstr): 
     return  gitcmd("bundle %s" % argstr, "Bundle failed")
 
-def checkout(argstr): 
-    return  gitcmd("checkout %s" % argstr, "Checkout failed")
+def checkout(argstr,quiet=False): 
+    return  gitcmd("checkout %s" % argstr, "Checkout failed",quiet=quiet)
 
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")

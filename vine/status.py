@@ -13,7 +13,7 @@ class Status(option.Option):
     """
     def __init__(self):
         self._key = "status"
-        self._section = "Miscellaneous"
+        self._section = "Workspace"
 
     def description(self):
         return "Gives the status for this workspace"

@@ -1,4 +1,4 @@
-import bundle, branches, clone, commit, config, feature, gitflowHelp, grapeConfig
+import bundle, branches, checkout, clone, commit, config, feature, gitflowHelp, grapeConfig
 import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 import minorRelease, newFlowBranch, newWorkingTree, option, p4Import 
 import p4Export, quit
@@ -27,7 +27,7 @@ class _Menu(object):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(),clone.Clone(), 
-                          commit.Commit(), config.Config(), 
+                          checkout.Checkout(),commit.Commit(), config.Config(), 
                           #feature.Feature(), 
                           #gitflowHelp.GitflowHelp(), hotfix.Hotfix(), 
                           merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), 
@@ -43,7 +43,7 @@ class _Menu(object):
 
 
     #Add/order the menu sections here
-        self._sections = ['Getting Started', 'Code Reviews', 'Miscellaneous', \
+        self._sections = ['Getting Started', 'Code Reviews', 'Workspace', \
                         'Merge', 'Gitflow Tasks', 'Hooks','Patches', 'Other' ] #'Perforce Integration', 'Other']
 
     

@@ -5,7 +5,7 @@ import grapeGit, option
 class Branches(option.Option):
     def __init__(self):
         self._key = "b"
-        self._section = "Miscellaneous"
+        self._section = "Workspace"
 
     def description(self):
         return "List all of your local repo's branches"
