@@ -23,11 +23,21 @@ class UpdateLocal(option.Option):
         return "Update local branches that are tracked in your remote repo"
 
     def execute(self,args):
-       fetchArgs = "origin "
-       currentBranch = git.currentBranch()
-       for pubBranch in args["--public"].split(' '): 
-           if currentBranch != pubBranch:
-               fetchArgs = fetchArgs+"%s:%s " % (pubBranch,pubBranch)
-       git.fetch(fetchArgs)
-       git.pull("origin %s"%currentBranch)
-       return True
+        
+        fetchArgs = "origin "
+        currentBranch = git.currentBranch()
+        for pubBranch in args["--public"].split(' '): 
+            if currentBranch != pubBranch:
+                fetchArgs = fetchArgs+"%s:%s " % (pubBranch,pubBranch)
+        try: 
+            git.fetch(fetchArgs)
+        except git.GrapeGitError as e: 
+            if e.code == 128:
+                print("GRAPE: could not connect to origin, local branches were not updated.")
+            else:
+                raise e
+        try:
+            git.pull("origin %s"%currentBranch)
+        except:
+            print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
+        return True
