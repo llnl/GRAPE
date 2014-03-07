@@ -13,9 +13,20 @@ class NewBranchOption(option.Option):
     def description(self):
         return "Create and switch to a %s branch off of %s" % (self._key,self._public)
 
+    def createBranch(self,branchPoint, prefix):
+        branch = utility.userInput("Enter new branch name")
+        user = utility.getUserName()
+        fullBranch = prefix+"/"+user+"/"+branch
+        proceed = utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
+        if (proceed):
+            git.checkout("-b %s %s " % (fullBranch,branchPoint))
+            git.push("-u origin %s" % fullBranch)
+        else:
+            print("Branch not created")
+
     def execute(self,args): 
         grapeMenu.menu().applyMenuChoice('up',['up'])
-        utility.createBranch(self._public,self._key)
+        self.createBranch(self._public,self._key)
 
 class NewBranchOptionFactory():
     def __init__(self):

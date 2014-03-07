@@ -19,17 +19,6 @@ def cmerge(l):  # this should return 'success' or an error code
     """Apply a git merge across several branches"""
     Cascade(l, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
 
-def createBranch(branchPoint, prefix):
-    branch = userInput("Enter new branch name")
-    user = getUserName()
-    fullBranch = prefix+"/"+user+"/"+branch
-    proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
-    if (proceed):
-        git.checkout("-b %s %s " % (fullBranch,branchPoint))
-        git.push("-u origin %s" % fullBranch)
-    else:
-        print("Branch not created")
-
 def defineView(sparseFile):
     include = {}
     requiredDirs = grapeConfig.grapeConfig().get("view","required")
