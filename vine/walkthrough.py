@@ -1,4 +1,4 @@
-import sys
+import sys,os,tempfile
 import option
 import grapeGit as git
 import utility
@@ -6,13 +6,14 @@ import utility
 class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
-    Usage: grape-w [--b1=<branch> [--b2=<branch>]] [<filetree-ish>] 
+    Usage: grape-w [--nogui] [<b1> [<b2>] ] [--] [ <filetree-ish> ]
 
     Options:
-        --b1=<branch>   The branch to compare the current branch to. 
-        --b2=<branch>   The branch to compare against b1. [default: HEAD]
-    
+        --nogui         Don't use kompare to do the walkthrough, use whatever diff is your default diff. 
+
     Optional Arguments:
+        <b1>            The first tree to compare
+        <b2>            The second tree to compare
         <filetree-ish>  The files to compare.  
 
     """
@@ -24,21 +25,36 @@ class Walkthrough(option.Option):
         return "Walk through diffs between branches"
 
     def execute(self,args):
-        b1 =  args["--b1"]
+        b1 =  args["<b1>"] 
         if not b1: 
-            b1 = utility.userInput("Enter name of branch to compare","develop")
-        b2 = args["--b2"]
-       
-
+            b1 = utility.userInput("Enter name of branch to compare","HEAD")
+        b2 = args["<b2>"] if args["<b2>"] else ""
+               
+        nogui = args["--nogui"] or os.name == "nt"
         # may want to exit out of diffs early, need to make sure to pass the
         # signal down
         files = args["<filetree-ish>"]
         if (not files): 
             files = ""
-        try:
-            print("diffing files. Use Ctrl-C to stop.")
-            p = git.diff("%s %s %s" % (b1,b2,files))
-        except:
-            pass
+
+        # make sure our remote references are up to date if we're comparing with something in the origin repo
+        if 'origin' in b1 or 'origin' in b2: 
+            try: 
+                git.fetch()
+            except:
+                pass
+
+        if nogui:
+            # use default git diff behavior to look at diffs
+            p = git.diff("%s %s -- %s" % (b1,b2,files) )
+        else:
+            # use kompare to browse the diffs.
+            p = git.diff("--no-ext-diff -U2000 %s %s -- %s" % (b1,b2,files),quiet = True)
+            fname = os.path.join(tempfile.gettempdir(),"gitdifftmp")
+            with open(fname,'w') as f:
+                f.write(p)
+            with open(fname,'r') as f: 
+                p2 = utility.executeSubProcess("kompare -",stdin = f)
+    
         return True
 
