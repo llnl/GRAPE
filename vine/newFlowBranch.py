@@ -1,3 +1,4 @@
+import os
 import option
 import utility
 import types
@@ -35,16 +36,18 @@ class NewBranchOption(option.Option):
     def description(self):
         return "Create and switch to a %s branch off of %s" % (self._key,self._public)
 
-    def createBranch(branchPoint, prefix,user,descr,noverify):
+    def createBranch(self,branchPoint, prefix,user,descr,noverify):
         branch = descr if descr else utility.userInput("Enter new branch name")
         user = user if user else utility.getUserName()
         fullBranch = prefix+"/"+user+"/"+branch
-        proceed = noverify or userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
+        proceed = noverify or utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
         if (proceed):
             git.checkout("-b %s %s " % (fullBranch,branchPoint))
             git.push("-u origin %s" % fullBranch)
+            return (branchPoint,prefix,user,branch)
         else:
             print("Branch not created")
+            return None
 
     def execute(self,args): 
         grapeMenu.menu().applyMenuChoice('up',['up'])
@@ -59,18 +62,18 @@ class NewBranchOption(option.Option):
         
         cwd = utility.workspaceDir()
         os.chdir(cwd)
-        createBranch(start,self._key,args['--user'],args['<descr>'],args['--noverify'])
+        subArgs = self.createBranch(start,self._key,args['--user'],args['<descr>'],args['--noverify'])
         
-        if (recurse): 
+        if (subArgs and recurse): 
             submapping = grapeConfig.grapeConfig().get('workspace','submoduleTopicPrefixMappings')
             submapping = utility.parseConfigPairList(submapping)
             submodulePublic = submapping[self._key]
-            proceed = args["--noverify"] or userInput("About to create the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') 
+            proceed = args["--noverify"] or utility.userInput("About to create the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') 
             if proceed:
                 for sub in git.getSubmodules(): 
                     os.chdir(os.path.join(cwd,sub))
-                    grapeMenu.menu().applyMenuChoice('up',['up'])
-                    createBranch(submodulePublic,self._key,args['--user'],args['<descr>'],True)
+                    grapeMenu.menu().applyMenuChoice('up',['up','--public="ale3d"'])
+                    self.createBranch(submodulePublic,self._key,subArgs[2],subArgs[3],True)
 
          
 
