@@ -3,6 +3,7 @@ import utility
 import types
 import grapeGit as git
 import grapeMenu
+import grapeConfig
 
 class NewBranchOption(option.Option): 
     """
@@ -10,13 +11,16 @@ class NewBranchOption(option.Option):
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [<descr>]
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
     --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
     --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
                             This disables the verification. 
+    --recurse               Create the branch in submodules. 
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --norecurse             Don't create teh branch in submodules. 
     
     Arguments:
     <name>                  Single word description of work being done on this branch. Asks by default.
@@ -45,10 +49,38 @@ class NewBranchOption(option.Option):
     def execute(self,args): 
         grapeMenu.menu().applyMenuChoice('up',['up'])
         start = args["--start"]
+        recurse = grapeConfig.grapeConfig().get('workspace','manageSubmodules')
+        if (args["--recurse"]): 
+            recurse = True
+        if (args["--norecurse"]): 
+            recurse = False
         if not start: 
             start = self._public
-
+        
+        cwd = utility.workspaceDir()
+        os.chdir(cwd)
         createBranch(start,self._key,args['--user'],args['<descr>'],args['--noverify'])
+        
+        if (recurse): 
+            submapping = grapeConfig.grapeConfig().get('workspace','submoduleTopicPrefixMappings')
+            submapping = utility.parseConfigPairList(submapping)
+            submodulePublic = submapping[self._key]
+            proceed = args["--noverify"] or userInput("About to create the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') 
+            if proceed:
+                for sub in git.getSubmodules(): 
+                    os.chdir(os.path.join(cwd,sub))
+                    grapeMenu.menu().applyMenuChoice('up',['up'])
+                    createBranch(submodulePublic,self._key,args['--user'],args['<descr>'],True)
+
+         
+
+    def setDefaultConfig(self,config): 
+        try:
+            config.add_section('workspace')
+        except ConfigParser.DuplicateSectionError:
+            pass
+        config.set('workspace','manageSubmodules','True')
+        config.set('workspace','submoduleTopicPrefixMappings','?:develop')
 
 class NewBranchOptionFactory():
     def __init__(self):

@@ -1,6 +1,7 @@
 import option, utility
 import grapeGit as git
 import os
+import grapeMenu
 # Configure current repo
 class Config(option.Option):
     """
@@ -136,4 +137,14 @@ class Config(option.Option):
                 except:
                     print("could not find p4settings file, please check your path and try again")
                     return False
+
+        # install hooks here and in all submodules
+        print("Installing hooks in all repos")
+        cwd = git.baseDir()
+        grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
+        os.chdir(cwd)
+        for sub in git.getSubmodules(False): 
+            os.chdir(os.path.join(cwd,sub))
+            grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
+        os.chdir(cwd)
         return True
