@@ -1,10 +1,6 @@
 import os, sys
 import grapeConfig
 import option, utility
-filedir = os.path.dirname(os.path.realpath(__file__))
-grapedir = os.path.join(filedir,"..")
-if not grapedir in sys.path:
-    sys.path.append( grapedir )
 import grapeGit as git
 
 class DeleteBranch(option.Option):
@@ -26,17 +22,18 @@ class DeleteBranch(option.Option):
     def description(self):
         return "Delete a branch on both your local repo and on origin"
 
-    def deleteBranch(self,force=False):
+    def deleteBranch(self,branch,force=False):
         forceStr = "-D" if force else "-d"
         try: 
-            git.branch("%s %s" % (forceStr,branch))
+            git.branch("%s %s" % (forceStr,branch),quiet=True)
         except git.GrapeGitError as e:
-            if force:
-                pass
-            raise e
+            print e.gitOutput
         try:
-            git.push("--delete origin %s" % branch)
-        except:
+            git.push("--delete origin %s" % branch,quiet=True)
+            print("branch successfully deleted from origin")
+        except git.GrapeGitError as e:
+            print e.gitOutput
+            #print("could not delete from remote. Either it doesn't exist there, it is a protected branch, or you don't have a connection to origin")
             pass
 
 
@@ -50,11 +47,11 @@ class DeleteBranch(option.Option):
         cwd = utility.workspaceDir()
         os.chdir(cwd)
         # delete the branch in submodules first
-        for sub in git.subModules(): 
+        for sub in git.getSubmodules(): 
             os.chdir(os.path.join(cwd,sub))
             self.deleteBranch(force)
         os.chdir(cwd)
         # then the outer level repository. 
-        self.deleteBranch(force)
+        self.deleteBranch(branch,force)
 
         return True

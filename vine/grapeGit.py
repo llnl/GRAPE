@@ -24,17 +24,16 @@ def gitcmd(cmd,errmsg,quiet=False):
         raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.output,_cmd,quiet)
     return process.output.strip()
 
-def add(filedescription):
+def add(filedescription, quiet = False):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
-def baseDir():
-    beQuiet = True
-    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory",beQuiet)
+def baseDir(quiet=True):
+    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory",quiet)
     path = utility.makePathPortable(unixStylePath)
     return path
 
-def branch(argstr=""):
-    return gitcmd("branch %s" % argstr, "Could not list branches")
+def branch(argstr="",quiet=False):
+    return gitcmd("branch %s" % argstr, "Could not list branches",quiet)
 
 def branchUpToDateWith(branch,targetBranch):
     allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
@@ -129,11 +128,11 @@ def numberCommitsSinceRoot():
     root = gitcmd("rev-list --max-parents=0 HEAD", "rev-list failed")
     return numberCommitsSince(root)
     
-def pull(args):
-    return gitcmd("pull %s" %args ,"Pull failed")
+def pull(args,quiet=False):
+    return gitcmd("pull %s" %args ,"Pull failed",quiet=quiet)
 
-def push(args):
-    return gitcmd("push %s" % args, "Push failed")
+def push(args,quiet=False):
+    return gitcmd("push %s" % args, "Push failed",quiet=quiet)
 
 def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
