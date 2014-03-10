@@ -1,4 +1,5 @@
-import bundle, branches, checkout, clone, commit, config, feature, gitflowHelp, grapeConfig
+import bundle, branches, checkout, clone, commit, config, feature, foreach
+import gitflowHelp, grapeConfig
 import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 import minorRelease, newFlowBranch, newWorkingTree, option, p4Import 
 import p4Export, quit
@@ -28,6 +29,7 @@ class _Menu(object):
         #Add/order your menu option here
         self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(),clone.Clone(), 
                           checkout.Checkout(),commit.Commit(), config.Config(), 
+                          foreach.ForEach(),
                           #feature.Feature(), 
                           #gitflowHelp.GitflowHelp(), hotfix.Hotfix(), 
                           merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), 
