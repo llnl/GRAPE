@@ -84,7 +84,11 @@ def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
 
 def getSubmodules(quiet=True): 
-    return submodule("foreach --quiet \"echo \$path\"",quiet=quiet).split('\n')
+
+    submoduleList = submodule("foreach --quiet \"echo \$path\"",quiet=quiet)
+    submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    return submoduleList
+
  
 def gitDir(): 
     base = baseDir()

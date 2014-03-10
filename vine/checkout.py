@@ -26,21 +26,18 @@ class Checkout(option.Option):
 
     def execute(self,args):
         quiet = not args["-v"]
-        checkoutargs = ""
-        print checkoutargs
+        checkoutargs = ''
         if args['-b']: 
             checkoutargs = checkoutargs +  " -b"
-        print checkoutargs
         checkoutargs = checkoutargs + " %s"% args["<branch>"]
-        print checkoutargs
         baseDir =  utility.workspaceDir()
         os.chdir(baseDir)
         submodules = git.getSubmodules()
         
         print("GRAPE: Performing checkout in outer level project")
         git.checkout(checkoutargs,quiet=quiet)
-        
-        print("GRAPE: Performing checkouts in all submodules")
+        if submodules:
+            print("GRAPE: Performing checkouts in all submodules")
         for sub in submodules: 
             os.chdir(os.path.join(baseDir,sub))
             git.checkout(checkoutargs,quiet = quiet)
