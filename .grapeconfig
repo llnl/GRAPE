@@ -31,7 +31,7 @@ submoduleUpdate = True
 submoduleUpdate = True
 
 [flow]
-publicBranches = master develop release
+publicBranches = master develop release ale3d
 topicPrefixMappings = hotfix:master feature:develop bugfix:develop rc:release ?:develop
 
 

@@ -75,14 +75,14 @@ def makePathPortable(path):
     return newPath
 
 
-def executeSubProcess(command, workingDirectory=tempfile.gettempdir(), outFileHandle=subprocess.PIPE, verbose=2):
+def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subprocess.PIPE, verbose=2, stdin = sys.stdin):
     if verbose > 1:
-        print("Executing: " + command + ": Working Directory: " + workingDirectory)
+        print("Executing: " + command + "\n\t Working Directory: " + workingDirectory)
     #***************************************************************************************************************
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=True, cwd=workingDirectory)
+    process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=True, cwd=workingDirectory, stdin=stdin)
     output = ""
     for  line in iter(process.stdout.readline, ''): 
         line = line.replace('\r', '').replace('\n', '')

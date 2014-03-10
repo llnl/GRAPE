@@ -18,6 +18,7 @@ Usage:
                 [--tagprefix=<config.patch.tagprefix>]
                 [--describePattern=<config.patch.describePattern>]
                 [--name=<config.repo.name>]
+                [--outfile=<fname>] 
 
 
 Options:
@@ -30,6 +31,11 @@ Options:
                                     [default: .grapeconfig.patch.describePattern] 
    --name=<str>                     Name used as a prefix to the bundle file. 
                                     [default: .grapeconfig.repo.name]
+   --outfile=<fname>                Name of the output bundle file. Default behavior is to 
+                                    use branch names, the repo name, and output of git-describe
+                                    to construct a name. Note that the default file name carrys
+                                    semantics for grape unbundle in determining which branches to 
+                                    update. 
 
 .grapeConfig Defaults: 
 
@@ -85,8 +91,10 @@ name = None
                 changedBranches.append(branch)
         rangeString = ""
         for b in zip(changedBranches,previousLocations,currentLocations):
-            rangeString = rangeString + "%s-%s-%s." % (b[0],b[1],b[2]) 
-        bundlename = "%s.%sbundle" % (reponame,rangeString)
+            rangeString = rangeString + "%s-%s-%s." % (b[0].replace('/','.'),b[1],b[2]) 
+        bundlename = args["--outfile"]
+        if not bundlename:
+            bundlename = "%s.%sbundle" % (reponame,rangeString)
         if len(previousLocations) > 0: 
             git.bundle("create %s %s --tags --branches" % (bundlename,revlists))
         return True
@@ -134,7 +142,7 @@ Options:
             sourceDestPair = token.split(":") 
             source = sourceDestPair[0]
             dest = sourceDestPair[1]
-            if source in bundleName: 
+            if source.replace('/','.') in bundleName: 
                mappings = mappings + "%s:%s " % (source,dest)
         git.bundle("verify %s" % bundleName)
         fetchOutput = git.fetch("-u %s %s" % (bundleName,mappings)) 
