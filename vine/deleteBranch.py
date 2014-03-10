@@ -30,10 +30,9 @@ class DeleteBranch(option.Option):
             print e.gitOutput
         try:
             git.push("--delete origin %s" % branch,quiet=True)
-            print("branch successfully deleted from origin")
         except git.GrapeGitError as e:
-            print e.gitOutput
-            #print("could not delete from remote. Either it doesn't exist there, it is a protected branch, or you don't have a connection to origin")
+            if e.code != 128: 
+                print e.gitOutput
             pass
 
 
@@ -47,11 +46,16 @@ class DeleteBranch(option.Option):
         cwd = utility.workspaceDir()
         os.chdir(cwd)
         # delete the branch in submodules first
-        for sub in git.getSubmodules(): 
+        submodules = git.getSubmodules()
+        if submodules:
+            print("GRAPE: deleting branches from submodules")
+        for sub in submodules:
             os.chdir(os.path.join(cwd,sub))
-            self.deleteBranch(force)
+            self.deleteBranch(branch,force)
         os.chdir(cwd)
+        
         # then the outer level repository. 
+        print("GRAPE: deleting branch from outer workspace")
         self.deleteBranch(branch,force)
 
         return True
