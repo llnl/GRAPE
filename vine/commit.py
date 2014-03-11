@@ -23,6 +23,11 @@ class Commit(option.Option):
     def description(self):
         return "runs git commit in all projects in this workspace"
 
+    def commit(self,commitargs): 
+        try:
+            git.commit(commitargs)
+        except git.GrapeGitError as e: 
+            print("commit failed. Perhaps there were no staged changes? Use -a to commit all modified files.")
 
     def execute(self,args):
         quiet = not args["-v"]
@@ -44,11 +49,11 @@ class Commit(option.Option):
             file = l.split()[1]
             if file in submodules: 
                 os.chdir(os.path.join(baseDir,file))
-                git.commit(commitargs)
+                self.commit(commitargs)
                 print(' ')
         os.chdir(baseDir)
         print("GRAPE: Performing commit in outer level project")
-        git.commit(commitargs)
+        self.commit(commitargs)
         return True
     
     def setDefaultConfig(self,config): 
