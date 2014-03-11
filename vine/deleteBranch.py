@@ -33,7 +33,6 @@ class DeleteBranch(option.Option):
         except git.GrapeGitError as e:
             if e.code != 128: 
                 print e.gitOutput
-            pass
 
 
 
