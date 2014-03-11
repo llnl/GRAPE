@@ -50,7 +50,11 @@ class Publish(option.Option):
         topicPublicMapping = utility.parseConfigPairList(grapeConfig.grapeConfig().get('flow','topicPrefixMappings'))
         currentBranch = git.currentBranch()
         prefix = currentBranch.split('/')[0]
-        public = topicPublicMapping[prefix]
+        try: 
+            public = topicPublicMapping[prefix]
+        except KeyError:
+            if '?' in topicPublicMapping.keys(): 
+                public = topicPublicMapping['?']
         return "Publish the current topic branch to %s" %public
 
     def validateInput(self,policy,args):

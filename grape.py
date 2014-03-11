@@ -1,5 +1,4 @@
-#!/usr/bin/env python -B
-
+#!/usr/bin/env python
 import os, shutil, subprocess, sys
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
