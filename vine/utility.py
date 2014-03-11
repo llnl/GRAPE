@@ -92,6 +92,10 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subpr
         line = line + "\n"
         output = output+line
     process.wait()
+    
+    #output = process.communicate()[0]
+    #if verbose > 0:
+    #    print(output.strip())
     process.output = output
     if process.returncode != 0 and verbose > 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))

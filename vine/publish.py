@@ -15,7 +15,7 @@ class Publish(option.Option):
     vs rebase) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for 
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy. 
 
-    Usage: grape-publish [(--squash [--cascade ]| --merge) --rebase]
+    Usage: grape-publish [--squash [--cascade ] | --merge |  --rebase]
                          [-m <msg>]
                          [--recurse | --norecurse] 
                          [<public> [<submodulePublic>]] 
@@ -53,16 +53,34 @@ class Publish(option.Option):
         public = topicPublicMapping[prefix]
         return "Publish the current topic branch to %s" %public
 
+    def validateInput(self,policy,args):
+        policy = policy.strip().lower()
+        valid = False
+        if policy == "merge" or policy == "squash": 
+            valid = bool(args["-m"])
+            if not valid:
+                print("Commit message required for merge or squash merge publish policies.")
+        if policy == "rebase":
+            valid = True
+
+        if not valid:
+            print("Type grape publish -h for more details")
+        return valid
+
     def merge(self,public,topic, args): 
-        print("merging %s %s" % (public,topic))
+        print("merging %s into %s" % (topic,public))
+        git.checkout(public)
+        git.merge("%s -m \"%s\" " % (topic,args["-m"]))
+        print("%s merged successfully to %s" % (topic,public))
+        print("You are currently on %s" %public)
         pass
 
     def squashMerge(self,public,topic,args): 
-        print("squash merging %s %s" % (public,topic))
+        print("squash merging %s into %s" % (topic,public))
         pass
 
     def rebase(self,pulic,topic,args): 
-        print("rebasing %s %s" % (public,topic))
+        print("rebasing %s onto %s" % (topic,public))
 
         pass
 
@@ -76,7 +94,6 @@ class Publish(option.Option):
             self.rebase(public, topic,args)
         
     def execute(self,args): 
-        print args
         # make sure public branches are up to date. 
         grapeMenu.menu().applyMenuChoice('up',['up'])
 
@@ -90,9 +107,8 @@ class Publish(option.Option):
         if not public:
             public = topic2public[prefix]
         
-        # decide on the publish policy
-        policyMappings = utility.parseConfigPairList(config.get('flow','publishPolicy'))
-        policy = policyMappings[public]
+        # set any CL defined publish policy
+        policy = None
         if args["--merge"]: 
             policy = "merge"
         if args["--squash"]: 
@@ -106,25 +122,33 @@ class Publish(option.Option):
             recurse = True
         if (args["--norecurse"]): 
             recurse = False
-        
+       
+        # no need to recurse if there are no submodules
+        recurse = recurse and git.getSubmodules()
         cwd = utility.workspaceDir()
         os.chdir(cwd)
         
         if (recurse): 
             submapping = config.get('workspace','submoduleTopicPrefixMappings')
             submapping = utility.parseConfigPairList(submapping)
-            submodulePublic = submapping[prefix]
-            submodulePolicy = config.get('workspace','submodulePublishPolicy')
-            submodulePolicy = utility.parseConfigPairList(submodulePolicy)
-            print submodulePolicy
             try: 
-                submodulePolicy = submodulePolicy[submodulePublic]
-            except KeyError:
-                if '?' in submodulePolicy.keys(): 
-                    submodulePolicy = submodulePolicy['?']
-
-
-            proceed = args["--noverify"] or utility.userInput("About to publish the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') 
+                submodulePublic = submapping[prefix]
+            except KeyError: 
+                if '?' in submapping.keys():
+                    submodulePublic = submapping['?']
+            
+            # submodule policy is CL requested policy, otherwise is based on config
+            submodulePolicy = policy
+            if not submodulePolicy:
+                submodulePolicy = config.get('workspace','submodulePublishPolicy')
+                submodulePolicy = utility.parseConfigPairList(submodulePolicy)
+                try: 
+                    submodulePolicy = submodulePolicy[submodulePublic]
+                except KeyError:
+                    if '?' in submodulePolicy.keys(): 
+                        submodulePolicy = submodulePolicy['?']
+            valid = self.validateInput(submodulePolicy,args) 
+            proceed = valid and ( args["--noverify"] or utility.userInput("About to publish the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
             if proceed:
                 for sub in git.getSubmodules(): 
                     os.chdir(os.path.join(cwd,sub))
@@ -132,8 +156,19 @@ class Publish(option.Option):
                     grapeMenu.menu().applyMenuChoice('up',['up','--public="%s"'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
 
-        proceed = args["--noverify"] or  utility.userInput("About to publish the branch off of "+public+" for top level workspace.\nProceed? [y/n]",'y') 
-        self.publish(policy,public,topic,args)
+        # update policy from config if not set on CL
+        if not policy:
+            policyMappings = utility.parseConfigPairList(config.get('flow','publishPolicy'))
+            try: 
+                policy = policyMappings[public]
+            except KeyError: 
+                if '?' in policyMappings.keys(): 
+                    policy = policyMappings['?']
+
+        valid = self.validateInput(policy,args)
+        proceed = valid and (args["--noverify"] or  utility.userInput("About to publish the branch off of "+public+" for top level workspace.\nProceed? [y/n]",'y') )
+        if proceed: 
+            self.publish(policy,public,topic,args)
 
          
 
@@ -153,15 +188,4 @@ class Publish(option.Option):
         config.set('workspace','submodulePublishPolicy','?:merge')
         config.set('flow','publishPolicy','?:merge')
 
-class NewBranchOptionFactory():
-    def __init__(self):
-        pass
 
-    def createNewBranchOptions(self,config):
-        
-        topicPublicMapping = utility.parseConfigPairList(config.get('flow','topicPrefixMappings'))
-        options = []
-        for topic in topicPublicMapping.keys():
-            if topic != '?': 
-                options.append(NewBranchOption(topic,topicPublicMapping[topic]))
-        return options
