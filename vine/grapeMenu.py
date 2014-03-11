@@ -2,7 +2,7 @@ import bundle, branches, checkout, clone, commit, config, feature, foreach
 import gitflowHelp, grapeConfig
 import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
 import minorRelease, newFlowBranch, newWorkingTree, option, p4Import 
-import p4Export, quit
+import p4Export, publish, quit
 import resolveConflicts, review, status, test
 import updateLocal, updateView, utility, walkthrough
 import deleteBranch, hooks
@@ -28,7 +28,7 @@ class _Menu(object):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(),clone.Clone(), 
-                          checkout.Checkout(),commit.Commit(), config.Config(), 
+                          checkout.Checkout(),commit.Commit(), publish.Publish(), config.Config(), 
                           foreach.ForEach(),
                           #feature.Feature(), 
                           #gitflowHelp.GitflowHelp(), hotfix.Hotfix(), 
