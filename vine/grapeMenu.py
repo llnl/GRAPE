@@ -1,7 +1,7 @@
-import bundle, branches, checkout, clone, commit, config, feature, foreach
+import bundle, branches, checkout, clone, commit, config,  foreach
 import gitflowHelp, grapeConfig
-import hotfix, merge, mergeAbort, mergeDevelop, mergeRemote
-import minorRelease, newFlowBranch, newWorkingTree, option, p4Import 
+import merge, mergeAbort, mergeDevelop, mergeRemote
+import newFlowBranch, newWorkingTree, option, p4Import 
 import p4Export, publish, quit
 import resolveConflicts, review, status, test
 import updateLocal, updateView, utility, walkthrough

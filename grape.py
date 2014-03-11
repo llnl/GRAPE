@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python -B
 
 import os, shutil, subprocess, sys
 from vine import grapeConfig, grapeMenu, utility
