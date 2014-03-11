@@ -73,16 +73,20 @@ class Publish(option.Option):
         git.merge("%s -m \"%s\" " % (topic,args["-m"]))
         print("%s merged successfully to %s" % (topic,public))
         print("You are currently on %s" %public)
-        pass
 
     def squashMerge(self,public,topic,args): 
         print("squash merging %s into %s" % (topic,public))
-        pass
+        git.checkout(public)
+        git.merge("--squash %s" % topic)
+        git.commit("-m \"%s\"" % args["-m"])
+        print("%s squash-merged successfully to %s" % (topic,public))
+        print("You are currently on %s" % public)
 
     def rebase(self,pulic,topic,args): 
         print("rebasing %s onto %s" % (topic,public))
-
-        pass
+        git.rebase(public)
+        print("%s successfully rebased onto %s" % (topic,public))
+        print("You are currently on %s" % topic)
 
     def publish(self,policy,public,topic,args): 
         policy = policy.strip().lower()
