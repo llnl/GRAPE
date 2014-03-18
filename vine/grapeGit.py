@@ -35,8 +35,8 @@ def baseDir(quiet=True):
 def branch(argstr="",quiet=False):
     return gitcmd("branch %s" % argstr, "Could not list branches",quiet)
 
-def branchUpToDateWith(branch,targetBranch):
-    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+def branchUpToDateWith(branch,targetBranch,quiet=True):
+    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed",quiet=quiet)
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
