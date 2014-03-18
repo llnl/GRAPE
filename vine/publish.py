@@ -168,6 +168,7 @@ class Publish(option.Option):
                     
                     grapeMenu.menu().applyMenuChoice('up',['up','--public="%s"'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
+        os.chdir(cwd)
 
         # update policy from config if not set on CL
         if not policy:
