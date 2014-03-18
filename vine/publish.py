@@ -161,7 +161,7 @@ class Publish(option.Option):
                     if '?' in submodulePolicy.keys(): 
                         submodulePolicy = submodulePolicy['?']
             valid = self.validateInput(submodulePolicy,args) 
-            proceed = valid and ( args["--noverify"] or utility.userInput("About to publish the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
+            proceed = valid and ( args["--noverify"] or utility.userInput("About to publish "+ topic +" to "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
             if proceed:
                 for sub in git.getSubmodules(): 
                     os.chdir(os.path.join(cwd,sub))
@@ -179,7 +179,7 @@ class Publish(option.Option):
                     policy = policyMappings['?']
 
         valid = self.validateInput(policy,args)
-        proceed = valid and (args["--noverify"] or  utility.userInput("About to publish the branch off of "+public+" for top level workspace.\nProceed? [y/n]",'y') )
+        proceed = valid and (args["--noverify"] or  utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\nProceed? [y/n]",'y') )
         if proceed: 
             self.publish(policy,public,topic,args)
 
