@@ -25,9 +25,9 @@ class UpdateLocal(option.Option):
     def execute(self,args):
         
         fetchArgs = "origin "
-        currentBranch = git.currentBranch()
+        currentBranch = git.currentBranch().strip()
         for pubBranch in args["--public"].split(' '): 
-            if currentBranch != pubBranch:
+            if currentBranch != pubBranch.strip():
                 fetchArgs = fetchArgs+"%s:%s " % (pubBranch,pubBranch)
         try: 
             git.fetch(fetchArgs)
