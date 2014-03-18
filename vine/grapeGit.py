@@ -172,8 +172,8 @@ def safeForceBranchToOriginRef(branchToSync):
         branch("%s %s" % (branchToSync, remoteRef))
         return True
     
-def shortSHA(): 
-    return gitcmd("rev-parse --short HEAD", "rev-parse of HEAD failed!")
+def shortSHA(branch="HEAD"): 
+    return gitcmd("rev-parse --short %s" % branch, "rev-parse of HEAD failed!")
 
 def showRemote():
     return gitcmd("remote show origin","unable to show remote")
