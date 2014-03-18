@@ -49,7 +49,9 @@ class Commit(option.Option):
             file = l.split()[1]
             if file in submodules: 
                 os.chdir(os.path.join(baseDir,file))
-                self.commit(commitargs)
+                subStatus = git.status("--porcelain",quiet=quiet)
+                if subStatus: 
+                    self.commit(commitargs)
                 print(' ')
         os.chdir(baseDir)
         print("GRAPE: Performing commit in outer level project")
