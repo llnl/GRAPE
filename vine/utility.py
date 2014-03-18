@@ -19,17 +19,6 @@ def cmerge(l):  # this should return 'success' or an error code
     """Apply a git merge across several branches"""
     Cascade(l, "print 'git checkout', descendent\nprint 'git merge', ancestor\n")
 
-def createBranch(branchPoint, prefix):
-    branch = userInput("Enter new branch name")
-    user = getUserName()
-    fullBranch = prefix+"/"+user+"/"+branch
-    proceed = userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
-    if (proceed):
-        git.checkout("-b %s %s " % (fullBranch,branchPoint))
-        git.push("-u origin %s" % fullBranch)
-    else:
-        print("Branch not created")
-
 def defineView(sparseFile):
     include = {}
     requiredDirs = grapeConfig.grapeConfig().get("view","required")
@@ -103,6 +92,10 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subpr
         line = line + "\n"
         output = output+line
     process.wait()
+    
+    #output = process.communicate()[0]
+    #if verbose > 0:
+    #    print(output.strip())
     process.output = output
     if process.returncode != 0 and verbose > 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
@@ -180,6 +173,21 @@ def writeDefaultConfig(filename):
    grapeMenu.menu().setDefaultConfig(config)
    with open(filename,'w') as f:
       config.write(f)
+
+# return the path to the base level of the current workspace. (outermost git repo)
+def workspaceDir(): 
+    dir = None
+    while True: 
+        try: 
+            dir = git.baseDir()
+            os.chdir(os.path.join(dir,".."))
+        except:
+            break
+    if not dir:
+        print("GRAPE WARNING: expected to be in your workspace, no .git found")
+    return dir
+    
+
 
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 

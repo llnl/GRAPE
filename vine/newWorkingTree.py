@@ -21,7 +21,7 @@ class NewWorkingTree(option.Option):
     """
     def __init__(self):
         self._key = "cv"
-        self._section = "Miscellaneous"
+        self._section = "Workspace"
 
     def description(self):
         return "Create a custom sparse checkout view in a new working tree"

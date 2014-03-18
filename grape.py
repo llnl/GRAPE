@@ -1,5 +1,5 @@
-#!/usr/bin/env python
-
+#!/bin/sh
+"exec" "python" "-B" "$0" "$@"
 import os, shutil, subprocess, sys
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git

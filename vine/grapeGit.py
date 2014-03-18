@@ -24,20 +24,19 @@ def gitcmd(cmd,errmsg,quiet=False):
         raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.output,_cmd,quiet)
     return process.output.strip() 
 
-def add(filedescription):
+def add(filedescription, quiet = False):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
-def baseDir():
-    beQuiet = True
-    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory",beQuiet)
+def baseDir(quiet=True):
+    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory",quiet)
     path = utility.makePathPortable(unixStylePath)
     return path
 
-def branch(argstr=""):
-    return gitcmd("branch %s" % argstr, "Could not list branches")
+def branch(argstr="",quiet=False):
+    return gitcmd("branch %s" % argstr, "Could not list branches",quiet)
 
-def branchUpToDateWith(branch,targetBranch):
-    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+def branchUpToDateWith(branch,targetBranch,quiet=True):
+    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed",quiet=quiet)
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
@@ -53,8 +52,8 @@ def branchUpToDateWith(branch,targetBranch):
 def bundle(argstr): 
     return  gitcmd("bundle %s" % argstr, "Bundle failed")
 
-def checkout(argstr): 
-    return  gitcmd("checkout %s" % argstr, "Checkout failed")
+def checkout(argstr,quiet=False): 
+    return  gitcmd("checkout %s" % argstr, "Checkout failed",quiet=quiet)
 
 def clone(argstr):
     return gitcmd("clone %s" % argstr, "Clone failed")
@@ -83,6 +82,13 @@ def dir():
 def fetch(repo = "", branch = ""):
     return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
 
+def getSubmodules(quiet=True): 
+
+    submoduleList = submodule("foreach --quiet \"echo \$path\"",quiet=quiet)
+    submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    return submoduleList
+
+ 
 def gitDir(): 
     base = baseDir()
     gitPath = os.path.join(base,".git")
@@ -122,11 +128,11 @@ def numberCommitsSinceRoot():
     root = gitcmd("rev-list --max-parents=0 HEAD", "rev-list failed")
     return numberCommitsSince(root)
     
-def pull(args):
-    return gitcmd("pull %s" %args ,"Pull failed")
+def pull(args,quiet=False):
+    return gitcmd("pull %s" %args ,"Pull failed",quiet=quiet)
 
-def push(args):
-    return gitcmd("push %s" % args, "Push failed")
+def push(args,quiet=False):
+    return gitcmd("push %s" % args, "Push failed",quiet=quiet)
 
 def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
@@ -166,17 +172,17 @@ def safeForceBranchToOriginRef(branchToSync):
         branch("%s %s" % (branchToSync, remoteRef))
         return True
     
-def shortSHA(): 
-    return gitcmd("rev-parse --short HEAD", "rev-parse of HEAD failed!")
+def shortSHA(branch="HEAD",quiet=True): 
+    return gitcmd("rev-parse --short %s" % branch, "rev-parse of HEAD failed!",quiet=quiet)
 
 def showRemote():
     return gitcmd("remote show origin","unable to show remote")
 
-def status(argstr = ""):
-    return gitcmd("status %s" % argstr, "git status failed for some reason")
+def status(argstr = "",quiet=False):
+    return gitcmd("status %s" % argstr, "git status failed for some reason",quiet = quiet)
 
-def submodule(argstr):
-    return gitcmd("submodule %s" % argstr,"git submodule %s failed" % argstr)
+def submodule(argstr,quiet=False):
+    return gitcmd("submodule %s" % argstr,"git submodule %s failed" % argstr,quiet=quiet)
 
 def tag(argstr):
     return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)

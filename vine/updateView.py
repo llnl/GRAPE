@@ -22,7 +22,7 @@ class UpdateView(option.Option):
     """
     def __init__(self):
         self._key = "uv"
-        self._section = "Miscellaneous"
+        self._section = "Workspace"
 
     def description(self):
         return "Update the view of your current working tree"
