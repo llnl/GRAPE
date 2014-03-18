@@ -97,6 +97,7 @@ class Publish(option.Option):
     def publish(self,policy,public,topic,args): 
         # don't bother publishing if public and topic are the same commit
         if git.shortSHA(public,quiet=True).strip() == git.shortSHA(topic,quiet=True).strip():
+            git.checkout(public)
             return
         policy = policy.strip().lower()
         if policy == "merge":
