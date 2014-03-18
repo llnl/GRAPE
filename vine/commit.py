@@ -45,7 +45,9 @@ class Commit(option.Option):
         submodulesString = ' '.join(submodules)
         status = git.status("--porcelain %s"%submodulesString,quiet=quiet).split('\n')
         print("GRAPE: Performing commits in modified submodules")
-        for l in status: 
+        for l in status:
+            if not l: 
+                continue 
             file = l.split()[1]
             if file in submodules: 
                 os.chdir(os.path.join(baseDir,file))
