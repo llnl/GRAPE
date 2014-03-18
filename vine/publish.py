@@ -19,7 +19,8 @@ class Publish(option.Option):
                          [-m <msg>]
                          [--recurse | --norecurse] 
                          [<public> [<submodulePublic>]] 
-                         [--noverify]
+                         [--noverify] 
+                         [--nopush]
 
     Options:
     --squash            Squash merges the topic into the public, then performs a commit if the merge goes clean. 
@@ -31,7 +32,8 @@ class Publish(option.Option):
                         Defaults to True if .grapeconfig.workspace.manageSubmodules is True. 
     --norecurse         Do not perform the publish action in submodules. 
                         Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
-    --noverify          Set to skip interactive verification of publish commands. 
+    --noverify          Set to skip interactive verification of publish commands.
+    --nopush            Set to skip the push of commits generated during the publish procedure. 
     
     Optional Arguments:
     <public>            The branch to publish to. Defaults to the mapping for the current topic branch as described by
@@ -100,6 +102,9 @@ class Publish(option.Option):
             self.squashMerge(public,topic,args)
         if policy == "rebase": 
             self.rebase(public, topic,args)
+
+        if not args["--nopush"]: 
+            git.push("-u origin HEAD")
         
     def execute(self,args): 
         # make sure public branches are up to date. 
