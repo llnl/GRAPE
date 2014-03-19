@@ -31,8 +31,7 @@ class DeleteBranch(option.Option):
         try:
             git.push("--delete origin %s" % branch,quiet=True)
         except git.GrapeGitError as e:
-            if e.code != 128: 
-                print e.gitOutput
+            print e.gitOutput
 
 
 

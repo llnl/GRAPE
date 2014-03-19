@@ -56,7 +56,14 @@ def checkout(argstr,quiet=False):
     return  gitcmd("checkout %s" % argstr, "Checkout failed",quiet=quiet)
 
 def clone(argstr):
-    return gitcmd("clone %s" % argstr, "Clone failed")
+    try: 
+        return gitcmd("clone %s" % argstr, "Clone failed")
+    except GrapeGitError as e: 
+        if e.code == 128: 
+            print ("GRAPE: WARNING: clone failed due to connectivity issues.")
+            return e.gitOutput
+        else:
+            raise e
 
 def commit(argstr): 
     return gitcmd("commit %s" % argstr, "Commit failed")
@@ -80,7 +87,14 @@ def dir():
     return baseDir() 
 
 def fetch(repo = "", branch = ""):
-    return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
+    try: 
+        return gitcmd("fetch %s %s" %(repo,branch),"Fetch failed")
+    except GrapeGitError as e: 
+        if e.code == 128: 
+            print ("GRAPE: WARNING: Fetch failed due to connectivity issues.")
+            return e.gitOutput
+        else:
+            raise e
 
 def getSubmodules(quiet=True): 
 
@@ -129,10 +143,24 @@ def numberCommitsSinceRoot():
     return numberCommitsSince(root)
     
 def pull(args,quiet=False):
-    return gitcmd("pull %s" %args ,"Pull failed",quiet=quiet)
+    try:
+        return gitcmd("pull %s" %args ,"Pull failed",quiet=quiet)    
+    except GrapeGitError as e: 
+        if e.code == 128: 
+            print ("GRAPE: WARNING: Pull failed due to connectivity issues.")
+            return e.gitOutput
+        else:
+            raise e
 
 def push(args,quiet=False):
-    return gitcmd("push %s" % args, "Push failed",quiet=quiet)
+    try:
+        return gitcmd("push %s" % args, "Push failed",quiet=quiet)
+    except GrapeGitError as e: 
+        if e.code == 128: 
+            print ("GRAPE: WARNING: Push failed due to connectivity issues.")
+            return e.gitOutput
+        else:
+            raise e
 
 def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
@@ -176,7 +204,15 @@ def shortSHA(branch="HEAD",quiet=True):
     return gitcmd("rev-parse --short %s" % branch, "rev-parse of HEAD failed!",quiet=quiet)
 
 def showRemote():
-    return gitcmd("remote show origin","unable to show remote")
+    
+    try:
+        return gitcmd("remote show origin","unable to show remote")
+    except GrapeGitError as e: 
+        if e.code == 128: 
+            print ("GRAPE: WARNING: git remote failed due to connectivity issues.")
+            return e.gitOutput
+        else:
+            raise e
 
 def status(argstr = "",quiet=False):
     return gitcmd("status %s" % argstr, "git status failed for some reason",quiet = quiet)
