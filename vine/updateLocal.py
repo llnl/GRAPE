@@ -29,13 +29,8 @@ class UpdateLocal(option.Option):
         for pubBranch in args["--public"].split(' '): 
             if currentBranch != pubBranch.strip():
                 fetchArgs = fetchArgs+"%s:%s " % (pubBranch,pubBranch)
-        try: 
-            git.fetch(fetchArgs)
-        except git.GrapeGitError as e: 
-            if e.code == 128:
-                print("GRAPE: could not connect to origin, local branches were not updated.")
-            else:
-                raise e
+        git.fetch(fetchArgs)
+        
         try:
             git.pull("origin %s"%currentBranch)
         except:
