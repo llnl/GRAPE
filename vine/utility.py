@@ -191,5 +191,10 @@ def workspaceDir():
 
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 
-    return os.path.join(os.path.dirname(__file__),"..","grape")
+    if os.name == "nt" :
+       winpath = os.path.join(os.path.dirname(__file__),"..","grape.py")
+       return "c:/Python27/python.exe "+ winpath.replace("\\","/")
+    else :
+       return os.path.join(os.path.dirname(__file__),"..","grape")
+    
 
