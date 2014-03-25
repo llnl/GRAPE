@@ -7,7 +7,7 @@
     <ProjectHome />
     <StartupFile>grape.py</StartupFile>
     <SearchPath />
-    <WorkingDirectory>C:\ale3d\git</WorkingDirectory>
+    <WorkingDirectory>C:\ale3d</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <InterpreterId>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</InterpreterId>
     <InterpreterVersion>2.7</InterpreterVersion>
@@ -15,8 +15,7 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>
-    </CommandLineArguments>
+    <CommandLineArguments>status</CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -25,6 +24,13 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
   <ItemGroup>
     <Compile Include="grape.py" />
+    <Compile Include="vine\checkout.py" />
+    <Compile Include="vine\commit.py" />
+    <Compile Include="vine\foreach.py" />
+    <Compile Include="vine\hooks.py" />
+    <Compile Include="vine\newFlowBranch.py" />
+    <Compile Include="vine\publish.py" />
+    <Compile Include="vine\status.py" />
     <Compile Include="__init__.py" />
     <Content Include="decorator\README.txt" />
     <Compile Include="decorator\documentation.py" />
