@@ -84,7 +84,10 @@ def fetch(repo = "", branch = ""):
 
 def getSubmodules(quiet=True): 
 
-    submoduleList = submodule("foreach --quiet \"echo \$path\"",quiet=quiet)
+    if os.name == "nt" :
+       submoduleList = submodule("foreach --quiet \"echo $path\"",quiet)
+    else :
+       submoduleList = submodule("foreach --quiet \"echo \$path\"",quiet)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     return submoduleList
 

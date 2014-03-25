@@ -29,11 +29,7 @@ class Status(option.Option):
             status[0] = ' ' + status[0]
 
         print("gathering status on submodules")
-        submodules = ""
-        if os.name == "nt" :
-           submodules = git.submodule("foreach --quiet \"echo $path\"",quiet).split('\n')
-        else :
-           submodules = git.submodule("foreach --quiet \"echo \$path\"",quiet).split('\n')
+        submodules = git.getSubmodules(quiet)
 
         for sub in submodules:
             if not sub.strip():
