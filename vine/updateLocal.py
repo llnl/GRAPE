@@ -26,7 +26,6 @@ class UpdateLocal(option.Option):
         
         fetchArgs = "origin "
         currentBranch = git.currentBranch().strip()
-        print "GRAPE: UPDATE_LOCAL: currentBranch is %s " % currentBranch
         for pubBranch in args["--public"].split(' '): 
             if currentBranch != pubBranch.strip():
                 fetchArgs = fetchArgs+"%s:%s " % (pubBranch,pubBranch)
