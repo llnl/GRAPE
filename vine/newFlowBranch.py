@@ -72,7 +72,8 @@ class NewBranchOption(option.Option):
             if proceed:
                 for sub in git.getSubmodules(): 
                     os.chdir(os.path.join(cwd,sub))
-                    grapeMenu.menu().applyMenuChoice('up',['up','--public="%s"' % submodulePublic])
+                    git.checkout(submodulePublic)
+                    grapeMenu.menu().applyMenuChoice('up',['up','--public=%s' % submodulePublic])
                     self.createBranch(submodulePublic,self._key,subArgs[2],subArgs[3],True)
 
          

@@ -33,6 +33,6 @@ class Clone(option.Option):
         git.gitcmd("clone %s %s %s" % (rStr,remotePath, destPath), "Error: Git Clone failed.")
         print("Clone succeeded!")
         os.chdir(destPath)
-        grapecmd = os.path.join(os.path.dirname(__file__),"..","grape")
+        grapecmd = utility.getGrapeExec()
         utility.executeSubProcess("%s config" % grapecmd)
         return True
