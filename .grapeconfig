@@ -13,9 +13,9 @@ required: *
 
 [patch]
 tagprefix = bundled 
-branches = develop master
+branches = develop master ale3d ale3d_4_22
 describePattern = v*
-branchMappings = develop:develop master:master
+branchMappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22
 
 [post-commit]
 autopush = True

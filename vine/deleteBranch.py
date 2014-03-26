@@ -8,7 +8,9 @@ class DeleteBranch(option.Option):
     Usage: grape-db [-D] [<branch>]
 
     Options:
-    -D              Forces the deletion of unmerged branches. 
+    -D              Forces the deletion of unmerged branches. If you are on the branch you
+                    are trying to delete, this will detach you from the branch and then 
+                    delete it, issuing a warning that you are in a detached state.  
 
     Arguments: 
     <branch>        The branch to delete. Will ask for branch name if not included. 
@@ -27,12 +29,16 @@ class DeleteBranch(option.Option):
         try: 
             git.branch("%s %s" % (forceStr,branch),quiet=True)
         except git.GrapeGitError as e:
-            print e.gitOutput
+            if forceStr == "-D" and "Cannot delete the branch" in e.gitOutput and "which you are currently on." in e.gitOutput:
+                print("GRAPE WARNING: Detaching in order to delete current branch. You will be in a headless state.")
+                git.checkout("--detach %s" % branch)
+                git.branch("-D %s" % branch, quiet=True)
+            else: 
+                print e.gitOutput
         try:
             git.push("--delete origin %s" % branch,quiet=True)
         except git.GrapeGitError as e:
-            if e.code != 128: 
-                print e.gitOutput
+            print e.gitOutput
 
 
 
