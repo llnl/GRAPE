@@ -28,9 +28,9 @@ class Status(option.Option):
         if status[0] and status[0][0] != ' ':
             status[0] = ' ' + status[0]
 
-        print("gathering status on submodules")
-        submodules = git.submodule("foreach --quiet \"echo \$path\"",quiet).split('\n')
-
+        submodules = git.getSubmodules()
+        if submodules:
+            print("gathering status on submodules")
         for sub in submodules:
             if not sub.strip():
                 continue

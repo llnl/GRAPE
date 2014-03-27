@@ -186,7 +186,7 @@ def safeForceBranchToOriginRef(branchToSync):
         localUpToDateWithRemote = branchUpToDateWith(branchToSync,remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote: 
             if branchToSync == currentBranch():
-                printf("Current branch %s is out of date with origin. Pulling new changes." % branchToSync) 
+                print("Current branch %s is out of date with origin. Pulling new changes." % branchToSync) 
                 pull("origin %s" % branchToSync)
             else:
                 branch("-f %s %s" % (branchToSync, remoteRef))
@@ -219,6 +219,9 @@ def status(argstr = "",quiet=False):
 
 def submodule(argstr,quiet=False):
     return gitcmd("submodule %s" % argstr,"git submodule %s failed" % argstr,quiet=quiet)
+
+def subtree(argstr,quiet=False): 
+    return gitcmd("subtree %s" % argstr, "git subtree %s failed - maybe subtree isn't installed on your system?", quiet=quiet)
 
 def tag(argstr):
     return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)

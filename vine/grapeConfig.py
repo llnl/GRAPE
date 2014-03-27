@@ -1,7 +1,9 @@
-import ConfigParser, os
+import ConfigParser, UserDict,os
 import utility
 import grapeMenu
 import grapeGit as git
+import option
+
 
 __configInstance = None
 
@@ -34,4 +36,51 @@ def read(additionalFileNames = []):
     if len(readFiles) == 0:
         utility.writeDefaultConfig(globalconfigfile)
 
+class ConfigPairDict(UserDict.UserDict):
+    def __init__(self,pairDict): 
+        self.pairDict = pairDict
 
+    def __getitem__(self,key): 
+        try: 
+            return self.pairDict[key]
+        except KeyError as e: 
+            if '?' in self.pairDict.keys():
+                return self.pairDict['?']
+            else:
+                print("GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config.")
+                raise e
+    def keys(self): 
+        return self.pairDict.keys()
+
+def parseConfigPairList(string):
+    pairs = string.split(' ')
+    pairDict = None
+    if pairs[0].strip().lower() != "none": 
+        pairDict = {}
+        for pair in pairs:
+            plist = pair.split(':')
+            pairDict[plist[0]] = plist[1]
+    return ConfigPairDict(pairDict)
+
+class WriteConfig(option.Option):
+    """
+        grape writeConfig: Writes the current configuration to a file, using any configuration set
+        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
+
+        Usage: 
+        grape-writeConfig <file>
+
+    """
+    def __init__(self): 
+        self._section = "Getting Started"
+        self._key = "writeConfig"
+
+    def description(self):
+        return "write a .grapeconfig file based on your current environment"
+
+    def execute(self,args): 
+        config = grapeConfig()
+        with open(args["<file>"],'w') as f: 
+            config.write(f)
+
+    

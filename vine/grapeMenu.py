@@ -27,8 +27,9 @@ class _Menu(object):
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here
-        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(),clone.Clone(), 
-                          checkout.Checkout(),commit.Commit(), publish.Publish(), config.Config(), 
+        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(), 
+                          checkout.Checkout(),commit.Commit(), publish.Publish(), 
+                          clone.Clone(), config.Config(), grapeConfig.WriteConfig(),
                           foreach.ForEach(),
                           #feature.Feature(), 
                           #gitflowHelp.GitflowHelp(), hotfix.Hotfix(), 

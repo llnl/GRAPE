@@ -21,6 +21,8 @@ class Publish(option.Option):
                          [<public> [<submodulePublic>]] 
                          [--noverify] 
                          [--nopush]
+                         [--pushSubtrees]
+                         [-v]
 
     Options:
     --squash            Squash merges the topic into the public, then performs a commit if the merge goes clean. 
@@ -33,7 +35,10 @@ class Publish(option.Option):
     --norecurse         Do not perform the publish action in submodules. 
                         Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
     --noverify          Set to skip interactive verification of publish commands.
-    --nopush            Set to skip the push of commits generated during the publish procedure. 
+    --nopush            Set to skip the push of commits generated during the publish procedure.
+    --pushSubtrees      Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate public
+                        branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
+    -v                  Be more verbose. 
     
     Optional Arguments:
     <public>            The branch to publish to. Defaults to the mapping for the current topic branch as described by
@@ -49,7 +54,7 @@ class Publish(option.Option):
         self._section = "Gitflow Tasks"
 
     def description(self):
-        topicPublicMapping = utility.parseConfigPairList(grapeConfig.grapeConfig().get('flow','topicPrefixMappings'))
+        topicPublicMapping = grapeConfig.parseConfigPairList(grapeConfig.grapeConfig().get('flow','topicPrefixMappings'))
         currentBranch = git.currentBranch()
         prefix = currentBranch.split('/')[0]
         try: 
@@ -114,10 +119,11 @@ class Publish(option.Option):
         # make sure public branches are up to date. 
         grapeMenu.menu().applyMenuChoice('up',['up'])
 
+        quiet = not args["-v"]
         # get the outer level public branch destination
         config = grapeConfig.grapeConfig()
         topic = git.currentBranch()
-        topic2public = utility.parseConfigPairList(config.get('flow','topicPrefixMappings'))
+        topic2public = grapeConfig.parseConfigPairList(config.get('flow','topicPrefixMappings'))
         prefix = topic.split('/')[0]        
 
         public = args["<public>"]
@@ -147,23 +153,15 @@ class Publish(option.Option):
         
         if (recurse): 
             submapping = config.get('workspace','submoduleTopicPrefixMappings')
-            submapping = utility.parseConfigPairList(submapping)
-            try: 
-                submodulePublic = submapping[prefix]
-            except KeyError: 
-                if '?' in submapping.keys():
-                    submodulePublic = submapping['?']
+            submapping = grapeConfig.parseConfigPairList(submapping)
+            submodulePublic = submapping[prefix]
             
-            # submodule policy is CL requested policy, otherwise is based on config
+            # submodule policy is Command Line requested policy, otherwise is based on 
+            #       .grapeconfig.workspace.submodulePublishPolicy
             submodulePolicy = policy
             if not submodulePolicy:
                 submodulePolicy = config.get('workspace','submodulePublishPolicy')
-                submodulePolicy = utility.parseConfigPairList(submodulePolicy)
-                try: 
-                    submodulePolicy = submodulePolicy[submodulePublic]
-                except KeyError:
-                    if '?' in submodulePolicy.keys(): 
-                        submodulePolicy = submodulePolicy['?']
+                submodulePolicy = grapeConfig.parseConfigPairList(submodulePolicy)[submodulePublic]
             valid = self.validateInput(submodulePolicy,args) 
             proceed = valid and ( args["--noverify"] or utility.userInput("About to publish "+ topic +" to "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
             if proceed:
@@ -172,16 +170,26 @@ class Publish(option.Option):
                     
                     grapeMenu.menu().applyMenuChoice('up',['up','--public=%s'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
-        os.chdir(cwd)
+            os.chdir(cwd)
+
+            # push subtrees to their respective remote branches
+            if args["--pushSubtrees"]:
+                
+                subtrees = config.get('subtrees','names').split(' ')
+                for st in subtrees:
+                    st_prefix = config.get('subtree-%s'% st,'prefix')
+                    st_remote = config.get('subtree-%s'% st,'remote')
+                    st_branchMappings = config.get('subtree-%s'% st,'topicPrefixMappings')
+                    st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
+                    print("pushing subtree %s to %s/%s..." % (st_prefix,set_remote,st_branch))
+                    git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
+
+                    
+                
 
         # update policy from config if not set on CL
         if not policy:
-            policyMappings = utility.parseConfigPairList(config.get('flow','publishPolicy'))
-            try: 
-                policy = policyMappings[public]
-            except KeyError: 
-                if '?' in policyMappings.keys(): 
-                    policy = policyMappings['?']
+            policy = grapeConfig.parseConfigPairList(config.get('flow','publishPolicy'))[public]
 
         valid = self.validateInput(policy,args)
         proceed = valid and (args["--noverify"] or  utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\nProceed? [y/n]",'y') )
@@ -199,11 +207,17 @@ class Publish(option.Option):
             config.add_section('flow')
         except ConfigParser.DuplicateSectionError:
             pass
+        try:
+            config.add_section("subtrees")
+        except ConfigParser.DuplicateSectionError:
+            pass
+
 
 
         config.set('workspace','manageSubmodules','True')
         config.set('workspace','submoduleTopicPrefixMappings','?:develop')
         config.set('workspace','submodulePublishPolicy','?:merge')
         config.set('flow','publishPolicy','?:merge')
+        config.set('subtrees','names','None')
 
 

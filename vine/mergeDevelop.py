@@ -37,7 +37,7 @@ class MergeDevelop(option.Option):
         if currentBranch in grapeConfig.grapeConfig().get('flow','publicBranches'):
             return currentBranch
         branchPrefix = currentBranch.split('/')[0]
-        prefixMappings = utility.parseConfigPairList(mappings)
+        prefixMappings = grapeConfig.parseConfigPairList(mappings)
         try: 
             branch = prefixMappings[branchPrefix]
         except KeyError:
@@ -70,7 +70,7 @@ class MergeDevelop(option.Option):
                 git.pull("--rebase origin %s" % currentBranch) 
                 return True
             branchPrefix = currentBranch.split('/')[0]
-            prefixMappings = utility.parseConfigPairList(args["--mappings"])
+            prefixMappings = grapeConfig.parseConfigPairList(args["--mappings"])
             try: 
                 branch = prefixMappings[branchPrefix]
             except KeyError:

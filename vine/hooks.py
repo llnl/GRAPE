@@ -131,7 +131,7 @@ class RunHook(option.Option):
         else:
             autoPush = False
         #applies the cascade hook
-        cascadeDict = utility.parseConfigPairList(args["--cascade"])
+        cascadeDict = grapeConfig.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
             while currentBranch in cascadeDict:

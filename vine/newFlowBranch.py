@@ -23,8 +23,8 @@ class NewBranchOption(option.Option):
                             [default: .grapeconfig.workspace.manageSubmodules]
     --norecurse             Don't create teh branch in submodules. 
     
-    Arguments:
-    <name>                  Single word description of work being done on this branch. Asks by default.
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
 
 
     """
@@ -67,7 +67,7 @@ class NewBranchOption(option.Option):
         recurse = recurse and submodules
         if (subArgs and recurse): 
             submapping = grapeConfig.grapeConfig().get('workspace','submoduleTopicPrefixMappings')
-            submapping = utility.parseConfigPairList(submapping)
+            submapping = grapeConfig.parseConfigPairList(submapping)
             try: 
                 submodulePublic = submapping[self._key]
             except:
@@ -97,7 +97,7 @@ class NewBranchOptionFactory():
 
     def createNewBranchOptions(self,config):
         
-        topicPublicMapping = utility.parseConfigPairList(config.get('flow','topicPrefixMappings'))
+        topicPublicMapping = grapeConfig.parseConfigPairList(config.get('flow','topicPrefixMappings'))
         options = []
         for topic in topicPublicMapping.keys():
             if topic != '?': 
