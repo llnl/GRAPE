@@ -1,4 +1,4 @@
-import ConfigParser, UserDict,os
+import ConfigParser,os
 import utility
 import grapeMenu
 import grapeGit as git
@@ -36,21 +36,19 @@ def read(additionalFileNames = []):
     if len(readFiles) == 0:
         utility.writeDefaultConfig(globalconfigfile)
 
-class ConfigPairDict(UserDict.UserDict):
+class ConfigPairDict(dict):
     def __init__(self,pairDict): 
-        self.pairDict = pairDict
+        self.data = pairDict
 
     def __getitem__(self,key): 
         try: 
-            return self.pairDict[key]
+            return self.data[key]
         except KeyError as e: 
-            if '?' in self.pairDict.keys():
-                return self.pairDict['?']
+            if '?' in self.data.keys():
+                return self.data['?']
             else:
                 print("GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config.")
                 raise e
-    def keys(self): 
-        return self.pairDict.keys()
 
 def parseConfigPairList(string):
     pairs = string.split(' ')
