@@ -37,15 +37,13 @@ def read(additionalFileNames = []):
         utility.writeDefaultConfig(globalconfigfile)
 
 class ConfigPairDict(dict):
-    def __init__(self,pairDict): 
-        self.data = pairDict
 
     def __getitem__(self,key): 
-        try: 
-            return self.data[key]
+        try:
+            return super(ConfigPairDict,self).__getitem__(key)
         except KeyError as e: 
-            if '?' in self.data.keys():
-                return self.data['?']
+            if '?' in self.keys():
+                return self['?']
             else:
                 print("GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config.")
                 raise e
