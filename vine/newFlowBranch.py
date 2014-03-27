@@ -63,14 +63,19 @@ class NewBranchOption(option.Option):
         cwd = utility.workspaceDir()
         os.chdir(cwd)
         subArgs = self.createBranch(start,self._key,args['--user'],args['<descr>'],args['--noverify'])
-        
+        submodules = git.getSubmodules()
+        recurse = recurse and submodules
         if (subArgs and recurse): 
             submapping = grapeConfig.grapeConfig().get('workspace','submoduleTopicPrefixMappings')
             submapping = utility.parseConfigPairList(submapping)
-            submodulePublic = submapping[self._key]
+            try: 
+                submodulePublic = submapping[self._key]
+            except:
+                submodulePublic = submapping['?']
+
             proceed = args["--noverify"] or utility.userInput("About to create the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') 
             if proceed:
-                for sub in git.getSubmodules(): 
+                for sub in submodules: 
                     os.chdir(os.path.join(cwd,sub))
                     git.checkout(submodulePublic)
                     grapeMenu.menu().applyMenuChoice('up',['up','--public=%s' % submodulePublic])
