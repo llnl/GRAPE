@@ -219,5 +219,5 @@ class Publish(option.Option):
         config.set('workspace','submodulePublishPolicy','?:merge')
         config.set('flow','publishPolicy','?:merge')
         config.set('subtrees','names','None')
-
+        
 

@@ -50,9 +50,8 @@ class ConfigPairDict(dict):
 
 def parseConfigPairList(string):
     pairs = string.split(' ')
-    pairDict = None
+    pairDict = ConfigPairDict() 
     if pairs[0].strip().lower() != "none": 
-        pairDict = {}
         for pair in pairs:
             plist = pair.split(':')
             pairDict[plist[0]] = plist[1]
