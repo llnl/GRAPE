@@ -1,4 +1,4 @@
-class Option:
+class Option(object):
     def __init__(self):
         self._key = "UNSET KEY"
         self._section = "UNSET SECTION"
@@ -6,10 +6,10 @@ class Option:
     def description(self):
         pass
 
-    def execute(self,args):
+    def execute(self, args):
         pass
     
-    def setDefaultConfig(self,config): 
+    def setDefaultConfig(self, config):
        pass
     
     @property

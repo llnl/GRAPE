@@ -5,6 +5,7 @@ import types
 import grapeGit as git
 import grapeMenu
 import grapeConfig
+import subtree
 
 class Publish(option.Option): 
     """
@@ -172,17 +173,17 @@ class Publish(option.Option):
                     self.publish(submodulePolicy, submodulePublic,topic, args)
             os.chdir(cwd)
 
-            # push subtrees to their respective remote branches
-            if args["--pushSubtrees"]:
-                
-                subtrees = config.get('subtrees','names').split(' ')
-                for st in subtrees:
-                    st_prefix = config.get('subtree-%s'% st,'prefix')
-                    st_remote = config.get('subtree-%s'% st,'remote')
-                    st_branchMappings = config.get('subtree-%s'% st,'topicPrefixMappings')
-                    st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
-                    print("pushing subtree %s to %s/%s..." % (st_prefix,set_remote,st_branch))
-                    git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
+        # push subtrees to their respective remote branches
+        if args["--pushSubtrees"]:
+            
+            subtrees = config.get('subtrees','names').split(' ')
+            for st in subtrees:
+                st_prefix = config.get('subtree-%s'% st,'prefix')
+                st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s'% st,'remote'))
+                st_branchMappings = config.get('subtree-%s'% st,'topicPrefixMappings')
+                st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
+                print("pushing subtree %s to %s/%s..." % (st_prefix,st_remote,st_branch))
+                git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
 
                     
                 
