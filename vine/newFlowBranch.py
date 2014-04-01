@@ -50,7 +50,7 @@ class NewBranchOption(option.Option):
             return None
 
     def execute(self,args): 
-        grapeMenu.menu().applyMenuChoice('up',['up'])
+        grapeMenu.menu().apply_menu_choice('up',['up'])
         start = args["--start"]
         recurse = grapeConfig.grapeConfig().get('workspace','manageSubmodules')
         if (args["--recurse"]): 
@@ -78,12 +78,12 @@ class NewBranchOption(option.Option):
                 for sub in submodules: 
                     os.chdir(os.path.join(cwd,sub))
                     git.checkout(submodulePublic)
-                    grapeMenu.menu().applyMenuChoice('up',['up','--public=%s' % submodulePublic])
+                    grapeMenu.menu().apply_menu_choice('up',['up','--public=%s' % submodulePublic])
                     self.createBranch(submodulePublic,self._key,subArgs[2],subArgs[3],True)
 
          
 
-    def setDefaultConfig(self,config): 
+    def set_default_config(self,config): 
         try:
             config.add_section('workspace')
         except ConfigParser.DuplicateSectionError:

@@ -88,7 +88,7 @@ class RunHook(option.Option):
                 pass
         exit(0)
     
-    def setDefaultConfig(self,config):
+    def set_default_config(self,config):
         # post-commit
         try: 
             config.add_section('post-commit')

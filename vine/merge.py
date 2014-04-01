@@ -45,7 +45,7 @@ def merge( branch,strategy = ""):
         return choice
 
 def mergeIntoCurrent(branchName,args):
-    grapeMenu.menu().applyMenuChoice('up',['up']) 
+    grapeMenu.menu().apply_menu_choice('up',['up'])
     choice = None
     strategy = None
     if args['--am']:
@@ -112,7 +112,7 @@ def mergeIntoCurrent(branchName,args):
 
     if choice:
         choice = choice.strip().lower()
-        return grapeMenu.menu().applyMenuChoice(choice,[choice])
+        return grapeMenu.menu().apply_menu_choice(choice,[choice])
 
     return False
 

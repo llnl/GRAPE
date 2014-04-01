@@ -50,6 +50,6 @@ class Status(option.Option):
             print line
         return True
     
-    def setDefaultConfig(self,config): 
+    def set_default_config(self,config): 
        pass
     

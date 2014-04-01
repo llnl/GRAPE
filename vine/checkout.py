@@ -46,6 +46,6 @@ class Checkout(option.Option):
         print("GRAPE: Switched to %s" % args["<branch>"])
         return True
     
-    def setDefaultConfig(self,config): 
+    def set_default_config(self,config): 
        pass
     

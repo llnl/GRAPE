@@ -118,7 +118,7 @@ class Publish(option.Option):
         
     def execute(self,args): 
         # make sure public branches are up to date. 
-        grapeMenu.menu().applyMenuChoice('up',['up'])
+        grapeMenu.menu().apply_menu_choice('up',['up'])
 
         quiet = not args["-v"]
         # get the outer level public branch destination
@@ -169,7 +169,7 @@ class Publish(option.Option):
                 for sub in git.getSubmodules(): 
                     os.chdir(os.path.join(cwd,sub))
                     
-                    grapeMenu.menu().applyMenuChoice('up',['up','--public=%s'%submodulePublic])
+                    grapeMenu.menu().apply_menu_choice('up',['up','--public=%s'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
             os.chdir(cwd)
 
@@ -199,7 +199,7 @@ class Publish(option.Option):
 
          
 
-    def setDefaultConfig(self,config): 
+    def set_default_config(self,config): 
         try:
             config.add_section('workspace')
         except ConfigParser.DuplicateSectionError:

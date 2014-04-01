@@ -59,7 +59,7 @@ class NewWorkingTree(option.Option):
         if (not args["--noSparse"]):
             print "created new working tree %s in %s. Calling grape uv from new workspace now." % (newTree, newTreePath)
             menu = grapeMenu.menu()
-            return menu.applyMenuChoice('uv', ["uv"] + args["<uvargs>"])
+            return menu.apply_menu_choice('uv', ["uv"] + args["<uvargs>"])
         else:
             git.checkout("HEAD")
             return True

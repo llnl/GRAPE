@@ -161,7 +161,7 @@ def userInput(message, default=None):
 # writes a config file with default options
 def writeDefaultConfig(filename):
    config = ConfigParser.RawConfigParser()
-   grapeMenu.menu().setDefaultConfig(config)
+   grapeMenu.menu().set_default_config(config)
    with open(filename,'w') as f:
       config.write(f)
 
