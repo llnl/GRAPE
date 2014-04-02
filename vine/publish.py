@@ -22,7 +22,7 @@ class Publish(option.Option):
                          [<public> [<submodulePublic>]] 
                          [--noverify] 
                          [--nopush]
-                         [--pushSubtrees]
+                         [--pushSubtrees | --noPushSubtrees]
                          [-v]
 
     Options:
@@ -39,6 +39,8 @@ class Publish(option.Option):
     --nopush            Set to skip the push of commits generated during the publish procedure.
     --pushSubtrees      Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate public
                         branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
+                        Set by default if .grapeconfig.subtrees.pushOnPublish is True.
+    --noPushSubtrees    Don't perform a git subtree push.
     -v                  Be more verbose. 
     
     Optional Arguments:
@@ -173,17 +175,7 @@ class Publish(option.Option):
                     self.publish(submodulePolicy, submodulePublic,topic, args)
             os.chdir(cwd)
 
-        # push subtrees to their respective remote branches
-        if args["--pushSubtrees"]:
-            
-            subtrees = config.get('subtrees','names').split(' ')
-            for st in subtrees:
-                st_prefix = config.get('subtree-%s'% st,'prefix')
-                st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s'% st,'remote'))
-                st_branchMappings = config.get('subtree-%s'% st,'topicPrefixMappings')
-                st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
-                print("pushing subtree %s to %s/%s..." % (st_prefix,st_remote,st_branch))
-                git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
+
 
                     
                 
@@ -196,8 +188,21 @@ class Publish(option.Option):
         proceed = valid and (args["--noverify"] or  utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\nProceed? [y/n]",'y') )
         if proceed: 
             self.publish(policy,public,topic,args)
+            # push subtrees to their respective remote branches
+            push_subtrees = config.get("subtrees", 'pushOnPublish').lower() == "true" or args["--pushSubtrees"]
+            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+            if push_subtrees:
 
-         
+                subtrees = config.get('subtrees','names').split(' ')
+                for st in subtrees:
+                    st_prefix = config.get('subtree-%s'% st,'prefix')
+                    st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s'% st,'remote'))
+                    st_branchMappings = config.get('subtree-%s'% st,'topicPrefixMappings')
+                    st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
+                    print("pushing subtree %s to %s (branch %s)..." % (st_prefix,st_remote,st_branch))
+                    git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
+
+
 
     def set_default_config(self,config): 
         try:
@@ -220,5 +225,6 @@ class Publish(option.Option):
         config.set('workspace','submodulePublishPolicy','?:merge')
         config.set('flow','publishPolicy','?:merge')
         config.set('subtrees','names','None')
+        config.set('subtrees', 'pushOnPublish', "True")
         
 

@@ -51,8 +51,8 @@ required = *
 [project]
 name = ALE
 
-[stashy]
+[subtree-stashy]
 prefix = stashy
-remote = ../stashy
+remote = ../stashy.git
 topicprefixmappings = ?:grape
 
