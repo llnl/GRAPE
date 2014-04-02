@@ -1,12 +1,9 @@
 #!/bin/sh
 "exec" "python" "-B" "$0" "$@"
-import os, shutil, subprocess, sys
-from vine import grapeConfig, grapeMenu, utility
-from vine import grapeGit as git
-import StringIO
-import stashy.stashy as stashy
-import keyring.keyring as keyring
-import getpass
+import sys
+
+from vine import grapeMenu, utility
+
 
 #*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 
