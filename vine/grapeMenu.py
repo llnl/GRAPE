@@ -61,7 +61,7 @@ class _Menu(object):
 
         #Add/order the menu sections here
         self._sections = ['Getting Started', 'Code Reviews', 'Workspace',
-                          'Merge', 'Gitflow Tasks', 'Hooks', 'Patches', 'Other']
+                          'Merge', 'Gitflow Tasks', 'Hooks', 'Patches', 'Project Management', 'Other']
 
     def post_init(self):
         # add dynamically generated (dependent on grapeConfig) options here

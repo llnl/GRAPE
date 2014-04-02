@@ -1,7 +1,7 @@
 import os
 import option
 import utility
-import types
+import ConfigParser
 import grapeGit as git
 import grapeMenu
 import grapeConfig
