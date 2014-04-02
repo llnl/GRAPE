@@ -16,7 +16,7 @@ import newWorkingTree
 import publish
 import quit
 import resolveConflicts
-#import review
+import review
 import status
 import test
 import updateLocal
@@ -55,8 +55,7 @@ class _Menu(object):
                          foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                          deleteBranch.DeleteBranch(), newWorkingTree.NewWorkingTree(),
                          resolveConflicts.ResolveConflicts(),
-                         #review.Review(),
-                         test.Test(), updateLocal.UpdateLocal(),
+                         review.Review(), test.Test(), updateLocal.UpdateLocal(),
                          hooks.InstallHooks(), hooks.RunHook(),
                          updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
 
