@@ -53,6 +53,6 @@ name = ALE
 
 [stashy]
 prefix = stashy
-remote = https://github.com/RisingOak/stashy.git
-topicprefixmappings = ?:master
+remote = ../stashy
+topicprefixmappings = ?:grape
 

@@ -78,7 +78,7 @@ class AddSubproject(option.Option):
                     current_cfg_names.append(name)
                     config.set("subtrees", "names", ' '.join(current_cfg_names))
 
-                config.add_section(name)
+                config.add_section("subtree-%s" % name)
                 config.set(name, "prefix", prefix)
                 config.set(name, "remote", url)
                 config.set(name, "topicPrefixMappings", "?:%s" % branch)
