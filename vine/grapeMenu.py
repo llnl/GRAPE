@@ -1,7 +1,7 @@
 import bundle, branches, checkout, clone, commit, config,  foreach
 import gitflowHelp, grapeConfig
 import merge, mergeAbort, mergeDevelop, mergeRemote
-import newFlowBranch, newWorkingTree, option, p4Import 
+import newFlowBranch, newWorkingTree, option, p4Import
 import p4Export, publish, quit
 import resolveConflicts, review, status, test
 import updateLocal, updateView, utility, walkthrough
@@ -27,19 +27,19 @@ class _Menu(object):
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here
-        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(),clone.Clone(), 
-                          checkout.Checkout(),commit.Commit(), publish.Publish(), config.Config(), 
+        self._options = [bundle.Bundle(), bundle.Unbundle(), branches.Branches(), status.Status(),clone.Clone(),
+                          checkout.Checkout(),commit.Commit(), publish.Publish(), config.Config(),
                           foreach.ForEach(),
-                          #feature.Feature(), 
-                          #gitflowHelp.GitflowHelp(), hotfix.Hotfix(), 
-                          merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(), 
+                          #feature.Feature(),
+                          #gitflowHelp.GitflowHelp(), hotfix.Hotfix(),
+                          merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                           #minorRelease.MinorRelease(),
                           deleteBranch.DeleteBranch(),newWorkingTree.NewWorkingTree(),
-                          #p4Export.P4Export(), 
+                          #p4Export.P4Export(),
                           #p4Import.P4Import(),
-                          resolveConflicts.ResolveConflicts(), 
-                          review.Review(), test.Test(), updateLocal.UpdateLocal(), 
-                          hooks.InstallHooks(),hooks.RunHook(), 
+                          resolveConflicts.ResolveConflicts(),
+                          review.Review(), test.Test(), updateLocal.UpdateLocal(),
+                          hooks.InstallHooks(),hooks.RunHook(),
                           updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
 
 
@@ -48,13 +48,13 @@ class _Menu(object):
         self._sections = ['Getting Started', 'Code Reviews', 'Workspace', \
                         'Merge', 'Gitflow Tasks', 'Hooks','Patches', 'Other' ] #'Perforce Integration', 'Other']
 
-    
 
 
 
-    def postInit(self): 
+
+    def postInit(self):
          # add dynamically generated (dependent on grapeConfig) options here
-        self._options = self._options + newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(grapeConfig.grapeConfig()) 
+        self._options = self._options + newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(grapeConfig.grapeConfig())
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption
 
@@ -70,10 +70,10 @@ class _Menu(object):
         chosenOption = self.getOption(choice)
         if chosenOption is None:
             return False
-        # use optdoc to parse arguments to the chosenOption. 
-        # utility.argParse also does the magic of filling in defaults from the config files as appropriate. 
+        # use optdoc to parse arguments to the chosenOption.
+        # utility.argParse also does the magic of filling in defaults from the config files as appropriate.
         optionArgs = None
-        if chosenOption.__doc__: 
+        if chosenOption.__doc__:
             #print("applyMenuCHoice:",args)
             optionArgs = utility.parseArgs(chosenOption.__doc__,args[1:])
         return chosenOption.execute(optionArgs)
@@ -98,10 +98,10 @@ class _Menu(object):
 
     # configures a ConfigParser object with all default values and sections needed by our Option objects
     def setDefaultConfig(self,config):
-      config.add_section("repo")
-      config.set("repo","name","repo_name_not.yet.configured")
-      config.set("repo","url","https://not.yet.configured/scm/project/unknown.git")
-      config.set("repo","httpsbase","https://not.yet.configured")
-      config.set("repo","sshbase","ssh://git@not.yet.configured")
-      for currOption in self._options:
-         currOption.setDefaultConfig(config)
+        config.add_section("repo")
+        config.set("repo","name","repo_name_not.yet.configured")
+        config.set("repo","url","https://not.yet.configured/scm/project/unknown.git")
+        config.set("repo","httpsbase","https://not.yet.configured")
+        config.set("repo","sshbase","ssh://git@not.yet.configured")
+        for currOption in self._options:
+            currOption.setDefaultConfig(config)
