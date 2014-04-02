@@ -1,6 +1,7 @@
 import os
 import option
 import utility
+import grapeMenu
 import grapeGit as git
 
 
@@ -11,11 +12,11 @@ class Clone(option.Option):
     Usage: grape-clone <url> <path> [--recursive]
 
     Arguments:
-        <url>       The URL of the remote repository 
-        <path>      The directory where you want to clone the repo to. 
+        <url>       The URL of the remote repository
+        <path>      The directory where you want to clone the repo to.
 
     Options:
-        --recursive   Recursively clone submodules. 
+        --recursive   Recursively clone submodules.
     """
 
     def __init__(self):
@@ -25,7 +26,7 @@ class Clone(option.Option):
 
     #Clones the default repo into a new local repo
     def description(self):
-        return "Clone a repo and configure it for grape" 
+        return "Clone a repo and configure it for grape"
 
     def execute(self, args):
         remotepath = args["<url>"]
@@ -35,6 +36,4 @@ class Clone(option.Option):
         git.gitcmd("clone %s %s %s" % (rstr, remotepath, destpath), "Error: Git Clone failed.")
         print("Clone succeeded!")
         os.chdir(destpath)
-        grapecmd = utility.getGrapeExec()
-        utility.executeSubProcess("%s config" % grapecmd)
-        return True
+        return grapeMenu.menu().applyMenuChoice("config", ["config"])
