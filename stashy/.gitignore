@@ -1,8 +1,0 @@
-/.idea
-*.py[cod]
-*.egg
-*.egg-info
-/dist
-/build
-/pip-log.txt
-/docs/_build
