@@ -4,8 +4,8 @@ filedir = os.path.dirname(os.path.realpath(__file__))
 grapedir = os.path.join(filedir,"..")
 if not grapedir in sys.path:
     sys.path.append( grapedir )
-import stashy
-import keyring
+import stashy.stashy as stashy
+import keyring.keyring as keyring
 import getpass
 import time
 import utility

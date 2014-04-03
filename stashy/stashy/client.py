@@ -1,5 +1,5 @@
 import json
-import requests
+import requests.requests as requests
 
 from .helpers import Nested, add_json_headers
 from .admin import Admin
