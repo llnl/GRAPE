@@ -154,28 +154,31 @@ class RunHook(option.Option):
                     currentBranch = None
 
 
-    def preCommit(self,args):
+    def preCommit(self, args):
         pass
 
-    def prePush(self,args):
+    def prePush(self, args):
         pass
 
-    def preRebase(self,args):
+    def preRebase(self, args):
         pass
 
-    def postRebase(self,args):
+    def postRebase(self, args):
         updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule.lower() == 'true':
+            git.submodule("sync")
             git.submodule("update --rebase")
 
-    def postMerge(self,args):
+    def postMerge(self, args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule.lower() == 'true':
+            git.submodule("sync")
             git.submodule("update --merge")
 
-    def postCheckout(self,args):
+    def postCheckout(self, args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule.lower() == 'true':
+            git.submodule("sync")
             git.submodule("update")
 
 
