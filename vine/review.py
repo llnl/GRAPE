@@ -89,6 +89,7 @@ class Review(option.Option):
         # check to see if pull request already exists for this branch
         request = None
         for rqst in pull_requests:
+            print rqst["toRef"]["id"]
             if rqst["toRef"]["id"] == "refs/heads/%s" % target_branch:
                 request = rqst
                 break
@@ -97,7 +98,6 @@ class Review(option.Option):
         if not request:
             if not args["--update"]:
                 # add a new pull request
-                print("safe")
                 if not title:
                     title = branch
                 repo.pull_requests.create(title, branch, target_branch, description=descr, reviewers=reviewers)
@@ -107,6 +107,7 @@ class Review(option.Option):
         else:
             if not args["--add"]:
                 # update the pull request
+                print request
                 # repo.pull_requests.update(title=title,)
                 pass
             else:
