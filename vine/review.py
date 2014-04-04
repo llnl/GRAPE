@@ -107,7 +107,7 @@ class Review(option.Option):
         else:
             if not args["--add"]:
                 # update the pull request
-
+                # repo.pull_requests.update(title=title,)
                 pass
             else:
                 print ("STASH: Pull request from %s to %s already exists, can't add" % (branch, target_branch))
