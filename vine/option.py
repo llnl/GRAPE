@@ -9,7 +9,7 @@ class Option(object):
     def execute(self, args):
         pass
     
-    def set_default_config(self, config):
+    def setDefaultConfig(self, config):
        pass
     
     @property

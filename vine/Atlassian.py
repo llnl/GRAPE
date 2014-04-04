@@ -166,8 +166,6 @@ class PullRequest(StashyNode):
     def toRef(self):
         return self.node["toRef"]["id"]
         
-        
-
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()
@@ -191,6 +189,3 @@ if __name__ == "__main__":
                 print "  DESC  :   ", pull.description()
 
                 print 
-
-
-
