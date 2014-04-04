@@ -1,7 +1,9 @@
-import ConfigParser, os
+import ConfigParser,os
 import utility
 import grapeMenu
 import grapeGit as git
+import option
+
 
 __configInstance = None
 
@@ -13,13 +15,13 @@ def grapeConfig():
 
 def read(additionalFileNames = []):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
-    
-    grapeMenu.menu().setDefaultConfig(grapeConfig())
+
+    grapeMenu.menu().set_default_config(grapeConfig())
     defaultFiles = []
     if os.name=="nt" :
-      defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
+        defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
     else :
-      defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
+        defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
         defaultFiles.append(os.path.join(git.baseDir(),".grapeconfig"))
@@ -34,4 +36,46 @@ def read(additionalFileNames = []):
     if len(readFiles) == 0:
         utility.writeDefaultConfig(globalconfigfile)
 
+class ConfigPairDict(dict):
 
+    def __getitem__(self,key): 
+        try:
+            return super(ConfigPairDict,self).__getitem__(key)
+        except KeyError as e: 
+            if '?' in self.keys():
+                return self['?']
+            else:
+                print("GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config.")
+                raise e
+
+def parseConfigPairList(string):
+    pairs = string.split(' ')
+    pairDict = ConfigPairDict() 
+    if pairs[0].strip().lower() != "none": 
+        for pair in pairs:
+            plist = pair.split(':')
+            pairDict[plist[0]] = plist[1]
+    return ConfigPairDict(pairDict)
+
+class WriteConfig(option.Option):
+    """
+        grape writeConfig: Writes the current configuration to a file, using any configuration set
+        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
+
+        Usage: 
+        grape-writeConfig <file>
+
+    """
+    def __init__(self): 
+        self._section = "Getting Started"
+        self._key = "writeConfig"
+
+    def description(self):
+        return "write a .grapeconfig file based on your current environment"
+
+    def execute(self,args): 
+        config = grapeConfig()
+        with open(args["<file>"],'w') as f: 
+            config.write(f)
+
+    

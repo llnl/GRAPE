@@ -134,15 +134,6 @@ def parseArgs(docstr,arguments):
            args[key] = config.get(tokens[2].strip(),tokens[3].strip())
     return args
 
-def parseConfigPairList(string):
-    pairs = string.split(' ')
-    pairDict = None
-    if pairs[0].strip().lower() != "none": 
-        pairDict = {}
-        for pair in pairs:
-            plist = pair.split(':')
-            pairDict[plist[0]] = plist[1]
-    return pairDict
 
 
 
@@ -170,7 +161,7 @@ def userInput(message, default=None):
 # writes a config file with default options
 def writeDefaultConfig(filename):
    config = ConfigParser.RawConfigParser()
-   grapeMenu.menu().setDefaultConfig(config)
+   grapeMenu.menu().set_default_config(config)
    with open(filename,'w') as f:
       config.write(f)
 

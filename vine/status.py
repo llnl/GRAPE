@@ -28,9 +28,9 @@ class Status(option.Option):
         if status[0] and status[0][0] != ' ':
             status[0] = ' ' + status[0]
 
-        print("gathering status on submodules")
-        submodules = git.getSubmodules(quiet)
-
+        submodules = git.getSubmodules()
+        if submodules:
+            print("gathering status on submodules")
         for sub in submodules:
             if not sub.strip():
                 continue
@@ -50,6 +50,6 @@ class Status(option.Option):
             print line
         return True
     
-    def setDefaultConfig(self,config): 
+    def set_default_config(self,config): 
        pass
     

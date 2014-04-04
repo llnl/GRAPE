@@ -1,5 +1,6 @@
 from .helpers import Nested, ResourceBase, IterableResource
 from .errors import ok_or_error, response_or_error
+from .permissions import Permissions
 from .pullrequests import PullRequests
 from .compat import update_doc
 
@@ -180,17 +181,21 @@ class Repository(ResourceBase):
             params['path'] = path
         return self.paginate('/commits', params=params)
 
+    permissions = Nested(Permissions)
     pull_requests = Nested(PullRequests, relative_path="/pull-requests")
     settings = Nested(Settings)
 
 
 class Repos(ResourceBase, IterableResource):
     @response_or_error
-    def create(self, name, scmId="git"):
+    def create(self, name, scmId="git", forkable=True):
         """
         Create a repository with the given name
         """
-        return self._client.post(self.url(), data=dict(name=name, scmId=scmId))
+        return self._client.post(self.url(), data={"name": name,
+                                                   "scmId": scmId,
+                                                   "forkable": forkable,
+                                                   })
 
     def __getitem__(self, item):
         """

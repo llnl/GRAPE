@@ -37,7 +37,7 @@ class MergeDevelop(option.Option):
         if currentBranch in grapeConfig.grapeConfig().get('flow','publicBranches'):
             return currentBranch
         branchPrefix = currentBranch.split('/')[0]
-        prefixMappings = utility.parseConfigPairList(mappings)
+        prefixMappings = grapeConfig.parseConfigPairList(mappings)
         try: 
             branch = prefixMappings[branchPrefix]
         except KeyError:
@@ -70,7 +70,7 @@ class MergeDevelop(option.Option):
                 git.pull("--rebase origin %s" % currentBranch) 
                 return True
             branchPrefix = currentBranch.split('/')[0]
-            prefixMappings = utility.parseConfigPairList(args["--mappings"])
+            prefixMappings = grapeConfig.parseConfigPairList(args["--mappings"])
             try: 
                 branch = prefixMappings[branchPrefix]
             except KeyError:
@@ -86,7 +86,7 @@ class MergeDevelop(option.Option):
         print("Merging changes from %s into your current branch..." % branch)
         return merge.mergeIntoCurrent( branch,args)
 
-    def setDefaultConfig(self,config):
+    def set_default_config(self,config):
         try:
             config.add_section("flow")
         except ConfigParser.DuplicateSectionError:

@@ -1,37 +1,58 @@
-[project]
-name=ALE
-
 [repo]
-name=grape
-url=ssh://git@rz-stash.llnl.gov:7999/ale/grape.git
-httpsbase=https://rzlc.llnl.gov/stash/scm/ale/
-sshbase=ssh://git@rz-stash.llnl.gov:7999/ale/
+name = grape
+url = ssh://git@rz-stash.llnl.gov:7999/ale/grape.git
+httpsbase = https://rzlc.llnl.gov/stash/scm/ale/
+sshbase = ssh://git@rz-stash.llnl.gov:7999/ale/
 
-[view]
-alldirs: *
-required: *
+[subtrees]
+mergepolicy = squash
+names = stashy
+
+[workspace]
+subprojecttype = subtree
+managesubmodules = True
+submoduletopicprefixmappings = ?:develop
+submodulepublishpolicy = ?:merge
 
 [patch]
-tagprefix = bundled 
+tagprefix = bundled
+describepattern = v*
 branches = develop master ale3d ale3d_4_22
-describePattern = v*
-branchMappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22
+branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22
+
+[flow]
+publishpolicy = ?:merge
+publicbranches = master develop release ale3d
+topicprefixmappings = hotfix:master feature:develop bugfix:develop rc:release ?:develop
 
 [post-commit]
 autopush = True
-cascade = master:develop 
+cascade = master:develop
 
 [post-rebase]
-submoduleUpdate = True
+submoduleupdate = True
 
 [post-merge]
-submoduleUpdate = True
+submoduleupdate = True
 
 [post-checkout]
-submoduleUpdate = True
+submoduleupdate = True
 
-[flow]
-publicBranches = master develop release ale3d
-topicPrefixMappings = hotfix:master feature:develop bugfix:develop rc:release ?:develop
+[view]
+alldirs = *
+required = *
 
+[pre-push]
+
+[pre-rebase]
+
+[pre-commit]
+
+[project]
+name = ALE
+
+[subtree-stashy]
+prefix = stashy
+remote = ../stashy.git
+topicprefixmappings = ?:grape
 

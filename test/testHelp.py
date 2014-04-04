@@ -6,7 +6,7 @@ from vine import grapeMenu
 
 class TestHelp(testGrape.TestGrape):
     def testHelp(self):
-        ret = grapeMenu.menu().getOption("help").execute()
+        ret = grapeMenu.menu().get_option("help").execute()
         contents = self.output.getvalue()
         self.assertFalse( ret )
         self.assertTrue( "rel:" in contents)

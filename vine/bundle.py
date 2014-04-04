@@ -99,7 +99,7 @@ name = None
             git.bundle("create %s %s --tags --branches" % (bundlename,revlists))
         return True
 
-    def setDefaultConfig(self,config):
+    def set_default_config(self,config):
         try: 
             config.add_section('patch')
         except ConfigParser.DuplicateSectionError:
@@ -148,7 +148,7 @@ Options:
         fetchOutput = git.fetch("-u %s %s" % (bundleName,mappings)) 
         
 
-    def setDefaultConfig(self,config): 
+    def set_default_config(self,config): 
         try: 
             config.add_section('patch')
         except ConfigParser.DuplicateSectionError:

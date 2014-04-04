@@ -10,3 +10,4 @@ build/
 *.o
 *.lo
 *.swo
+\.idea
