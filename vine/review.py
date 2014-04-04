@@ -3,6 +3,7 @@ import Atlassian
 import utility
 import grapeConfig
 import grapeGit as git
+import stashy.stashy as stashy
 
 
 # Prepare Feature Branch for review
@@ -84,33 +85,53 @@ class Review(option.Option):
         reviewers = args["--reviewers"]
 
         # get the open pull requests outgoing from our public branch
+        print("Gathering active pull requests on %s" % branch)
         pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch)
 
         # check to see if pull request already exists for this branch
         request = None
+        requestData = None
         for rqst in pull_requests:
             print rqst["toRef"]["id"]
             if rqst["toRef"]["id"] == "refs/heads/%s" % target_branch:
-                request = rqst
+                request = repo.pull_requests[str(rqst["id"])]
+                requestData = rqst
                 break
-
 
         if not request:
             if not args["--update"]:
                 # add a new pull request
                 if not title:
                     title = branch
-                repo.pull_requests.create(title, branch, target_branch, description=descr, reviewers=reviewers)
+                try:
+                    print("Creating new pull request. ")
+                    repo.pull_requests.create(title, branch, target_branch, description=descr, reviewers=reviewers)
+                    print("Pull request created.")
+                except stashy.errors.GenericException as e:
+                    print("STASH: %s" % e.msg)
+                    exit(int(e.msg.split(':')[0]))
             else:
                 print ("STASH: No pull request  from %s to %s to update" % (branch, target_branch))
 
         else:
             if not args["--add"]:
                 # update the pull request
-                print request
-                # repo.pull_requests.update(title=title,)
-                pass
+                print("Updating pull request")
+                print(title, descr, reviewers)
+                try:
+                    ver = requestData["version"]
+                    print reviewers
+                    revList = []
+                    for r in reviewers.split(' '):
+                        revList.append(dict(user=dict(name=r)))
+
+                    request.update(ver, title=title,  description=descr, reviewers=revList)
+                except stashy.errors.GenericException as e:
+                    print("STASH: %s" % e.message)
+                    exit(1)
+
+                print("Pull request updated")
             else:
-                print ("STASH: Pull request from %s to %s already exists, can't add" % (branch, target_branch))
+                print ("STASH: Pull request from %s to %s already exists, can't add a new one" % (branch, target_branch))
 
         return True
