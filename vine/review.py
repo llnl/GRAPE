@@ -46,7 +46,10 @@ class Review(option.Option):
         return "Prepare current topic branch for review"
 
     def execute(self, args):
-
+        """
+        A fair chunk of this stuff relies on stashy's wrapping of the STASH REST API, which is posted at
+        https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
+        """
         name = args["--user"]
         if not name:
             name = utility.getUserName()
@@ -83,7 +86,19 @@ class Review(option.Option):
 
         # determine pull request reviewers
         reviewers = args["--reviewers"]
-
+        #Stash REST API for reviewer definition snippet:
+        # "reviewers": [
+        #     {
+        #         "user": {
+        #             "name": "charlie"
+        #         }
+        #     }
+        #   ]
+        # Which I interpret to mean the following:
+        revList = []
+        for r in reviewers.split(' '):
+            revList.append(dict(user=dict(name=r)))
+        reviewers = revList
         # get the open pull requests outgoing from our public branch
         print("Gathering active pull requests on %s" % branch)
         pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch)
@@ -117,14 +132,8 @@ class Review(option.Option):
             if not args["--add"]:
                 # update the pull request
                 print("Updating pull request")
-                print(title, descr, reviewers)
                 try:
                     ver = requestData["version"]
-                    print reviewers
-                    revList = []
-                    for r in reviewers.split(' '):
-                        revList.append(dict(user=dict(name=r)))
-
                     request.update(ver, title=title,  description=descr, reviewers=revList)
                 except stashy.errors.GenericException as e:
                     print("STASH: %s" % e.message)
