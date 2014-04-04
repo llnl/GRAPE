@@ -9,7 +9,19 @@ import grapeGit as git
 class Review(option.Option):
     """
     grape review
-    Usage: grape-review 
+    Usage: grape-review [--descr=<file> | -m <description>]
+                        [--user=<userName> ]
+                        [--reviewers=<userNames>]
+                        [--source=<topicBranch>]
+                        [--target=<publicBranch>]
+
+    Options:
+        --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
+        -m <description>            The description of work done on <topicBranch>
+        --user=<userName>           Your user name.
+        --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
+        --source=<topicBranch>      The branch to review.
+        --target=<publicBranch>     The branch to publish <topicBranch> to.
 
     """
     def __init__(self):
@@ -23,11 +35,14 @@ class Review(option.Option):
 
     def execute(self, args):
 
+        name = args["--user"]
+        if not name:
+            name = utility.getUserName()
         print("Logging into RZStash")
-        name = utility.getUserName()
         rz_atlassian = Atlassian.Atlassian(name)
         rz_stash = rz_atlassian.stash
-        
+
+
         config = grapeConfig.grapeConfig()
         project_name = config.get("project", "name")
         repo_name = config.get("repo", "name")
@@ -41,13 +56,14 @@ class Review(option.Option):
         # check to see if pull request already exists for this
         # branch
 
-        #pull_requests = repo.pull_requests.list()
         pull_requests = repo.pull_requests.list()
         print pull_requests
         
         count = 0
         for request in pull_requests:
             count += 1
+            print request
+            exit(0)
             print(request["title"], request["fromRef"]["id"], request["toRef"]["id"])
         if count == 0:
             # safe to create a new pull request
