@@ -10,7 +10,7 @@ class Option(object):
         pass
     
     def setDefaultConfig(self, config):
-       pass
+        pass
     
     @property
     def key(self):

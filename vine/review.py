@@ -9,19 +9,30 @@ import grapeGit as git
 class Review(option.Option):
     """
     grape review
-    Usage: grape-review [--descr=<file> | -m <description>]
+    Usage: grape-review [--update | --add]
+                        [--title=<title>]
+                        [--descr=<file> | -m <description>]
                         [--user=<userName> ]
                         [--reviewers=<userNames>]
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
 
     Options:
+        --update                    Update an existing pull request with a new description, set of reviewers, etc.
+                                    This is the default behavior if a pull request already exists for <topicBranch>
+                                    targeting <publicBranch>. If --update is set, and an open pull request doesn't
+                                    exist, an error will be generated.
+        --add                       Add a new pull request. Default behavior if a pull request doesn't exist for
+                                    <topicBranch> targeting <publicBranch>. If a pull request already exists and --add
+                                    is set, an error will be generated.
+        --title=<title>             The pull request tile.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
-        -m <description>            The description of work done on <topicBranch>
-        --user=<userName>           Your user name.
+        -m <description>            The pull request description.
+        --user=<userName>           Your Stash user name.
         --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
-        --source=<topicBranch>      The branch to review.
+        --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
+                                    Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
 
     """
     def __init__(self):
@@ -42,38 +53,63 @@ class Review(option.Option):
         rz_atlassian = Atlassian.Atlassian(name)
         rz_stash = rz_atlassian.stash
 
-
+        # load the repo level REST resource
         config = grapeConfig.grapeConfig()
         project_name = config.get("project", "name")
         repo_name = config.get("repo", "name")
         repo = rz_stash.projects[project_name].repos[repo_name]
-        current_branch = git.currentBranch()
-        branch = utility.userInput("Branch to Review:", current_branch)
-        prefix = branch.split('/')[0]
-        dest_branch = grapeConfig.parseConfigPairList(config.get("flow", "topicPrefixMappings"))[prefix]
-        target_branch = utility.userInput("Destination branch?", dest_branch)
 
-        # check to see if pull request already exists for this
-        # branch
+        # determine source branch and target branch
+        branch = args["--source"]
+        if not branch:
+            branch = git.currentBranch()
+        target_branch = args["--target"]
+        if not target_branch:
+            prefix = branch.split('/')[0]
+            target_branch = grapeConfig.parseConfigPairList(config.get("flow", "topicPrefixMappings"))[prefix]
 
-        pull_requests = repo.pull_requests.list()
-        print pull_requests
-        
-        count = 0
-        for request in pull_requests:
-            count += 1
-            print request
-            exit(0)
-            print(request["title"], request["fromRef"]["id"], request["toRef"]["id"])
-        if count == 0:
-            # safe to create a new pull request
-            print("safe")
-            title = "title"
-            description = "Default description"
-            reviewers = []
-            repo.pull_requests.create(title, branch, target_branch, description=description, reviewers=reviewers)
+
+        # determine pull request title
+        title = args["--title"]
+
+        # determine pull request description
+        descr = args["-m"]
+        if not descr:
+            descrFile = args["--descr"]
+            if descrFile:
+                with open(descrFile) as f:
+                    descr = f.readall()
+
+        # determine pull request reviewers
+        reviewers = args["--reviewers"]
+
+        # get the open pull requests outgoing from our public branch
+        pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch)
+
+        # check to see if pull request already exists for this branch
+        request = None
+        for rqst in pull_requests:
+            if rqst["toRef"]["id"] == "refs/heads/%s" % target_branch:
+                request = rqst
+                break
+
+
+        if not request:
+            if not args["--update"]:
+                # add a new pull request
+                print("safe")
+                if not title:
+                    title = branch
+                repo.pull_requests.create(title, branch, target_branch, description=descr, reviewers=reviewers)
+            else:
+                print ("STASH: No pull request  from %s to %s to update" % (branch, target_branch))
 
         else:
-            print "not safe to create a pull request"
+            if not args["--add"]:
+                # update the pull request
+
+                pass
+            else:
+                print ("STASH: Pull request from %s to %s already exists, can't add" % (branch, target_branch))
 
         return True
