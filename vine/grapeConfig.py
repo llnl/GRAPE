@@ -16,7 +16,7 @@ def grapeConfig():
 def read(additionalFileNames = []):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
 
-    grapeMenu.menu().set_default_config(grapeConfig())
+    grapeMenu.menu().setDefaultConfig(grapeConfig())
     defaultFiles = []
     if os.name=="nt" :
         defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))

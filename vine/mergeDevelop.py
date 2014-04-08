@@ -86,7 +86,7 @@ class MergeDevelop(option.Option):
         print("Merging changes from %s into your current branch..." % branch)
         return merge.mergeIntoCurrent( branch,args)
 
-    def set_default_config(self,config):
+    def setDefaultConfig(self,config):
         try:
             config.add_section("flow")
         except ConfigParser.DuplicateSectionError:
