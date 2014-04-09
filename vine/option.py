@@ -9,8 +9,8 @@ class Option(object):
     def execute(self, args):
         pass
     
-    def set_default_config(self, config):
-       pass
+    def setDefaultConfig(self, config):
+        pass
     
     @property
     def key(self):

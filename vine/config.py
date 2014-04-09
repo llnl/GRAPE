@@ -141,10 +141,10 @@ class Config(option.Option):
         # install hooks here and in all submodules
         print("Installing hooks in all repos")
         cwd = git.baseDir()
-        grapeMenu.menu().apply_menu_choice("installHooks",["installHooks"])
+        grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)
         for sub in git.getSubmodules(False): 
             os.chdir(os.path.join(cwd,sub))
-            grapeMenu.menu().apply_menu_choice("installHooks",["installHooks"])
+            grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)
         return True

@@ -39,7 +39,7 @@ def menu():
     if __menuInstance is None:
         __menuInstance = _Menu()
         grapeConfig.read()
-        __menuInstance.post_init()
+        __menuInstance.postInit()
     return __menuInstance
 
 
@@ -63,7 +63,7 @@ class _Menu(object):
         self._sections = ['Getting Started', 'Code Reviews', 'Workspace',
                           'Merge', 'Gitflow Tasks', 'Hooks', 'Patches', 'Project Management', 'Other']
 
-    def post_init(self):
+    def postInit(self):
         # add dynamically generated (dependent on grapeConfig) options here
         self._options = self._options + \
                          newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(grapeConfig.grapeConfig())
@@ -71,15 +71,15 @@ class _Menu(object):
             self._optionLookup[currOption.key] = currOption
 
     #######      MENU STUFF         #########################################################################
-    def get_option(self, choice):
+    def getOption(self, choice):
         try:
             return self._optionLookup[choice]
         except KeyError:
             print("Unknown option '%s'" % choice)
             return None
 
-    def apply_menu_choice(self, choice, args):
-        chosen_option = self.get_option(choice)
+    def applyMenuChoice(self, choice, args):
+        chosen_option = self.getOption(choice)
         if chosen_option is None:
             return False
         # use optdoc to parse arguments to the chosen_option.
@@ -91,7 +91,7 @@ class _Menu(object):
         return chosen_option.execute(option_args)
 
     # Present the main menu
-    def present_text_menu(self):
+    def presentTextMenu(self):
         width = 60
         print("GRAPE - Git Replacement for \"Awesome\" PARSEC Environment".center(width, '*'))
 
@@ -109,11 +109,11 @@ class _Menu(object):
                 print("%s: %s" % (currOption.key.ljust(longest_key), currOption.description()))
 
     # configures a ConfigParser object with all default values and sections needed by our Option objects
-    def set_default_config(self, cfg):
+    def setDefaultConfig(self, cfg):
         cfg.add_section("repo")
         cfg.set("repo", "name", "repo_name_not.yet.configured")
         cfg.set("repo", "url", "https://not.yet.configured/scm/project/unknown.git")
         cfg.set("repo", "httpsbase", "https://not.yet.configured")
         cfg.set("repo", "sshbase", "ssh://git@not.yet.configured")
         for currOption in self._options:
-            currOption.set_default_config(cfg)
+            currOption.setDefaultConfig(cfg)

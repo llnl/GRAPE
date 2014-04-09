@@ -95,7 +95,7 @@ class AddSubproject(option.Option):
                 print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
         return True
 
-    def set_default_config(self, config):
+    def setDefaultConfig(self, config):
         try:
             config.add_section("subtrees")
         except ConfigParser.DuplicateSectionError:
