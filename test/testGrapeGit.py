@@ -12,36 +12,6 @@ from vine import grapeGit as git
 class TestGrapeGit(TestGrape):
 
 
-    def tearDown(self):
-        def onError(func, path, exc_info):
-            """
-            Error handler for ``shutil.rmtree``.
-
-            If the error is due to an access error (read only file)
-            it attempts to add write permission and then retries.
-
-            If the error is for another reason it re-raises the error.
-
-            Usage : ``shutil.rmtree(path, onerror=onerror)``
-            """
-            import stat
-            if not os.access(path, os.W_OK):
-                # Is the error an access error ?
-                os.chmod(path, stat.S_IWUSR)
-                func(path)
-            else:
-                raise
-        os.chdir(os.path.join(self.repo, ".."))
-        shutil.rmtree(self.repo, False, onError)
-        for repo in self.repos:
-            try:
-                shutil.rmtree(repo, False, onError)
-            except:
-                pass
-
-        super(TestGrapeGit, self).tearDown()
-
-
     def testAdd(self):
         try:
             os.chdir(self.repo)

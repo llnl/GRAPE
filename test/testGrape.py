@@ -4,28 +4,39 @@ import sys
 import os
 import unittest
 import StringIO
+import shutil
+
+if not ".." in sys.path:
+    sys.path.append("..")
+from vine import grapeGit as git
 
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
 str3 = "str3 \n a \n d\n c\n"
 
+
 def writeFile1(path):
-    with open(path,'w') as f:
+    with open(path, 'w') as f:
         f.write(str1)
 
+
 def writeFile2(path):
-    with open(path,'w') as f:
+    with open(path, 'w') as f:
         f.write(str2)
 
+
 def writeFile3(path):
-    with open(path,'w') as f:
+    with open(path, 'w') as f:
         f.write(str3)
 
+
 class TestGrape(unittest.TestCase):
-    def __init__(self,superArg):
-        super(TestGrape,self).__init__(superArg)
-        self.repos = [os.path.join(os.getcwd(),"testRepo"),os.path.join(os.getcwd(),"testRepo2")]
+    def __init__(self, superArg):
+        super(TestGrape, self).__init__(superArg)
+        self.defaultWorkingDirectory = os.getcwd()
+        self.repos = [os.path.join(os.getcwd(), "testRepo"), os.path.join(os.getcwd(), "testRepo2")]
         self.repo = self.repos[0]
+
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
@@ -38,18 +49,20 @@ class TestGrape(unittest.TestCase):
 
         # create a test repository to operate in.
         try:
-            os.mkdir(self.repo)
+            try:
+                os.mkdir(self.repo)
+            except OSError:
+                pass
             os.chdir(self.repo)
             cwd = os.getcwd()
             print cwd
-            exit(1)
             git.gitcmd("init", "Setup Failed")
-            fname = os.path.join(self.repo,"testRepoFile")
+            fname = os.path.join(self.repo, "testRepoFile")
             writeFile1(fname)
-            git.gitcmd("add %s" % fname,"Add Failed")
+            git.gitcmd("add %s" % fname, "Add Failed")
             git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
-            os.chdir(os.path.join(self.repo,".."))
-        except:
+            os.chdir(os.path.join(self.repo, ".."))
+        except git.GrapeGitError:
             pass
 
     def tearDown(self):
@@ -70,14 +83,14 @@ class TestGrape(unittest.TestCase):
                 os.chmod(path, stat.S_IWUSR)
                 func(path)
             else:
-                raise
+                raise Exception
 
-        os.chdir(os.path.join(self.repo, ".."))
+        os.chdir(self.defaultWorkingDirectory)
         shutil.rmtree(self.repo, False, onError)
         for repo in self.repos:
             try:
                 shutil.rmtree(repo, False, onError)
-            except:
+            except Exception:
                 pass
 
         # restore stdout and stderr to their original streams
@@ -95,17 +108,22 @@ class TestGrape(unittest.TestCase):
         for l in self.error:
             self.stderr.write(l)
 
-def buildSuite(cls,appendTo = None):
+
+def buildSuite(cls, appendTo=None):
     suite = appendTo
-    if suite == None:
+    if suite is None:
         suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(cls))
     return suite
 
 
 def main():
-    import testBranch, testClone, testConfig, testHelp
-    import testGrapeGit, testReview 
+    import testBranch
+    import testClone
+    import testConfig
+    import testHelp
+    import testGrapeGit
+    import testReview
     testClasses = [testBranch.TestBranch, testClone.TestClone,
                    testConfig.TestConfig,
                    testHelp.TestHelp, testGrapeGit.TestGrapeGit,
