@@ -2,11 +2,12 @@ import os, subprocess, sys,string
 import grapeMenu, utility
 
 class GrapeGitError(Exception):
-    def __init__(self,errmsg,returnCode,gitOutput,gitCommand,quiet = False):
+    def __init__(self,errmsg,returnCode,gitOutput,gitCommand,quiet = False, cwd=os.getcwd()):
         self.msg = errmsg
         self.code = returnCode
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
+        self.cwd = cwd
         if not quiet:
             print "When executing %s,Error %d raised with msg: %s \n %s" % (self.gitCommand,self.code, self.msg,self.gitOutput)
 
@@ -19,9 +20,10 @@ def gitcmd(cmd,errmsg,quiet=False):
         verbose = 0
     else:
         verbose = 2
-    process = utility.executeSubProcess(_cmd, os.getcwd(), subprocess.PIPE,verbose=verbose)
+    cwd = os.getcwd()
+    process = utility.executeSubProcess(_cmd, cwd, subprocess.PIPE, verbose=verbose)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s "% errmsg,process.returncode,process.output,_cmd,quiet)
+        raise GrapeGitError("Error: %s "% errmsg,process.returncode, process.output, _cmd, quiet=quiet, cwd=cwd)
     return process.output.strip()
 
 def add(filedescription, quiet = False):
