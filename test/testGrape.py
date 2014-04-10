@@ -31,6 +31,7 @@ def writeFile3(path):
 
 
 class TestGrape(unittest.TestCase):
+
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
         self.defaultWorkingDirectory = os.getcwd()
@@ -102,7 +103,7 @@ class TestGrape(unittest.TestCase):
         self.output.close()
 
     # print the captured standard out
-    def printOutput(self):        
+    def printOutput(self):
         for l in self.output:
             self.stdout.write(l)
 
@@ -110,6 +111,11 @@ class TestGrape(unittest.TestCase):
     def printError(self):
         for l in self.error:
             self.stderr.write(l)
+
+    # stage user input for methods that expect it
+    def queueUserInput(self, inputList):
+        self.input.writelines(inputList)
+        self.input.seek(0)
 
 
 def buildSuite(cls, appendTo=None):
@@ -121,13 +127,14 @@ def buildSuite(cls, appendTo=None):
 
 
 def main():
-    import testBranch
+   
+    import testBranches
     import testClone
     import testConfig
     import testHelp
     import testGrapeGit
     import testReview
-    testClasses = [testBranch.TestBranch, testClone.TestClone,
+    testClasses = [testBranches.TestBranches, testClone.TestClone,
                    testConfig.TestConfig,
                    testGrapeGit.TestGrapeGit,
                    testReview.TestReview]

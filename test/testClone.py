@@ -1,4 +1,8 @@
-import os, sys, unittest
+import os
+import shutil
+import sys
+import tempfile
+import unittest
 import testGrape
 if not ".." in sys.path:
     sys.path.append( ".." )
@@ -6,8 +10,7 @@ from vine import grapeMenu, clone, grapeGit as git
 
 class TestClone(testGrape.TestGrape):
     def testClone(self):
-        self.input.writelines(['\n', '\n', '\n', '\n'])
-        self.input.seek(0)
+        self.queueUserInput(['\n', '\n', '\n', '\n'])
         args = [self.repo, self.repos[1], "--recursive"]
         ret =grapeMenu.menu().applyMenuChoice("clone", args)
         self.assertTrue(ret)
@@ -26,4 +29,18 @@ class TestClone(testGrape.TestGrape):
         with self.assertRaises(SystemExit):
             ret = grapeMenu.menu().applyMenuChoice("clone", args)
         self.assertIn(clone.Clone.__doc__, self.output.getvalue())
+
+    def testClone02(self):
+        tempDir = tempfile.mkdtemp()
+        args = [self.repo, tempDir]
+        try:
+            self.queueUserInput(["\n", "\n", "\n", "\n"])
+            ret = grapeMenu.menu().applyMenuChoice("clone", args)
+            self.assertTrue(ret, "vine.clone returned failure")
+
+            #ToDo: Finish checking contents
+            #contents = self.output.getvalue()
+            #self.stdout(contents)
+        finally:
+            shutil.rmtree(tempDir)
 
