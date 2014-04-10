@@ -4,8 +4,8 @@ filedir = os.path.dirname(os.path.realpath(__file__))
 grapedir = os.path.join(filedir,"..")
 if not grapedir in sys.path:
     sys.path.append( grapedir )
-import stashy
-import keyring
+import stashy.stashy as stashy
+import keyring.keyring as keyring
 import getpass
 import time
 import utility
@@ -166,8 +166,6 @@ class PullRequest(StashyNode):
     def toRef(self):
         return self.node["toRef"]["id"]
         
-        
-
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()
@@ -191,6 +189,3 @@ if __name__ == "__main__":
                 print "  DESC  :   ", pull.description()
 
                 print 
-
-
-

@@ -36,6 +36,6 @@ class ForEach(option.Option):
         utility.executeSubProcess(cmd,cwd,verbose = 0 if quiet else 2)
         return True
     
-    def set_default_config(self,config): 
+    def setDefaultConfig(self,config): 
        pass
     
