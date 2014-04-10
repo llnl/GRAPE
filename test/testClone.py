@@ -9,7 +9,7 @@ if not ".." in sys.path:
 from vine import grapeMenu, utility
 
 class TestClone(testGrape.TestGrape):
-    def testClone(self):
+    def testClone02(self):
         args = {}
         args["<url>"] = "ssh://git@rz-stash.llnl.gov:7999/grp/grape.git"
         tempDir = tempfile.mkdtemp()
@@ -23,5 +23,6 @@ class TestClone(testGrape.TestGrape):
 
             contents = self.output.getvalue()
             self.stdout(contents)
+            #ToDo: Finish checking contents
         finally:
             shutil.rmtree(tempDir)
