@@ -99,8 +99,8 @@ class _Menu(object):
         try:
             return chosen_option.execute(option_args)
         except git.GrapeGitError as e:
-            print ("GRAPE GIT: Uncaught Error in grape-%s when Executing %s\n%s" %
-                   (chosen_option._key,  e.gitCommand, e.gitOutput))
+            print ("GRAPE GIT: Uncaught Error in grape-%s when executing '%s' in '%s'\n%s" %
+                   (chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
             exit(e.code)
 
     # Present the main menu

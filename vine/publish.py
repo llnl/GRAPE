@@ -13,7 +13,7 @@ class Publish(option.Option):
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
     where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings and
     .grapeconfig.workspace.submoduleTopicPrefixMappings. The branch-dependent publish policy (merge vs. squash merge.
-    vs rebase) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
+    vs rebase, etc) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage: grape-publish [--squash [--cascade ] | --merge |  --rebase]
