@@ -7,8 +7,8 @@ from vine import grapeMenu
 
 class TestBranches(testGrape.TestGrape):
     def testBranches(self):
-        menuOption = grapeMenu.menu().applyMenuChoice("b", {})
-        self.assertTrue(ret, "vine.branches.execute() returned failure.")
+        ret = grapeMenu.menu().applyMenuChoice("b", {})
+        self.assertTrue(ret, "Branches returned failure.")
 
         contents = self.output.getvalue()
         workingDirectory = os.path.abspath(".")
