@@ -79,10 +79,17 @@ class _Menu(object):
             print("Unknown option '%s'" % choice)
             return None
 
-    def applyMenuChoice(self, choice, args):
+    def applyMenuChoice(self, choice, args=None):
+
         chosen_option = self.getOption(choice)
         if chosen_option is None:
             return False
+        if args is None:
+            args = [chosen_option._key]
+        #first argument better be the key
+        if args[0] != chosen_option._key:
+            args = [chosen_option._key]+args
+
         # use optdoc to parse arguments to the chosen_option.
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate. 
         option_args = None

@@ -42,11 +42,13 @@ class TestGrape(unittest.TestCase):
         # messages from the modules that we test
         self.output = StringIO.StringIO()
         self.error = StringIO.StringIO()
+        self.input = StringIO.StringIO()
         self.stdout = sys.stdout
         self.stderr = sys.stderr
+        self.stdin = sys.stdin
         sys.stdout = self.output
         sys.stderr = self.error
-
+        sys.stdin  = self.input
         # create a test repository to operate in.
         try:
             try:
@@ -93,9 +95,10 @@ class TestGrape(unittest.TestCase):
             except Exception:
                 pass
 
-        # restore stdout and stderr to their original streams
+        # restore stdout, stdin, and stderr to their original streams
         sys.stdout = self.stdout
         sys.stderr = self.stderr
+        sys.stdin = self.stdin
         self.output.close()
 
     # print the captured standard out
@@ -126,7 +129,7 @@ def main():
     import testReview
     testClasses = [testBranch.TestBranch, testClone.TestClone,
                    testConfig.TestConfig,
-                   testHelp.TestHelp, testGrapeGit.TestGrapeGit,
+                   testGrapeGit.TestGrapeGit,
                    testReview.TestReview]
     suite = unittest.TestSuite()
     for cls in testClasses:
