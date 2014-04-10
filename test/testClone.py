@@ -6,8 +6,7 @@ from vine import grapeMenu, clone, grapeGit as git
 
 class TestClone(testGrape.TestGrape):
     def testClone(self):
-        self.input.writelines(['\n', '\n', '\n', '\n'])
-        self.input.seek(0)
+        self.queueUserInput(['\n', '\n', '\n', '\n'])
         args = [self.repo, self.repos[1], "--recursive"]
         ret =grapeMenu.menu().applyMenuChoice("clone", args)
         self.assertTrue(ret)
