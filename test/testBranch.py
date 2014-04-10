@@ -6,6 +6,6 @@ from vine import grapeMenu
 
 class TestBranch(testGrape.TestGrape):
     def testBranch(self):
-        ret = grapeMenu.menu().applyMenuChoice("b")
+        ret = grapeMenu.menu().getOption("b").execute()
         contents = self.output.getvalue()
         self.assertTrue( ret )
