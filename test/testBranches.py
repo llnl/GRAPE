@@ -7,10 +7,7 @@ from vine import grapeMenu
 
 class TestBranches(testGrape.TestGrape):
     def testBranches(self):
-        menuOption = grapeMenu.menu().get_option("b")
-        self.assertIsNotNone(menuOption, "grapeMenu returned None for 'clone' option")
-
-        ret = menuOption.execute({})
+        menuOption = grapeMenu.menu().applyMenuChoice("b", {})
         self.assertTrue(ret, "vine.branches.execute() returned failure.")
 
         contents = self.output.getvalue()

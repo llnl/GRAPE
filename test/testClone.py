@@ -15,10 +15,7 @@ class TestClone(testGrape.TestGrape):
         tempDir = tempfile.mkdtemp()
         args["<path>"] = tempDir
         try:
-            menuOption = grapeMenu.menu().get_option("clone")
-            self.assertIsNotNone(menuOption, "grapeMenu returned None for 'clone' option")
-
-            ret = menuOption.execute(args)
+            ret = grapeMenu.menu().applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone.execute() returned failure")
 
             contents = self.output.getvalue()
