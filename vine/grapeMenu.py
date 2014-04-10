@@ -8,6 +8,7 @@ import commit
 import config
 import foreach
 import grapeConfig
+import grapeGit as git
 import merge
 import mergeDevelop
 import mergeRemote
@@ -88,7 +89,12 @@ class _Menu(object):
         if chosen_option.__doc__:
             #print("applyMenuCHoice:",args)
             option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
-        return chosen_option.execute(option_args)
+        try:
+            return chosen_option.execute(option_args)
+        except git.GrapeGitError as e:
+            print ("GRAPE GIT: Uncaught Error in grape-%s when Executing %s\n%s" %
+                   (chosen_option._key,  e.gitCommand, e.gitOutput))
+            exit(e.code)
 
     # Present the main menu
     def presentTextMenu(self):

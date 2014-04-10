@@ -1,11 +1,34 @@
 #!/usr/bin/env python
 
-import sys, unittest, StringIO
+import sys
+import os
+import unittest
+import StringIO
+
+str1 = "str1 \n a \n b\n c\n"
+str2 = "str2 \n a \n c\n c\n"
+str3 = "str3 \n a \n d\n c\n"
+
+def writeFile1(path):
+    with open(path,'w') as f:
+        f.write(str1)
+
+def writeFile2(path):
+    with open(path,'w') as f:
+        f.write(str2)
+
+def writeFile3(path):
+    with open(path,'w') as f:
+        f.write(str3)
 
 class TestGrape(unittest.TestCase):
-    # setUp stdout and stderr wrapping to capture
-    # messages from the modules that we test
+    def __init__(self,superArg):
+        super(TestGrape,self).__init__(superArg)
+        self.repos = [os.path.join(os.getcwd(),"testRepo"),os.path.join(os.getcwd(),"testRepo2")]
+        self.repo = self.repos[0]
     def setUp(self):
+        # setUp stdout and stderr wrapping to capture
+        # messages from the modules that we test
         self.output = StringIO.StringIO()
         self.error = StringIO.StringIO()
         self.stdout = sys.stdout
@@ -13,8 +36,51 @@ class TestGrape(unittest.TestCase):
         sys.stdout = self.output
         sys.stderr = self.error
 
-    # restore stdout and stderr to their original streams
+        # create a test repository to operate in.
+        try:
+            os.mkdir(self.repo)
+            os.chdir(self.repo)
+            cwd = os.getcwd()
+            print cwd
+            exit(1)
+            git.gitcmd("init", "Setup Failed")
+            fname = os.path.join(self.repo,"testRepoFile")
+            writeFile1(fname)
+            git.gitcmd("add %s" % fname,"Add Failed")
+            git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
+            os.chdir(os.path.join(self.repo,".."))
+        except:
+            pass
+
     def tearDown(self):
+        def onError(func, path, exc_info):
+            """
+            Error handler for ``shutil.rmtree``, primarily for Windows.
+
+            If the error is due to an access error (read only file)
+            it attempts to add write permission and then retries.
+
+            If the error is for another reason it re-raises the error.
+
+            Usage : ``shutil.rmtree(path, onerror=onerror)``
+            """
+            import stat
+            if not os.access(path, os.W_OK):
+                # Is the error an access error ?
+                os.chmod(path, stat.S_IWUSR)
+                func(path)
+            else:
+                raise
+
+        os.chdir(os.path.join(self.repo, ".."))
+        shutil.rmtree(self.repo, False, onError)
+        for repo in self.repos:
+            try:
+                shutil.rmtree(repo, False, onError)
+            except:
+                pass
+
+        # restore stdout and stderr to their original streams
         sys.stdout = self.stdout
         sys.stderr = self.stderr
         self.output.close()
@@ -38,16 +104,15 @@ def buildSuite(cls,appendTo = None):
 
 
 def main():
-    import testBranch, testClone, testConfig, testDev, testHelp
+    import testBranch, testClone, testConfig, testHelp
     import testGrapeGit, testReview 
     testClasses = [testBranch.TestBranch, testClone.TestClone,
-                   testConfig.TestConfig, testDev.TestDev,
+                   testConfig.TestConfig,
                    testHelp.TestHelp, testGrapeGit.TestGrapeGit,
-                   testReview.TestReview ]
+                   testReview.TestReview]
     suite = unittest.TestSuite()
     for cls in testClasses:
-        suite = buildSuite(cls,suite)
-
+        suite = buildSuite(cls, suite)
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
