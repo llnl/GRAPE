@@ -16,7 +16,7 @@ class TestClone(testGrape.TestGrape):
         args["<path>"] = tempDir
         try:
             ret = grapeMenu.menu().applyMenuChoice("clone", args)
-            self.assertTrue(ret, "vine.clone.execute() returned failure")
+            self.assertTrue(ret, "vine.clone returned failure")
 
             contents = self.output.getvalue()
             self.stdout(contents)
