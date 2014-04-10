@@ -18,7 +18,11 @@ class Review(option.Option):
                         [--reviewers=<userNames>]
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
+                        [--project=<prj>]
+                        [--repo=<repo>]
                         [--recurse]
+                        [-v]
+                        [--test]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -28,7 +32,7 @@ class Review(option.Option):
         --add                       Add a new pull request. Default behavior if a pull request doesn't exist for
                                     <topicBranch> targeting <publicBranch>. If a pull request already exists and --add
                                     is set, an error will be generated.
-        --title=<title>             The pull request tile.
+        --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
         --user=<userName>           Your Stash user name.
@@ -36,9 +40,19 @@ class Review(option.Option):
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
                                     Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
+        --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
+                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+                                    [default: .grapeconfig.project.name]
+        --repo=<repo>               The repo name part of the stash url, e.g. the "grape" in
+                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+                                    [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule. The pull request for the
                                     outer level repo will have a description with links to the submodules' pull
                                     requests.
+        -v                          Be more verbose with git commands.
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
+                                    server.
+
 
     """
     def __init__(self):
@@ -54,11 +68,16 @@ class Review(option.Option):
         A fair chunk of this stuff relies on stashy's wrapping of the STASH REST API, which is posted at
         https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
         """
+        config = grapeConfig.grapeConfig()
+        quiet = not args["-v"]
         name = args["--user"]
         if not name:
             name = utility.getUserName()
         print("Logging into RZStash")
-        rz_atlassian = Atlassian.Atlassian(name)
+        if args["--test"]:
+            rz_atlassian = Atlassian.TestAtlassian(name)
+        else:
+            rz_atlassian = Atlassian.Atlassian(name)
         rz_stash = rz_atlassian.stash
 
         # determine pull request title
@@ -90,8 +109,7 @@ class Review(option.Option):
             reviewers = revList
 
         # default project (outer level project)
-        config = grapeConfig.grapeConfig()
-        project_name = config.get("project", "name")
+        project_name = args["--project"]
 
         # determine source branch and target branch
         branch = args["--source"]
@@ -110,13 +128,12 @@ class Review(option.Option):
         # subprojects
         submoduleLinks = []
         if args["--recurse"] or config.get("workspace", "manageSubmodules").lower() == 'true':
-
-            cwd = utility.workspaceDir()
+            cwd = git.baseDir(quiet=quiet)
             os.chdir(cwd)
             submodules = git.getSubmodules()
             modifiedSubmodules = []
             for submodule in submodules:
-                status = git.diff("--name-only %s %s -- %s" % (target_branch, branch, submodule), quiet=True)
+                status = git.diff("--name-only %s %s -- %s" % (target_branch, branch, submodule), quiet=quiet)
                 if status:
                     modifiedSubmodules.append(submodule)
 
@@ -124,9 +141,11 @@ class Review(option.Option):
                 config.get("workspace", "submoduleTopicPrefixMappings"))
 
             for submodule in modifiedSubmodules:
+                # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
                 repo_name = url[-1]
+                # strip off the .git extension
                 repo_name = repo_name.split('.')[0]
                 repo = rz_stash.projects[proj].repos[repo_name]
                 prefix = branch.split('/')[0]
@@ -137,15 +156,16 @@ class Review(option.Option):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
 
-        repo_name = config.get("repo", "name")
+        repo_name = args["--repo"]
         repo = rz_stash.projects[project_name].repos[repo_name]
 
         if descr:
             descr += "\nThis pull request is related to the following submodules' pull requests:\n"
             for link in submoduleLinks:
                 descr += '%s\n' % link
-        postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
-
+        request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
+        if not quiet:
+            print("Request generated/updated: ", request)
         return True
 
 

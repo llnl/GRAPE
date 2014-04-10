@@ -1,14 +1,94 @@
 import sys
 import os
 filedir = os.path.dirname(os.path.realpath(__file__))
-grapedir = os.path.join(filedir,"..")
+grapedir = os.path.join(filedir, "..")
 if not grapedir in sys.path:
-    sys.path.append( grapedir )
+    sys.path.append(grapedir)
 import stashy.stashy as stashy
 import keyring.keyring as keyring
 import getpass
 import time
 import utility
+
+
+class TestStashResponse(dict):
+
+    def __getitem__(self, item):
+        try:
+            return super(TestStashResponse, self).__getitem__(item)
+        except KeyError:
+            print ("TESTSTASH: resource %s does not exist" %item)
+            self.status_code = 999
+            raise stashy.errors.GenericException(self)
+
+
+    def json(self):
+        return self
+
+class TestPullRequest(TestStashResponse):
+    def __init__(self, title, fromRef, toRef, parent, id="0", description=None, reviewers=[]):
+        self.url = parent + id + "/"
+        links = dict(self=[dict(href=self.url)])
+        toRef = dict(id=id, title=title, fromRef=fromRef, reviewers=reviewers)
+        super(TestPullRequest, self).__init__(title=title, fromRef=fromRef, toRef=toRef, id=id,
+                                              reviewers=reviewers, links=links)
+
+
+class TestPullRequests(TestStashResponse):
+
+    def __init__(self, parent):
+        self.url = parent + "pullrequests/"
+        self.create("testRequest1", "topic", "develop")
+
+    def all(self, direction="INCOMING", at=None):
+        for request in self.values():
+            yield request
+
+    def create(self, title, fromRef, toRef, description=None, reviewers=[]):
+        newId = str(len(self))
+        self[newId] = TestPullRequest(title, fromRef, toRef, self.url, id=newId, description=description,
+                                      reviewers=reviewers)
+        return self[newId]
+
+
+class TestRepo(TestStashResponse):
+    def __init__(self, name, parent):
+        self.url = parent + "repos/" + name
+        self.name = name
+        self.pull_requests = TestPullRequests(self.url)
+
+
+
+class TestProject(TestStashResponse):
+    def __init__(self, name, parent):
+        self.url = parent+"projects/"+name+"/"
+        self.repos = TestStashResponse(repo1=TestRepo("repo1", self.url))
+
+
+class TestStash(TestStashResponse):
+
+    def __init__(self):
+        self.url = "https://testStash.grapeTesting.org/stash/"
+        self.projects = TestStashResponse(proj1=TestProject("proj1", self.url), proj2=TestProject("proj2", self.url))
+        pass
+
+
+
+
+class TestAtlassian:
+    """
+    A version of an Atlassian Stash server that is meant to emulate the responses of Stash for testing purposes.
+
+    """
+    def __init__(self, username = None):
+
+        if username is None:
+            self.userName = utility.getUserName()
+        else:
+            self.userName = username
+        self.stash = TestStash()
+        print("Connected to RZStash")
+
 
 class Atlassian:
     rzstashURL = "https://rzlc.llnl.gov/stash"

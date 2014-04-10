@@ -1,12 +1,15 @@
-import os, sys, unittest
+import sys
 import testGrape
+
 if not ".." in sys.path:
-    sys.path.append( ".." )
-from vine import grapeMenu, utility
+    sys.path.append("..")
+from vine import grapeMenu
+
 
 class TestReview(testGrape.TestGrape):
     def testReview(self):
-        #ret = grapeMenu.menu().getOption("review").execute()
-        ret = False
+        args = ["review", "--test", "-v", "--user=user", "--proj=proj1", "--repo=repo1"]
+        ret = grapeMenu.menu().applyMenuChoice("review", args)
         contents = self.output.getvalue()
-        self.assertTrue( ret )
+        self.assertTrue(ret)
+        self.assertIn("'id': '1'", contents)
