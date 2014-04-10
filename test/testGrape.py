@@ -20,7 +20,7 @@ class TestGrape(unittest.TestCase):
         self.output.close()
 
     # print the captured standard out
-    def printOutput(self):        
+    def printOutput(self):
         for l in self.output:
             self.stdout.write(l)
 
@@ -29,7 +29,7 @@ class TestGrape(unittest.TestCase):
         for l in self.error:
             self.stderr.write(l)
 
-def buildSuite(cls,appendTo = None):
+def buildSuite(cls, appendTo=None):
     suite = appendTo
     if suite == None:
         suite = unittest.TestSuite()
@@ -38,16 +38,15 @@ def buildSuite(cls,appendTo = None):
 
 
 def main():
-    import testBranch, testClone, testConfig, testDev, testHelp
-    import testGrapeGit, testReview 
-    testClasses = [testBranch.TestBranch, testClone.TestClone,
+    import testBranches, testClone, testConfig, testDev, testHelp
+    import testGrapeGit, testReview
+    testClasses = [testBranches.TestBranches, testClone.TestClone,
                    testConfig.TestConfig, testDev.TestDev,
                    testHelp.TestHelp, testGrapeGit.TestGrapeGit,
                    testReview.TestReview ]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls,suite)
-
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
