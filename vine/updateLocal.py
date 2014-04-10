@@ -22,8 +22,9 @@ class UpdateLocal(option.Option):
     def description(self):
         return "Update local branches that are tracked in your remote repo"
 
-    def execute(self,args):
+    def execute(self, args):
         git.fetch("--prune")
+        git.fetch("--tags")
         fetchArgs = "origin "
         currentBranch = git.currentBranch().strip()
         for pubBranch in args["--public"].split(' '): 

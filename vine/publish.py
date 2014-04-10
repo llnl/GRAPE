@@ -13,7 +13,7 @@ class Publish(option.Option):
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
     where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings and
     .grapeconfig.workspace.submoduleTopicPrefixMappings. The branch-dependent publish policy (merge vs. squash merge.
-    vs rebase) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
+    vs rebase, etc) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage: grape-publish [--squash [--cascade ] | --merge |  --rebase]
@@ -154,7 +154,7 @@ class Publish(option.Option):
 
         # no need to recurse if there are no submodules
         recurse = recurse and git.getSubmodules()
-        cwd = utility.workspaceDir()
+        cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 
         if (recurse):
@@ -172,7 +172,7 @@ class Publish(option.Option):
             proceed = valid and ( args["--noverify"] or utility.userInput("About to publish "+ topic +" to "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
             if proceed:
                 for sub in git.getSubmodules():
-                    os.chdir(os.path.join(cwd,sub))
+                    os.chdir(os.path.join(cwd, sub))
 
                     grapeMenu.menu().applyMenuChoice('up',['up','--public=%s'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
