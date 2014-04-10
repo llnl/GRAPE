@@ -103,7 +103,7 @@ class TestGrape(unittest.TestCase):
         self.output.close()
 
     # print the captured standard out
-    def printOutput(self):        
+    def printOutput(self):
         for l in self.output:
             self.stdout.write(l)
 
@@ -127,13 +127,14 @@ def buildSuite(cls, appendTo=None):
 
 
 def main():
-    import testBranch
+   
+    import testBranches
     import testClone
     import testConfig
     import testHelp
     import testGrapeGit
     import testReview
-    testClasses = [testBranch.TestBranch, testClone.TestClone,
+    testClasses = [testBranches.TestBranches, testClone.TestClone,
                    testConfig.TestConfig,
                    testGrapeGit.TestGrapeGit,
                    testReview.TestReview]

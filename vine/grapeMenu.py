@@ -84,7 +84,7 @@ class _Menu(object):
         chosen_option = self.getOption(choice)
         if chosen_option is None:
             return False
-        if args is None:
+        if args is None or len(args) == 0:
             args = [chosen_option._key]
         #first argument better be the key
         if args[0] != chosen_option._key:
