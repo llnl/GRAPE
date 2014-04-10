@@ -154,7 +154,7 @@ class Publish(option.Option):
 
         # no need to recurse if there are no submodules
         recurse = recurse and git.getSubmodules()
-        cwd = utility.workspaceDir()
+        cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 
         if (recurse):
@@ -172,7 +172,7 @@ class Publish(option.Option):
             proceed = valid and ( args["--noverify"] or utility.userInput("About to publish "+ topic +" to "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
             if proceed:
                 for sub in git.getSubmodules():
-                    os.chdir(os.path.join(cwd,sub))
+                    os.chdir(os.path.join(cwd, sub))
 
                     grapeMenu.menu().applyMenuChoice('up',['up','--public=%s'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
