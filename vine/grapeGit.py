@@ -79,7 +79,7 @@ def config(argstr, arg2=None):
 def currentBranch(quiet = True):
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch",quiet)
 
-def describe(argstr):
+def describe(argstr = ""):
     return gitcmd("describe %s" % argstr, "could not describe commit")
 
 def diff(argstr,quiet = False):

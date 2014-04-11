@@ -73,9 +73,17 @@ class WriteConfig(option.Option):
     def description(self):
         return "write a .grapeconfig file based on your current environment"
 
-    def execute(self,args): 
+    def execute(self, args):
         config = grapeConfig()
-        with open(args["<file>"],'w') as f: 
-            config.write(f)
+        writeConfig(config, args["<file>"])
 
-    
+
+def writeConfig(config, fname):
+    with open(fname,'w') as f:
+        config.write(f)
+
+def ensureSection(config, section):
+    try:
+        config.add_section(section)
+    except ConfigParser.DuplicateSectionError:
+        pass

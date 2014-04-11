@@ -1,14 +1,15 @@
 import addSubproject
-
 import bundle
 import branches
 import checkout
 import clone
 import commit
 import config
+import deleteBranch
 import foreach
 import grapeConfig
 import grapeGit as git
+import hooks
 import merge
 import mergeDevelop
 import mergeRemote
@@ -23,9 +24,10 @@ import test
 import updateLocal
 import updateView
 import utility
+import version
 import walkthrough
-import deleteBranch
-import hooks
+
+
 
 #######################################################################
 #The Menu class - encapsulates menu options and sections.
@@ -58,7 +60,7 @@ class _Menu(object):
                          resolveConflicts.ResolveConflicts(),
                          review.Review(), test.Test(), updateLocal.UpdateLocal(),
                          hooks.InstallHooks(), hooks.RunHook(),
-                         updateView.UpdateView(), walkthrough.Walkthrough(), quit.Quit()]
+                         updateView.UpdateView(), version.Version(), walkthrough.Walkthrough(), quit.Quit()]
 
         #Add/order the menu sections here
         self._sections = ['Getting Started', 'Code Reviews', 'Workspace',
