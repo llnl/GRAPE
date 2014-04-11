@@ -30,13 +30,13 @@ autopush = True
 cascade = master:develop
 
 [post-rebase]
-submoduleupdate = True
+submoduleupdate = False
 
 [post-merge]
-submoduleupdate = True
+submoduleupdate = False
 
 [post-checkout]
-submoduleupdate = True
+submoduleupdate = False
 
 [view]
 alldirs = *
@@ -49,7 +49,7 @@ required = *
 [pre-commit]
 
 [project]
-name = ALE
+name = GRP
 
 [subtree-stashy]
 prefix = stashy

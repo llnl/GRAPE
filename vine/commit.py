@@ -60,6 +60,6 @@ class Commit(option.Option):
         self.commit(commitargs)
         return True
     
-    def set_default_config(self,config): 
+    def setDefaultConfig(self,config): 
        pass
     

@@ -130,13 +130,13 @@ def startup():
         if (len(sys.argv) == 1):
             done = 0
             while not done:
-                myMenu.present_text_menu()
+                myMenu.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None)
-                done = myMenu.apply_menu_choice(choice,sys.argv[1:])
+                done = myMenu.applyMenuChoice(choice,sys.argv[1:])
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif (len(sys.argv) > 1):
-            myMenu.apply_menu_choice(sys.argv[1],sys.argv[1:])
+            myMenu.applyMenuChoice(sys.argv[1],sys.argv[1:])
     except KeyboardInterrupt:
         print("Operation interrupted by user...")
 

@@ -31,7 +31,7 @@ class Clone(option.Option):
     def execute(self, args):
         remotepath = args["<url>"]
         destpath = args["<path>"]
-        rstr = "--recursive" if args["--recursive"] else ""
+        rstr = "--recursive" if args.has_key("--recursive") else ""
 
         git.gitcmd("clone %s %s %s" % (rstr, remotepath, destpath), "Error: Git Clone failed.")
         print("Clone succeeded!")

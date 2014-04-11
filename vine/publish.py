@@ -13,7 +13,7 @@ class Publish(option.Option):
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
     where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings and
     .grapeconfig.workspace.submoduleTopicPrefixMappings. The branch-dependent publish policy (merge vs. squash merge.
-    vs rebase) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
+    vs rebase, etc) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage: grape-publish [--squash [--cascade ] | --merge |  --rebase]
@@ -123,7 +123,7 @@ class Publish(option.Option):
 
     def execute(self,args):
         # make sure public branches are up to date.
-        grapeMenu.menu().apply_menu_choice('up',['up'])
+        grapeMenu.menu().applyMenuChoice('up',['up'])
 
         quiet = not args["-v"]
         # get the outer level public branch destination
@@ -154,7 +154,7 @@ class Publish(option.Option):
 
         # no need to recurse if there are no submodules
         recurse = recurse and git.getSubmodules()
-        cwd = utility.workspaceDir()
+        cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 
         if (recurse):
@@ -172,9 +172,9 @@ class Publish(option.Option):
             proceed = valid and ( args["--noverify"] or utility.userInput("About to publish "+ topic +" to "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
             if proceed:
                 for sub in git.getSubmodules():
-                    os.chdir(os.path.join(cwd,sub))
+                    os.chdir(os.path.join(cwd, sub))
 
-                    grapeMenu.menu().apply_menu_choice('up',['up','--public=%s'%submodulePublic])
+                    grapeMenu.menu().applyMenuChoice('up',['up','--public=%s'%submodulePublic])
                     self.publish(submodulePolicy, submodulePublic,topic, args)
             os.chdir(cwd)
 
@@ -196,7 +196,7 @@ class Publish(option.Option):
             push_subtrees = push_subtrees and not args["--noPushSubtrees"]
             if push_subtrees:
 
-                subtrees = config.get('subtrees','names').split(' ')
+                subtrees = config.get('subtrees', 'names').strip().split(' ')
                 for st in subtrees:
                     st_prefix = config.get('subtree-%s'% st,'prefix')
                     st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s'% st,'remote'))
@@ -207,7 +207,7 @@ class Publish(option.Option):
 
 
 
-    def set_default_config(self,config):
+    def setDefaultConfig(self, config):
         try:
             config.add_section('workspace')
         except ConfigParser.DuplicateSectionError:
@@ -221,13 +221,11 @@ class Publish(option.Option):
         except ConfigParser.DuplicateSectionError:
             pass
 
-
-
-        config.set('workspace','manageSubmodules','True')
-        config.set('workspace','submoduleTopicPrefixMappings','?:develop')
-        config.set('workspace','submodulePublishPolicy','?:merge')
-        config.set('flow','publishPolicy','?:merge')
-        config.set('subtrees','names','None')
-        config.set('subtrees', 'pushOnPublish', "True")
+        config.set('workspace', 'manageSubmodules', 'True')
+        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
+        config.set('workspace', 'submodulePublishPolicy', '?:merge')
+        config.set('flow', 'publishPolicy', '?:merge')
+        config.set('subtrees', 'names', '')
+        config.set('subtrees', 'pushOnPublish', "False")
         
 
