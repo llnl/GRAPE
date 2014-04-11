@@ -196,7 +196,7 @@ class Publish(option.Option):
             push_subtrees = push_subtrees and not args["--noPushSubtrees"]
             if push_subtrees:
 
-                subtrees = config.get('subtrees','names').split(' ')
+                subtrees = config.get('subtrees', 'names').strip().split(' ')
                 for st in subtrees:
                     st_prefix = config.get('subtree-%s'% st,'prefix')
                     st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s'% st,'remote'))
@@ -207,7 +207,7 @@ class Publish(option.Option):
 
 
 
-    def setDefaultConfig(self,config):
+    def setDefaultConfig(self, config):
         try:
             config.add_section('workspace')
         except ConfigParser.DuplicateSectionError:
@@ -221,13 +221,11 @@ class Publish(option.Option):
         except ConfigParser.DuplicateSectionError:
             pass
 
-
-
-        config.set('workspace','manageSubmodules','True')
-        config.set('workspace','submoduleTopicPrefixMappings','?:develop')
-        config.set('workspace','submodulePublishPolicy','?:merge')
-        config.set('flow','publishPolicy','?:merge')
-        config.set('subtrees','names','None')
-        config.set('subtrees', 'pushOnPublish', "True")
+        config.set('workspace', 'manageSubmodules', 'True')
+        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
+        config.set('workspace', 'submodulePublishPolicy', '?:merge')
+        config.set('flow', 'publishPolicy', '?:merge')
+        config.set('subtrees', 'names', '')
+        config.set('subtrees', 'pushOnPublish', "False")
         
 
