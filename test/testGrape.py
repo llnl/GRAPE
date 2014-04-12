@@ -131,13 +131,14 @@ def main():
     import testBranches
     import testClone
     import testConfig
-    import testHelp
     import testGrapeGit
     import testReview
+    import testVersion
     testClasses = [testBranches.TestBranches, testClone.TestClone,
                    testConfig.TestConfig,
                    testGrapeGit.TestGrapeGit,
-                   testReview.TestReview]
+                   testReview.TestReview,
+                   testVersion.TestVersion]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls, suite)
