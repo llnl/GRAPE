@@ -12,4 +12,4 @@ class TestConfig(testGrape.TestGrape):
         self.input.seek(0)
         ret = grapeMenu.menu().applyMenuChoice("config")
         contents = self.output.getvalue()
-        self.assertTrue(contents )
+        self.assertTrue(contents)

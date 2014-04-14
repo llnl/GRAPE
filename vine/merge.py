@@ -35,18 +35,20 @@ class Merge(option.Option):
 def merge( branch,strategy = ""):
     try:
         git.merge("%s %s" % (branch,strategy))
-        return 'q'
+        return True
     except git.GrapeGitError as error:
         if error.code == 1:
-            choice = utility.userInput("Conflicts generated. Would you like to resolve them now, abort the merge, or quit GRAPE? [resolve/abort/q]", "resolve")
+           print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
+                                       "with grape --continue. ")
+           return False
         else:
             print("Merge failed for unknown reason. Quitting.")
-            choice = 'q'
+            choice = False
         return choice
 
 def mergeIntoCurrent(branchName,args):
     grapeMenu.menu().applyMenuChoice('up',['up'])
-    choice = None
+    choice = False
     strategy = None
     if args['--am']:
         strategy = 'am'
@@ -110,10 +112,7 @@ def mergeIntoCurrent(branchName,args):
         print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
         choice = merge(branchName, "-Xours")
 
-    if choice:
-        choice = choice.strip().lower()
-        return grapeMenu.menu().applyMenuChoice(choice,[choice])
+    return choice
 
-    return False
 
 

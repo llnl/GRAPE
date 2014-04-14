@@ -96,7 +96,6 @@ class Review(option.Option):
         if reviewers:
             reviewers = reviewers.split(' ')
 
-
         # default project (outer level project)
         project_name = args["--project"]
 

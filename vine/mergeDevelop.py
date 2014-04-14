@@ -74,17 +74,12 @@ class MergeDevelop(option.Option):
             try: 
                 branch = prefixMappings[branchPrefix]
             except KeyError:
-                try: 
-                    branch = prefixMappings['?']
-                    print("WARNING: prefix %s does not have an associated topic branch. \n" 
-                          "         using the default branch of %s" % (branchPrefix,branch) )
-                except KeyError:    
-                    print("prefix %s does not have an associated topic branch. \n" 
-                          "use --public=<branch> to define, or add %s:<branch> to \n" 
-                          "your .grapeconfig or .grapeuserconfig. " % (branchPrefix,branchPrefix))
+                    print("GRAPE ERROR: No default public branch set in .grapeconfig.flow.topicPrefixMappings.\n"
+                          "use --public=<branch> to define, or add %s:<branch> to \n"
+                          "your .grapeconfig or .grapeuserconfig. " % (branchPrefix, branchPrefix))
                     exit(1)
         print("Merging changes from %s into your current branch..." % branch)
-        return merge.mergeIntoCurrent( branch,args)
+        return merge.mergeIntoCurrent(branch, args)
 
     def setDefaultConfig(self,config):
         try:
