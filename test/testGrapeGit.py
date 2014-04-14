@@ -43,9 +43,9 @@ class TestGrapeGit(TestGrape):
         try:
             os.chdir(self.repo)
             git.checkout("-b testCheckout/tmpBranch")
-            self.assertTrue(git.currentBranch() == "testCheckout/tmpBranch","checkout of new branch failed")
+            self.assertTrue(git.currentBranch() == "testCheckout/tmpBranch", "checkout of new branch failed")
             git.checkout("master")
-            self.assertTrue(git.currentBranch() == "master","switching to master did not work")
+            self.assertTrue(git.currentBranch() == "master", "switching to master did not work")
 
         except git.GrapeGitError as error:
             self.handleGitError(error)
@@ -53,13 +53,9 @@ class TestGrapeGit(TestGrape):
 
 
     def testDir(self):
-        grapeBaseDir = os.getcwd()
-        if not os.path.exists(os.path.join(grapeBaseDir, "grape")):
-            grapeBaseDir = os.path.abspath(os.path.join(os.getcwd(), ".."))
-        self.assertTrue(os.path.exists(os.path.join(grapeBaseDir, "grape")), "Something went horribly wrong and could not find the base directory of the grape repo")
-
-
-        self.assertEquals(git.dir(), grapeBaseDir, "Could not determine git directory")
+        os.chdir(self.repo)
+        baseDir = os.getcwd()
+        self.assertEquals(git.dir(), baseDir, "Could not determine git directory")
 
 
     def testMerge(self):

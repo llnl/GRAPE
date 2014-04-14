@@ -5,6 +5,9 @@ import os
 import unittest
 import StringIO
 import shutil
+import tempfile
+from vine import grapeConfig
+from vine import grapeMenu
 
 if not ".." in sys.path:
     sys.path.append("..")
@@ -34,8 +37,10 @@ class TestGrape(unittest.TestCase):
 
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
-        self.defaultWorkingDirectory = os.getcwd()
-        self.repos = [os.path.join(os.getcwd(), "testRepo"), os.path.join(os.getcwd(), "testRepo2")]
+        self.defaultWorkingDirectory = tempfile.mkdtemp()
+
+        self.repos = [os.path.join(self.defaultWorkingDirectory, "testRepo"),
+                      os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
 
     def setUp(self):
@@ -47,9 +52,10 @@ class TestGrape(unittest.TestCase):
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         self.stdin = sys.stdin
+        self.cwd = os.getcwd()
         sys.stdout = self.output
         sys.stderr = self.error
-        sys.stdin  = self.input
+        sys.stdin = self.input
         # create a test repository to operate in.
         try:
             try:
@@ -88,19 +94,19 @@ class TestGrape(unittest.TestCase):
             else:
                 raise Exception
 
-        os.chdir(self.defaultWorkingDirectory)
-        shutil.rmtree(self.repo, False, onError)
-        for repo in self.repos:
-            try:
-                shutil.rmtree(repo, False, onError)
-            except Exception:
-                pass
+        os.chdir(os.path.abspath(os.path.join(self.defaultWorkingDirectory,"..")))
+        shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
         # restore stdout, stdin, and stderr to their original streams
         sys.stdout = self.stdout
         sys.stderr = self.stderr
         sys.stdin = self.stdin
+        os.chdir(self.cwd)
         self.output.close()
+
+        # reset grapeConfig and grapeMenu
+        grapeConfig._resetGrapeConfig()
+        grapeMenu._resetMenu()
 
     # print the captured standard out
     def printOutput(self):
@@ -131,13 +137,14 @@ def main():
     import testBranches
     import testClone
     import testConfig
-    import testHelp
     import testGrapeGit
     import testReview
+    import testVersion
     testClasses = [testBranches.TestBranches, testClone.TestClone,
                    testConfig.TestConfig,
                    testGrapeGit.TestGrapeGit,
-                   testReview.TestReview]
+                   testReview.TestReview,
+                   testVersion.TestVersion]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls, suite)
