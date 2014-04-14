@@ -32,7 +32,9 @@ class Version(option.Option):
                             [default: v]
         --major             Tick the Major (1st) version number.
         --minor             Tick the Minor (2nd) version number.
-        --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc.
+        --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
+                            than the current max number of digits, the version number will be extended to have <int>
+                            digits.
         --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
         --tag               Forces updateTag to be True.
         --notag             Forces updateTag to be False.
@@ -82,7 +84,10 @@ class Version(option.Option):
         if args["--major"]:
             slot = 1
         elif args["--slot"]:
-            slot = args["--slot"]
+            slot = int(args["--slot"])
+        # extend the version number if slot comes in too large.
+        while len(slots) < slot:
+            slots.append(0)
         slot = slot -1
         slots[slot] += 1
         slot+=1

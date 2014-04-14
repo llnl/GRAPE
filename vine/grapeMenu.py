@@ -45,6 +45,13 @@ def menu():
         __menuInstance.postInit()
     return __menuInstance
 
+def _resetMenu():
+    """
+    Meant for testing purposes only.
+
+    """
+    global __menuInstance
+    __menuInstance = None
 
 class _Menu(object):
     def __init__(self):

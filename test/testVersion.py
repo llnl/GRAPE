@@ -5,6 +5,7 @@ if not ".." in sys.path:
     sys.path.append( ".." )
 from vine import grapeMenu
 from vine import grapeGit as git
+from vine import grapeConfig
 
 
 class TestVersion(testGrape.TestGrape):
@@ -13,7 +14,7 @@ class TestVersion(testGrape.TestGrape):
         # test initialization of grape managed versioning
         menu = grapeMenu.menu()
         try:
-
+#            self.assertEqual(grapeConfig.grapeConfig().get("versioning", "updateTag").lower(), "true")
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])
             self.assertTrue(ret, "grape version init v0.1.0 returned False\n%s" %
                             self.output.getvalue())
@@ -25,6 +26,9 @@ class TestVersion(testGrape.TestGrape):
             self.assertEqual(git.describe(), "v0.2.0")
         except SystemExit:
             self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
+        except git.GrapeGitError as e:
+            self.fail("Uncaught GrapeGit error: %s" % e.gitOutput)
+
     def testMajorTick(self):
         os.chdir(self.repo)
         menu = grapeMenu.menu()
@@ -49,6 +53,18 @@ class TestVersion(testGrape.TestGrape):
 
             ret = menu.applyMenuChoice("version", ["tick", "--major"])
             self.assertEqual(git.describe(), "v2.0.0")
+
+            #test overiding default tag behavior
+            config = grapeConfig.grapeConfig()
+            config.set("versioning", "updateTag", "False")
+            ret = menu.applyMenuChoice("version", ["tick", "--slot=3"])
+            self.assertEqual(git.describe("--abbrev=0"), "v2.0.0")
+            ret = menu.applyMenuChoice("version", ["tick", "--slot=3", "--tag"])
+            self.assertEqual(git.describe(), "v2.0.2")
+
+            # test auto extension of version number
+            menu.applyMenuChoice("version", ["tick", "--slot=4", "--tag"])
+            self.assertEqual(git.describe(), "v2.0.2.1")
 
 
         except SystemExit:

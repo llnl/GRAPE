@@ -6,6 +6,8 @@ import unittest
 import StringIO
 import shutil
 import tempfile
+from vine import grapeConfig
+from vine import grapeMenu
 
 if not ".." in sys.path:
     sys.path.append("..")
@@ -101,6 +103,10 @@ class TestGrape(unittest.TestCase):
         sys.stdin = self.stdin
         os.chdir(self.cwd)
         self.output.close()
+
+        # reset grapeConfig and grapeMenu
+        grapeConfig._resetGrapeConfig()
+        grapeMenu._resetMenu()
 
     # print the captured standard out
     def printOutput(self):
