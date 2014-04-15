@@ -128,7 +128,7 @@ def gitDir():
 
 def isWorkingDirectoryClean():
     statusOutput = status("-u")
-    return "nothing to commit, working directory clean" in statusOutput
+    return "nothing to commit" in statusOutput and "working directory clean" in statusOutput and "conflict" not in statusOutput
 
 def log(args=""):
     return gitcmd("log %s" % args,"git log failed")

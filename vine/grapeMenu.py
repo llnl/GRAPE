@@ -18,6 +18,7 @@ import newWorkingTree
 import publish
 import quit
 import resolveConflicts
+import resumable
 import review
 import status
 import test
@@ -106,6 +107,10 @@ class _Menu(object):
             #print("applyMenuCHoice:",args)
             option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
         try:
+            if isinstance(chosen_option, resumable.Resumable):
+                if option_args["--continue"]:
+                    return chosen_option._resume(option_args)
+
             return chosen_option.execute(option_args)
         except git.GrapeGitError as e:
             print ("GRAPE GIT: Uncaught Error in grape-%s when executing '%s' in '%s'\n%s" %

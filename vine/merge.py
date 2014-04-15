@@ -1,13 +1,15 @@
 import os,shutil
 import option, utility, grapeMenu
 import grapeGit as git
+import resumable
+
 
 # merge in a local branch into this branch
-class Merge(option.Option):
+class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay]
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue]
 
     Options:
         --am            Use git's default merge. 
@@ -15,6 +17,7 @@ class Merge(option.Option):
                         are touched by both branches. 
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --continue      Resume your previous merge after resolving conflicts.
 
     Arguments:
         <branch>        The branch you want to merge in. 
@@ -27,9 +30,24 @@ class Merge(option.Option):
     def description(self):
         return "Merge another local branch into your current branch."
 
-    def execute(self,args):
+    def execute(self, args):
+        if args["--continue"]:
+            self._resume(args)
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like to merge into this branch")
+        args["<branch>"] = otherBranch
         return mergeIntoCurrent( otherBranch, args)
+
+    def _resume(self, args):
+        status = git.status(quiet=True)
+        if "All conflicts fixed but you are still merging." in status or git.isWorkingDirectoryClean():
+            git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
+        else:
+            print("Does not appear a merge needs to be continued.")
+        return True
+
+    def _saveProgress(self, args):
+        super(Merge,self)._saveProgress(args)
+        pass
 
 
 def merge( branch,strategy = ""):
@@ -39,15 +57,21 @@ def merge( branch,strategy = ""):
     except git.GrapeGitError as error:
         if error.code == 1:
            print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
-                                       "with grape --continue. ")
+                                       "with grape m --continue. ")
            return False
         else:
             print("Merge failed for unknown reason. Quitting.")
             choice = False
         return choice
 
+
+
 def mergeIntoCurrent(branchName,args):
-    grapeMenu.menu().applyMenuChoice('up',['up'])
+
+
+
+
+    grapeMenu.menu().applyMenuChoice('up', ['up'])
     choice = False
     strategy = None
     if args['--am']:
@@ -61,16 +85,19 @@ def mergeIntoCurrent(branchName,args):
 
     if not strategy: 
         strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
-                             "am: Auto Merge (default) \n"+
-                             "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
-                             "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
-                             "ay: Accept Yours - resolves conflicts by using changes in current branch." ,"am")
+                                     "am: Auto Merge (default) \n"+
+                                     "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
+                                     "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
+                                     "ay: Accept Yours - resolves conflicts by using changes in current branch." ,"am")
+
 
 
     if (strategy == 'am'):
+        args["--am"] = True
         print("merging using git's default strategy")
         choice = merge(branchName)
     elif (strategy == 'as'):
+        args["--as"] = True
         # this employs using the custom low-level merge driver "verify" and
         # appending a "* merge=verify" to the .gitattributes file.
         #
@@ -105,10 +132,12 @@ def mergeIntoCurrent(branchName,args):
         
 
     elif (strategy == 'at'):
+        args["--at"] = True
         print("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
         choice = merge( branchName, "-Xtheirs")
 
     elif (strategy == 'ay'):
+        args["--ay"] = True
         print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
         choice = merge(branchName, "-Xours")
 

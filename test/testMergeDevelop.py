@@ -1,7 +1,7 @@
 import os, sys, StringIO, unittest
 import testGrape
 if not ".." in sys.path:
-    sys.path.append( ".." )
+    sys.path.append("..")
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import grapeConfig
@@ -54,11 +54,12 @@ class TestMD(testGrape.TestGrape):
             # resolve the conflict
             git.checkout("--ours f2")
             git.add("f2")
-            self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of"
-                                                            "merge")
+            self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of "
+                                                            "merge\n %s" %self.output.getvalue())
+            git.status("--porcelain")
             ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
-            self.assertTrue(ret, "grape md --continue did not return True")
-            self.assertTrue(git.isWorkingDirectoryClean(), "grape md --continue did not finish merge")
+            self.assertTrue(ret, "grape md --continue did not return True\n%s" % self.output.getvalue())
+            self.assertTrue(git.isWorkingDirectoryClean(), "grape md --continue did not finish merge\n%s" % self.output.getvalue())
         except SystemExit:
             self.fail("Unexpected SystemExit: %s" % self.output.getvalue())
 

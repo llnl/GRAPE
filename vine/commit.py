@@ -8,8 +8,9 @@ class Commit(option.Option):
     Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
 
     Options:
-    -v      Show git commands being issued. 
-    -a      Commit modified files that have not been staged. 
+    -m <message>    The commit message.
+    -v              Show git commands being issued.
+    -a              Commit modified files that have not been staged.
     
 
     Arguments:
@@ -23,21 +24,22 @@ class Commit(option.Option):
     def description(self):
         return "runs git commit in all projects in this workspace"
 
-    def commit(self,commitargs): 
+    def commit(self, commitargs):
         try:
             git.commit(commitargs)
         except git.GrapeGitError as e: 
             print("commit failed. Perhaps there were no staged changes? Use -a to commit all modified files.")
 
-    def execute(self,args):
+    def execute(self, args):
         quiet = not args["-v"]
         commitargs = ""
         if args['-a']: 
             commitargs = commitargs +  " -a"
         elif args["<filetree>"]:
             commitargs = commitargs + " %s"% args["<filetree>"]
-        if args['-m']: 
-            commitargs = commitargs + " -m \"%s\""%args["<message>"]
+        if not args['-m']:
+            args["-m"] = utility.userInput("Please enter commit message: (\"Surrounded in Quotes\")")
+        commitargs = commitargs + " -m \"%s\""%args["<message>"]
          
         baseDir =  utility.workspaceDir()
         os.chdir(baseDir)
