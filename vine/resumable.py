@@ -30,5 +30,8 @@ class Resumable(option.Option):
             p = pickle.Unpickler(f)
             self.progress = p.load()
         newArgs = self.progress["args"]
+        #overwrite args with the loaded args
         for key in newArgs.keys():
             args[key] = newArgs[key]
+        #remove the file
+        os.remove(self.progressFile)

@@ -29,7 +29,6 @@ import version
 import walkthrough
 
 
-
 #######################################################################
 #The Menu class - encapsulates menu options and sections.
 # Menu Options are the objects that perform git-related or stash-related tasks.
@@ -46,13 +45,16 @@ def menu():
         __menuInstance.postInit()
     return __menuInstance
 
+
 def _resetMenu():
     """
-    Meant for testing purposes only.
+    Resets the Singleton Instance. Meant for testing purposes only.
 
     """
     global __menuInstance
     __menuInstance = None
+    grapeConfig._resetGrapeConfig()
+
 
 class _Menu(object):
     def __init__(self):
@@ -76,8 +78,8 @@ class _Menu(object):
 
     def postInit(self):
         # add dynamically generated (dependent on grapeConfig) options here
-        self._options = self._options + \
-                         newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(grapeConfig.grapeConfig())
+        self._options = self._options + newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(grapeConfig.
+                                                                                                      grapeConfig())
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption
 
@@ -89,7 +91,7 @@ class _Menu(object):
             print("Unknown option '%s'" % choice)
             return None
 
-    def applyMenuChoice(self, choice, args=None):
+    def applyMenuChoice(self, choice, args=None, option_args=None):
 
         chosen_option = self.getOption(choice)
         if chosen_option is None:
@@ -101,9 +103,8 @@ class _Menu(object):
             args = [chosen_option._key]+args
 
         # use optdoc to parse arguments to the chosen_option.
-        # utility.argParse also does the magic of filling in defaults from the config files as appropriate. 
-        option_args = None
-        if chosen_option.__doc__:
+        # utility.argParse also does the magic of filling in defaults from the config files as appropriate.
+        if option_args is None and chosen_option.__doc__:
             #print("applyMenuCHoice:",args)
             option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
         try:
