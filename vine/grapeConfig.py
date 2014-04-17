@@ -7,34 +7,44 @@ import option
 
 __configInstance = None
 
+
 def grapeConfig():
     global __configInstance
-    if __configInstance == None:
+    if __configInstance is None:
         __configInstance = ConfigParser.ConfigParser()
     return __configInstance
 
-def read(additionalFileNames = []):
+def _resetGrapeConfig():
+    """
+    Resets the singleton instance. Meant for testing purposes only.
+    """
+    global __configInstance
+    __configInstance = None
+
+
+def read(additionalFileNames=[]):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
 
     grapeMenu.menu().setDefaultConfig(grapeConfig())
     defaultFiles = []
-    if os.name=="nt" :
+    if os.name == "nt":
         defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
-    else :
+    else:
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(git.baseDir(),".grapeconfig"))
+        defaultFiles.append(os.path.join(git.baseDir(), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(git.baseDir(),".grapeuserconfig"))
+        defaultFiles.append(os.path.join(git.baseDir(), ".grapeuserconfig"))
     except:
         pass
     files = defaultFiles + additionalFileNames
     readFiles = grapeConfig().read(files)
     if len(readFiles) == 0:
         utility.writeDefaultConfig(globalconfigfile)
+
 
 class ConfigPairDict(dict):
 
@@ -48,6 +58,7 @@ class ConfigPairDict(dict):
                 print("GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config.")
                 raise e
 
+
 def parseConfigPairList(string):
     pairs = string.split(' ')
     pairDict = ConfigPairDict() 
@@ -56,6 +67,7 @@ def parseConfigPairList(string):
             plist = pair.split(':')
             pairDict[plist[0]] = plist[1]
     return ConfigPairDict(pairDict)
+
 
 class WriteConfig(option.Option):
     """
@@ -73,9 +85,18 @@ class WriteConfig(option.Option):
     def description(self):
         return "write a .grapeconfig file based on your current environment"
 
-    def execute(self,args): 
+    def execute(self, args):
         config = grapeConfig()
-        with open(args["<file>"],'w') as f: 
-            config.write(f)
+        writeConfig(config, args["<file>"])
 
-    
+
+def writeConfig(config, fname):
+    with open(fname, 'w') as f:
+        config.write(f)
+
+
+def ensureSection(config, section):
+    try:
+        config.add_section(section)
+    except ConfigParser.DuplicateSectionError:
+        pass

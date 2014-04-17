@@ -93,20 +93,8 @@ class Review(option.Option):
 
         # determine pull request reviewers
         reviewers = args["--reviewers"]
-        #Stash REST API for reviewer definition snippet:
-        # "reviewers": [
-        #     {
-        #         "user": {
-        #             "name": "charlie"
-        #         }
-        #     }
-        #   ]
-        # Which I interpret to mean the following:
         if reviewers:
-            revList = []
-            for r in reviewers.split(' '):
-                revList.append(dict(user=dict(name=r)))
-            reviewers = revList
+            reviewers = reviewers.split(' ')
 
         # default project (outer level project)
         project_name = args["--project"]
@@ -130,13 +118,7 @@ class Review(option.Option):
         if args["--recurse"] or config.get("workspace", "manageSubmodules").lower() == 'true':
             cwd = git.baseDir(quiet=quiet)
             os.chdir(cwd)
-            submodules = git.getSubmodules()
-            modifiedSubmodules = []
-            for submodule in submodules:
-                status = git.diff("--name-only %s %s -- %s" % (target_branch, branch, submodule), quiet=quiet)
-                if status:
-                    modifiedSubmodules.append(submodule)
-
+            modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
             submoduleBranchMappings = grapeConfig.parseConfigPairList(
                 config.get("workspace", "submoduleTopicPrefixMappings"))
 
@@ -158,8 +140,9 @@ class Review(option.Option):
 
         repo_name = args["--repo"]
         repo = rz_stash.projects[project_name].repos[repo_name]
-
-        if descr:
+        if not quiet:
+            print("Posting pull request to %s,%s" % (project_name, repo_name))
+        if descr and submoduleLinks:
             descr += "\nThis pull request is related to the following submodules' pull requests:\n"
             for link in submoduleLinks:
                 descr += '%s\n' % link
@@ -171,6 +154,7 @@ class Review(option.Option):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
+    quiet = not args["-v"]
     print("Gathering active pull requests on %s" % branch)
     pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch)
 
@@ -190,7 +174,11 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             if not title:
                 title = branch
             try:
-                print("Creating new pull request. ")
+                print("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
+                      (title, branch, target_branch))
+                if not quiet:
+                    print("descr: %s" % descr)
+                    print("reviewers: %s" % reviewers)
                 request = repo.pull_requests.create(title, branch, target_branch,
                                                     description=descr, reviewers=reviewers)
                 print("Pull request created.")
@@ -205,8 +193,25 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             # update the pull request
             print("Updating pull request")
             try:
+                #Stash REST API for reviewer definition snippet:
+                # "reviewers": [
+                #     {
+                #         "user": {
+                #             "name": "charlie"
+                #         }
+                #     }
+                #   ]
+                # Which I interpret to mean the following:
+                if reviewers:
+                    revList = []
+                    for r in reviewers:
+                        revList.append(dict(user=dict(name=r)))
+                    reviewers = revList
                 ver = requestData["version"]
-                request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
+                if title is not None or descr is not None or reviewers is not None:
+                    request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
+                else:
+                    request = requestData
                 print("Pull request updated.")
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
