@@ -146,19 +146,20 @@ class Publish(option.Option):
             policy = "rebase"
 
         # decide whether to recurse into submodules
-        recurse = grapeConfig.grapeConfig().get('workspace','manageSubmodules')
-        if (args["--recurse"]):
+        recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
+        if args["--recurse"]:
             recurse = True
-        if (args["--norecurse"]):
+        if args["--norecurse"]:
             recurse = False
 
-        # no need to recurse if there are no submodules
-        recurse = recurse and git.getSubmodules()
+        # no need to recurse if there are no modified submodules
+        submodules = git.getModifiedSubmodules(public, topic)
+        recurse = recurse and submodules
         cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 
-        if (recurse):
-            submapping = config.get('workspace','submoduleTopicPrefixMappings')
+        if recurse:
+            submapping = config.get('workspace', 'submoduleTopicPrefixMappings')
             submapping = grapeConfig.parseConfigPairList(submapping)
             submodulePublic = submapping[prefix]
 
@@ -166,16 +167,20 @@ class Publish(option.Option):
             #       .grapeconfig.workspace.submodulePublishPolicy
             submodulePolicy = policy
             if not submodulePolicy:
-                submodulePolicy = config.get('workspace','submodulePublishPolicy')
+                submodulePolicy = config.get('workspace', 'submodulePublishPolicy')
                 submodulePolicy = grapeConfig.parseConfigPairList(submodulePolicy)[submodulePublic]
-            valid = self.validateInput(submodulePolicy,args)
-            proceed = valid and ( args["--noverify"] or utility.userInput("About to publish "+ topic +" to "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') )
+            valid = self.validateInput(submodulePolicy, args)
+            proceed = valid and (args["--noverify"] or
+                                 utility.userInput("About to publish " + topic + " to "
+                                                   + submodulePublic +
+                                                   " for the following submodules:\n%s\nProceed? [y/n]" % 
+                                                   '\n'.join(submodules), 'y'))
             if proceed:
-                for sub in git.getSubmodules():
+                for sub in submodules:
                     os.chdir(os.path.join(cwd, sub))
 
-                    grapeMenu.menu().applyMenuChoice('up',['up','--public=%s'%submodulePublic])
-                    self.publish(submodulePolicy, submodulePublic,topic, args)
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
+                    self.publish(submodulePolicy, submodulePublic, topic, args)
             os.chdir(cwd)
 
 
@@ -204,7 +209,6 @@ class Publish(option.Option):
                     st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
                     print("pushing subtree %s to %s (branch %s)..." % (st_prefix,st_remote,st_branch))
                     git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
-
 
 
     def setDefaultConfig(self, config):

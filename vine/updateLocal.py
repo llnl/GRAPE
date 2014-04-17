@@ -29,12 +29,21 @@ class UpdateLocal(option.Option):
         currentBranch = git.currentBranch().strip()
         for pubBranch in args["--public"].split(' '): 
             if currentBranch != pubBranch.strip():
-                fetchArgs = fetchArgs+"%s:%s " % (pubBranch,pubBranch)
-        git.fetch(fetchArgs)
+                fetchArgs += "%s:%s " % (pubBranch, pubBranch)
+        try:
+            git.fetch(fetchArgs)
+        except git.GrapeGitError as e:
+            # let non-fast-forward fetches slide
+            if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
+                print("GRAPE WARNING: one or more of your public branches have local commits! "
+                      "Did you forget to create a topic branch?")
+                pass
+            else:
+                raise e
         
         try:
             if currentBranch.strip() != "HEAD": 
-                git.pull("origin %s"%currentBranch)
+                git.pull("origin %s" % currentBranch)
         except:
             print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
         return True

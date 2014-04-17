@@ -56,6 +56,7 @@ class TestGrape(unittest.TestCase):
         sys.stdout = self.output
         sys.stderr = self.error
         sys.stdin = self.input
+        self.menu = grapeMenu.menu()
         # create a test repository to operate in.
         try:
             try:
@@ -137,12 +138,16 @@ def main():
     import testBranches
     import testClone
     import testConfig
+    import testMergeDevelop
     import testGrapeGit
     import testReview
     import testVersion
-    testClasses = [testBranches.TestBranches, testClone.TestClone,
+
+    testClasses = [testBranches.TestBranches,
+                   testClone.TestClone,
                    testConfig.TestConfig,
                    testGrapeGit.TestGrapeGit,
+                   testMergeDevelop.TestMD,
                    testReview.TestReview,
                    testVersion.TestVersion]
     suite = unittest.TestSuite()
