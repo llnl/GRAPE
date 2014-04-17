@@ -39,8 +39,11 @@ class Merge(resumable.Resumable):
 
     def _resume(self, args):
         status = git.status(quiet=True)
-        if "All conflicts fixed but you are still merging." in status or git.isWorkingDirectoryClean():
+        if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
+        elif git.isWorkingDirectoryClean():
+            print("GRAPE MERGE: no commit necessary, working directory clean.")
+            pass
         else:
             print("Does not appear a merge needs to be continued.")
         return True
@@ -50,15 +53,15 @@ class Merge(resumable.Resumable):
         pass
 
 
-def merge( branch,strategy = ""):
+def merge(branch, strategy=""):
     try:
-        git.merge("%s %s" % (branch,strategy))
+        git.merge("%s %s" % (branch, strategy))
         return True
     except git.GrapeGitError as error:
         if error.code == 1:
-           print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
-                                       "with grape m --continue. ")
-           return False
+            print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
+                  "with grape m --continue. ")
+            return False
         else:
             print("Merge failed for unknown reason. Quitting.")
             choice = False

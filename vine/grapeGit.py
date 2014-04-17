@@ -37,6 +37,9 @@ def baseDir(quiet=True):
 def branch(argstr="",quiet=False):
     return gitcmd("branch %s" % argstr, "Could not list branches",quiet)
 
+def branchPrefix(branch):
+    return branch.split('/')[0]
+
 def branchUpToDateWith(branch,targetBranch,quiet=True):
     allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed",quiet=quiet)
     allUpToDateBranches = allUpToDateBranches.split("\n")
@@ -98,14 +101,29 @@ def fetch(repo = "", branch = ""):
         else:
             raise e
 
+
 def getSubmodules(quiet=True):
 
-    if os.name == "nt" :
-       submoduleList = submodule("foreach --quiet \"echo $path\"",quiet)
-    else :
-       submoduleList = submodule("foreach --quiet \"echo \$path\"",quiet)
+    if os.name == "nt":
+       submoduleList = submodule("foreach --quiet \"echo $path\"", quiet)
+    else:
+       submoduleList = submodule("foreach --quiet \"echo \$path\"", quiet)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     return submoduleList
+
+
+def getModifiedSubmodules(branch1="", branch2="", quiet=True):
+    cwd = os.getcwd()
+    os.chdir(baseDir())
+    submodules = getSubmodules(quiet=quiet)
+    # if there are no submodules, then return the empty list
+    if len(submodules) == 0:
+        return submodules
+    submodulesString = ' '.join(submodules)
+    modifiedSubmodules = diff("--name-only %s %s -- %s" % (branch1, branch2,  submodulesString), quiet=quiet).split('\n')
+    os.chdir(cwd)
+    return modifiedSubmodules
+
 
 
 def gitDir():
