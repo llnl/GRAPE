@@ -19,7 +19,8 @@ class Resumable(option.Option):
             # in the user's $HOME directory
             self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
 
-    def dumpProgress(self, args):
+    def dumpProgress(self, args,msg=""):
+        print(msg)
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args

@@ -118,13 +118,7 @@ class Review(option.Option):
         if args["--recurse"] or config.get("workspace", "manageSubmodules").lower() == 'true':
             cwd = git.baseDir(quiet=quiet)
             os.chdir(cwd)
-            submodules = git.getSubmodules()
-            modifiedSubmodules = []
-            for submodule in submodules:
-                status = git.diff("--name-only %s %s -- %s" % (target_branch, branch, submodule), quiet=quiet)
-                if status:
-                    modifiedSubmodules.append(submodule)
-
+            modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
             submoduleBranchMappings = grapeConfig.parseConfigPairList(
                 config.get("workspace", "submoduleTopicPrefixMappings"))
 

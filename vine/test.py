@@ -24,5 +24,5 @@ class Test(option.Option):
             print "Hey, a test has failed"
             print "*"*80
             print "*"*80
-
+            exit(1)
         return True

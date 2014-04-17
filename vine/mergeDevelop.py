@@ -139,9 +139,15 @@ class MergeDevelop(resumable.Resumable):
                 self.progress["Submodule: %s" % subproject] = "finished"
 
         if submoduleUpdated:
-            git.commit("%s -m \"GRAPE: Updated submodule(s) %s as a first step to a merge from %s\"" %
-                       (' '.join(submodules), ','.join(submodules), branch))
+            try:
+                git.commit("%s -m \"GRAPE: Updated submodule(s) %s as a first step to a merge from %s\"" %
+                          (' '.join(submodules), ', '.join(submodules), branch))
+            except git.GrapeGitError as e:
+                print("GRAPE WARNING: outer level commit to update gitlinks failed. It`s possible this is"
+                      "just because no new changes in a library were required as a result of the merge.")
+        return self.outerLevelMerge(args, submoduleUpdated, branch, submodules)
 
+    def outerLevelMerge(self, args, submoduleUpdated, branch, submodules):
         print("Merging changes from %s into your current branch..." % branch)
         conflict = True
         mergeArgs = args
@@ -152,18 +158,38 @@ class MergeDevelop(resumable.Resumable):
 
                 if submoduleUpdated:
                     # then we want to resolve conflicts for submodules as the result of our merge and try again
-                    git.checkout("--ours %s" % ' '.join(submodules))
-                    git.add("%s" % ' '.join(submodules))
+                    try:
+                        git.checkout("--ours %s" % ' '.join(submodules))
+                    except git.GrapeGitError:
+                        self.progress["stopPoint"] = "submodule gitlink checkout"
+                        self.progress["submodules"] = submodules
+                        self.progress["cwd"] = os.getcwd()
+                        self.dumpProgress(args, "GRAPE: checkout of our version of submodule gitlinks failed.\n"
+                                                "Perhaps a post-checkout hook issued an error?\n"
+                                                "Once resolved, continue using grape md --continue.")
+                        return False
+                    try:
+                        git.add("%s" % ' '.join(submodules))
+                    except git.GrapeGitError:
+                        self.progress["stopPoint"] = "submodule gitlink add"
+                        self.progress["submodules"] = submodules
+                        self.progress["cwd"] = os.getcwd()
+                        self.dumpProgress(args,
+                                          "GRAPE: adding changed gitlinks failed for some reason. Resolve and then "
+                                          "continue using grape md --continue")
                     mergeArgs["--continue"] = True
                     submoduleUpdated = False
                     continue
 
                 self.progress["stopPoint"] = "outer level merge"
-                self.dumpProgress(args)
-                print("GRAPE: merge generated conflicts. Please resolve using git mergetool and then \n"
-                      "continue by calling 'grape md --continue' .")
+                self.progress["submodules"] = submodules
+                self.dumpProgress(args, "GRAPE: merge generated conflicts. Please resolve using git mergetool and then \n"
+                                        "continue by calling 'grape md --continue' .")
                 return False
         return True
+
+
+
 
     def setDefaultConfig(self, config):
         try:
@@ -179,6 +205,15 @@ class MergeDevelop(resumable.Resumable):
             # recover from conflicts by continuing the rebase
             git.rebase("--continue")
             return True
+        if self.progress["stopPoint"] == "submodule gitlink checkout" or \
+                        self.progress["stopPoint"] == "submodule gitlink add":
+            os.chdir(self.progress["cwd"])
+            return self.outerLevelMerge(args, True, args["--public"], self.progress["submodules"])
+
+        if self.progress["stopPoint"] == "outer level merge":
+            submodules = self.progress["submodules"]
+            return self.outerLevelMerge(args, len(submodules), args["--public"], submodules)
+
         return self.execute(args)
 
     def _saveProgress(self, args):

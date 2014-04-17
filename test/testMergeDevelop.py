@@ -172,7 +172,8 @@ class TestMD(testGrape.TestGrape):
             ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
 
             # test that we returned successfully
-            self.assertTrue(ret, "grape md --continue did not complete successfully after resolving submodule conflict")
+            self.assertTrue(ret, "grape md --continue did not complete successfully after resolving submodule conflict"
+                                 "\n %s" % self.output.getvalue())
 
             # test that the submodule master was merged in
             self.assertTrue(git.branchUpToDateWith("testSubmoduleMerge2", "master"),
