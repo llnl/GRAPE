@@ -39,7 +39,7 @@ class Commit(option.Option):
             commitargs = commitargs + " %s"% args["<filetree>"]
         if not args['-m']:
             args["-m"] = utility.userInput("Please enter commit message: (\"Surrounded in Quotes\")")
-        commitargs = commitargs + " -m \"%s\""%args["<message>"]
+        commitargs += " -m \"%s\"" % args["-m"]
          
         baseDir = utility.workspaceDir()
         os.chdir(baseDir)
