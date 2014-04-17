@@ -43,6 +43,14 @@ class TestGrape(unittest.TestCase):
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
 
+    def setUpConfig(self):
+        grapeMenu._resetMenu()
+        grapeMenu.menu()
+        config = grapeConfig.grapeConfig()
+        config.set("flow", "publicBranches", "master")
+        config.set("flow", "topicPrefixMappings", "?:master")
+        config.set("workspace", "submoduleTopicPrefixMappings", "?:master")
+
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
@@ -123,6 +131,16 @@ class TestGrape(unittest.TestCase):
     def queueUserInput(self, inputList):
         self.input.writelines(inputList)
         self.input.seek(0)
+
+    def assertTrue(self, expr, msg=None):
+        if msg is not None:
+            msg += "\n%s" % self.output.getvalue()
+        super(TestGrape, self).assertTrue(expr, msg=msg)
+
+    def assertFalse(self, expr, msg=None):
+        if msg is not None:
+            msg += "\n%s" % self.output.getvalue()
+        super(TestGrape, self).assertFalse(expr, msg=msg)
 
 
 def buildSuite(cls, appendTo=None):

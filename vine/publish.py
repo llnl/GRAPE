@@ -7,6 +7,13 @@ import grapeMenu
 import grapeConfig
 import subtree
 
+
+class PublishStepFailed(Exception):
+    def __init__(self, stepName):
+        assert isinstance(stepName, str)
+        self.stepName = stepName
+
+
 class Publish(option.Option):
     """
     grape publish
@@ -37,8 +44,8 @@ class Publish(option.Option):
                         Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
     --noverify          Set to skip interactive verification of publish commands.
     --nopush            Set to skip the push of commits generated during the publish procedure.
-    --pushSubtrees      Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate public
-                        branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
+    --pushSubtrees      Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
+                        public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                         Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees    Don't perform a git subtree push.
     -v                  Be more verbose. 
@@ -53,24 +60,56 @@ class Publish(option.Option):
 
     """
     def __init__(self):
+        super(Publish, self).__init__()
         self._key = "publish"
         self._section = "Gitflow Tasks"
 
     def description(self):
-        topicPublicMapping = grapeConfig.parseConfigPairList(grapeConfig.grapeConfig().get('flow','topicPrefixMappings'))
+        topicPublicMapping = grapeConfig.parseConfigPairList(
+            grapeConfig.grapeConfig().get('flow', 'topicPrefixMappings'))
         try:
             currentBranch = git.currentBranch()
-        except:
+        except git.GrapeGitError:
             currentBranch = "Unknown"
-        prefix = currentBranch.split('/')[0]
         try:
-            public = topicPublicMapping[prefix]
+            public = topicPublicMapping[git.branchPrefix(currentBranch)]
         except KeyError:
-            if '?' in topicPublicMapping.keys():
-                public = topicPublicMapping['?']
-        return "Publish the current topic branch to %s" %public
+            public = "Unknown"
+        return "Publish the current topic branch to %s" % public
 
-    def validateInput(self,policy,args):
+    def execute(self, args):
+        self.performCustomBuildStep(args)
+        self.performCustomTestStep(args)
+        self.performCustomPrePublishSteps(args)
+        self.tagVersion(args)
+        ret = self.publishAllProjects(args)
+        self.performCustomPostPublishSteps(args)
+        self.deleteTopicBranch(args)
+        return ret
+
+    def verifyCompletedReview(self, args):
+        pass
+
+    def performCustomBuildStep(self, args):
+        pass
+
+    def performCustomTestStep(self, args):
+        pass
+
+    def performCustomPrePublishSteps(self, args):
+        pass
+
+    def tagVersion(self, args):
+        pass
+
+    def performCustomPostPublishSteps(self, args):
+        pass
+
+    def deleteTopicBranch(self, args):
+        pass
+
+    @staticmethod
+    def validateInput(policy, args):
         policy = policy.strip().lower()
         valid = False
         if policy == "merge" or policy == "squash":
@@ -84,52 +123,60 @@ class Publish(option.Option):
             print("Type grape publish -h for more details")
         return valid
 
-    def merge(self,public,topic, args):
-        print("merging %s into %s" % (topic,public))
+    @staticmethod
+    def merge(public, topic, args):
+        print("merging %s into %s" % (topic, public))
         git.checkout(public)
-        git.merge("%s -m \"%s\" " % (topic,args["-m"]))
-        print("%s merged successfully to %s" % (topic,public))
-        print("You are currently on %s" %public)
+        git.merge("%s -m \"%s\" " % (topic, args["-m"]))
+        print("%s merged successfully to %s" % (topic, public))
+        print("You are currently on %s" % public)
 
-    def squashMerge(self,public,topic,args):
-        print("squash merging %s into %s" % (topic,public))
+    @staticmethod
+    def squashMerge(public, topic, args):
+        print("squash merging %s into %s" % (topic, public))
         git.checkout(public)
         git.merge("--squash %s" % topic)
         git.commit("-m \"%s\"" % args["-m"])
-        print("%s squash-merged successfully to %s" % (topic,public))
+        print("%s squash-merged successfully to %s" % (topic, public))
+        print("You are currently on %s" % public)
+        if args["--cascade"]:
+            git.checkout(topic)
+            git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, topic))
+
+    @staticmethod
+    def rebase(public, topic):
+        print("rebasing %s onto %s" % (topic, public))
+        git.rebase(public)
+        print("%s successfully rebased onto %s" % (topic, public))
+        git.checkout(public)
+        git.merge(topic)
         print("You are currently on %s" % public)
 
-    def rebase(self,pulic,topic,args):
-        print("rebasing %s onto %s" % (topic,public))
-        git.rebase(public)
-        print("%s successfully rebased onto %s" % (topic,public))
-        print("You are currently on %s" % topic)
-
-    def publish(self,policy,public,topic,args):
+    def publish(self, policy, public, topic, args):
         # don't bother publishing if public and topic are the same commit
-        if git.shortSHA(public,quiet=True).strip() == git.shortSHA(topic,quiet=True).strip():
+        if git.shortSHA(public, quiet=True).strip() == git.shortSHA(topic, quiet=True).strip():
             git.checkout(public)
             return
         policy = policy.strip().lower()
         if policy == "merge":
-            self.merge(public,topic,args)
-        if policy == "squash":
-            self.squashMerge(public,topic,args)
-        if policy == "rebase":
-            self.rebase(public, topic,args)
+            self.merge(public, topic, args)
+        elif policy == "squash":
+            self.squashMerge(public, topic, args)
+        elif policy == "rebase":
+            self.rebase(public, topic)
 
         if not args["--nopush"]:
             git.push("-u origin HEAD")
 
-    def execute(self,args):
+    def publishAllProjects(self, args):
         # make sure public branches are up to date.
-        grapeMenu.menu().applyMenuChoice('up',['up'])
+        grapeMenu.menu().applyMenuChoice('up', ['up'])
 
         quiet = not args["-v"]
         # get the outer level public branch destination
         config = grapeConfig.grapeConfig()
         topic = git.currentBranch()
-        topic2public = grapeConfig.parseConfigPairList(config.get('flow','topicPrefixMappings'))
+        topic2public = grapeConfig.parseConfigPairList(config.get('flow', 'topicPrefixMappings'))
         prefix = topic.split('/')[0]
 
         public = args["<public>"]
@@ -182,19 +229,16 @@ class Publish(option.Option):
                     self.publish(submodulePolicy, submodulePublic, topic, args)
             os.chdir(cwd)
 
-
-
-                    
-                
-
         # update policy from config if not set on CL
         if not policy:
-            policy = grapeConfig.parseConfigPairList(config.get('flow','publishPolicy'))[public]
+            policy = grapeConfig.parseConfigPairList(config.get('flow', 'publishPolicy'))[public]
 
-        valid = self.validateInput(policy,args)
-        proceed = valid and (args["--noverify"] or  utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\nProceed? [y/n]",'y') )
+        valid = self.validateInput(policy, args)
+        proceed = valid and (args["--noverify"] or
+                             utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\n"
+                                                                                           "Proceed? [y/n]", 'y'))
         if proceed:
-            self.publish(policy,public,topic,args)
+            self.publish(policy, public, topic, args)
             # push subtrees to their respective remote branches
             push_subtrees = config.get("subtrees", 'pushOnPublish').lower() == "true" or args["--pushSubtrees"]
             push_subtrees = push_subtrees and not args["--noPushSubtrees"]
@@ -202,13 +246,13 @@ class Publish(option.Option):
 
                 subtrees = config.get('subtrees', 'names').strip().split(' ')
                 for st in subtrees:
-                    st_prefix = config.get('subtree-%s'% st,'prefix')
-                    st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s'% st,'remote'))
-                    st_branchMappings = config.get('subtree-%s'% st,'topicPrefixMappings')
+                    st_prefix = config.get('subtree-%s' % st, 'prefix')
+                    st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
+                    st_branchMappings = config.get('subtree-%s' % st, 'topicPrefixMappings')
                     st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
-                    print("pushing subtree %s to %s (branch %s)..." % (st_prefix,st_remote,st_branch))
-                    git.subtree("push --prefix=%s %s %s" % (st_prefix,st_remote,st_branch),quiet=quiet)
-
+                    print("pushing subtree %s to %s (branch %s)..." % (st_prefix, st_remote, st_branch))
+                    git.subtree("push --prefix=%s %s %s" % (st_prefix, st_remote, st_branch), quiet=quiet)
+        return True
 
     def setDefaultConfig(self, config):
         try:
@@ -230,5 +274,3 @@ class Publish(option.Option):
         config.set('flow', 'publishPolicy', '?:merge')
         config.set('subtrees', 'names', '')
         config.set('subtrees', 'pushOnPublish', "False")
-        
-
