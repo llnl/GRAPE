@@ -173,7 +173,8 @@ class Publish(option.Option):
             proceed = valid and (args["--noverify"] or
                                  utility.userInput("About to publish " + topic + " to "
                                                    + submodulePublic +
-                                                   " for all submodules.\nProceed? [y/n]", 'y'))
+                                                   " for the following submodules:\n%s\nProceed? [y/n]" % 
+                                                   '\n'.join(submodules), 'y'))
             if proceed:
                 for sub in submodules:
                     os.chdir(os.path.join(cwd, sub))
