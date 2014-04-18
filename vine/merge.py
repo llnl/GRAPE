@@ -59,6 +59,9 @@ class Merge(resumable.Resumable):
         super(Merge, self)._saveProgress(args)
         pass
 
+    def setDefaultConfig(self, config):
+        pass
+
 
 def merge(branch, strategy, args):
     try:

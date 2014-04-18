@@ -1,6 +1,7 @@
-import os, subprocess
 import option
 import grapeGit as git
+
+
 # update the repo from the remote using the PyGitUp module
 class UpdateLocal(option.Option):
     """
@@ -17,6 +18,7 @@ class UpdateLocal(option.Option):
 
     """
     def __init__(self):
+        super(UpdateLocal, self).__init__()
         self._key = "up"
         self._section = "Gitflow Tasks"
 
@@ -46,6 +48,9 @@ class UpdateLocal(option.Option):
         try:
             if currentBranch.strip() != "HEAD": 
                 git.pull("origin %s" % currentBranch)
-        except:
+        except git.GrapeGitError:
             print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
         return True
+
+    def setDefaultConfig(self, config):
+        pass

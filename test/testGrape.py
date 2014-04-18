@@ -160,6 +160,7 @@ def main():
     import testGrapeGit
     import testReview
     import testVersion
+    import testPublish
 
     testClasses = [testBranches.TestBranches,
                    testClone.TestClone,
@@ -167,7 +168,8 @@ def main():
                    testGrapeGit.TestGrapeGit,
                    testMergeDevelop.TestMD,
                    testReview.TestReview,
-                   testVersion.TestVersion]
+                   testVersion.TestVersion,
+                   testPublish.TestPublish]
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls, suite)

@@ -81,9 +81,7 @@ class NewBranchOption(option.Option):
                     grapeMenu.menu().applyMenuChoice('up',['up','--public=%s' % submodulePublic])
                     self.createBranch(submodulePublic,self._key,subArgs[2],subArgs[3],True)
 
-         
-
-    def setDefaultConfig(self,config): 
+    def setDefaultConfig(self,config):
         try:
             config.add_section('workspace')
         except ConfigParser.DuplicateSectionError:

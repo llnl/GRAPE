@@ -1,5 +1,5 @@
 import option
-import utility
+
 
 class Quit(option.Option):
     """
@@ -10,12 +10,15 @@ class Quit(option.Option):
 
     """
     def __init__(self):
+        super(Quit, self).__init__()
         self._key = "q"
         self._section = "Other"
 
     def description(self):
         return "Quit."
 
-    def execute(self,argv):
-        args =utility.parseArgs(Quit.__doc__,argv)
+    def execute(self, args):
         return True
+
+    def setDefaultConfig(self, config):
+        pass

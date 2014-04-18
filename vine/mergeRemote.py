@@ -25,4 +25,7 @@ class MergeRemote(option.Option):
             git.branch('-r')
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
 
-        return merge.mergeIntoCurrent("origin/%s" % otherBranch,args)
+        return merge.mergeIntoCurrent("origin/%s" % otherBranch, args)
+
+    def setDefaultConfig(self, config):
+        pass
