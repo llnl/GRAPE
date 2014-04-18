@@ -73,11 +73,22 @@ def clone(argstr):
 def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
+
 def config(argstr, arg2=None):
     if not arg2 == None:
         return gitcmd('config %s "%s"' % (argstr,arg2), "Config failed")
     else:
         return gitcmd('config %s ' % argstr, "Config failed")
+
+
+def conflictedFiles(quiet = True):
+    fileStr = diff("--name-only --diff-filter=U").strip()
+    lines = fileStr.split('\n') if fileStr else []
+#    files = []
+#    for l in lines:
+#        print l
+#        files.append(l.split(' ')[1])
+    return lines
 
 def currentBranch(quiet = True):
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch",quiet)
