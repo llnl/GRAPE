@@ -8,9 +8,11 @@ class Option(object):
         self._key = "UNSET KEY"
         self._section = "UNSET SECTION"
 
+    @abc.abstractmethod
     def description(self):
         pass
 
+    @abc.abstractmethod
     def execute(self, args):
         pass
 
