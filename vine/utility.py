@@ -135,7 +135,8 @@ def parseArgs(docstr,arguments):
     return args
 
 
-
+def printMsg(msg):
+    print("\nGRAPE: %s\n" % msg)
 
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:

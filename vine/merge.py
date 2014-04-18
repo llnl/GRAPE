@@ -1,5 +1,8 @@
-import os,shutil
-import option, utility, grapeMenu
+import os
+import shutil
+
+import utility
+import grapeMenu
 import grapeGit as git
 import resumable
 
@@ -9,7 +12,7 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--quiet]
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [-v] [--quiet]
 
     Options:
         --am            Use git's default merge. 
@@ -18,13 +21,15 @@ class Merge(resumable.Resumable):
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
         --continue      Resume your previous merge after resolving conflicts.
-        --quiet         Don't issue messages.
+        -v              Display git commands.
+        --quiet         Don't issue messages if conflicts occur.
 
     Arguments:
         <branch>        The branch you want to merge in. 
         
     """
     def __init__(self):
+        super(Merge, self).__init__()
         self._key = "m"
         self._section = "Merge"
 
@@ -34,7 +39,8 @@ class Merge(resumable.Resumable):
     def execute(self, args):
         if args["--continue"]:
             self._resume(args)
-        otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like to merge into this branch")
+        otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
+                                                                                  " to merge into this branch")
         args["<branch>"] = otherBranch
         return mergeIntoCurrent(otherBranch, args)
 
@@ -46,17 +52,17 @@ class Merge(resumable.Resumable):
             print("GRAPE MERGE: no commit necessary, working directory clean.")
             pass
         else:
-            print("Does not appear a merge needs to be continued.")
+            print("GRAPE: Does not appear a merge is ready to be continued. ")
         return True
 
     def _saveProgress(self, args):
-        super(Merge,self)._saveProgress(args)
+        super(Merge, self)._saveProgress(args)
         pass
 
 
-def merge(branch, strategy="", args=[]):
+def merge(branch, strategy, args):
     try:
-        git.merge("%s %s" % (branch, strategy))
+        git.merge("%s %s" % (branch, strategy), quiet=not args["-v"])
         return True
     except git.GrapeGitError as error:
         if error.code == 1:
@@ -69,8 +75,13 @@ def merge(branch, strategy="", args=[]):
             choice = False
         return choice
 
+
 def mergeIntoCurrent(branchName, args):
-    grapeMenu.menu().applyMenuChoice('up', ['up'])
+    quiet = not args["-v"]
+    updateArgs = ['up']
+    if not quiet:
+        updateArgs += '-v'
+    grapeMenu.menu().applyMenuChoice('up', updateArgs)
     choice = False
     strategy = None
     if args['--am']:
@@ -83,64 +94,64 @@ def mergeIntoCurrent(branchName, args):
         strategy = 'ay'
 
     if not strategy: 
-        strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n"+
-                                     "am: Auto Merge (default) \n"+
+        strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n" +
+                                     "am: Auto Merge (default) \n" +
                                      "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
-                                     "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" % branchName+
-                                     "ay: Accept Yours - resolves conflicts by using changes in current branch." ,"am")
+                                     "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" %
+                                     branchName + "ay: Accept Yours - resolves conflicts by using changes "
+                                                  "in current branch.", "am")
 
-
-
-    if (strategy == 'am'):
+    if strategy == 'am':
         args["--am"] = True
-        print("merging using git's default strategy")
-        choice = merge(branchName, args=args)
-    elif (strategy == 'as'):
+        if not args["--quiet"]:
+            print("GRAPE: merging using git's default strategy")
+        choice = merge(branchName, "", args)
+    elif strategy == 'as':
         args["--as"] = True
         # this employs using the custom low-level merge driver "verify" and
         # appending a "* merge=verify" to the .gitattributes file.
         #
-        # see http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file for details.
-        print("merging forcing conflicts whenever both branches edited the same file...")
+        # see
+        # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
+        # for details.
+        if not args["--quiet"]:
+            print("GRAPE: merging forcing conflicts whenever both branches edited the same file...")
         base = git.gitDir()
         if base == "":
             return False
-        attributes = os.path.join(base,".gitattributes")
+        attributes = os.path.join(base, ".gitattributes")
         tmpattributes = None
         if os.path.exists(attributes): 
-            tmpattributes = os.path.join(base,".gitattributes.tmp")
+            tmpattributes = os.path.join(base, ".gitattributes.tmp")
             # save original attributes file
-            shutil.copyfile(attributes,tmpattributes)
+            shutil.copyfile(attributes, tmpattributes)
             #append merge driver strategy to the attributes file
-            with open(attributes,'a') as f:
+            with open(attributes, 'a') as f:
                 f.write("* merge=verify")
         else: 
-            with open(attributes,'w') as f:
+            with open(attributes, 'w') as f:
                 f.write("* merge=verify")
-                    
 
         # perform the merge
-        choice = merge(branchName,args=args)
+        choice = merge(branchName, "", args)
 
         # restore original attributes file
         if tmpattributes:
-            shutil.copyfile(tmpattributes,attributes)
+            shutil.copyfile(tmpattributes, attributes)
             os.remove(tmpattributes)
         else:
             os.remove(attributes)
-        
 
-    elif (strategy == 'at'):
+    elif strategy == 'at':
         args["--at"] = True
-        print("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
-        choice = merge( branchName, "-Xtheirs", args=args)
+        if not args["--quiet"]:
+            print("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
+        choice = merge(branchName, "-Xtheirs", args)
 
-    elif (strategy == 'ay'):
+    elif strategy == 'ay':
         args["--ay"] = True
-        print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
-        choice = merge(branchName, "-Xours", args=args)
+        if not args["--quiet"]:
+            print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
+        choice = merge(branchName, "-Xours", args)
 
     return choice
-
-
-

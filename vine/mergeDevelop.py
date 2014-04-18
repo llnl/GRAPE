@@ -12,8 +12,12 @@ class MergeDevelop(resumable.Resumable):
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
-    Usage: grape-md [--public=<branch>] [--mappings=<pairs>] [--am | --as | --at | --ay] [--continue]
+    Usage: grape-md [--public=<branch>]
+                    [--mappings=<pairs>]
+                    [--am | --as | --at | --ay]
+                    [--continue]
                     [--recurse | --norecurse]
+                    [-v]
 
     Options:
         --public=<branch>       Overrides the public branch to merge from. 
@@ -30,6 +34,7 @@ class MergeDevelop(resumable.Resumable):
                                 results of submodule merges.
         --norecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
+        -v                      Print out more git commands.
 
 
     """
@@ -69,7 +74,7 @@ class MergeDevelop(resumable.Resumable):
 
     def mergeCurrentPublicBranch(self, args):
         try:
-            git.pull("--rebase origin %s" % git.currentBranch())
+            git.pull("--rebase origin %s" % git.currentBranch(), quiet=not args["-v"])
         except git.GrapeGitError as e:
             # on conflict, ask user to resolve conflicts and then resume using grape md --continue
             if "conflict:" in e.gitOutput.lower():
@@ -84,6 +89,9 @@ class MergeDevelop(resumable.Resumable):
         return True
 
     def execute(self, args):
+
+        quiet = not args["-v"]
+
         branch = args["--public"]
         if not branch:
             currentBranch = git.currentBranch()
@@ -110,7 +118,10 @@ class MergeDevelop(resumable.Resumable):
             cwd = git.baseDir()
         os.chdir(cwd)
 
-        conflictedFiles = []
+        if "conflictedFiles" in self.progress:
+            conflictedFiles = self.progress["conflictedFiles"]
+        else:
+            conflictedFiles = []
         # do an outer merge so long as we aren't recovering from a submodule conflict in a previous call
         if not ("stopPoint" in self.progress and "Submodule:" in self.progress["stopPoint"]):
             conflictedFiles = self.outerLevelMerge(args, branch)
@@ -126,6 +137,9 @@ class MergeDevelop(resumable.Resumable):
                     if self.mergeSubmodule(args, submodule, subPublic, submodules, cwd):
                         mergedSubmodules.append(submodule)
                     else:
+                        # stop for user to resolve conflicts
+                        self.progress["conflictedFiles"] = conflictedFiles
+                        self.dumpProgress(args)
                         return False
             #self.stageModifiedSubmodules(args, mergedSubmodules)
             os.chdir(cwd)
@@ -133,6 +147,7 @@ class MergeDevelop(resumable.Resumable):
             if not conflictedFiles:
                 mergeArgs = args
                 mergeArgs["--continue"] = True
+                mergeArgs["--quiet"] = True
                 grapeMenu.menu().getOption("m").execute(mergeArgs)
                 conflictedFiles = git.conflictedFiles()
 
@@ -144,7 +159,13 @@ class MergeDevelop(resumable.Resumable):
             return False
         else:
             #git.commit("-m \"Merged %s into %s\"" % (branch, git.currentBranch()))
-            grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0'])
+            try:
+                grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0'])
+            except SystemExit as e:
+                if e.code == 0:
+                    pass
+                else:
+                    raise e
         return True
 
     def mergeSubmodule(self, args, subproject, subPublic, submodules, cwd):
@@ -157,21 +178,22 @@ class MergeDevelop(resumable.Resumable):
         os.chdir(os.path.join(git.baseDir(), subproject))
         mergeArgs = args
         mergeArgs["<branch>"] = subPublic
+        print("GRAPE: Merging %s into %s for submodule %s" % (subPublic, git.currentBranch(), subproject))
         conflict = not grapeMenu.menu().getOption("m").execute(mergeArgs)
         if conflict:
             self.progress["stopPoint"] = "Submodule: %s" % subproject
             self.progress["submodules"] = submodules
             self.progress["cwd"] = cwd
-            self.dumpProgress(args)
+
             print("GRAPE: merge in %s generated CONFLICT(S). Resolve using git mergetool and then \n"
-                  "continue by calling 'grape md --continue'")
+                  "continue by calling 'grape md --continue'" % subproject)
             return False
         # if we are resuming from a conflict, the above grape m call would have taken care of continuing.
         # clear out the --continue flag.
         args["--continue"] = False
         # stage the updated submodule
         os.chdir(cwd)
-        git.add(subproject)
+        git.add(subproject, quiet=True)
         self.progress["Submodule: %s" % subproject] = "finished"
         return True
 
@@ -221,7 +243,7 @@ class MergeDevelop(resumable.Resumable):
         super(MergeDevelop, self)._resume(args)
         if self.progress["stopPoint"] == "public rebase":
             # recover from conflicts by continuing the rebase
-            git.rebase("--continue")
+            git.rebase("--continue", not args["-v"])
             return True
         #if self.progress["stopPoint"] == "submodule gitlink checkout" or \
         #                self.progress["stopPoint"] == "submodule gitlink add":

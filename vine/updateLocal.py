@@ -6,12 +6,13 @@ class UpdateLocal(option.Option):
     """
     grape up
     Updates the current branch and any public branches. 
-    Usage: grape-up [--public=<branch>]
+    Usage: grape-up [--public=<branch> ] [-v]
 
     Options:
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
+    -v                      Be more verbose.
 
 
     """
@@ -23,8 +24,9 @@ class UpdateLocal(option.Option):
         return "Update local branches that are tracked in your remote repo"
 
     def execute(self, args):
-        git.fetch("--prune")
-        git.fetch("--tags")
+        quiet = not args["-v"]
+        git.fetch("--prune", quiet=quiet)
+        git.fetch("--tags", quiet=quiet)
         fetchArgs = "origin "
         currentBranch = git.currentBranch().strip()
         for pubBranch in args["--public"].split(' '): 

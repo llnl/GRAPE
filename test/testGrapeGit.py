@@ -50,13 +50,10 @@ class TestGrapeGit(TestGrape):
         except git.GrapeGitError as error:
             self.handleGitError(error)
 
-
-
     def testDir(self):
         os.chdir(self.repo)
         baseDir = os.getcwd()
-        self.assertEquals(git.dir(), baseDir, "Could not determine git directory")
-
+        self.assertEquals(git.baseDir(), baseDir, "Could not determine git directory")
 
     def testMerge(self):
         # First, test to see if a merge that should work does.

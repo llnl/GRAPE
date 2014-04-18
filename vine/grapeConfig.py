@@ -14,12 +14,12 @@ def grapeConfig():
         __configInstance = ConfigParser.ConfigParser()
     return __configInstance
 
-def _resetGrapeConfig():
+def resetGrapeConfig(newInstance=None):
     """
-    Resets the singleton instance. Meant for testing purposes only.
+    Resets the singleton instance.
     """
     global __configInstance
-    __configInstance = None
+    __configInstance = newInstance
 
 
 def read(additionalFileNames=[]):

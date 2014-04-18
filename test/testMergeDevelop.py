@@ -1,6 +1,7 @@
 import os
 import sys
 import testGrape
+import unittest.case
 if not ".." in sys.path:
     sys.path.append("..")
 from vine import grapeGit as git
@@ -108,20 +109,20 @@ class TestMD(testGrape.TestGrape):
     def setUpConflictingSubmoduleMerge(self):
         os.chdir(self.defaultWorkingDirectory)
         self.createTestSubmodule()
-        git.branch("testSubmoduleMerge2")
+        git.branch("testSubmoduleMerge2", quiet=True)
         subPath = os.path.join(self.repo, "submodule1")
         os.chdir(subPath)
-        git.branch("testSubmoduleMerge2")
-        git.checkout("master")
+        git.branch("testSubmoduleMerge2", quiet=True)
+        git.checkout("master", quiet=True)
         testGrape.writeFile2("f1")
         git.add("f1")
         git.commit("-m \"added f2 as f1\"")
         os.chdir(self.repo)
         git.commit("submodule1 -m \"updated submodule gitlink on master branch\"")
-        git.checkout("testSubmoduleMerge2")
+        git.checkout("testSubmoduleMerge2", quiet=True)
         git.submodule("update")
         os.chdir(subPath)
-        git.checkout("testSubmoduleMerge2")
+        git.checkout("testSubmoduleMerge2", quiet=True)
         testGrape.writeFile3("f1")
         git.add("f1")
         git.commit("-m \"added f3 as f1\"")
@@ -194,3 +195,4 @@ class TestMD(testGrape.TestGrape):
             self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
         except SystemExit:
             self.fail("Uncaught exit\n%s" % self.output.getvalue())
+        #except unittest.case.TestCase.failureException as e:
