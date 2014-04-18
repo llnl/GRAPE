@@ -4,6 +4,7 @@ import os
 import grapeGit as git
 import option
 import utility
+import grapeConfig
 
 
 class Resumable(option.Option):
@@ -24,6 +25,7 @@ class Resumable(option.Option):
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
+        self.progress["config"] = grapeConfig.grapeConfig()
         with open(self.progressFile,'w') as f:
             p = pickle.Pickler(f)
             p.dump(self.progress)
@@ -54,5 +56,7 @@ class Resumable(option.Option):
         #overwrite args with the loaded args
         for key in newArgs.keys():
             args[key] = newArgs[key]
+        #load the config
+        grapeConfig.resetGrapeConfig(self.progress["config"])
         #remove the file
         os.remove(self.progressFile)

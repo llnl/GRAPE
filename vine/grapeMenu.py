@@ -53,7 +53,7 @@ def _resetMenu():
     """
     global __menuInstance
     __menuInstance = None
-    grapeConfig._resetGrapeConfig()
+    grapeConfig.resetGrapeConfig()
 
 
 class _Menu(object):

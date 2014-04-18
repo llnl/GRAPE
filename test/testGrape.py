@@ -114,7 +114,7 @@ class TestGrape(unittest.TestCase):
         self.output.close()
 
         # reset grapeConfig and grapeMenu
-        grapeConfig._resetGrapeConfig()
+        grapeConfig.resetGrapeConfig()
         grapeMenu._resetMenu()
 
     # print the captured standard out
