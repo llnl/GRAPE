@@ -148,3 +148,6 @@ class Config(option.Option):
             grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)
         return True
+
+    def setDefaultConfig(self, config):
+        pass

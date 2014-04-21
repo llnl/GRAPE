@@ -34,6 +34,9 @@ class InstallHooks(option.Option):
             os.chmod(h,0755)
         return True
 
+    def setDefaultConfig(self, config):
+        pass
+
 class RunHook(option.Option):
     """ grape runHook
 

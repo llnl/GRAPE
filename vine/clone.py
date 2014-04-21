@@ -37,3 +37,6 @@ class Clone(option.Option):
         print("Clone succeeded!")
         os.chdir(destpath)
         return grapeMenu.menu().applyMenuChoice("config", ["config"])
+
+    def setDefaultConfig(self, config):
+        pass

@@ -151,6 +151,9 @@ class Review(option.Option):
             print("Request generated/updated: ", request)
         return True
 
+    def setDefaultConfig(self, config):
+        pass
+
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch

@@ -10,13 +10,7 @@ from vine import grapeConfig
 
 
 class TestMD(testGrape.TestGrape):
-    def setUpConfig(self):
-        grapeMenu._resetMenu()
-        grapeMenu.menu()
-        config = grapeConfig.grapeConfig()
-        config.set("flow", "publicBranches", "master")
-        config.set("flow", "topicPrefixMappings", "?:master")
-        config.set("workspace", "submoduleTopicPrefixMappings", "?:master")
+
     # sets up a new change on the master branch one commit ahead of
     # testMerge and checks out testMerge.
 

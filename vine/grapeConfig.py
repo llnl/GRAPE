@@ -89,6 +89,9 @@ class WriteConfig(option.Option):
         config = grapeConfig()
         writeConfig(config, args["<file>"])
 
+    def setDefaultConfig(self, config):
+        pass
+
 
 def writeConfig(config, fname):
     with open(fname, 'w') as f:
