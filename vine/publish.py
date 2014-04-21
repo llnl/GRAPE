@@ -1,10 +1,11 @@
 import os
-import option
+
 import utility
 import ConfigParser
 import grapeGit as git
 import grapeMenu
 import grapeConfig
+import resumable
 import subtree
 
 
@@ -14,7 +15,7 @@ class PublishStepFailed(Exception):
         self.stepName = stepName
 
 
-class Publish(option.Option):
+class Publish(resumable.Resumable):
     """
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
@@ -31,30 +32,36 @@ class Publish(option.Option):
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
                          [-v]
+                         [--step=<startStep>]
+                         [--continue]
 
     Options:
-    --squash            Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade           For squash merges, can choose to cascade back to the topic branch after the merge is completed.
-    --merge             Perform a normal merge.
-    -m <msg>            The commit message to use for a successful merge / squash merge. Ignored if used with --rebase.
-    --rebase            Rebases the topic branch to the public, then fast forwards the public to the tip of the topic.
-    --recurse           Perform the publish action in submodules.
-                        Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --norecurse         Do not perform the publish action in submodules.
-                        Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
-    --noverify          Set to skip interactive verification of publish commands.
-    --nopush            Set to skip the push of commits generated during the publish procedure.
-    --pushSubtrees      Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
-                        public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
-                        Set by default if .grapeconfig.subtrees.pushOnPublish is True.
-    --noPushSubtrees    Don't perform a git subtree push.
-    -v                  Be more verbose. 
+    --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
+    --cascade               For squash merges, can choose to cascade back to the topic branch after the merge is completed.
+    --merge                 Perform a normal merge.
+    -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with --rebase.
+    --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the topic.
+    --recurse               Perform the publish action in submodules.
+                            Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
+    --norecurse             Do not perform the publish action in submodules.
+                            Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --noverify              Set to skip interactive verification of publish commands.
+    --nopush                Set to skip the push of commits generated during the publish procedure.
+    --pushSubtrees          Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
+                            public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
+                            Set by default if .grapeconfig.subtrees.pushOnPublish is True.
+    --noPushSubtrees        Don't perform a git subtree push.
+    -v                      Be more verbose.
+    --step=<startingStep>   The publish step to start at. One of "build", "test", "prePublish", "tagVersion", "publish",
+                            "postPublish", or "deleteTopic".
+    --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
+                            steps.
 
     Optional Arguments:
-    <public>            The branch to publish to. Defaults to the mapping for the current topic branch as described by
-                        .grapeconfig.flow.topicPrefixMappings.
-    <submodulePublic>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch as
-                        described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+    <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described by
+                            .grapeconfig.flow.topicPrefixMappings.
+    <submodulePublic>       The branch to publish to in submodules. Defaults to the mapping for the current topic branch as
+                            described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
 
 
 
@@ -77,36 +84,68 @@ class Publish(option.Option):
             public = "Unknown"
         return "Publish the current topic branch to %s" % public
 
+    def _resume(self, args):
+        super(Publish, self)._resume(args)
+        self.execute(args)
+
+    def _saveProgress(self, args):
+        pass
+
     def execute(self, args):
-        self.performCustomBuildStep(args)
-        self.performCustomTestStep(args)
-        self.performCustomPrePublishSteps(args)
-        self.tagVersion(args)
-        ret = self.publishAllProjects(args)
-        self.performCustomPostPublishSteps(args)
-        self.deleteTopicBranch(args)
-        return ret
+        startPoint = args["--step"]
+        order = ["build", "test", "prePublish", "tagVersion", "publish", "postPublish", "deleteTopic", "done"]
+        if startPoint:
+            if startPoint not in order:
+                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, order))
+        else:
+            startPoint = order[0]
+
+        steps = {"build": self.performCustomBuildStep,
+                 "test": self.performCustomTestStep,
+                 "prePublish": self.performCustomPrePublishSteps,
+                 "tagVersion": self.tagVersion,
+                 "publish": self.publishAllProjects,
+                 "postPublish": self.performCustomPostPublishSteps,
+                 "deleteTopic": self.deleteTopicBranch}
+
+        currentStep = startPoint
+        for step in order:
+            if step == "done":
+                break
+            if step != currentStep:
+                continue
+            ret = steps[step](args)
+            if ret:
+                currentStep = order[order.index(currentStep) + 1]
+            else:
+                utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using "
+                                 "grape publish --continue" % step)
+                args["--step"] = step
+                self.dumpProgress(args)
+                return False
+
+        return True
 
     def verifyCompletedReview(self, args):
-        pass
+        return True
 
     def performCustomBuildStep(self, args):
-        pass
+        return True
 
     def performCustomTestStep(self, args):
-        pass
+        return True
 
     def performCustomPrePublishSteps(self, args):
-        pass
+        return True
 
     def tagVersion(self, args):
-        pass
+        return True
 
     def performCustomPostPublishSteps(self, args):
-        pass
+        return True
 
     def deleteTopicBranch(self, args):
-        pass
+        return True
 
     @staticmethod
     def validateInput(policy, args):

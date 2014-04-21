@@ -1,10 +1,13 @@
-import os, sys, StringIO, unittest
+import os
+import sys
+
 import testGrape
+
 if not ".." in sys.path:
     sys.path.append( ".." )
 from vine import grapeMenu
 from vine import grapeGit as git
-from vine import grapeConfig
+
 
 class TestPublish(testGrape.TestGrape):
 
