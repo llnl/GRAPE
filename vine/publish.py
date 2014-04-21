@@ -37,6 +37,7 @@ class Publish(resumable.Resumable):
                          [--continue]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
+                         [--tickVersion=<bool> [-T <arg>]...]
                          [--deleteTopic=<bool>]
 
     Options:
@@ -57,7 +58,7 @@ class Publish(resumable.Resumable):
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
     -v                      Be more verbose.
-    --step=<startingStep>   The publish step to start at. One of "build", "test", "prePublish", "tagVersion", "publish",
+    --step=<startingStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion", "publish",
                             "postPublish", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --step. Publish will perform
                             all steps from <startingStep> (inclusive) to <stopStep> (exclusive).
@@ -72,6 +73,10 @@ class Publish(resumable.Resumable):
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
     --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --tickVersion=<bool>    Tick a version number as a part of this publish action.
+                            [default: .grapeconfig.publish.tickVersion]
+    -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
+                            and defaults. -T can be used multiple times to pass multiple arguments.
 
     Optional Arguments:
     <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described by
@@ -83,7 +88,7 @@ class Publish(resumable.Resumable):
     build :   Runs a custom build step.
     test:
     prePublish:
-    tagVersion:
+    tickVersion:
     publish:
     postPublish:
     deleteTopic:
@@ -91,6 +96,33 @@ class Publish(resumable.Resumable):
 
 
     """
+
+    def setDefaultConfig(self, config):
+        grapeConfig.ensureSection(config, "workspace")
+        grapeConfig.ensureSection(config, "flow")
+        grapeConfig.ensureSection(config, "subtrees")
+        grapeConfig.ensureSection(config, "publish")
+
+        # workspace defaults
+        config.set('workspace', 'manageSubmodules', 'True')
+        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
+        config.set('workspace', 'submodulePublishPolicy', '?:merge')
+        # publish policy defaults
+        config.set('flow', 'publishPolicy', '?:merge')
+        # subtree publish actions
+        config.set('subtrees', 'names', '')
+        config.set('subtrees', 'pushOnPublish', "False")
+        # build steps
+        config.set('publish', 'buildCmds', '')
+        config.set('publish', 'buildDir', utility.workspaceDir())
+        # test steps
+        config.set('publish', 'testCmds', '')
+        config.set('publish', 'testDir', utility.workspaceDir())
+        # tick the version?
+        config.set('publish', 'tickVersion', 'False')
+        # delete when done
+        config.set('publish', 'deleteTopic', 'False')
+
     def __init__(self):
         super(Publish, self).__init__()
         self._key = "publish"
@@ -118,7 +150,9 @@ class Publish(resumable.Resumable):
 
     def execute(self, args):
         startPoint = args["--step"]
-        order = ["build", "test", "prePublish", "tagVersion", "publish", "postPublish", "deleteTopic", "done"]
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "build", "test",
+                 "testForCleanWorkspace2", "prePublish", "tickVersion", "publish", "postPublish",
+                 "deleteTopic", "done"]
         if startPoint:
             if startPoint not in order:
                 utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, order))
@@ -128,10 +162,13 @@ class Publish(resumable.Resumable):
         steps = {"build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
                  "prePublish": self.performCustomPrePublishSteps,
-                 "tagVersion": self.tagVersion,
+                 "tickVersion": self.tickVersion,
                  "publish": self.publishAllProjects,
                  "postPublish": self.performCustomPostPublishSteps,
-                 "deleteTopic": self.deleteTopicBranch}
+                 "deleteTopic": self.deleteTopicBranch,
+                 "verifyCompletedReview": self.verifyCompletedReview,
+                 "testForCleanWorkspace1": self.testForCleanWorkspace,
+                 "testForCleanWorkspace2": self.testForCleanWorkspace}
 
         currentStep = startPoint
         for step in order:
@@ -154,6 +191,13 @@ class Publish(resumable.Resumable):
     def verifyCompletedReview(self, args):
         return True
 
+    def testForCleanWorkspace(self, args):
+        cwd = os.getcwd()
+        os.chdir(utility.workspaceDir())
+        ret = git.isWorkingDirectoryClean()
+        os.chdir(cwd)
+        return ret
+
     def performCustomStep(self, prefix, args):
         if not args["--%sCmds" % prefix]:
             return True
@@ -175,11 +219,15 @@ class Publish(resumable.Resumable):
     def performCustomTestStep(self, args):
         return self.performCustomStep("test", args)
 
-
     def performCustomPrePublishSteps(self, args):
         return True
 
-    def tagVersion(self, args):
+    def tickVersion(self, args):
+        if args["--tickVersion"].lower() == "true":
+            versionArgs = ["tick"]
+            for arg in args["-T"]:
+                versionArgs += [arg.strip()]
+            grapeMenu.menu().applyMenuChoice("version", versionArgs)
         return True
 
     def performCustomPostPublishSteps(self, args):
@@ -343,26 +391,3 @@ class Publish(resumable.Resumable):
                     git.subtree("push --prefix=%s %s %s" % (st_prefix, st_remote, st_branch), quiet=quiet)
         return True
 
-    def setDefaultConfig(self, config):
-        grapeConfig.ensureSection(config, "workspace")
-        grapeConfig.ensureSection(config, "flow")
-        grapeConfig.ensureSection(config, "subtrees")
-        grapeConfig.ensureSection(config, "publish")
-
-        # workspace defaults
-        config.set('workspace', 'manageSubmodules', 'True')
-        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
-        config.set('workspace', 'submodulePublishPolicy', '?:merge')
-        # publish policy defaults
-        config.set('flow', 'publishPolicy', '?:merge')
-        # subtree publish actions
-        config.set('subtrees', 'names', '')
-        config.set('subtrees', 'pushOnPublish', "False")
-        # build steps
-        config.set('publish', 'buildCmds', '')
-        config.set('publish', 'buildDir', utility.workspaceDir())
-        # test steps
-        config.set('publish', 'testCmds', '')
-        config.set('publish', 'testDir', utility.workspaceDir())
-        # delete when done
-        config.set('publish', 'deleteTopic', 'False')

@@ -51,7 +51,6 @@ class TestPublish(testGrape.TestGrape):
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
 
-
     def testFFDefaultPublish(self):
         self.setUpBranchToFFMerge()
         self.assertGrapePublishWorked()
@@ -105,3 +104,9 @@ class TestPublish(testGrape.TestGrape):
         self.assertIn("echo helloTest", self.output.getvalue())
         self.assertIn("echo worldTest", self.output.getvalue())
         self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
+
+    def testVersionTickArgumentPassing(self):
+        self.setUpBranchToFFMerge()
+        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
+        self.assertGrapePublishWorked(["--tickVersion=True", "-T --slot=3", "-T --tag"])
+        self.assertIn("v1.0.1", git.describe())

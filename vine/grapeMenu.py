@@ -106,7 +106,11 @@ class _Menu(object):
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate.
         if option_args is None and chosen_option.__doc__:
             #print("applyMenuCHoice:",args)
-            option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
+            try:
+                option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
+            except SystemExit as e:
+                print("GRAPE PARSING ERROR: could not parse %s\n%s" % (args[1:], e.message))
+                raise e
         try:
             if isinstance(chosen_option, resumable.Resumable):
                 if option_args["--continue"]:
