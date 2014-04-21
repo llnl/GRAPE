@@ -31,7 +31,7 @@ class BaseKeyring(KeyringBackend):
         The path to the file where passwords are stored. This property
         may be overridden by the subclass or at the instance level.
         """
-        return os.path.join(keyring.util.platform_.data_root(), self.filename)
+        return os.path.join(keyring.keyring.util.platform_.data_root(), self.filename)
 
     @abc.abstractproperty
     def filename(self):
