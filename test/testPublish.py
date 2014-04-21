@@ -21,8 +21,11 @@ class TestPublish(testGrape.TestGrape):
         self.setUpConfig()
 
     def assertSuccessfulFastForwardMerge(self, fromBranch="testPublish", toBranch="master"):
-        self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
-        self.assertTrue(git.shortSHA(toBranch) == git.shortSHA(fromBranch))
+        try:
+            self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
+            self.assertTrue(git.shortSHA(toBranch) == git.shortSHA(fromBranch))
+        except git.GrapeGitError as e:
+            self.fail("%s\n%s" % (self.output.getvalue(), e.gitCommand+e.gitOutput))
 
     def assertSuccessfulSquashMerge(self, fromBranch="testPublish", toBranch="master"):
         self.assertTrue(git.currentBranch() == toBranch)
@@ -47,6 +50,7 @@ class TestPublish(testGrape.TestGrape):
             self.assertTrue(ret, "published returned false")
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
+
 
     def testFFDefaultPublish(self):
         self.setUpBranchToFFMerge()
@@ -85,8 +89,19 @@ class TestPublish(testGrape.TestGrape):
     def testCustomBuildStep(self):
         self.setUpBranchToFFMerge()
         config = grapeConfig.grapeConfig()
-        config.set("publish", "buildStr", "echo hello ; echo world")
+        config.set("publish", "buildCmds", "echo hello ; echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
         self.assertIn("echo hello", self.output.getvalue())
         self.assertIn("echo world", self.output.getvalue())
+        self.assertIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
+
+    def testCustomTestStep(self):
+        self.setUpBranchToFFMerge()
+        config = grapeConfig.grapeConfig()
+        config.set("publish", "testCmds", "echo helloTest ; echo worldTest")
+        self.assertGrapePublishWorked()
+        self.assertSuccessfulFastForwardMerge()
+        self.assertIn("echo helloTest", self.output.getvalue())
+        self.assertIn("echo worldTest", self.output.getvalue())
+        self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())

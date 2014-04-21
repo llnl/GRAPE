@@ -35,7 +35,9 @@ class Publish(resumable.Resumable):
                          [-v]
                          [--step=<startStep>]
                          [--continue]
-                         [--buildCmds=<buildStr>]
+                         [--buildCmds=<buildStr>] [--buildDir=<path>]
+                         [--testCmds=<testStr>] [--testDir=<path>]
+                         [--deleteTopic=<bool>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -62,7 +64,14 @@ class Publish(resumable.Resumable):
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
     --buildCmds=<buildStr>  The semicolon-delimited list of build commands to execute.
-                            [default: .grapeconfig.publish.buildStr]
+                            [default: .grapeconfig.publish.buildCmds]
+    --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
+                            [default: .grapeconfig.publish.buildDir]
+    --testCmds=<testStr>    The semicolon-delimited list of test commands to execute.
+                            [default: .grapeconfig.publish.testCmds]
+    --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
+                            [default: .grapeconfig.publish.testDir]
+    --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
 
     Optional Arguments:
     <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described by
@@ -145,18 +154,27 @@ class Publish(resumable.Resumable):
     def verifyCompletedReview(self, args):
         return True
 
-    def performCustomBuildStep(self, args):
-        if not args["--buildCmds"]:
+    def performCustomStep(self, prefix, args):
+        if not args["--%sCmds" % prefix]:
             return True
-
-        cmds = args["--buildCmds"].split(';')
+        cwd = os.getcwd()
+        if args["--%sDir" % prefix]:
+            os.chdir(os.path.join(utility.workspaceDir(), args["--%sDir" % prefix]))
+        cmds = args["--%sCmds" % prefix].split(';')
         ret = True
+        utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
-            ret = ret and utility.executeSubProcess(cmd)
+            if ret:
+                ret = ret and utility.executeSubProcess(cmd)
+        os.chdir(cwd)
         return ret
 
+    def performCustomBuildStep(self, args):
+        return self.performCustomStep("build", args)
+
     def performCustomTestStep(self, args):
-        return True
+        return self.performCustomStep("test", args)
+
 
     def performCustomPrePublishSteps(self, args):
         return True
@@ -168,6 +186,8 @@ class Publish(resumable.Resumable):
         return True
 
     def deleteTopicBranch(self, args):
+        if args["--deleteTopic"].lower == "true":
+            grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         return True
 
     @staticmethod
@@ -339,4 +359,10 @@ class Publish(resumable.Resumable):
         config.set('subtrees', 'names', '')
         config.set('subtrees', 'pushOnPublish', "False")
         # build steps
-        config.set('publish', 'buildStr', '')
+        config.set('publish', 'buildCmds', '')
+        config.set('publish', 'buildDir', utility.workspaceDir())
+        # test steps
+        config.set('publish', 'testCmds', '')
+        config.set('publish', 'testDir', utility.workspaceDir())
+        # delete when done
+        config.set('publish', 'deleteTopic', 'False')
