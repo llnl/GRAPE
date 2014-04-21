@@ -133,7 +133,7 @@ class MergeDevelop(resumable.Resumable):
             subPublic = subBranchMappings[git.branchPrefix(branch)]
             mergedSubmodules = []
             for submodule in submodules:
-                if submodule in conflictedFiles or submodule in self.progress["stopPoint"]:
+                if submodule in conflictedFiles or ("stopPoint" in self.progress and submodule in self.progress["stopPoint"]):
                     if self.mergeSubmodule(args, submodule, subPublic, submodules, cwd):
                         mergedSubmodules.append(submodule)
                     else:
