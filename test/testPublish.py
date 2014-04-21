@@ -4,9 +4,10 @@ import sys
 import testGrape
 
 if not ".." in sys.path:
-    sys.path.append( ".." )
+    sys.path.append("..")
 from vine import grapeMenu
 from vine import grapeGit as git
+from vine import grapeConfig
 
 
 class TestPublish(testGrape.TestGrape):
@@ -35,13 +36,17 @@ class TestPublish(testGrape.TestGrape):
         self.assertTrue(git.branchUpToDateWith(fromBranch, toBranch))
         self.assertFalse(git.branchUpToDateWith(toBranch, fromBranch))
 
-    def assertGrapePublishWorked(self, args=[]):
+    def assertGrapePublishWorked(self, args=None):
+        defaultArgs = ["-m", "publishing testPublish to master", "--noverify"]
         try:
-            args += ["-m", "publishing testPublish to master", "--noverify"]
+            if args:
+                args += defaultArgs
+            else:
+                args = defaultArgs
             ret = grapeMenu.menu().applyMenuChoice("publish", args=args)
             self.assertTrue(ret, "published returned false")
-        except SystemExit:
-            self.fail(self.output.getvalue())
+        except SystemExit as e:
+            self.fail("%s\n%s" % (self.output.getvalue(), e.message))
 
     def testFFDefaultPublish(self):
         self.setUpBranchToFFMerge()
@@ -68,4 +73,20 @@ class TestPublish(testGrape.TestGrape):
         self.assertGrapePublishWorked(["--rebase"])
         self.assertSuccessfulFastForwardMerge()
 
+    def testTopicConfigOption(self):
+        self.setUpBranchToFFMerge()
+        git.checkout("-b someOtherBranch")
+        testGrape.writeFile1("someOtherfile")
+        git.add("someOtherfile")
+        git.commit("-a -m \"someOtherfile\"")
+        self.assertGrapePublishWorked(["--topic=testPublish"])
+        self.assertSuccessfulFastForwardMerge()
 
+    def testCustomBuildStep(self):
+        self.setUpBranchToFFMerge()
+        config = grapeConfig.grapeConfig()
+        config.set("publish", "buildStr", "echo hello ; echo world")
+        self.assertGrapePublishWorked()
+        self.assertSuccessfulFastForwardMerge()
+        self.assertIn("echo hello", self.output.getvalue())
+        self.assertIn("echo world", self.output.getvalue())
