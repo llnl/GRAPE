@@ -109,7 +109,8 @@ class _Menu(object):
             try:
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
             except SystemExit as e:
-                print("GRAPE PARSING ERROR: could not parse %s\n%s" % (args[1:], e.message))
+                if "--help" != args[1] and "-h" != args[1]:
+                    print("GRAPE PARSING ERROR: could not parse %s\n" % (args[1:]))
                 raise e
         try:
             if isinstance(chosen_option, resumable.Resumable):

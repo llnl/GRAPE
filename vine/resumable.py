@@ -49,9 +49,14 @@ class Resumable(option.Option):
                 self.progressFile = os.path.join(utility.workspaceDir(), ".git", "grapeProgress")
                 self._readProgressFile()
             except IOError:
-                # look for it at the home directory level
-                self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
-                self._readProgressFile()
+                try:
+                    # look for it at the home directory level
+                    self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
+                    self._readProgressFile()
+                except:
+                    utility.printMsg("No progress file found to continue from. Please enter a command without the "
+                                     "--continue option. ")
+                    exit(1)
         newArgs = self.progress["args"]
         #overwrite args with the loaded args
         for key in newArgs.keys():

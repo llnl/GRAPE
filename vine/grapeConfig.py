@@ -1,4 +1,6 @@
-import ConfigParser,os
+import ConfigParser
+import os
+
 import utility
 import grapeMenu
 import grapeGit as git

@@ -110,3 +110,18 @@ class TestPublish(testGrape.TestGrape):
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--tickVersion=True", "-T --slot=3", "-T --tag"])
         self.assertIn("v1.0.1", git.describe())
+
+    def testStartStepStopStep(self):
+        self.setUpBranchToFFMerge()
+        config = grapeConfig.grapeConfig()
+        config.set("publish", "buildCmds", "echo hello ; echo world")
+        config.set("publish", "testCmds", "echo helloTest ; echo worldTest")
+        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
+        self.assertGrapePublishWorked(["--startAt=test", "--stopAt=tickVersion", "--tickVersion=True",
+                                       "-T --slot=3", "-T --tag"])
+        # check test occurred
+        self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
+        # check that build never occurred
+        self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
+        # check that we never tagged a new version
+        self.assertIn("v1.0.0", git.describe())

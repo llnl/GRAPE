@@ -33,7 +33,7 @@ class Publish(resumable.Resumable):
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
                          [-v]
-                         [--step=<startStep>]
+                         [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--continue]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
@@ -58,17 +58,17 @@ class Publish(resumable.Resumable):
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
     -v                      Be more verbose.
-    --step=<startingStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion", "publish",
-                            "postPublish", or "deleteTopic".
-    --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --step. Publish will perform
-                            all steps from <startingStep> (inclusive) to <stopStep> (exclusive).
+    --startAt=<startingStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
+                            "publish", "postPublish", or "deleteTopic".
+    --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
+                            perform all steps from <startingStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
-    --buildCmds=<buildStr>  The semicolon-delimited list of build commands to execute.
+    --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
                             [default: .grapeconfig.publish.buildDir]
-    --testCmds=<testStr>    The semicolon-delimited list of test commands to execute.
+    --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
@@ -114,10 +114,10 @@ class Publish(resumable.Resumable):
         config.set('subtrees', 'pushOnPublish', "False")
         # build steps
         config.set('publish', 'buildCmds', '')
-        config.set('publish', 'buildDir', utility.workspaceDir())
+        config.set('publish', 'buildDir', '')
         # test steps
         config.set('publish', 'testCmds', '')
-        config.set('publish', 'testDir', utility.workspaceDir())
+        config.set('publish', 'testDir', '')
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
         # delete when done
@@ -149,7 +149,7 @@ class Publish(resumable.Resumable):
         pass
 
     def execute(self, args):
-        startPoint = args["--step"]
+        startPoint = args["--startAt"]
         order = ["verifyCompletedReview", "testForCleanWorkspace1", "build", "test",
                  "testForCleanWorkspace2", "prePublish", "tickVersion", "publish", "postPublish",
                  "deleteTopic", "done"]
@@ -158,6 +158,8 @@ class Publish(resumable.Resumable):
                 utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, order))
         else:
             startPoint = order[0]
+
+        stopPoint = args["--stopAt"]
 
         steps = {"build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
@@ -174,6 +176,9 @@ class Publish(resumable.Resumable):
         for step in order:
             if step == "done":
                 break
+            if step == stopPoint:
+                utility.printMsg("Stopping at %s step as requested." % stopPoint)
+                break
             if step != currentStep:
                 continue
             ret = steps[step](args)
@@ -181,8 +186,8 @@ class Publish(resumable.Resumable):
                 currentStep = order[order.index(currentStep) + 1]
             else:
                 utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using "
-                                 "grape publish --continue" % step)
-                args["--step"] = step
+                                 "grape publish --continue" % step.upper())
+                args["--startAt"] = step
                 self.dumpProgress(args)
                 return False
 
@@ -192,6 +197,7 @@ class Publish(resumable.Resumable):
         return True
 
     def testForCleanWorkspace(self, args):
+        utility.printMsg("Checking to make sure workspace has a clean status.")
         cwd = os.getcwd()
         os.chdir(utility.workspaceDir())
         ret = git.isWorkingDirectoryClean()
@@ -204,12 +210,12 @@ class Publish(resumable.Resumable):
         cwd = os.getcwd()
         if args["--%sDir" % prefix]:
             os.chdir(os.path.join(utility.workspaceDir(), args["--%sDir" % prefix]))
-        cmds = args["--%sCmds" % prefix].split(';')
+        cmds = args["--%sCmds" % prefix].split(',')
         ret = True
         utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
-                ret = ret and utility.executeSubProcess(cmd)
+                ret = ret and utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0
         os.chdir(cwd)
         return ret
 
