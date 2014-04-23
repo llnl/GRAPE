@@ -23,6 +23,7 @@ class Review(option.Option):
                         [--recurse]
                         [-v]
                         [--test]
+                        [--prepend | --append]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -52,6 +53,10 @@ class Review(option.Option):
         -v                          Be more verbose with git commands.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
+        --prepend                   For title and description updates, prepend <title> and <description> to the
+                                    existing title / description instead of replacing it.
+        --append                    For title and description updates, append <title> and <description> ot the
+                                    existing title / description instead of replacing it.
 
 
     """
@@ -142,7 +147,7 @@ class Review(option.Option):
         repo = rz_stash.projects[project_name].repos[repo_name]
         if not quiet:
             print("Posting pull request to %s,%s" % (project_name, repo_name))
-        if descr and submoduleLinks:
+        if descr and submoduleLinks and not (args["--append"] or args["--prepend"]):
             descr += "\nThis pull request is related to the following submodules' pull requests:\n"
             for link in submoduleLinks:
                 descr += '%s\n' % link
@@ -211,6 +216,20 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                         revList.append(dict(user=dict(name=r)))
                     reviewers = revList
                 ver = requestData["version"]
+
+                if title is not None and (args["--prepend"] or args["--append"]):
+                    currentTitle = requestData["title"]
+                    if args["--prepend"]:
+                        title = title+currentTitle
+                    elif args["--append"]:
+                        title = currentTitle+title
+                if descr is not None and (args["--prepend"] or args["--append"]):
+                    currentDescription = requestData["description"]
+                    if args["--prepend"]:
+                        descr = descr + "\n" + currentDescription
+                    elif args["--append"]:
+                        descr = currentDescription + "\n" + descr
+
                 if title is not None or descr is not None or reviewers is not None:
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
                 else:

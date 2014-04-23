@@ -38,6 +38,8 @@ class Publish(resumable.Resumable):
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
                          [--tickVersion=<bool> [-T <arg>]...]
+                         [-R <arg>]...
+                         [--noReview]
                          [--deleteTopic=<bool>]
 
     Options:
@@ -77,6 +79,9 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.tickVersion]
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
+    -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRES**:" --prepend.
+                            Type grape review --help for valid options.
+    --noReview              Don't perform any actions that interact with pull requests.
 
     Optional Arguments:
     <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described by
@@ -150,7 +155,7 @@ class Publish(resumable.Resumable):
 
     def execute(self, args):
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "build", "test",
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "build", "test",
                  "testForCleanWorkspace2", "prePublish", "tickVersion", "publish", "postPublish",
                  "deleteTopic", "done"]
         if startPoint:
@@ -170,7 +175,8 @@ class Publish(resumable.Resumable):
                  "deleteTopic": self.deleteTopicBranch,
                  "verifyCompletedReview": self.verifyCompletedReview,
                  "testForCleanWorkspace1": self.testForCleanWorkspace,
-                 "testForCleanWorkspace2": self.testForCleanWorkspace}
+                 "testForCleanWorkspace2": self.testForCleanWorkspace,
+                 "markInProgress": self.markReviewAsInProgress}
 
         currentStep = startPoint
         for step in order:
@@ -185,13 +191,31 @@ class Publish(resumable.Resumable):
             if ret:
                 currentStep = order[order.index(currentStep) + 1]
             else:
-                utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using "
+                utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
                                  "grape publish --continue" % step.upper())
                 args["--startAt"] = step
                 self.dumpProgress(args)
                 return False
 
         return True
+
+    def markReviewAsInProgress(self, args):
+        utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
+        reviewArgs = args["-R"]
+        newArgs = ["--title=**IN PROGRESS** ", "--prepend"]
+        for arg in reviewArgs:
+            newArgs.append(arg.strip())
+
+        return grapeMenu.menu().applyMenuChoice("review", newArgs)
+
+    def markReviewWithVersionNumber(self, args):
+        version = git.describe("--abbrev=0")
+        utility.printMsg("Prepending pull request title with %s" % version)
+        reviewArgs = args["-R"]
+        newArgs = ["--title=%s :" % version, "--source=%s" % args["--topic"], "--prepend"]
+        for arg in reviewArgs:
+            newArgs.append(arg.strip())
+        return grapeMenu.menu().applyMenuChoice("review", newArgs)
 
     def verifyCompletedReview(self, args):
         return True
@@ -229,12 +253,14 @@ class Publish(resumable.Resumable):
         return True
 
     def tickVersion(self, args):
+        ret = True
         if args["--tickVersion"].lower() == "true":
             versionArgs = ["tick"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
-            grapeMenu.menu().applyMenuChoice("version", versionArgs)
-        return True
+            ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
+            ret = ret and self.markReviewWithVersionNumber(args)
+        return ret
 
     def performCustomPostPublishSteps(self, args):
         return True
