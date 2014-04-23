@@ -27,6 +27,7 @@ class Atlassian:
 
         if self.auth(service, self.userName, password):
             print("Connected to RZStash...")
+            self.url = url
         else:
             self.stash = None
             print("Could not connect to RZStash...")
@@ -122,7 +123,6 @@ class Project(StashyNode):
         return None
 
 
-
 class Repo(StashyNode):
     def __init__(self, repo, node):
         StashyNode.__init__(self, node)
@@ -130,6 +130,17 @@ class Repo(StashyNode):
 
     def pullrequests(self):
         return [PullRequest(x) for x in self.repo.pull_requests]
+
+    def getOpenPullRequest(self, source, target):
+        ret = None
+        requests = self.pullrequests()
+        for request in requests:
+            if request.toRef() == target and request.fromRef() == source:
+                ret = request
+                break
+        return ret
+
+
 
 
 class PullRequest(StashyNode):
@@ -162,11 +173,18 @@ class PullRequest(StashyNode):
         return self.node["title"]
     
     def fromRef(self):
-        return self.node["fromRef"]["id"]
+        return self.node["fromRef"]["displayId"]
         
     def toRef(self):
-        return self.node["toRef"]["id"]
-        
+        return self.node["toRef"]["displayId"]
+
+    def approved(self):
+        ret = False
+        for reviewer in self.node["reviewers"]:
+            approved = reviewer["approved"]
+            ret = ret and approved
+        return ret
+
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()

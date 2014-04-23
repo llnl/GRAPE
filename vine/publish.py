@@ -1,7 +1,7 @@
 import os
 
+import Atlassian
 import utility
-import ConfigParser
 import grapeGit as git
 import grapeMenu
 import grapeConfig
@@ -38,6 +38,9 @@ class Publish(resumable.Resumable):
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
                          [--tickVersion=<bool> [-T <arg>]...]
+                         [--user=<StashUserName>]
+                         [--project=<StashProjectKey>]
+                         [--repo=<StashRepoName>]
                          [-R <arg>]...
                          [--noReview]
                          [--deleteTopic=<bool>]
@@ -79,6 +82,11 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.tickVersion]
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
+    --user=<user>           Your Stash username.
+    --project=<project>     Your Stash Project. See grape-review for more details.
+                            [default: .grapeconfig.project.name]
+    --repo=<repo>           Your Stash repo. See grape-review for more details.
+                            [default: .grapeconfig.repo.name]
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRES**:" --prepend.
                             Type grape review --help for valid options.
     --noReview              Don't perform any actions that interact with pull requests.
@@ -132,6 +140,7 @@ class Publish(resumable.Resumable):
         super(Publish, self).__init__()
         self._key = "publish"
         self._section = "Gitflow Tasks"
+        self.branchPrefix = None
 
     def description(self):
         topicPublicMapping = grapeConfig.parseConfigPairList(
@@ -153,7 +162,28 @@ class Publish(resumable.Resumable):
     def _saveProgress(self, args):
         pass
 
+    def parseArgs(self, args):
+        # resolve default topic branch, ensure we are on the topic branch
+        topic = args["--topic"]
+        if topic and topic != git.currentBranch():
+            git.checkout(args["--topic"])
+        if not topic:
+            args["--topic"] = git.currentBranch()
+        topic = args["--topic"]
+
+        # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
+        config = grapeConfig.grapeConfig()
+        topic2public = grapeConfig.parseConfigPairList(config.get('flow', 'topicPrefixMappings'))
+        prefix = topic.split('/')[0]
+
+        public = args["<public>"]
+        if not public:
+            public = topic2public[prefix]
+        args["<public>"] = public
+        self.branchPrefix = prefix
+
     def execute(self, args):
+        self.parseArgs(args)
         startPoint = args["--startAt"]
         order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "build", "test",
                  "testForCleanWorkspace2", "prePublish", "tickVersion", "publish", "postPublish",
@@ -218,7 +248,33 @@ class Publish(resumable.Resumable):
         return grapeMenu.menu().applyMenuChoice("review", newArgs)
 
     def verifyCompletedReview(self, args):
-        return True
+        if args["--noReview"]:
+            utility.printMsg("Skipping verification of code review...")
+            return True
+        atlassian = Atlassian.Atlassian(username=args["--user"])
+        repo = atlassian.project(args["--project"]).repo(args["--repo"])
+        pullRequest = repo.getOpenPullRequest(args["--topic"], args["<public>"])
+        verified = False
+        if pullRequest:
+            verified = pullRequest.approved()
+            if not verified:
+                reviewers = pullRequest.reviewers()
+                if not reviewers:
+                    utility.printMsg("There are no reviewers for your pull request.")
+                else:
+                    utility.printMsg("The following reviewers have not approved your request:\n")
+                    for reviewer in reviewers:
+                        if reviewer[1] is False:
+                            print(reviewer[0])
+            else:
+                utility.printMsg("All reviewers have approved your request.")
+        else:
+            utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
+                             "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
+                                                        args["--repo"], "pull-requests"])))
+
+
+        return verified
 
     def testForCleanWorkspace(self, args):
         utility.printMsg("Checking to make sure workspace has a clean status.")
@@ -331,25 +387,17 @@ class Publish(resumable.Resumable):
             git.push("-u origin HEAD")
 
     def publishAllProjects(self, args):
-        # make sure you are on the right topic branch
+        config = grapeConfig.grapeConfig()
         topic = args["--topic"]
-        if topic and topic != git.currentBranch():
-            git.checkout(args["--topic"])
-        topic = git.currentBranch()
-        args["--topic"] = topic
+
 
         # make sure public branches are up to date.
         grapeMenu.menu().applyMenuChoice('up', ['up'])
 
         quiet = not args["-v"]
         # get the outer level public branch destination
-        config = grapeConfig.grapeConfig()
-        topic2public = grapeConfig.parseConfigPairList(config.get('flow', 'topicPrefixMappings'))
-        prefix = topic.split('/')[0]
-
         public = args["<public>"]
-        if not public:
-            public = topic2public[prefix]
+
 
         # set any CL defined publish policy
         policy = None
@@ -376,7 +424,7 @@ class Publish(resumable.Resumable):
         if recurse:
             submapping = config.get('workspace', 'submoduleTopicPrefixMappings')
             submapping = grapeConfig.parseConfigPairList(submapping)
-            submodulePublic = submapping[prefix]
+            submodulePublic = submapping[self.branchPrefix]
 
             # submodule policy is Command Line requested policy, otherwise is based on 
             #       .grapeconfig.workspace.submodulePublishPolicy

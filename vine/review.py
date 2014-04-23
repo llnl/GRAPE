@@ -53,10 +53,10 @@ class Review(option.Option):
         -v                          Be more verbose with git commands.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
-        --prepend                   For title and description updates, prepend <title> and <description> to the
-                                    existing title / description instead of replacing it.
-        --append                    For title and description updates, append <title> and <description> ot the
-                                    existing title / description instead of replacing it.
+        --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
+                                    <description> to the existing title / description instead of replacing it.
+        --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
+                                    <description> to the existing title / description instead of replacing it.
 
 
     """
@@ -211,7 +211,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 #   ]
                 # Which I interpret to mean the following:
                 if reviewers:
-                    revList = []
+                    if args["--prepend"] or args["--append"]:
+                        revList = requestData["reviewers"]
+                    else:
+                        revList = []
                     for r in reviewers:
                         revList.append(dict(user=dict(name=r)))
                     reviewers = revList
@@ -229,6 +232,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                         descr = descr + "\n" + currentDescription
                     elif args["--append"]:
                         descr = currentDescription + "\n" + descr
+
 
                 if title is not None or descr is not None or reviewers is not None:
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
