@@ -13,10 +13,12 @@ class Version(option.Option):
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
 
-    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>]
+    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
-           grape-version tick [--major | --minor | --slot=<int>] [--tag | --notag | --updateTag=<bool>]
-                              [--matchTo=<matchTo>] [--prefix=<prefix>] [--file=<path>]
+           grape-version tick [--major | --minor | --slot=<int>]
+                              [--tag | --notag | --updateTag=<bool>]
+                              [--matchTo=<matchTo>]
+                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--file=<path>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -25,19 +27,27 @@ class Version(option.Option):
         --file=<path>       The file to store the version number. When used with init, this is mandatory, and
                             grape will update your .grapeconfig file for future version number lookups.
                             [default: .grapeconfig.versioning.file]
-        --matchTo=<matchTo> The string to match to before reaching the version descriptor. Grape looks for version
-                            strings matching (<matchTo>\s*=\s*)(<prefix>)(\S+)'
-                            [default: VERSION_ID]
-        --prefix=<prefix>   The version number prefix, such as the 'v' in v1.2.3.
-                            [default: v]
+        --matchTo=<matchTo> The regex to match to before reaching the version descriptor. Grape will look for the string
+                            literals '<prefix>' and '<suffix>' in your regex and substitute your values for <prefix>
+                            and <suffix> in their place. Default can be overridden using
+                            .grapeconfig.versioning.branchVersionRegexMappings.
+                            [default: (VERSION_ID\s*=\s*)(<prefix>)(\S+)(<suffix>)]
+        --matchGroup=<int>  The regex group to pick the version number from. [default:3]
+        --prefix=<prefix>   The version number prefix for version string to match in --file, such as the 'v' in v1.2.3.
+                            [default: .grapeconfig.versioning.prefix]
+        --suffix=<suffix>   The version number suffix for grape-version to match in <path>, such as the 'm' in v1.2.3.m
         --major             Tick the Major (1st) version number.
         --minor             Tick the Minor (2nd) version number.
         --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
                             than the current max number of digits, the version number will be extended to have <int>
-                            digits.
+                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings
         --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
         --tag               Forces updateTag to be True.
         --notag             Forces updateTag to be False.
+        --tagPrefix=<str>   The prefix for the git version tags. [default: v]
+        --tagSuffix=<str>   The suffix for the git version tags. Default value comes from
+                            .grapeconfig.versioning.branchSuffixMappings.
+
 
     """
     def __init__(self):
@@ -61,11 +71,11 @@ class Version(option.Option):
         version = StringIO.StringIO()
         version.write("VERSION_ID = %s" % args["<version>"])
         version.seek(0)
-        version = self.readVersion(version)
+        version = self.readVersion(version, args)
         if args["--file"]:
             fname = args["--file"]
-            with open(fname, 'w') as f:
-                version = self.writeVersion(f, version)
+            with open(fname, 'w+') as f:
+                version = self.writeVersion(f, version, args)
             self.stageVersionFile(fname, args)
             config.set("versioning", "file", fname)
             configFile = os.path.join(git.baseDir(), ".grapeconfig")
@@ -74,29 +84,33 @@ class Version(option.Option):
             git.commit("%s %s -m \"GRAPE: added initial version info file %s\"" % (fname, configFile, fname))
             self.tagVersion(version, args)
 
-
     def tickVersion(self, args):
         config = grapeConfig.grapeConfig()
         file = config.get("versioning", "file")
         with open(file) as f:
-            slots = self.readVersion(f)
-        slot = 2
+            slots = self.readVersion(f, args)
+        slot = args["--slot"]
+        if not slot:
+            slotMappings = grapeConfig.parseConfigPairList(config.get("versioning", "branchSlotMappings"))
+            topicMappings = grapeConfig.parseConfigPairList((config.get("flow", "topicPrefixMappings")))
+            publicBranch = topicMappings[git.branchPrefix(git.currentBranch())]
+            slot = int(slotMappings[publicBranch])
+        else:
+            slot = int(slot)
+        if args["--minor"]:
+            slot = 2
         if args["--major"]:
             slot = 1
-        elif args["--slot"]:
-            slot = int(args["--slot"])
         # extend the version number if slot comes in too large.
         while len(slots) < slot:
             slots.append(0)
-        slot = slot -1
-        slots[slot] += 1
-        slot+=1
+        slots[slot - 1] += 1
         while slot < len(slots):
             slots[slot] = 0
             slot += 1
 
-        with open(file, 'w') as f:
-            ver = self.writeVersion(f, slots)
+        with open(file, 'r+') as f:
+            ver = self.writeVersion(f, slots, args)
         self.stageVersionFile(file, args)
         git.commit("-m \"GRAPE: ticked version to %s\"" % ver)
         self.tagVersion(ver, args)
@@ -120,9 +134,27 @@ class Version(option.Option):
         return True
 
 
-    def readVersion(self, file, idString="VERSION_ID", prefix = "v"):
+    def readVersion(self, file, args):
         #tweaked from http://stackoverflow.com/questions/2020180/increment-a-version-id-by-one-and-write-to-mk-file
-        self.r = re.compile(r'(%s\s*=\s*)(%s)(\S+)'% (idString, prefix))
+        prefix = args["--prefix"]
+        if args["--suffix"]:
+            suffix = args["--suffix"]
+        else:
+            suffix = ""
+        args["--suffix"] = suffix
+        regex = args["--matchTo"]
+        config = grapeConfig.grapeConfig()
+        try:
+            regexMappings = grapeConfig.parseConfigPairList(config.get("versioning", "branchVersionRegexMappings"))
+            publicMapping = grapeConfig.parseConfigPairList(config.get("flow", "topicPrefixMappings"))
+            public = publicMapping[git.branchPrefix(git.currentBranch())]
+            regex = regexMappings[public]
+        except ConfigParser.NoOptionError:
+            pass
+
+        regex = regex.replace("<prefix>", prefix)
+        regex = regex.replace("<suffix>", suffix)
+        self.r = re.compile(regex)
 
         VERSION_ID = None
         for l in file:
@@ -135,11 +167,23 @@ class Version(option.Option):
 
         return VERSION_ID
 
-    def writeVersion(self, file, version, idString="VERSION_ID", prefix="v"):
+    def versionLine(self, version):
+        return self.r.sub(r'\g<1>\g<2>' + '.'.join(['%s' % v for v in version]), self.matchedLine)+"\n"
 
-        l = self.r.sub(r'\g<1>\g<2>' + '.'.join(['%s' % (v) for v in version]), self.matchedLine)+"\n"
-        file.write(l)
-        verStr = ("%s" % prefix) + '.'.join(['%s' % (v) for v in version])
+    def writeVersion(self, file, version, args):
+        prefix = args["--prefix"]
+        suffix = args["--suffix"]
+        file.seek(0)
+        lines = []
+        if args["init"]:
+            lines.append(self.versionLine(version))
+        for l in file:
+            if l == self.matchedLine:
+                l = self.versionLine(version)
+            lines.append(l)
+        file.seek(0)
+        file.writelines(lines)
+        verStr = prefix + '.'.join(['%s' % v for v in version])+suffix
         return verStr
 
     def setDefaultConfig(self, config):
@@ -150,5 +194,9 @@ class Version(option.Option):
         grapeConfig.ensureSection(config, "versioning")
         config.set("versioning", "file", ".grapeversion")
         config.set("versioning", "updateTag", "True")
+        config.set("versioning", "branchSlotMappings", "?:2")
+        config.set("versioning", "branchSuffixMappings", "?:''")
+        config.set("versioning", "prefix", "v")
+
 
 

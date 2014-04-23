@@ -230,15 +230,21 @@ class Publish(resumable.Resumable):
         return True
 
     def markReviewAsInProgress(self, args):
+        if args["--noReview"]:
+            utility.printMsg("Skipping marking pull request as IN PROGRESS...")
+            return True
         utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
         reviewArgs = args["-R"]
-        newArgs = ["--title=**IN PROGRESS** ", "--prepend"]
+        newArgs = ["--title=**IN PROGRESS** ", "--prepend", "--source=%s" % args["--topic"]]
         for arg in reviewArgs:
             newArgs.append(arg.strip())
 
         return grapeMenu.menu().applyMenuChoice("review", newArgs)
 
     def markReviewWithVersionNumber(self, args):
+        if args["--noReview"]:
+            utility.printMsg("Skipping marking pull request with version number")
+            return True
         version = git.describe("--abbrev=0")
         utility.printMsg("Prepending pull request title with %s" % version)
         reviewArgs = args["-R"]
@@ -272,8 +278,6 @@ class Publish(resumable.Resumable):
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
                                                         args["--repo"], "pull-requests"])))
-
-
         return verified
 
     def testForCleanWorkspace(self, args):
