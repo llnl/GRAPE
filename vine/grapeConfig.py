@@ -13,7 +13,7 @@ __configInstance = None
 def grapeConfig():
     global __configInstance
     if __configInstance is None:
-        __configInstance = ConfigParser.ConfigParser()
+        __configInstance = GrapeConfigParser()
     return __configInstance
 
 def resetGrapeConfig(newInstance=None):
@@ -61,14 +61,29 @@ class ConfigPairDict(dict):
                 raise e
 
 
-def parseConfigPairList(string):
-    pairs = string.split(' ')
-    pairDict = ConfigPairDict() 
-    if pairs[0].strip().lower() != "none": 
-        for pair in pairs:
-            plist = pair.split(':')
-            pairDict[plist[0]] = plist[1]
-    return ConfigPairDict(pairDict)
+class GrapeConfigParser(ConfigParser.ConfigParser):
+    def getMapping(self, section, cfgOption, raw=False, cfgVars=None):
+        return self.parseConfigPairList(self.get(section, cfgOption, raw=raw, vars=cfgVars))
+
+    def getPublicBranchFor(self, branch):
+        publicMapping = self.getMapping("flow", "topicPrefixMappings")
+        return publicMapping[git.branchPrefix(branch)]
+
+    def ensureSection(self, section):
+        try:
+            self.add_section(section)
+        except ConfigParser.DuplicateSectionError:
+            pass
+
+    @staticmethod
+    def parseConfigPairList(string):
+        pairs = string.split(' ')
+        pairDict = ConfigPairDict()
+        if pairs[0].strip().lower() != "none":
+            for pair in pairs:
+                plist = pair.split(':')
+                pairDict[plist[0]] = plist[1]
+        return ConfigPairDict(pairDict)
 
 
 class WriteConfig(option.Option):
@@ -100,8 +115,3 @@ def writeConfig(config, fname):
         config.write(f)
 
 
-def ensureSection(config, section):
-    try:
-        config.add_section(section)
-    except ConfigParser.DuplicateSectionError:
-        pass

@@ -115,8 +115,7 @@ class Review(option.Option):
         target_branch = args["--target"]
 
         if not target_branch:
-            prefix = branch.split('/')[0]
-            target_branch = grapeConfig.parseConfigPairList(config.get("flow", "topicPrefixMappings"))[prefix]
+            target_branch = config.getPublicBranchFor(branch)
 
         # subprojects
         submoduleLinks = []
@@ -124,8 +123,7 @@ class Review(option.Option):
             cwd = git.baseDir(quiet=quiet)
             os.chdir(cwd)
             modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
-            submoduleBranchMappings = grapeConfig.parseConfigPairList(
-                config.get("workspace", "submoduleTopicPrefixMappings"))
+            submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
 
             for submodule in modifiedSubmodules:
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
@@ -232,7 +230,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                         descr = descr + "\n" + currentDescription
                     elif args["--append"]:
                         descr = currentDescription + "\n" + descr
-
 
                 if title is not None or descr is not None or reviewers is not None:
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)

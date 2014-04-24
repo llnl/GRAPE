@@ -47,10 +47,13 @@ class Publish(resumable.Resumable):
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade               For squash merges, can choose to cascade back to the topic branch after the merge is completed.
+    --cascade               For squash merges, can choose to cascade back to the topic branch after the merge is
+                            completed.
     --merge                 Perform a normal merge.
-    -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with --rebase.
-    --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the topic.
+    -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
+                            --rebase.
+    --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the
+                            topic.
     --recurse               Perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
     --norecurse             Do not perform the publish action in submodules.
@@ -63,10 +66,10 @@ class Publish(resumable.Resumable):
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
     -v                      Be more verbose.
-    --startAt=<startingStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
+    --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
                             "publish", "postPublish", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
-                            perform all steps from <startingStep> (inclusive) to <stopStep> (exclusive).
+                            perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
     --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
@@ -92,10 +95,10 @@ class Publish(resumable.Resumable):
     --noReview              Don't perform any actions that interact with pull requests.
 
     Optional Arguments:
-    <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described by
-                            .grapeconfig.flow.topicPrefixMappings.
-    <submodulePublic>       The branch to publish to in submodules. Defaults to the mapping for the current topic branch as
-                            described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+    <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described
+                            by .grapeconfig.flow.topicPrefixMappings.
+    <submodulePublic>       The branch to publish to in submodules. Defaults to the mapping for the current topic branch
+                            as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
 
     Publish Steps:
     build :   Runs a custom build step.
@@ -111,10 +114,10 @@ class Publish(resumable.Resumable):
     """
 
     def setDefaultConfig(self, config):
-        grapeConfig.ensureSection(config, "workspace")
-        grapeConfig.ensureSection(config, "flow")
-        grapeConfig.ensureSection(config, "subtrees")
-        grapeConfig.ensureSection(config, "publish")
+        config.ensureSection("workspace")
+        config.ensureSection("flow")
+        config.ensureSection("subtrees")
+        config.ensureSection("publish")
 
         # workspace defaults
         config.set('workspace', 'manageSubmodules', 'True')
@@ -143,14 +146,10 @@ class Publish(resumable.Resumable):
         self.branchPrefix = None
 
     def description(self):
-        topicPublicMapping = grapeConfig.parseConfigPairList(
-            grapeConfig.grapeConfig().get('flow', 'topicPrefixMappings'))
         try:
-            currentBranch = git.currentBranch()
+            public = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
         except git.GrapeGitError:
-            currentBranch = "Unknown"
-        try:
-            public = topicPublicMapping[git.branchPrefix(currentBranch)]
+            public = "Unknown"
         except KeyError:
             public = "Unknown"
         return "Publish the current topic branch to %s" % public
@@ -173,12 +172,10 @@ class Publish(resumable.Resumable):
 
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
         config = grapeConfig.grapeConfig()
-        topic2public = grapeConfig.parseConfigPairList(config.get('flow', 'topicPrefixMappings'))
-        prefix = topic.split('/')[0]
-
+        prefix = git.branchPrefix(topic)
         public = args["<public>"]
         if not public:
-            public = topic2public[prefix]
+            public = config.getPublicBranchFor(topic)
         args["<public>"] = public
         self.branchPrefix = prefix
 
@@ -325,7 +322,8 @@ class Publish(resumable.Resumable):
     def performCustomPostPublishSteps(self, args):
         return True
 
-    def deleteTopicBranch(self, args):
+    @staticmethod
+    def deleteTopicBranch(args):
         if args["--deleteTopic"].lower == "true":
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         return True
@@ -394,14 +392,12 @@ class Publish(resumable.Resumable):
         config = grapeConfig.grapeConfig()
         topic = args["--topic"]
 
-
         # make sure public branches are up to date.
         grapeMenu.menu().applyMenuChoice('up', ['up'])
 
         quiet = not args["-v"]
         # get the outer level public branch destination
         public = args["<public>"]
-
 
         # set any CL defined publish policy
         policy = None
@@ -426,16 +422,14 @@ class Publish(resumable.Resumable):
         os.chdir(cwd)
 
         if recurse:
-            submapping = config.get('workspace', 'submoduleTopicPrefixMappings')
-            submapping = grapeConfig.parseConfigPairList(submapping)
+            submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
             submodulePublic = submapping[self.branchPrefix]
 
             # submodule policy is Command Line requested policy, otherwise is based on 
             #       .grapeconfig.workspace.submodulePublishPolicy
             submodulePolicy = policy
             if not submodulePolicy:
-                submodulePolicy = config.get('workspace', 'submodulePublishPolicy')
-                submodulePolicy = grapeConfig.parseConfigPairList(submodulePolicy)[submodulePublic]
+                submodulePolicy = config.getMapping('workspace', 'submodulePublishPolicy')[submodulePublic]
             valid = self.validateInput(submodulePolicy, args)
             proceed = valid and (args["--noverify"] or
                                  utility.userInput("About to publish " + topic + " to "
@@ -452,7 +446,7 @@ class Publish(resumable.Resumable):
 
         # update policy from config if not set on CL
         if not policy:
-            policy = grapeConfig.parseConfigPairList(config.get('flow', 'publishPolicy'))[public]
+            policy = config.getMapping('flow', 'publishPolicy')[public]
 
         valid = self.validateInput(policy, args)
         proceed = valid and (args["--noverify"] or
@@ -469,9 +463,8 @@ class Publish(resumable.Resumable):
                 for st in subtrees:
                     st_prefix = config.get('subtree-%s' % st, 'prefix')
                     st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
-                    st_branchMappings = config.get('subtree-%s' % st, 'topicPrefixMappings')
-                    st_branch = grapeConfig.parseConfigPairList(st_branchMappings)[topic]
+                    st_branchMappings = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')
+                    st_branch = st_branchMappings[topic]
                     print("pushing subtree %s to %s (branch %s)..." % (st_prefix, st_remote, st_branch))
                     git.subtree("push --prefix=%s %s %s" % (st_prefix, st_remote, st_branch), quiet=quiet)
         return True
-

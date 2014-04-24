@@ -41,7 +41,7 @@ class TestPublish(testGrape.TestGrape):
 
     def assertGrapePublishWorked(self, args=None):
         config = grapeConfig.grapeConfig()
-        grapeConfig.ensureSection(config, "project")
+        config.ensureSection("project")
         config.set("project", "name", "proj1")
 
         defaultArgs = ["-m", "publishing testPublish to master", "--noverify", '-R', '--test', '-R', '--repo=repo1',
