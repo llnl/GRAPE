@@ -208,6 +208,6 @@ class Version(option.Option):
         config.set("versioning", "file", ".grapeversion")
         config.set("versioning", "updateTag", "True")
         config.set("versioning", "branchSlotMappings", "?:2")
-        config.set("versioning", "branchSuffixMappings", "?:''")
-        config.set("versioning", "branchTagSuffixMappings", "?:''")
+        config.set("versioning", "branchSuffixMappings", "?:")
+        config.set("versioning", "branchTagSuffixMappings", "?:")
         config.set("versioning", "prefix", "v")
