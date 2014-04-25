@@ -254,7 +254,7 @@ class TestPullRequests(TestStashResponse):
         self.url = parent + "pullrequests/"
         self.create("testRequest1", "topic", "develop")
 
-    def all(self, direction="INCOMING", at=None):
+    def all(self, direction="INCOMING", at=None, state="OPEN"):
         for request in self.values():
             yield request
 
