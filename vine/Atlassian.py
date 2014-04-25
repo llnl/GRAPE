@@ -128,8 +128,8 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node)
         self.repo = repo
 
-    def pullrequests(self):
-        return [PullRequest(x) for x in self.repo.pull_requests]
+    def pullrequests(self, state="OPEN"):
+        return [PullRequest(x) for x in self.repo.pull_requests.all(state=state)]
 
     def getOpenPullRequest(self, source, target):
         ret = None
@@ -138,6 +138,14 @@ class Repo(StashyNode):
             if request.toRef() == target and request.fromRef() == source:
                 ret = request
                 break
+        return ret
+
+    def getMergedPullRequests(self, source, target):
+        ret = []
+        requests = self.pullrequests(state="MERGED")
+        for r in requests:
+            if r.toRef() == target and r.fromRef() == source:
+                ret.append(r)
         return ret
 
 

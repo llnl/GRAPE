@@ -18,6 +18,7 @@ class Review(option.Option):
                         [--reviewers=<userNames>]
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
+                        [--state=<openMergedDeclined>]
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
@@ -41,6 +42,9 @@ class Review(option.Option):
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
                                     Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
+        --state=<state>             The state of the pull request to update. Valid values are open, merged, and
+                                    declined.
+                                    [default: open]
         --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
                                     https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
@@ -162,7 +166,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
     quiet = not args["-v"]
     print("Gathering active pull requests on %s" % branch)
-    pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch)
+    pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch, state=args["--state"])
 
     # check to see if pull request already exists for this branch
     request = None

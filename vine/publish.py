@@ -252,7 +252,7 @@ class Publish(resumable.Resumable):
         self.branchPrefix = prefix
         # get the Stash Username
         user = args["--user"]
-        if not user and not args["--noReview"]:
+        if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Stash")
 
     def execute(self, args):
@@ -260,7 +260,7 @@ class Publish(resumable.Resumable):
         startPoint = args["--startAt"]
         order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "build", "test",
                  "testForCleanWorkspace2",  "tickVersion", "updateLog", "prePublish", "publish", "postPublish",
-                 "tagVersion", "notify", "deleteTopic", "done"]
+                 "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--printSteps"]:
             print order
@@ -286,6 +286,7 @@ class Publish(resumable.Resumable):
                  "testForCleanWorkspace1": self.testForCleanWorkspace,
                  "testForCleanWorkspace2": self.testForCleanWorkspace,
                  "markInProgress": self.aquireInProgressLock,
+                 "markAsDone": self.releaseInProgressLock,
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail}
 
@@ -300,8 +301,9 @@ class Publish(resumable.Resumable):
                 continue
             try:
                 ret = steps[step](args)
-            except:
+            except BaseException as e:
                 self.bailOut(step, args)
+                print(e.message)
                 return False
             if ret:
                 currentStep = order[order.index(currentStep) + 1]
@@ -370,6 +372,30 @@ class Publish(resumable.Resumable):
             for request in inProgressRequests:
                 print request
             return False
+
+    def releaseInProgressLock(self, args):
+        if args["--noReview"]:
+            utility.printMsg("Skipping verification of code review...")
+            return True
+        atlassian = Atlassian.Atlassian(username=args["--user"])
+        repo = atlassian.project(args["--project"]).repo(args["--repo"])
+        request = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        if not request:
+            matchingRequests = repo.getMergedPullRequests(args["--topic"], args["--public"])
+            for r in matchingRequests:
+                if "**IN PROGRESS**" in r.title():
+                    request = r
+                    break
+        if request:
+            title = request.title().replace("**IN PROGRESS**", "")
+            return self.markReview(args, ["--title=%s" % title, "--state=merged"], "")
+
+
+
+        else:
+            utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
+        return True
+
 
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
@@ -497,6 +523,8 @@ class Publish(resumable.Resumable):
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
+            ret = ret and self.markReviewWithVersionNumber(args)
+
             self.progress["version"] = grapeMenu.menu().getOption("version").ver
         return ret
 
@@ -507,7 +535,6 @@ class Publish(resumable.Resumable):
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            ret = ret and self.markReviewWithVersionNumber(args)
         return ret
 
     def sendNotificationEmail(self, args):
@@ -528,7 +555,7 @@ class Publish(resumable.Resumable):
         mf.write('\n'.join(emailHeader))
 
         comments = self.progress["commitMsg"]
-        mf.write(comments)
+        mf.write('\n'.join(comments))
         updatelist = self.progress["modifiedFiles"]
         if len(updatelist) > 0:
             mf.write("\n FILES UPDATED:\n")
@@ -541,13 +568,12 @@ class Publish(resumable.Resumable):
         t.close()
         msg = MIMEText(message)
 
-        # Use their email address from their git user profile.  It *should*
-        # OUN-based, which will allow the email to be accepted into SF
-        myemail = git.config("user.email")
+        # Use their email address from their git user profile.
+        myemail = git.config("--get user.email")
         mailsubj = args["--emailSubject"]
         mailsubj = mailsubj.replace("<user>", git.config("--get user.name"))
         mailsubj = mailsubj.replace("<public>", args["--public"])
-        mailsubj = mailsubj.replace("<version>", self.progress["--version"])
+        mailsubj = mailsubj.replace("<version>", self.progress["version"])
         mailsubj = mailsubj.replace("<date>", date)
         sendto = args["--emailSendTo"]
         msg['Subject'] = mailsubj
@@ -555,7 +581,7 @@ class Publish(resumable.Resumable):
         msg['To'] = sendto
         msg['CC'] = myemail
 
-        # Send the message via the LLNL SMTP server (don't know if this
+        # Send the message via the configured SMTP server (don't know if this
         # is necessary - localhost might work just as well)
         import socket
         try:
