@@ -293,17 +293,24 @@ class Publish(resumable.Resumable):
                 break
             if step != currentStep:
                 continue
-            ret = steps[step](args)
+            try:
+                ret = steps[step](args)
+            except:
+                self.bailOut(step, args)
             if ret:
                 currentStep = order[order.index(currentStep) + 1]
             else:
-                utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
-                                 "grape publish --continue" % step.upper())
-                args["--startAt"] = step
-                self.dumpProgress(args)
+                self.bailOut(step, args)
                 return False
 
         return True
+
+    def bailOut(self, step, args):
+        utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
+                         "grape publish --continue" % step.upper())
+        args["--startAt"] = step
+        self.dumpProgress(args)
+        return
 
     def markReviewAsInProgress(self, args):
         if args["--noReview"]:
