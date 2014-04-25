@@ -159,7 +159,10 @@ class PullRequest(StashyNode):
         return self.node["author"]["user"]["name"]
     
     def description(self):
-        return self.node["description"]
+        try:
+            return self.node["description"]
+        except KeyError:
+            return ""
 
     def date(self):
         msec = self.node["createdDate"]
