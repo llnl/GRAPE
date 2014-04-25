@@ -45,7 +45,7 @@ class TestPublish(testGrape.TestGrape):
         config.set("project", "name", "proj1")
 
         defaultArgs = ["-m", "publishing testPublish to master", "--noverify", '-R', '--test', '-R', '--repo=repo1',
-                       '-R', '--user=user', "--noReview"]
+                       '-R', '--user=user', "--noReview", "--noUpdateLog"]
         try:
             if args:
                 args += defaultArgs
@@ -113,7 +113,7 @@ class TestPublish(testGrape.TestGrape):
     def testVersionTickArgumentPassing(self):
         self.setUpBranchToFFMerge()
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
-        self.assertGrapePublishWorked(["--tickVersion=True", "-T", "--slot=3", "-T", "--tag"])
+        self.assertGrapePublishWorked(["--tickVersion=True", "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         self.assertIn("v1.0.1", git.describe())
 
     def testStartStepStopStep(self):
@@ -123,7 +123,7 @@ class TestPublish(testGrape.TestGrape):
         config.set("publish", "testCmds", "echo helloTest ; echo worldTest")
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--startAt=test", "--stopAt=tickVersion", "--tickVersion=True",
-                                       "-T", "--slot=3", "-T", "--tag"])
+                                       "-T", "--slot=3", "-T", "--tag", "-T", "--file=VERSION.txt"])
         # check test occurred
         self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
         # check that build never occurred

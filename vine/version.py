@@ -19,6 +19,7 @@ class Version(option.Option):
                               [--matchTo=<matchTo>]
                               [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--file=<path>]
                               [--nocommit]
+                              [--notick]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -52,7 +53,9 @@ class Version(option.Option):
         --tagPrefix=<str>   The prefix for the git version tags. [default: v]
         --tagSuffix=<str>   The suffix for the git version tags. Default value comes from
                             .grapeconfig.versioning.branchTagSuffixMappings.
-        --nocommit          Do not create a new commit, just modify <file>. This implies --notag.
+        --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
+        --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
+                            version in <file>.
 
 
     """
@@ -97,31 +100,33 @@ class Version(option.Option):
         fileName = config.get("versioning", "file")
         with open(fileName) as f:
             slots = self.readVersion(f, args)
-        slot = args["--slot"]
-        if not slot:
-            slotMappings = config.getMapping("versioning", "branchSlotMappings")
-            publicBranch = config.getPublicBranchFor(git.currentBranch())
-            slot = int(slotMappings[publicBranch])
-        else:
-            slot = int(slot)
-        if args["--minor"]:
-            slot = 2
-        if args["--major"]:
-            slot = 1
-        # extend the version number if slot comes in too large.
-        while len(slots) < slot:
-            slots.append(0)
-        slots[slot - 1] += 1
-        while slot < len(slots):
-            slots[slot] = 0
-            slot += 1
+        if not args["--notick"]:
+            slot = args["--slot"]
+            if not slot:
+                slotMappings = config.getMapping("versioning", "branchSlotMappings")
+                publicBranch = config.getPublicBranchFor(git.currentBranch())
+                slot = int(slotMappings[publicBranch])
+            else:
+                slot = int(slot)
+            if args["--minor"]:
+                slot = 2
+            if args["--major"]:
+                slot = 1
+            # extend the version number if slot comes in too large.
+            while len(slots) < slot:
+                slots.append(0)
+            slots[slot - 1] += 1
+            while slot < len(slots):
+                slots[slot] = 0
+                slot += 1
 
         with open(fileName, 'r+') as f:
-            ver = self.writeVersion(f, slots, args)
+            self.ver = self.writeVersion(f, slots, args)
         self.stageVersionFile(fileName)
         if not args["--nocommit"]:
-            git.commit("-m \"GRAPE: ticked version to %s\"" % ver)
-            self.tagVersion(ver, args)
+            git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
+        if not args["--nocommit"] or args["--tag"]:
+            self.tagVersion(self.ver, args)
 
     @staticmethod
     def stageVersionFile(fname):

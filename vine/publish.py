@@ -1,4 +1,11 @@
 import os
+import time
+import tempfile
+import smtplib
+try:
+    from email.mime.text import MIMEText
+except ImportError:
+    from email.MIMEText import MIMEText
 
 import Atlassian
 import utility
@@ -27,7 +34,7 @@ class Publish(resumable.Resumable):
     Usage: grape-publish [--squash [--cascade ] | --merge |  --rebase]
                          [-m <msg>]
                          [--recurse | --norecurse]
-                         [<public> [<submodulePublic>]]
+                         [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
                          [--nopush]
@@ -37,6 +44,9 @@ class Publish(resumable.Resumable):
                          [--continue]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
+                         [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
+                         [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
+                         [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--user=<StashUserName>]
                          [--project=<StashProjectKey>]
@@ -44,6 +54,9 @@ class Publish(resumable.Resumable):
                          [-R <arg>]...
                          [--noReview]
                          [--deleteTopic=<bool>]
+                         [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
+                          --emailServer=<smtpserver>]]
+                         [<CommitMessageFile>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -80,7 +93,24 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.testCmds]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
+    --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
+                            [default: .grapeconfig.publish.prepublishCmds]
+    --prepublishDir=<str>   The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
+                            [default: .grapeconfig.publish.prepublishDir]
+    --postpublishCmds=<str>  The comma-delimited list of commands to execute just after the publish step.
+                            [default: .grapeconfig.publish.postpublishCmds]
+    --postpublishDir=<str>   The directory (relative to the workspace root directory) to execute the post-publish cmds in.
+                            [default: .grapeconfig.publish.postpublishDir]
     --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --noUpdateLog           Set to skip the updateLog step.
+    --updateLog=<file>      The log file to update with the commit message for this branch.
+                            [default: .grapeconfig.publish.updateLog]
+    --skipFirstLines=<int>  The number of lines to skip in the updateLog file before inserting the commit message.
+                            [default: .grapeconfig.publish.logSkipFirstLines]
+    --entryHeader=<string>  The format for the commit message header. The string literals <date>, <user>, and <version>
+                            will be replaced by the date, the result of git config --get user.name, and the result of
+                            git describe --abbrev=0 after the tickversion step, respectively.
+                            [default: .grapeconfig.publish.logEntryHeader]
     --tickVersion=<bool>    Tick a version number as a part of this publish action.
                             [default: .grapeconfig.publish.tickVersion]
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
@@ -93,12 +123,36 @@ class Publish(resumable.Resumable):
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRES**:" --prepend.
                             Type grape review --help for valid options.
     --noReview              Don't perform any actions that interact with pull requests.
+    --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
+                            by .grapeconfig.flow.topicPrefixMappings.
+    --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
+                            as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+    --emailNotification=<b> Set to true to send a notification email after you've published. The email will consist of
+                            a header <header>, and a message, generally the contents of <CommitMessageFile> and/or
+                            the Pull Request description. The email is sent to <addr>, and will be CC'd to the user.
+                            For the email subject and header, the string literals
+                            '<user>', '<date>', '<version>', and '<public>' with the following:
+                            <user>: the result of git config --get user.name
+                            <date>: the current timestamp.
+                            <version>: The version of the project, so long as grape is managing your versioning.
+                            <public>: The branch to publish to.
+                            [default: .grapeconfig.publish.emailNotification]
+    --emailHeader=<header>  The email header. See above.
+                            [default: .grapeconfig.publish.emailHeader]
+    --emailSubject=<sbj>    The email subject. See above.
+                            [default: .grapeconfig.publish.emailSubject]
+    --emailSendTo=<addr>    The receiver of the email.
+                            [default: .grapeconfig.publish.emailSendTo]
+    --emailServer=<server>  The smtp email server address.
+                            [default: .grapeconfig.publish.emailServer]
 
     Optional Arguments:
-    <public>                The branch to publish to. Defaults to the mapping for the current topic branch as described
-                            by .grapeconfig.flow.topicPrefixMappings.
-    <submodulePublic>       The branch to publish to in submodules. Defaults to the mapping for the current topic branch
-                            as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+    <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
+                            this branch will be updated to contain this message. If you don't specify a filename, it is
+                            assumed that the contents of the pull request description are intended for the update
+                            message. Both the commit message for the merge and an update log will contain this message.
+                            Additionally, if email notification is configured, the contents of the email will have
+                            this message.
 
     Publish Steps:
     build :   Runs a custom build step.
@@ -134,10 +188,26 @@ class Publish(resumable.Resumable):
         # test steps
         config.set('publish', 'testCmds', '')
         config.set('publish', 'testDir', '')
+        # prepublish steps
+        config.set('publish', 'prepublishCmds', '')
+        config.set('publish', 'prepublishDir', '')
+        # postpublish steps
+        config.set('publish', 'postpublishCmds', '')
+        config.set('publish', 'postpublishDir', '')
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
         # delete when done
         config.set('publish', 'deleteTopic', 'False')
+        # log file
+        config.set('publish', 'updateLog', '.grapepublishlog')
+        config.set('publish', 'logSkipFirstLines', '0')
+        config.set('publish', 'logEntryHeader', "<date> <user>\\n<version>\\n")
+        # email config
+        config.set('publish', 'emailNotification', 'False')
+        config.set('publish', 'emailHeader', '<public> updated to <version>')
+        config.set('publish', 'emailServer', 'smtp.email.server')
+        config.set('publish', 'emailSendTo', 'user.list@company.com')
+        config.set('publish', 'emailSubject', '<public> updated to <version>')
 
     def __init__(self):
         super(Publish, self).__init__()
@@ -173,18 +243,18 @@ class Publish(resumable.Resumable):
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
         config = grapeConfig.grapeConfig()
         prefix = git.branchPrefix(topic)
-        public = args["<public>"]
+        public = args["--public"]
         if not public:
             public = config.getPublicBranchFor(topic)
-        args["<public>"] = public
+        args["--public"] = public
         self.branchPrefix = prefix
 
     def execute(self, args):
         self.parseArgs(args)
         startPoint = args["--startAt"]
         order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "build", "test",
-                 "testForCleanWorkspace2", "prePublish", "tickVersion", "publish", "postPublish",
-                 "deleteTopic", "done"]
+                 "testForCleanWorkspace2",  "tickVersion", "updateLog", "prePublish", "publish", "postPublish",
+                 "tagVersion", "notify", "deleteTopic", "done"]
         if startPoint:
             if startPoint not in order:
                 utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, order))
@@ -197,13 +267,16 @@ class Publish(resumable.Resumable):
                  "test": self.performCustomTestStep,
                  "prePublish": self.performCustomPrePublishSteps,
                  "tickVersion": self.tickVersion,
+                 "tagVersion": self.tagVersion,
                  "publish": self.publishAllProjects,
                  "postPublish": self.performCustomPostPublishSteps,
                  "deleteTopic": self.deleteTopicBranch,
                  "verifyCompletedReview": self.verifyCompletedReview,
                  "testForCleanWorkspace1": self.testForCleanWorkspace,
                  "testForCleanWorkspace2": self.testForCleanWorkspace,
-                 "markInProgress": self.markReviewAsInProgress}
+                 "markInProgress": self.markReviewAsInProgress,
+                 "updateLog": self.updateLog,
+                 "notify": self.sendNotificationEmail}
 
         currentStep = startPoint
         for step in order:
@@ -256,7 +329,7 @@ class Publish(resumable.Resumable):
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
-        pullRequest = repo.getOpenPullRequest(args["--topic"], args["<public>"])
+        pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
         if pullRequest:
             verified = pullRequest.approved()
@@ -285,7 +358,8 @@ class Publish(resumable.Resumable):
         os.chdir(cwd)
         return ret
 
-    def performCustomStep(self, prefix, args):
+    @staticmethod
+    def performCustomStep(prefix, args):
         if not args["--%sCmds" % prefix]:
             return True
         cwd = os.getcwd()
@@ -307,17 +381,137 @@ class Publish(resumable.Resumable):
         return self.performCustomStep("test", args)
 
     def performCustomPrePublishSteps(self, args):
+        self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (args["--public"], args["--topic"])).split('\n')
+        return self.performCustomStep("prepublish", args)
+
+    def updateLog(self, args):
+        if args["--noUpdateLog"]:
+            self.progress["commitMsg"] = "no details entered"
+            return True
+
+        if args["<CommitMessageFile>"]:
+            commitMsgFile = args["<CommitMessageFile>"]
+            with open(commitMsgFile,'r') as f:
+                commitMsg = f.readlines()
+            if not args["--noReview"]:
+                utility.printMsg("Updating Pull Request with commit msg...")
+                grapeMenu.menu().applyMenuChoice("review", ["--descr", commitMsgFile, "--update"])
+            else:
+                utility.printMsg("Skipping update of pull request description from commit message")
+        else:
+            if args["--noReview"]:
+                utility.printMsg("Skipping retreival of commit message from Pull Request description..")
+                print("File with commit message is required argument when publishing with --noReview")
+                return False
+            utility.printMsg("Retrieving pull request description for use as commit message...")
+            atlassian = Atlassian.Atlassian(username=args["--user"])
+            repo = atlassian.project(args["--project"]).repo(args["--repo"])
+            pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+            commitMsg = pullRequest.description().split('\n')+['']
+
+        self.progress["commitMsg"] = commitMsg
+        logFile = args["--updateLog"]
+        if logFile:
+            header = args["--entryHeader"]
+            header = header.replace("<date>", time.asctime())
+            header = header.replace("<user>", git.config("--get user.name"))
+            header = header.replace("<version>", self.progress["version"])
+            header = header.split("\\n")
+            commitMsg = header + commitMsg
+            numLinesToSkip = int(args["--skipFirstLines"])
+            with open(logFile, 'r') as f:
+                loglines = f.readlines()
+            loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+            with open(logFile, 'w') as f:
+                f.writelines(loglines)
+            git.add(logFile)
+            git.commit(" -m \"GRAPE: updated log file %s\"" % logFile)
         return True
 
     def tickVersion(self, args):
         ret = True
         if args["--tickVersion"].lower() == "true":
-            versionArgs = ["tick"]
+            versionArgs = ["tick", "--notag", "--nocommit"]
+            for arg in args["-T"]:
+                versionArgs += [arg.strip()]
+            ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
+            self.progress["version"] = grapeMenu.menu().getOption("version").ver
+        return ret
+
+    def tagVersion(self, args):
+        ret = True
+        if args["--tickVersion"].lower() == "true":
+            versionArgs = ["tick", "--tag", "--notick"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
             ret = ret and self.markReviewWithVersionNumber(args)
         return ret
+
+    def sendNotificationEmail(self, args):
+        if not args["--emailNotification"].lower() == "true":
+            # skip email send
+            return True
+        # Write the contents of the mail file out to a temporary file
+        mailfile = tempfile.mktemp()
+        mf = open(mailfile, 'w')
+
+        date = time.asctime()
+        emailHeader = args["--emailHeader"]
+        emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
+        emailHeader = emailHeader.replace("<date>", date)
+        emailHeader = emailHeader.replace("<version>", self.progress["version"])
+        emailHeader = emailHeader.replace("<public>", args["--public"])
+        emailHeader.split("\\n")
+        mf.write('\n'.join(emailHeader))
+
+        comments = self.progress["commitMsg"]
+        mf.write(comments)
+        updatelist = self.progress["modifiedFiles"]
+        if len(updatelist) > 0:
+            mf.write("\n FILES UPDATED:\n")
+            mf.write("\n".join(updatelist))
+        mf.close()
+
+        # Open the file back up and attach it to a MIME message
+        t = open(mailfile, 'rb')
+        message = t.read()
+        t.close()
+        msg = MIMEText(message)
+
+        # Use their email address from their git user profile.  It *should*
+        # OUN-based, which will allow the email to be accepted into SF
+        myemail = git.config("user.email")
+        mailsubj = args["--emailSubject"]
+        mailsubj = mailsubj.replace("<user>", git.config("--get user.name"))
+        mailsubj = mailsubj.replace("<public>", args["--public"])
+        mailsubj = mailsubj.replace("<version>", self.progress["--version"])
+        mailsubj = mailsubj.replace("<date>", date)
+        sendto = args["--emailSendTo"]
+        msg['Subject'] = mailsubj
+        msg['From'] = myemail
+        msg['To'] = sendto
+        msg['CC'] = myemail
+
+        # Send the message via the LLNL SMTP server (don't know if this
+        # is necessary - localhost might work just as well)
+        import socket
+        try:
+            s = smtplib.SMTP("nospam.llnl.gov", timeout=10)
+        except socket.error, e:
+            utility.printMsg("Failed to email: %s" % str(e))
+            return False
+
+        # Don't need to connect if we specified the
+        # host in the SMTP constructor above...
+        #s.connect()
+        s.sendmail(msg['From'], [sendto, myemail], msg.as_string())
+        s.quit()
+
+        # Remove the tempfile
+        os.remove(mailfile)
+
+        return True
 
     def performCustomPostPublishSteps(self, args):
         return True
@@ -397,7 +591,7 @@ class Publish(resumable.Resumable):
 
         quiet = not args["-v"]
         # get the outer level public branch destination
-        public = args["<public>"]
+        public = args["--public"]
 
         # set any CL defined publish policy
         policy = None
@@ -422,8 +616,12 @@ class Publish(resumable.Resumable):
         os.chdir(cwd)
 
         if recurse:
-            submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
-            submodulePublic = submapping[self.branchPrefix]
+            if args["--submodulePublic"]:
+                submodulePublic = args["--submodulePublic"]
+            else:
+                submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
+                submodulePublic = submapping[self.branchPrefix]
+            args["--submodulePublic"] = submodulePublic
 
             # submodule policy is Command Line requested policy, otherwise is based on 
             #       .grapeconfig.workspace.submodulePublishPolicy
