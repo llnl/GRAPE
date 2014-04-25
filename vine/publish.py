@@ -698,4 +698,6 @@ class Publish(resumable.Resumable):
                     st_branch = st_branchMappings[topic]
                     print("pushing subtree %s to %s (branch %s)..." % (st_prefix, st_remote, st_branch))
                     git.subtree("push --prefix=%s %s %s" % (st_prefix, st_remote, st_branch), quiet=quiet)
-        return True
+            return True
+        else:
+            return False

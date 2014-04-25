@@ -29,7 +29,7 @@ topicprefixmappings = hotfix:master feature:develop bugfix:develop rc:release ?:
 [publish]
 buildcmds = 
 builddir = 
-testcmds = 
+testcmds = grape test
 testdir = 
 prepublishcmds = 
 prepublishdir = 
