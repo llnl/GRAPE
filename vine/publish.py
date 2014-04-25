@@ -487,6 +487,15 @@ class Publish(resumable.Resumable):
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             commitMsg = pullRequest.description().split('\n')+['']
 
+        utility.printMsg("The following commit message will be used for any email notification, merge commits, etc.\n "
+                         "======================================================================")
+        print '\n'.join(commitMsg[:10])
+        print "======================================================================"
+        proceed = utility.userInput("Is this correct? ['y','n']", 'y')
+        if not proceed:
+            utility.printMsg("Aborting. Either edit the message in your pull request, or pass in the name of a file "
+                             "containing your message as an argument to grape publish.")
+            return False
         self.progress["commitMsg"] = commitMsg
         if not args["-m"]:
             # this will be used for the actual merge commit message.
