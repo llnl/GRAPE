@@ -550,7 +550,7 @@ class Publish(resumable.Resumable):
         emailHeader = emailHeader.replace("<date>", date)
         emailHeader = emailHeader.replace("<version>", self.progress["version"])
         emailHeader = emailHeader.replace("<public>", args["--public"])
-        emailHeader.split("\\n")
+        emailHeader = emailHeader.split("\\n")
         mf.write('\n'.join(emailHeader))
 
         comments = self.progress["commitMsg"]
