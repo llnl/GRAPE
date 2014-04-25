@@ -94,8 +94,8 @@ class Review(option.Option):
             descrFile = args["--descr"]
             if descrFile:
                 with open(descrFile) as f:
-                    descr = f.readall()
-
+                    descr = f.readlines()
+                descr = '\n'.join(descr)
         # determine pull request reviewers
         reviewers = args["--reviewers"]
         if reviewers:
