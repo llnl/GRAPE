@@ -427,7 +427,7 @@ class Publish(resumable.Resumable):
         self.progress["commitMsg"] = commitMsg
         if not args["-m"]:
             # this will be used for the actual merge commit message.
-            escapedCommitMsg = commitMsg.replace("\"", "\\\"")
+            escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
             escapedCommitMsg = escapedCommitMsg.replace("'", "`")
             args["-m"] = '\n'.join(escapedCommitMsg)
 
