@@ -125,7 +125,7 @@ class Version(option.Option):
         self.stageVersionFile(fileName)
         if not args["--nocommit"]:
             git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
-        if not args["--nocommit"] or args["--tag"]:
+        if (not args["--nocommit"]) or args["--tag"]:
             self.tagVersion(self.ver, args)
 
     @staticmethod

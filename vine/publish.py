@@ -381,8 +381,13 @@ class Publish(resumable.Resumable):
         return self.performCustomStep("test", args)
 
     def performCustomPrePublishSteps(self, args):
+        ret = self.performCustomStep("prepublish", args)
         self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (args["--public"], args["--topic"])).split('\n')
-        return self.performCustomStep("prepublish", args)
+        try:
+            git.commit(" -m \"GRAPE PUBLISH: committing version/log file changes before publish.%s\"")
+        except git.GrapeGitError:
+            pass
+        return ret
 
     def updateLog(self, args):
         if args["--noUpdateLog"]:
@@ -425,7 +430,6 @@ class Publish(resumable.Resumable):
             with open(logFile, 'w') as f:
                 f.writelines(loglines)
             git.add(logFile)
-            git.commit(" -m \"GRAPE: updated log file %s\"" % logFile)
         return True
 
     def tickVersion(self, args):
@@ -441,7 +445,7 @@ class Publish(resumable.Resumable):
     def tagVersion(self, args):
         ret = True
         if args["--tickVersion"].lower() == "true":
-            versionArgs = ["tick", "--tag", "--notick"]
+            versionArgs = ["tick", "--tag", "--notick", "--nocommit"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
