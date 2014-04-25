@@ -30,7 +30,7 @@ topicprefixmappings = hotfix:master feature:develop bugfix:develop rc:release ?:
 buildcmds = 
 builddir = 
 testcmds = grape test
-testdir = 
+testdir = ../
 prepublishcmds = 
 prepublishdir = 
 postpublishcmds = 
@@ -40,10 +40,10 @@ deletetopic = True
 updatelog = UPDATE_LOG
 logskipfirstlines = 0
 logentryheader = <date> <user>\n<version>\n
-emailnotification = False
+emailnotification = True
 emailheader = <public> updated to <version>
-emailserver = smtp.email.server
-emailsendto = user.list@company.com
+emailserver = nospam.llnl.gov
+emailsendto = robinson96@llnl.gov
 emailsubject = <public> updated to <version>
 
 [post-commit]
