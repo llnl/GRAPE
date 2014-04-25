@@ -109,7 +109,7 @@ class _Menu(object):
             try:
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
             except SystemExit as e:
-                if "--help" != args[1] and "-h" != args[1]:
+                if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
                     print("GRAPE PARSING ERROR: could not parse %s\n" % (args[1:]))
                 raise e
         try:

@@ -406,8 +406,10 @@ class Publish(resumable.Resumable):
         else:
             if args["--noReview"]:
                 utility.printMsg("Skipping retreival of commit message from Pull Request description..")
-                print("File with commit message is required argument when publishing with --noReview")
-                return False
+                if not args["-m"]:
+                    print("File with commit message is required argument when publishing with --noReview and no -m "
+                          "<msg> defined.")
+                    return False
             utility.printMsg("Retrieving pull request description for use as commit message...")
             atlassian = Atlassian.Atlassian(username=args["--user"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
@@ -415,6 +417,14 @@ class Publish(resumable.Resumable):
             commitMsg = pullRequest.description().split('\n')+['']
 
         self.progress["commitMsg"] = commitMsg
+        if not args["-m"]:
+            # this will be used for the actual merge commit message.
+            escapedCommitMsg = commitMsg.replace("\"", "\\\"")
+            escapedCommitMsg = escapedCommitMsg.replace("'", "`")
+            args["-m"] = '\n'.join(escapedCommitMsg)
+
+        if args["--noUpdateLog"]:
+            return True
         logFile = args["--updateLog"]
         if logFile:
             header = args["--entryHeader"]
@@ -536,7 +546,6 @@ class Publish(resumable.Resumable):
                 print("Commit message required for merge or squash merge publish policies.")
         if policy == "rebase":
             valid = True
-
         if not valid:
             print("Type grape publish -h for more details")
         return valid
@@ -649,7 +658,9 @@ class Publish(resumable.Resumable):
         # update policy from config if not set on CL
         if not policy:
             policy = config.getMapping('flow', 'publishPolicy')[public]
-
+            if policy.strip().lower() == "cascade":
+                policy = "squash"
+                args["--cascade"] = True
         valid = self.validateInput(policy, args)
         proceed = valid and (args["--noverify"] or
                              utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\n"
