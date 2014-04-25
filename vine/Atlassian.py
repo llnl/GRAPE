@@ -185,6 +185,14 @@ class PullRequest(StashyNode):
             ret = ret and approved
         return ret
 
+    def __eq__(self, other):
+        return self.node == other.node
+
+    def __str__(self):
+        return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
+            "Reviewers: %s\n" % self.reviewers()
+
+
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()

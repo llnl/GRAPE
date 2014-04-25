@@ -358,7 +358,7 @@ class Publish(resumable.Resumable):
             return self.markReviewAsInProgress(args)
         elif len(inProgressRequests) == 1:
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
-            if thisRequest is inProgressRequests[0]:
+            if thisRequest == inProgressRequests[0]:
                 utility.printMsg("The pull request for this branch is already in progress. Continuing...")
                 return True
             else:
