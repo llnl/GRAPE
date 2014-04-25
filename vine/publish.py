@@ -468,7 +468,7 @@ class Publish(resumable.Resumable):
         if not args["-m"]:
             # this will be used for the actual merge commit message.
             escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
-            escapedCommitMsg = escapedCommitMsg.replace("'", "`")
+            escapedCommitMsg = escapedCommitMsg.replace("`", "'")
             args["-m"] = escapedCommitMsg
 
         if args["--noUpdateLog"]:
