@@ -311,7 +311,8 @@ class Publish(resumable.Resumable):
             return True
         utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
         reviewArgs = args["-R"]
-        newArgs = ["--title=**IN PROGRESS** ", "--prepend", "--source=%s" % args["--topic"]]
+        newArgs = ["--title=**IN PROGRESS** ", "--prepend", "--update", "--source=%s" % args["--topic"],
+                   "--target=%s" % args["--public"]]
         for arg in reviewArgs:
             newArgs.append(arg.strip())
 
@@ -324,7 +325,8 @@ class Publish(resumable.Resumable):
         version = git.describe("--abbrev=0")
         utility.printMsg("Prepending pull request title with %s" % version)
         reviewArgs = args["-R"]
-        newArgs = ["--title=%s :" % version, "--source=%s" % args["--topic"], "--prepend"]
+        newArgs = ["--title=%s :" % version, "--source=%s" % args["--topic"], "--prepend",
+                   "--target=%s" % args["--topic"]]
         for arg in reviewArgs:
             newArgs.append(arg.strip())
         return grapeMenu.menu().applyMenuChoice("review", newArgs)
