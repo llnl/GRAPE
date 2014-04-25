@@ -31,7 +31,7 @@ class Publish(resumable.Resumable):
     vs rebase, etc) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
-    Usage: grape-publish [--squash [--cascade ] | --merge |  --rebase]
+    Usage:  grape-publish [--squash [--cascade ] | --merge |  --rebase]
                          [-m <msg>]
                          [--recurse | --norecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
@@ -57,6 +57,7 @@ class Publish(resumable.Resumable):
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
+            grape-publish --printSteps
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -255,6 +256,11 @@ class Publish(resumable.Resumable):
         order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "build", "test",
                  "testForCleanWorkspace2",  "tickVersion", "updateLog", "prePublish", "publish", "postPublish",
                  "tagVersion", "notify", "deleteTopic", "done"]
+
+        if args["--printSteps"]:
+            print order
+            return True
+
         if startPoint:
             if startPoint not in order:
                 utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, order))
