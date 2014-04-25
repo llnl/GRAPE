@@ -444,13 +444,11 @@ class Publish(resumable.Resumable):
 
         if args["<CommitMessageFile>"]:
             commitMsgFile = args["<CommitMessageFile>"]
-            with open(commitMsgFile,'r') as f:
+            with open(commitMsgFile, 'r') as f:
                 commitMsg = f.readlines()
             if not args["--noReview"]:
                 utility.printMsg("Updating Pull Request with commit msg...")
-                grapeMenu.menu().applyMenuChoice("review", ["--descr", commitMsgFile, "--update",
-                                                            "--target=%s" % args["--public"],
-                                                            "--source=%s" % args["--topic"]])
+                self.markReview(args, ["--descr", commitMsgFile], "")
             else:
                 utility.printMsg("Skipping update of pull request description from commit message")
         else:
