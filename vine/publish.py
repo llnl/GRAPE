@@ -389,9 +389,6 @@ class Publish(resumable.Resumable):
         if request:
             title = request.title().replace("**IN PROGRESS**", "")
             return self.markReview(args, ["--title=%s" % title, "--state=merged"], "")
-
-
-
         else:
             utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
@@ -496,7 +493,7 @@ class Publish(resumable.Resumable):
             escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
             escapedCommitMsg = escapedCommitMsg.replace("`", "'")
             if escapedCommitMsg:
-                args["-m"] = escapedCommitMs
+                args["-m"] = escapedCommitMsg
             else:
                 utility.printMsg("WARNING: Commit message is empty. ")
 
