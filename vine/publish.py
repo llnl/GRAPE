@@ -429,8 +429,7 @@ class Publish(resumable.Resumable):
         os.chdir(cwd)
         return ret
 
-    @staticmethod
-    def performCustomStep(prefix, args):
+    def performCustomStep(self, prefix, args):
         if not args["--%sCmds" % prefix]:
             return True
         cwd = os.getcwd()
@@ -441,6 +440,7 @@ class Publish(resumable.Resumable):
         utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
+                cmd = cmd.replace("<version>", self.progress["version"])
                 ret = ret and utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0
         os.chdir(cwd)
         return ret
@@ -455,7 +455,7 @@ class Publish(resumable.Resumable):
         ret = self.performCustomStep("prepublish", args)
         self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (args["--public"], args["--topic"])).split('\n')
         try:
-            git.commit(" -m \"GRAPE PUBLISH: committing version/log file changes before publish.%s\"")
+            git.commit(" -m \"GRAPE PUBLISH: committing staged file changes before publish.%s\"")
         except git.GrapeGitError:
             pass
         return ret
