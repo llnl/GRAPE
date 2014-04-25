@@ -297,6 +297,7 @@ class Publish(resumable.Resumable):
                 ret = steps[step](args)
             except:
                 self.bailOut(step, args)
+                return False
             if ret:
                 currentStep = order[order.index(currentStep) + 1]
             else:
