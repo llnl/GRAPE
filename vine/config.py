@@ -121,7 +121,7 @@ class Config(option.Option):
             p4remotes = os.path.join(dotGit,"refs","remotes","p4","")
             utility.ensure_dir(p4remotes)
             commit = utility.userInput("Please enter a descriptor (e.g. SHA, branch if tip, tag name) of the current git commit that mirrors the p4 repo","master")
-            sha = utility.GetSHA(commit)
+            sha = git.SHA(commit)
             with open(os.path.join(p4remotes,"HEAD"),'w') as f:
                 f.write(sha)
             with open(os.path.join(p4remotes,"master"),'w') as f:

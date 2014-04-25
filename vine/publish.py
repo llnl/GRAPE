@@ -100,7 +100,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.prepublishDir]
     --postpublishCmds=<str>  The comma-delimited list of commands to execute just after the publish step.
                             [default: .grapeconfig.publish.postpublishCmds]
-    --postpublishDir=<str>   The directory (relative to the workspace root directory) to execute the post-publish cmds in.
+    --postpublishDir=<str>  The directory (relative to the workspace root directory) to execute the post-publish
+                            cmds in.
                             [default: .grapeconfig.publish.postpublishDir]
     --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
@@ -249,6 +250,10 @@ class Publish(resumable.Resumable):
             public = config.getPublicBranchFor(topic)
         args["--public"] = public
         self.branchPrefix = prefix
+        # get the Stash Username
+        user = args["--user"]
+        if not user and not args["--noReview"]:
+            args["--user"] = utility.getUserName(service="Stash")
 
     def execute(self, args):
         self.parseArgs(args)
@@ -280,7 +285,7 @@ class Publish(resumable.Resumable):
                  "verifyCompletedReview": self.verifyCompletedReview,
                  "testForCleanWorkspace1": self.testForCleanWorkspace,
                  "testForCleanWorkspace2": self.testForCleanWorkspace,
-                 "markInProgress": self.markReviewAsInProgress,
+                 "markInProgress": self.aquireInProgressLock,
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail}
 
@@ -313,31 +318,58 @@ class Publish(resumable.Resumable):
         self.dumpProgress(args)
         return
 
-    def markReviewAsInProgress(self, args):
+    @staticmethod
+    def markReview(args, newArgs, skipStr):
         if args["--noReview"]:
-            utility.printMsg("Skipping marking pull request as IN PROGRESS...")
+            utility.printMsg(skipStr)
             return True
-        utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
         reviewArgs = args["-R"]
-        newArgs = ["--title=**IN PROGRESS** ", "--prepend", "--update", "--source=%s" % args["--topic"],
-                   "--target=%s" % args["--public"]]
+        finalArgs = ["--update", "--source=%s" % args["--topic"], "--target=%s" % args["--public"],
+                     "--user=%s" % args["--user"]]+newArgs
         for arg in reviewArgs:
-            newArgs.append(arg.strip())
+            finalArgs.append(arg.strip())
+        return grapeMenu.menu().applyMenuChoice("review", finalArgs)
 
-        return grapeMenu.menu().applyMenuChoice("review", newArgs)
+    def markReviewAsInProgress(self, args):
+        utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
+        return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend"], "Skipping marking pull request "
+                                                                                "as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
-        if args["--noReview"]:
-            utility.printMsg("Skipping marking pull request with version number")
-            return True
         version = git.describe("--abbrev=0")
         utility.printMsg("Prepending pull request title with %s" % version)
-        reviewArgs = args["-R"]
-        newArgs = ["--title=%s :" % version, "--source=%s" % args["--topic"], "--prepend",
-                   "--target=%s" % args["--topic"]]
-        for arg in reviewArgs:
-            newArgs.append(arg.strip())
-        return grapeMenu.menu().applyMenuChoice("review", newArgs)
+        return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
+                                                                              "version number")
+
+    def aquireInProgressLock(self, args):
+        if args["--noReview"]:
+            utility.printMsg("Skipping verification of code review...")
+            return True
+        atlassian = Atlassian.Atlassian(username=args["--user"])
+        repo = atlassian.project(args["--project"]).repo(args["--repo"])
+        pullRequests = repo.pullrequests()
+        inProgressRequests = []
+        for request in pullRequests:
+            inProgress = "IN PROGRESS" in request.title()
+            if inProgress:
+                inProgressRequests.append(request)
+        if len(inProgressRequests) == 0:
+            utility.printMsg("No other pull requests are IN PROGRESS...")
+            return self.markReviewAsInProgress(args)
+        elif len(inProgressRequests) == 1:
+            thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+            if thisRequest is inProgressRequests[0]:
+                utility.printMsg("The pull request for this branch is already in progress. Continuing...")
+                return True
+            else:
+                utility.printMsg("The following pull request is already in progress:")
+                print(inProgressRequests[0])
+                return False
+        else:
+            utility.printMsg("WARNING: There are multiple pull requests in progress!")
+            for request in inProgressRequests:
+                print request
+            return False
 
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
@@ -657,8 +689,13 @@ class Publish(resumable.Resumable):
             # submodule policy is Command Line requested policy, otherwise is based on 
             #       .grapeconfig.workspace.submodulePublishPolicy
             submodulePolicy = policy
+            # store current value for args["--cascade"]
+            outerCascadeOption = args["--cascade"]
             if not submodulePolicy:
                 submodulePolicy = config.getMapping('workspace', 'submodulePublishPolicy')[submodulePublic]
+                if submodulePolicy == "cascade":
+                    submodulePolicy = "squash"
+                    args["--cascade"] = True
             valid = self.validateInput(submodulePolicy, args)
             proceed = valid and (args["--noverify"] or
                                  utility.userInput("About to publish " + topic + " to "
@@ -671,6 +708,8 @@ class Publish(resumable.Resumable):
 
                     grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
                     self.publish(submodulePolicy, submodulePublic, topic, args)
+            # restore value for args[--cascade]
+            args["--cascade"] = outerCascadeOption
             os.chdir(cwd)
 
         # update policy from config if not set on CL
