@@ -338,7 +338,7 @@ class Publish(resumable.Resumable):
                                                                                 "as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
-        version = git.describe("--abbrev=0")
+        version = self.progress["version"]
         utility.printMsg("Prepending pull request title with %s" % version)
         return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
                                                                               "version number")
@@ -495,7 +495,10 @@ class Publish(resumable.Resumable):
             # this will be used for the actual merge commit message.
             escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
             escapedCommitMsg = escapedCommitMsg.replace("`", "'")
-            args["-m"] = escapedCommitMsg
+            if escapedCommitMsg:
+                args["-m"] = escapedCommitMs
+            else:
+                utility.printMsg("WARNING: Commit message is empty. ")
 
         if args["--noUpdateLog"]:
             return True
@@ -523,9 +526,8 @@ class Publish(resumable.Resumable):
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            ret = ret and self.markReviewWithVersionNumber(args)
-
             self.progress["version"] = grapeMenu.menu().getOption("version").ver
+            ret = ret and self.markReviewWithVersionNumber(args)
         return ret
 
     def tagVersion(self, args):
