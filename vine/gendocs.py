@@ -1,3 +1,6 @@
+#!/bin/sh
+"exec" "python" "-B" "$0" "$@"
+
 import sys
 
 import grapeMenu
@@ -27,8 +30,10 @@ class Section(object):
         self._text = option.__doc__
 
     def write(self, f):
-        if (self._text):
+        if self._text:
+            f.write("# %s" % self._name)
             f.write(self._text)
+            f.write("\n")
 
 
 def main(fname):

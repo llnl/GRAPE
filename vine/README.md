@@ -1,4 +1,4 @@
-
+# addSubproject
         grape addSubproject
         Adds a new project to this workspace (such as a new library or a new test suite)
 
@@ -25,6 +25,7 @@
         -v                  Set to print all git commands that are issued
 
     
+# bundle
 grape bundle
 
     
@@ -64,6 +65,7 @@ name = None
 
 
     
+# unbundle
 grape unbundle
 
     
@@ -79,12 +81,14 @@ Options:
                                   [default: .grapeconfig.patch.branchMappings]
 
     
+# status
     Usage: grape-status [-v]
 
     Options:
     -v      Show git commands being issued. 
 
     
+# checkout
     Usage: grape-checkout [-v] [-b] <branch> 
 
     Options:
@@ -96,6 +100,7 @@ Options:
     <branch>    The name of the branch to checkout. 
 
     
+# commit
     Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
 
     Options:
@@ -108,6 +113,7 @@ Options:
     <filetree> The relative path of files to include in this commit. 
 
     
+# publish
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
     where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings and
@@ -251,7 +257,8 @@ Options:
 
 
 
-     grape-clone
+    
+# clone grape-clone
     Clones a git repo and configures it for use with git.
 
     Usage: grape-clone <url> <path> [--recursive]
@@ -263,6 +270,7 @@ Options:
     Options:
         --recursive   Recursively clone submodules.
     
+# config
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
@@ -278,6 +286,7 @@ Options:
         --git-p4        will configure your repo for use with git-p4 (deprecated)
 
     
+# writeConfig
         grape writeConfig: Writes the current configuration to a file, using any configuration set
         by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
 
@@ -285,6 +294,7 @@ Options:
         grape-writeConfig <file>
 
     
+# foreach
     Executes a command in each project in this workspace (including the outer level project). 
 
     Usage: grape-foreach [--quiet] <cmd> 
@@ -296,6 +306,7 @@ Options:
     <cmd>        The cmd to execute. 
 
     
+# m
     grape m
     merge a local branch into your current branch
     Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [-v] [--quiet]
@@ -314,6 +325,7 @@ Options:
         <branch>        The branch you want to merge in. 
         
     
+# md
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
@@ -339,13 +351,15 @@ Options:
 
 
     
+# mr
     grape mr (merge remote branch)
     Usage: grape-mr [<branch>] [--am | --as | --at | --ay]
 
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
     
-     Deletes a topic branch both locally and on origin for all projects in this workspace. 
+    
+# db Deletes a topic branch both locally and on origin for all projects in this workspace. 
     Usage: grape-db [-D] [<branch>]
 
     Options:
@@ -358,6 +372,7 @@ Options:
     
     
     
+# cv
     grape cv: create a new custom view
     Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]  
 
@@ -371,6 +386,7 @@ Options:
         <uvargs>            Arguments to pass to grape uv. Note that if you are using the -f
                             option, you should use an absolute path. 
     
+# review
     grape review
     Usage: grape-review [--update | --add]
                         [--title=<title>]
@@ -425,6 +441,7 @@ Options:
 
 
     
+# up
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ] [-v]
@@ -436,7 +453,8 @@ Options:
     -v                      Be more verbose.
 
 
-     grape installHooks
+    
+# installHooks grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
     in this repo.
 
@@ -446,7 +464,8 @@ Options:
     --toInstall=<hook>    the list of hook-types to install
                           [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
-     grape runHook
+    
+# runHook grape runHook
 
     Usage: grape-runHook
            grape-runHook pre-commit
@@ -476,6 +495,7 @@ Options:
 
 
     
+# uv
     grape uv  - updates your sparse-checkout file and optionally performs the sparse checkout. 
     Usage: grape-uv [-f <sparsefile>] [--applyView | --noapplyView]
 
@@ -490,6 +510,7 @@ Options:
                                 will ask you what you want to do. (interactive)
 
     
+# version
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
 
@@ -539,7 +560,8 @@ Options:
                             version in <file>.
 
 
-     
+    
+# w 
     grape w(alkthrough)
     Usage: grape-w [--nogui] [<b1> [<b2>] ] [--] [ <filetree-ish> ]
 
@@ -552,12 +574,14 @@ Options:
         <filetree-ish>  The files to compare.  
 
     
+# q
     grape q
     Quits grape. 
 
     Usage: grape-q 
 
     
+# bugfix
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
@@ -578,6 +602,7 @@ Options:
 
 
     
+# hotfix
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
@@ -598,6 +623,7 @@ Options:
 
 
     
+# feature
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
@@ -618,6 +644,7 @@ Options:
 
 
     
+# rc
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
