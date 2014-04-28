@@ -31,7 +31,7 @@ class Section(object):
 
     def write(self, f):
         if self._text:
-            f.write("# %s" % self._name)
+            f.write("# %s\n" % self._name)
             f.write(self._text)
             f.write("\n")
 
@@ -53,3 +53,4 @@ def main(fname):
 if __name__ == "__main__":
     args = docopt(main.__doc__, argv=sys.argv[1:])
     main(args["<fname>"])
+    sys.exit(0)

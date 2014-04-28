@@ -1,4 +1,5 @@
 # addSubproject
+
         grape addSubproject
         Adds a new project to this workspace (such as a new library or a new test suite)
 
@@ -26,6 +27,7 @@
 
     
 # bundle
+
 grape bundle
 
     
@@ -66,6 +68,7 @@ name = None
 
     
 # unbundle
+
 grape unbundle
 
     
@@ -82,6 +85,7 @@ Options:
 
     
 # status
+
     Usage: grape-status [-v]
 
     Options:
@@ -89,6 +93,7 @@ Options:
 
     
 # checkout
+
     Usage: grape-checkout [-v] [-b] <branch> 
 
     Options:
@@ -101,6 +106,7 @@ Options:
 
     
 # commit
+
     Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
 
     Options:
@@ -114,6 +120,7 @@ Options:
 
     
 # publish
+
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
     where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings and
@@ -258,7 +265,8 @@ Options:
 
 
     
-# clone grape-clone
+# clone
+ grape-clone
     Clones a git repo and configures it for use with git.
 
     Usage: grape-clone <url> <path> [--recursive]
@@ -271,6 +279,7 @@ Options:
         --recursive   Recursively clone submodules.
     
 # config
+
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
@@ -287,6 +296,7 @@ Options:
 
     
 # writeConfig
+
         grape writeConfig: Writes the current configuration to a file, using any configuration set
         by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
 
@@ -295,6 +305,7 @@ Options:
 
     
 # foreach
+
     Executes a command in each project in this workspace (including the outer level project). 
 
     Usage: grape-foreach [--quiet] <cmd> 
@@ -307,6 +318,7 @@ Options:
 
     
 # m
+
     grape m
     merge a local branch into your current branch
     Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [-v] [--quiet]
@@ -326,6 +338,7 @@ Options:
         
     
 # md
+
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
@@ -352,6 +365,7 @@ Options:
 
     
 # mr
+
     grape mr (merge remote branch)
     Usage: grape-mr [<branch>] [--am | --as | --at | --ay]
 
@@ -359,7 +373,8 @@ Options:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
     
     
-# db Deletes a topic branch both locally and on origin for all projects in this workspace. 
+# db
+ Deletes a topic branch both locally and on origin for all projects in this workspace. 
     Usage: grape-db [-D] [<branch>]
 
     Options:
@@ -373,6 +388,7 @@ Options:
     
     
 # cv
+
     grape cv: create a new custom view
     Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]  
 
@@ -387,6 +403,7 @@ Options:
                             option, you should use an absolute path. 
     
 # review
+
     grape review
     Usage: grape-review [--update | --add]
                         [--title=<title>]
@@ -442,6 +459,7 @@ Options:
 
     
 # up
+
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ] [-v]
@@ -454,7 +472,8 @@ Options:
 
 
     
-# installHooks grape installHooks
+# installHooks
+ grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
     in this repo.
 
@@ -465,7 +484,8 @@ Options:
                           [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
     
-# runHook grape runHook
+# runHook
+ grape runHook
 
     Usage: grape-runHook
            grape-runHook pre-commit
@@ -496,6 +516,7 @@ Options:
 
     
 # uv
+
     grape uv  - updates your sparse-checkout file and optionally performs the sparse checkout. 
     Usage: grape-uv [-f <sparsefile>] [--applyView | --noapplyView]
 
@@ -511,6 +532,7 @@ Options:
 
     
 # version
+
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
 
@@ -561,7 +583,8 @@ Options:
 
 
     
-# w 
+# w
+ 
     grape w(alkthrough)
     Usage: grape-w [--nogui] [<b1> [<b2>] ] [--] [ <filetree-ish> ]
 
@@ -575,6 +598,7 @@ Options:
 
     
 # q
+
     grape q
     Quits grape. 
 
@@ -582,6 +606,7 @@ Options:
 
     
 # bugfix
+
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
@@ -603,6 +628,7 @@ Options:
 
     
 # hotfix
+
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
@@ -624,6 +650,7 @@ Options:
 
     
 # feature
+
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
@@ -645,6 +672,7 @@ Options:
 
     
 # rc
+
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
