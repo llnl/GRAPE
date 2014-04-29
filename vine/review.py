@@ -103,7 +103,7 @@ class Review(option.Option):
         # determine pull request reviewers
         reviewers = args["--reviewers"]
         if reviewers:
-            reviewers = reviewers.split(' ')
+            reviewers = reviewers.split()
 
         # default project (outer level project)
         project_name = args["--project"]

@@ -97,10 +97,6 @@ def config(argstr, arg2=None):
 def conflictedFiles(quiet=True):
     fileStr = diff("--name-only --diff-filter=U", quiet=quiet).strip()
     lines = fileStr.split('\n') if fileStr else []
-#    files = []
-#    for l in lines:
-#        print l
-#        files.append(l.split(' ')[1])
     return lines
 
 

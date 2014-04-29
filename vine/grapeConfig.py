@@ -77,7 +77,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
 
     @staticmethod
     def parseConfigPairList(string):
-        pairs = string.split(' ')
+        pairs = string.split()
         pairDict = ConfigPairDict()
         if pairs[0].strip().lower() != "none":
             for pair in pairs:

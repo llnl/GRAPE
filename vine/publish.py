@@ -236,11 +236,11 @@ class Publish(resumable.Resumable):
     def parseArgs(self, args):
         # resolve default topic branch, ensure we are on the topic branch
         topic = args["--topic"]
-        if topic and topic != git.currentBranch():
-            git.checkout(args["--topic"])
         if not topic:
-            args["--topic"] = git.currentBranch()
-        topic = args["--topic"]
+            topic = git.currentBranch()
+        if topic != git.currentBranch():
+            git.checkout(topic)
+        args["--topic"] = topic
 
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
         config = grapeConfig.grapeConfig()
@@ -258,8 +258,8 @@ class Publish(resumable.Resumable):
     def execute(self, args):
         self.parseArgs(args)
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "build", "test",
-                 "testForCleanWorkspace2",  "tickVersion", "updateLog", "prePublish", "publish", "postPublish",
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion", "build", "test",
+                 "testForCleanWorkspace2",  "updateLog", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--printSteps"]:
@@ -440,7 +440,8 @@ class Publish(resumable.Resumable):
         utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
-                cmd = cmd.replace("<version>", self.progress["version"])
+                if "version" in self.progress:
+                    cmd = cmd.replace("<version>", self.progress["version"])
                 ret = ret and utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0
         os.chdir(cwd)
         return ret
@@ -528,7 +529,7 @@ class Publish(resumable.Resumable):
     def tickVersion(self, args):
         ret = True
         if args["--tickVersion"].lower() == "true":
-            versionArgs = ["tick", "--notag", "--nocommit"]
+            versionArgs = ["tick", "--notag"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
@@ -761,7 +762,7 @@ class Publish(resumable.Resumable):
             push_subtrees = push_subtrees and not args["--noPushSubtrees"]
             if push_subtrees:
 
-                subtrees = config.get('subtrees', 'names').strip().split(' ')
+                subtrees = config.get('subtrees', 'names').strip().split()
                 for st in subtrees:
                     st_prefix = config.get('subtree-%s' % st, 'prefix')
                     st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))

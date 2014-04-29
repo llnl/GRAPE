@@ -93,7 +93,7 @@ class TestPublish(testGrape.TestGrape):
     def testCustomBuildStep(self):
         self.setUpBranchToFFMerge()
         config = grapeConfig.grapeConfig()
-        config.set("publish", "buildCmds", "echo hello ; echo world")
+        config.set("publish", "buildCmds", "echo hello ,  echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
         self.assertIn("echo hello", self.output.getvalue())
@@ -103,7 +103,7 @@ class TestPublish(testGrape.TestGrape):
     def testCustomTestStep(self):
         self.setUpBranchToFFMerge()
         config = grapeConfig.grapeConfig()
-        config.set("publish", "testCmds", "echo helloTest ; echo worldTest")
+        config.set("publish", "testCmds", "echo helloTest , echo worldTest")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
         self.assertIn("echo helloTest", self.output.getvalue())
@@ -119,10 +119,10 @@ class TestPublish(testGrape.TestGrape):
     def testStartStepStopStep(self):
         self.setUpBranchToFFMerge()
         config = grapeConfig.grapeConfig()
-        config.set("publish", "buildCmds", "echo hello ; echo world")
-        config.set("publish", "testCmds", "echo helloTest ; echo worldTest")
+        config.set("publish", "buildCmds", "echo hello , echo world")
+        config.set("publish", "testCmds", "echo helloTest , echo worldTest")
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
-        self.assertGrapePublishWorked(["--startAt=test", "--stopAt=tickVersion", "--tickVersion=True",
+        self.assertGrapePublishWorked(["--startAt=test", "--stopAt=tagVersion", "--tickVersion=True",
                                        "-T", "--slot=3", "-T", "--tag", "-T", "--file=VERSION.txt"])
         # check test occurred
         self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())

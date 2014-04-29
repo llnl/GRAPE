@@ -16,11 +16,11 @@ from docopt.docopt import docopt
 def defineView(sparseFile):
     include = {}
     requiredDirs = grapeConfig.grapeConfig().get("view", "required")
-    reqdirs = requiredDirs.split(" ")
+    reqdirs = requiredDirs.split()
     for r in reqdirs:
         include[r] = True
     alldirs = grapeConfig.grapeConfig().get("view", "alldirs")
-    directories = alldirs.split(" ")
+    directories = alldirs.split()
     print directories
     accept = userInput("Do you want everything? [y/n]", "y")
     text = []

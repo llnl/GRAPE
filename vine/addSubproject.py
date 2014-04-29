@@ -71,7 +71,7 @@ class AddSubproject(option.Option):
                 git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch), quiet=quiet)
 
                 #update the configuration file
-                current_cfg_names = config.get("subtrees", "names").split(' ')
+                current_cfg_names = config.get("subtrees", "names").split()
                 if not current_cfg_names or current_cfg_names[0].lower() == "none":
                     config.set("subtrees", "names", name)
                 else:

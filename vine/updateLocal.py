@@ -31,7 +31,7 @@ class UpdateLocal(option.Option):
         git.fetch("--tags", quiet=quiet)
         fetchArgs = "origin "
         currentBranch = git.currentBranch().strip()
-        for pubBranch in args["--public"].split(' '): 
+        for pubBranch in args["--public"].split():
             if currentBranch != pubBranch.strip():
                 fetchArgs += "%s:%s " % (pubBranch, pubBranch)
         try:

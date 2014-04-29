@@ -62,7 +62,6 @@ name = None
         branches = args["--branches"]
         reponame = args["--name"]
         describePattern = args["--describePattern"]
-        branchlist = branches.split(" ")
 
 
         if not args["--norecurse"]: 
@@ -71,7 +70,7 @@ name = None
             git.gitcmd("submodule foreach '%s bundle '" % (grapecmd),"recursive submodule bundle failed") 
         git.fetch()
         git.fetch("--tags")
-        branchlist = branches.split(" ")
+        branchlist = branches.split()
         revlists = ""
         previousLocations = []
         currentLocations = []
@@ -136,7 +135,7 @@ Options:
         bundleName = args["<grapebundlefile>"]
         mappings = args["--branchMappings"]
         
-        mapTokens = mappings.split(' ')
+        mapTokens = mappings.split()
         mappings = ""
         for token in mapTokens:
             sourceDestPair = token.split(":") 
