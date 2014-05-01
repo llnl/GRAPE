@@ -343,9 +343,9 @@ class Publish(resumable.Resumable):
         return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
                                                                               "version number")
 
-    def aquireInProgressLock(self, args):
+    def checkInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping verification of code review...")
+            utility.printMsg("Skipping In Progresss Lock Check..")
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
@@ -357,7 +357,7 @@ class Publish(resumable.Resumable):
                 inProgressRequests.append(request)
         if len(inProgressRequests) == 0:
             utility.printMsg("No other pull requests are IN PROGRESS...")
-            return self.markReviewAsInProgress(args)
+            return True
         elif len(inProgressRequests) == 1:
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if thisRequest == inProgressRequests[0]:
@@ -368,9 +368,18 @@ class Publish(resumable.Resumable):
                 print(inProgressRequests[0])
                 return False
         else:
-            utility.printMsg("WARNING: There are multiple pull requests in progress!")
+            utility.printMsg("ERROR: There are multiple pull requests in progress!")
             for request in inProgressRequests:
                 print request
+            return False
+
+    def aquireInProgressLock(self, args):
+        if args["--noReview"]:
+            utility.printMsg("Skipping In Progresss Lock Check..")
+            return True
+        if self.checkInProgressLock(args):
+            return self.markReviewAsInProgress(args) and self.checkInProgressLock()
+        else:
             return False
 
     def releaseInProgressLock(self, args):
@@ -447,10 +456,10 @@ class Publish(resumable.Resumable):
         return ret
 
     def performCustomBuildStep(self, args):
-        return self.performCustomStep("build", args)
+        return self.performCustomStep("build", args) and self.checkInProgressLock(args)
 
     def performCustomTestStep(self, args):
-        return self.performCustomStep("test", args)
+        return self.performCustomStep("test", args) and self.checkInProgressLock(args)
 
     def performCustomPrePublishSteps(self, args):
         ret = self.performCustomStep("prepublish", args)
@@ -459,7 +468,7 @@ class Publish(resumable.Resumable):
             git.commit(" -m \"GRAPE PUBLISH: committing staged file changes before publish.%s\"")
         except git.GrapeGitError:
             pass
-        return ret
+        return ret and self.checkInProgressLock(args)
 
     def updateLog(self, args):
         if args["--noUpdateLog"]:
@@ -524,7 +533,7 @@ class Publish(resumable.Resumable):
             with open(logFile, 'w') as f:
                 f.writelines(loglines)
             git.add(logFile)
-        return True
+        return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
         ret = True
@@ -535,7 +544,7 @@ class Publish(resumable.Resumable):
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
             self.progress["version"] = grapeMenu.menu().getOption("version").ver
             ret = ret and self.markReviewWithVersionNumber(args)
-        return ret
+        return ret and self.checkInProgressLock(args)
 
     def tagVersion(self, args):
         ret = True
