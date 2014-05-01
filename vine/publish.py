@@ -42,6 +42,7 @@ class Publish(resumable.Resumable):
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--continue]
+                         [--abort]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
@@ -87,6 +88,7 @@ class Publish(resumable.Resumable):
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
+    --abort                 Abort a previously failed call to grape publish.   
     --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
@@ -257,11 +259,26 @@ class Publish(resumable.Resumable):
         if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Stash")
 
+    def abort(self, args):
+        #undo any commits done since we first started
+        branch = git.currentBranch()
+        utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch),self.progress["startingSHA"]))
+        revert = utility.userInput("continue? [y,n]", "y")
+        if revert:
+            git.checkout("-B %s %s", branch , self.progress["startingSHA"])
+        # release IN PROGRESS LOCK
+        utility.printMsg("Releasing In Progress Lock")
+        self.releaseInProgressLock(args)
+
     def execute(self, args):
+        if "startingSHA" not in self.progress:
+            self.progress["startingSHA"] = git.SHA("HEAD")
         self.parseArgs(args)
+        if args["--abort"]: 
+            self.abort(args)
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion", "build", "test",
-                 "testForCleanWorkspace2",  "updateLog", "prePublish", "publish", "postPublish",
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion","updateLog",
+                 "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--quick"]:
@@ -545,7 +562,7 @@ class Publish(resumable.Resumable):
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
             with open(logFile, 'w') as f:
                 f.writelines(loglines)
-            git.add(logFile)
+            git.commit("%s -m \"GRAPE publish: updated log file %s\"" % (logFile, logFile))
         return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
