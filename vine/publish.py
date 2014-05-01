@@ -390,7 +390,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("Skipping In Progresss Lock Check..")
             return True
         if self.checkInProgressLock(args):
-            return self.markReviewAsInProgress(args) and self.checkInProgressLock()
+            return self.markReviewAsInProgress(args) and self.checkInProgressLock(args)
         else:
             return False
 
