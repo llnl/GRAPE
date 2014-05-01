@@ -198,7 +198,7 @@ class PullRequest(StashyNode):
         return ret
 
     def __eq__(self, other):
-        return self.toRef() == other.toRef() and self.fromRef() == other.toRef()
+        return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
 
     def __str__(self):
         return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
