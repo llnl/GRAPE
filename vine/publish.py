@@ -261,6 +261,7 @@ class Publish(resumable.Resumable):
 
     def abort(self, args):
         #undo any commits done since we first started
+        super(Publish, self)._resume(args)
         branch = git.currentBranch()
         utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch),self.progress["startingSHA"]))
         revert = utility.userInput("continue? [y,n]", "y")
