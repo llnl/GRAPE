@@ -271,11 +271,12 @@ class Publish(resumable.Resumable):
         self.releaseInProgressLock(args)
 
     def execute(self, args):
+        if args["--abort"]: 
+            self.abort(args)
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
         self.parseArgs(args)
-        if args["--abort"]: 
-            self.abort(args)
+        
         startPoint = args["--startAt"]
         order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion","updateLog",
                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
