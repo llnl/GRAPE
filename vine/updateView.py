@@ -27,6 +27,16 @@ class UpdateView(option.Option):
     def description(self):
         return "Update the view of your current working tree"
 
+
+    def defineActiveSubmodules(self):
+        allsubmodules = git.getSubmodules()
+        toplevelDirs = {}
+        for sub in allsubmodules:
+            toplevelDirs[git.branchPrefix(sub)] = []
+        for sub in allsubmodules:
+            toplevelDirs[git.branchPrefix(sub)].append(sub)
+        pass
+
     def execute(self,args):
         base = git.baseDir()
         if base == "":
