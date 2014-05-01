@@ -58,6 +58,7 @@ class Publish(resumable.Resumable):
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
             grape-publish --printSteps
+            grape-publish --quick
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -147,6 +148,7 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
+    --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
@@ -262,6 +264,9 @@ class Publish(resumable.Resumable):
                  "testForCleanWorkspace2",  "updateLog", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
+        if args["--quick"]:
+            order = ["ensureReview", "markInProgress", "publish", "markAsDone"]
+
         if args["--printSteps"]:
             print order
             return True
@@ -288,7 +293,8 @@ class Publish(resumable.Resumable):
                  "markInProgress": self.aquireInProgressLock,
                  "markAsDone": self.releaseInProgressLock,
                  "updateLog": self.updateLog,
-                 "notify": self.sendNotificationEmail}
+                 "notify": self.sendNotificationEmail,
+                 "ensureReview": self.ensureReview}
 
         currentStep = startPoint
         for step in order:
@@ -321,13 +327,16 @@ class Publish(resumable.Resumable):
         return
 
     @staticmethod
-    def markReview(args, newArgs, skipStr):
+    def markReview(args, newArgs, skipStr, updateOnly=True):
         if args["--noReview"]:
             utility.printMsg(skipStr)
             return True
         reviewArgs = args["-R"]
-        finalArgs = ["--update", "--source=%s" % args["--topic"], "--target=%s" % args["--public"],
-                     "--user=%s" % args["--user"]]+newArgs
+        finalArgs = []
+        if updateOnly:
+            finalArgs = ["--update"]
+        finalArgs += ["--source=%s" % args["--topic"], "--target=%s" % args["--public"],
+                      "--user=%s" % args["--user"]]+newArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
         return grapeMenu.menu().applyMenuChoice("review", finalArgs)
@@ -342,6 +351,9 @@ class Publish(resumable.Resumable):
         utility.printMsg("Prepending pull request title with %s" % version)
         return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
                                                                               "version number")
+
+    def ensureReview(self, args):
+        return self.markReview(args, [""], "Skipping ensuring review exists.", updateOnly=False)
 
     def checkInProgressLock(self, args):
         if args["--noReview"]:
