@@ -99,7 +99,7 @@ class Review(option.Option):
             if descrFile:
                 with open(descrFile) as f:
                     descr = f.readlines()
-                descr = '\n'.join(descr)
+                descr = ''.join(descr)
         # determine pull request reviewers
         reviewers = args["--reviewers"]
         if reviewers:
@@ -220,6 +220,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     for r in reviewers:
                         revList.append(dict(user=dict(name=r)))
                     reviewers = revList
+                if not reviewers: 
+                    reviewers = requestData["reviewers"]
                 ver = requestData["version"]
 
                 if title is not None and (args["--prepend"] or args["--append"]):
@@ -236,6 +238,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                         descr = currentDescription + "\n" + descr
 
                 if title is not None or descr is not None or reviewers is not None:
+                    if not quiet:
+                        print("upating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
+                        print(requestData)
+                        print(reviewers is None)
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
                 else:
                     request = requestData
