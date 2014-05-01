@@ -427,13 +427,14 @@ class Publish(resumable.Resumable):
             verified = pullRequest.approved()
             if not verified:
                 reviewers = pullRequest.reviewers()
+                print reviewers
                 if not reviewers:
                     utility.printMsg("There are no reviewers for your pull request for %s targeting %s." % (args["--topic"], args["--public"]))
                 else:
                     utility.printMsg("The following reviewers have not approved your request:\n")
                     for reviewer in reviewers:
                         if reviewer[1] is False:
-                            print(reviewer[0])
+                            print(reviewer[0], reviewer[1])
             else:
                 utility.printMsg("All reviewers have approved your request.")
         else:

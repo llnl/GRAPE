@@ -190,9 +190,10 @@ class PullRequest(StashyNode):
         return self.node["toRef"]["displayId"]
 
     def approved(self):
-        ret = False
-        for reviewer in self.node["reviewers"]:
-            approved = reviewer["approved"]
+        reviewers = self.reviewers()
+        ret = True if len(reviewers) else False
+        for reviewer in reviewers:
+            approved = reviewer[1]
             ret = ret and approved
         return ret
 
