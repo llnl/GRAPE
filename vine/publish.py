@@ -513,7 +513,9 @@ class Publish(resumable.Resumable):
             pass
         return self.checkInProgressLock(args)
 
-    def updateLog(self, args):
+    def loadCommitMessage(self, args):
+        if "commitMsg" in self.progress:
+            return
         if args["--noUpdateLog"]:
             self.progress["commitMsg"] = "no details entered"
             return True
@@ -540,6 +542,19 @@ class Publish(resumable.Resumable):
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             commitMsg = pullRequest.description().split('\n')+['']
 
+        # this will be used for the actual merge commit message.
+        escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
+        escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+        if escapedCommitMsg and not args["-m"]:
+            args["-m"] = escapedCommitMsg
+        else:
+            utility.printMsg("WARNING: Commit message is empty. ")
+        self.progress["--commitMessage"] = escapedCommitMsg
+
+    def updateLog(self, args):
+        self.loadCommitMessage(args)
+        commitMsg = self.progress["--commitMessage"].split('\n')
+
         utility.printMsg("The following commit message will be used for any email notification, merge commits, etc.\n "
                          "======================================================================")
         print '\n'.join(commitMsg[:10])
@@ -549,15 +564,6 @@ class Publish(resumable.Resumable):
             utility.printMsg("Aborting. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
             return False
-        self.progress["commitMsg"] = commitMsg
-        if not args["-m"]:
-            # this will be used for the actual merge commit message.
-            escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
-            escapedCommitMsg = escapedCommitMsg.replace("`", "'")
-            if escapedCommitMsg:
-                args["-m"] = escapedCommitMsg
-            else:
-                utility.printMsg("WARNING: Commit message is empty. ")
 
         if args["--noUpdateLog"]:
             return True
@@ -731,6 +737,9 @@ class Publish(resumable.Resumable):
             git.push("-u origin HEAD")
 
     def publishAllProjects(self, args):
+        # make sure we have a commit message
+        self.loadCommitMessage(args)
+
         config = grapeConfig.grapeConfig()
         topic = args["--topic"]
 
