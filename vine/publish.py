@@ -623,7 +623,7 @@ class Publish(resumable.Resumable):
         emailHeader = emailHeader.replace("<public>", args["--public"])
         emailHeader = emailHeader.split("\\n")
         mf.write('\n'.join(emailHeader))
-
+        self.loadCommitMessage(args)
         comments = self.progress["commitMsg"]
         mf.write('\n'.join(comments))
         updatelist = self.progress["modifiedFiles"]

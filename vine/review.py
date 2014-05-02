@@ -130,6 +130,8 @@ class Review(option.Option):
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
 
             for submodule in modifiedSubmodules:
+                if not submodule:
+                    continue
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
