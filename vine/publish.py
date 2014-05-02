@@ -551,19 +551,22 @@ class Publish(resumable.Resumable):
             utility.printMsg("WARNING: Commit message is empty. ")
         self.progress["--commitMessage"] = escapedCommitMsg
 
-    def updateLog(self, args):
-        self.loadCommitMessage(args)
-        commitMsg = self.progress["--commitMessage"].split('\n')
-
         utility.printMsg("The following commit message will be used for any email notification, merge commits, etc.\n "
                          "======================================================================")
         print '\n'.join(commitMsg[:10])
         print "======================================================================"
         proceed = utility.userInput("Is this correct? ['y','n']", 'y')
         if not proceed:
-            utility.printMsg("Aborting. Either edit the message in your pull request, or pass in the name of a file "
+            utility.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
-            return False
+            raise Exception()
+
+
+    def updateLog(self, args):
+        self.loadCommitMessage(args)
+        commitMsg = self.progress["--commitMessage"].split('\n')
+
+
 
         if args["--noUpdateLog"]:
             return True
