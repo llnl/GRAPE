@@ -190,16 +190,16 @@ class Publish(resumable.Resumable):
         config.set('subtrees', 'pushOnPublish', "False")
         # build steps
         config.set('publish', 'buildCmds', '')
-        config.set('publish', 'buildDir', '')
+        config.set('publish', 'buildDir', '.')
         # test steps
         config.set('publish', 'testCmds', '')
-        config.set('publish', 'testDir', '')
+        config.set('publish', 'testDir', '.')
         # prepublish steps
         config.set('publish', 'prepublishCmds', '')
-        config.set('publish', 'prepublishDir', '')
+        config.set('publish', 'prepublishDir', '.')
         # postpublish steps
         config.set('publish', 'postpublishCmds', '')
-        config.set('publish', 'postpublishDir', '')
+        config.set('publish', 'postpublishDir', '.')
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
         # delete when done
@@ -481,9 +481,16 @@ class Publish(resumable.Resumable):
         utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
-                if "version" in self.progress:
-                    cmd = cmd.replace("<version>", self.progress["version"])
-                ret = ret and utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0
+                if "<version>" in cmd: 
+                    if "version" in self.progress:
+                        verStr = self.progress["version"]
+                    else:
+                        self.progress["version"] = utility.userInput("Please enter version string for this commit (needed for command %s)" % cmd)
+                        verStr = self.progress["version"]
+                    cmd = cmd.replace("<version>", verStr)
+
+                    
+                ret = ret and (utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0)
         os.chdir(cwd)
         return ret
 
