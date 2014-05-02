@@ -488,9 +488,11 @@ class Publish(resumable.Resumable):
                         self.progress["version"] = utility.userInput("Please enter version string for this commit (needed for command %s)" % cmd)
                         verStr = self.progress["version"]
                     cmd = cmd.replace("<version>", verStr)
-
-                    
-                ret = ret and (utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0)
+                returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode
+                print(returnCode)
+                ret = ret and (returnCode== 0)
+                if not ret: 
+                    break
         os.chdir(cwd)
         return ret
 
@@ -502,12 +504,14 @@ class Publish(resumable.Resumable):
 
     def performCustomPrePublishSteps(self, args):
         ret = self.performCustomStep("prepublish", args)
+        if not ret:
+            return ret
         self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (args["--public"], args["--topic"])).split('\n')
         try:
             git.commit(" -m \"GRAPE PUBLISH: committing staged file changes before publish.%s\"")
         except git.GrapeGitError:
             pass
-        return ret and self.checkInProgressLock(args)
+        return self.checkInProgressLock(args)
 
     def updateLog(self, args):
         if args["--noUpdateLog"]:
