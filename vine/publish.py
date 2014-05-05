@@ -263,10 +263,10 @@ class Publish(resumable.Resumable):
         #undo any commits done since we first started
         super(Publish, self)._resume(args)
         branch = git.currentBranch()
-        utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch),self.progress["startingSHA"]))
+        utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch), self.progress["startingSHA"]))
         revert = utility.userInput("continue? [y,n]", "y")
         if revert:
-            git.checkout("-B %s %s", branch , self.progress["startingSHA"])
+            git.checkout("-B %s %s" % (branch, self.progress["startingSHA"]))
         # release IN PROGRESS LOCK
         utility.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)

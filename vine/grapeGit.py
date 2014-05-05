@@ -139,11 +139,13 @@ def getModifiedSubmodules(branch1="", branch2="", quiet=True):
     os.chdir(baseDir())
     submodules = getSubmodules(quiet=quiet)
     # if there are no submodules, then return the empty list
-    if len(submodules) == 0:
-        return submodules
+    if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
+        return [] 
     submodulesString = ' '.join(submodules)
     modifiedSubmodules = diff("--name-only %s %s -- %s" % (branch1, branch2,  submodulesString),
                               quiet=quiet).split('\n')
+    if len(modifiedSubmodules) ==1 and not modifiedSubmodules[0]:
+	return []
     os.chdir(cwd)
     return modifiedSubmodules
 
