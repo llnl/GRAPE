@@ -481,12 +481,9 @@ class Publish(resumable.Resumable):
         utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
-                if "<version>" in cmd: 
-                    if "version" in self.progress:
-                        verStr = self.progress["version"]
-                    else:
-                        self.progress["version"] = utility.userInput("Please enter version string for this commit (needed for command %s)" % cmd)
-                        verStr = self.progress["version"]
+                if "<version>" in cmd:
+                    self.loadVersion(args)
+                    verStr = self.progress["version"]
                     cmd = cmd.replace("<version>", verStr)
                 returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode
                 print(returnCode)
@@ -506,12 +503,32 @@ class Publish(resumable.Resumable):
         ret = self.performCustomStep("prepublish", args)
         if not ret:
             return ret
-        self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (args["--public"], args["--topic"])).split('\n')
+        self.loadModifiedFiles(args)
         try:
             git.commit(" -m \"GRAPE PUBLISH: committing staged file changes before publish.%s\"")
         except git.GrapeGitError:
             pass
         return self.checkInProgressLock(args)
+
+    def performCustomPostPublishSteps(self, args):
+        return True
+
+    def loadModifiedFiles(self, args):
+        if "modifiedFiles" in self.progress:
+            return
+        public = args["--public"]
+        topic = args["--topic"]
+        if git.SHA(public) == git.SHA(topic):
+            public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
+                              "modified file list." % topic)
+        self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (public, topic)).split('\n')
+
+    def loadVersion(self, args):
+        if "version" in self.progress:
+            return
+        else:
+            self.progress["version"] = utility.userInput("Please enter version string for this commit")
+        return
 
     def loadCommitMessage(self, args):
         if "commitMsg" in self.progress:
@@ -543,17 +560,17 @@ class Publish(resumable.Resumable):
             commitMsg = pullRequest.description().split('\n')+['']
 
         # this will be used for the actual merge commit message.
-        escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
+        escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
         if escapedCommitMsg and not args["-m"]:
             args["-m"] = escapedCommitMsg
         else:
             utility.printMsg("WARNING: Commit message is empty. ")
-        self.progress["--commitMessage"] = escapedCommitMsg
+        self.progress["commitMsg"] = escapedCommitMsg
 
         utility.printMsg("The following commit message will be used for any email notification, merge commits, etc.\n "
                          "======================================================================")
-        print '\n'.join(commitMsg[:10])
+        print ''.join(commitMsg[:10])
         print "======================================================================"
         proceed = utility.userInput("Is this correct? ['y','n']", 'y')
         if not proceed:
@@ -564,7 +581,8 @@ class Publish(resumable.Resumable):
 
     def updateLog(self, args):
         self.loadCommitMessage(args)
-        commitMsg = self.progress["--commitMessage"].split('\n')
+        self.loadVersion(args)
+        commitMsg = self.progress["commitMsg"].split('\n')
 
 
 
@@ -608,9 +626,13 @@ class Publish(resumable.Resumable):
         return ret
 
     def sendNotificationEmail(self, args):
+
         if not args["--emailNotification"].lower() == "true":
             # skip email send
             return True
+        self.loadCommitMessage(args)
+        self.loadVersion(args)
+        self.loadModifiedFiles(args)
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
         mf = open(mailfile, 'w')
@@ -623,9 +645,8 @@ class Publish(resumable.Resumable):
         emailHeader = emailHeader.replace("<public>", args["--public"])
         emailHeader = emailHeader.split("\\n")
         mf.write('\n'.join(emailHeader))
-        self.loadCommitMessage(args)
         comments = self.progress["commitMsg"]
-        mf.write('\n'.join(comments))
+        mf.write(comments)
         updatelist = self.progress["modifiedFiles"]
         if len(updatelist) > 0:
             mf.write("\n FILES UPDATED:\n")
@@ -671,8 +692,7 @@ class Publish(resumable.Resumable):
 
         return True
 
-    def performCustomPostPublishSteps(self, args):
-        return True
+
 
     @staticmethod
     def deleteTopicBranch(args):
