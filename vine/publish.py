@@ -696,7 +696,7 @@ class Publish(resumable.Resumable):
 
     @staticmethod
     def deleteTopicBranch(args):
-        if args["--deleteTopic"].lower == "true":
+        if args["--deleteTopic"].lower() == "true":
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         return True
 
