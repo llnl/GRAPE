@@ -42,6 +42,7 @@ class Publish(resumable.Resumable):
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--continue]
+                         [--abort]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
@@ -58,6 +59,7 @@ class Publish(resumable.Resumable):
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
             grape-publish --printSteps
+            grape-publish --quick
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -86,6 +88,7 @@ class Publish(resumable.Resumable):
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
+    --abort                 Abort a previously failed call to grape publish.   
     --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
@@ -147,6 +150,7 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
+    --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
@@ -186,16 +190,16 @@ class Publish(resumable.Resumable):
         config.set('subtrees', 'pushOnPublish', "False")
         # build steps
         config.set('publish', 'buildCmds', '')
-        config.set('publish', 'buildDir', '')
+        config.set('publish', 'buildDir', '.')
         # test steps
         config.set('publish', 'testCmds', '')
-        config.set('publish', 'testDir', '')
+        config.set('publish', 'testDir', '.')
         # prepublish steps
         config.set('publish', 'prepublishCmds', '')
-        config.set('publish', 'prepublishDir', '')
+        config.set('publish', 'prepublishDir', '.')
         # postpublish steps
         config.set('publish', 'postpublishCmds', '')
-        config.set('publish', 'postpublishDir', '')
+        config.set('publish', 'postpublishDir', '.')
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
         # delete when done
@@ -255,12 +259,32 @@ class Publish(resumable.Resumable):
         if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Stash")
 
+    def abort(self, args):
+        #undo any commits done since we first started
+        super(Publish, self)._resume(args)
+        branch = git.currentBranch()
+        utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch),self.progress["startingSHA"]))
+        revert = utility.userInput("continue? [y,n]", "y")
+        if revert:
+            git.checkout("-B %s %s", branch , self.progress["startingSHA"])
+        # release IN PROGRESS LOCK
+        utility.printMsg("Releasing In Progress Lock")
+        self.releaseInProgressLock(args)
+
     def execute(self, args):
+        if args["--abort"]: 
+            self.abort(args)
+        if "startingSHA" not in self.progress:
+            self.progress["startingSHA"] = git.SHA("HEAD")
         self.parseArgs(args)
+        
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion", "build", "test",
-                 "testForCleanWorkspace2",  "updateLog", "prePublish", "publish", "postPublish",
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion","updateLog",
+                 "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
+
+        if args["--quick"]:
+            order = ["ensureReview", "markInProgress", "publish", "markAsDone"]
 
         if args["--printSteps"]:
             print order
@@ -288,7 +312,8 @@ class Publish(resumable.Resumable):
                  "markInProgress": self.aquireInProgressLock,
                  "markAsDone": self.releaseInProgressLock,
                  "updateLog": self.updateLog,
-                 "notify": self.sendNotificationEmail}
+                 "notify": self.sendNotificationEmail,
+                 "ensureReview": self.ensureReview}
 
         currentStep = startPoint
         for step in order:
@@ -321,13 +346,16 @@ class Publish(resumable.Resumable):
         return
 
     @staticmethod
-    def markReview(args, newArgs, skipStr):
+    def markReview(args, newArgs, skipStr, updateOnly=True):
         if args["--noReview"]:
             utility.printMsg(skipStr)
             return True
         reviewArgs = args["-R"]
-        finalArgs = ["--update", "--source=%s" % args["--topic"], "--target=%s" % args["--public"],
-                     "--user=%s" % args["--user"]]+newArgs
+        finalArgs = []
+        if updateOnly:
+            finalArgs = ["--update"]
+        finalArgs += ["--source=%s" % args["--topic"], "--target=%s" % args["--public"],
+                      "--user=%s" % args["--user"]]+newArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
         return grapeMenu.menu().applyMenuChoice("review", finalArgs)
@@ -343,9 +371,12 @@ class Publish(resumable.Resumable):
         return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
                                                                               "version number")
 
-    def aquireInProgressLock(self, args):
+    def ensureReview(self, args):
+        return self.markReview(args, [""], "Skipping ensuring review exists.", updateOnly=False)
+
+    def checkInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping verification of code review...")
+            utility.printMsg("Skipping In Progresss Lock Check..")
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
@@ -357,7 +388,7 @@ class Publish(resumable.Resumable):
                 inProgressRequests.append(request)
         if len(inProgressRequests) == 0:
             utility.printMsg("No other pull requests are IN PROGRESS...")
-            return self.markReviewAsInProgress(args)
+            return True
         elif len(inProgressRequests) == 1:
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if thisRequest == inProgressRequests[0]:
@@ -368,9 +399,18 @@ class Publish(resumable.Resumable):
                 print(inProgressRequests[0])
                 return False
         else:
-            utility.printMsg("WARNING: There are multiple pull requests in progress!")
+            utility.printMsg("ERROR: There are multiple pull requests in progress!")
             for request in inProgressRequests:
                 print request
+            return False
+
+    def aquireInProgressLock(self, args):
+        if args["--noReview"]:
+            utility.printMsg("Skipping In Progresss Lock Check..")
+            return True
+        if self.checkInProgressLock(args):
+            return self.markReviewAsInProgress(args) and self.checkInProgressLock(args)
+        else:
             return False
 
     def releaseInProgressLock(self, args):
@@ -406,13 +446,14 @@ class Publish(resumable.Resumable):
             verified = pullRequest.approved()
             if not verified:
                 reviewers = pullRequest.reviewers()
+                print reviewers
                 if not reviewers:
-                    utility.printMsg("There are no reviewers for your pull request.")
+                    utility.printMsg("There are no reviewers for your pull request for %s targeting %s." % (args["--topic"], args["--public"]))
                 else:
                     utility.printMsg("The following reviewers have not approved your request:\n")
                     for reviewer in reviewers:
                         if reviewer[1] is False:
-                            print(reviewer[0])
+                            print(reviewer[0], reviewer[1])
             else:
                 utility.printMsg("All reviewers have approved your request.")
         else:
@@ -440,28 +481,58 @@ class Publish(resumable.Resumable):
         utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
-                if "version" in self.progress:
-                    cmd = cmd.replace("<version>", self.progress["version"])
-                ret = ret and utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode == 0
+                if "<version>" in cmd:
+                    self.loadVersion(args)
+                    verStr = self.progress["version"]
+                    cmd = cmd.replace("<version>", verStr)
+                returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode
+                print(returnCode)
+                ret = ret and (returnCode== 0)
+                if not ret: 
+                    break
         os.chdir(cwd)
         return ret
 
     def performCustomBuildStep(self, args):
-        return self.performCustomStep("build", args)
+        return self.performCustomStep("build", args) and self.checkInProgressLock(args)
 
     def performCustomTestStep(self, args):
-        return self.performCustomStep("test", args)
+        return self.performCustomStep("test", args) and self.checkInProgressLock(args)
 
     def performCustomPrePublishSteps(self, args):
         ret = self.performCustomStep("prepublish", args)
-        self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (args["--public"], args["--topic"])).split('\n')
+        if not ret:
+            return ret
+        self.loadModifiedFiles(args)
         try:
             git.commit(" -m \"GRAPE PUBLISH: committing staged file changes before publish.%s\"")
         except git.GrapeGitError:
             pass
-        return ret
+        return self.checkInProgressLock(args)
 
-    def updateLog(self, args):
+    def performCustomPostPublishSteps(self, args):
+        return True
+
+    def loadModifiedFiles(self, args):
+        if "modifiedFiles" in self.progress:
+            return
+        public = args["--public"]
+        topic = args["--topic"]
+        if git.SHA(public) == git.SHA(topic):
+            public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
+                              "modified file list." % topic)
+        self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (public, topic)).split('\n')
+
+    def loadVersion(self, args):
+        if "version" in self.progress:
+            return
+        else:
+            self.progress["version"] = utility.userInput("Please enter version string for this commit")
+        return
+
+    def loadCommitMessage(self, args):
+        if "commitMsg" in self.progress:
+            return
         if args["--noUpdateLog"]:
             self.progress["commitMsg"] = "no details entered"
             return True
@@ -488,24 +559,32 @@ class Publish(resumable.Resumable):
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             commitMsg = pullRequest.description().split('\n')+['']
 
+        # this will be used for the actual merge commit message.
+        escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
+        escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+        if escapedCommitMsg and not args["-m"]:
+            args["-m"] = escapedCommitMsg
+        else:
+            utility.printMsg("WARNING: Commit message is empty. ")
+        self.progress["commitMsg"] = escapedCommitMsg
+
         utility.printMsg("The following commit message will be used for any email notification, merge commits, etc.\n "
                          "======================================================================")
-        print '\n'.join(commitMsg[:10])
+        print ''.join(commitMsg[:10])
         print "======================================================================"
         proceed = utility.userInput("Is this correct? ['y','n']", 'y')
         if not proceed:
-            utility.printMsg("Aborting. Either edit the message in your pull request, or pass in the name of a file "
+            utility.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
-            return False
-        self.progress["commitMsg"] = commitMsg
-        if not args["-m"]:
-            # this will be used for the actual merge commit message.
-            escapedCommitMsg = '\n'.join(commitMsg).replace("\"", "\\\"")
-            escapedCommitMsg = escapedCommitMsg.replace("`", "'")
-            if escapedCommitMsg:
-                args["-m"] = escapedCommitMsg
-            else:
-                utility.printMsg("WARNING: Commit message is empty. ")
+            raise Exception()
+
+
+    def updateLog(self, args):
+        self.loadCommitMessage(args)
+        self.loadVersion(args)
+        commitMsg = self.progress["commitMsg"].split('\n')
+
+
 
         if args["--noUpdateLog"]:
             return True
@@ -523,8 +602,8 @@ class Publish(resumable.Resumable):
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
             with open(logFile, 'w') as f:
                 f.writelines(loglines)
-            git.add(logFile)
-        return True
+            git.commit("%s -m \"GRAPE publish: updated log file %s\"" % (logFile, logFile))
+        return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
         ret = True
@@ -535,7 +614,7 @@ class Publish(resumable.Resumable):
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
             self.progress["version"] = grapeMenu.menu().getOption("version").ver
             ret = ret and self.markReviewWithVersionNumber(args)
-        return ret
+        return ret and self.checkInProgressLock(args)
 
     def tagVersion(self, args):
         ret = True
@@ -547,9 +626,13 @@ class Publish(resumable.Resumable):
         return ret
 
     def sendNotificationEmail(self, args):
+
         if not args["--emailNotification"].lower() == "true":
             # skip email send
             return True
+        self.loadCommitMessage(args)
+        self.loadVersion(args)
+        self.loadModifiedFiles(args)
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
         mf = open(mailfile, 'w')
@@ -562,9 +645,8 @@ class Publish(resumable.Resumable):
         emailHeader = emailHeader.replace("<public>", args["--public"])
         emailHeader = emailHeader.split("\\n")
         mf.write('\n'.join(emailHeader))
-
         comments = self.progress["commitMsg"]
-        mf.write('\n'.join(comments))
+        mf.write(comments)
         updatelist = self.progress["modifiedFiles"]
         if len(updatelist) > 0:
             mf.write("\n FILES UPDATED:\n")
@@ -610,12 +692,11 @@ class Publish(resumable.Resumable):
 
         return True
 
-    def performCustomPostPublishSteps(self, args):
-        return True
+
 
     @staticmethod
     def deleteTopicBranch(args):
-        if args["--deleteTopic"].lower == "true":
+        if args["--deleteTopic"].lower() == "true":
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         return True
 
@@ -679,6 +760,9 @@ class Publish(resumable.Resumable):
             git.push("-u origin HEAD")
 
     def publishAllProjects(self, args):
+        # make sure we have a commit message
+        self.loadCommitMessage(args)
+
         config = grapeConfig.grapeConfig()
         topic = args["--topic"]
 

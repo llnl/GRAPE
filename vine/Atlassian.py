@@ -190,14 +190,15 @@ class PullRequest(StashyNode):
         return self.node["toRef"]["displayId"]
 
     def approved(self):
-        ret = False
-        for reviewer in self.node["reviewers"]:
-            approved = reviewer["approved"]
+        reviewers = self.reviewers()
+        ret = True if len(reviewers) else False
+        for reviewer in reviewers:
+            approved = reviewer[1]
             ret = ret and approved
         return ret
 
     def __eq__(self, other):
-        return self.node == other.node
+        return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
 
     def __str__(self):
         return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
