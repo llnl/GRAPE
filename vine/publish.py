@@ -263,10 +263,10 @@ class Publish(resumable.Resumable):
         #undo any commits done since we first started
         super(Publish, self)._resume(args)
         branch = git.currentBranch()
-        utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch),self.progress["startingSHA"]))
+        utility.printMsg("Reverting %s from %s to %s" % (branch, git.SHA(branch), self.progress["startingSHA"]))
         revert = utility.userInput("continue? [y,n]", "y")
         if revert:
-            git.checkout("-B %s %s", branch , self.progress["startingSHA"])
+            git.checkout("-B %s %s" % (branch, self.progress["startingSHA"]))
         # release IN PROGRESS LOCK
         utility.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
@@ -279,7 +279,7 @@ class Publish(resumable.Resumable):
         self.parseArgs(args)
         
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion","updateLog",
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion", "updateLog",
                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
@@ -374,7 +374,8 @@ class Publish(resumable.Resumable):
     def ensureReview(self, args):
         return self.markReview(args, [""], "Skipping ensuring review exists.", updateOnly=False)
 
-    def checkInProgressLock(self, args):
+    @staticmethod
+    def checkInProgressLock(args):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progresss Lock Check..")
             return True
@@ -433,8 +434,8 @@ class Publish(resumable.Resumable):
             utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
-
-    def verifyCompletedReview(self, args):
+    @staticmethod
+    def verifyCompletedReview(args):
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             return True
@@ -448,7 +449,8 @@ class Publish(resumable.Resumable):
                 reviewers = pullRequest.reviewers()
                 print reviewers
                 if not reviewers:
-                    utility.printMsg("There are no reviewers for your pull request for %s targeting %s." % (args["--topic"], args["--public"]))
+                    utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
+                                     (args["--topic"], args["--public"]))
                 else:
                     utility.printMsg("The following reviewers have not approved your request:\n")
                     for reviewer in reviewers:
@@ -462,7 +464,8 @@ class Publish(resumable.Resumable):
                                                         args["--repo"], "pull-requests"])))
         return verified
 
-    def testForCleanWorkspace(self, args):
+    @staticmethod
+    def testForCleanWorkspace(args):
         utility.printMsg("Checking to make sure workspace has a clean status.")
         cwd = os.getcwd()
         os.chdir(utility.workspaceDir())
@@ -487,7 +490,7 @@ class Publish(resumable.Resumable):
                     cmd = cmd.replace("<version>", verStr)
                 returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode
                 print(returnCode)
-                ret = ret and (returnCode== 0)
+                ret = ret and (returnCode == 0)
                 if not ret: 
                     break
         os.chdir(cwd)
@@ -511,7 +514,7 @@ class Publish(resumable.Resumable):
         return self.checkInProgressLock(args)
 
     def performCustomPostPublishSteps(self, args):
-        return True
+        return self.performCustomStep("postpublish", args)
 
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
@@ -520,7 +523,7 @@ class Publish(resumable.Resumable):
         topic = args["--topic"]
         if git.SHA(public) == git.SHA(topic):
             public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
-                              "modified file list." % topic)
+                                       "modified file list." % topic)
         self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (public, topic)).split('\n')
 
     def loadVersion(self, args):
@@ -578,13 +581,10 @@ class Publish(resumable.Resumable):
                              "containing your message as an argument to grape publish.")
             raise Exception()
 
-
     def updateLog(self, args):
         self.loadCommitMessage(args)
         self.loadVersion(args)
         commitMsg = self.progress["commitMsg"].split('\n')
-
-
 
         if args["--noUpdateLog"]:
             return True
@@ -616,7 +616,8 @@ class Publish(resumable.Resumable):
             ret = ret and self.markReviewWithVersionNumber(args)
         return ret and self.checkInProgressLock(args)
 
-    def tagVersion(self, args):
+    @staticmethod
+    def tagVersion(args):
         ret = True
         if args["--tickVersion"].lower() == "true":
             versionArgs = ["tick", "--tag", "--notick", "--nocommit"]
@@ -691,8 +692,6 @@ class Publish(resumable.Resumable):
         os.remove(mailfile)
 
         return True
-
-
 
     @staticmethod
     def deleteTopicBranch(args):

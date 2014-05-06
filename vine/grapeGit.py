@@ -1,6 +1,8 @@
 import os
 import subprocess
 import utility
+import ConfigParser
+import grapeConfig
 
 
 class GrapeGitError(Exception):
@@ -16,7 +18,15 @@ class GrapeGitError(Exception):
 
 
 def gitcmd(cmd, errmsg, quiet=False):
-    if os.name == "nt":
+    _cmd = None
+    try:
+        cnfg = grapeConfig.grapeConfig()
+        _cmd = cnfg.get("git", "executable")
+    except ConfigParser.NoOptionError:
+        pass
+    if _cmd:
+        _cmd += " %s" % cmd
+    elif os.name == "nt":
         _cmd = "\"C:\\Program Files (x86)\\Git\\bin\\git.exe\" %s" % cmd
     else:
         _cmd = "git %s" % cmd
@@ -124,7 +134,7 @@ def fetch(repo="", branchArg="", quiet=True):
             raise e
 
 
-def getSubmodules(quiet=True):
+def getActiveSubmodules(quiet=True):
 
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"", quiet)
@@ -134,10 +144,25 @@ def getSubmodules(quiet=True):
     return submoduleList
 
 
+def getAllSubmodules(quiet=True):
+    subconfig = ConfigParser.ConfigParser()
+    try:
+        subconfig.read(os.path.join(baseDir(), ".gitmodules"))
+    except ConfigParser.ParsingError:
+        # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
+        # read section names in succussfully, which is all we need
+        pass
+    sections = subconfig.sections()
+    submodules = []
+    for s in sections:
+        submodules.append(s.split()[1].split('"')[1])
+    return submodules
+
+
 def getModifiedSubmodules(branch1="", branch2="", quiet=True):
     cwd = os.getcwd()
     os.chdir(baseDir())
-    submodules = getSubmodules(quiet=quiet)
+    submodules = getActiveSubmodules(quiet=quiet)
     # if there are no submodules, then return the empty list
     if len(submodules) == 0:
         return submodules
@@ -162,6 +187,11 @@ def gitDir():
                 return utility.makePathPortable(relUnixPath)
             else:
                 raise GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
+
+
+def hasBranch(b):
+    branches = branch().split()
+    return b in branches
 
 
 def isWorkingDirectoryClean():
@@ -261,6 +291,7 @@ def shortSHA(branchName="HEAD", quiet=True):
 def SHA(branchName="HEAD", quiet=True):
     return gitcmd("rev-parse %s" % branchName, "rev-parse of HEAD failed!", quiet=quiet)
 
+
 def showRemote():
 
     try:
@@ -288,3 +319,7 @@ def subtree(argstr, quiet=False):
 
 def tag(argstr):
     return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)
+
+
+def version():
+    return gitcmd("version", "")
