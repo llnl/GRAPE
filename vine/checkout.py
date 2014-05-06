@@ -32,7 +32,7 @@ class Checkout(option.Option):
         checkoutargs = checkoutargs + " %s"% args["<branch>"]
         baseDir =  utility.workspaceDir()
         os.chdir(baseDir)
-        submodules = git.getSubmodules()
+        submodules = git.getActiveSubmodules()
         
         print("GRAPE: Performing checkout in outer level project")
         git.checkout(checkoutargs,quiet=quiet)

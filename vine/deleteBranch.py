@@ -54,7 +54,7 @@ class DeleteBranch(option.Option):
         cwd = utility.workspaceDir()
         os.chdir(cwd)
         # delete the branch in submodules first
-        submodules = git.getSubmodules()
+        submodules = git.getActiveSubmodules()
         if submodules:
             print("GRAPE: deleting branches from submodules")
         for sub in submodules:

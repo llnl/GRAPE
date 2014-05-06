@@ -143,7 +143,7 @@ class Config(option.Option):
         cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)
-        for sub in git.getSubmodules(False): 
+        for sub in git.getActiveSubmodules(False):
             os.chdir(os.path.join(cwd,sub))
             grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)

@@ -41,6 +41,7 @@ def menu():
     global __menuInstance
     if __menuInstance is None:
         __menuInstance = _Menu()
+        grapeConfig.readDefaults()
         grapeConfig.read()
         __menuInstance.postInit()
     return __menuInstance
@@ -143,7 +144,7 @@ class _Menu(object):
 
     # configures a ConfigParser object with all default values and sections needed by our Option objects
     def setDefaultConfig(self, cfg):
-        cfg.add_section("repo")
+        cfg.ensureSection("repo")
         cfg.set("repo", "name", "repo_name_not.yet.configured")
         cfg.set("repo", "url", "https://not.yet.configured/scm/project/unknown.git")
         cfg.set("repo", "httpsbase", "https://not.yet.configured")

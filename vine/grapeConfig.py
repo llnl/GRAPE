@@ -14,6 +14,7 @@ def grapeConfig():
     global __configInstance
     if __configInstance is None:
         __configInstance = GrapeConfigParser()
+        readGlobal()
     return __configInstance
 
 def resetGrapeConfig(newInstance=None):
@@ -23,11 +24,20 @@ def resetGrapeConfig(newInstance=None):
     global __configInstance
     __configInstance = newInstance
 
+def readDefaults():
+    grapeMenu.menu().setDefaultConfig(grapeConfig())
+
+def readGlobal():
+    if os.name == "nt":
+        globalconfigfile = os.path.join(os.environ["USERPROFILE"], ".grapeconfig")
+    else:
+        globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
+    grapeConfig().read([globalconfigfile])
+
 
 def read(additionalFileNames=[]):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
 
-    grapeMenu.menu().setDefaultConfig(grapeConfig())
     defaultFiles = []
     if os.name == "nt":
         defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
@@ -64,6 +74,9 @@ class ConfigPairDict(dict):
 class GrapeConfigParser(ConfigParser.ConfigParser):
     def getMapping(self, section, cfgOption, raw=False, cfgVars=None):
         return self.parseConfigPairList(self.get(section, cfgOption, raw=raw, vars=cfgVars))
+
+    def getList(self, section, cfgOption, raw=False, cfgVars=None):
+        return self.get(section, cfgOption, raw=raw, vars=cfgVars).split()
 
     def getPublicBranchFor(self, branch):
         publicMapping = self.getMapping("flow", "topicPrefixMappings")

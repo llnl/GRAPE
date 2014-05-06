@@ -47,10 +47,10 @@ class NewBranchOption(option.Option):
         if proceed:
             git.checkout("-b %s %s " % (fullBranch, branchPoint))
             git.push("-u origin %s" % fullBranch)
-            return branchPoint, prefix, user, branch
+
         else:
             print("Branch not created")
-            return None
+        return branchPoint, prefix, user, branch
 
     def execute(self, args):
         grapeMenu.menu().applyMenuChoice('up', ['up'])
@@ -66,7 +66,8 @@ class NewBranchOption(option.Option):
         cwd = utility.workspaceDir()
         os.chdir(cwd)
         subArgs = self.createBranch(start, self._key, args['--user'], args['<descr>'], args['--noverify'])
-        submodules = git.getSubmodules()
+        branchName = "%s/%s/%s" % (subArgs[1], subArgs[2], subArgs[3])
+        submodules = git.getActiveSubmodules()
         recurse = recurse and submodules
         if subArgs and recurse:
             proceed = args["--noverify"]
@@ -79,7 +80,8 @@ class NewBranchOption(option.Option):
                                  "does not have a default value. Skipping branch creation for submodules.")
                 proceed = False
 
-            proceed = proceed or utility.userInput("About to create the branch off of " + submodulePublic +
+            proceed = proceed or utility.userInput("About to create the branch " + branchName + " off of "
+                                                   + submodulePublic +
                                                    " for all submodules.\nProceed? [y/n]", 'y')
             if proceed:
                 for sub in submodules: 
