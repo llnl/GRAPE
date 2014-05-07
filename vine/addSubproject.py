@@ -78,10 +78,11 @@ class AddSubproject(option.Option):
                     current_cfg_names.append(name)
                     config.set("subtrees", "names", ' '.join(current_cfg_names))
 
-                config.add_section("subtree-%s" % name)
-                config.set(name, "prefix", prefix)
-                config.set(name, "remote", url)
-                config.set(name, "topicPrefixMappings", "?:%s" % branch)
+                section = "subtree-%s" % name
+                config.add_section(section)
+                config.set(section, "prefix", prefix)
+                config.set(section, "remote", url)
+                config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
                 print("Successfully added subtree branch. \n"
@@ -89,7 +90,8 @@ class AddSubproject(option.Option):
         elif usesubmodule:
             if not proceed:
                 proceed = utility.userInput("about to add %s as a submodule at path %s,\n"
-                                            "cloned from %s at %s.\nproceed? [y/n]", "y")
+                                            "cloned from %s at branch %s.\nproceed? [y/n]" %
+                                            (name, prefix, url, branch), "y")
             if proceed:
                 git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix), quiet=quiet)
                 print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
