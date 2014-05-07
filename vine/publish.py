@@ -284,7 +284,7 @@ class Publish(resumable.Resumable):
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--quick"]:
-            order = ["ensureReview", "markInProgress", "publish", "markAsDone"]
+            order = ["ensureReview", "markInProgress", "publish", "markAsDone", "done"]
 
         if args["--printSteps"]:
             print order
@@ -568,8 +568,12 @@ class Publish(resumable.Resumable):
         # this will be used for the actual merge commit message.
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+        print args["-m"]
         if escapedCommitMsg and not args["-m"]:
             args["-m"] = escapedCommitMsg
+        elif args["-m"]:
+            escapedCommitMsg = args["-m"]
+            commitMsg = [args["-m"]]
         else:
             utility.printMsg("WARNING: Commit message is empty. ")
         self.progress["commitMsg"] = escapedCommitMsg
@@ -831,6 +835,36 @@ class Publish(resumable.Resumable):
             args["--cascade"] = outerCascadeOption
             os.chdir(cwd)
 
+        # push subtrees to their respective remote branches
+        push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
+        push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+        if push_subtrees:
+
+            allsubtrees = config.get('subtrees', 'names').strip().split()
+            modifiedStPrefices  = {}
+            modifiedSubtrees = []
+            for st in allsubtrees:
+                prefix = config.get('subtree-%s' % st, 'prefix')
+                if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet): 
+                    modifiedSubtrees.append(st)
+            if modifiedSubtrees: 
+                utility.printMsg("About to publish the following subtrees to the following destinations: ")
+                st_prefices = {}
+                st_remotes= {}
+                st_branches = {}
+                for st in modifiedSubtrees:
+                    st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
+                    st_remotes[st] =  subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
+                    st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
+                    print("subtree: %s\trepo: %s\tbranch:%s" % (st_prefices[st], st_remotes[st], st_branches[st]))
+                proceed = args["--noverify"] or utility.userInput("Proceed? [y/n]", 'y')
+                if proceed: 
+                    for st in modifiedSubtrees:
+                        print("pushing subtree %s to %s (branch %s)..." % (st_prefices[st],
+                                                                           st_remotes[st], st_branches[st]))
+                        git.subtree("push --prefix=%s %s %s" % (st_prefices[st], st_remotes[st], st_branches[st]), quiet=quiet)
+
+
         # update policy from config if not set on CL
         if not policy:
             policy = config.getMapping('flow', 'publishPolicy')[public]
@@ -843,19 +877,6 @@ class Publish(resumable.Resumable):
                                                                                            "Proceed? [y/n]", 'y'))
         if proceed:
             self.publish(policy, public, topic, args)
-            # push subtrees to their respective remote branches
-            push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
-            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
-            if push_subtrees:
-
-                subtrees = config.get('subtrees', 'names').strip().split()
-                for st in subtrees:
-                    st_prefix = config.get('subtree-%s' % st, 'prefix')
-                    st_remote = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
-                    st_branchMappings = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')
-                    st_branch = st_branchMappings[topic]
-                    print("pushing subtree %s to %s (branch %s)..." % (st_prefix, st_remote, st_branch))
-                    git.subtree("push --prefix=%s %s %s" % (st_prefix, st_remote, st_branch), quiet=quiet)
             return True
         else:
             return False
