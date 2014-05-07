@@ -99,11 +99,11 @@ def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
 
-def config(argstr, arg2=None):
+def config(argstr, arg2=None, quiet=False):
     if arg2 is not None:
-        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed")
+        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed", quiet=quiet)
     else:
-        return gitcmd('config %s ' % argstr, "Config failed")
+        return gitcmd('config %s ' % argstr, "Config failed", quiet=quiet)
 
 
 def conflictedFiles(quiet=True):

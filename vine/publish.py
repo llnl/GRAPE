@@ -571,7 +571,7 @@ class Publish(resumable.Resumable):
         print args["-m"]
         if escapedCommitMsg and not args["-m"]:
             args["-m"] = escapedCommitMsg
-        elif args["-m"]:
+        elif not escapedCommitMsg and args["-m"]:
             escapedCommitMsg = args["-m"]
             commitMsg = [args["-m"]]
         else:
@@ -841,7 +841,6 @@ class Publish(resumable.Resumable):
         if push_subtrees:
 
             allsubtrees = config.get('subtrees', 'names').strip().split()
-            modifiedStPrefices  = {}
             modifiedSubtrees = []
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
@@ -850,11 +849,11 @@ class Publish(resumable.Resumable):
             if modifiedSubtrees: 
                 utility.printMsg("About to publish the following subtrees to the following destinations: ")
                 st_prefices = {}
-                st_remotes= {}
+                st_remotes = {}
                 st_branches = {}
                 for st in modifiedSubtrees:
                     st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
-                    st_remotes[st] =  subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
+                    st_remotes[st] = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
                     st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
                     print("subtree: %s\trepo: %s\tbranch:%s" % (st_prefices[st], st_remotes[st], st_branches[st]))
                 proceed = args["--noverify"] or utility.userInput("Proceed? [y/n]", 'y')
@@ -862,8 +861,8 @@ class Publish(resumable.Resumable):
                     for st in modifiedSubtrees:
                         print("pushing subtree %s to %s (branch %s)..." % (st_prefices[st],
                                                                            st_remotes[st], st_branches[st]))
-                        git.subtree("push --prefix=%s %s %s" % (st_prefices[st], st_remotes[st], st_branches[st]), quiet=quiet)
-
+                        git.subtree("push --prefix=%s %s %s" % (st_prefices[st], st_remotes[st], st_branches[st]),
+                                    quiet=quiet)
 
         # update policy from config if not set on CL
         if not policy:

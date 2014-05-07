@@ -16,7 +16,7 @@ def parseSubtreeRemote(subtreeRemote):
     #     print("Invalid subtree path - expected .git extension for relative URL, saw %s" % extension)
     #     return None
     # the subtreeRemote is a relative path
-    originURL = git.config("--get remote.origin.url").strip().split('/')
+    originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
     
     hit = False
     n = 1
