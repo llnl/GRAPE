@@ -68,21 +68,11 @@ class Config(option.Option):
         print("setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
-        #enable sparse checkouts, something GRAPE needs for custom views
-        print("Enabling sparse checkouts...")
-        git.config("core.sparseCheckout","true")
-
-        # perform a sparse checkout if asked of us
+        # perform an update of the active submodules if asked. 
         ask = not args["--nocv"]
-        updateView = ask and (args["--cv"] or utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n]","n") )
+        updateView = ask and (args["--cv"] or utility.userInput("do you want any submodules? (you can change this later using grape uv) [y/n]","n") )
         if updateView:
-            sparseFile = os.path.join(dotGit,"info","sparse-checkout")
-            with open(sparseFile,'w') as f:
-                utility.defineView(f)
-            checkout = utility.userInput("check out updated view? [y/n]","y")
-
-            if checkout:
-                git.gitcmd("read-tree -mu HEAD","Sparse checkout failed")
+            grapeMenu.menu().applyMenuChoice("uv")
 
         # configure git to use p4merge for conflict resolution
         # and diffing
