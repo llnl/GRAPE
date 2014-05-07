@@ -24,6 +24,8 @@ def gitcmd(cmd, errmsg, quiet=False):
         _cmd = cnfg.get("git", "executable")
     except ConfigParser.NoOptionError:
         pass
+    except ConfigParser.NoSectionError:
+        pass
     if _cmd:
         _cmd += " %s" % cmd
     elif os.name == "nt":
