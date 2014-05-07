@@ -39,7 +39,7 @@ class NewBranchOption(option.Option):
 
     @staticmethod
     def createBranch(branchPoint, prefix, user, descr, noverify):
-        branch = descr if descr else utility.userInput("Enter new branch name")
+        branch = descr if descr else utility.userInput("Enter one word description for branch:")
         user = user if user else utility.getUserName()
         fullBranch = prefix+"/"+user+"/"+branch
         proceed = noverify or utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint +
