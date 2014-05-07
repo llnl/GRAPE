@@ -59,7 +59,7 @@ class Publish(resumable.Resumable):
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
             grape-publish --printSteps
-            grape-publish --quick
+            grape-publish --quick -m <msg>
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -355,7 +355,10 @@ class Publish(resumable.Resumable):
         if updateOnly:
             finalArgs = ["--update"]
         finalArgs += ["--source=%s" % args["--topic"], "--target=%s" % args["--public"],
-                      "--user=%s" % args["--user"]]+newArgs
+                      "--user=%s" % args["--user"]]
+        if len(newArgs) > 0:
+            finalArgs += newArgs
+        print finalArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
         return grapeMenu.menu().applyMenuChoice("review", finalArgs)
@@ -372,7 +375,7 @@ class Publish(resumable.Resumable):
                                                                               "version number")
 
     def ensureReview(self, args):
-        return self.markReview(args, [""], "Skipping ensuring review exists.", updateOnly=False)
+        return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
     @staticmethod
     def checkInProgressLock(args):
