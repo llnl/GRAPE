@@ -114,7 +114,7 @@ class UpdateView(option.Option):
                     if method.lower() == 'k':
                         valid = True
                         git.checkout(branch)
-                    if method.lower() == 'f':
+                    elif method.lower() == 'f':
                         valid = True
                         git.checkout("-B %s" % branch)
                     else:
