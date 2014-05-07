@@ -98,14 +98,8 @@ class AddSubproject(option.Option):
         return True
 
     def setDefaultConfig(self, config):
-        try:
-            config.add_section("subtrees")
-        except ConfigParser.DuplicateSectionError:
-            pass
-        try:
-            config.add_section("workspace")
-        except ConfigParser.DuplicateSectionError:
-            pass
+        config.ensureSection("subtrees")
+        config.ensureSection("workspace")
 
         config.set("subtrees", "mergePolicy", "squash")
         config.set("workspace", "subprojectType", "subtree")

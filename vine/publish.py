@@ -841,7 +841,7 @@ class Publish(resumable.Resumable):
         if proceed:
             self.publish(policy, public, topic, args)
             # push subtrees to their respective remote branches
-            push_subtrees = config.get("subtrees", 'pushOnPublish').lower() == "true" or args["--pushSubtrees"]
+            push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
             push_subtrees = push_subtrees and not args["--noPushSubtrees"]
             if push_subtrees:
 
