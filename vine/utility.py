@@ -13,47 +13,6 @@ if toplevel not in sys.path:
 from docopt.docopt import docopt
 
 
-def defineView(sparseFile):
-    include = {}
-    requiredDirs = grapeConfig.grapeConfig().get("view", "required")
-    reqdirs = requiredDirs.split()
-    for r in reqdirs:
-        include[r] = True
-    alldirs = grapeConfig.grapeConfig().get("view", "alldirs")
-    directories = alldirs.split()
-    print directories
-    accept = userInput("Do you want everything? [y/n]", "y")
-    text = []
-    while not accept:
-        accept = userInput("Do you only want the required view? [y/n]", "y")
-        for d in directories:
-            if d in reqdirs:
-                continue
-            use = False if accept else userInput("Do you want %s? [y/n]" % d, "n")
-            if use:
-                include[d] = True
-            else:
-                include[d] = False
-
-        # build sample text file for display
-        text = []
-        for key in include:
-            if not include[key]:
-                text.append("!%s/*\n" % key)
-        text.append("/*")
-
-        # display sample text
-        print("sample sparse checkout file:")
-        for l in text:
-            print(l)
-
-        accept = userInput("does this look OK? [y/n]", "y")
-
-    #end while
-    #write accepted sparse-checkout file
-    sparseFile.writelines(text)
-
-
 def ensure_dir(f):
     d = os.path.dirname(f)
     print("d:"+d)

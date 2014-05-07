@@ -128,8 +128,5 @@ class UpdateView(option.Option):
         return
 
     def setDefaultConfig(self, config):
-        config.ensureSection("view")
-        config.set("view", "alldirs", "src")
-        config.set("view", "required", "src")
         config.ensureSection("workspace")
         config.set("workspace", "submodulepublicmappings", "?:master")
