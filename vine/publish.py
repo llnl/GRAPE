@@ -279,12 +279,12 @@ class Publish(resumable.Resumable):
         self.parseArgs(args)
         
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "markInProgress", "tickVersion", "updateLog",
+        order = ["verifyCompletedReview", "testForCleanWorkspace1", "md", "markInProgress", "tickVersion", "updateLog",
                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--quick"]:
-            order = ["ensureReview", "markInProgress", "publish", "markAsDone", "done"]
+            order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "done"]
 
         if args["--printSteps"]:
             print order
@@ -313,7 +313,8 @@ class Publish(resumable.Resumable):
                  "markAsDone": self.releaseInProgressLock,
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
-                 "ensureReview": self.ensureReview}
+                 "ensureReview": self.ensureReview,
+                 "md": self.mergePublic}
 
         currentStep = startPoint
         for step in order:
@@ -344,6 +345,10 @@ class Publish(resumable.Resumable):
         args["--startAt"] = step
         self.dumpProgress(args)
         return
+
+    def mergePublic(self, args):
+        menu = grapeMenu.menu()
+        return menu.applyMenuChoice("md", ["--am", "--public=%s" % args["--public"]])
 
     @staticmethod
     def markReview(args, newArgs, skipStr, updateOnly=True):
