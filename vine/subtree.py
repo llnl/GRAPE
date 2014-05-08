@@ -3,7 +3,6 @@ import utility
 import grapeGit as git
 
 
-
 def parseSubtreeRemote(subtreeRemote): 
     path = subtreeRemote.strip().split('/')
     if "ssh:" == path[0] or "https:" == path[0]:  
@@ -18,12 +17,11 @@ def parseSubtreeRemote(subtreeRemote):
     # the subtreeRemote is a relative path
     originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
     
-    hit = False
     n = 1
     #print path, originURL
     while path[-n] != "..": 
         originURL[-n] = path[-n]
-        n = n+1
+        n += 1
 
     return '/'.join(originURL)
 

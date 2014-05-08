@@ -363,7 +363,6 @@ class Publish(resumable.Resumable):
                       "--user=%s" % args["--user"]]
         if len(newArgs) > 0:
             finalArgs += newArgs
-        print finalArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
         return grapeMenu.menu().applyMenuChoice("review", finalArgs)

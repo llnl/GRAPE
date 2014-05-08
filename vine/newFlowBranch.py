@@ -47,9 +47,9 @@ class NewBranchOption(option.Option):
         if proceed:
             git.checkout("-b %s %s " % (fullBranch, branchPoint))
             git.push("-u origin %s" % fullBranch)
-
         else:
             print("Branch not created")
+
         return branchPoint, prefix, user, branch
 
     def execute(self, args):
