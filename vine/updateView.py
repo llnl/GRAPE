@@ -64,7 +64,10 @@ class UpdateView(option.Option):
 
         included = self.defineActiveSubmodules()
         initStr = ""
-        deinitStr = ""
+        if args["-f"]:
+            deinitStr = "-f"
+        else:
+            deinitStr = ""
         for submodule in included:
             if included[submodule]:
                 initStr += ' %s' % submodule
