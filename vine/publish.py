@@ -635,6 +635,7 @@ class Publish(resumable.Resumable):
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
+            git.push("--tags origin")
         return ret
 
     def sendNotificationEmail(self, args):
