@@ -173,19 +173,19 @@ class RunHook(option.Option):
 
     def postRebase(self, args):
         updateSubmodule = args["--rebaseSubmodule"]
-        if updateSubmodule.lower() == 'true':
+        if updateSubmodule and updateSubmodule.lower() == 'true':
             git.submodule("sync")
             git.submodule("update --rebase")
 
     def postMerge(self, args):
         updateSubmodule = args["--mergeSubmodule"]
-        if updateSubmodule.lower() == 'true':
+        if updateSubmodule and updateSubmodule.lower() == 'true':
             git.submodule("sync")
             git.submodule("update --merge")
 
     def postCheckout(self, args):
         updateSubmodule = args["--checkoutSubmodule"]
-        if updateSubmodule.lower() == 'true':
+        if updateSubmodule and updateSubmodule.lower() == 'true':
             git.submodule("sync")
             git.submodule("update")
 
