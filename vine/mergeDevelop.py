@@ -155,14 +155,8 @@ class MergeDevelop(resumable.Resumable):
             return False
         else:
             #git.commit("-m \"Merged %s into %s\"" % (branch, git.currentBranch()))
-            try:
-                grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0'])
-            except SystemExit as e:
-                if e.code == 0:
-                    pass
-                else:
-                    raise e
-        return True
+            return grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+
 
     def mergeSubmodule(self, args, subproject, subPublic, submodules, cwd):
         # if we did this merge in a previous run, don't do it again
