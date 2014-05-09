@@ -130,12 +130,14 @@ class Version(option.Option):
 
     @staticmethod
     def stageVersionFile(fname):
+	print ( "STAGING %s" % fname)
         git.add(fname)
         return True
 
     @staticmethod
     def stageGrapeconfigFile(fname):
         git.add(fname)
+
         return True
 
     @staticmethod
