@@ -393,7 +393,9 @@ class Publish(resumable.Resumable):
         for request in pullRequests:
             inProgress = "IN PROGRESS" in request.title()
             if inProgress:
-                inProgressRequests.append(request)
+                doesConflict = request.toRef() == args["--public"]
+                if doesConflict:
+                    inProgressRequests.append(request)
         if len(inProgressRequests) == 0:
             utility.printMsg("No other pull requests are IN PROGRESS...")
             return True
