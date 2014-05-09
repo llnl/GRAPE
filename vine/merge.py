@@ -74,7 +74,8 @@ def merge(branch, strategy, args):
                       "with grape m --continue. ")
             return False
         else:
-            print("Merge failed for unknown reason. Quitting.")
+            print error.gitOutput
+            print("Merge command %s failed. Quitting." % error.gitCommand)
             choice = False
         return choice
 
