@@ -284,7 +284,7 @@ class Publish(resumable.Resumable):
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--quick"]:
-            order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "done"]
+            order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
 
         if args["--printSteps"]:
             print order
