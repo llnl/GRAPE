@@ -84,7 +84,7 @@ def mergeIntoCurrent(branchName, args):
     quiet = not args["-v"]
     updateArgs = ['up']
     if not quiet:
-        updateArgs += '-v'
+        updateArgs.append('-v')
     grapeMenu.menu().applyMenuChoice('up', updateArgs)
     choice = False
     strategy = None

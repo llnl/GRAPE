@@ -40,6 +40,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertFalse(git.branchUpToDateWith(toBranch, fromBranch))
 
     def assertGrapePublishWorked(self, args=None):
+        self.queueUserInput(["1.1.1"])
         config = grapeConfig.grapeConfig()
         config.ensureSection("project")
         config.set("project", "name", "proj1")

@@ -59,7 +59,7 @@ class Publish(resumable.Resumable):
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
             grape-publish --printSteps
-            grape-publish --quick -m <msg>
+            grape-publish --quick -m <msg> [-v] [--user=<StashUserName>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -284,7 +284,7 @@ class Publish(resumable.Resumable):
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--quick"]:
-            order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "done"]
+            order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
 
         if args["--printSteps"]:
             print order
@@ -393,7 +393,9 @@ class Publish(resumable.Resumable):
         for request in pullRequests:
             inProgress = "IN PROGRESS" in request.title()
             if inProgress:
-                inProgressRequests.append(request)
+                doesConflict = request.toRef() == args["--public"]
+                if doesConflict:
+                    inProgressRequests.append(request)
         if len(inProgressRequests) == 0:
             utility.printMsg("No other pull requests are IN PROGRESS...")
             return True
@@ -862,12 +864,26 @@ class Publish(resumable.Resumable):
                     st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
                     print("subtree: %s\trepo: %s\tbranch:%s" % (st_prefices[st], st_remotes[st], st_branches[st]))
                 proceed = args["--noverify"] or utility.userInput("Proceed? [y/n]", 'y')
-                if proceed: 
+                if proceed:
+                    squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        print("pushing subtree %s to %s (branch %s)..." % (st_prefices[st],
-                                                                           st_remotes[st], st_branches[st]))
-                        git.subtree("push --prefix=%s %s %s" % (st_prefices[st], st_remotes[st], st_branches[st]),
-                                    quiet=quiet)
+                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, st_prefices[st],
+                                                                              st_remotes[st], st_branches[st]))
+
+                        try:
+                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
+                                                                                 st_remotes[st],  st_branches[st],
+                                                                                 args["-m"]), quiet=quiet)
+                        except git.GrapeGitError:
+                            # the push can fail if there has never been a subtree add / pull in this repo.
+                            utility.printMsg("first attempt fail. Attempting a subtree pull then push...")
+                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
+                                                                                 st_remotes[st], st_branches[st],
+                                                                                 args["-m"]), quiet=quiet)
+                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
+                                                                                 st_remotes[st], st_branches[st],
+                                                                                 args["-m"]), quiet=quiet)
+                            utility.printMsg("Succeeded!")
 
         # update policy from config if not set on CL
         if not policy:

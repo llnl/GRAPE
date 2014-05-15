@@ -132,6 +132,10 @@ class Review(option.Option):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
+                # push branch
+                os.chdir(submodule)
+                git.push("origin %s" % branch)
+                os.chdir(cwd)
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
