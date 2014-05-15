@@ -59,7 +59,7 @@ class Publish(resumable.Resumable):
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [-v] [--user]
+            grape-publish --quick -m <msg> [-v] [--user=<StashUserName>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
