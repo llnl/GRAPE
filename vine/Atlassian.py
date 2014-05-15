@@ -45,7 +45,7 @@ class Atlassian:
                 project = self.stash.projects.list()
                 success = True
             except stashy.errors.AuthenticationException:
-                if (numAttempts == 0):
+                if numAttempts == 0:
                     print("session expired...")
 
                 else:
@@ -64,7 +64,7 @@ class Atlassian:
     def project(self, name):
 
         for node in self.stash.projects:
-            if node["key"] == name:
+            if node["key"].lower() == name.lower():
                 r = self.stash.projects[name]
                 return Project(r, node)
             
@@ -116,7 +116,7 @@ class Project(StashyNode):
 
         repos = self.project.repos.list()
         for node in repos:
-            if node["name"] == name:
+            if node["name"].lower() == name.lower():
                 r = self.project.repos[name]
                 return Repo(r, node)
             
