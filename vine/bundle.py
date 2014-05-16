@@ -10,7 +10,16 @@ import grapeConfig
 class Bundle(option.Option):
 
     """
-    grape bundle
+    grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
+    which can then be sent over a sneakernet to a mirror of your grape project.
+    The history range that is extracted is defined in the following way:
+        start point:
+            for each branch in <list> as defined by --branches, start at the commit tagged by
+            <tagprefix>/<branch>.
+        end point:
+            the tip of each branch in <list> as defined by --branches.
+    By default, grape bundle bundles up all active submodules in your repository, according to their
+    respective .grapeconfig files.
 
 
     Usage:
