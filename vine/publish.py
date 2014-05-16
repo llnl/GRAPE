@@ -876,7 +876,7 @@ class Publish(resumable.Resumable):
                                                                                  args["-m"]), quiet=quiet)
                         except git.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
-                            utility.printMsg("first attempt fail. Attempting a subtree pull then push...")
+                            utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
                             git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
                                                                                  st_remotes[st], st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
