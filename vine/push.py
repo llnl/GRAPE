@@ -15,9 +15,6 @@ class Push(option.Option):
     --norecurse     Don't perform pushes in submodules.  
     -v              Show more git output. 
 
-    Arguments:
-    <branch>    The name of the branch to push. 
-
     """
     def __init__(self):
         super(Push, self).__init__()
