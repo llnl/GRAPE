@@ -236,10 +236,6 @@ class MergeDevelop(resumable.Resumable):
             # recover from conflicts by continuing the rebase
             git.rebase("--continue", not args["-v"])
             return True
-        #if self.progress["stopPoint"] == "submodule gitlink checkout" or \
-        #                self.progress["stopPoint"] == "submodule gitlink add":
-        #    os.chdir(self.progress["cwd"])
-        #    return self.outerLevelMerge(args, args["--public"])
 
         if self.progress["stopPoint"] == "outer level merge":
             return self.outerLevelMerge(args, args["--public"])
