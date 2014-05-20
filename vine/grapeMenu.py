@@ -16,6 +16,7 @@ import mergeRemote
 import newFlowBranch
 import newWorkingTree
 import publish
+import push
 import quit
 import resolveConflicts
 import resumable
@@ -64,7 +65,7 @@ class _Menu(object):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(), branches.Branches(),
-                         status.Status(), checkout.Checkout(), commit.Commit(), publish.Publish(),
+                         status.Status(), checkout.Checkout(), push.Push(), commit.Commit(), publish.Publish(),
                          clone.Clone(), config.Config(), grapeConfig.WriteConfig(),
                          foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                          deleteBranch.DeleteBranch(), newWorkingTree.NewWorkingTree(),
