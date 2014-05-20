@@ -403,7 +403,7 @@ class Publish(resumable.Resumable):
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if thisRequest == inProgressRequests[0]:
                 utility.printMsg("The pull request for this branch is already in progress. Continuing...")
-                return True
+                return 2
             else:
                 utility.printMsg("The following pull request is already in progress:")
                 print(inProgressRequests[0])
@@ -418,8 +418,10 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progresss Lock Check..")
             return True
-        if self.checkInProgressLock(args):
-            return self.markReviewAsInProgress(args) and self.checkInProgressLock(args)
+        retcode = self.checkInProgressLock(args)
+        if retcode:
+            # the 2 means we are already marked as in progress
+            return ((retcode == 2) or self.markReviewAsInProgress(args)) and self.checkInProgressLock(args)
         else:
             return False
 
