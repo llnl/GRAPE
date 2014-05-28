@@ -99,6 +99,11 @@ def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
 
+def commitDescription(committish, quiet=True):
+    return gitcmd("log --oneline %s^1..%s" % (committish, committish),
+                  "commitDescription failed", quiet=quiet)
+
+
 def config(argstr, arg2=None, quiet=False):
     if arg2 is not None:
         return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed", quiet=quiet)
