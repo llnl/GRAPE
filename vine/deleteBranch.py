@@ -3,6 +3,7 @@ import os
 import option
 import utility
 import grapeGit as git
+import grapeConfig
 
 
 class DeleteBranch(option.Option):
@@ -55,10 +56,15 @@ class DeleteBranch(option.Option):
         os.chdir(cwd)
         # delete the branch in submodules first
         submodules = git.getActiveSubmodules()
+        config = grapeConfig.grapeConfig()
+        subpublicmapping = config.getMapping("workspace", "submoduletopicprefixmappings")
         if submodules:
             print("GRAPE: deleting branches from submodules")
+
         for sub in submodules:
             os.chdir(os.path.join(cwd, sub))
+            if git.currentBranch() == branch:
+                git.checkout(subpublicmapping[git.branchPrefix(branch)])
             self.deleteBranch(branch, force)
         os.chdir(cwd)
         

@@ -10,42 +10,51 @@ import grapeConfig
 class Bundle(option.Option):
 
     """
-grape bundle
+    grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
+    which can then be sent over a sneakernet to a mirror of your grape project.
+    The history range that is extracted is defined in the following way:
+        start point:
+            for each branch in <list> as defined by --branches, start at the commit tagged by
+            <tagprefix>/<branch>.
+        end point:
+            the tip of each branch in <list> as defined by --branches.
+    By default, grape bundle bundles up all active submodules in your repository, according to their
+    respective .grapeconfig files.
 
-    
-Usage:
-   grape-bundle [--norecurse] [--branches=<config.patch.branches>] 
-                [--tagprefix=<config.patch.tagprefix>]
-                [--describePattern=<config.patch.describePattern>]
-                [--name=<config.repo.name>]
-                [--outfile=<fname>] 
+
+    Usage:
+       grape-bundle [--norecurse] [--branches=<config.patch.branches>]
+                    [--tagprefix=<config.patch.tagprefix>]
+                    [--describePattern=<config.patch.describePattern>]
+                    [--name=<config.repo.name>]
+                    [--outfile=<fname>]
 
 
-Options:
-   --norecurse                      bundle only current level 
-   --branches=<list>                the space delimited list of branches to bundle. 
-                                    [default: .grapeconfig.patch.branches] 
-   --tagprefix=<str>                the prefix used to tag start points to bundle
-                                    [default: .grapeconfig.patch.tagprefix]
-   --describePattern=<pattern>      passed to git describe to aid in naming the bundle. 
-                                    [default: .grapeconfig.patch.describePattern] 
-   --name=<str>                     Name used as a prefix to the bundle file. 
-                                    [default: .grapeconfig.repo.name]
-   --outfile=<fname>                Name of the output bundle file. Default behavior is to 
-                                    use branch names, the repo name, and output of git-describe
-                                    to construct a name. Note that the default file name carrys
-                                    semantics for grape unbundle in determining which branches to 
-                                    update. 
+    Options:
+       --norecurse                      bundle only current level
+       --branches=<list>                the space delimited list of branches to bundle.
+                                        [default: .grapeconfig.patch.branches]
+       --tagprefix=<str>                the prefix used to tag start points to bundle
+                                        [default: .grapeconfig.patch.tagprefix]
+       --describePattern=<pattern>      passed to git describe to aid in naming the bundle.
+                                        [default: .grapeconfig.patch.describePattern]
+       --name=<str>                     Name used as a prefix to the bundle file.
+                                        [default: .grapeconfig.repo.name]
+       --outfile=<fname>                Name of the output bundle file. Default behavior is to
+                                        use branch names, the repo name, and output of git-describe
+                                        to construct a name. Note that the default file name carrys
+                                        semantics for grape unbundle in determining which branches to
+                                        update.
 
-.grapeConfig Defaults: 
+    .grapeConfig Defaults:
 
-[patch] 
-branches = master develop
-tagprefix = patched
-describePattern = v*
+    [patch]
+    branches = master develop
+    tagprefix = patched
+    describePattern = v*
 
-[repo]
-name = None
+    [repo]
+    name = None
 
 
     """
@@ -109,19 +118,19 @@ name = None
 
 class Unbundle(option.Option):
     """
-grape unbundle
+    grape unbundle
 
-    
-Usage:
-   grape-unbundle <grapebundlefile> [--branchMappings=<config.patch.branchMappings>] 
 
-Arguments:
-    <grapebundlefile>             The name of the grape bundle file to unbundle. 
+    Usage:
+       grape-unbundle <grapebundlefile> [--branchMappings=<config.patch.branchMappings>]
 
-Options:
-    --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
-                                  objects from the bundle file. 
-                                  [default: .grapeconfig.patch.branchMappings]
+    Arguments:
+        <grapebundlefile>             The name of the grape bundle file to unbundle.
+
+    Options:
+        --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
+                                      objects from the bundle file.
+                                      [default: .grapeconfig.patch.branchMappings]
 
     """
     def __init__(self):

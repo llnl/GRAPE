@@ -132,6 +132,10 @@ class Review(option.Option):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
+                # push branch
+                os.chdir(submodule)
+                git.push("origin %s" % branch)
+                os.chdir(cwd)
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
@@ -233,11 +237,13 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     elif args["--append"]:
                         title = currentTitle+title
                 if descr is not None and (args["--prepend"] or args["--append"]):
-                    currentDescription = requestData["description"]
-                    if args["--prepend"]:
-                        descr = descr + "\n" + currentDescription
-                    elif args["--append"]:
-                        descr = currentDescription + "\n" + descr
+                    if "description" in requestData:
+                        currentDescription = requestData["description"]
+                        if args["--prepend"]:
+                            descr = descr + "\n" + currentDescription
+                        elif args["--append"]:
+                            descr = currentDescription + "\n" + descr
+
 
                 if title is not None or descr is not None or reviewers is not None:
                     if not quiet:
