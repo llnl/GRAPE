@@ -117,7 +117,7 @@ def userInput(message, default=None):
 
 # writes a config file with default options
 def writeDefaultConfig(filename):
-    config = ConfigParser.RawConfigParser()
+    config = grapeConfig.GrapeConfigParser()
     grapeMenu.menu().setDefaultConfig(config)
     with open(filename, 'w') as f:
         config.write(f)
