@@ -34,7 +34,7 @@ class Checkout(option.Option):
             print e.msg
             if "pathspec" in e.gitOutput:
                 utility.printMsg("creating new branch %s in %s" % (branch, project))
-                git.checkout(checkoutargs+"-b", quiet=quiet)
+                git.checkout(checkoutargs+" -b "+branch, quiet=quiet)
             elif "already exists" in e.gitOutput:
                 utility.printMsg("branch %s already exists in %s" % (branch, project))
                 branchDescription = git.commitDescription(branch)
