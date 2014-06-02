@@ -28,7 +28,16 @@
     
 # bundle
 
-    grape bundle
+    grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
+    which can then be sent over a sneakernet to a mirror of your grape project.
+    The history range that is extracted is defined in the following way:
+        start point:
+            for each branch in <list> as defined by --branches, start at the commit tagged by
+            <tagprefix>/<branch>.
+        end point:
+            the tip of each branch in <list> as defined by --branches.
+    By default, grape bundle bundles up all active submodules in your repository, according to their
+    respective .grapeconfig files.
 
 
     Usage:
@@ -105,6 +114,18 @@
     <branch>    The name of the branch to checkout. 
 
     
+# push
+
+    grape push pushes your current branch to origin for your outer level repo and all submodules.
+    it uses 'git push -u origin HEAD' for the git command.
+
+    Usage: grape-push [--norecurse] [-v]
+
+    Options:
+    --norecurse     Don't perform pushes in submodules.  
+    -v              Show more git output. 
+
+    
 # commit
 
     Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
@@ -139,6 +160,7 @@
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--continue]
+                         [--abort]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
@@ -155,6 +177,7 @@
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
             grape-publish --printSteps
+            grape-publish --quick -m <msg> [-v] [--user=<StashUserName>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -183,6 +206,7 @@
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
+    --abort                 Abort a previously failed call to grape publish.   
     --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
@@ -244,6 +268,7 @@
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
+    --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
@@ -252,15 +277,6 @@
                             message. Both the commit message for the merge and an update log will contain this message.
                             Additionally, if email notification is configured, the contents of the email will have
                             this message.
-
-    Publish Steps:
-    build :   Runs a custom build step.
-    test:
-    prePublish:
-    tickVersion:
-    publish:
-    postPublish:
-    deleteTopic:
 
 
 
@@ -488,13 +504,13 @@
  grape runHook
 
     Usage: grape-runHook
-           grape-runHook pre-commit
-           grape-runHook pre-push <dest> <url>
-           grape-runHook pre-rebase <basebranch> [<rebasebranch>]
-           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>]
-           grape-runHook post-rebase [--rebaseSubmodule=<bool>]
-           grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>]
-           grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>]
+           grape-runHook pre-commit [--noExit]
+           grape-runHook pre-push <dest> <url> [--noExit]
+           grape-runHook pre-rebase <basebranch> [<rebasebranch>] [--noExit]
+           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>] [--noExit]
+           grape-runHook post-rebase [--rebaseSubmodule=<bool>] [--noExit]
+           grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>] [--noExit]
+           grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
         --autopush=<bool>           autopushes commits to origin
@@ -503,7 +519,9 @@
                                     [default: .grapeconfig.post-commit.cascade]
         --rebaseSubmodule=<bool>    [default: .grapeconfig.post-rebase.submoduleUpdate]
         --mergeSubmodule=<bool>     [default: .grapeconfig.post-merge.submoduleUpdate]
-        --checkoutSubmodule=<bool>  [default: .grapeconfig.post-checkout.submoduleUpdate]
+        --checkoutSubmodule=<bool>  [default: .grapeconfig.post-checkout.submoduleUpdate
+        --noExit                    Normally runhook returns by calling exit(0). With this flag, returns by returning
+                                    True.
 
     Arguments:
         <dest>                      (pre-push only) The destination repo.
@@ -517,18 +535,14 @@
     
 # uv
 
-    grape uv  - updates your sparse-checkout file and optionally performs the sparse checkout. 
-    Usage: grape-uv [-f <sparsefile>] [--applyView | --noapplyView]
+    grape uv  - updates your active submodules.
+    Usage: grape-uv [-f <sparsefile>] [-v]
 
     Options:
         
-        -f <sparsefile>         An existing sparse-checkout file to copy into .git/info. 
-                                If this is not defined, grape will walk you through whether you 
-                                want each top-level directory. (interactive)
-        --applyView             Calls git read-tree -mu HEAD after updating .git/info/sparse-checkout
-        --noapplyView           Skips the git read-tree call after updating .git/info/sparse-checkout
-                                If neither --applyView nor --noapplyView are specified, grape uv
-                                will ask you what you want to do. (interactive)
+        -f                      Force removal of submodules currently in your view that are taken out of the view as a
+                                result to this call to uv. (passes the -f flag to submodule deinit)
+        -v                      Be more verbose.
 
     
 # version
