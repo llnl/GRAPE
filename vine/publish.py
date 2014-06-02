@@ -160,15 +160,6 @@ class Publish(resumable.Resumable):
                             Additionally, if email notification is configured, the contents of the email will have
                             this message.
 
-    Publish Steps:
-    build :   Runs a custom build step.
-    test:
-    prePublish:
-    tickVersion:
-    publish:
-    postPublish:
-    deleteTopic:
-
 
 
     """
