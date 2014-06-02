@@ -814,10 +814,10 @@ class Publish(resumable.Resumable):
             return True
         if "targetsVerified" in self.progress and self.progress["targetsVerified"]:
             return True
-        self.loadPublishTargets()
+        self.loadPublishTargets(args)
         recurse = args["recurse"]
-        public = args["public"]
-        topic = args["topic"]
+        public = args["--public"]
+        topic = args["--topic"]
         submodules = git.getModifiedSubmodules(public, topic)
         if recurse:
             proceed = utility.userInput("When ready, grape will publish " + topic + " to "
@@ -829,7 +829,8 @@ class Publish(resumable.Resumable):
                 return False
         else:
             proceed = utility.userInput("When ready, grape will publish %s to %s for the outer level repo. "
-                                        "Proceed? [y/n]", 'y')
+                                        "Proceed? [y/n]" % (topic, public), 'y')
+
             if not proceed:
                 return False
 
@@ -851,8 +852,8 @@ class Publish(resumable.Resumable):
         quiet = not args["-v"]
         self.loadCommitMessage(args)
         self.loadPublishTargets(args)
-        public = args["public"]
-        topic = args["topic"]
+        public = args["--public"]
+        topic = args["--topic"]
         recurse = args["recurse"]
         config = grapeConfig.grapeConfig()
 
