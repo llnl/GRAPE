@@ -159,8 +159,6 @@
                          [--pushSubtrees | --noPushSubtrees]
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
-                         [--continue]
-                         [--abort]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
@@ -176,6 +174,8 @@
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
                           --emailServer=<smtpserver>]]
                          [<CommitMessageFile>]
+            grape-publish --continue
+            grape-publish --abort
             grape-publish --printSteps
             grape-publish --quick -m <msg> [-v] [--user=<StashUserName>]
 
