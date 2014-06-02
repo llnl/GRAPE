@@ -220,6 +220,10 @@ class Publish(resumable.Resumable):
         self._key = "publish"
         self._section = "Gitflow Tasks"
         self.branchPrefix = None
+        self.modifiedSubtrees = []
+        self.st_prefices = {}
+        self.st_remotes = {}
+        self.st_branches = {}
 
     def description(self):
         try:
@@ -279,7 +283,8 @@ class Publish(resumable.Resumable):
         self.parseArgs(args)
         
         startPoint = args["--startAt"]
-        order = ["verifyCompletedReview", "testForCleanWorkspace1", "md", "markInProgress", "tickVersion", "updateLog",
+        order = ["ensureReview", "verifyCompletedReview", "testForCleanWorkspace1", "verifyPublishActions",
+                 "md", "markInProgress", "tickVersion", "updateLog",
                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                  "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
 
@@ -314,7 +319,9 @@ class Publish(resumable.Resumable):
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
                  "ensureReview": self.ensureReview,
-                 "md": self.mergePublic}
+                 "md": self.mergePublic,
+                 "verifyPublishActions": self.verifyPublishTargetsWithUser}
+
 
         currentStep = startPoint
         for step in order:
@@ -774,19 +781,92 @@ class Publish(resumable.Resumable):
         if not args["--nopush"]:
             git.push("-u origin HEAD")
 
+    def loadPublishTargets(self, args):
+        config = grapeConfig.grapeConfig()
+        public = args["--public"]
+        topic = args["--topic"]
+        quiet = args["-v"]
+        # decide whether to recurse into submodules
+        recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
+        if args["--recurse"]:
+            recurse = True
+        if args["--norecurse"]:
+            recurse = False
+
+        # no need to recurse if there are no modified submodules
+        submodules = git.getModifiedSubmodules(public, topic)
+        args["recurse"] = recurse and submodules
+        if args["recurse"]:
+            if not args["submodulePublic"]:
+                submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
+                submodulePublic = submapping[self.branchPrefix]
+                args["submodulePublic"] = submodulePublic
+
+        # deal with subtrees
+        push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
+        push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+        args["--pushSubtrees"] = push_subtrees
+        if push_subtrees:
+            allsubtrees = config.get('subtrees', 'names').strip().split()
+
+            for st in allsubtrees:
+                prefix = config.get('subtree-%s' % st, 'prefix')
+                if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet):
+                    self.modifiedSubtrees.append(st)
+            for st in self.modifiedSubtrees:
+                self.st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
+                self.st_remotes[st] = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
+                self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
+
+    def verifyPublishTargetsWithUser(self, args):
+        if args["--noverify"]:
+            return True
+        if "targetsVerified" in self.progress and self.progress["targetsVerified"]:
+            return True
+        self.loadPublishTargets()
+        recurse = args["recurse"]
+        public = args["public"]
+        topic = args["topic"]
+        submodules = git.getModifiedSubmodules(public, topic)
+        if recurse:
+            proceed = utility.userInput("When ready, grape will publish " + topic + " to "
+                                        + args["submodulePublic"] +
+                                        " for the following submodules:\n%s\n " % '\n'.join(submodules) +
+                                        "\n and %s to %s for the outer level repo. Proceed? [y/n]" % (topic, public),
+                                        'y')
+            if not proceed:
+                return False
+        else:
+            proceed = utility.userInput("When ready, grape will publish %s to %s for the outer level repo. "
+                                        "Proceed? [y/n]", 'y')
+            if not proceed:
+                return False
+
+        push_subtrees = args["--pushSubtrees"]
+        if push_subtrees:
+            if self.modifiedSubtrees:
+                utility.printMsg("When ready, grape will publish the following subtrees to the following destinations:")
+                for st in self.modifiedSubtrees:
+                    print("subtree: %s\trepo: %s\tbranch:%s" % (self.st_prefices[st], self.st_remotes[st],
+                                                                self.st_branches[st]))
+                proceed = utility.userInput("Proceed? [y/n]", 'y')
+                if not proceed:
+                    return False
+        self.progress["targetsVerified"] = True
+        return True
+
     def publishAllProjects(self, args):
         # make sure we have a commit message
+        quiet = not args["-v"]
         self.loadCommitMessage(args)
-
+        self.loadPublishTargets(args)
+        public = args["public"]
+        topic = args["topic"]
+        recurse = args["recurse"]
         config = grapeConfig.grapeConfig()
-        topic = args["--topic"]
 
         # make sure public branches are up to date.
         grapeMenu.menu().applyMenuChoice('up', ['up'])
-
-        quiet = not args["-v"]
-        # get the outer level public branch destination
-        public = args["--public"]
 
         # set any CL defined publish policy
         policy = None
@@ -797,27 +877,12 @@ class Publish(resumable.Resumable):
         if args["--rebase"]:
             policy = "rebase"
 
-        # decide whether to recurse into submodules
-        recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
-        if args["--recurse"]:
-            recurse = True
-        if args["--norecurse"]:
-            recurse = False
-
-        # no need to recurse if there are no modified submodules
-        submodules = git.getModifiedSubmodules(public, topic)
-        recurse = recurse and submodules
         cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 
         if recurse:
-            if args["--submodulePublic"]:
-                submodulePublic = args["--submodulePublic"]
-            else:
-                submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
-                submodulePublic = submapping[self.branchPrefix]
-            args["--submodulePublic"] = submodulePublic
-
+            submodulePublic = args["submodulePublic"]
+            submodules = git.getModifiedSubmodules(public, topic)
             # submodule policy is Command Line requested policy, otherwise is based on 
             #       .grapeconfig.workspace.submodulePublishPolicy
             submodulePolicy = policy
@@ -829,12 +894,7 @@ class Publish(resumable.Resumable):
                     submodulePolicy = "squash"
                     args["--cascade"] = True
             valid = self.validateInput(submodulePolicy, args)
-            proceed = valid and (args["--noverify"] or
-                                 utility.userInput("About to publish " + topic + " to "
-                                                   + submodulePublic +
-                                                   " for the following submodules:\n%s\nProceed? [y/n]" % 
-                                                   '\n'.join(submodules), 'y'))
-            if proceed:
+            if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in submodules:
                     os.chdir(os.path.join(cwd, sub))
 
@@ -845,8 +905,7 @@ class Publish(resumable.Resumable):
             os.chdir(cwd)
 
         # push subtrees to their respective remote branches
-        push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
-        push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+        push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
 
             allsubtrees = config.get('subtrees', 'names').strip().split()
@@ -856,34 +915,26 @@ class Publish(resumable.Resumable):
                 if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet): 
                     modifiedSubtrees.append(st)
             if modifiedSubtrees: 
-                utility.printMsg("About to publish the following subtrees to the following destinations: ")
-                st_prefices = {}
-                st_remotes = {}
-                st_branches = {}
-                for st in modifiedSubtrees:
-                    st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
-                    st_remotes[st] = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
-                    st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
-                    print("subtree: %s\trepo: %s\tbranch:%s" % (st_prefices[st], st_remotes[st], st_branches[st]))
-                proceed = args["--noverify"] or utility.userInput("Proceed? [y/n]", 'y')
+
+                proceed = self.verifyPublishTargetsWithUser(args)
                 if proceed:
                     squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, st_prefices[st],
-                                                                              st_remotes[st], st_branches[st]))
+                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, self.st_prefices[st],
+                                                                              self.st_remotes[st], self.st_branches[st]))
 
                         try:
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
-                                                                                 st_remotes[st],  st_branches[st],
+                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefices[st],
+                                                                                 self.st_remotes[st],  self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
                         except git.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
-                                                                                 st_remotes[st], st_branches[st],
+                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefices[st],
+                                                                                 self.st_remotes[st], self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, st_prefices[st],
-                                                                                 st_remotes[st], st_branches[st],
+                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefices[st],
+                                                                                 self.st_remotes[st], self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
                             utility.printMsg("Succeeded!")
 
@@ -894,10 +945,7 @@ class Publish(resumable.Resumable):
                 policy = "squash"
                 args["--cascade"] = True
         valid = self.validateInput(policy, args)
-        proceed = valid and (args["--noverify"] or
-                             utility.userInput("About to publish " + topic + " to "+public+" for top level workspace.\n"
-                                                                                           "Proceed? [y/n]", 'y'))
-        if proceed:
+        if valid and self.verifyPublishTargetsWithUser(args):
             self.publish(policy, public, topic, args)
             return True
         else:
