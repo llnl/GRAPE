@@ -4,6 +4,7 @@ import option
 import utility
 import grapeGit as git
 import grapeConfig
+import checkout
 
 
 # update your custom sparse checkout view
@@ -109,28 +110,11 @@ class UpdateView(option.Option):
         if git.currentBranch() == branch:
             os.chdir(cwd)
             return
-        if git.hasBranch(branch):
-            git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
-            if git.SHA("HEAD") == git.SHA(branch):
-                git.checkout(branch)
-            else:
-                utility.printMsg("WARNING: branch %s in submodule %s is not the same as HEAD. " % (branch, repo))
-                valid = False
-                while not valid:
-                    method = utility.userInput("How do you want to check out %s? [f(orceToHead), k(eepAsIs)]" % branch,
-                                               'k')
-                    if method.lower() == 'k':
-                        valid = True
-                        git.checkout(branch, quiet=quiet)
-                    elif method.lower() == 'f':
-                        valid = True
-                        git.checkout("-B %s" % branch, quiet=quiet)
-                    else:
-                        print "invalid input. Enter k or f. "
 
-        else:
-            utility.printMsg("submodule %s does not have branch %s. Creating it now. " % (repo, branch))
-            git.checkout("-b %s" % branch, quiet=quiet)
+        if git.hasBranch(branch):
+            git.fetch("origin", "%s:%s" % (branch, branch))
+
+        checkout.Checkout.handledCheckout("-b", branch, repo, quiet=quiet)
 
         os.chdir(cwd)
         return
