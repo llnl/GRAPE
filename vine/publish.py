@@ -805,8 +805,8 @@ class Publish(resumable.Resumable):
 
         # no need to recurse if there are no modified submodules
         submodules = git.getModifiedSubmodules(public, topic)
-        args["recurse"] = recurse and submodules
-        if args["recurse"]:
+        args["--recurse"] = recurse and submodules
+        if args["--recurse"]:
             if not args["submodulePublic"]:
                 submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
                 submodulePublic = submapping[self.branchPrefix]
@@ -836,7 +836,7 @@ class Publish(resumable.Resumable):
             return True
         if not self.loadPublishTargets(args):
             return False
-        recurse = args["recurse"]
+        recurse = args["--recurse"]
         public = args["--public"]
         topic = args["--topic"]
         submodules = git.getModifiedSubmodules(public, topic)
@@ -875,7 +875,7 @@ class Publish(resumable.Resumable):
             return False
         public = args["--public"]
         topic = args["--topic"]
-        recurse = args["recurse"]
+        recurse = args["--recurse"]
         config = grapeConfig.grapeConfig()
 
         # make sure public branches are up to date.
