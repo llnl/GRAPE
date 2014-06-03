@@ -590,7 +590,7 @@ class Publish(resumable.Resumable):
         # this will be used for the actual merge commit message.
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
-        print args["-m"]
+        
         if escapedCommitMsg and not args["-m"]:
             args["-m"] = escapedCommitMsg
         elif not escapedCommitMsg and args["-m"]:
@@ -610,6 +610,8 @@ class Publish(resumable.Resumable):
                              "containing your message as an argument to grape publish.")
             e = Exception()
             e.message = "Invalid commit message."
+            args["<CommitMessageFile>"] = False
+            args["-m"] = False
             raise e
         else:
             self.progress["commitMsg"] = escapedCommitMsg
