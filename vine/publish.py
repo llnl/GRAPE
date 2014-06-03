@@ -549,6 +549,13 @@ class Publish(resumable.Resumable):
             self.progress["commitMsg"] = "no details entered"
             return True
 
+        if not args["<CommitMessageFile>"] and not args["-m"]:
+            proceed = utility.userInput("No commit message entered. Would you like to use the Pull Request's "
+                                        "description as your  commit message? [y/n]", 'y')
+            if not proceed:
+                args["<CommitMessageFile>"] = utility.userInput("Enter the name of the file containing your commit "
+                                                                "message: ")
+
         if args["<CommitMessageFile>"]:
             commitMsgFile = args["<CommitMessageFile>"]
             with open(commitMsgFile, 'r') as f:
@@ -584,11 +591,12 @@ class Publish(resumable.Resumable):
             utility.printMsg("WARNING: Commit message is empty. ")
 
 
-        utility.printMsg("The following commit message will be used for any email notification, merge commits, etc.\n "
+        utility.printMsg("The following commit message will be used for email notification, merge commits, etc.\n "
                          "======================================================================")
         print ''.join(commitMsg[:10])
         print "======================================================================"
-        proceed = utility.userInput("Is this correct? ['y','n']", 'y')
+        proceed = utility.userInput("Is the above message what you want for email notifications and merge commits? "
+                                    "['y','n']", 'y')
         if not proceed:
             utility.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
