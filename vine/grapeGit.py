@@ -199,7 +199,7 @@ def gitDir():
 
 
 def hasBranch(b):
-    branches = branch().split()
+    branches = branch(quiet=True).split()
     return b in branches
 
 
