@@ -527,24 +527,25 @@ class Publish(resumable.Resumable):
 
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
-            return
+            return True
         public = args["--public"]
         topic = args["--topic"]
         if git.SHA(public) == git.SHA(topic):
             public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
                                        "modified file list." % topic)
         self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (public, topic)).split('\n')
+        return True
 
     def loadVersion(self, args):
         if "version" in self.progress:
-            return
+            return True
         else:
             self.progress["version"] = utility.userInput("Please enter version string for this commit")
-        return
+        return True
 
     def loadCommitMessage(self, args):
         if "commitMsg" in self.progress:
-            return
+            return True
         if args["--noUpdateLog"]:
             self.progress["commitMsg"] = "no details entered"
             return True
@@ -558,8 +559,15 @@ class Publish(resumable.Resumable):
 
         if args["<CommitMessageFile>"]:
             commitMsgFile = args["<CommitMessageFile>"]
-            with open(commitMsgFile, 'r') as f:
-                commitMsg = f.readlines()
+            try:
+                with open(commitMsgFile, 'r') as f:
+                    commitMsg = f.readlines()
+
+            except IOError as e:
+                print(e.message)
+                utility.printMsg("Could not read contents of %s" % commitMsgFile)
+                return False
+
             if not args["--noReview"]:
                 utility.printMsg("Updating Pull Request with commit msg...")
                 self.markReview(args, ["--descr", commitMsgFile], "")
@@ -590,7 +598,6 @@ class Publish(resumable.Resumable):
         else:
             utility.printMsg("WARNING: Commit message is empty. ")
 
-
         utility.printMsg("The following commit message will be used for email notification, merge commits, etc.\n "
                          "======================================================================")
         print ''.join(commitMsg[:10])
@@ -600,13 +607,16 @@ class Publish(resumable.Resumable):
         if not proceed:
             utility.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
-            raise Exception()
+            e = Exception()
+            e.message = "Invalid commit message."
+            raise e
         else:
             self.progress["commitMsg"] = escapedCommitMsg
+            return True
 
     def updateLog(self, args):
-        self.loadCommitMessage(args)
-        self.loadVersion(args)
+        if not (self.loadCommitMessage(args) and self.loadVersion(args)):
+            return False
         commitMsg = self.progress["commitMsg"].split('\n')
 
         if args["--noUpdateLog"]:
@@ -655,9 +665,8 @@ class Publish(resumable.Resumable):
         if not args["--emailNotification"].lower() == "true":
             # skip email send
             return True
-        self.loadCommitMessage(args)
-        self.loadVersion(args)
-        self.loadModifiedFiles(args)
+        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadModifiedFiles(args)):
+            return False
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
         mf = open(mailfile, 'w')
@@ -818,13 +827,15 @@ class Publish(resumable.Resumable):
                 self.st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
                 self.st_remotes[st] = subtree.parseSubtreeRemote(config.get('subtree-%s' % st, 'remote'))
                 self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
+        return True
 
     def verifyPublishTargetsWithUser(self, args):
         if args["--noverify"]:
             return True
         if "targetsVerified" in self.progress and self.progress["targetsVerified"]:
             return True
-        self.loadPublishTargets(args)
+        if not self.loadPublishTargets(args):
+            return False
         recurse = args["recurse"]
         public = args["--public"]
         topic = args["--topic"]
@@ -860,8 +871,8 @@ class Publish(resumable.Resumable):
     def publishAllProjects(self, args):
         # make sure we have a commit message
         quiet = not args["-v"]
-        self.loadCommitMessage(args)
-        self.loadPublishTargets(args)
+        if not (self.loadCommitMessage(args) and self.loadPublishTargets(args)):
+            return False
         public = args["--public"]
         topic = args["--topic"]
         recurse = args["recurse"]
