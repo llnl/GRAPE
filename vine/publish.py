@@ -807,10 +807,10 @@ class Publish(resumable.Resumable):
         submodules = git.getModifiedSubmodules(public, topic)
         args["--recurse"] = recurse and submodules
         if args["--recurse"]:
-            if not args["submodulePublic"]:
+            if not args["--submodulePublic"]:
                 submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
                 submodulePublic = submapping[self.branchPrefix]
-                args["submodulePublic"] = submodulePublic
+                args["--submodulePublic"] = submodulePublic
 
         # deal with subtrees
         push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
@@ -842,7 +842,7 @@ class Publish(resumable.Resumable):
         submodules = git.getModifiedSubmodules(public, topic)
         if recurse:
             proceed = utility.userInput("When ready, grape will publish " + topic + " to "
-                                        + args["submodulePublic"] +
+                                        + args["--submodulePublic"] +
                                         " for the following submodules:\n%s\n " % '\n'.join(submodules) +
                                         "\n and %s to %s for the outer level repo. Proceed? [y/n]" % (topic, public),
                                         'y')
@@ -894,7 +894,7 @@ class Publish(resumable.Resumable):
         os.chdir(cwd)
 
         if recurse:
-            submodulePublic = args["submodulePublic"]
+            submodulePublic = args["--submodulePublic"]
             submodules = git.getModifiedSubmodules(public, topic)
             # submodule policy is Command Line requested policy, otherwise is based on 
             #       .grapeconfig.workspace.submodulePublishPolicy
