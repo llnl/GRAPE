@@ -566,6 +566,7 @@ class Publish(resumable.Resumable):
             except IOError as e:
                 print(e.message)
                 utility.printMsg("Could not read contents of %s" % commitMsgFile)
+                args["<CommitMessageFile>"] = False 
                 return False
 
             if not args["--noReview"]:
