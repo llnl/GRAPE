@@ -31,7 +31,6 @@ class Checkout(option.Option):
         try:
             git.checkout(checkoutargs + ' ' + branch, quiet=quiet)
         except git.GrapeGitError as e:
-            print e.msg
             if "pathspec" in e.gitOutput:
                 utility.printMsg("creating new branch %s in %s" % (branch, project))
                 git.checkout(checkoutargs+" -b "+branch, quiet=quiet)
