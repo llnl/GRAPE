@@ -118,11 +118,11 @@ def conflictedFiles(quiet=True):
 
 
 def currentBranch(quiet=True):
-    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch", quiet)
+    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch", quiet=quiet)
 
 
-def describe(argstr=""):
-    return gitcmd("describe %s" % argstr, "could not describe commit")
+def describe(argstr="", quiet=False):
+    return gitcmd("describe %s" % argstr, "could not describe commit", quiet=quiet)
 
 
 def diff(argstr, quiet=False):
@@ -257,11 +257,11 @@ def rebase(args, quiet=False):
     return gitcmd("rebase %s" % args, "Rebase failed", quiet=quiet)
 
 
-def safeForceBranchToOriginRef(branchToSync):
+def safeForceBranchToOriginRef(branchToSync, quiet=True):
     # first, check to see that branch exists
     branchExists = False
     remoteRefExists = False
-    branches = branch("-a").split("\n")
+    branches = branch("-a", quiet=quiet).split("\n")
     remoteRef = "remotes/origin/%s" % branchToSync
     for b in branches:
         b = b.replace('*', '')
@@ -274,10 +274,10 @@ def safeForceBranchToOriginRef(branchToSync):
         print("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
-        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
-        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
+        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync, quiet=quiet)
+        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef, quiet=quiet)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
-            if branchToSync == currentBranch():
+            if branchToSync == currentBranch(quiet=quiet):
                 print("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 pull("origin %s" % branchToSync)
             else:
@@ -289,7 +289,7 @@ def safeForceBranchToOriginRef(branchToSync):
             return False
     if not branchExists and remoteRefExists:
         print("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
-        branch("%s %s" % (branchToSync, remoteRef))
+        branch("%s %s" % (branchToSync, remoteRef), quiet=True)
         return True
 
 
