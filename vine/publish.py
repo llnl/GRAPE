@@ -604,6 +604,8 @@ class Publish(resumable.Resumable):
         if args["--noUpdateLog"]:
             return True
         logFile = args["--updateLog"]
+        cwd = os.getcwd()
+        os.chdir(git.baseDir())
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
@@ -618,6 +620,7 @@ class Publish(resumable.Resumable):
             with open(logFile, 'w') as f:
                 f.writelines(loglines)
             git.commit("%s -m \"GRAPE publish: updated log file %s\"" % (logFile, logFile))
+        os.chdir(cwd)
         return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
