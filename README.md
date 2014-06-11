@@ -6,23 +6,31 @@ If your project is simple, with a single trunk of development, no submodules or 
 libraries, then this section should be all you need. Read on for more advanced topics as they come up.
 
 To write a .grapeconfig file with the settings for grape in your current environment:
-    grape writeConfig .grapeconfig
+
+```
+grape writeConfig .grapeconfig
+```
 
 .grapeconfig now contains all of the options various grape commands will use. It's of the following format:
+
     [SECTION_NAME]
     option = value
     option2 = key:value
     option3 = list:of key:values with:VAL as:a default:value ?:VAL
 
 In the man page for any given grape commands (viewable by typing grape <cmd> --help) , if you see a
+
         [default = .grapeconfig.SECTION_NAME.option]
-this meansthat that option grabs it's value from the .grapeconfig file for your project by default.
+
+this means that that option grabs it's value from the .grapeconfig file for your project by default.
 
 If you're a project maintainer, this .grapeconfig stuff really matters for how you want your team to work.
 If you're a lowly peon, err... valued developer, you don't care. You're reading this because your project
 maintainer has set you up with grape and wants you to use it for branch creation, library maintainence,
 testing stuff before publishing it, doing the correct git incantations to merge branches in a way that
 makes sense for your team, etc. The lowly peo--, excuse me, Valued Devleoper view of grape should be:
+
+
     # create a new branch
     grape <branchType>
     <do work>
