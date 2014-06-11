@@ -1,9 +1,7 @@
 # Tutorial
 
 #Tutorial
-## Getting Started
-If your project is simple, with a single trunk of development, no submodules or subtrees with third party
-libraries, then this section should be all you need. Read on for more advanced topics as they come up.
+## Introducing the `.grapeconfig` file
 
 To write a .grapeconfig file with the settings for grape in your current environment:
 
@@ -42,10 +40,58 @@ makes sense for your team, etc. The lowly peo--, excuse me, Valued Devleoper vie
     # publish your branch to the appropriate public branch (e.g. master, develop, release, etc)
     grape publish
 
-Any of those grape commands have more options associated with them, which you can inpect by typing
+Any of those grape commands have more options associated with them, which you can inspect by typing
+
     grape <cmd> --help
 
+And that's all you valued developers need to know! Project maintainers, read on!
 
+## Setting up a project with Grape.
+If your project is simple, with a single trunk of development, no submodules or subtrees with third party
+libraries, then this section should be all you need. Read on for more advanced topics as they come up.
+
+### Assumptions
+This assumes you have a git repository set up, have at least a rudimentary knowledge of git,
+you have an idea of how you want to do your branching (single trunk, gitflow, some other weird thing, etc. ),
+and you are ready to distribute your well thought-out process using grape.
+Much of grape also assumes you're working in a clone of a repo, with a remote called 'origin.'
+This tutorial assumes you're developing in a project called foo hosted at a stash instance
+at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk development model, with both a
+`develop` branch and a `master` branch.
+
+### Creating your .grapeconfig file
+Ok, lets go to your git repository, and create an initial grape config file.
+
+    cd /path/to/repo
+    grape writeConfig .grapeconfig
+
+Let's open up that .grapeconfig and edit some config options so that they make sense.
+
+    [repo]
+    name = repo_name_not.yet.configured
+    url = https://not.yet.configured/scm/project/unknown.git
+    httpsbase = https://not.yet.configured
+    sshbase = ssh://git@not.yet.configured
+
+For repo.name, put in your project name. Fill out your default url, (either ssh or https), as well as
+the https base url and stash url:
+
+    [repo]
+    name = foo
+    url = https://stash.grape.tutorial.org/scm/foo/foo.git
+    httpsbase = https://stash.grape.tutorial.org/scm/
+    sshbase = ssh://git@stash.grape.tutorial.org:1111/foo
+
+Take a look at the `[flow]` section. This is probably one of the most important sections in your `.grapeconfig` file,
+as it defines your project's branching model.
+
+    [flow]
+    publicbranches = develop master
+    topicprefixmappings = ?:develop
+    publishpolicy = ?:merge
+
+The `publicbranches` is a space-delimited list of all of your long-lived public branches. These are typically things
+like develop, master, or release, but can be whatever your project thinks makes sense. 
 
 
     
