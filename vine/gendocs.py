@@ -45,9 +45,7 @@ libraries, then this section should be all you need. Read on for more advanced t
 
 To write a .grapeconfig file with the settings for grape in your current environment:
 
-```
-grape writeConfig .grapeconfig
-```
+    grape writeConfig .grapeconfig
 
 .grapeconfig now contains all of the options various grape commands will use. It's of the following format:
 
@@ -58,7 +56,7 @@ grape writeConfig .grapeconfig
 
 In the man page for any given grape commands (viewable by typing grape <cmd> --help) , if you see a
 
-        [default = .grapeconfig.SECTION_NAME.option]
+    [default = .grapeconfig.SECTION_NAME.option]
 
 this means that that option grabs it's value from the .grapeconfig file for your project by default.
 
@@ -71,10 +69,19 @@ makes sense for your team, etc. The lowly peo--, excuse me, Valued Devleoper vie
 
     # create a new branch
     grape <branchType>
-    <do work>
+    # <do work>
+    gvim foo.txt
+    # add a file using git commands
+    git add foo.txt
+    # inspect the status of your work across all subprojects:
     grape status
+    # commit to your local repo all staged changes in all subprojects
     grape commit
+    # publish your branch to the appropriate public branch (e.g. master, develop, release, etc)
     grape publish
+
+Any of those grape commands have more options associated with them, which you can inpect by typing
+    grape <cmd> --help
 
 
 
