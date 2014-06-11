@@ -45,7 +45,9 @@ libraries, then this section should be all you need. Read on for more advanced t
 
 To write a .grapeconfig file with the settings for grape in your current environment:
 
+
     grape writeConfig .grapeconfig
+
 
 .grapeconfig now contains all of the options various grape commands will use. It's of the following format:
 
