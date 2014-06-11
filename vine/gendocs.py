@@ -129,7 +129,23 @@ as it defines your project's branching model.
     publishpolicy = ?:merge
 
 The `publicbranches` is a space-delimited list of all of your long-lived public branches. These are typically things
-like develop, master, or release, but can be whatever your project thinks makes sense. 
+like develop, master, or release, but can be whatever your project thinks makes sense.
+
+The topicprefixmappings is a space-delimited list of key:value pairs, where the key is a branch prefix, and the value
+is the public branch topic branches with that branch prefix.  For example, if you wanted bugfix  and feature
+branches to be branched off of develop and hotfix branches to be branched off of master, you should do the following:
+
+    [flow]
+    publicbranches = develop master
+    topicprefixmappings = feature:develop bugfix:develop hotfix:master ?:develop
+    publishpolicy = ?:merge
+
+The ?:develop option means that any branch that isn't named with feature, bugfix, or hotfix as a prefix will be assumed
+to branch off of develop.
+
+The publishpolicy is another list, but it maps PUBLIC branches to merge policies. So, if you're a rebasing kind of team,
+choose ?:rebase. If you're a merge kind of team, choose ?:merge. If you want to squash-merge your commits to master to
+keep history clean there, but preserve all the churn on develop. 
 
 
     """
