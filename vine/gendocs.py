@@ -32,7 +32,7 @@ class Section(object):
 
     def write(self, f):
         if self._text:
-            f.write("# %s\n" % self._name)
+            f.write("## %s\n" % self._name)
             f.write(self._text)
             f.write("\n")
 
@@ -217,7 +217,9 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
 
-
+# Grape Commands
+Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
+at a pariticular commands documentation using grape <cmd> --help.
 
     """
     def __init__(self):

@@ -1,4 +1,4 @@
-# Tutorial
+## Tutorial
 
 ## Introducing the `.grapeconfig` file
 
@@ -181,10 +181,12 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
 
-
+# Grape Commands
+Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
+at a pariticular commands documentation using grape <cmd> --help.
 
     
-# addSubproject
+## addSubproject
 
         grape addSubproject
         Adds a new project to this workspace (such as a new library or a new test suite)
@@ -212,7 +214,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         -v                  Set to print all git commands that are issued
 
     
-# bundle
+## bundle
 
     grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
     which can then be sent over a sneakernet to a mirror of your grape project.
@@ -262,7 +264,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# unbundle
+## unbundle
 
     grape unbundle
 
@@ -279,7 +281,7 @@ Check out `grape version --help` for more info on managing versioning your proje
                                       [default: .grapeconfig.patch.branchMappings]
 
     
-# status
+## status
 
     Usage: grape-status [-v]
 
@@ -287,7 +289,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     -v      Show git commands being issued. 
 
     
-# checkout
+## checkout
 
     Usage: grape-checkout [-v] [-b] <branch> 
 
@@ -300,7 +302,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     <branch>    The name of the branch to checkout. 
 
     
-# push
+## push
 
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
@@ -312,7 +314,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     -v              Show more git output. 
 
     
-# commit
+## commit
 
     Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
 
@@ -326,7 +328,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     <filetree> The relative path of files to include in this commit. 
 
     
-# publish
+## publish
 
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
@@ -478,7 +480,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# clone
+## clone
  grape-clone
     Clones a git repo and configures it for use with git.
 
@@ -491,7 +493,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     Options:
         --recursive   Recursively clone submodules.
     
-# config
+## config
 
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] 
@@ -508,7 +510,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         --git-p4        will configure your repo for use with git-p4 (deprecated)
 
     
-# writeConfig
+## writeConfig
 
         grape writeConfig: Writes the current configuration to a file, using any configuration set
         by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
@@ -517,7 +519,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         grape-writeConfig <file>
 
     
-# foreach
+## foreach
 
     Executes a command in each project in this workspace (including the outer level project). 
 
@@ -530,7 +532,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     <cmd>        The cmd to execute. 
 
     
-# m
+## m
 
     grape m
     merge a local branch into your current branch
@@ -550,7 +552,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         <branch>        The branch you want to merge in. 
         
     
-# md
+## md
 
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
@@ -577,7 +579,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# mr
+## mr
 
     grape mr (merge remote branch)
     Usage: grape-mr [<branch>] [--am | --as | --at | --ay]
@@ -586,7 +588,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
     
     
-# db
+## db
  Deletes a topic branch both locally and on origin for all projects in this workspace. 
     Usage: grape-db [-D] [<branch>]
 
@@ -600,7 +602,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     
     
     
-# cv
+## cv
 
     grape cv: create a new custom view
     Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]  
@@ -615,7 +617,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         <uvargs>            Arguments to pass to grape uv. Note that if you are using the -f
                             option, you should use an absolute path. 
     
-# review
+## review
 
     grape review
     Usage: grape-review [--update | --add]
@@ -671,7 +673,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# up
+## up
 
     grape up
     Updates the current branch and any public branches. 
@@ -685,7 +687,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# installHooks
+## installHooks
  grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
     in this repo.
@@ -697,7 +699,7 @@ Check out `grape version --help` for more info on managing versioning your proje
                           [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
     
-# runHook
+## runHook
  grape runHook
 
     Usage: grape-runHook
@@ -730,7 +732,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# uv
+## uv
 
     grape uv  - updates your active submodules.
     Usage: grape-uv [-f <sparsefile>] [-v]
@@ -742,7 +744,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         -v                      Be more verbose.
 
     
-# version
+## version
 
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
@@ -794,7 +796,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# w
+## w
  
     grape w(alkthrough)
     Usage: grape-w [--nogui] [<b1> [<b2>] ] [--] [ <filetree-ish> ]
@@ -808,7 +810,7 @@ Check out `grape version --help` for more info on managing versioning your proje
         <filetree-ish>  The files to compare.  
 
     
-# q
+## q
 
     grape q
     Quits grape. 
@@ -816,7 +818,7 @@ Check out `grape version --help` for more info on managing versioning your proje
     Usage: grape-q 
 
     
-# bugfix
+## bugfix
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
@@ -838,7 +840,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# hotfix
+## hotfix
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
@@ -860,7 +862,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# feature
+## feature
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
@@ -882,7 +884,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 
     
-# rc
+## rc
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
