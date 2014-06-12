@@ -38,7 +38,6 @@ class Section(object):
 
 class Tutorial(Section):
     """
-#Tutorial
 ## Introducing the `.grapeconfig` file
 
 To write a .grapeconfig file with the settings for grape in your current environment:
