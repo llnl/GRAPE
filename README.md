@@ -26,7 +26,8 @@ maintainer has set you up with grape and wants you to use it for branch creation
 testing stuff before publishing it, doing the correct git incantations to merge branches in a way that
 makes sense for your team, etc. The lowly peo--, excuse me, Valued Devleoper view of grape should be:
 
-
+    # take a look at available commands
+    grape
     # create a new branch
     grape <branchType>
     # <do work>
@@ -93,7 +94,7 @@ as it defines your project's branching model.
 The `publicbranches` is a space-delimited list of all of your long-lived public branches. These are typically things
 like develop, master, or release, but can be whatever your project thinks makes sense.
 
-The topicprefixmappings is a space-delimited list of key:value pairs, where the key is a branch prefix, and the value
+The `topicprefixmappings` is a space-delimited list of key:value pairs, where the key is a branch prefix, and the value
 is the public branch topic branches with that branch prefix.  For example, if you wanted bugfix  and feature
 branches to be branched off of develop and hotfix branches to be branched off of master, you should do the following:
 
@@ -105,9 +106,82 @@ branches to be branched off of develop and hotfix branches to be branched off of
 The ?:develop option means that any branch that isn't named with feature, bugfix, or hotfix as a prefix will be assumed
 to branch off of develop.
 
-The publishpolicy is another list, but it maps PUBLIC branches to merge policies. So, if you're a rebasing kind of team,
-choose ?:rebase. If you're a merge kind of team, choose ?:merge. If you want to squash-merge your commits to master to
-keep history clean there, but preserve all the churn on develop. 
+For each branch type you define in `topicprefixmappings`, grape will dynamically generate a new command for creating
+new branches of that type. So, in the above case, `grape feature`, `grape bugfix`, and `grape hotfix` will all be
+available as commands.
+
+The publishpolicy is another list, but it maps PUBLIC branches to merge policies. So, if you're on a rebasing kind of
+team, choose ?:rebase. If you're a merge kind of team, choose ?:merge. If you want to squash-merge your commits to
+master to keep history clean there, but preserve all the churn on develop, do something like the following:
+
+    [flow]
+    ...
+    publishpolicy = master:squash develop:merge ?:merge
+
+If you don't know what we're talking about here, just leave it as is. Merges are the safest way to go.
+
+
+###A note for Windows compatibility
+If you're on a system where 'git' is not in your path (often true on Windows systems), you'll want to add the following
+to a .grapeconfig file in your home directory:
+
+    [git]
+    executable = /path/to/your/git/executable/git.exe
+
+where the format of the path is whatever is appropriate for your system. You may need to do this by hand before ever
+calling grape.
+
+### Defining your publish process
+When your valued developers want to publish their invaluable work to a public branch, your team may have a host of
+SQA driven requirements, such as successfull build(s), testing, etc. You'll want to take a look at `grape publish
+--help` for more details on this, but for now lets look at a few key things in the `[publish]` section of your
+.grapeconfig file.
+
+    [publish]
+    buildcmds =
+    builddir = .
+    testcmds =
+    testdir = .
+    prepublishcmds =
+    prepublishdir = .
+    postpublishcmds =
+    postpublishdir = .
+    tickversion = False
+    useStash = True
+    deletetopic = False
+    updatelog = .grapepublishlog
+    logskipfirstlines = 0
+    logentryheader = <date> <user>
+<version>
+
+    emailnotification = False
+    emailheader = <public> updated to <version>
+    emailserver = smtp.email.server
+    emailsendto = user.list@company.com
+    emailsubject = <public> updated to <version>
+
+Ok, there's a lot here. But that's because publish can do a lot for you, I promise.
+
+`buildcmds` : This is a COMMA -delimited list of commands you use to build your code.
+`builddir` : This is the directory where the `buildcmds` are issued from, relative to your repository's base directory.
+`testcmds` and `testdir`: Same as `buildcmds` and `builddir`, but for running your project's tests.
+
+Have other custom steps in your process? Make use of prepublish* and postpublish* to customize your process.
+
+If you keep a running change log, you'll want to take a look at the grape publish documentation, paying attention to
+updatelog, logskipfirstlines, and logentryheader. If you send email notifications, check out all the documentation
+for all the email-related options as well.
+
+If you manage your code reviews using Pull Requests on Stash, and you want to enforce the existence of approved pull
+requests for each branch being published, leave `useStash` as True. Otherwise, set it to False.
+
+What about that `tickversion` option? Set it to True if you want to auto-increment your project's version with grape.
+Check out `grape version --help` for more info on managing versioning your project with grape.
+
+
+
+
+
 
 
     
@@ -285,6 +359,7 @@ keep history clean there, but preserve all the churn on develop.
                          [--repo=<StashRepoName>]
                          [-R <arg>]...
                          [--noReview]
+                         [--useStash=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
                           --emailServer=<smtpserver>]]
@@ -358,7 +433,8 @@ keep history clean there, but preserve all the churn on develop.
                             [default: .grapeconfig.repo.name]
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRES**:" --prepend.
                             Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests.
+    --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
+    --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicPrefixMappings.
     --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
