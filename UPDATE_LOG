@@ -1,3 +1,12 @@
+Mon Jun  2 16:38:07 2014 Peter B. Robinson
+v0.1.20
+
+Moves all user input to before the build step.Mon Jun  2 16:24:08 2014 Peter B. Robinson
+v0.1.18
+
+Moves all user input that normally was asked during the publish step into a step that occurs before build.Mon Jun  2 16:06:40 2014 Peter B. Robinson
+v0.1.17
+
 Fri May  9 16:29:32 2014 Peter B. Robinson
 v0.1.16
 
