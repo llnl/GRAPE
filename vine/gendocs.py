@@ -59,9 +59,9 @@ this means that that option grabs it's value from the .grapeconfig file for your
 
 If you're a project maintainer, this .grapeconfig stuff really matters for how you want your team to work.
 If you're a lowly peon, err... valued developer, you don't care. You're reading this because your project
-maintainer has set you up with grape and wants you to use it for branch creation, library maintainence,
+maintainer has set you up with grape and wants you to use it for branch creation, library maintenance,
 testing stuff before publishing it, doing the correct git incantations to merge branches in a way that
-makes sense for your team, etc. The lowly peo--, excuse me, Valued Devleoper view of grape should be:
+makes sense for your team, etc. The lowly peo--, excuse me, Valued Developer view of grape should be:
 
     # take a look at available commands
     grape
@@ -94,13 +94,13 @@ libraries, then this section should be all you need. Read on for more advanced t
 This assumes you have a git repository set up, have at least a rudimentary knowledge of git,
 you have an idea of how you want to do your branching (single trunk, gitflow, some other weird thing, etc. ),
 and you are ready to distribute your well thought-out process using grape.
-Much of grape also assumes you're working in a clone of a repo, with a remote called 'origin.'
+Much of grape also assumes you're working in a clone of a repo, with a remote called `origin`.
 This tutorial assumes you're developing in a project called foo hosted at a stash instance
 at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk development model, with both a
 `develop` branch and a `master` branch.
 
 ### Creating your .grapeconfig file
-Ok, lets go to your git repository, and create an initial grape config file.
+Ok, let's go to your git repository, and create an initial grape config file.
 
     cd /path/to/repo
     grape writeConfig .grapeconfig
@@ -134,7 +134,7 @@ The `publicbranches` is a space-delimited list of all of your long-lived public 
 like develop, master, or release, but can be whatever your project thinks makes sense.
 
 The `topicprefixmappings` is a space-delimited list of key:value pairs, where the key is a branch prefix, and the value
-is the public branch topic branches with that branch prefix.  For example, if you wanted bugfix  and feature
+is the public branch topic branches with that branch prefix.  For example, if you wanted bugfix and feature
 branches to be branched off of develop and hotfix branches to be branched off of master, you should do the following:
 
     [flow]
@@ -172,8 +172,8 @@ calling grape.
 
 ### Defining your publish process
 When your valued developers want to publish their invaluable work to a public branch, your team may have a host of
-SQA driven requirements, such as successfull build(s), testing, etc. You'll want to take a look at `grape publish
---help` for more details on this, but for now lets look at a few key things in the `[publish]` section of your
+SQA driven requirements, such as successful build(s), testing, etc. You'll want to take a look at `grape publish
+--help` for more details on this, but for now let's look at a few key things in the `[publish]` section of your
 .grapeconfig file.
 
     [publish]
@@ -199,11 +199,12 @@ SQA driven requirements, such as successfull build(s), testing, etc. You'll want
 
 Ok, there's a lot here. But that's because publish can do a lot for you, I promise.
 
-`buildcmds` : This is a COMMA -delimited list of commands you use to build your code.
+`buildcmds` : This is a COMMA-delimited list of commands you use to build your code.
 `builddir` : This is the directory where the `buildcmds` are issued from, relative to your repository's base directory.
 `testcmds` and `testdir`: Same as `buildcmds` and `builddir`, but for running your project's tests.
 
-Have other custom steps in your process? Make use of prepublish* and postpublish* to customize your process.
+Have other custom steps in your process? Make use of prepublish[cmds|dir] and postpublish[cmds|dir] to customize your
+process.
 
 If you keep a running change log, you'll want to take a look at the grape publish documentation, paying attention to
 updatelog, logskipfirstlines, and logentryheader. If you send email notifications, check out all the documentation
@@ -230,14 +231,14 @@ you had when you developed.  We also assume you need to make changes to the thir
 business (e.g. portability fixes), and that such changes are expected to be reviewed in the context of changes to
 your project.
 
-A natural model for this is to have each library be it's own repository, either a fork of that library's official git
+A natural model for this is to have each library be its own repository, either a fork of that library's official git
 repo, or a hand rolled one based off of snapshots that your project maintains. Grape assumes that for each of your
 public branches in your project, there is a consistently named branch in each of your subprojects. For example,
 for your project foo that depends on third party library libBar, foo might have the branches develop and master, and
 libBar might have the branches foo_dev and foo_master.
 
 Using this model allows one to merge in updates to the third-party codebase with your changes in a natural way. If
-desired, it enables relative easy contributions of yoru fixes to the library when appropriate.
+desired, it enables relative easy contributions of your fixes to the library when appropriate.
 
 Currently grape doesn't support recursive subprojects. This doesn't matter too much for subtrees, but for submodules
 it might matter a great deal.
@@ -349,7 +350,7 @@ setting subtrees.pushonpublish to True.
 
 # Grape Commands
 Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
-at a pariticular commands documentation using grape <cmd> --help.
+at a particular commands documentation using grape <cmd> --help.
 
 Some commands are better documented than others, but our use of the docopt.py module guarantees that all available
 options are at least listed below.
