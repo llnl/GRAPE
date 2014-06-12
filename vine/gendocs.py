@@ -75,6 +75,8 @@ makes sense for your team, etc. The lowly peo--, excuse me, Valued Devleoper vie
     grape status
     # commit to your local repo all staged changes in all subprojects
     grape commit
+    # Update your topic branch with recent changes on the public branch
+    grape md
     # publish your branch to the appropriate public branch (e.g. master, develop, release, etc)
     grape publish
 
@@ -214,12 +216,143 @@ What about that `tickversion` option? Set it to True if you want to auto-increme
 Check out `grape version --help` for more info on managing versioning your project with grape.
 
 
+## Managing Subprojects with grape
+If you'd like to manage third-party library source-code inline with your project, git provides a couple of ways
+to do it: Submodules and Subtrees. Googling submodules vs. subtrees will yield discussions as vehemently
+idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
+based on religion, so it aims to make life easier regardless of your decision, and to hide inherent complexities
+associated with both as much as possible.
+
+### Grape's assumptions about subprojects
+We assume that you're using submodules or subtrees as a means to manage pedigree of your code - when you check out
+version 1.2 of your project, you want to make sure you can always build it with the versions of third party libraries
+you had when you developed.  We also assume you need to make changes to the third party libs as a regular course of
+business (e.g. portability fixes), and that such changes are expected to be reviewed in the context of changes to
+your project.
+
+A natural model for this is to have each library be it's own repository, either a fork of that library's official git
+repo, or a hand rolled one based off of snapshots that your project maintains. Grape assumes that for each of your
+public branches in your project, there is a consistently named branch in each of your subprojects. For example,
+for your project foo that depends on third party library libBar, foo might have the branches develop and master, and
+libBar might have the branches foo_dev and foo_master.
+
+Using this model allows one to merge in updates to the third-party codebase with your changes in a natural way. If
+desired, it enables relative easy contributions of yoru fixes to the library when appropriate.
+
+Currently grape doesn't support recursive subprojects. This doesn't matter too much for subtrees, but for submodules
+it might matter a great deal.
+
+## How grape works with submodules
+### relevant sections in the `.grapeconfig`
+
+    [workspace]
+    subprojecttype = submodule
+    managesubmodules = True
+    submoduletopicprefixmappings = ?:develop
+    submodulepublishpolicy = ?:merge
+    submodulepublicmappings = ?:master
+
+`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default) or submodule.
+
+`managesubmodules` should be set to True to enable grape managed submodules. Otherwise, you're on your own.
+
+`submoduletopicprefixmappings` is analogous to `flow.topicprefixmappings`. When you publish changes in your project,
+this is what grape uses to determine which branch in your submodule updated submodules' changes get merged to.
+
+`submodulepublishpolicy` is analagous to 'flow.publishpolicy', but determines what merge rebase action will take
+place in your submodules.
+
+`submodulepublicmappings` is a list of key:value pairs that define the association of your project's public branches
+to your submodule's public branches, e.g. `develop:foo_dev master:foo_master`.
+
+### branch creation
+When you create and checkout a branch in grape using grape <branchType>, branches will be created and checked
+out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[<branchType>]] to
+determine your submodules' branch's start points.
+For example, with  the following `.grapeconfig`:
+
+    [flow]
+    topicprefixmappings = bugfix:develop hotfix:master feature:develop ?:develop
+    [workspace]
+    managesubmodules = True
+    submoduletopicprefixmappings = feature:foo_dev bugfix:foo_dev hotfix:foo_master
+    submodulepublicmappings = develop:foo_dev master:foo_master
+
+calling `grape bugfix` will create a new branch off of develop in project foo, and a branch of the same name off of
+foo_dev in submodule libBar.
+
+### `grape status`
+Grape status will gather the status across all submodules and your project. This is different from git status, which
+will only give you the status of the repo / submodule you are currently in.
+
+### `grape commit`
+Grape commit will commit all changes in submodules first, then perform the commit in the outer level repository to
+ensure you have updated the gitlink.
+
+### `grape push`
+Grape push pushes changes in your current branch to origin in all submodules and your outer level repository.
+
+### `grape md`
+Grape md handles the situation where you're merging in changes to a submodule in a branch that also has changes in
+that submodule. This normally is a guaranteed conflict in the gitlink, even if the appropriate merge in the submodule
+should be clean. In the above example, while on a branch called feature/user/descr this performs the following steps:
+    in foo:
+        git merge develop
+        on conflict:
+            in libBar:
+            git merge foo_dev
+            on conflict:
+                ask user to resolve
+            in foo:
+            resolve gitlink conflicts
+        if still in conflict:
+            ask user to resolve
+        commit result of merge
+
+Use grape md --continue once you've resolved any conflicts generated by this process.
+
+### `grape publish`
+Grape publish will perform the merge actions as defined by workspace.submodulepublishpolicy in all submodules first,
+then publish your outer level repo.
+
+### `grape review`
+When creating a new pull request with a description, grape will create pull requests in all modified submodules and
+append links to those pull requests in your project-level pull request.
+
+### `grape db`
+When deleting a branch, grape will delete branches of the same name in your submodules.
+
+## How grape works with subtrees
+Grape uses git-subtree, which is part of the contrib/ section of the official git repository. You'll need to install
+git-subtree for grape's subtree features to work.
+
+### relevant subtree `.grapeconfig` sections
+
+    [subtrees]
+    mergepolicy = nosquash
+    pushonpublish = False
+    names = libBar
+
+    [subtree-libBar]
+    prefix = imports/libBar
+    remote = ../libBar
+    topicprefixmappings = ?:
+
+### Adding subtrees.
+Check out the grape addSubproject --help for more details. When you use addSubproject, grape updates the .grapeconfig
+file as appropriate.
 
 
+### `grape publish`
+Grape can be configured to split-push changes in subtrees to their host repository as part of your publish step by
+setting subtrees.pushonpublish to True.
 
 # Grape Commands
 Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
 at a pariticular commands documentation using grape <cmd> --help.
+
+Some commands are better documented than others, but our use of the docopt.py module guarantees that all available
+options are at least listed below.
 
     """
     def __init__(self):
