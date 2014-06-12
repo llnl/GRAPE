@@ -52,6 +52,7 @@ class Publish(resumable.Resumable):
                          [--repo=<StashRepoName>]
                          [-R <arg>]...
                          [--noReview]
+                         [--useStash=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
                           --emailServer=<smtpserver>]]
@@ -127,7 +128,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.repo.name]
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRES**:" --prepend.
                             Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests.
+    --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
+    --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicPrefixMappings.
     --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
@@ -193,6 +195,8 @@ class Publish(resumable.Resumable):
         config.set('publish', 'postpublishDir', '.')
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
+        # use Stash for checking Pull Request status?
+        config.set('publish', 'useStash', 'True')
         # delete when done
         config.set('publish', 'deleteTopic', 'False')
         # log file
@@ -249,8 +253,12 @@ class Publish(resumable.Resumable):
             public = config.getPublicBranchFor(topic)
         args["--public"] = public
         self.branchPrefix = prefix
+        # whether or not to use Stash
+        if args["--useStash"].lower() == "false" and not args["--noReview"]:
+            args["--noReview"] = True
         # get the Stash Username
         user = args["--user"]
+
         if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Stash")
 
