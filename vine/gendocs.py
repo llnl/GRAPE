@@ -36,6 +36,7 @@ class Section(object):
             f.write(self._text)
             f.write("\n")
 
+
 class Tutorial(Section):
     """
 ## Introducing the `.grapeconfig` file
@@ -222,7 +223,31 @@ If you'd like to manage third-party library source-code inline with your project
 to do it: Submodules and Subtrees. Googling submodules vs. subtrees will yield discussions as vehemently
 idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
 based on religion, so it aims to make life easier regardless of your decision, and to hide inherent complexities
-associated with both as much as possible.
+associated with both as much as possible. That said, here is our take on situations appropriate for submodules vs
+situations more appropriate for subtrees:
+
+### The difference between submodules and subtrees
+Google it for details on the technical differences.  Keep in mind as you read forums that a lot of the negative
+side effects of both are mitigated by grape, athough the submodule functionality is perhaps more fully flushed
+out than the subtree functionality at the current stage of development. That said, the internet probably leans
+toward subtrees. In any case, there are still situations where you definitely want one vs. the other, listed
+below.
+
+### When to definitely use subtrees
+1. When only one or two people on your large team are responsible for library updates, and they can be easily trained on
+ the relatively small amount of complexity introduced by subtrees.
+2. When, all things being equal, you have lots of team members who are fairly familiar with git and may ignore the
+fact that you are using grape. Subtrees tend to 'just work' for plain 'ol git commands, whereas all developers
+have to be aware of the fact that they are using submodules if they need access to the submodules.
+3. When you have nested subprojects. Subtrees that contain subtrees will work well, submodules that contain submodules
+adds complexity that grape doesn't handle at the moment.
+
+### When to definitely use submodules
+1. When your subprojects consists of mostly large binary blobs (test baselines, art assets, etc.)
+2. When you need to restrict access to a sub-portion of your repository. The restricted files must be in a submodule
+to be decoupled enough to restrict access.
+3. When you plan to purge history in the subproject on a regular basis. This can be done without a reclone of your
+main repository if and only if you are using submodules.
 
 ### Grape's assumptions about subprojects
 We assume that you're using submodules or subtrees as a means to manage pedigree of your code - when you check out
