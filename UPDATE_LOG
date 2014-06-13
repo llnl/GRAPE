@@ -1,3 +1,17 @@
+Fri Jun 13 12:19:29 2014 Peter B. Robinson
+v0.2.0
+
+SUMMARY OF CHANGES: 
+Improved subtree support during publish and addSubproject. 
+Allows -v and --user option for grape publish --quick
+Allows db to delete the current branch when recursing into submodules. 
+Improved documentation and adds a tutorial to the Readme. 
+Adds grape push. 
+grape checkout more robust to a mixture of branches being and not being present in submodules. 
+grape publish now frontloads all user input to before the build step. 
+grape --continue and grape --abort are now enforced as mutually exclusive options by the parser. 
+quieting some extra output in grape uv and grape bundle. 
+
 Mon Jun  2 16:38:07 2014 Peter B. Robinson
 v0.1.20
 
