@@ -670,9 +670,9 @@ class Publish(resumable.Resumable):
             menu.applyMenuChoice("version", versionArgs)
             currentVer = grapeMenu.menu().getOption("version").ver
             if currentVer in requestTitle:
-                "Current Version string already in pull request title. Assuming this is from 
-                 a previous call to grape publish. Not ticking version again."
-                 return True
+                utility.printMsg("Current Version string already in pull request title. Assuming this is from "
+                "a previous call to grape publish. Not ticking version again.")
+                return True
         return False         
         ret = True
         if args["--tickVersion"].lower() == "true":
