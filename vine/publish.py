@@ -48,6 +48,7 @@ class Publish(resumable.Resumable):
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--user=<StashUserName>]
+                         [--stashURL=<StashURL>]
                          [--project=<StashProjectKey>]
                          [--repo=<StashRepoName>]
                          [-R <arg>]...
@@ -122,6 +123,8 @@ class Publish(resumable.Resumable):
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Stash username.
+    --stashURL=<url>        Your Stash URL, e.g. https://rzlc.llnl.gov/stash .
+                            [default: .grapeconfig.project.stashURL]
     --project=<project>     Your Stash Project. See grape-review for more details.
                             [default: .grapeconfig.project.name]
     --repo=<repo>           Your Stash repo. See grape-review for more details.
@@ -396,7 +399,7 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progresss Lock Check..")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullrequests()
         inProgressRequests = []
@@ -438,7 +441,7 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         if not request:
@@ -459,7 +462,7 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
@@ -528,7 +531,7 @@ class Publish(resumable.Resumable):
             return ret
         self.loadModifiedFiles(args)
         try:
-            git.commit(" -m \"GRAPE PUBLISH: committing staged file changes before publish.%s\"")
+            git.commit(" -m \"%s\"" % args["-m"])
         except git.GrapeGitError:
             pass
         return self.checkInProgressLock(args)
@@ -596,7 +599,7 @@ class Publish(resumable.Resumable):
                           "<msg> defined.")
                     return False
             utility.printMsg("Retrieving pull request description for use as commit message...")
-            atlassian = Atlassian.Atlassian(username=args["--user"])
+            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             commitMsg = pullRequest.description().splitlines(True)+['\n']
@@ -658,7 +661,7 @@ class Publish(resumable.Resumable):
     def tickVersion(self, args):
         menu = grapeMenu.menu()
         if not args["--noReview"]:
-            atlassian = Atlassian.Atlassian(username=args["--user"])
+            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()

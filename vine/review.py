@@ -19,6 +19,7 @@ class Review(option.Option):
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
+                        [--stashURL=<url>]
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
@@ -45,6 +46,8 @@ class Review(option.Option):
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
+        --stashURL=<url>            The stash url, e.g. https://rzlc.llnl.gov/stash. 
+                                    [default: .grapeconfig.project.stashURL]
         --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
                                     https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
@@ -61,6 +64,7 @@ class Review(option.Option):
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
+
 
 
     """
@@ -86,7 +90,7 @@ class Review(option.Option):
         if args["--test"]:
             rz_atlassian = Atlassian.TestAtlassian(name)
         else:
-            rz_atlassian = Atlassian.Atlassian(name)
+            rz_atlassian = Atlassian.Atlassian(name, url = args["--stashURL"])
         rz_stash = rz_atlassian.stash
 
         # determine pull request title
@@ -165,6 +169,8 @@ class Review(option.Option):
         return True
 
     def setDefaultConfig(self, config):
+        config.ensureSection("project")
+        config.set("project", "stashURL","https://rzlc.llnl.gov/stash")
         pass
 
 
