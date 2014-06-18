@@ -673,7 +673,6 @@ class Publish(resumable.Resumable):
                 utility.printMsg("Current Version string already in pull request title. Assuming this is from "
                 "a previous call to grape publish. Not ticking version again.")
                 return True
-        return False         
         ret = True
         if args["--tickVersion"].lower() == "true":
             versionArgs = ["tick", "--notag"]
