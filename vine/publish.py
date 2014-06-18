@@ -387,6 +387,10 @@ class Publish(resumable.Resumable):
     def ensureReview(self, args):
         return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
+
+            
+
+ 
     @staticmethod
     def checkInProgressLock(args):
         if args["--noReview"]:
@@ -419,7 +423,6 @@ class Publish(resumable.Resumable):
             for request in inProgressRequests:
                 print request
             return False
-
     def aquireInProgressLock(self, args):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progresss Lock Check..")
@@ -560,16 +563,17 @@ class Publish(resumable.Resumable):
 
         if not args["<CommitMessageFile>"] and not args["-m"]:
             proceed = utility.userInput("No commit message entered. Would you like to use the Pull Request's "
-                                        "description as your  commit message? [y/n]", 'y')
+                                        "description as your  commit message? [y/n] \n(Enter 'n' to enter a file name with your commit message instead)", 'y')
             if not proceed:
                 args["<CommitMessageFile>"] = utility.userInput("Enter the name of the file containing your commit "
                                                                 "message: ")
 
-        if args["<CommitMessageFile>"]:
+        elif args["<CommitMessageFile>"] and not args["-m"]:
+            # commit messsage should come from the file
             commitMsgFile = args["<CommitMessageFile>"]
             try:
                 with open(commitMsgFile, 'r') as f:
-                    commitMsg = f.readlines()
+                    commitMsg = f.readlines()+["\n"]
 
             except IOError as e:
                 print(e.message)
@@ -582,6 +586,8 @@ class Publish(resumable.Resumable):
                 self.markReview(args, ["--descr", commitMsgFile], "")
             else:
                 utility.printMsg("Skipping update of pull request description from commit message")
+        elif args["-m"]: 
+            commitMsg = [args["-m"]+"\n"] 
         else:
             if args["--noReview"]:
                 utility.printMsg("Skipping retreival of commit message from Pull Request description..")
@@ -593,17 +599,14 @@ class Publish(resumable.Resumable):
             atlassian = Atlassian.Atlassian(username=args["--user"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
-            commitMsg = pullRequest.description().splitlines(True)+['']
+            commitMsg = pullRequest.description().splitlines(True)+['\n']
 
         # this will be used for the actual merge commit message.
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
         
-        if escapedCommitMsg and not args["-m"]:
+        if escapedCommitMsg: 
             args["-m"] = escapedCommitMsg
-        elif not escapedCommitMsg and args["-m"]:
-            escapedCommitMsg = args["-m"]
-            commitMsg = [args["-m"]]
         else:
             utility.printMsg("WARNING: Commit message is empty. ")
 
@@ -640,7 +643,7 @@ class Publish(resumable.Resumable):
             header = header.replace("<date>", time.asctime())
             header = header.replace("<user>", git.config("--get user.name"))
             header = header.replace("<version>", self.progress["version"])
-            header = header.split("\\n")
+            header = ["\n"]+header.split("\\n")
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
             with open(logFile, 'r') as f:
@@ -653,6 +656,24 @@ class Publish(resumable.Resumable):
         return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
+        menu = grapeMenu.menu()
+        if not args["--noReview"]:
+            atlassian = Atlassian.Atlassian(username=args["--user"])
+            repo = atlassian.project(args["--project"]).repo(args["--repo"])
+            thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+            requestTitle = thisRequest.title()
+            versionArgs = ["tick", "--notag", "--notick", "--nocommit"]
+            for arg in args["-T"]:
+                newArg  = arg.strip()
+                if "--tag" not in newArg and "--tick" not in newArg: 
+                    versionArgs += [arg.strip()]
+            menu.applyMenuChoice("version", versionArgs)
+            currentVer = grapeMenu.menu().getOption("version").ver
+            if currentVer in requestTitle:
+                "Current Version string already in pull request title. Assuming this is from 
+                 a previous call to grape publish. Not ticking version again."
+                 return True
+        return False         
         ret = True
         if args["--tickVersion"].lower() == "true":
             versionArgs = ["tick", "--notag"]
