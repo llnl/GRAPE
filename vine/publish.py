@@ -571,7 +571,7 @@ class Publish(resumable.Resumable):
                 args["<CommitMessageFile>"] = utility.userInput("Enter the name of the file containing your commit "
                                                                 "message: ")
 
-        elif args["<CommitMessageFile>"] and not args["-m"]:
+        if args["<CommitMessageFile>"] and not args["-m"]:
             # commit messsage should come from the file
             commitMsgFile = args["<CommitMessageFile>"]
             try:
