@@ -5,7 +5,7 @@ import merge
 class MergeRemote(option.Option):
     """
     grape mr (merge remote branch)
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [-v] [--quiet]
 
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)

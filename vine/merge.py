@@ -70,6 +70,7 @@ def merge(branch, strategy, args):
     except git.GrapeGitError as error:
         if error.code == 1:
             if not args["--quiet"]:
+                print error.gitOutput
                 print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
                       "with grape m --continue. ")
             return False
