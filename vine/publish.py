@@ -950,6 +950,15 @@ class Publish(resumable.Resumable):
 
                     grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
                     self.publish(submodulePolicy, submodulePublic, topic, args)
+                    os.chdir(cwd)
+                    #add and commit any new merge commits in submodules as a result of the publish
+                    git.add(sub)
+                try:
+                    # we are cool with this not working - only will have something to commit if the 
+                    # submodules were published without fast forward merges
+                    git.commit("-m \"%s - submodules published\"" % args["-m"])
+                except git.GrapeGitError as e:
+                    pass
             # restore value for args[--cascade]
             args["--cascade"] = outerCascadeOption
             os.chdir(cwd)
