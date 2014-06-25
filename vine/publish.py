@@ -48,7 +48,8 @@ class Publish(resumable.Resumable):
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--user=<StashUserName>]
-                         [--stashURL=<StashURL>]
+                         [--stashURL=<httpsURL>]
+                         [--verifySSL=<bool>]
                          [--project=<StashProjectKey>]
                          [--repo=<StashRepoName>]
                          [-R <arg>]...
@@ -125,6 +126,8 @@ class Publish(resumable.Resumable):
     --user=<user>           Your Stash username.
     --stashURL=<url>        Your Stash URL, e.g. https://rzlc.llnl.gov/stash .
                             [default: .grapeconfig.project.stashURL]
+    --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
+                            [default: .grapeconfig.project.verifySSL]
     --project=<project>     Your Stash Project. See grape-review for more details.
                             [default: .grapeconfig.project.name]
     --repo=<repo>           Your Stash repo. See grape-review for more details.
@@ -259,6 +262,9 @@ class Publish(resumable.Resumable):
         # whether or not to use Stash
         if args["--useStash"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
+        if not args["--noReview"]:
+            verify = True if args["--verifySSL"].lower() == "true" else False
+            args["--verifySSL"] = verify
         # get the Stash Username
         user = args["--user"]
 
@@ -399,7 +405,7 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progresss Lock Check..")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullrequests()
         inProgressRequests = []
@@ -441,7 +447,8 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
+
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         if not request:
@@ -462,7 +469,7 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
@@ -599,7 +606,7 @@ class Publish(resumable.Resumable):
                           "<msg> defined.")
                     return False
             utility.printMsg("Retrieving pull request description for use as commit message...")
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
+            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             commitMsg = pullRequest.description().splitlines(True)+['\n']
@@ -661,7 +668,7 @@ class Publish(resumable.Resumable):
     def tickVersion(self, args):
         menu = grapeMenu.menu()
         if not args["--noReview"]:
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"])
+            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()

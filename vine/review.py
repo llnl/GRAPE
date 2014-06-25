@@ -20,6 +20,7 @@ class Review(option.Option):
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
                         [--stashURL=<url>]
+                        [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
@@ -48,6 +49,8 @@ class Review(option.Option):
                                     [default: open]
         --stashURL=<url>            The stash url, e.g. https://rzlc.llnl.gov/stash. 
                                     [default: .grapeconfig.project.stashURL]
+        --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
+                                    [default: .grapeconfig.project.verifySSL]
         --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
                                     https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
@@ -90,7 +93,8 @@ class Review(option.Option):
         if args["--test"]:
             rz_atlassian = Atlassian.TestAtlassian(name)
         else:
-            rz_atlassian = Atlassian.Atlassian(name, url = args["--stashURL"])
+            verify = True if args["--verifySSL"].lower() == "true" else False
+            rz_atlassian = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
         rz_stash = rz_atlassian.stash
 
         # determine pull request title

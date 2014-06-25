@@ -14,7 +14,7 @@ import utility
 class Atlassian:
     rzstashURL = "https://rzlc.llnl.gov/stash"
 
-    def __init__(self, username=None, url=rzstashURL):
+    def __init__(self, username=None, url=rzstashURL, verify=True):
 
         if username is None:
             self.userName = utility.getUserName()
@@ -22,37 +22,34 @@ class Atlassian:
             self.userName = username
 
         self.keyring = keyring.get_keyring()
-        service = url
-        password = keyring.get_password(service, self.userName)
+        self.service = url
+        password = keyring.get_password(self.service, self.userName)
 
-        if self.auth(service, self.userName, password):
+        if self.auth(self.service, self.userName, password, verify=verify):
             print("Connected to RZStash...")
             self.url = url
         else:
             self.stash = None
             print("Could not connect to RZStash...")
 
-    
-
-    def auth(self,service,username,password):
+    def auth(self, service, username, password, verify=True):
         self.userName = username
         self.service = service
-        self.stash = stashy.connect(service,username,password)
         numAttempts = 0
         success = False
-        while (numAttempts < 3 and not success):
+        while numAttempts < 3 and not success:
             try:
-                project = self.stash.projects.list()
+                self.stash = stashy.connect(service, username, password, verify=verify)
                 success = True
             except stashy.errors.AuthenticationException:
                 if numAttempts == 0:
                     print("session expired...")
-
                 else:
                     print("incorrect username / password...")
                     self.userName = utility.getUserName(self.userName)
-                keyring.set_password(service,self.userName,getpass.getpass("Enter password for %s: " % service))
-                self.stash = stashy.connect(service,self.userName,keyring.get_password(service,self.userName))
+                keyring.set_password(service, self.userName, getpass.getpass("Enter password for %s: " % service))
+                self.stash = stashy.connect(service, self.userName, keyring.get_password(service, self.userName),
+                                            verify=verify)
                 numAttempts += 1
 
         return success
@@ -71,8 +68,6 @@ class Atlassian:
         return None
 
 
-
-
 class StashyNode:
     def __init__(self, node):
         self.node = node
@@ -80,7 +75,7 @@ class StashyNode:
     def show(self):
         self._show(self.node)
 
-    def _show(self, d, level = 0):
+    def _show(self, d, level=0):
         keys = d.keys()
         keys.sort()
         for key in keys:
@@ -101,9 +96,9 @@ class StashyNode:
 
 
 class Project(StashyNode):
-    def __init__(self, project, node):
+    def __init__(self, proj, node):
         StashyNode.__init__(self, node)
-        self.project = project
+        self.project = proj
 
     def name(self):
         return self.node["name"]
@@ -124,9 +119,9 @@ class Project(StashyNode):
 
 
 class Repo(StashyNode):
-    def __init__(self, repo, node):
+    def __init__(self, rpo, node):
         StashyNode.__init__(self, node)
-        self.repo = repo
+        self.repo = rpo
 
     def pullrequests(self, state="OPEN"):
         return [PullRequest(x) for x in self.repo.pull_requests.all(state=state)]
@@ -147,8 +142,6 @@ class Repo(StashyNode):
             if r.toRef() == target and r.fromRef() == source:
                 ret.append(r)
         return ret
-
-
 
 
 class PullRequest(StashyNode):
@@ -174,7 +167,7 @@ class PullRequest(StashyNode):
         for reviewer in self.node["reviewers"]:
             name = reviewer["user"]["name"]
             approved = reviewer["approved"] 
-            ret.append( (name, approved) )
+            ret.append((name, approved))
         return ret
 
     def state(self):
@@ -229,6 +222,7 @@ if __name__ == "__main__":
 
                 print 
 
+
 class TestStashResponse(dict):
 
     def __getitem__(self, item):
@@ -239,9 +233,9 @@ class TestStashResponse(dict):
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 
-
     def json(self):
         return self
+
 
 class TestPullRequest(TestStashResponse):
     def __init__(self, title, fromRef, toRef, parent, id="0", description=None, reviewers=[]):
