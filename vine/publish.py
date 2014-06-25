@@ -262,7 +262,7 @@ class Publish(resumable.Resumable):
         # whether or not to use Stash
         if args["--useStash"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
-        if not args["--noReview"]:
+        if not args["--noReview"] and type(args["--verifySSL"]) != bool:
             verify = True if args["--verifySSL"].lower() == "true" else False
             args["--verifySSL"] = verify
         # get the Stash Username
