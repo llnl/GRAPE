@@ -174,7 +174,8 @@ class Review(option.Option):
 
     def setDefaultConfig(self, config):
         config.ensureSection("project")
-        config.set("project", "stashURL","https://rzlc.llnl.gov/stash")
+        config.set("project", "stashURL", "https://rzlc.llnl.gov/stash")
+        config.set("project", "verifySSL", "True")
         pass
 
 

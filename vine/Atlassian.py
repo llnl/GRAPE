@@ -35,11 +35,12 @@ class Atlassian:
     def auth(self, service, username, password, verify=True):
         self.userName = username
         self.service = service
+        self.stash = stashy.connect(service, username, password, verify=verify)
         numAttempts = 0
         success = False
         while numAttempts < 3 and not success:
             try:
-                self.stash = stashy.connect(service, username, password, verify=verify)
+                self.stash.projects.list()
                 success = True
             except stashy.errors.AuthenticationException:
                 if numAttempts == 0:
