@@ -51,7 +51,7 @@ class Config(option.Option):
         # stores login info for 12 hrs (max allowed by RZStash)
 
         if not args["--nocredcache"]:
-            cache = utility.userInput("Would you like to enable git-managed credential cacheing?", 'y')
+            cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
                 print("Enabling 12 hr caching of https credentials...")
                 git.config("--global credential.helper", "cache --timeout=43200")
