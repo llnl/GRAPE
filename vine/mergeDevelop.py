@@ -173,14 +173,18 @@ class MergeDevelop(resumable.Resumable):
         mergeArgs = args
         mergeArgs["<branch>"] = subPublic
         print("GRAPE: Merging %s into %s for submodule %s" % (subPublic, git.currentBranch(), subproject))
-        conflict = not grapeMenu.menu().getOption("m").execute(mergeArgs)
+        ret = grapeMenu.menu().getOption("m").execute(mergeArgs)
+        conflict = not ret
         if conflict:
             self.progress["stopPoint"] = "Submodule: %s" % subproject
             self.progress["submodules"] = submodules
             self.progress["cwd"] = cwd
-
-            print("GRAPE: merge in %s generated CONFLICT(S). Resolve using git mergetool and then \n"
-                  "continue by calling 'grape md --continue'" % subproject)
+            if ret is False:
+                utility.printMsg("Merge in submodule %s failed. Resolve the issue (maybe you need to stash or commit "
+                                 "your changes?) \n and then continue by calling grape md --continue." % subproject)
+            else:
+                utility.printMsg("merge in %s generated CONFLICT(S). Resolve using git mergetool and then \n"
+                                 "continue by calling 'grape md --continue'" % subproject)
             return False
         # if we are resuming from a conflict, the above grape m call would have taken care of continuing.
         # clear out the --continue flag.
