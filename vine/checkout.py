@@ -28,6 +28,7 @@ class Checkout(option.Option):
 
     @staticmethod
     def handledCheckout(checkoutargs, branch, project, quiet=True):
+        git.fetch()
         try:
             git.checkout(checkoutargs + ' ' + branch, quiet=quiet)
         except git.GrapeGitError as e:
