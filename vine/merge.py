@@ -68,17 +68,13 @@ def merge(branch, strategy, args):
         git.merge("%s %s" % (branch, strategy), quiet=not args["-v"])
         return True
     except git.GrapeGitError as error:
-        if error.code == 1:
-            if not args["--quiet"]:
-                print error.gitOutput
-                print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
-                      "with grape m --continue. ")
-            return False
+        print error.gitOutput
+        if "conflict" in error.gitOutput.lower():
+            print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
+                  "with grape m --continue. ")
         else:
-            print error.gitOutput
             print("Merge command %s failed. Quitting." % error.gitCommand)
-            choice = False
-        return choice
+        return False
 
 
 def mergeIntoCurrent(branchName, args):

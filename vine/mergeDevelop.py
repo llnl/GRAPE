@@ -4,6 +4,7 @@ import grapeGit as git
 import grapeMenu
 import grapeConfig
 import resumable
+import utility
 
 
 # pull and merge in an up-to-date development branch
@@ -123,6 +124,9 @@ class MergeDevelop(resumable.Resumable):
             conflictedFiles = self.outerLevelMerge(args, branch)
         else:
             recurse = True
+        if conflictedFiles is False:
+            utility.printMsg("Initial merge failed. Resolve issue and try again. ")
+            return False
         if recurse:
             subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
             subPublic = subBranchMappings[git.branchPrefix(branch)]
@@ -218,7 +222,12 @@ class MergeDevelop(resumable.Resumable):
         mergeArgs["--quiet"] = True
         conflict = not grapeMenu.menu().getOption("m").execute(mergeArgs)
         if conflict:
-            return git.conflictedFiles()
+            conflictedFiles = git.conflictedFiles()
+            if conflictedFiles:
+                return conflictedFiles
+            else:
+                utility.printMsg("Merge issued error, but no conflicts. Aborting...")
+                return False
         else:
             return []
 
