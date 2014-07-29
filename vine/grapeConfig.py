@@ -79,6 +79,9 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         return self.get(section, cfgOption, raw=raw, vars=cfgVars).split()
 
     def getPublicBranchFor(self, branch):
+	publicBranches = self.get("flow","publicbranches").split()
+	if branch in publicBranches: 
+	    return branch
         publicMapping = self.getMapping("flow", "topicPrefixMappings")
         return publicMapping[git.branchPrefix(branch)]
 
