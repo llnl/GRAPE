@@ -120,7 +120,7 @@ class Unbundle(option.Option):
        grape-unbundle <grapebundlefile>... [--branchMappings=<config.patch.branchMappings>]
 
     Arguments:
-        <grapebundlefile>             The name of the grape bundle file to unbundle.
+        <grapebundlefile>             The name(s) of the grape bundle file(s) to unbundle.
 
     Options:
         --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
