@@ -39,7 +39,7 @@ class Config(option.Option):
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
-        #have git automatically do some garbage collection / optimizatoin
+        #have git automatically do some garbage collection / optimization
         print("setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
