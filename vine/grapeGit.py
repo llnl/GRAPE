@@ -76,8 +76,8 @@ def branchUpToDateWith(branchName, targetBranch, quiet=True):
     return upToDate
 
 
-def bundle(argstr):
-    return gitcmd("bundle %s" % argstr, "Bundle failed")
+def bundle(argstr, quiet=False):
+    return gitcmd("bundle %s" % argstr, "Bundle failed", quiet=quiet)
 
 
 def checkout(argstr, quiet=False):

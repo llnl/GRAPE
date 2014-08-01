@@ -148,11 +148,16 @@ class Unbundle(option.Option):
                 sourceDestPair = token.split(":")
                 source = sourceDestPair[0]
                 dest = sourceDestPair[1]
-                if source.replace('/', '.') in bundleName:
+                bundleHeads = git.bundle("list-heads %s" % bundleName, quiet=True).split("\n")
+                bundleBranches = []
+                for line in bundleHeads:
+                    if "refs/heads" in line:
+                        bundleBranches.append(line.split()[1].split("refs/heads/")[1])
+                if source.replace('/', '.') in bundleBranches:
                     mappings += "%s:%s " % (source, dest)
 
             try:
-                git.bundle("verify %s" % bundleName)
+                git.bundle("verify %s" % bundleName, quiet=True)
             except git.GrapeGitError as e:
                 print e.gitCommand
                 print e.cwd
