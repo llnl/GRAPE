@@ -19,7 +19,7 @@ submodulepublishpolicy = ?:merge
 tagprefix = bundled
 describepattern = v*
 branches = develop master ale3d ale3d_4_22 ale3d_4_24
-branchmappings = develop:develop master:master ale3d:ale4d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24
+branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24
 
 [flow]
 publishpolicy = ?:merge master:cascade
