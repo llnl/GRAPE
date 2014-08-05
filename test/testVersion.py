@@ -21,7 +21,7 @@ class TestVersion(testGrape.TestGrape):
             self.assertEqual(git.describe("--abbrev=0"), "v0.1.0")
 
             # test to make sure ticking the version works
-            ret = menu.applyMenuChoice("version", ["tick"])
+            ret = menu.applyMenuChoice("version", ["tick", "--minor"])
             self.assertTrue(ret, "grape version tick returned False")
             self.assertEqual(git.describe(), "v0.2.0")
         except SystemExit:

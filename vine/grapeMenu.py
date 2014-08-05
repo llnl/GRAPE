@@ -16,6 +16,7 @@ import mergeRemote
 import newFlowBranch
 import newWorkingTree
 import publish
+import push
 import quit
 import resolveConflicts
 import resumable
@@ -41,6 +42,7 @@ def menu():
     global __menuInstance
     if __menuInstance is None:
         __menuInstance = _Menu()
+        grapeConfig.readDefaults()
         grapeConfig.read()
         __menuInstance.postInit()
     return __menuInstance
@@ -63,7 +65,7 @@ class _Menu(object):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(), branches.Branches(),
-                         status.Status(), checkout.Checkout(), commit.Commit(), publish.Publish(),
+                         status.Status(), checkout.Checkout(), push.Push(), commit.Commit(), publish.Publish(),
                          clone.Clone(), config.Config(), grapeConfig.WriteConfig(),
                          foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                          deleteBranch.DeleteBranch(), newWorkingTree.NewWorkingTree(),
@@ -106,7 +108,12 @@ class _Menu(object):
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate.
         if option_args is None and chosen_option.__doc__:
             #print("applyMenuCHoice:",args)
-            option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
+            try:
+                option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
+            except SystemExit as e:
+                if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
+                    print("GRAPE PARSING ERROR: could not parse %s\n" % (args[1:]))
+                raise e
         try:
             if isinstance(chosen_option, resumable.Resumable):
                 if option_args["--continue"]:
@@ -138,7 +145,7 @@ class _Menu(object):
 
     # configures a ConfigParser object with all default values and sections needed by our Option objects
     def setDefaultConfig(self, cfg):
-        cfg.add_section("repo")
+        cfg.ensureSection("repo")
         cfg.set("repo", "name", "repo_name_not.yet.configured")
         cfg.set("repo", "url", "https://not.yet.configured/scm/project/unknown.git")
         cfg.set("repo", "httpsbase", "https://not.yet.configured")

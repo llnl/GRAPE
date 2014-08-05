@@ -41,13 +41,13 @@ class RunHook(option.Option):
     """ grape runHook
 
     Usage: grape-runHook
-           grape-runHook pre-commit
-           grape-runHook pre-push <dest> <url>
-           grape-runHook pre-rebase <basebranch> [<rebasebranch>]
-           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>]
-           grape-runHook post-rebase [--rebaseSubmodule=<bool>]
-           grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>]
-           grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>]
+           grape-runHook pre-commit [--noExit]
+           grape-runHook pre-push <dest> <url> [--noExit]
+           grape-runHook pre-rebase <basebranch> [<rebasebranch>] [--noExit]
+           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>] [--noExit]
+           grape-runHook post-rebase [--rebaseSubmodule=<bool>] [--noExit]
+           grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>] [--noExit]
+           grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
         --autopush=<bool>           autopushes commits to origin
@@ -56,7 +56,9 @@ class RunHook(option.Option):
                                     [default: .grapeconfig.post-commit.cascade]
         --rebaseSubmodule=<bool>    [default: .grapeconfig.post-rebase.submoduleUpdate]
         --mergeSubmodule=<bool>     [default: .grapeconfig.post-merge.submoduleUpdate]
-        --checkoutSubmodule=<bool>  [default: .grapeconfig.post-checkout.submoduleUpdate]
+        --checkoutSubmodule=<bool>  [default: .grapeconfig.post-checkout.submoduleUpdate
+        --noExit                    Normally runhook returns by calling exit(0). With this flag, returns by returning
+                                    True.
 
     Arguments:
         <dest>                      (pre-push only) The destination repo.
@@ -89,7 +91,10 @@ class RunHook(option.Option):
                     self.commands[command](args)
             except KeyError:
                 pass
-        exit(0)
+        if args["--noExit"]:
+            return True
+        else:
+            exit(0)
 
     def setDefaultConfig(self,config):
         # post-commit
@@ -134,7 +139,7 @@ class RunHook(option.Option):
         else:
             autoPush = False
         #applies the cascade hook
-        cascadeDict = grapeConfig.parseConfigPairList(args["--cascade"])
+        cascadeDict = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
             while currentBranch in cascadeDict:
@@ -168,19 +173,19 @@ class RunHook(option.Option):
 
     def postRebase(self, args):
         updateSubmodule = args["--rebaseSubmodule"]
-        if updateSubmodule.lower() == 'true':
+        if updateSubmodule and updateSubmodule.lower() == 'true':
             git.submodule("sync")
             git.submodule("update --rebase")
 
     def postMerge(self, args):
         updateSubmodule = args["--mergeSubmodule"]
-        if updateSubmodule.lower() == 'true':
+        if updateSubmodule and updateSubmodule.lower() == 'true':
             git.submodule("sync")
             git.submodule("update --merge")
 
     def postCheckout(self, args):
         updateSubmodule = args["--checkoutSubmodule"]
-        if updateSubmodule.lower() == 'true':
+        if updateSubmodule and updateSubmodule.lower() == 'true':
             git.submodule("sync")
             git.submodule("update")
 

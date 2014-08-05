@@ -39,7 +39,7 @@ class Config(option.Option):
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
-        #have git automatically do some garbage collection / optimizatoin
+        #have git automatically do some garbage collection / optimization
         print("setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
@@ -49,9 +49,12 @@ class Config(option.Option):
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZStash)
-        if not args["--nocredcache"]: 
-            print("Enabling 12 hr caching of https credentials...")
-            git.config("--global credential.helper","cache --timeout=43200")
+
+        if not args["--nocredcache"]:
+            cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
+            if cache:
+                print("Enabling 12 hr caching of https credentials...")
+                git.config("--global credential.helper", "cache --timeout=43200")
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
@@ -68,21 +71,11 @@ class Config(option.Option):
         print("setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
-        #enable sparse checkouts, something GRAPE needs for custom views
-        print("Enabling sparse checkouts...")
-        git.config("core.sparseCheckout","true")
-
-        # perform a sparse checkout if asked of us
+        # perform an update of the active submodules if asked. 
         ask = not args["--nocv"]
-        updateView = ask and (args["--cv"] or utility.userInput("do you want anything but the default view? (you can change this later using grape uv) [y/n]","n") )
+        updateView = ask and (args["--cv"] or utility.userInput("do you want any submodules? (you can change this later using grape uv) [y/n]","n") )
         if updateView:
-            sparseFile = os.path.join(dotGit,"info","sparse-checkout")
-            with open(sparseFile,'w') as f:
-                utility.defineView(f)
-            checkout = utility.userInput("check out updated view? [y/n]","y")
-
-            if checkout:
-                git.gitcmd("read-tree -mu HEAD","Sparse checkout failed")
+            grapeMenu.menu().applyMenuChoice("uv")
 
         # configure git to use p4merge for conflict resolution
         # and diffing
@@ -121,7 +114,7 @@ class Config(option.Option):
             p4remotes = os.path.join(dotGit,"refs","remotes","p4","")
             utility.ensure_dir(p4remotes)
             commit = utility.userInput("Please enter a descriptor (e.g. SHA, branch if tip, tag name) of the current git commit that mirrors the p4 repo","master")
-            sha = utility.GetSHA(commit)
+            sha = git.SHA(commit)
             with open(os.path.join(p4remotes,"HEAD"),'w') as f:
                 f.write(sha)
             with open(os.path.join(p4remotes,"master"),'w') as f:
@@ -143,7 +136,7 @@ class Config(option.Option):
         cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)
-        for sub in git.getSubmodules(False): 
+        for sub in git.getActiveSubmodules(False):
             os.chdir(os.path.join(cwd,sub))
             grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
         os.chdir(cwd)

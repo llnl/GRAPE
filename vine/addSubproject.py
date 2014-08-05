@@ -71,17 +71,18 @@ class AddSubproject(option.Option):
                 git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch), quiet=quiet)
 
                 #update the configuration file
-                current_cfg_names = config.get("subtrees", "names").split(' ')
+                current_cfg_names = config.get("subtrees", "names").split()
                 if not current_cfg_names or current_cfg_names[0].lower() == "none":
                     config.set("subtrees", "names", name)
                 else:
                     current_cfg_names.append(name)
                     config.set("subtrees", "names", ' '.join(current_cfg_names))
 
-                config.add_section("subtree-%s" % name)
-                config.set(name, "prefix", prefix)
-                config.set(name, "remote", url)
-                config.set(name, "topicPrefixMappings", "?:%s" % branch)
+                section = "subtree-%s" % name
+                config.add_section(section)
+                config.set(section, "prefix", prefix)
+                config.set(section, "remote", url)
+                config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
                 print("Successfully added subtree branch. \n"
@@ -89,21 +90,16 @@ class AddSubproject(option.Option):
         elif usesubmodule:
             if not proceed:
                 proceed = utility.userInput("about to add %s as a submodule at path %s,\n"
-                                            "cloned from %s at %s.\nproceed? [y/n]", "y")
+                                            "cloned from %s at branch %s.\nproceed? [y/n]" %
+                                            (name, prefix, url, branch), "y")
             if proceed:
                 git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix), quiet=quiet)
                 print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
         return True
 
     def setDefaultConfig(self, config):
-        try:
-            config.add_section("subtrees")
-        except ConfigParser.DuplicateSectionError:
-            pass
-        try:
-            config.add_section("workspace")
-        except ConfigParser.DuplicateSectionError:
-            pass
+        config.ensureSection("subtrees")
+        config.ensureSection("workspace")
 
         config.set("subtrees", "mergePolicy", "squash")
         config.set("workspace", "subprojectType", "subtree")

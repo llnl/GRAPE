@@ -3,6 +3,7 @@ import option
 import utility
 import grapeMenu
 import grapeGit as git
+import grapeConfig
 
 
 class Clone(option.Option):
@@ -31,12 +32,13 @@ class Clone(option.Option):
     def execute(self, args):
         remotepath = args["<url>"]
         destpath = args["<path>"]
-        rstr = "--recursive" if args.has_key("--recursive") else ""
-
-        git.gitcmd("clone %s %s %s" % (rstr, remotepath, destpath), "Error: Git Clone failed.")
+        rstr = "--recursive" if args["--recursive"] else ""
+        git.clone(" %s %s %s" % (rstr, remotepath, destpath))
         print("Clone succeeded!")
         os.chdir(destpath)
-        return grapeMenu.menu().applyMenuChoice("config", ["config"])
+        grapeConfig.read()
+        menu = grapeMenu.menu()
+        return menu.applyMenuChoice("config")
 
     def setDefaultConfig(self, config):
         pass

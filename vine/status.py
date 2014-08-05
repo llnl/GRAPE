@@ -28,7 +28,7 @@ class Status(option.Option):
         if status[0] and status[0][0] != ' ':
             status[0] = ' ' + status[0]
 
-        submodules = git.getSubmodules()
+        submodules = git.getActiveSubmodules()
         if submodules:
             print("gathering status on submodules")
         for sub in submodules:

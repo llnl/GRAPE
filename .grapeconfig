@@ -1,12 +1,13 @@
 [repo]
 name = grape
-url = ssh://git@rz-stash.llnl.gov:7999/ale/grape.git
-httpsbase = https://rzlc.llnl.gov/stash/scm/ale/
-sshbase = ssh://git@rz-stash.llnl.gov:7999/ale/
+url = ssh://git@rz-stash.llnl.gov:7999/grp/grape.git
+httpsbase = https://rzlc.llnl.gov/stash/scm/grp/
+sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
 
 [subtrees]
 mergepolicy = squash
 names = stashy
+pushonpublish = False
 
 [workspace]
 subprojecttype = subtree
@@ -17,13 +18,33 @@ submodulepublishpolicy = ?:merge
 [patch]
 tagprefix = bundled
 describepattern = v*
-branches = develop master ale3d ale3d_4_22
-branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22
+branches = develop master ale3d ale3d_4_22 ale3d_4_24
+branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24
 
 [flow]
-publishpolicy = ?:merge
-publicbranches = master develop release ale3d
+publishpolicy = ?:merge master:cascade
+publicbranches = master develop release ale3d ale3d_4_24
 topicprefixmappings = hotfix:master feature:develop bugfix:develop rc:release ?:develop
+
+[publish]
+buildcmds = 
+builddir = 
+testcmds = grape/grape test
+testdir = ../
+prepublishcmds = vine/gendocs.py README.md , git add README.md
+prepublishdir = .
+postpublishcmds = 
+postpublishdir = 
+tickversion = True
+deletetopic = True
+updatelog = UPDATE_LOG
+logskipfirstlines = 0
+logentryheader = <date> <user>\n<version>\n
+emailnotification = True
+emailheader = <public> updated to <version>
+emailserver = nospam.llnl.gov
+emailsendto = robinson96@llnl.gov
+emailsubject = <public> updated to <version>
 
 [post-commit]
 autopush = True
@@ -41,6 +62,14 @@ submoduleupdate = False
 [view]
 alldirs = *
 required = *
+
+[versioning]
+file = vine/VERSION
+updatetag = True
+branchslotmappings = ?:3 master:2
+branchsuffixmappings = ?:
+branchtagsuffixmappings = ?:
+prefix = v
 
 [pre-push]
 

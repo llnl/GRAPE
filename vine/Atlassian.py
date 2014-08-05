@@ -14,7 +14,7 @@ import utility
 class Atlassian:
     rzstashURL = "https://rzlc.llnl.gov/stash"
 
-    def __init__(self, username=None, url=rzstashURL):
+    def __init__(self, username=None, url=rzstashURL, verify=True):
 
         if username is None:
             self.userName = utility.getUserName()
@@ -22,36 +22,35 @@ class Atlassian:
             self.userName = username
 
         self.keyring = keyring.get_keyring()
-        service = url
-        password = keyring.get_password(service, self.userName)
+        self.service = url
+        password = keyring.get_password(self.service, self.userName)
 
-        if self.auth(service, self.userName, password):
+        if self.auth(self.service, self.userName, password, verify=verify):
             print("Connected to RZStash...")
+            self.url = url
         else:
             self.stash = None
             print("Could not connect to RZStash...")
 
-    
-
-    def auth(self,service,username,password):
+    def auth(self, service, username, password, verify=True):
         self.userName = username
         self.service = service
-        self.stash = stashy.connect(service,username,password)
+        self.stash = stashy.connect(service, username, password, verify=verify)
         numAttempts = 0
         success = False
-        while (numAttempts < 3 and not success):
+        while numAttempts < 3 and not success:
             try:
-                project = self.stash.projects.list()
+                self.stash.projects.list()
                 success = True
             except stashy.errors.AuthenticationException:
-                if (numAttempts == 0):
+                if numAttempts == 0:
                     print("session expired...")
-
                 else:
                     print("incorrect username / password...")
                     self.userName = utility.getUserName(self.userName)
-                keyring.set_password(service,self.userName,getpass.getpass("Enter password for %s: " % service))
-                self.stash = stashy.connect(service,self.userName,keyring.get_password(service,self.userName))
+                keyring.set_password(service, self.userName, getpass.getpass("Enter password for %s: " % service))
+                self.stash = stashy.connect(service, self.userName, keyring.get_password(service, self.userName),
+                                            verify=verify)
                 numAttempts += 1
 
         return success
@@ -63,13 +62,11 @@ class Atlassian:
     def project(self, name):
 
         for node in self.stash.projects:
-            if node["key"] == name:
+            if node["key"].lower() == name.lower():
                 r = self.stash.projects[name]
                 return Project(r, node)
             
         return None
-
-
 
 
 class StashyNode:
@@ -79,7 +76,7 @@ class StashyNode:
     def show(self):
         self._show(self.node)
 
-    def _show(self, d, level = 0):
+    def _show(self, d, level=0):
         keys = d.keys()
         keys.sort()
         for key in keys:
@@ -100,9 +97,9 @@ class StashyNode:
 
 
 class Project(StashyNode):
-    def __init__(self, project, node):
+    def __init__(self, proj, node):
         StashyNode.__init__(self, node)
-        self.project = project
+        self.project = proj
 
     def name(self):
         return self.node["name"]
@@ -115,21 +112,37 @@ class Project(StashyNode):
 
         repos = self.project.repos.list()
         for node in repos:
-            if node["name"] == name:
+            if node["name"].lower() == name.lower():
                 r = self.project.repos[name]
                 return Repo(r, node)
             
         return None
 
 
-
 class Repo(StashyNode):
-    def __init__(self, repo, node):
+    def __init__(self, rpo, node):
         StashyNode.__init__(self, node)
-        self.repo = repo
+        self.repo = rpo
 
-    def pullrequests(self):
-        return [PullRequest(x) for x in self.repo.pull_requests]
+    def pullrequests(self, state="OPEN"):
+        return [PullRequest(x) for x in self.repo.pull_requests.all(state=state)]
+
+    def getOpenPullRequest(self, source, target):
+        ret = None
+        requests = self.pullrequests()
+        for request in requests:
+            if request.toRef() == target and request.fromRef() == source:
+                ret = request
+                break
+        return ret
+
+    def getMergedPullRequests(self, source, target):
+        ret = []
+        requests = self.pullrequests(state="MERGED")
+        for r in requests:
+            if r.toRef() == target and r.fromRef() == source:
+                ret.append(r)
+        return ret
 
 
 class PullRequest(StashyNode):
@@ -143,7 +156,7 @@ class PullRequest(StashyNode):
         try:
             return self.node["description"]
         except KeyError:
-            return None
+            return ""
 
     def date(self):
         msec = self.node["createdDate"]
@@ -155,7 +168,7 @@ class PullRequest(StashyNode):
         for reviewer in self.node["reviewers"]:
             name = reviewer["user"]["name"]
             approved = reviewer["approved"] 
-            ret.append( (name, approved) )
+            ret.append((name, approved))
         return ret
 
     def state(self):
@@ -165,11 +178,27 @@ class PullRequest(StashyNode):
         return self.node["title"]
     
     def fromRef(self):
-        return self.node["fromRef"]["id"]
+        return self.node["fromRef"]["displayId"]
         
     def toRef(self):
-        return self.node["toRef"]["id"]
-        
+        return self.node["toRef"]["displayId"]
+
+    def approved(self):
+        reviewers = self.reviewers()
+        ret = True if len(reviewers) else False
+        for reviewer in reviewers:
+            approved = reviewer[1]
+            ret = ret and approved
+        return ret
+
+    def __eq__(self, other):
+        return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
+
+    def __str__(self):
+        return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
+            "Reviewers: %s\n" % self.reviewers()
+
+
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()
@@ -197,6 +226,7 @@ if __name__ == "__main__":
             except stashy.errors.NotFoundException:
                print "  repo not found"
 
+
 class TestStashResponse(dict):
 
     def __getitem__(self, item):
@@ -207,9 +237,9 @@ class TestStashResponse(dict):
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 
-
     def json(self):
         return self
+
 
 class TestPullRequest(TestStashResponse):
     def __init__(self, title, fromRef, toRef, parent, id="0", description=None, reviewers=[]):
@@ -226,7 +256,7 @@ class TestPullRequests(TestStashResponse):
         self.url = parent + "pullrequests/"
         self.create("testRequest1", "topic", "develop")
 
-    def all(self, direction="INCOMING", at=None):
+    def all(self, direction="INCOMING", at=None, state="OPEN"):
         for request in self.values():
             yield request
 

@@ -7,7 +7,7 @@
     <ProjectHome />
     <StartupFile>grape.py</StartupFile>
     <SearchPath />
-    <WorkingDirectory>C:\ale3d\scripts\grape</WorkingDirectory>
+    <WorkingDirectory>C:\ale3d</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <InterpreterId>{9a7a9026-48c1-4688-9d5d-e5699d47d074}</InterpreterId>
     <InterpreterVersion>2.7</InterpreterVersion>
@@ -15,7 +15,8 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments> review --user=nichols5 --reviewer=probinso --target=feature/probinso/grapeUpdate</CommandLineArguments>
+    <CommandLineArguments>
+    </CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>

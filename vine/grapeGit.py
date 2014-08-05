@@ -1,6 +1,8 @@
 import os
 import subprocess
 import utility
+import ConfigParser
+import grapeConfig
 
 
 class GrapeGitError(Exception):
@@ -16,7 +18,17 @@ class GrapeGitError(Exception):
 
 
 def gitcmd(cmd, errmsg, quiet=False):
-    if os.name == "nt":
+    _cmd = None
+    try:
+        cnfg = grapeConfig.grapeConfig()
+        _cmd = cnfg.get("git", "executable")
+    except ConfigParser.NoOptionError:
+        pass
+    except ConfigParser.NoSectionError:
+        pass
+    if _cmd:
+        _cmd += " %s" % cmd
+    elif os.name == "nt":
         _cmd = "\"C:\\Program Files (x86)\\Git\\bin\\git.exe\" %s" % cmd
     else:
         _cmd = "git %s" % cmd
@@ -64,8 +76,8 @@ def branchUpToDateWith(branchName, targetBranch, quiet=True):
     return upToDate
 
 
-def bundle(argstr):
-    return gitcmd("bundle %s" % argstr, "Bundle failed")
+def bundle(argstr, quiet=False):
+    return gitcmd("bundle %s" % argstr, "Bundle failed", quiet=quiet)
 
 
 def checkout(argstr, quiet=False):
@@ -87,29 +99,30 @@ def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
 
-def config(argstr, arg2=None):
+def commitDescription(committish, quiet=True):
+    return gitcmd("log --oneline %s^1..%s" % (committish, committish),
+                  "commitDescription failed", quiet=quiet)
+
+
+def config(argstr, arg2=None, quiet=False):
     if arg2 is not None:
-        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed")
+        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed", quiet=quiet)
     else:
-        return gitcmd('config %s ' % argstr, "Config failed")
+        return gitcmd('config %s ' % argstr, "Config failed", quiet=quiet)
 
 
 def conflictedFiles(quiet=True):
     fileStr = diff("--name-only --diff-filter=U", quiet=quiet).strip()
     lines = fileStr.split('\n') if fileStr else []
-#    files = []
-#    for l in lines:
-#        print l
-#        files.append(l.split(' ')[1])
     return lines
 
 
 def currentBranch(quiet=True):
-    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch", quiet)
+    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch", quiet=quiet)
 
 
-def describe(argstr=""):
-    return gitcmd("describe %s" % argstr, "could not describe commit")
+def describe(argstr="", quiet=False):
+    return gitcmd("describe %s" % argstr, "could not describe commit", quiet=quiet)
 
 
 def diff(argstr, quiet=False):
@@ -128,7 +141,7 @@ def fetch(repo="", branchArg="", quiet=True):
             raise e
 
 
-def getSubmodules(quiet=True):
+def getActiveSubmodules(quiet=True):
 
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"", quiet)
@@ -138,16 +151,33 @@ def getSubmodules(quiet=True):
     return submoduleList
 
 
+def getAllSubmodules(quiet=True):
+    subconfig = ConfigParser.ConfigParser()
+    try:
+        subconfig.read(os.path.join(baseDir(), ".gitmodules"))
+    except ConfigParser.ParsingError:
+        # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
+        # read section names in succussfully, which is all we need
+        pass
+    sections = subconfig.sections()
+    submodules = []
+    for s in sections:
+        submodules.append(s.split()[1].split('"')[1])
+    return submodules
+
+
 def getModifiedSubmodules(branch1="", branch2="", quiet=True):
     cwd = os.getcwd()
     os.chdir(baseDir())
-    submodules = getSubmodules(quiet=quiet)
+    submodules = getActiveSubmodules(quiet=quiet)
     # if there are no submodules, then return the empty list
-    if len(submodules) == 0:
-        return submodules
+    if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
+        return [] 
     submodulesString = ' '.join(submodules)
     modifiedSubmodules = diff("--name-only %s %s -- %s" % (branch1, branch2,  submodulesString),
                               quiet=quiet).split('\n')
+    if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
+        return []
     os.chdir(cwd)
     return modifiedSubmodules
 
@@ -166,6 +196,11 @@ def gitDir():
                 return utility.makePathPortable(relUnixPath)
             else:
                 raise GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
+
+
+def hasBranch(b):
+    branches = branch(quiet=True).split()
+    return b in branches
 
 
 def isWorkingDirectoryClean():
@@ -222,11 +257,11 @@ def rebase(args, quiet=False):
     return gitcmd("rebase %s" % args, "Rebase failed", quiet=quiet)
 
 
-def safeForceBranchToOriginRef(branchToSync):
+def safeForceBranchToOriginRef(branchToSync, quiet=True):
     # first, check to see that branch exists
     branchExists = False
     remoteRefExists = False
-    branches = branch("-a").split("\n")
+    branches = branch("-a", quiet=quiet).split("\n")
     remoteRef = "remotes/origin/%s" % branchToSync
     for b in branches:
         b = b.replace('*', '')
@@ -239,10 +274,10 @@ def safeForceBranchToOriginRef(branchToSync):
         print("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
-        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
-        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
+        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync, quiet=quiet)
+        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef, quiet=quiet)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
-            if branchToSync == currentBranch():
+            if branchToSync == currentBranch(quiet=quiet):
                 print("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 pull("origin %s" % branchToSync)
             else:
@@ -254,12 +289,16 @@ def safeForceBranchToOriginRef(branchToSync):
             return False
     if not branchExists and remoteRefExists:
         print("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
-        branch("%s %s" % (branchToSync, remoteRef))
+        branch("%s %s" % (branchToSync, remoteRef), quiet=True)
         return True
 
 
 def shortSHA(branchName="HEAD", quiet=True):
     return gitcmd("rev-parse --short %s" % branchName, "rev-parse of HEAD failed!", quiet=quiet)
+
+
+def SHA(branchName="HEAD", quiet=True):
+    return gitcmd("rev-parse %s" % branchName, "rev-parse of HEAD failed!", quiet=quiet)
 
 
 def showRemote():
@@ -289,3 +328,7 @@ def subtree(argstr, quiet=False):
 
 def tag(argstr):
     return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)
+
+
+def version():
+    return gitcmd("version", "")

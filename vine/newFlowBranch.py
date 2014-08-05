@@ -1,12 +1,12 @@
 import os
 import option
 import utility
-import types
 import grapeGit as git
 import grapeMenu
 import grapeConfig
 
-class NewBranchOption(option.Option): 
+
+class NewBranchOption(option.Option):
     """
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
@@ -28,76 +28,84 @@ class NewBranchOption(option.Option):
 
 
     """
-    def __init__(self,topic,public): 
+    def __init__(self, topic, public):
+        super(NewBranchOption, self).__init__()
         self._key = topic
         self._section = "Gitflow Tasks"
         self._public = public
 
     def description(self):
-        return "Create and switch to a %s branch off of %s" % (self._key,self._public)
+        return "Create and switch to a %s branch off of %s" % (self._key, self._public)
 
-    def createBranch(self,branchPoint, prefix,user,descr,noverify):
-        branch = descr if descr else utility.userInput("Enter new branch name")
+    @staticmethod
+    def createBranch(branchPoint, prefix, user, descr, noverify):
+        branch = descr if descr else utility.userInput("Enter one word description for branch:")
         user = user if user else utility.getUserName()
         fullBranch = prefix+"/"+user+"/"+branch
-        proceed = noverify or utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint+".\nProceed? [y/n]",'y')
-        if (proceed):
-            git.checkout("-b %s %s " % (fullBranch,branchPoint))
+        proceed = noverify or utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint +
+                                                ".\nProceed? [y/n]", 'y')
+        if proceed:
+            git.checkout("-b %s %s " % (fullBranch, branchPoint))
             git.push("-u origin %s" % fullBranch)
-            return (branchPoint,prefix,user,branch)
         else:
             print("Branch not created")
-            return None
 
-    def execute(self,args): 
-        grapeMenu.menu().applyMenuChoice('up',['up'])
+        return branchPoint, prefix, user, branch
+
+    def execute(self, args):
+        grapeMenu.menu().applyMenuChoice('up', ['up'])
         start = args["--start"]
-        recurse = grapeConfig.grapeConfig().get('workspace','manageSubmodules')
-        if (args["--recurse"]): 
+        recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
+        if args["--recurse"]:
             recurse = True
-        if (args["--norecurse"]): 
+        if args["--norecurse"]:
             recurse = False
         if not start: 
             start = self._public
         
         cwd = utility.workspaceDir()
         os.chdir(cwd)
-        subArgs = self.createBranch(start,self._key,args['--user'],args['<descr>'],args['--noverify'])
-        submodules = git.getSubmodules()
+        subArgs = self.createBranch(start, self._key, args['--user'], args['<descr>'], args['--noverify'])
+        branchName = "%s/%s/%s" % (subArgs[1], subArgs[2], subArgs[3])
+        submodules = git.getActiveSubmodules()
         recurse = recurse and submodules
-        if (subArgs and recurse): 
-            submapping = grapeConfig.grapeConfig().get('workspace','submoduleTopicPrefixMappings')
-            submapping = grapeConfig.parseConfigPairList(submapping)
-            try: 
+        if subArgs and recurse:
+            proceed = args["--noverify"]
+            submapping = grapeConfig.grapeConfig().getMapping('workspace', 'submoduleTopicPrefixMappings')
+            submodulePublic = None
+            try:
                 submodulePublic = submapping[self._key]
-            except:
-                submodulePublic = submapping['?']
+            except KeyError:
+                utility.printMsg("ManageSubmodules is enabled but.grapeconfig.workspace.submodueTopicPrefixMappings "
+                                 "does not have a default value. Skipping branch creation for submodules.")
+                proceed = False
 
-            proceed = args["--noverify"] or utility.userInput("About to create the branch off of "+submodulePublic+" for all submodules.\nProceed? [y/n]",'y') 
+            proceed = proceed or utility.userInput("About to create the branch " + branchName + " off of "
+                                                   + submodulePublic +
+                                                   " for all submodules.\nProceed? [y/n]", 'y')
             if proceed:
                 for sub in submodules: 
-                    os.chdir(os.path.join(cwd,sub))
+                    os.chdir(os.path.join(cwd, sub))
                     git.checkout(submodulePublic)
-                    grapeMenu.menu().applyMenuChoice('up',['up','--public=%s' % submodulePublic])
-                    self.createBranch(submodulePublic,self._key,subArgs[2],subArgs[3],True)
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
+                    self.createBranch(submodulePublic, self._key, subArgs[2], subArgs[3], True)
 
-    def setDefaultConfig(self,config):
-        try:
-            config.add_section('workspace')
-        except ConfigParser.DuplicateSectionError:
-            pass
-        config.set('workspace','manageSubmodules','True')
-        config.set('workspace','submoduleTopicPrefixMappings','?:develop')
+    def setDefaultConfig(self, config):
+        config.ensureSection("workspace")
+        config.set('workspace', 'manageSubmodules', 'True')
+        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
+
 
 class NewBranchOptionFactory():
     def __init__(self):
         pass
 
-    def createNewBranchOptions(self,config):
+    @staticmethod
+    def createNewBranchOptions(config):
         
-        topicPublicMapping = grapeConfig.parseConfigPairList(config.get('flow','topicPrefixMappings'))
+        topicPublicMapping = config.getMapping('flow', 'topicPrefixMappings')
         options = []
         for topic in topicPublicMapping.keys():
             if topic != '?': 
-                options.append(NewBranchOption(topic,topicPublicMapping[topic]))
+                options.append(NewBranchOption(topic, topicPublicMapping[topic]))
         return options

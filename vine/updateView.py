@@ -1,56 +1,124 @@
-
 import os
-import shutil
-import option, utility
+
+import option
+import utility
 import grapeGit as git
+import grapeConfig
+import checkout
+
+
 # update your custom sparse checkout view
 class UpdateView(option.Option):
     """
-    grape uv  - updates your sparse-checkout file and optionally performs the sparse checkout. 
-    Usage: grape-uv [-f <sparsefile>] [--applyView | --noapplyView]
+    grape uv  - updates your active submodules.
+    Usage: grape-uv [-f <sparsefile>] [-v]
 
     Options:
         
-        -f <sparsefile>         An existing sparse-checkout file to copy into .git/info. 
-                                If this is not defined, grape will walk you through whether you 
-                                want each top-level directory. (interactive)
-        --applyView             Calls git read-tree -mu HEAD after updating .git/info/sparse-checkout
-        --noapplyView           Skips the git read-tree call after updating .git/info/sparse-checkout
-                                If neither --applyView nor --noapplyView are specified, grape uv
-                                will ask you what you want to do. (interactive)
+        -f                      Force removal of submodules currently in your view that are taken out of the view as a
+                                result to this call to uv. (passes the -f flag to submodule deinit)
+        -v                      Be more verbose.
 
     """
     def __init__(self):
+        super(UpdateView, self).__init__()
         self._key = "uv"
         self._section = "Workspace"
 
     def description(self):
         return "Update the view of your current working tree"
 
-    def execute(self,args):
+    @staticmethod
+    def defineActiveSubmodules(quiet=False):
+        allsubmodules = git.getAllSubmodules(quiet=quiet)
+        toplevelDirs = {}
+        toplevelSubs = []
+        for sub in allsubmodules:
+            prefix = git.branchPrefix(sub)
+            if sub != prefix:
+                toplevelDirs[prefix] = []
+        for sub in allsubmodules:
+            prefix = git.branchPrefix(sub)
+            if sub != prefix:
+                toplevelDirs[prefix].append(sub)
+            else:
+                toplevelSubs.append(sub)
+
+        included = {}
+        for directory in toplevelDirs:
+            opt = utility.userInput("Would you like all, some, or none of the submodules in %s?" % directory,
+                                    default="all")
+            if opt.lower()[0] == "a":
+                included[directory] = True
+            if opt.lower()[0] == "n":
+                included[directory] = False
+            if opt.lower()[0] == "s":
+                for submodule in toplevelDirs[directory]:
+                    included[submodule] = utility.userInput("Would you like submodule %s? [y/n]" % submodule, 'n')
+        for submodule in toplevelSubs:
+            included[submodule] = utility.userInput("Would you like submodule %s? [y/n]" % submodule, 'n')
+        return included
+
+    def execute(self, args):
+        quiet = not args["-v"]
         base = git.baseDir()
         if base == "":
             return False
-        dotGit = os.path.join(base,".git")
-        sparseFile = os.path.join(dotGit,"info","sparse-checkout")
-        sourceSparse = args["-f"]
-        if not sourceSparse:
-            print "calling utility.defineview"
-            with open(sparseFile,'w') as f:
-                utility.defineView(f)
-        else:
-            print "copying sourceSParse to sparse"
-            shutil.copyfile(sourceSparse,sparseFile)
 
-        checkout = not args["--noapplyView"] and (args["--applyView"] or utility.userInput("check out updated view? [y/n]","y"))
-        if (checkout):
-            git.gitcmd("read-tree -mu HEAD","sparse checkout returned with non-zero exit code")
+        included = self.defineActiveSubmodules(quiet=quiet)
+        initStr = ""
+        if args["-f"]:
+            deinitStr = "-f"
         else:
-            print("call 'git read-tree -mu HEAD' when you are ready to update your working tree")
+            deinitStr = ""
+        for submodule in included:
+            if included[submodule]:
+                initStr += ' %s' % submodule
+            else:
+                deinitStr += ' %s' % submodule
+
+        #git.submodule("update --init %s" % initStr)
+        utility.printMsg("Configuring submodules...")
+        git.submodule("init", quiet=quiet)
+        os.chdir(git.baseDir())
+        utility.printMsg("Initializing submodules...")
+        if deinitStr:
+            git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
+        git.submodule("update", quiet=quiet)
+
+        # ensure submodule is on apppropriate branch
+        config = grapeConfig.grapeConfig()
+        if config.getboolean("workspace", "manageSubmodules"):
+            publicBranches = config.getList("flow", "publicBranches")
+            currentBranch = git.currentBranch()
+            if currentBranch in publicBranches:
+                desiredSubmoduleBranch = config.getMapping("workspace", "submodulepublicmappings")[currentBranch]
+            else:
+                desiredSubmoduleBranch = currentBranch
+            utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
+            for sub in git.getActiveSubmodules(quiet=quiet):
+                self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, quiet)
 
         return True
 
-    def setDefaultConfig(self,config):
-        config.add_section("view")
-        config.set("view","alldirs","src")
-        config.set("view","required","src")
+    @staticmethod
+    def safeSwitchHeadlessRepoToBranch(repo, branch, quiet):
+        cwd = os.getcwd()
+        os.chdir(os.path.join(git.baseDir(quiet=quiet), repo))
+        git.fetch(quiet=quiet)
+
+        if git.currentBranch() == branch:
+            os.chdir(cwd)
+            return
+
+        if git.hasBranch(branch):
+            git.fetch("origin", "%s:%s" % (branch, branch))
+
+        checkout.Checkout.handledCheckout("-b", branch, repo, quiet=quiet)
+
+        os.chdir(cwd)
+        return
+
+    def setDefaultConfig(self, config):
+        config.ensureSection("workspace")
+        config.set("workspace", "submodulepublicmappings", "?:master")

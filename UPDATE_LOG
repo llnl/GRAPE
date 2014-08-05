@@ -1,0 +1,72 @@
+Fri Jun 13 12:19:29 2014 Peter B. Robinson
+v0.2.0
+
+SUMMARY OF CHANGES: 
+Improved subtree support during publish and addSubproject. 
+Allows -v and --user option for grape publish --quick
+Allows db to delete the current branch when recursing into submodules. 
+Improved documentation and adds a tutorial to the Readme. 
+Adds grape push. 
+grape checkout more robust to a mixture of branches being and not being present in submodules. 
+grape publish now frontloads all user input to before the build step. 
+grape --continue and grape --abort are now enforced as mutually exclusive options by the parser. 
+quieting some extra output in grape uv and grape bundle. 
+
+Mon Jun  2 16:38:07 2014 Peter B. Robinson
+v0.1.20
+
+Moves all user input to before the build step.Mon Jun  2 16:24:08 2014 Peter B. Robinson
+v0.1.18
+
+Moves all user input that normally was asked during the publish step into a step that occurs before build.Mon Jun  2 16:06:40 2014 Peter B. Robinson
+v0.1.17
+
+Fri May  9 16:29:32 2014 Peter B. Robinson
+v0.1.16
+
+Fri Apr 25 13:32:19 2014 Peter B. Robinson
+v0.1.12
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
+Fri Apr 25 13:12:34 2014 Peter B. Robinson
+v0.1.11
+
+
+Fri Apr 25 09:15:06 2014 Peter B. Robinson
+v0.1.10
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
+Fri Apr 25 09:13:03 2014 Peter B. Robinson
+v0.1.9
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
+Fri Apr 25 08:59:55 2014 Peter B. Robinson
+v0.1.7
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
+Thu Apr 24 21:16:06 2014 Peter B. Robinson
+v0.1.6
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
+Thu Apr 24 21:12:21 2014 Peter B. Robinson
+v0.1.4
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
+Thu Apr 24 21:07:11 2014 Peter B. Robinson
+v0.1.3
+
+Testing the publish capability. 
+
+Throwing in some apostro"hes and quote's for good measure. 
