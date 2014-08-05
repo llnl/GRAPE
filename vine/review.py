@@ -256,15 +256,16 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                             descr = currentDescription + "\n" + descr
 
 
-                if title is not None or descr is not None or reviewers is not None:
+                if title is not None or descr is not None or reviewers:
                     if not quiet:
-                        print("upating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
+                        print("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
                         print(requestData)
                         print(reviewers is None)
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
+                    print("Pull request updated.")
                 else:
                     request = requestData
-                print("Pull request updated.")
+                    print("Pull request unchanged.")
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
                 exit(1)
