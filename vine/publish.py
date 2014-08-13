@@ -434,7 +434,7 @@ class Publish(resumable.Resumable):
             return False
     def aquireInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping In Progresss Lock Check..")
+            utility.printMsg("Skipping In Progress Lock Check..")
             return True
         retcode = self.checkInProgressLock(args)
         if retcode:
@@ -579,7 +579,7 @@ class Publish(resumable.Resumable):
                                                                 "message: ")
 
         if args["<CommitMessageFile>"] and not args["-m"]:
-            # commit messsage should come from the file
+            # commit message should come from the file
             commitMsgFile = args["<CommitMessageFile>"]
             try:
                 with open(commitMsgFile, 'r') as f:
