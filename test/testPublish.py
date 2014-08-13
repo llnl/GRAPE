@@ -53,7 +53,7 @@ class TestPublish(testGrape.TestGrape):
             else:
                 args = defaultArgs
             ret = grapeMenu.menu().applyMenuChoice("publish", args=args)
-            self.assertTrue(ret, "published returned false")
+            self.assertTrue(ret, "publish returned false")
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
 
