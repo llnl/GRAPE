@@ -154,7 +154,7 @@ class PullRequest(StashyNode):
     
     def description(self):
         try:
-            return self.node["description"]
+            return self.node["description"].encode('ascii', 'ignore')
         except KeyError:
             return ""
 
@@ -209,19 +209,22 @@ if __name__ == "__main__":
         reponames = project.repolist()
         for reponame in reponames:
             print " REPONAME", reponame
-            repo = project.repo(reponame)
-            for pull in repo.pullrequests():
+            try:
+               repo = project.repo(reponame)
+               for pull in repo.pullrequests():
 
-                print "  TITLE:    ", pull.title()
-                print "  STATE:    ", pull.state()
-                print "  AUTHOR:   ", pull.author()
-                print "  DATE  :   ", pull.date()
-                print "  REVIWERS: ", pull.reviewers()
-                print "  FROM:     ", pull.fromRef()
-                print "  TO:       ", pull.toRef()
-                print "  DESC  :   ", pull.description()
+                   print "  TITLE:    ", pull.title()
+                   print "  STATE:    ", pull.state()
+                   print "  AUTHOR:   ", pull.author()
+                   print "  DATE  :   ", pull.date()
+                   print "  REVIEWERS: ", pull.reviewers()
+                   print "  FROM:     ", pull.fromRef()
+                   print "  TO:       ", pull.toRef()
+                   print "  DESC  :   ", pull.description()
 
-                print 
+                   print 
+            except stashy.errors.NotFoundException:
+               print "  repo not found"
 
 
 class TestStashResponse(dict):
