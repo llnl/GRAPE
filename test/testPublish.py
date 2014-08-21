@@ -46,7 +46,7 @@ class TestPublish(testGrape.TestGrape):
         config.set("project", "name", "proj1")
 
         defaultArgs = ["-m", "publishing testPublish to master", "--noverify", '-R', '--test', '-R', '--repo=repo1',
-                       '-R', '--user=user', "--noReview", "--noUpdateLog"]
+                       '-R', '--user=user', "--noReview", "--noUpdateLog", "--noPushSubtrees"]
         try:
             if args:
                 args += defaultArgs
