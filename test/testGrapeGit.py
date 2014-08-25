@@ -138,7 +138,7 @@ class TestGrapeGit(TestGrape):
             self.assertFalse(commitStr in log,"commit message in log before it should be")
             git.fetch("origin")
             log = git.log("--all")
-            self.assertTrue(commitStr in log, "commit message not in log --all affter fetch")
+            self.assertTrue(commitStr in log, "commit message not in log --all after fetch")
 
         except git.GrapeGitError as error:
             self.handleGitError(error)
@@ -157,7 +157,7 @@ class TestGrapeGit(TestGrape):
             self.assertFalse(commitStr in log,"commit message in log before it should be")
             git.pull("origin master")
             log = git.log()
-            self.assertTrue(commitStr in log, "commit message not in log  affter pull")
+            self.assertTrue(commitStr in log, "commit message not in log after pull")
 
         except git.GrapeGitError as error:
             self.handleGitError(error)
@@ -185,7 +185,7 @@ class TestGrapeGit(TestGrape):
             os.chdir(self.repo)
             git.checkout("master")
             log = git.log()
-            self.assertTrue(commitStr in log, "commit message not in log  affter push")
+            self.assertTrue(commitStr in log, "commit message not in log after push")
 
         except git.GrapeGitError as error:
             self.handleGitError(error)

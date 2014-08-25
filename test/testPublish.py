@@ -46,14 +46,14 @@ class TestPublish(testGrape.TestGrape):
         config.set("project", "name", "proj1")
 
         defaultArgs = ["-m", "publishing testPublish to master", "--noverify", '-R', '--test', '-R', '--repo=repo1',
-                       '-R', '--user=user', "--noReview", "--noUpdateLog"]
+                       '-R', '--user=user', "--noReview", "--noUpdateLog", "--noPushSubtrees"]
         try:
             if args:
                 args += defaultArgs
             else:
                 args = defaultArgs
             ret = grapeMenu.menu().applyMenuChoice("publish", args=args)
-            self.assertTrue(ret, "published returned false")
+            self.assertTrue(ret, "publish returned false")
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
 

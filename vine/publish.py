@@ -322,7 +322,7 @@ class Publish(resumable.Resumable):
                  "verifyCompletedReview": self.verifyCompletedReview,
                  "testForCleanWorkspace1": self.testForCleanWorkspace,
                  "testForCleanWorkspace2": self.testForCleanWorkspace,
-                 "markInProgress": self.aquireInProgressLock,
+                 "markInProgress": self.acquireInProgressLock,
                  "markAsDone": self.releaseInProgressLock,
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
@@ -432,7 +432,7 @@ class Publish(resumable.Resumable):
             for request in inProgressRequests:
                 print request
             return False
-    def aquireInProgressLock(self, args):
+    def acquireInProgressLock(self, args):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progress Lock Check..")
             return True
@@ -600,7 +600,7 @@ class Publish(resumable.Resumable):
             commitMsg = [args["-m"]+"\n"] 
         else:
             if args["--noReview"]:
-                utility.printMsg("Skipping retreival of commit message from Pull Request description..")
+                utility.printMsg("Skipping retrieval of commit message from Pull Request description..")
                 if not args["-m"]:
                     print("File with commit message is required argument when publishing with --noReview and no -m "
                           "<msg> defined.")
@@ -620,7 +620,7 @@ class Publish(resumable.Resumable):
         else:
             utility.printMsg("WARNING: Commit message is empty. ")
 
-        utility.printMsg("The following commit message will be used for email notification, merge commits, etc.\n "
+        utility.printMsg("The following commit message will be used for email notification, merge commits, etc.\n"
                          "======================================================================")
         print ''.join(commitMsg[:10])
         print "======================================================================"
@@ -762,7 +762,7 @@ class Publish(resumable.Resumable):
         # Don't need to connect if we specified the
         # host in the SMTP constructor above...
         #s.connect()
-        s.sendmail(msg['From'], msg['To'].split(','), msg.as_string())
+        s.sendmail(msg['From'], msg['To'].split(',').append(myemail), msg.as_string())
         s.quit()
 
         # Remove the tempfile
