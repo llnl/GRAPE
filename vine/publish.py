@@ -762,7 +762,9 @@ class Publish(resumable.Resumable):
         # Don't need to connect if we specified the
         # host in the SMTP constructor above...
         #s.connect()
-        s.sendmail(msg['From'], msg['To'].split(',').append(myemail), msg.as_string())
+        tolist = msg['To'].split(',')
+        tolist.append(myemail)
+        s.sendmail(msg['From'], tolist, msg.as_string())
         s.quit()
 
         # Remove the tempfile
