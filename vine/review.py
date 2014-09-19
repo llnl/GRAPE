@@ -209,7 +209,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     print("reviewers: %s" % reviewers)
                 request = repo.pull_requests.create(title, branch, target_branch,
                                                     description=descr, reviewers=reviewers)
-                print("Pull request created.")
+                url = request["links"]["self"][0]["href"]
+                print("Pull request created at %s." % url)
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
                 exit(1)
@@ -263,7 +264,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                         print(requestData)
                         print(reviewers is None)
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
-                    print("Pull request updated.")
+                    url = request["links"]["self"][0]["href"]
+                    print("Pull request updated at %s." % url)
                 else:
                     request = requestData
                     print("Pull request unchanged.")
