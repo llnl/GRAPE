@@ -100,9 +100,9 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             pass
 
     @staticmethod
-    def parseConfigPairList(string):
+    def parseConfigPairList(toParse):
 
-        pairs = string.split() if string else ["none"]
+        pairs = toParse.split() if toParse else ["none"]
         pairDict = ConfigPairDict()
         if pairs[0].strip().lower() != "none":
             for pair in pairs:

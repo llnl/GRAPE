@@ -104,7 +104,7 @@ at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk
 Ok, let's go to your git repository, and create an initial grape config file.
 
     cd /path/to/repo
-    grape writeConfig .grapeconfig --gitlfow
+    grape writeConfig .grapeconfig --gitflow
 
 Let's open up that .grapeconfig and edit some config options so that they make sense.
 

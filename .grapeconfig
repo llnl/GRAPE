@@ -22,7 +22,7 @@ branches = develop master ale3d ale3d_4_22 ale3d_4_24
 branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24
 
 [flow]
-publishpolicy = ?:merge master:cascade
+publishpolicy = ?:merge master:cascade->develop
 publicbranches = master develop release ale3d ale3d_4_24
 topicprefixmappings = hotfix:master feature:develop bugfix:develop rc:release ?:develop
 

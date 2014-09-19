@@ -213,14 +213,14 @@ if __name__ == "__main__":
                repo = project.repo(reponame)
                for pull in repo.pullrequests():
 
-                   print "  TITLE:    ", pull.title()
-                   print "  STATE:    ", pull.state()
-                   print "  AUTHOR:   ", pull.author()
-                   print "  DATE  :   ", pull.date()
+                   print "  TITLE:     ", pull.title()
+                   print "  STATE:     ", pull.state()
+                   print "  AUTHOR:    ", pull.author()
+                   print "  DATE:      ", pull.date()
                    print "  REVIEWERS: ", pull.reviewers()
-                   print "  FROM:     ", pull.fromRef()
-                   print "  TO:       ", pull.toRef()
-                   print "  DESC  :   ", pull.description()
+                   print "  FROM:      ", pull.fromRef()
+                   print "  TO:        ", pull.toRef()
+                   print "  DESC:      ", pull.description()
 
                    print 
             except stashy.errors.NotFoundException:

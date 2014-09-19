@@ -34,7 +34,7 @@ class Checkout(option.Option):
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 utility.printMsg("creating new branch %s in %s" % (branch, project))
-                git.checkout(checkoutargs+" -b "+branch, quiet=quiet)
+                git.checkout(checkoutargs+" -b "+branch, quiet=False)
             elif "already exists" in e.gitOutput:
                 utility.printMsg("branch %s already exists in %s" % (branch, project))
                 branchDescription = git.commitDescription(branch)
@@ -53,9 +53,9 @@ class Checkout(option.Option):
                         if not valid:
                             print "Invalid input. Enter k or f. "
                 if action == 'k':
-                    git.checkout(branch, quiet=quiet)
+                    git.checkout(branch, quiet=False)
                 elif action == 'f':
-                    git.checkout("-B %s" % branch, quiet=quiet)
+                    git.checkout("-B %s" % branch, quiet=False)
 
     def execute(self, args):
         quiet = not args["-v"]
