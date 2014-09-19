@@ -267,6 +267,10 @@ def rebase(args, quiet=False):
     return gitcmd("rebase %s" % args, "Rebase failed", quiet=quiet)
 
 
+def revert(args, quiet=False):
+    return gitcmd("revert %s" % args, "Revert failed", quiet=quiet)
+
+
 def safeForceBranchToOriginRef(branchToSync, quiet=True):
     # first, check to see that branch exists
     branchExists = False

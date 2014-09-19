@@ -176,6 +176,7 @@ class Review(option.Option):
         config.ensureSection("project")
         config.set("project", "stashURL", "https://rzlc.llnl.gov/stash")
         config.set("project", "verifySSL", "True")
+        config.set("project", "name", "My unnamed project")
         pass
 
 

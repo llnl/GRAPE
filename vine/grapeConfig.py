@@ -67,7 +67,7 @@ class ConfigPairDict(dict):
             if '?' in self.keys():
                 return self['?']
             else:
-                print("GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config.")
+                e.message = "GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config." % key
                 raise e
 
 
@@ -78,10 +78,18 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     def getList(self, section, cfgOption, raw=False, cfgVars=None):
         return self.get(section, cfgOption, raw=raw, vars=cfgVars).split()
 
-    def getPublicBranchFor(self, branch):
-	publicBranches = self.get("flow","publicbranches").split()
-	if branch in publicBranches: 
-	    return branch
+    def getPublicBranchFor(self, branch, getDestinationBranch=True):
+        if getDestinationBranch:
+            destinationBranches = self.getMapping("flow", "topicDestinationMappings")
+            try:
+                destinationBranch = destinationBranches[git.branchPrefix(branch)]
+                return destinationBranch
+            except KeyError:
+                pass
+
+        publicBranches = self.get("flow", "publicbranches").split()
+        if branch in publicBranches:
+            return branch
         publicMapping = self.getMapping("flow", "topicPrefixMappings")
         return publicMapping[git.branchPrefix(branch)]
 
@@ -108,7 +116,7 @@ class WriteConfig(option.Option):
         by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
 
         Usage: 
-        grape-writeConfig <file>
+        grape-writeConfig <file> [--gitflow]
 
     """
     def __init__(self): 
@@ -120,7 +128,30 @@ class WriteConfig(option.Option):
 
     def execute(self, args):
         config = grapeConfig()
+
+        self.setFlowModelConfig(config, args)
         writeConfig(config, args["<file>"])
+
+    @staticmethod
+    def setFlowModelConfig(config, args):
+        config.ensureSection("flow")
+        config.ensureSection("versioning")
+        config.ensureSection("patch")
+        if args["--gitflow"]:
+            # [flow]
+            config.set("flow", "publicBranches", "master develop")
+            config.set("flow", "topicPrefixMappings", "hotfix:master bugfix:develop feature:develop ?:develop release:develop")
+            config.set("flow", "topicDestinationMappings", "release:master")
+            config.set("flow", "publishpolicy", "?:merge master:cascade->develop")
+            # [versioning]
+            config.set("versioning", "updateTag", "True")
+            config.set("versioning", "branchslotmappings", "?:3 master:2")
+            # [patch]
+            config.set("patch", "branches", "develop master")
+
+
+
+
 
     def setDefaultConfig(self, config):
         pass
