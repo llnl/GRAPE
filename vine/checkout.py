@@ -28,9 +28,10 @@ class Checkout(option.Option):
 
     @staticmethod
     def handledCheckout(checkoutargs, branch, project, quiet=True):
-        git.fetch()
+        git.fetch(quiet=False)
         try:
-            git.checkout(checkoutargs + ' ' + branch, quiet=quiet)
+            git.checkout(checkoutargs + ' ' + branch, quiet=False)
+            git.pull("origin %s" % (branch))
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 utility.printMsg("creating new branch %s in %s" % (branch, project))
@@ -56,6 +57,12 @@ class Checkout(option.Option):
                     git.checkout(branch, quiet=False)
                 elif action == 'f':
                     git.checkout("-B %s" % branch, quiet=False)
+            elif "conflict" in e.gitOuput.lower(): 
+                utility.printMsg("CONFLICT occurred when pulling %s from origin" % branch)
+            elif "does not appear to be a git repository" in e.gitOutput.lower():
+                utility.printMsg("Remote 'origin' does not exist. This branch was not updated from a remote repository.")
+
+
 
     def execute(self, args):
         quiet = not args["-v"]

@@ -569,6 +569,8 @@ class Publish(resumable.Resumable):
 
     def loadCommitMessage(self, args):
         if "commitMsg" in self.progress:
+            if not args["-m"]:
+                args["-m"] = self.progress["commitMsg"]
             return True
         if args["--noUpdateLog"]:
             self.progress["commitMsg"] = "no details entered"
@@ -639,6 +641,7 @@ class Publish(resumable.Resumable):
             raise e
         else:
             self.progress["commitMsg"] = escapedCommitMsg
+            args["-m"] = escapedCommitMsg
             return True
 
     def updateLog(self, args):
@@ -787,6 +790,7 @@ class Publish(resumable.Resumable):
         valid = False
         if policy == "merge" or policy == "squash":
             valid = bool(args["-m"])
+            print args["-m"]
             if not valid:
                 print("Commit message required for merge or squash merge publish policies.")
         if policy == "rebase":
