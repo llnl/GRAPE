@@ -1,0 +1,88 @@
+[repo]
+name = grape
+url = ssh://git@rz-stash.llnl.gov:7999/grp/grape.git
+httpsbase = https://rzlc.llnl.gov/stash/scm/grp/
+sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
+
+[subtrees]
+mergepolicy = squash
+names = stashy
+pushonpublish = False
+
+[workspace]
+subprojecttype = subtree
+managesubmodules = True
+submoduletopicprefixmappings = ?:develop
+submodulepublishpolicy = ?:merge
+
+[patch]
+tagprefix = bundled
+describepattern = v*
+branches = develop master ale3d ale3d_4_22 ale3d_4_24 master-cz
+branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24 master-cz:master-cz
+
+[flow]
+publishpolicy = ?:merge master:cascade->develop master-cz:cascade->master
+publicbranches = master develop release ale3d ale3d_4_24
+topicprefixmappings = hotfix:master feature:develop bugfix:develop internalRelease:develop publicRelease:develop ?:develop
+topicdestinationmappings = internalRelease:master publicRelease:master-cz
+
+[publish]
+buildcmds = 
+builddir = 
+testcmds = grape/grape test
+testdir = ../
+prepublishcmds = vine/gendocs.py README.md , git add README.md
+prepublishdir = .
+postpublishcmds = 
+postpublishdir = 
+tickversion = True
+deletetopic = True
+updatelog = UPDATE_LOG
+logskipfirstlines = 0
+logentryheader = <date> <user>\n<version>\n
+emailnotification = True
+emailheader = <public> updated to <version>
+emailserver = nospam.llnl.gov
+emailsendto = robinson96@llnl.gov
+emailsubject = <public> updated to <version>
+
+[post-commit]
+autopush = True
+cascade = master:develop
+
+[post-rebase]
+submoduleupdate = False
+
+[post-merge]
+submoduleupdate = False
+
+[post-checkout]
+submoduleupdate = False
+
+[view]
+alldirs = *
+required = *
+
+[versioning]
+file = vine/VERSION
+updatetag = True
+branchslotmappings = ?:3 master:2 master-cz:1
+branchsuffixmappings = ?:
+branchtagsuffixmappings = ?:
+prefix = v
+
+[pre-push]
+
+[pre-rebase]
+
+[pre-commit]
+
+[project]
+name = GRP
+
+[subtree-stashy]
+prefix = stashy
+remote = ../stashy.git
+topicprefixmappings = ?:grape
+

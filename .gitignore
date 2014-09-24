@@ -1,0 +1,13 @@
+build/
+*.pyc
+*.swp
+*~
+*.wpr
+*.wpu
+\#*\#
+*.suo
+*.a
+*.o
+*.lo
+*.swo
+\.idea
