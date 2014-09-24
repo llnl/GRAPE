@@ -985,7 +985,51 @@ options are at least listed below.
     Usage: grape-q 
 
     
+## internalRelease
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default. 
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
+                            This disables the verification. 
+    --recurse               Create the branch in submodules. 
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --norecurse             Don't create the branch in submodules.
+    
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
+    
 ## bugfix
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default. 
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
+                            This disables the verification. 
+    --recurse               Create the branch in submodules. 
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --norecurse             Don't create the branch in submodules.
+    
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
+    
+## publicRelease
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
@@ -1030,28 +1074,6 @@ options are at least listed below.
 
     
 ## feature
-
-    grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
-    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
-
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
-
-    Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
-                            [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
-    
-    Optional Arguments:
-    <descr>                  Single word description of work being done on this branch. Asks by default.
-
-
-    
-## rc
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
