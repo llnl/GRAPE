@@ -18,14 +18,14 @@ submodulepublishpolicy = ?:merge
 [patch]
 tagprefix = bundled
 describepattern = v*
-branches = develop master ale3d ale3d_4_22 ale3d_4_24 master_cz
-branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24 master_cz:master_cz
+branches = develop master ale3d ale3d_4_22 ale3d_4_24 master-cz
+branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24 master-cz:master-cz
 
 [flow]
-publishpolicy = ?:merge master:cascade->develop master_cz:cascade->master
+publishpolicy = ?:merge master:cascade->develop master-cz:cascade->master
 publicbranches = master develop release ale3d ale3d_4_24
 topicprefixmappings = hotfix:master feature:develop bugfix:develop internalRelease:develop publicRelease:develop ?:develop
-topicdestinationmappings = internalRelease:master publicRelease:master_cz
+topicdestinationmappings = internalRelease:master publicRelease:master-cz
 
 [publish]
 buildcmds = 
@@ -67,7 +67,7 @@ required = *
 [versioning]
 file = vine/VERSION
 updatetag = True
-branchslotmappings = ?:3 master:2 master_cz:1
+branchslotmappings = ?:3 master:2 master-cz:1
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v
