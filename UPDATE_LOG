@@ -1,3 +1,51 @@
+
+
+Wed Sep 24 10:06:18 2014 Peter B. Robinson
+v1.0.0
+
+Releasing develop version 0.2.1 as 1.0.
+
+
+Wed Sep 24 08:53:01 2014 Peter B. Robinson
+v0.2.1
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Ben Liu, Chris White
+SUMMARY: 
+Adds the necessary features to enable a gitflow workflow (finally!)
+Adds a BSD LICENSE file in preparation for an open source release. 
+Updates grape's .grapeconfig to have publish processes for internal releases and external releases. 
+
+DETAILS:
+COMMAND LINE OPTIONS
+
+grape writeConfig : now has the --gitflow option which will tweak the resulting grapeconfig file to be configured for a gitflow workflow. 
+
+grape bundle : now has the --bundleTags option, which enables branch specific tags to be bundled. 
+
+grape unbundle now takes one file per branch to unbundle. 
+
+grape publish : the --cascade option is now --cascade=<branch> - you must define which branch to cascade to when using this option. 
+
+grape publish and grape review : now have --stashURL and --verifySSL options that enable specifying the URL of your stash repository and disabling SSL checking (not recommended unless absolutely necessary). 
+
+grape publish --quick : now allows --noReview and --public to be used. 
+
+grape mr : now has verbosity controls with -v and --quiet. 
+
+
+GRAPE CONFIG OPTIONS
+[flow] has a new config option, topicDestinationMappings. This overrides where branches are published to. If a topic branch type doesn't have a mapping here, the topicprefixmapping is still used as before to determine the public branch to publish to. 
+
+ISSUES FIXED
+Addresses GRP-67,GRP-60, GRP-30 GRP-58, GRP-63, GRP-59
+grape checkout now pulls preexisting branches before updating submodules. This should help with submodules' gitlinks being in a dirty state after a fresh checkout. 
+
+grape checkout is now more verbose by default. 
+
+grape config now asks before enabling https credential cacheing.  (this would break Windows git configurations). 
+
+The Tutorial has been updated to instruct new users to use the gitflow configuration by default.
 Fri Jun 13 12:19:29 2014 Peter B. Robinson
 v0.2.0
 

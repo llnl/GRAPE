@@ -21,7 +21,7 @@ class NewBranchOption(option.Option):
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create teh branch in submodules. 
+    --norecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.

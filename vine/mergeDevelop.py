@@ -239,6 +239,7 @@ class MergeDevelop(resumable.Resumable):
             pass
         config.set("flow", "publicBranches", "develop master")
         config.set("flow", "topicPrefixMappings", "?:develop")
+        config.set("flow", "topicDestinationMappings", "none")
 
     def _resume(self, args):
         super(MergeDevelop, self)._resume(args)

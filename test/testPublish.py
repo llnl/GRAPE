@@ -20,6 +20,10 @@ class TestPublish(testGrape.TestGrape):
         git.commit("-m \"added f2\"")
         self.setUpConfig()
 
+    def setUpDevelopBranch(self):
+        os.chdir(self.repo)
+        git.branch("-f develop master")
+
     def assertSuccessfulFastForwardMerge(self, fromBranch="testPublish", toBranch="master"):
         try:
             self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
@@ -32,11 +36,11 @@ class TestPublish(testGrape.TestGrape):
         self.assertTrue(git.shortSHA(toBranch) != git.shortSHA(fromBranch))
         self.assertFalse(git.diff("--name-only %s %s" % (toBranch, fromBranch)))
 
-    def assertSuccessfulSquashCascadeMerge(self, fromBranch="testPublish", toBranch="master"):
-        self.assertTrue(git.currentBranch() == fromBranch)
-        self.assertTrue(git.shortSHA(toBranch) != git.shortSHA(fromBranch))
+    def assertSuccessfulSquashCascadeMerge(self, fromBranch="testPublish", toBranch="master", cascadeDest="develop"):
+        self.assertTrue(git.currentBranch() == cascadeDest)
         self.assertFalse(git.diff("--name-only %s %s" % (toBranch, fromBranch)))
-        self.assertTrue(git.branchUpToDateWith(fromBranch, toBranch))
+        self.assertFalse(git.diff("--name-only %s %s" % (toBranch, cascadeDest)))
+        self.assertTrue(git.branchUpToDateWith(toBranch, cascadeDest))
         self.assertFalse(git.branchUpToDateWith(toBranch, fromBranch))
 
     def assertGrapePublishWorked(self, args=None):
@@ -46,14 +50,14 @@ class TestPublish(testGrape.TestGrape):
         config.set("project", "name", "proj1")
 
         defaultArgs = ["-m", "publishing testPublish to master", "--noverify", '-R', '--test', '-R', '--repo=repo1',
-                       '-R', '--user=user', "--noReview", "--noUpdateLog"]
+                       '-R', '--user=user', "--noReview", "--noUpdateLog", "--noPushSubtrees"]
         try:
             if args:
                 args += defaultArgs
             else:
                 args = defaultArgs
             ret = grapeMenu.menu().applyMenuChoice("publish", args=args)
-            self.assertTrue(ret, "published returned false")
+            self.assertTrue(ret, "publish returned false")
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
 
@@ -74,7 +78,8 @@ class TestPublish(testGrape.TestGrape):
 
     def testFFCascadePublish(self):
         self.setUpBranchToFFMerge()
-        self.assertGrapePublishWorked(["--squash", "--cascade"])
+        self.setUpDevelopBranch()
+        self.assertGrapePublishWorked(["--squash", "--cascade=develop"])
         self.assertSuccessfulSquashCascadeMerge()
 
     def testFFRebasePublish(self):

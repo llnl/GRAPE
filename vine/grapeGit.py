@@ -168,7 +168,8 @@ def getAllSubmodules(quiet=True):
 
 def getModifiedSubmodules(branch1="", branch2="", quiet=True):
     cwd = os.getcwd()
-    os.chdir(baseDir())
+    base = baseDir()
+    os.chdir(base)
     submodules = getActiveSubmodules(quiet=quiet)
     # if there are no submodules, then return the empty list
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
@@ -178,8 +179,17 @@ def getModifiedSubmodules(branch1="", branch2="", quiet=True):
                               quiet=quiet).split('\n')
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
+
+    # make sure everything in modifiedSubmodules is in the original list of submodules
+    # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
+    #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
+    verifiedSubmodules = []
+    for s in modifiedSubmodules:
+        if s in submodules:
+            verifiedSubmodules.append(s)
+
     os.chdir(cwd)
-    return modifiedSubmodules
+    return verifiedSubmodules
 
 
 def gitDir():
@@ -255,6 +265,10 @@ def push(args, quiet=False):
 
 def rebase(args, quiet=False):
     return gitcmd("rebase %s" % args, "Rebase failed", quiet=quiet)
+
+
+def revert(args, quiet=False):
+    return gitcmd("revert %s" % args, "Revert failed", quiet=quiet)
 
 
 def safeForceBranchToOriginRef(branchToSync, quiet=True):

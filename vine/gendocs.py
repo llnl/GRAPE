@@ -76,7 +76,7 @@ makes sense for your team, etc. The lowly peo--, excuse me, Valued Developer vie
     grape status
     # commit to your local repo all staged changes in all subprojects
     grape commit
-    # Update your topic branch with recent changes on the public branch
+    # Update your topic branch with recent changes on the destination public branch
     grape md
     # publish your branch to the appropriate public branch (e.g. master, develop, release, etc)
     grape publish
@@ -104,7 +104,7 @@ at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk
 Ok, let's go to your git repository, and create an initial grape config file.
 
     cd /path/to/repo
-    grape writeConfig .grapeconfig
+    grape writeConfig .grapeconfig --gitflow
 
 Let's open up that .grapeconfig and edit some config options so that they make sense.
 
@@ -127,21 +127,16 @@ Take a look at the `[flow]` section. This is probably one of the most important 
 as it defines your project's branching model.
 
     [flow]
-    publicbranches = develop master
-    topicprefixmappings = ?:develop
-    publishpolicy = ?:merge
+    publishpolicy = ?:merge master:cascade->develop
+    publicbranches = master develop
+    topicprefixmappings = hotfix:master bugfix:develop feature:develop ?:develop release:develop
+    topicdestinationmappings = release:master
 
 The `publicbranches` is a space-delimited list of all of your long-lived public branches. These are typically things
 like develop, master, or release, but can be whatever your project thinks makes sense.
 
-The `topicprefixmappings` is a space-delimited list of key:value pairs, where the key is a branch prefix, and the value
-is the public branch topic branches with that branch prefix.  For example, if you wanted bugfix and feature
-branches to be branched off of develop and hotfix branches to be branched off of master, you should do the following:
-
-    [flow]
-    publicbranches = develop master
-    topicprefixmappings = feature:develop bugfix:develop hotfix:master ?:develop
-    publishpolicy = ?:merge
+The `topicprefixmappings` determines the start point for your topic branches. It is a space-delimited list of key:value
+pairs, where the key is a branch prefix, and the value is the public branch topic branches with that branch prefix.
 
 The ?:develop option means that any branch that isn't named with feature, bugfix, or hotfix as a prefix will be assumed
 to branch off of develop.
@@ -156,10 +151,14 @@ master to keep history clean there, but preserve all the churn on develop, do so
 
     [flow]
     ...
-    publishpolicy = master:squash develop:merge ?:merge
+    publishpolicy = master:cascade->develop develop:merge ?:merge
 
-If you don't know what we're talking about here, just leave it as is. Merges are the safest way to go.
+If you don't know what we're talking about here, just leave it as is. It preserves fine grained history on the develop
+branch, but has nice clean history on master.
 
+topicdestinationmappings is similar to topicprefixmappings, but it acts to override where a branch is published to. In
+gitflow land, this enables release branches - branches that start in develop (as described in topicprefixmappings) and
+get published to master.
 
 ###A note for Windows compatibility
 If you're on a system where 'git' is not in your path (often true on Windows systems), you'll want to add the following

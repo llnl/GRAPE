@@ -37,7 +37,7 @@ makes sense for your team, etc. The lowly peo--, excuse me, Valued Developer vie
     grape status
     # commit to your local repo all staged changes in all subprojects
     grape commit
-    # Update your topic branch with recent changes on the public branch
+    # Update your topic branch with recent changes on the destination public branch
     grape md
     # publish your branch to the appropriate public branch (e.g. master, develop, release, etc)
     grape publish
@@ -65,7 +65,7 @@ at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk
 Ok, let's go to your git repository, and create an initial grape config file.
 
     cd /path/to/repo
-    grape writeConfig .grapeconfig
+    grape writeConfig .grapeconfig --gitflow
 
 Let's open up that .grapeconfig and edit some config options so that they make sense.
 
@@ -88,21 +88,16 @@ Take a look at the `[flow]` section. This is probably one of the most important 
 as it defines your project's branching model.
 
     [flow]
-    publicbranches = develop master
-    topicprefixmappings = ?:develop
-    publishpolicy = ?:merge
+    publishpolicy = ?:merge master:cascade->develop
+    publicbranches = master develop
+    topicprefixmappings = hotfix:master bugfix:develop feature:develop ?:develop release:develop
+    topicdestinationmappings = release:master
 
 The `publicbranches` is a space-delimited list of all of your long-lived public branches. These are typically things
 like develop, master, or release, but can be whatever your project thinks makes sense.
 
-The `topicprefixmappings` is a space-delimited list of key:value pairs, where the key is a branch prefix, and the value
-is the public branch topic branches with that branch prefix.  For example, if you wanted bugfix and feature
-branches to be branched off of develop and hotfix branches to be branched off of master, you should do the following:
-
-    [flow]
-    publicbranches = develop master
-    topicprefixmappings = feature:develop bugfix:develop hotfix:master ?:develop
-    publishpolicy = ?:merge
+The `topicprefixmappings` determines the start point for your topic branches. It is a space-delimited list of key:value
+pairs, where the key is a branch prefix, and the value is the public branch topic branches with that branch prefix.
 
 The ?:develop option means that any branch that isn't named with feature, bugfix, or hotfix as a prefix will be assumed
 to branch off of develop.
@@ -117,10 +112,14 @@ master to keep history clean there, but preserve all the churn on develop, do so
 
     [flow]
     ...
-    publishpolicy = master:squash develop:merge ?:merge
+    publishpolicy = master:cascade->develop develop:merge ?:merge
 
-If you don't know what we're talking about here, just leave it as is. Merges are the safest way to go.
+If you don't know what we're talking about here, just leave it as is. It preserves fine grained history on the develop
+branch, but has nice clean history on master.
 
+topicdestinationmappings is similar to topicprefixmappings, but it acts to override where a branch is published to. In
+gitflow land, this enables release branches - branches that start in develop (as described in topicprefixmappings) and
+get published to master.
 
 ###A note for Windows compatibility
 If you're on a system where 'git' is not in your path (often true on Windows systems), you'll want to add the following
@@ -392,6 +391,7 @@ options are at least listed below.
                     [--describePattern=<config.patch.describePattern>]
                     [--name=<config.repo.name>]
                     [--outfile=<fname>]
+                    [--bundleTags=<branchToTagPatternMapping>]
 
 
     Options:
@@ -409,6 +409,9 @@ options are at least listed below.
                                         to construct a name. Note that the default file name carrys
                                         semantics for grape unbundle in determining which branches to
                                         update.
+       --bundleTags=<mapping>           A list of branch:tagPattern tags to bundle. Note that a broadly defined tag
+                                        pattern may yield larger bundle files than you might expect.
+                                        [default: .grapeconfig.patch.branchToTagPatternMapping]
 
     .grapeConfig Defaults:
 
@@ -428,10 +431,10 @@ options are at least listed below.
 
 
     Usage:
-       grape-unbundle <grapebundlefile> [--branchMappings=<config.patch.branchMappings>]
+       grape-unbundle <grapebundlefile>... [--branchMappings=<config.patch.branchMappings>]
 
     Arguments:
-        <grapebundlefile>             The name of the grape bundle file to unbundle.
+        <grapebundlefile>             The name(s) of the grape bundle file(s) to unbundle.
 
     Options:
         --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
@@ -490,12 +493,13 @@ options are at least listed below.
 
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
-    where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings and
-    .grapeconfig.workspace.submoduleTopicPrefixMappings. The branch-dependent publish policy (merge vs. squash merge.
-    vs rebase, etc) is decided using grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
+    where <public> is read from one of the <type>:<public> pairs found in .grapeconfig.flow.topicPrefixMappings,
+    .grapeconfig.flow.topicDestinationMappings, and/or .grapeconfig.workspace.submoduleTopicPrefixMappings. The
+    branch-dependent publish policy (merge vs. squash merge. vs rebase, etc) is decided using
+    grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
-    Usage:  grape-publish [--squash [--cascade ] | --merge |  --rebase]
+    Usage:  grape-publish [--squash [--cascade=<branch> ] | --merge |  --rebase]
                          [-m <msg>]
                          [--recurse | --norecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
@@ -512,6 +516,8 @@ options are at least listed below.
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--user=<StashUserName>]
+                         [--stashURL=<httpsURL>]
+                         [--verifySSL=<bool>]
                          [--project=<StashProjectKey>]
                          [--repo=<StashRepoName>]
                          [-R <arg>]...
@@ -524,11 +530,11 @@ options are at least listed below.
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [-v] [--user=<StashUserName>]
+            grape-publish --quick -m <msg> [-v] [--user=<StashUserName>] [--public=<public>] [--noReview]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade               For squash merges, can choose to cascade back to the topic branch after the merge is
+    --cascade=<branch>      For squash merges, can choose to cascade back to <branch> after the merge is
                             completed.
     --merge                 Perform a normal merge.
     -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
@@ -586,6 +592,10 @@ options are at least listed below.
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Stash username.
+    --stashURL=<url>        Your Stash URL, e.g. https://rzlc.llnl.gov/stash .
+                            [default: .grapeconfig.project.stashURL]
+    --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
+                            [default: .grapeconfig.project.verifySSL]
     --project=<project>     Your Stash Project. See grape-review for more details.
                             [default: .grapeconfig.project.name]
     --repo=<repo>           Your Stash repo. See grape-review for more details.
@@ -595,7 +605,8 @@ options are at least listed below.
     --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
     --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
-                            by .grapeconfig.flow.topicPrefixMappings.
+                            by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
+                            if no option for .grapeconfig.flow.topicDestinationMappings exists.
     --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
                             as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
     --emailNotification=<b> Set to true to send a notification email after you've published. The email will consist of
@@ -665,7 +676,7 @@ options are at least listed below.
         by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
 
         Usage: 
-        grape-writeConfig <file>
+        grape-writeConfig <file> [--gitflow]
 
     
 ## foreach
@@ -731,7 +742,7 @@ options are at least listed below.
 ## mr
 
     grape mr (merge remote branch)
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [-v] [--quiet]
 
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
@@ -777,6 +788,8 @@ options are at least listed below.
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
+                        [--stashURL=<url>]
+                        [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
@@ -803,6 +816,10 @@ options are at least listed below.
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
+        --stashURL=<url>            The stash url, e.g. https://rzlc.llnl.gov/stash. 
+                                    [default: .grapeconfig.project.stashURL]
+        --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
+                                    [default: .grapeconfig.project.verifySSL]
         --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
                                     https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
@@ -819,6 +836,7 @@ options are at least listed below.
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
+
 
 
     
@@ -967,6 +985,28 @@ options are at least listed below.
     Usage: grape-q 
 
     
+## internalRelease
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default. 
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
+                            This disables the verification. 
+    --recurse               Create the branch in submodules. 
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --norecurse             Don't create the branch in submodules.
+    
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
+    
 ## bugfix
 
     grape <newtopicbranch>
@@ -982,7 +1022,29 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create teh branch in submodules. 
+    --norecurse             Don't create the branch in submodules.
+    
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
+    
+## publicRelease
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default. 
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
+                            This disables the verification. 
+    --recurse               Create the branch in submodules. 
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --norecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -1004,7 +1066,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create teh branch in submodules. 
+    --norecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -1026,29 +1088,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create teh branch in submodules. 
-    
-    Optional Arguments:
-    <descr>                  Single word description of work being done on this branch. Asks by default.
-
-
-    
-## rc
-
-    grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
-    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
-
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
-
-    Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
-                            [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create teh branch in submodules. 
+    --norecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.

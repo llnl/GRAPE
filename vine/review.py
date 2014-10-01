@@ -176,6 +176,7 @@ class Review(option.Option):
         config.ensureSection("project")
         config.set("project", "stashURL", "https://rzlc.llnl.gov/stash")
         config.set("project", "verifySSL", "True")
+        config.set("project", "name", "My unnamed project")
         pass
 
 
@@ -208,7 +209,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     print("reviewers: %s" % reviewers)
                 request = repo.pull_requests.create(title, branch, target_branch,
                                                     description=descr, reviewers=reviewers)
-                print("Pull request created.")
+                url = request["links"]["self"][0]["href"]
+                print("Pull request created at %s." % url)
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
                 exit(1)
@@ -256,15 +258,17 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                             descr = currentDescription + "\n" + descr
 
 
-                if title is not None or descr is not None or reviewers is not None:
+                if title is not None or descr is not None or reviewers:
                     if not quiet:
-                        print("upating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
+                        print("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
                         print(requestData)
                         print(reviewers is None)
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
+                    url = request["links"]["self"][0]["href"]
+                    print("Pull request updated at %s." % url)
                 else:
                     request = requestData
-                print("Pull request updated.")
+                    print("Pull request unchanged.")
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
                 exit(1)
