@@ -57,7 +57,7 @@ class Checkout(option.Option):
                     git.checkout(branch, quiet=False)
                 elif action == 'f':
                     git.checkout("-B %s" % branch, quiet=False)
-            elif "conflict" in e.gitOuput.lower(): 
+            elif "conflict" in e.gitOutput.lower(): 
                 utility.printMsg("CONFLICT occurred when pulling %s from origin" % branch)
             elif "does not appear to be a git repository" in e.gitOutput.lower():
                 utility.printMsg("Remote 'origin' does not exist. This branch was not updated from a remote repository.")
