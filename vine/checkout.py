@@ -1,5 +1,6 @@
 import os
 
+import grapeMenu
 import option
 import grapeGit as git
 import utility
@@ -75,16 +76,18 @@ class Checkout(option.Option):
         os.chdir(baseDir)
         submodules = git.getActiveSubmodules()
         
-        print("GRAPE: Performing checkout in outer level project")
+        utility.printMsg("GRAPE: Performing checkout in outer level project")
         self.handledCheckout(checkoutargs, branch, git.baseDir(), quiet=quiet)
-
-        if submodules:
-            print("GRAPE: Performing checkouts in all active submodules")
-            git.submodule("update", quiet=quiet)
-        for sub in submodules:
-            utility.printMsg("Performing checkout in %s" % sub)
-            os.chdir(os.path.join(baseDir, sub))
-            self.handledCheckout(checkoutargs, branch, sub, quiet=quiet)
+        
+        grapeMenu.applyMenuChoice('uv', ["--checkSubprojects"])
+        #if submodules:
+        #    git.submodule("update", quiet=quiet)
+        #    print("GRAPE: Performing checkouts in all active submodules")
+            
+        #for sub in submodules:
+        #    utility.printMsg("Performing checkout in %s" % sub)
+        #    os.chdir(os.path.join(baseDir, sub))
+        #    self.handledCheckout(checkoutargs, branch, sub, quiet=quiet)
 
         os.chdir(baseDir)
         

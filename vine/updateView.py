@@ -82,9 +82,15 @@ class UpdateView(option.Option):
         git.submodule("init", quiet=quiet)
         os.chdir(git.baseDir())
         utility.printMsg("Initializing submodules...")
-        if deinitStr:
+        if deinitStr or deinitStr == "-f":
+            utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
             git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
-        git.submodule("update", quiet=quiet)
+
+        
+        if (initStr):
+            utility.printMsg("Updating active submodules...(%s)" % initStr)
+            git.submodule("update", quiet=quiet)
+            
 
         # ensure submodule is on apppropriate branch
         config = grapeConfig.grapeConfig()
@@ -97,6 +103,7 @@ class UpdateView(option.Option):
                 desiredSubmoduleBranch = currentBranch
             utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
             for sub in git.getActiveSubmodules(quiet=quiet):
+                utility.printMsg("Ensuring %s is on %s" % (sub,desiredSubmoduleBranch) )
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, quiet)
 
         return True
