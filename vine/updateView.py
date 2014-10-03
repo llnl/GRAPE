@@ -79,7 +79,6 @@ class UpdateView(option.Option):
                 else:
                     deinitStr += ' %s' % submodule
 
-            #git.submodule("update --init %s" % initStr)
             utility.printMsg("Configuring submodules...")
             git.submodule("init", quiet=quiet)
             os.chdir(git.baseDir())
