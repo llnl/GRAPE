@@ -56,7 +56,7 @@ class Checkout(option.Option):
                                                    (branchDescription, headDescription), 'k')
                         valid = (action == 'k') or (action == 'f')
                         if not valid:
-                            print "Invalid input. Enter k or f. "
+                            utility.printMsg("Invalid input. Enter k or f. ")
                 if action == 'k':
                     git.checkout(branch, quiet=False)
                 elif action == 'f':
@@ -69,7 +69,8 @@ class Checkout(option.Option):
             else:
                 raise e
 
-    def parseGitModulesDiffOutput(self, output, addedModules, removedModules):
+    @staticmethod
+    def parseGitModulesDiffOutput(output, addedModules, removedModules):
         print output.split('\n')
         for l in output.split('\n'):
             if "+[submodule" in l:
@@ -92,8 +93,6 @@ class Checkout(option.Option):
         #submodules = git.getActiveSubmodules()
         currentSHA = git.shortSHA("HEAD")
 
-
-
         utility.printMsg("GRAPE: Performing checkout in outer level project")
         self.handledCheckout(checkoutargs, branch, git.baseDir())
         previousSHA = currentSHA
@@ -106,19 +105,14 @@ class Checkout(option.Option):
         removedModules = []
         uvArgs = []
         if submoduleListDidChange:
-            print "PREVIOUS, " ,previousSHA
-            print "BRANCH", branch,  "\n"
 
             self.parseGitModulesDiffOutput(git.diff("%s %s -- .gitmodules" % (previousSHA, branch)), addedModules,
                                            removedModules)
-            print "ADDED:",  addedModules
-            print "REMOVED:", removedModules
             if not addedModules and not removedModules:
                 uvArgs.append("--checkSubprojects")
 
             if removedModules:
                 for sub in removedModules:
-                    utility.printMsg("Switched to branch that no longer has %s" % sub)
                     os.chdir(os.path.join(baseDir, sub))
                     if git.isWorkingDirectoryClean():
                         clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
@@ -134,12 +128,11 @@ class Checkout(option.Option):
         else:
             uvArgs.append("--checkSubprojects")
 
-        print uvArgs
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(baseDir)
         
-        print("GRAPE: Switched to %s" % branch)
+        utility.printMsg("Switched to %s" % branch)
         return True
     
     def setDefaultConfig(self, config):
