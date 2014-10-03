@@ -73,8 +73,8 @@ class UpdateView(option.Option):
                 deinitStr = "-f"
             else:
                 deinitStr = ""
-            for submodule in included:
-                if included[submodule]:
+            for submodule, wasIncluded in included.items():
+                if wasIncluded:
                     initStr += ' %s' % submodule
                 else:
                     deinitStr += ' %s' % submodule
