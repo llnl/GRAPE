@@ -1,5 +1,13 @@
 
 
+Fri Oct  3 16:07:46 2014 Peter B. Robinson
+v1.0.1
+
+Changed the behavior of grape checkout to be aware of your submodule branching model.
+Switching to a branch with a new submodule triggers a full call to grape uv, starting a dialogue asking the user which submodules she wants. 
+Switching to a branch that doesn't have a submodule that was on the previous branch will now trigger a dialogue asking if that user wants to delete the submodule, so long as the submodule is in a clean state.
+
+
 Wed Sep 24 10:06:18 2014 Peter B. Robinson
 v1.0.0
 
