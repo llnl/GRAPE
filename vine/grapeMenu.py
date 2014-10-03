@@ -1,3 +1,5 @@
+import traceback
+
 import addSubproject
 import bundle
 import branches
@@ -123,7 +125,9 @@ class _Menu(object):
         except git.GrapeGitError as e:
             print ("GRAPE GIT: Uncaught Error in grape-%s when executing '%s' in '%s'\n%s" %
                    (chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
-            exit(e.code)
+            print traceback.print_exc()
+            raise e
+            #exit(e.code)
 
     # Present the main menu
     def presentTextMenu(self):

@@ -47,7 +47,7 @@ class Status(option.Option):
             os.chdir(cwd)
         
         for line in status: 
-            print line
+            print ' ' + line.strip()
         return True
     
     def setDefaultConfig(self,config): 
