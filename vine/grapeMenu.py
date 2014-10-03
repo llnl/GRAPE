@@ -126,8 +126,7 @@ class _Menu(object):
             print ("GRAPE GIT: Uncaught Error in grape-%s when executing '%s' in '%s'\n%s" %
                    (chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
             print traceback.print_exc()
-            raise e
-            #exit(e.code)
+            exit(e.code)
 
     # Present the main menu
     def presentTextMenu(self):

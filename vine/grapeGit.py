@@ -104,6 +104,7 @@ def commitDescription(committish, quiet=True):
     try:
         descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
                            "commitDescription failed", quiet=quiet)
+    # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
     except GrapeGitError as e:
         if "unknown revision" in e.gitOutput:
             try:
