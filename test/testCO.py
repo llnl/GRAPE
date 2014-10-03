@@ -21,9 +21,11 @@ class TestCheckout(testGrape.TestGrape):
         git.checkout("-b addSubmodule")
         git.submodule("add %s submodule" % self.repos[1])
         git.commit("-m \"added submodule\"")
+
         # put the remote for the submodule into a HEAD-less state so it can accept pushes
         os.chdir(self.repos[1])
         git.checkout("--orphan HEAD")
+
         # go to the submodule and add a file to it.
         os.chdir(os.path.join(self.repo,"submodule"))
         f2 = os.path.join(self.repo,"submodule","f2")
@@ -31,6 +33,7 @@ class TestCheckout(testGrape.TestGrape):
         git.checkout("-b addSubmodule")
         git.add(f2)
         git.commit("-m \"added f2\"")
+
         # add another file on the master branch for the submodule
         git.branch("-f master HEAD")
         git.checkout("master")
@@ -38,8 +41,10 @@ class TestCheckout(testGrape.TestGrape):
         testGrape.writeFile3(f3)
         git.add(f3)
         git.commit("f3 -m \"f3\"")
+
         # update the submodule's remote
         git.push("origin --all")
+
         # git back to the master branch in the original repository
         os.chdir(self.repo)
         git.checkout("master")
@@ -65,28 +70,24 @@ class TestCheckout(testGrape.TestGrape):
             self.input.writelines(["y", "\n", "\n"])
             self.input.seek(0)
             self.switchToAddSubmodule()
-            # check to make sure submodule/file1 exists
             self.assertFile1ExistsInSubmodule()
 
             # switch to master, saying 'y' to delete request
             self.input.writelines(["y"])
             self.input.seek(0)
             self.switchToMaster()
-            # check to make sure submodule does not exist
             self.assertSubmoduleDirectoryDoesNotExist()
 
             # switch to addSubmodule, saying yes to request to have submodule
             self.input.writelines(["y", "\n", "\n"])
             self.input.seek(0)
             self.switchToAddSubmodule()
-            # check to make sure switching back added the submodule
             self.assertFile1ExistsInSubmodule()
 
             # switch back to master, this time saying don't delete request
             self.input.writelines(["n"])
             self.input.seek(0)
             self.switchToMaster()
-            # check to make sure submodule/file1 does exist
             self.assertFile1ExistsInSubmodule()
         except git.GrapeGitError as e:
             self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand )

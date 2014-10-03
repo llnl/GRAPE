@@ -37,17 +37,17 @@ class Checkout(option.Option):
             git.pull("origin %s" % branch)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
-                utility.printMsg("creating new branch %s in %s" % (branch, project))
+                utility.printMsg("Creating new branch %s in %s." % (branch, project))
                 git.checkout(checkoutargs+" -b "+branch, quiet=False)
             elif "already exists" in e.gitOutput:
-                utility.printMsg("branch %s already exists in %s" % (branch, project))
+                utility.printMsg("Branch %s already exists in %s." % (branch, project))
                 branchDescription = git.commitDescription(branch)
                 headDescription = git.commitDescription("HEAD")
                 if branchDescription == headDescription:
-                    utility.printMsg("branch %s and HEAD are the same. Switching to %s" % (branch, branch))
+                    utility.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
                     action = "k"
                 else:
-                    utility.printMsg("branch %s and HEAD are not the same" % branch)
+                    utility.printMsg("Branch %s and HEAD are not the same." % branch)
                     action = ''
                     valid = False
                     while not valid:
@@ -62,7 +62,7 @@ class Checkout(option.Option):
                 elif action == 'f':
                     git.checkout("-B %s" % branch, quiet=False)
             elif "conflict" in e.gitOutput.lower(): 
-                utility.printMsg("CONFLICT occurred when pulling %s from origin" % branch)
+                utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
             elif "does not appear to be a git repository" in e.gitOutput.lower():
                 utility.printMsg("Remote 'origin' does not exist. "
                                  "This branch was not updated from a remote repository.")
@@ -72,13 +72,13 @@ class Checkout(option.Option):
     @staticmethod
     def parseGitModulesDiffOutput(output, addedModules, removedModules):
         print output.split('\n')
-        for l in output.split('\n'):
-            if "+[submodule" in l:
-                print l
-                print l.split('"')
-                addedModules.append(l.split('"')[1])
-            if "-[submodule" in l:
-                removedModules.append(l.split('"')[1])
+        for line in output.split('\n'):
+            if "+[submodule" in line:
+                print line
+                print line.split('"')
+                addedModules.append(line.split('"')[1])
+            if "-[submodule" in line:
+                removedModules.append(line.split('"')[1])
 
         return addedModules, removedModules
 
@@ -90,10 +90,9 @@ class Checkout(option.Option):
 
         baseDir = utility.workspaceDir()
         os.chdir(baseDir)
-        #submodules = git.getActiveSubmodules()
         currentSHA = git.shortSHA("HEAD")
 
-        utility.printMsg("GRAPE: Performing checkout in outer level project")
+        utility.printMsg("GRAPE: Performing checkout in outer level project.")
         self.handledCheckout(checkoutargs, branch, git.baseDir())
         previousSHA = currentSHA
         # no more work needed if we're not managing submodules
@@ -117,11 +116,11 @@ class Checkout(option.Option):
                     if git.isWorkingDirectoryClean():
                         clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
                         if clean:
-                            utility.printMsg("removing clean submodule %s" % sub)
+                            utility.printMsg("Removing clean submodule %s." % sub)
                             os.chdir(baseDir)
                             shutil.rmtree(os.path.join(baseDir, sub))
                     else:
-                        utility.printMsg("Unstaged / committed changes in %s, not removing" % sub)
+                        utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
                         os.chdir(baseDir)
             if addedModules:
                 utility.printMsg("New submodules %s are on branch %s. Updating view ..." % (addedModules, branch))
@@ -132,7 +131,7 @@ class Checkout(option.Option):
 
         os.chdir(baseDir)
         
-        utility.printMsg("Switched to %s" % branch)
+        utility.printMsg("Switched to %s." % branch)
         return True
     
     def setDefaultConfig(self, config):

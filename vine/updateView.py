@@ -10,7 +10,7 @@ import checkout
 # update your custom sparse checkout view
 class UpdateView(option.Option):
     """
-    grape uv  - updates your active submodules.
+    grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f ] [-v] [--checkSubprojects]
 
     Options:
@@ -18,8 +18,8 @@ class UpdateView(option.Option):
         -f                      Force removal of submodules currently in your view that are taken out of the view as a
                                 result to this call to uv. (passes the -f flag to submodule deinit)
         -v                      Be more verbose.
-        --checkSubprojects      Does not go through the 'which submodules do you want' script, but does check for
-                                branch model consistency across your submodules and subprojects.
+        --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
+                                not go through the 'which submodules do you want' script.
 
     """
     def __init__(self):
