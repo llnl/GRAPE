@@ -77,6 +77,7 @@ class TestGrape(unittest.TestCase):
             git.gitcmd("init", "Setup Failed")
             fname = os.path.join(self.repo, "testRepoFile")
             writeFile1(fname)
+            self.file1 = fname
             git.gitcmd("add %s" % fname, "Add Failed")
             git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
             os.chdir(os.path.join(self.repo, ".."))
@@ -161,6 +162,7 @@ def main():
     import testReview
     import testVersion
     import testPublish
+    import testCO
 
     testClasses = [testBranches.TestBranches,
                    testClone.TestClone,
@@ -169,7 +171,9 @@ def main():
                    testMergeDevelop.TestMD,
                    testReview.TestReview,
                    testVersion.TestVersion,
-                   testPublish.TestPublish]
+                   testPublish.TestPublish,
+                   testCO.TestCheckout]
+
     suite = unittest.TestSuite()
     for cls in testClasses:
         suite = buildSuite(cls, suite)

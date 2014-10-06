@@ -10,14 +10,16 @@ import checkout
 # update your custom sparse checkout view
 class UpdateView(option.Option):
     """
-    grape uv  - updates your active submodules.
-    Usage: grape-uv [-f <sparsefile>] [-v]
+    grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects]
 
     Options:
         
         -f                      Force removal of submodules currently in your view that are taken out of the view as a
                                 result to this call to uv. (passes the -f flag to submodule deinit)
         -v                      Be more verbose.
+        --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
+                                not go through the 'which submodules do you want' script.
 
     """
     def __init__(self):
@@ -64,27 +66,30 @@ class UpdateView(option.Option):
         base = git.baseDir()
         if base == "":
             return False
-
-        included = self.defineActiveSubmodules(quiet=quiet)
-        initStr = ""
-        if args["-f"]:
-            deinitStr = "-f"
-        else:
-            deinitStr = ""
-        for submodule in included:
-            if included[submodule]:
-                initStr += ' %s' % submodule
+        if not args["--checkSubprojects"]:
+            included = self.defineActiveSubmodules(quiet=quiet)
+            initStr = ""
+            if args["-f"]:
+                deinitStr = "-f"
             else:
-                deinitStr += ' %s' % submodule
+                deinitStr = ""
+            for submodule, wasIncluded in included.items():
+                if wasIncluded:
+                    initStr += ' %s' % submodule
+                else:
+                    deinitStr += ' %s' % submodule
 
-        #git.submodule("update --init %s" % initStr)
-        utility.printMsg("Configuring submodules...")
-        git.submodule("init", quiet=quiet)
-        os.chdir(git.baseDir())
-        utility.printMsg("Initializing submodules...")
-        if deinitStr:
-            git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
-        git.submodule("update", quiet=quiet)
+            utility.printMsg("Configuring submodules...")
+            git.submodule("init", quiet=quiet)
+            os.chdir(git.baseDir())
+            utility.printMsg("Initializing submodules...")
+            if deinitStr or deinitStr == "-f":
+                utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
+                git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
+
+            if initStr:
+                utility.printMsg("Updating active submodules...(%s)" % initStr)
+                git.submodule("update", quiet=quiet)
 
         # ensure submodule is on apppropriate branch
         config = grapeConfig.grapeConfig()
@@ -97,6 +102,7 @@ class UpdateView(option.Option):
                 desiredSubmoduleBranch = currentBranch
             utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
             for sub in git.getActiveSubmodules(quiet=quiet):
+                utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, quiet)
 
         return True
@@ -114,7 +120,7 @@ class UpdateView(option.Option):
         if git.hasBranch(branch):
             git.fetch("origin", "%s:%s" % (branch, branch))
 
-        checkout.Checkout.handledCheckout("-b", branch, repo, quiet=quiet)
+        checkout.Checkout.handledCheckout("-b", branch, repo)
 
         os.chdir(cwd)
         return

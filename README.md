@@ -452,10 +452,10 @@ options are at least listed below.
     
 ## checkout
 
-    Usage: grape-checkout [-v] [-b] <branch> 
+    Usage: grape-checkout  [-b] <branch>
 
     Options:
-    -v      Show git commands being issued. 
+
     -b      Create the branch off of the current HEAD in each project.
     
 
@@ -623,7 +623,7 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailHeader]
     --emailSubject=<sbj>    The email subject. See above.
                             [default: .grapeconfig.publish.emailSubject]
-    --emailSendTo=<addr>    The receiver of the email.
+    --emailSendTo=<addr>    The comma-delimited list of receivers of the email.
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
@@ -901,14 +901,16 @@ options are at least listed below.
     
 ## uv
 
-    grape uv  - updates your active submodules.
-    Usage: grape-uv [-f <sparsefile>] [-v]
+    grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects]
 
     Options:
         
         -f                      Force removal of submodules currently in your view that are taken out of the view as a
                                 result to this call to uv. (passes the -f flag to submodule deinit)
         -v                      Be more verbose.
+        --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
+                                not go through the 'which submodules do you want' script.
 
     
 ## version

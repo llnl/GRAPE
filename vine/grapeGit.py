@@ -100,9 +100,18 @@ def commit(argstr):
 
 
 def commitDescription(committish, quiet=True):
-    return gitcmd("log --oneline %s^1..%s" % (committish, committish),
-                  "commitDescription failed", quiet=quiet)
 
+    try:
+        descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
+                           "commitDescription failed", quiet=quiet)
+    # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
+    except GrapeGitError as e:
+        if "unknown revision" in e.gitOutput:
+            try:
+                descr = gitcmd("log --oneline %s" % committish, "commitDescription failed")
+            except GrapeGitError as e:
+                raise e
+    return descr
 
 def config(argstr, arg2=None, quiet=False):
     if arg2 is not None:

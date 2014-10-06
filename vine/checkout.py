@@ -1,5 +1,8 @@
 import os
+import shutil
 
+import grapeConfig
+import grapeMenu
 import option
 import grapeGit as git
 import utility
@@ -7,10 +10,10 @@ import utility
 
 class Checkout(option.Option):
     """
-    Usage: grape-checkout [-v] [-b] <branch> 
+    Usage: grape-checkout  [-b] <branch>
 
     Options:
-    -v      Show git commands being issued. 
+
     -b      Create the branch off of the current HEAD in each project.
     
 
@@ -27,23 +30,24 @@ class Checkout(option.Option):
         return "Checks out a branch in all projects in this workspace."
 
     @staticmethod
-    def handledCheckout(checkoutargs, branch, project, quiet=True):
+    def handledCheckout(checkoutargs, branch, project):
         git.fetch(quiet=False)
         try:
             git.checkout(checkoutargs + ' ' + branch, quiet=False)
-            git.pull("origin %s" % (branch))
+            git.pull("origin %s" % branch)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
-                utility.printMsg("creating new branch %s in %s" % (branch, project))
+                utility.printMsg("Creating new branch %s in %s." % (branch, project))
                 git.checkout(checkoutargs+" -b "+branch, quiet=False)
             elif "already exists" in e.gitOutput:
-                utility.printMsg("branch %s already exists in %s" % (branch, project))
+                utility.printMsg("Branch %s already exists in %s." % (branch, project))
                 branchDescription = git.commitDescription(branch)
                 headDescription = git.commitDescription("HEAD")
                 if branchDescription == headDescription:
-                    utility.printMsg("branch %s and HEAD are the same. Switching to %s" % (branch, branch))
+                    utility.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
                     action = "k"
                 else:
+                    utility.printMsg("Branch %s and HEAD are not the same." % branch)
                     action = ''
                     valid = False
                     while not valid:
@@ -52,20 +56,33 @@ class Checkout(option.Option):
                                                    (branchDescription, headDescription), 'k')
                         valid = (action == 'k') or (action == 'f')
                         if not valid:
-                            print "Invalid input. Enter k or f. "
+                            utility.printMsg("Invalid input. Enter k or f. ")
                 if action == 'k':
                     git.checkout(branch, quiet=False)
                 elif action == 'f':
                     git.checkout("-B %s" % branch, quiet=False)
-            elif "conflict" in e.gitOuput.lower(): 
-                utility.printMsg("CONFLICT occurred when pulling %s from origin" % branch)
+            elif "conflict" in e.gitOutput.lower(): 
+                utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
             elif "does not appear to be a git repository" in e.gitOutput.lower():
-                utility.printMsg("Remote 'origin' does not exist. This branch was not updated from a remote repository.")
+                utility.printMsg("Remote 'origin' does not exist. "
+                                 "This branch was not updated from a remote repository.")
+            else:
+                raise e
 
+    @staticmethod
+    def parseGitModulesDiffOutput(output, addedModules, removedModules):
+        print output.split('\n')
+        for line in output.split('\n'):
+            if "+[submodule" in line:
+                print line
+                print line.split('"')
+                addedModules.append(line.split('"')[1])
+            if "-[submodule" in line:
+                removedModules.append(line.split('"')[1])
 
+        return addedModules, removedModules
 
     def execute(self, args):
-        quiet = not args["-v"]
         checkoutargs = ''
         branch = args["<branch>"]
         if args['-b']: 
@@ -73,23 +90,49 @@ class Checkout(option.Option):
 
         baseDir = utility.workspaceDir()
         os.chdir(baseDir)
-        submodules = git.getActiveSubmodules()
-        
-        print("GRAPE: Performing checkout in outer level project")
-        self.handledCheckout(checkoutargs, branch, git.baseDir(), quiet=quiet)
+        currentSHA = git.shortSHA("HEAD")
 
-        if submodules:
-            print("GRAPE: Performing checkouts in all active submodules")
-            git.submodule("update", quiet=quiet)
-        for sub in submodules:
-            utility.printMsg("Performing checkout in %s" % sub)
-            os.chdir(os.path.join(baseDir, sub))
-            self.handledCheckout(checkoutargs, branch, sub, quiet=quiet)
+        utility.printMsg("GRAPE: Performing checkout in outer level project.")
+        self.handledCheckout(checkoutargs, branch, git.baseDir())
+        previousSHA = currentSHA
+        # no more work needed if we're not managing submodules
+        if not grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
+            return True
+
+        submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch))
+        addedModules = []
+        removedModules = []
+        uvArgs = []
+        if submoduleListDidChange:
+
+            self.parseGitModulesDiffOutput(git.diff("%s %s -- .gitmodules" % (previousSHA, branch)), addedModules,
+                                           removedModules)
+            if not addedModules and not removedModules:
+                uvArgs.append("--checkSubprojects")
+
+            if removedModules:
+                for sub in removedModules:
+                    os.chdir(os.path.join(baseDir, sub))
+                    if git.isWorkingDirectoryClean():
+                        clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
+                        if clean:
+                            utility.printMsg("Removing clean submodule %s." % sub)
+                            os.chdir(baseDir)
+                            shutil.rmtree(os.path.join(baseDir, sub))
+                    else:
+                        utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
+                        os.chdir(baseDir)
+            if addedModules:
+                utility.printMsg("New submodules %s are on branch %s. Updating view ..." % (addedModules, branch))
+        else:
+            uvArgs.append("--checkSubprojects")
+
+        grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(baseDir)
         
-        print("GRAPE: Switched to %s" % branch)
+        utility.printMsg("Switched to %s." % branch)
         return True
     
     def setDefaultConfig(self, config):
-       pass
+        pass

@@ -156,7 +156,7 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailHeader]
     --emailSubject=<sbj>    The email subject. See above.
                             [default: .grapeconfig.publish.emailSubject]
-    --emailSendTo=<addr>    The receiver of the email.
+    --emailSendTo=<addr>    The comma-delimited list of receivers of the email.
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
