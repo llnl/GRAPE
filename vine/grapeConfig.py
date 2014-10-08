@@ -17,6 +17,18 @@ def grapeConfig():
         readGlobal()
     return __configInstance
 
+
+# returns a config object that only has the state associated with defaults and the current workspace's .grapeconfig,
+# unaffected by .grapeuserconfig or $HOME/.grapeconfig
+def workspaceConfig():
+    wsConfig = GrapeConfigParser()
+    readDefaults(wsConfig)
+    wsConfig.readWorkspaceGrapeConfigFile()
+    return wsConfig
+
+
+
+
 def resetGrapeConfig(newInstance=None):
     """
     Resets the singleton instance.
@@ -24,8 +36,10 @@ def resetGrapeConfig(newInstance=None):
     global __configInstance
     __configInstance = newInstance
 
-def readDefaults():
-    grapeMenu.menu().setDefaultConfig(grapeConfig())
+def readDefaults(config=None):
+    if config is None:
+        config = grapeConfig()
+    grapeMenu.menu().setDefaultConfig(config)
 
 def readGlobal():
     if os.name == "nt":
@@ -45,11 +59,11 @@ def read(additionalFileNames=[]):
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(git.baseDir(), ".grapeconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(git.baseDir(), ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
     except:
         pass
     files = defaultFiles + additionalFileNames
@@ -72,6 +86,20 @@ class ConfigPairDict(dict):
 
 
 class GrapeConfigParser(ConfigParser.ConfigParser):
+
+    def readWorkspaceGrapeConfigFile(self):
+        self.read(os.path.join(utility.workspaceDir(), ".grapeconfig"))
+
+    def readWorkspaceUserConfigFile(self):
+        self.read(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+
+    def readGlobalGrapeConfigFile(self):
+        if os.name == "nt":
+            fname = os.path.join(os.environ["USERPROFILE"], ".grapeconfig")
+        else:
+            fname = os.path.join(os.environ["HOME"], ".grapeconfig")
+        self.read(fname)
+
     def getMapping(self, section, cfgOption, raw=False, cfgVars=None):
         return self.parseConfigPairList(self.get(section, cfgOption, raw=raw, vars=cfgVars))
 

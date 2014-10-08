@@ -45,11 +45,11 @@ class TestNestedSubproject(testGrape.TestGrape):
         # check to see that edits that occur in the new subproject are ignored by outer repo
         testGrape.writeFile2(os.path.join(subproject1path, "f2"))
         os.chdir(self.repo)
+        # check that grape left the repository in a clean state
         self.assertTrue(git.isWorkingDirectoryClean(), "repo not clean after added subproject1")
 
     def switchToMaster(self):
         grapeMenu.menu().applyMenuChoice("checkout", ["master"])
-
 
     def testAddingNewNestedSubproject(self):
         try:

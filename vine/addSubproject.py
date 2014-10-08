@@ -117,8 +117,25 @@ class AddSubproject(option.Option):
                                             (name, prefix, url, branch), 'y')
             if proceed:
                 git.clone("%s %s" % (fullurl, prefix))
-                with open(os.path.join(git.baseDir(), ".gitignore"), 'a') as ignore:
+                ignorePath = os.path.join(git.baseDir(), ".gitignore")
+                with open(ignorePath, 'a') as ignore:
                     ignore.write(prefix)
+                git.add(ignorePath)
+                wsConfig = grapeConfig.workspaceConfig()
+                currentSubprojects = wsConfig.getList("nestedProjects", "names")
+                currentSubprojects.append(name)
+                newSection = "nested-%s" % name
+                wsConfig.ensureSection(newSection)
+                wsConfig.set(newSection, "prefix", prefix)
+                wsConfig.set(newSection, "url", url)
+                configFileName = os.path.join(utility.workspaceDir(),".grapeconfig")
+                with open(os.path.join(configFileName), 'w') as f:
+                    wsConfig.write(f)
+                git.add(configFileName)
+                git.add(ignorePath)
+                git.commit("%s %s -m \"GRAPE: Added nested subproject %s\"" % (ignorePath, configFileName, prefix))
+
+
 
 
         return True
@@ -126,6 +143,7 @@ class AddSubproject(option.Option):
     def setDefaultConfig(self, config):
         config.ensureSection("subtrees")
         config.ensureSection("workspace")
-
+        config.ensureSection("nestedProjects")
         config.set("subtrees", "mergePolicy", "squash")
         config.set("workspace", "subprojectType", "subtree")
+        config.set("nestedProjects", "names", "")
