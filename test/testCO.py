@@ -9,6 +9,7 @@ if not ".." in sys.path:
     sys.path.append("..")
 from vine import grapeGit as git
 from vine import grapeMenu
+from vine import grapeConfig
 
 class TestCheckout(testGrape.TestGrape):
     # sets up an outer repo with two branches. master has file1.

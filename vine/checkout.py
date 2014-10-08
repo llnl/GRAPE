@@ -30,15 +30,19 @@ class Checkout(option.Option):
         return "Checks out a branch in all projects in this workspace."
 
     @staticmethod
-    def handledCheckout(checkoutargs, branch, project):
+    def handledCheckout(checkoutargs, branch, project, quiet=False):
         git.fetch(quiet=False)
         try:
             git.checkout(checkoutargs + ' ' + branch, quiet=False)
             git.pull("origin %s" % branch)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
-                utility.printMsg("Creating new branch %s in %s." % (branch, project))
-                git.checkout(checkoutargs+" -b "+branch, quiet=False)
+                createNewBranch = utility.userInput("Branch not found locally or remotely. Would you like to create a "
+                                                    "new branch called %s?\n(y,n)" % branch, 'y')
+                if createNewBranch:
+                    utility.printMsg("Creating new branch %s in %s." % (branch, project))
+                    git.checkout(checkoutargs+" -b "+branch, quiet=False)
+
             elif "already exists" in e.gitOutput:
                 utility.printMsg("Branch %s already exists in %s." % (branch, project))
                 branchDescription = git.commitDescription(branch)
