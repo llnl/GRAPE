@@ -105,7 +105,7 @@ class Checkout(option.Option):
         uvArgs = []
         if submoduleListDidChange:
 
-            self.parseGitModulesDiffOutput(git.diff("%s %s -- .gitmodules" % (previousSHA, branch)), addedModules,
+            self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (previousSHA, branch)), addedModules,
                                            removedModules)
             if not addedModules and not removedModules:
                 uvArgs.append("--checkSubprojects")
