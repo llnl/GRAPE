@@ -70,6 +70,8 @@ class Checkout(option.Option):
             elif "does not appear to be a git repository" in e.gitOutput.lower():
                 utility.printMsg("Remote 'origin' does not exist. "
                                  "This branch was not updated from a remote repository.")
+            elif "Couldn't find remote ref" in e.gitOutput:
+                utility.printMsg("Remote does not have refence to %s. You may want to push this branch. " % branch)
             else:
                 raise e
 
@@ -109,7 +111,7 @@ class Checkout(option.Option):
         uvArgs = []
         if submoduleListDidChange:
 
-            self.parseGitModulesDiffOutput(git.diff("%s %s -- .gitmodules" % (previousSHA, branch)), addedModules,
+            self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (previousSHA, branch)), addedModules,
                                            removedModules)
             if not addedModules and not removedModules:
                 uvArgs.append("--checkSubprojects")
