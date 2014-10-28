@@ -9,7 +9,7 @@ import option
 
 __configInstance = None
 
-
+# returns the current configuration. This includes global configs, .grapeconfigs, and .grapeuserconfigs.
 def grapeConfig():
     global __configInstance
     if __configInstance is None:
@@ -27,6 +27,11 @@ def workspaceConfig():
     return wsConfig
 
 
+# returns a config object that only has the state associated with the user's .grapeuserconfig
+def grapeUserConfig():
+    userConfig = GrapeConfigParser()
+    userConfig.readWorkspaceUserConfigFile()
+    return userConfig
 
 
 def resetGrapeConfig(newInstance=None):
@@ -36,10 +41,12 @@ def resetGrapeConfig(newInstance=None):
     global __configInstance
     __configInstance = newInstance
 
+
 def readDefaults(config=None):
     if config is None:
         config = grapeConfig()
     grapeMenu.menu().setDefaultConfig(config)
+
 
 def readGlobal():
     if os.name == "nt":
@@ -49,9 +56,10 @@ def readGlobal():
     grapeConfig().read([globalconfigfile])
 
 
-def read(additionalFileNames=[]):
+def read(additionalFileNames=None):
     # initialize a ConfigParser with all defaults needed by the grapeMenu
-
+    if additionalFileNames is None:
+        additionalFileNames = []
     defaultFiles = []
     if os.name == "nt":
         defaultFiles.append(os.path.join(os.environ["USERPROFILE"], ".grapeconfig"))
@@ -59,13 +67,14 @@ def read(additionalFileNames=[]):
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeconfig"))
+        defaultFiles.append(os.path.join(git.baseDir(), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(git.baseDir(), ".grapeuserconfig"))
     except:
         pass
+
     files = defaultFiles + additionalFileNames
     readFiles = grapeConfig().read(files)
     if len(readFiles) == 0:
@@ -74,9 +83,9 @@ def read(additionalFileNames=[]):
 
 class ConfigPairDict(dict):
 
-    def __getitem__(self,key): 
+    def __getitem__(self, key):
         try:
-            return super(ConfigPairDict,self).__getitem__(key)
+            return super(ConfigPairDict, self).__getitem__(key)
         except KeyError as e: 
             if '?' in self.keys():
                 return self['?']
@@ -127,6 +136,33 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         except ConfigParser.DuplicateSectionError:
             pass
 
+    def getAllNestedSubprojects(self):
+        return self.getList("nestedProjects", "names")
+
+    @staticmethod
+    def getAllActiveNestedSubprojects():
+        config = grapeConfig()
+        allNested = config.getAllNestedSubprojects()
+        userConfig = grapeUserConfig()
+        active = []
+        for sub in allNested:
+            try:
+                if userConfig.getboolean("nested-%s" % sub, "active"):
+                    active.append(sub)
+            except ConfigParser.Error:
+                userConfig.set("nested-%s" % sub, "active", "False")
+        return active
+
+    def setActiveNestedSubprojects(self, listOfActiveSubprojects):
+        allNested = self.getAllNestedSubprojects()
+        active = {}
+        for proj in allNested:
+            active[proj] = False
+        for proj in listOfActiveSubprojects:
+            active[proj] = True
+        for proj in active:
+            self.set("nested-%s" % proj, "active", "True" if active[proj] is True else "False")
+
     @staticmethod
     def parseConfigPairList(toParse):
 
@@ -169,7 +205,8 @@ class WriteConfig(option.Option):
         if args["--gitflow"]:
             # [flow]
             config.set("flow", "publicBranches", "master develop")
-            config.set("flow", "topicPrefixMappings", "hotfix:master bugfix:develop feature:develop ?:develop release:develop")
+            config.set("flow", "topicPrefixMappings",
+                       "hotfix:master bugfix:develop feature:develop ?:develop release:develop")
             config.set("flow", "topicDestinationMappings", "release:master")
             config.set("flow", "publishpolicy", "?:merge master:cascade->develop")
             # [versioning]
@@ -177,10 +214,6 @@ class WriteConfig(option.Option):
             config.set("versioning", "branchslotmappings", "?:3 master:2")
             # [patch]
             config.set("patch", "branches", "develop master")
-
-
-
-
 
     def setDefaultConfig(self, config):
         pass

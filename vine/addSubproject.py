@@ -118,27 +118,51 @@ class AddSubproject(option.Option):
             if proceed:
                 git.clone("%s %s" % (fullurl, prefix))
                 ignorePath = os.path.join(git.baseDir(), ".gitignore")
+                ignoresGrapeUserConfig = False
+                try:
+                    with open(ignorePath, 'r') as ignore:
+                        ignoresGrapeUserConfig = ".grapeuserconfig" in ignore.readlines()
+                except IOError:
+                    pass
                 with open(ignorePath, 'a') as ignore:
-                    ignore.write(prefix)
+                    ignore.writelines([prefix+'\n'])
+                    if not ignoresGrapeUserConfig:
+                        ignore.writelines([".grapeuserconfig\n"])
                 git.add(ignorePath)
                 wsConfig = grapeConfig.workspaceConfig()
                 currentSubprojects = wsConfig.getList("nestedProjects", "names")
                 currentSubprojects.append(name)
+                wsConfig.set("nestedProjects", "names", ' '.join(currentSubprojects))
                 newSection = "nested-%s" % name
                 wsConfig.ensureSection(newSection)
                 wsConfig.set(newSection, "prefix", prefix)
                 wsConfig.set(newSection, "url", url)
-                configFileName = os.path.join(utility.workspaceDir(),".grapeconfig")
+                configFileName = os.path.join(utility.workspaceDir(), ".grapeconfig")
                 with open(os.path.join(configFileName), 'w') as f:
                     wsConfig.write(f)
                 git.add(configFileName)
                 git.add(ignorePath)
                 git.commit("%s %s -m \"GRAPE: Added nested subproject %s\"" % (ignorePath, configFileName, prefix))
+                # update the runtime config with the new workspace .grapeconfig's settings.
+                grapeConfig.read()
 
-
-
+                userConfig = grapeConfig.grapeUserConfig()
+                userConfig.ensureSection(newSection)
+                userConfig.set(newSection, "active", "True")
+                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
 
         return True
+
+    @staticmethod
+    def activateNestedSubproject(subprojectName, userconfig):
+        config = grapeConfig.grapeConfig()
+        prefix = config.get("nested-%s" % subprojectName, "prefix")
+        url = config.get("nested-%s" % subprojectName, "url")
+        fullurl = subtree.parseSubtreeRemote(url)
+        git.clone("%s %s" % (fullurl, prefix))
+        section = "nested-%s" % subprojectName
+        userconfig.ensureSection(section)
+        userconfig.set(section, "active", "True")
 
     def setDefaultConfig(self, config):
         config.ensureSection("subtrees")

@@ -47,6 +47,7 @@ class TestNestedSubproject(testGrape.TestGrape):
         os.chdir(self.repo)
         # check that grape left the repository in a clean state
         self.assertTrue(git.isWorkingDirectoryClean(), "repo not clean after added subproject1")
+        self.subproject = subproject1path
 
     def switchToMaster(self):
         grapeMenu.menu().applyMenuChoice("checkout", ["master"])
@@ -59,3 +60,23 @@ class TestNestedSubproject(testGrape.TestGrape):
         except git.GrapeGitError as e:
             self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand)
             pass
+
+    def testSwitchingBranchesWithNestedProjects(self):
+        try:
+            self.assertCanAddNewSubproject()
+            # create the branches using git
+            os.chdir(self.repo)
+            git.branch("newBranch")
+            os.chdir(self.subproject)
+            git.branch("newBranch")
+            # try switching to the branches using grape
+            os.chdir(self.repo)
+            grapeMenu.menu().applyMenuChoice("checkout", ["newBranch"])
+            self.assertTrue(git.currentBranch() == "newBranch", "outer level repo not on newBranch after checkout")
+            os.chdir(self.subproject)
+            self.assertTrue(git.currentBranch() == "newBranch", "subproject not on newBranch after checkout")
+
+        except git.GrapeGitError as e:
+            self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
+            pass
+
