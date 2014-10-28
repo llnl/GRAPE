@@ -80,3 +80,19 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass
 
+    def testDeactivatingAndReactiviatingNestProjects(self):
+        try:
+            self.assertCanAddNewSubproject()
+            self.assertTrue(os.path.isdir(self.subproject))
+            # answer n to whether we want  subproject1, y to deleting it
+            self.queueUserInput(["n\n", "y\n"])
+            grapeMenu.menu().applyMenuChoice("uv")
+            self.assertFalse(os.path.isdir(self.subproject))
+            # answer y to whether we want subproject1
+            self.input.flush()
+            self.queueUserInput(["y\n"])
+            grapeMenu.menu().applyMenuChoice("uv")
+            self.assertTrue(os.path.isdir(self.subproject))
+        except git.GrapeGitError as e:
+            self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
+            pass

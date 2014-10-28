@@ -130,6 +130,7 @@ class TestGrape(unittest.TestCase):
 
     # stage user input for methods that expect it
     def queueUserInput(self, inputList):
+        self.input.buf = ""
         self.input.writelines(inputList)
         self.input.seek(0)
 
@@ -163,6 +164,7 @@ def main():
     import testVersion
     import testPublish
     import testCO
+    import testNestedSubproject
 
     testClasses = [testBranches.TestBranches,
                    testClone.TestClone,
@@ -172,7 +174,8 @@ def main():
                    testReview.TestReview,
                    testVersion.TestVersion,
                    testPublish.TestPublish,
-                   testCO.TestCheckout]
+                   testCO.TestCheckout,
+                   testNestedSubproject.TestNestedSubproject]
 
     suite = unittest.TestSuite()
     for cls in testClasses:

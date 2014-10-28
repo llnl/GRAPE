@@ -100,7 +100,10 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         self.read(os.path.join(utility.workspaceDir(), ".grapeconfig"))
 
     def readWorkspaceUserConfigFile(self):
-        self.read(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+        try:
+            self.read(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+        except IOError:
+            pass
 
     def readGlobalGrapeConfigFile(self):
         if os.name == "nt":
@@ -154,14 +157,16 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         return active
 
     def setActiveNestedSubprojects(self, listOfActiveSubprojects):
-        allNested = self.getAllNestedSubprojects()
+        allNested = grapeConfig().getAllNestedSubprojects()
         active = {}
         for proj in allNested:
             active[proj] = False
         for proj in listOfActiveSubprojects:
             active[proj] = True
         for proj in active:
-            self.set("nested-%s" % proj, "active", "True" if active[proj] is True else "False")
+            section = "nested-%s" % proj
+            self.ensureSection(section)
+            self.set(section, "active", "True" if active[proj] is True else "False")
 
     @staticmethod
     def parseConfigPairList(toParse):

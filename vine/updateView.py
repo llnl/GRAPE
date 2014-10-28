@@ -130,26 +130,31 @@ class UpdateView(option.Option):
                 reverseLookupByPrefix[config.get("nested-%s" % sub, "prefix")] = sub
 
             userConfig = grapeConfig.grapeUserConfig()
+            updatedActiveList = []
             for subproject, nowActive in includedNestedSubprojectPrefices.items():
-                previouslyActive = userConfig.get("nested-%s" % reverseLookupByPrefix[subproject])
+                previouslyActive = userConfig.getboolean("nested-%s" % reverseLookupByPrefix[subproject], "active")
+
                 if nowActive and previouslyActive:
-                    pass
+                    updatedActiveList.append(subproject)
+
                 if nowActive and not previouslyActive:
                     utility.printMsg("Activating Nested Subproject %s" % subproject)
                     addSubproject.AddSubproject.activateNestedSubproject(reverseLookupByPrefix[subproject], userConfig)
-                    grapeConfig.writeConfig(userConfig, os.path.join(base, ".grapeuserconfig"))
+                    updatedActiveList.append(subproject)
+
                 if not nowActive and not previouslyActive:
                     pass
                 if not nowActive and previouslyActive:
                     #remove the submodule
                     subprojectdir = os.path.join(base, utility.makePathPortable(subproject))
-                    os.chdir(subprojectdir)
                     proceed = args["-f"] or \
                               utility.userInput("About to delete all contents in %s. Any uncommitted changes, branches "
                                                 "that are not pushed, or ignored files will be removed.  Proceed?" %
                                                 subproject, 'n')
                     if proceed:
                         shutil.rmtree(subprojectdir)
+            userConfig.setActiveNestedSubprojects(updatedActiveList)
+            grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
 
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects():
             #ensure nested subprojects are on the appropriate branch
