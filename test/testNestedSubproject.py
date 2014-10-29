@@ -32,10 +32,10 @@ class TestNestedSubproject(testGrape.TestGrape):
     def assertCanAddNewSubproject(self):
         git.clone("%s %s" % (self.repo, self.repos[1]))
         os.chdir(self.repo)
-        grapeMenu.menu().applyMenuChoice("addSubproject", ["--name=subproject1", "--prefix=subproject1",
+        grapeMenu.menu().applyMenuChoice("addSubproject", ["--name=subproject1", "--prefix=subs/subproject1",
                                                            "--branch=master", "--url=%s" % self.repos[1],
                                                            "--nested", "--noverify"])
-        subproject1path = os.path.join(self.repo, "subproject1")
+        subproject1path = os.path.join(self.repo, "subs/subproject1")
         self.assertTrue(os.path.exists(subproject1path), "subproject1 does not exist")
         os.chdir(subproject1path)
         # check to see that subproject1 is a git repo
@@ -84,15 +84,33 @@ class TestNestedSubproject(testGrape.TestGrape):
         try:
             self.assertCanAddNewSubproject()
             self.assertTrue(os.path.isdir(self.subproject))
-            # answer n to whether we want  subproject1, y to deleting it
+            # answer none to whether we want all subprojects, y to deleting it
             self.queueUserInput(["n\n", "y\n"])
             grapeMenu.menu().applyMenuChoice("uv")
             self.assertFalse(os.path.isdir(self.subproject))
-            # answer y to whether we want subproject1
-            self.input.flush()
-            self.queueUserInput(["y\n"])
+            # answer a to whether we want all subprojects
+            self.queueUserInput(["a\n"])
+            print self.input.buf
+            grapeMenu.menu().applyMenuChoice("uv")
+            self.assertTrue(os.path.isdir(self.subproject), '\n'.join(self.output)+'\n'.join(self.error))
+            # run grape uv again to make sure it just keeps things the same
+            self.queueUserInput(["a\n"])
             grapeMenu.menu().applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject))
+        except git.GrapeGitError as e:
+            self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
+            pass
+
+    def testProjectWideGrapeStatusWithNestedProjects(self):
+        try:
+            self.assertCanAddNewSubproject()
+            f1Path = os.path.join(self.subproject, "f1")
+            testGrape.writeFile1(f1Path)
+            self.assertTrue(git.isWorkingDirectoryClean(), "subproject1/f1 shows up in git status when it shouldn't")
+            grapeMenu.menu().applyMenuChoice("status")
+            self.assertTrue(" ?? subs/subproject1/f1" in self.output.buflist, "subproject1/f1 does not show up in grape "
+                                                                         "status")
+
         except git.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass

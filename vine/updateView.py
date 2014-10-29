@@ -65,19 +65,22 @@ class UpdateView(option.Option):
                 toplevelSubs.append(sub)
 
         included = {}
-        for directory in toplevelDirs:
+        for directory, subprojects in toplevelDirs.items():
             opt = utility.userInput("Would you like all, some, or none of the %ss in %s?" % (projectType,directory),
                                     default="all")
             if opt.lower()[0] == "a":
-                included[directory] = True
+                for subproject in subprojects:
+                    included[subproject] = True
+                        
             if opt.lower()[0] == "n":
-                included[directory] = False
+                for subproject in subprojects:
+                    included[subproject] = False
             if opt.lower()[0] == "s":
-                for submodule in toplevelDirs[directory]:
-                    included[submodule] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, submodule),
+                for subprojects in subprojects: 
+                    included[subprojects] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects),
                                                             'n')
-        for submodule in toplevelSubs:
-            included[submodule] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, submodule), 'n')
+        for subprojects in toplevelSubs:
+            included[subprojects] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects), 'n')
         return included
 
     @staticmethod
@@ -94,31 +97,33 @@ class UpdateView(option.Option):
         base = git.baseDir()
         if base == "":
             return False
+        hasSubmodules = len(git.getAllSubmodules()) > 0
         if not args["--checkSubprojects"]:
             # handle submodules first
-            includedSubmodules = self.defineActiveSubmodules(quiet=quiet)
-            initStr = ""
-            if args["-f"]:
-                deinitStr = "-f"
-            else:
-                deinitStr = ""
-            for submodule, nowActive in includedSubmodules.items():
-                if nowActive:
-                    initStr += ' %s' % submodule
+            if hasSubmodules:
+                includedSubmodules = self.defineActiveSubmodules(quiet=quiet)
+                initStr = ""
+                if args["-f"]:
+                    deinitStr = "-f"
                 else:
-                    deinitStr += ' %s' % submodule
+                    deinitStr = ""
+                for submodule, nowActive in includedSubmodules.items():
+                    if nowActive:
+                        initStr += ' %s' % submodule
+                    else:
+                        deinitStr += ' %s' % submodule
 
-            utility.printMsg("Configuring submodules...")
-            git.submodule("init", quiet=quiet)
-            os.chdir(git.baseDir())
-            utility.printMsg("Initializing submodules...")
-            if deinitStr or deinitStr == "-f":
-                utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
-                git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
+                utility.printMsg("Configuring submodules...")
+                git.submodule("init", quiet=quiet)
+                os.chdir(git.baseDir())
+                utility.printMsg("Initializing submodules...")
+                if deinitStr or deinitStr == "-f":
+                    utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
+                    git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
 
-            if initStr:
-                utility.printMsg("Updating active submodules...(%s)" % initStr)
-                git.submodule("update", quiet=quiet)
+                if initStr:
+                    utility.printMsg("Updating active submodules...(%s)" % initStr)
+                    git.submodule("update", quiet=quiet)
 
             # handle nested subprojects
             os.chdir(base)
@@ -132,15 +137,18 @@ class UpdateView(option.Option):
             userConfig = grapeConfig.grapeUserConfig()
             updatedActiveList = []
             for subproject, nowActive in includedNestedSubprojectPrefices.items():
-                previouslyActive = userConfig.getboolean("nested-%s" % reverseLookupByPrefix[subproject], "active")
+                section = "nested-%s" % reverseLookupByPrefix[subproject]
+                userConfig.ensureSection(section)
+                previouslyActive = userConfig.getboolean(section, "active")
 
                 if nowActive and previouslyActive:
                     updatedActiveList.append(subproject)
 
                 if nowActive and not previouslyActive:
                     utility.printMsg("Activating Nested Subproject %s" % subproject)
-                    addSubproject.AddSubproject.activateNestedSubproject(reverseLookupByPrefix[subproject], userConfig)
-                    updatedActiveList.append(subproject)
+                    subprojectName = reverseLookupByPrefix[subproject]
+                    addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig)
+                    updatedActiveList.append(subprojectName)
 
                 if not nowActive and not previouslyActive:
                     pass
@@ -166,8 +174,10 @@ class UpdateView(option.Option):
         # ensure submodule is on apppropriate branch
         if config.getboolean("workspace", "manageSubmodules"):
             desiredSubmoduleBranch = self.getDesiredSubmoduleBranch(config)
-            utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
-            for sub in git.getActiveSubmodules(quiet=quiet):
+            activeSubmodules = git.getActiveSubmodules(quiet=quiet)
+            if activeSubmodules:
+                utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
+            for sub in activeSubmodules:
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, quiet)
 

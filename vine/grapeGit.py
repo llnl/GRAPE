@@ -88,6 +88,8 @@ def clone(argstr):
     try:
         return gitcmd("clone %s" % argstr, "Clone failed")
     except GrapeGitError as e:
+        if "already exists and is not an empty directory" in e.gitOutput:
+            raise e
         if e.code == 128:
             print ("GRAPE: WARNING: clone failed due to connectivity issues.")
             return e.gitOutput

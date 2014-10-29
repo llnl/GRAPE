@@ -136,8 +136,11 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     def ensureSection(self, section):
         try:
             self.add_section(section)
+            if "nested-" in section: 
+                self.set(section,"active","False")
         except ConfigParser.DuplicateSectionError:
             pass
+ 
 
     def getAllNestedSubprojects(self):
         return self.getList("nestedProjects", "names")
@@ -151,7 +154,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         for sub in allNested:
             try:
                 if userConfig.getboolean("nested-%s" % sub, "active"):
-                    active.append(sub)
+                    active.append(config.get("nested-%s" % sub, "prefix"))
             except ConfigParser.Error:
                 userConfig.set("nested-%s" % sub, "active", "False")
         return active

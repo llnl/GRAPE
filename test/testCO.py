@@ -2,11 +2,13 @@ __author__ = 'robinson96'
 import os
 import sys
 
-import testGrape
 
 
 if not ".." in sys.path:
     sys.path.append("..")
+
+import testGrape
+
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import grapeConfig
@@ -67,27 +69,23 @@ class TestCheckout(testGrape.TestGrape):
     def testSwitchingToBranchWithNewSubmodule(self):
         try:
             self.setUpSubmoduleBranch()
-
-            self.input.writelines(["y", "\n", "\n"])
-            self.input.seek(0)
+            
+            self.queueUserInput(["y", "\n", "\n","\n"])
             self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()
 
             # switch to master, saying 'y' to delete request
-            self.input.writelines(["y"])
-            self.input.seek(0)
+            self.queueUserInput(["y", "\n","\n", "\n"])
             self.switchToMaster()
             self.assertSubmoduleDirectoryDoesNotExist()
 
             # switch to addSubmodule, saying yes to request to have submodule
-            self.input.writelines(["y", "\n", "\n"])
-            self.input.seek(0)
+            self.queueUserInput(["y", "\n", "\n"])
             self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()
 
             # switch back to master, this time saying don't delete request
-            self.input.writelines(["n"])
-            self.input.seek(0)
+            self.queueUserInput(["n"])
             self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except git.GrapeGitError as e:

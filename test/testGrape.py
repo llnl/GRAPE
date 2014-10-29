@@ -2,16 +2,18 @@
 
 import sys
 import os
+import inspect
 import unittest
 import StringIO
 import shutil
 import tempfile
+
+curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+if not curPath in sys.path:
+    sys.path.append(curPath)
+from vine import grapeGit as git
 from vine import grapeConfig
 from vine import grapeMenu
-
-if not ".." in sys.path:
-    sys.path.append("..")
-from vine import grapeGit as git
 
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
@@ -56,14 +58,12 @@ class TestGrape(unittest.TestCase):
         # messages from the modules that we test
         self.output = StringIO.StringIO()
         self.error = StringIO.StringIO()
-        self.input = StringIO.StringIO()
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         self.stdin = sys.stdin
         self.cwd = os.getcwd()
         sys.stdout = self.output
         sys.stderr = self.error
-        sys.stdin = self.input
         self.menu = grapeMenu.menu()
         # create a test repository to operate in.
         try:
@@ -130,7 +130,8 @@ class TestGrape(unittest.TestCase):
 
     # stage user input for methods that expect it
     def queueUserInput(self, inputList):
-        self.input.buf = ""
+        self.input = StringIO.StringIO()
+        sys.stdin = self.input
         self.input.writelines(inputList)
         self.input.seek(0)
 
