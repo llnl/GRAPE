@@ -113,4 +113,24 @@ class TestNestedSubproject(testGrape.TestGrape):
 
         except git.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
+            pass   
+        
+    def testProjectWideGrapeCommitWithNestedProjects(self):
+        try:
+            self.assertCanAddNewSubproject()
+            f1Path = os.path.join(self.subproject, "f1")
+            testGrape.writeFile1(f1Path)
+            cwd = os.getcwd()
+            os.chdir(self.subproject)
+            git.add(f1Path)
+            firstStatus = git.status("--porcelain")
+            self.assertTrue("f1" in firstStatus)
+            os.chdir(cwd)
+            grapeMenu.menu().applyMenuChoice("commit",[" -m \"adding f1\""])
+            os.chdir(f1Path)
+            secondStatus = git.status("--porcelain")
+            self.assertTrue("f1" not in secondStatus,"commit didn't remove f1 from status")
+
+        except git.GrapeGitError as e:
+            self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass
