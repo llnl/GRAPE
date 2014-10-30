@@ -265,7 +265,7 @@ def pull(args, quiet=False):
 
 def push(args, quiet=False):
     try:
-        return gitcmd("push %s" % args, "Push failed", quiet=quiet)
+        return gitcmd("push --porcelain %s" % args, "Push failed", quiet=quiet)
     except GrapeGitError as e:
         if e.code == 128:
             print ("GRAPE: WARNING: Push failed due to connectivity issues.")
