@@ -2,11 +2,12 @@ __author__ = 'robinson96'
 import os
 import sys
 
-import testGrape
+
 
 
 if not ".." in sys.path:
     sys.path.append("..")
+import testGrape
 from vine import grapeGit as git
 from vine import grapeMenu
 
@@ -123,14 +124,22 @@ class TestNestedSubproject(testGrape.TestGrape):
             cwd = os.getcwd()
             os.chdir(self.subproject)
             git.add(f1Path)
+            # check that git sees the file
             firstStatus = git.status("--porcelain")
             self.assertTrue("f1" in firstStatus)
             os.chdir(cwd)
-            grapeMenu.menu().applyMenuChoice("commit",[" -m \"adding f1\""])
-            os.chdir(f1Path)
+            grapeMenu.menu().applyMenuChoice("commit",["-m", "\"adding f1\""])
+            # check that running grape commit from the workspace base directory removes f1 from the status
+            os.chdir(self.subproject)
             secondStatus = git.status("--porcelain")
             self.assertTrue("f1" not in secondStatus,"commit didn't remove f1 from status")
+            os.chdir(cwd)
 
         except git.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass
+
+
+if __name__ == "__main__":
+    import unittest
+    unittest.main() 
