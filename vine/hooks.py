@@ -161,6 +161,7 @@ class RunHook(option.Option):
         else:
             autoPush = False
         #applies the cascade hook
+        print("GRAPE: checking for cascades...")
         cascadeDict = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
@@ -182,6 +183,7 @@ class RunHook(option.Option):
                     currentBranch = target
                 else:
                     currentBranch = None
+        print("GRAPE: auto push done")
 
     def preCommit(self, args):
         pass
