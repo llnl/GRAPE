@@ -66,6 +66,8 @@ class Checkout(option.Option):
             elif "does not appear to be a git repository" in e.gitOutput.lower():
                 utility.printMsg("Remote 'origin' does not exist. "
                                  "This branch was not updated from a remote repository.")
+            elif "Couldn't find remote ref" in e.gitOutput:
+                utility.printMsg("Remote does not have reference to %s. You may want to push this branch. " % branch)
             else:
                 raise e
 
@@ -105,23 +107,26 @@ class Checkout(option.Option):
         uvArgs = []
         if submoduleListDidChange:
 
-            self.parseGitModulesDiffOutput(git.diff("%s %s -- .gitmodules" % (previousSHA, branch)), addedModules,
+            self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (previousSHA, branch)), addedModules,
                                            removedModules)
             if not addedModules and not removedModules:
                 uvArgs.append("--checkSubprojects")
 
             if removedModules:
                 for sub in removedModules:
-                    os.chdir(os.path.join(baseDir, sub))
-                    if git.isWorkingDirectoryClean():
-                        clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
-                        if clean:
-                            utility.printMsg("Removing clean submodule %s." % sub)
-                            os.chdir(baseDir)
-                            shutil.rmtree(os.path.join(baseDir, sub))
-                    else:
-                        utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
-                        os.chdir(baseDir)
+                    try:
+                       os.chdir(os.path.join(baseDir, sub))
+                       if git.isWorkingDirectoryClean():
+                           clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
+                           if clean:
+                               utility.printMsg("Removing clean submodule %s." % sub)
+                               os.chdir(baseDir)
+                               shutil.rmtree(os.path.join(baseDir, sub))
+                       else:
+                           utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
+                           os.chdir(baseDir)
+                    except OSError:
+                       pass
             if addedModules:
                 utility.printMsg("New submodules %s are on branch %s. Updating view ..." % (addedModules, branch))
         else:
