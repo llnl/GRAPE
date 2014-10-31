@@ -4,7 +4,7 @@ import merge
 #merge a remote branch into this branch
 class MergeRemote(option.Option):
     """
-    grape mr (merge remote branch)
+    grape mr (merge remote branch). Updates the branch you're merging from and then performs the merge.
     Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [-v] [--quiet]
 
     Arguments:
@@ -24,8 +24,8 @@ class MergeRemote(option.Option):
             # list remote branches that are available
             git.branch('-r')
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
-
-        return merge.mergeIntoCurrent("origin/%s" % otherBranch, args)
+        git.fetch("origin %s:%s" % (otherBranch, otherBranch)) 
+        return merge.mergeIntoCurrent(otherBranch, args)
 
     def setDefaultConfig(self, config):
         pass

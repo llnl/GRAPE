@@ -221,7 +221,7 @@ class MergeDevelop(resumable.Resumable):
         mergeArgs = args
         mergeArgs["<branch>"] = branch
         mergeArgs["--quiet"] = True
-        conflict = not grapeMenu.menu().getOption("m").execute(mergeArgs)
+        conflict = not grapeMenu.menu().getOption("mr").execute(mergeArgs)
         if conflict:
             conflictedFiles = git.conflictedFiles()
             if conflictedFiles:
