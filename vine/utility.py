@@ -150,3 +150,21 @@ def getGrapeExec():
         return "c:/Python27/python.exe " + winpath.replace("\\", "/")
     else:
         return os.path.join(os.path.dirname(__file__), "..", "grape")
+
+def parseSubprojectRemoteURL(subtreeRemote): 
+    path = subtreeRemote.strip().split('/')
+    if "ssh:" == path[0] or "https:" == path[0]:  
+        return subtreeRemote
+    if ".." != path[0]:
+        return subtreeRemote
+
+    # the subtreeRemote is a relative path
+    originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
+    
+    n = 1
+    #print path, originURL
+    while path[-n] != "..": 
+        originURL[-n] = path[-n]
+        n += 1
+
+    return '/'.join(originURL)
