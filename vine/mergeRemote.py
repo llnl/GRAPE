@@ -1,4 +1,4 @@
-import option, utility
+import option, utility, grapeMenu
 import grapeGit as git
 import merge
 #merge a remote branch into this branch
@@ -24,8 +24,9 @@ class MergeRemote(option.Option):
             # list remote branches that are available
             git.branch('-r')
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
-        git.fetch("origin %s:%s" % (otherBranch, otherBranch)) 
-        return merge.mergeIntoCurrent(otherBranch, args)
+        git.fetch("origin %s:%s" % (otherBranch, otherBranch))
+        args["<branch>"] = otherBranch
+        return grapeMenu.menu().getOption('m').execute(args)
 
     def setDefaultConfig(self, config):
         pass

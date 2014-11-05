@@ -11,6 +11,9 @@ import tempfile
 curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 if not curPath in sys.path:
     sys.path.append(curPath)
+grapePath = os.path.join(curPath, "..")
+if grapePath not in sys.path:
+    sys.path.append(grapePath)
 from vine import grapeGit as git
 from vine import grapeConfig
 from vine import grapeMenu
