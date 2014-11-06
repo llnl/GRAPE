@@ -151,6 +151,7 @@ def getGrapeExec():
     else:
         return os.path.join(os.path.dirname(__file__), "..", "grape")
 
+# handles subproject remote URL parsing. Needed for subtree and nested project support. (git handles the submodules)
 def parseSubprojectRemoteURL(subtreeRemote): 
     path = subtreeRemote.strip().split('/')
     if "ssh:" == path[0] or "https:" == path[0]:  

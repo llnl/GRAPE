@@ -76,8 +76,8 @@ class UpdateView(option.Option):
                 for subproject in subprojects:
                     included[subproject] = False
             if opt.lower()[0] == "s":
-                for subprojects in subprojects: 
-                    included[subprojects] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects),
+                for subproject in subprojects: 
+                    included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects),
                                                             'n')
         for subprojects in toplevelSubs:
             included[subprojects] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects), 'n')
@@ -130,9 +130,7 @@ class UpdateView(option.Option):
             includedNestedSubprojectPrefices = self.defineActiveNestedSubprojects(quiet=quiet)
 
             allNestedSubprojects = config.getAllNestedSubprojects()
-            reverseLookupByPrefix = {}
-            for sub in allNestedSubprojects:
-                reverseLookupByPrefix[config.get("nested-%s" % sub, "prefix")] = sub
+            reverseLookupByPrefix = {config.get("nested-%s" % sub, "prefix") : sub for sub in allNestedSubprojects} 
 
             userConfig = grapeConfig.grapeUserConfig()
             updatedActiveList = []
@@ -180,8 +178,6 @@ class UpdateView(option.Option):
             for sub in activeSubmodules:
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, quiet)
-
-        #ensure nested subprojects are on the appropriate branch
 
         return True
 
