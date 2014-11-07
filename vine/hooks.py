@@ -180,10 +180,11 @@ class RunHook(option.Option):
                 if fastForward:
                     if autoPush:
                         git.push("origin %s" % target)
+                        print("GRAPE: auto push done")
                     currentBranch = target
                 else:
                     currentBranch = None
-        print("GRAPE: auto push done")
+        
 
     def preCommit(self, args):
         pass
