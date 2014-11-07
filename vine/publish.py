@@ -13,7 +13,7 @@ import grapeGit as git
 import grapeMenu
 import grapeConfig
 import resumable
-import subtree
+
 
 
 class PublishStepFailed(Exception):

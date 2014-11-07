@@ -163,7 +163,6 @@ def parseSubprojectRemoteURL(subtreeRemote):
     originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
     
     n = 1
-    #print path, originURL
     while path[-n] != "..": 
         originURL[-n] = path[-n]
         n += 1
