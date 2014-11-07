@@ -1,5 +1,11 @@
 
 
+Thu Nov  6 16:14:55 2014 Peter B. Robinson
+v1.0.3
+
+Adds nested subprojects as a subproject type, allowing users to add grape managed repos that are ignored by git to a repository.
+
+
 Tue Oct 21 11:20:38 2014 Benjamin T. Liu
 v1.0.2
 
