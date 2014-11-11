@@ -13,7 +13,7 @@ import checkout
 class UpdateView(option.Option):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [-v] [--checkSubprojects]
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b]
 
     Options:
         
@@ -22,6 +22,8 @@ class UpdateView(option.Option):
         -v                      Be more verbose.
         --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
                                 not go through the 'which submodules do you want' script.
+        -b                      Automatically creates subproject branches that should be there according to your branching
+                                model. 
 
     """
     def __init__(self):
@@ -162,13 +164,15 @@ class UpdateView(option.Option):
             userConfig.setActiveNestedSubprojects(updatedActiveList)
             grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
 
+        checkoutArgs = "-b" if args["-b"] else ""
+
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices():
             #ensure nested subprojects are on the appropriate branch (nested projects should have same branch layout)
             # as outer level repo. 
             desiredSubprojectBranch = git.currentBranch()
             utility.printMsg("Ensuring %s is on %s..." % (subproject, desiredSubprojectBranch))
             
-            self.safeSwitchHeadlessRepoToBranch(subproject, desiredSubprojectBranch, quiet)
+            self.safeSwitchHeadlessRepoToBranch(subproject, desiredSubprojectBranch, checkoutArgs, quiet)
 
 
         # ensure submodule is on apppropriate branch
@@ -179,7 +183,7 @@ class UpdateView(option.Option):
                 utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
             for sub in activeSubmodules:
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
-                self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, quiet)
+                self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, checkoutArgs, quiet)
 
         return True
 
@@ -195,7 +199,7 @@ class UpdateView(option.Option):
 
 
     @staticmethod
-    def safeSwitchHeadlessRepoToBranch(repo, branch, quiet):
+    def safeSwitchHeadlessRepoToBranch(repo, branch, checkoutArgs, quiet):
         cwd = os.getcwd()
         os.chdir(os.path.join(git.baseDir(quiet=quiet), repo))
         git.fetch(quiet=quiet)
@@ -207,7 +211,7 @@ class UpdateView(option.Option):
         if git.hasBranch(branch):
             git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
 
-        checkout.Checkout.handledCheckout("", branch, repo, quiet=quiet)
+        checkout.Checkout.handledCheckout(checkoutArgs, branch, repo, quiet=quiet)
 
         os.chdir(cwd)
         return

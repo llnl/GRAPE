@@ -137,6 +137,9 @@ class Checkout(option.Option):
 
         if not quiet:
             uvArgs.append("-v")
+            
+        if args["-b"]: 
+            uvArgs.append("-b")
         
         utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)

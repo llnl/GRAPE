@@ -42,7 +42,8 @@ class DeleteBranch(option.Option):
             else: 
                 print e.gitOutput
         try:
-            git.push("--delete origin %s" % branch, quiet=True)
+            if "origin/%s" % branch in git.branch("-r", quiet=True): 
+                git.push("--delete origin %s" % branch, quiet=True)
         except git.GrapeGitError as e:
             print e.gitOutput
 

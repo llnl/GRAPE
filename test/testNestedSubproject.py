@@ -58,7 +58,7 @@ class TestNestedSubproject(testGrape.TestGrape):
 
     def testAddingNewNestedSubproject(self):
         try:
-            self.assertCanAddNewSubproject()
+            self.assertCanAddNewSubproject(self)
 
 
         except git.GrapeGitError as e:
@@ -67,7 +67,7 @@ class TestNestedSubproject(testGrape.TestGrape):
 
     def testSwitchingBranchesWithNestedProjects(self):
         try:
-            self.assertCanAddNewSubproject()
+            self.assertCanAddNewSubproject(self)
             # create the branches using git
             os.chdir(self.repo)
             git.branch("newBranch")
@@ -86,7 +86,7 @@ class TestNestedSubproject(testGrape.TestGrape):
 
     def testDeactivatingAndReactiviatingNestProjects(self):
         try:
-            self.assertCanAddNewSubproject()
+            self.assertCanAddNewSubproject(self)
             self.assertTrue(os.path.isdir(self.subproject))
             # answer none to whether we want all subprojects, y to deleting it
             self.queueUserInput(["n\n", "y\n"])
@@ -107,7 +107,7 @@ class TestNestedSubproject(testGrape.TestGrape):
 
     def testProjectWideGrapeStatusWithNestedProjects(self):
         try:
-            self.assertCanAddNewSubproject()
+            self.assertCanAddNewSubproject(self)
             f1Path = os.path.join(self.subproject, "f1")
             testGrape.writeFile1(f1Path)
             self.assertTrue(git.isWorkingDirectoryClean(), "subproject1/f1 shows up in git status when it shouldn't")
@@ -121,7 +121,7 @@ class TestNestedSubproject(testGrape.TestGrape):
         
     def testProjectWideGrapeCommitWithNestedProjects(self):
         try:
-            self.assertCanAddNewSubproject()
+            self.assertCanAddNewSubproject(self)
             f1Path = os.path.join(self.subproject, "f1")
             testGrape.writeFile1(f1Path)
             cwd = os.getcwd()
