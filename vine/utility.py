@@ -140,7 +140,7 @@ def workspaceDir():
 
 
 def getActiveSubprojects():
-    return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()
+    return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
 
 
 # returns the absolute path to the grape executable this file is bundled with

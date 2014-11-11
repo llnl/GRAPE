@@ -162,10 +162,12 @@ class UpdateView(option.Option):
             userConfig.setActiveNestedSubprojects(updatedActiveList)
             grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
 
-        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects():
-            #ensure nested subprojects are on the appropriate branch
-            desiredSubprojectBranch = self.getDesiredSubmoduleBranch(config)
+        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices():
+            #ensure nested subprojects are on the appropriate branch (nested projects should have same branch layout)
+            # as outer level repo. 
+            desiredSubprojectBranch = git.currentBranch()
             utility.printMsg("Ensuring %s is on %s..." % (subproject, desiredSubprojectBranch))
+            
             self.safeSwitchHeadlessRepoToBranch(subproject, desiredSubprojectBranch, quiet)
 
 
@@ -203,9 +205,9 @@ class UpdateView(option.Option):
             return
 
         if git.hasBranch(branch):
-            git.fetch("origin", "%s:%s" % (branch, branch))
+            git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
 
-        checkout.Checkout.handledCheckout("-b", branch, repo)
+        checkout.Checkout.handledCheckout("", branch, repo, quiet=quiet)
 
         os.chdir(cwd)
         return

@@ -10,11 +10,12 @@ import utility
 
 class Checkout(option.Option):
     """
-    Usage: grape-checkout  [-b] <branch>
+    Usage: grape-checkout  [-b] <branch> [-v]
 
     Options:
 
     -b      Create the branch off of the current HEAD in each project.
+    -v      Be more verbose. 
     
 
     Arguments:
@@ -31,17 +32,17 @@ class Checkout(option.Option):
 
     @staticmethod
     def handledCheckout(checkoutargs, branch, project, quiet=False):
-        git.fetch(quiet=False)
+        git.fetch(quiet=quiet)
         try:
-            git.checkout(checkoutargs + ' ' + branch, quiet=False)
-            git.pull("origin %s" % branch)
+            git.checkout(checkoutargs + ' ' + branch, quiet=quiet)
+            git.pull("origin %s" % branch, quiet=quiet)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 createNewBranch = utility.userInput("Branch not found locally or remotely. Would you like to create a "
                                                     "new branch called %s?\n(y,n)" % branch, 'y')
                 if createNewBranch:
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
-                    git.checkout(checkoutargs+" -b "+branch, quiet=False)
+                    git.checkout(checkoutargs+" -b "+branch, quiet=quiet)
 
             elif "already exists" in e.gitOutput:
                 utility.printMsg("Branch %s already exists in %s." % (branch, project))
@@ -62,9 +63,9 @@ class Checkout(option.Option):
                         if not valid:
                             utility.printMsg("Invalid input. Enter k or f. ")
                 if action == 'k':
-                    git.checkout(branch, quiet=False)
+                    git.checkout(branch, quiet=quiet)
                 elif action == 'f':
-                    git.checkout("-B %s" % branch, quiet=False)
+                    git.checkout("-B %s" % branch, quiet=quiet)
             elif "conflict" in e.gitOutput.lower(): 
                 utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
             elif "does not appear to be a git repository" in e.gitOutput.lower():
@@ -89,27 +90,25 @@ class Checkout(option.Option):
         return addedModules, removedModules
 
     def execute(self, args):
+        quiet = not args["-v"]
         checkoutargs = ''
         branch = args["<branch>"]
         if args['-b']: 
             checkoutargs += " -b"
 
-        baseDir = utility.workspaceDir()
-        os.chdir(baseDir)
+        workspaceDir = utility.workspaceDir()
+        os.chdir(workspaceDir)
         currentSHA = git.shortSHA("HEAD")
 
-        utility.printMsg("GRAPE: Performing checkout in outer level project.")
-        self.handledCheckout(checkoutargs, branch, git.baseDir())
+        utility.printMsg("Performing checkout in outer level project.")
+        self.handledCheckout(checkoutargs, branch, git.baseDir(), quiet=quiet)
         previousSHA = currentSHA
-        # no more work needed if we're not managing submodules
-        if not grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
-            return True
 
-        submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch))
+        submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch), quiet=quiet)
         addedModules = []
         removedModules = []
         uvArgs = []
-        if submoduleListDidChange:
+        if submoduleListDidChange and grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
 
             self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (previousSHA, branch)), addedModules,
                                            removedModules)
@@ -119,16 +118,16 @@ class Checkout(option.Option):
             if removedModules:
                 for sub in removedModules:
                     try:
-                       os.chdir(os.path.join(baseDir, sub))
+                       os.chdir(os.path.join(workspaceDir, sub))
                        if git.isWorkingDirectoryClean():
                            clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
                            if clean:
                                utility.printMsg("Removing clean submodule %s." % sub)
-                               os.chdir(baseDir)
-                               shutil.rmtree(os.path.join(baseDir, sub))
+                               os.chdir(workspaceDir)
+                               shutil.rmtree(os.path.join(workspaceDir, sub))
                        else:
                            utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
-                           os.chdir(baseDir)
+                           os.chdir(workspaceDir)
                     except OSError:
                        pass
             if addedModules:
@@ -136,9 +135,13 @@ class Checkout(option.Option):
         else:
             uvArgs.append("--checkSubprojects")
 
+        if not quiet:
+            uvArgs.append("-v")
+        
+        utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
-        os.chdir(baseDir)
+        os.chdir(workspaceDir)
         
         utility.printMsg("Switched to %s." % branch)
         return True

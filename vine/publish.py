@@ -850,8 +850,9 @@ class Publish(resumable.Resumable):
         public = args["--public"]
         topic = args["--topic"]
         quiet = args["-v"]
+        
         # decide whether to recurse into submodules
-        recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
+        recurse = config.get('workspace', 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--norecurse"]:
@@ -881,6 +882,19 @@ class Publish(resumable.Resumable):
                 self.st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
                 self.st_remotes[st] = utility.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
                 self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
+        
+        # deal with nested subprojects
+        self.modifiedNestedProjects = []
+        activeSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()
+        cwd = os.getcwd()
+        for nested in activeSubprojects: 
+            prefix = config.get("nested-%s" % nested, "prefix")
+            os.chdir(os.path.join(cwd,prefix))
+            if git.currentBranch() == topic:
+                self.modifiedNestedProjects.append({"name":nested,"prefix":prefix})
+            os.chdir(cwd)
+            
+        
         return True
 
     def verifyPublishTargetsWithUser(self, args):
@@ -894,20 +908,29 @@ class Publish(resumable.Resumable):
         public = args["--public"]
         topic = args["--topic"]
         submodules = git.getModifiedSubmodules(public, topic)
+        
+        userMsg = "When ready, grape will publish %s to:\n" % topic
+        
+        useAnd = False
         if recurse:
-            proceed = utility.userInput("When ready, grape will publish " + topic + " to "
-                                        + args["--submodulePublic"] +
-                                        " for the following submodules:\n%s\n " % '\n'.join(submodules) +
-                                        "\n and %s to %s for the outer level repo. Proceed? [y/n]" % (topic, public),
-                                        'y')
-            if not proceed:
-                return False
-        else:
-            proceed = utility.userInput("When ready, grape will publish %s to %s for the outer level repo. "
-                                        "Proceed? [y/n]" % (topic, public), 'y')
-
-            if not proceed:
-                return False
+            userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submoudlePublic"], "\n\t\t".join(submodules))
+            useAnd = True
+            
+        if self.modifiedNestedProjects: 
+            prefices = [proj["prefix"] for proj in self.modifiedNestedProjects ]
+            userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefices))
+            useAnd = True
+        
+        userMsg += "%s%s for the outer level repo. \nProceed? [y\n]" % ("and " if useAnd else "", public)
+        
+        proceed = utility.userInput(userMsg, 'y')
+           # proceed = utility.userInput("When ready, grape will publish " + topic + " to "
+           #                             + args["--submodulePublic"] +
+           #                             " for the following submodules:\n%s\n " % '\n'.join(submodules) +
+           #                             "\n and %s to %s for the outer level repo. Proceed? [y/n]" % (topic, public),
+           #                             'y')
+        if not proceed:
+            return False
 
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
@@ -1041,6 +1064,10 @@ class Publish(resumable.Resumable):
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
+            for nested in self.modifiedNestedProjects:
+                os.chdir(os.path.join(cwd), nested["prefix"])
+                self.publish(policy, public, topic, args)
+                os.chdir(cwd)
             self.publish(policy, public, topic, args)
             return True
         else:

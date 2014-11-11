@@ -34,6 +34,11 @@ def grapeUserConfig():
     return userConfig
 
 
+# returns a config object that only has the state associated with the given repo's .grapeconfig
+def grapeRepoConfig(repoPath): 
+    repoConfig = GrapeConfigParser()
+    repoConfig.read(os.path.join(repoPath,".grapeconfig"))
+
 def resetGrapeConfig(newInstance=None):
     """
     Resets the singleton instance.
@@ -67,11 +72,11 @@ def read(additionalFileNames=None):
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(git.baseDir(), ".grapeconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(git.baseDir(), ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
     except:
         pass
 
@@ -154,10 +159,15 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         for sub in allNested:
             try:
                 if userConfig.getboolean("nested-%s" % sub, "active"):
-                    active.append(config.get("nested-%s" % sub, "prefix"))
+                    active.append(sub)
             except ConfigParser.Error:
                 userConfig.set("nested-%s" % sub, "active", "False")
         return active
+
+    @staticmethod
+    def getAllActiveNestedSubprojectPrefices(): 
+        config = grapeConfig()
+        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllActiveNestedSubprojects()]
 
     def setActiveNestedSubprojects(self, listOfActiveSubprojects):
         allNested = grapeConfig().getAllNestedSubprojects()
