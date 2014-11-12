@@ -169,6 +169,20 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         config = grapeConfig()
         return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllActiveNestedSubprojects()]
 
+    @staticmethod
+    def getAllModifiedNestedSubprojects(since, now="HEAD"): 
+        config = grapeConfig()
+        active = GrapeConfigParser.getAllActiveNestedSubprojects()
+        modified = []
+        cwd = os.getcwd()
+        for repo in active:
+            prefix = config.get("nested-%s" % repo, "prefix")
+            os.chdir(os.path.join(cwd,prefix))
+            if git.diff("--name-only %s %s" % (since, now), quiet=True): 
+                modified.append(repo)
+        os.chdir(cwd)
+        return modified
+        
     def setActiveNestedSubprojects(self, listOfActiveSubprojects):
         allNested = grapeConfig().getAllNestedSubprojects()
         active = {}

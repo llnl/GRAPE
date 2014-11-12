@@ -57,9 +57,9 @@ class Review(option.Option):
         --repo=<repo>               The repo name part of the stash url, e.g. the "grape" in
                                     https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
-        --recurse                   If set, adds a pull request for each modified submodule. The pull request for the
-                                    outer level repo will have a description with links to the submodules' pull
-                                    requests.
+        --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
+                                    The pull request for the outer level repo will have a description with links to the 
+                                    submodules' pull requests.
         -v                          Be more verbose with git commands.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
@@ -89,13 +89,14 @@ class Review(option.Option):
         name = args["--user"]
         if not name:
             name = utility.getUserName()
-        print("Logging into RZStash")
+            
+        utility.printMsg("Logging onto %s" % args["--stashURL"])
         if args["--test"]:
-            rz_atlassian = Atlassian.TestAtlassian(name)
+            atlassian = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            rz_atlassian = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
-        rz_stash = rz_atlassian.stash
+            atlassian = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
+        stash = atlassian.stash
 
         # determine pull request title
         title = args["--title"]
@@ -129,11 +130,13 @@ class Review(option.Option):
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
 
-        # subprojects
+        cwd = git.baseDir(quiet=quiet)
+        os.chdir(cwd)
+
+        # submodules
         submoduleLinks = []
         if args["--recurse"] or config.get("workspace", "manageSubmodules").lower() == 'true':
-            cwd = git.baseDir(quiet=quiet)
-            os.chdir(cwd)
+            
             modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
 
@@ -142,34 +145,65 @@ class Review(option.Option):
                     continue
                 # push branch
                 os.chdir(submodule)
-                git.push("origin %s" % branch)
+                git.push("origin %s" % branch, quiet=quiet)
                 os.chdir(cwd)
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
                 repo_name = url[-1]
+
                 # strip off the .git extension
                 repo_name = repo_name.split('.')[0]
-                repo = rz_stash.projects[proj].repos[repo_name]
+                repo = stash.projects[proj].repos[repo_name]
                 prefix = branch.split('/')[0]
                 sub_target_branch = submoduleBranchMappings[prefix]
                 newRequest = postPullRequest(repo, title, branch, sub_target_branch, descr, reviewers, args)
-                submoduleLinks.append(newRequest["links"]["self"][0]["href"])
+                submoduleLinks.append(newRequest.link())
+        
+        #nested subprojects
+        nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
+        nestedProjectPrefices = [config.get("nested-%s" % proj, "prefix") for proj in nestedProjects]
+        projectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
+        for proj, url in zip(nestedProjectPrefices, projectURLs):
+            os.chdir(proj)
+            git.push("origin %s" % branch)
+            os.chdir(cwd)
+            url = utility.parseSubprojectRemoteURL(url)
 
+            urlTokens = url.split('/')
+            proj = urlTokens[-2]
+            repo_name = urlTokens[-1]           
+            # strip off the .git extension
+            repo_name = repo_name.split('.')[0]
+            repo = stash.projects[proj].repos[repo_name] 
+
+            newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
+
+            submoduleLinks.append(newRequest.link())
+            
+            
         ## OUTER LEVEL REPO
         # load the repo level REST resource
 
         repo_name = args["--repo"]
-        repo = rz_stash.projects[project_name].repos[repo_name]
+        repo = stash.projects[project_name].repos[repo_name]
         if not quiet:
-            print("Posting pull request to %s,%s" % (project_name, repo_name))
-        if descr and submoduleLinks and not (args["--append"] or args["--prepend"]):
-            descr += "\nThis pull request is related to the following submodules' pull requests:\n"
-            for link in submoduleLinks:
-                descr += '%s\n' % link
+            utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
         request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
+        updatedDescription = request.description()
+        for link in submoduleLinks:
+            if link not in updatedDescription: 
+                updatedDescription+="\nThis pull request is related to the pull request at: %s" % link
+        if updatedDescription != request.description(): 
+            request = postPullRequest(repo, title, branch, target_branch, 
+                                     updatedDescription, 
+                                     reviewers, 
+                                     args)
+        
+            
+       
         if not quiet:
-            print("Request generated/updated: ", request)
+            utility.printMsg("Request generated/updated: ", request)
         return True
 
     def setDefaultConfig(self, config):
@@ -185,6 +219,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     quiet = not args["-v"]
     print("Gathering active pull requests on %s" % branch)
     pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch, state=args["--state"])
+
 
     # check to see if pull request already exists for this branch
     request = None
@@ -202,15 +237,15 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             if not title:
                 title = branch
             try:
-                print("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
+                utility.printMsg("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
                       (title, branch, target_branch))
                 if not quiet:
-                    print("descr: %s" % descr)
-                    print("reviewers: %s" % reviewers)
+                    utility.printMsg("descr: %s" % descr)
+                    utility.printMsg("reviewers: %s" % reviewers)
                 request = repo.pull_requests.create(title, branch, target_branch,
                                                     description=descr, reviewers=reviewers)
                 url = request["links"]["self"][0]["href"]
-                print("Pull request created at %s." % url)
+                utility.printMsg("Pull request created at %s." % url)
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
                 exit(1)
@@ -220,7 +255,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     else:
         if not args["--add"]:
             # update the pull request
-            print("Updating pull request")
+            utility.printMsg("Updating pull request")
             try:
                 #Stash REST API for reviewer definition snippet:
                 # "reviewers": [
@@ -260,15 +295,15 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
 
                 if title is not None or descr is not None or reviewers:
                     if not quiet:
-                        print("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
-                        print(requestData)
-                        print(reviewers is None)
+                        utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
+                        utility.printMsg(requestData)
+                        utility.printMsg(reviewers is None)
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
                     url = request["links"]["self"][0]["href"]
-                    print("Pull request updated at %s." % url)
+                    utility.printMsg("Pull request updated at %s." % url)
                 else:
                     request = requestData
-                    print("Pull request unchanged.")
+                    utility.printMsg("Pull request unchanged.")
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
                 exit(1)
@@ -276,4 +311,4 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
         else:
             print ("STASH: Pull request from %s to %s already exists, can't add a new one" %
                    (branch, target_branch))
-    return request
+    return Atlassian.PullRequest(request)

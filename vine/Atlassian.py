@@ -190,6 +190,9 @@ class PullRequest(StashyNode):
             approved = reviewer[1]
             ret = ret and approved
         return ret
+    
+    def link(self): 
+        return self.node["links"]["self"][0]["href"]
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
