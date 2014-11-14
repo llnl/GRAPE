@@ -92,11 +92,10 @@ class Review(option.Option):
             
         utility.printMsg("Logging onto %s" % args["--stashURL"])
         if args["--test"]:
-            atlassian = Atlassian.TestAtlassian(name)
+            stash = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            atlassian = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
-        stash = atlassian.stash
+            stash = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
 
         # determine pull request title
         title = args["--title"]
@@ -123,7 +122,8 @@ class Review(option.Option):
             branch = git.currentBranch()
 
         #ensure branch is pushed
-        git.push("origin %s" % branch)
+        utility.printMsg("Pushing %s to stash..." % branch)
+        git.push("origin %s" % branch, quiet=quiet)
         #target branch for outer level repo
         target_branch = args["--target"]
 
@@ -145,6 +145,7 @@ class Review(option.Option):
                     continue
                 # push branch
                 os.chdir(submodule)
+                utility.printMsg("Pushing %s to stash..." % branch)
                 git.push("origin %s" % branch, quiet=quiet)
                 os.chdir(cwd)
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
@@ -154,7 +155,7 @@ class Review(option.Option):
 
                 # strip off the .git extension
                 repo_name = repo_name.split('.')[0]
-                repo = stash.projects[proj].repos[repo_name]
+                repo = stash.project(proj).repo(repo_name)
                 prefix = branch.split('/')[0]
                 sub_target_branch = submoduleBranchMappings[prefix]
                 newRequest = postPullRequest(repo, title, branch, sub_target_branch, descr, reviewers, args)
@@ -175,8 +176,8 @@ class Review(option.Option):
             repo_name = urlTokens[-1]           
             # strip off the .git extension
             repo_name = repo_name.split('.')[0]
-            repo = stash.projects[proj].repos[repo_name] 
-
+            repo = stash.project(proj).repo(repo_name)
+            
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
 
             submoduleLinks.append(newRequest.link())
@@ -186,7 +187,7 @@ class Review(option.Option):
         # load the repo level REST resource
 
         repo_name = args["--repo"]
-        repo = stash.projects[project_name].repos[repo_name]
+        repo = stash.project(project_name).repo(repo_name)
         if not quiet:
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
         request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
@@ -217,18 +218,14 @@ class Review(option.Option):
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
     quiet = not args["-v"]
-    print("Gathering active pull requests on %s" % branch)
-    pull_requests = repo.pull_requests.all(direction="OUTGOING", at="refs/heads/%s" % branch, state=args["--state"])
-
+    utility.printMsg("Gathering active pull requests on %s" % branch)
+    pull_requests = repo.pullRequests(direction="OUTGOING", at="refs/heads/%s" % branch, state=args["--state"])
 
     # check to see if pull request already exists for this branch
     request = None
-    requestData = None
     for rqst in pull_requests:
-        print rqst["toRef"]["id"]
-        if rqst["toRef"]["id"] == "refs/heads/%s" % target_branch:
-            request = repo.pull_requests[str(rqst["id"])]
-            requestData = rqst
+        if rqst.toRef() == target_branch:
+            request = rqst
             break
 
     if not request:
@@ -242,9 +239,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 if not quiet:
                     utility.printMsg("descr: %s" % descr)
                     utility.printMsg("reviewers: %s" % reviewers)
-                request = repo.pull_requests.create(title, branch, target_branch,
-                                                    description=descr, reviewers=reviewers)
-                url = request["links"]["self"][0]["href"]
+                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
+                url = request.link()
                 utility.printMsg("Pull request created at %s." % url)
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
@@ -255,54 +251,41 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     else:
         if not args["--add"]:
             # update the pull request
-            utility.printMsg("Updating pull request")
+            utility.printMsg("Updating pull request...")
             try:
-                #Stash REST API for reviewer definition snippet:
-                # "reviewers": [
-                #     {
-                #         "user": {
-                #             "name": "charlie"
-                #         }
-                #     }
-                #   ]
-                # Which I interpret to mean the following:
+
                 if reviewers:
                     if args["--prepend"] or args["--append"]:
-                        revList = requestData["reviewers"]
+                        revList = [r[0] for r in request.reviewers()]
                     else:
                         revList = []
-                    for r in reviewers:
-                        revList.append(dict(user=dict(name=r)))
                     reviewers = revList
                 if not reviewers: 
-                    reviewers = requestData["reviewers"]
-                ver = requestData["version"]
+                    reviewers = [r[0] for r in request.reviewers()]
+                
+                ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
-                    currentTitle = requestData["title"]
+                    currentTitle = request.title()
                     if args["--prepend"]:
                         title = title+currentTitle
                     elif args["--append"]:
                         title = currentTitle+title
                 if descr is not None and (args["--prepend"] or args["--append"]):
-                    if "description" in requestData:
-                        currentDescription = requestData["description"]
-                        if args["--prepend"]:
-                            descr = descr + "\n" + currentDescription
-                        elif args["--append"]:
-                            descr = currentDescription + "\n" + descr
+                    currentDescription = request.description()
+                    if args["--prepend"]:
+                        descr = descr + "\n" + currentDescription
+                    elif args["--append"]:
+                        descr = currentDescription + "\n" + descr
 
 
                 if title is not None or descr is not None or reviewers:
                     if not quiet:
                         utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
-                        utility.printMsg(requestData)
-                        utility.printMsg(reviewers is None)
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
-                    url = request["links"]["self"][0]["href"]
+                    url = request.link()
                     utility.printMsg("Pull request updated at %s." % url)
                 else:
-                    request = requestData
                     utility.printMsg("Pull request unchanged.")
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.message)
@@ -311,4 +294,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
         else:
             print ("STASH: Pull request from %s to %s already exists, can't add a new one" %
                    (branch, target_branch))
-    return Atlassian.PullRequest(request)
+            
+    return request
+
+if __name__ == "__main__":
+    import grapeMenu
+    grapeMenu.menu().applyMenuChoice("review",[])

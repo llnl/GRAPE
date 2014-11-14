@@ -410,7 +410,7 @@ class Publish(resumable.Resumable):
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
-        pullRequests = repo.pullrequests()
+        pullRequests = repo.pullRequests()
         inProgressRequests = []
         for request in pullRequests:
             inProgress = "IN PROGRESS" in request.title()
