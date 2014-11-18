@@ -77,7 +77,7 @@ class MergeDevelop(resumable.Resumable):
             if "conflict:" in e.gitOutput.lower():
                 self.progress["stopPoint"] = "public rebase"
                 self.dumpProgress(args)
-                print("GRAPE: pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
+                utility.printMsg("pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
                       "continue by calling 'grape md --continue' .")
                 return False
             else:

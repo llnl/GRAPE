@@ -174,6 +174,9 @@ class PullRequest(StashyNode):
         return time.ctime(sec)
 
     def reviewers(self):
+        """
+        Returns [(username,bool(approved))...]
+        """
         #Stash REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -291,8 +294,32 @@ class TestPullRequest(TestStashResponse):
         links = dict(self=[dict(href=self.url)])
         toRef = dict(id=id, title=title, fromRef=fromRef, reviewers=reviewers)
         super(TestPullRequest, self).__init__(title=title, fromRef=fromRef, toRef=toRef, id=id,
+                                              description=description,
                                               reviewers=reviewers, links=links)
-
+    
+    def toRef(self):
+        return self["toRef"]
+    
+    def title(self):
+        return self["title"]
+    
+    def fromRef(self):
+        return self["fromRef"]
+    
+    def id(self):
+        return self["id"]
+    
+    def reviewers(self):
+        return self["reviewers"]
+    
+    def link(self):
+        return self["links"]["self"][0]["href"] 
+    
+    def description(self):
+        if self["description"] is not None:
+            return self["description"]
+        else:
+            return ""
 
 class TestPullRequests(TestStashResponse):
 
@@ -309,6 +336,8 @@ class TestPullRequests(TestStashResponse):
         self[newId] = TestPullRequest(title, fromRef, toRef, self.url, id=newId, description=description,
                                       reviewers=reviewers)
         return self[newId]
+    
+
 
 
 class TestRepo(TestStashResponse):
@@ -316,6 +345,15 @@ class TestRepo(TestStashResponse):
         self.url = parent + "repos/" + name
         self.name = name
         self.pull_requests = TestPullRequests(self.url)
+        
+    def pullRequests(self, direction="OUTGOING", at=None, state="OPEN"):
+        return self.pull_requests.all(direction,at,state)
+    
+    def createPullRequest(self, title,branch,target_branch, description=None,reviewers=None):
+        
+        return self.pull_requests.create(title, branch, target_branch, 
+                                        description=description, 
+                                        reviewers=reviewers)
 
 
 
@@ -323,6 +361,8 @@ class TestProject(TestStashResponse):
     def __init__(self, name, parent):
         self.url = parent+"projects/"+name+"/"
         self.repos = TestStashResponse(repo1=TestRepo("repo1", self.url))
+    def repo(self, name):
+        return self.repos[name]
 
 
 class TestStash(TestStashResponse):
@@ -332,6 +372,8 @@ class TestStash(TestStashResponse):
         self.projects = TestStashResponse(proj1=TestProject("proj1", self.url), proj2=TestProject("proj2", self.url))
         pass
 
+    def project(self,name):
+        return self.projects[name]
 
 
 
@@ -347,4 +389,7 @@ class TestAtlassian:
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to RZStash")
+        print("Connected to Stash")
+        
+    def project(self, name):
+        return self.stash.project(name)

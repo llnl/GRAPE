@@ -502,7 +502,7 @@ class Publish(resumable.Resumable):
         utility.printMsg("Checking to make sure workspace has a clean status.")
         cwd = os.getcwd()
         os.chdir(utility.workspaceDir())
-        ret = git.isWorkingDirectoryClean()
+        ret = utility.isWorkspaceClean()
         os.chdir(cwd)
         return ret
 

@@ -138,11 +138,26 @@ def workspaceDir():
     os.chdir(cwd)
     return basedir
 
+def isWorkspaceClean():
+    isClean = git.isWorkingDirectoryClean()
+    activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
+    base = workspaceDir()
+    cwd = os.getcwd()
+    for sub in activeNestedSubprojects:
+        if not isClean:
+            break
+        os.chdir(os.path.join(base, sub))
+        isClean = isClean and git.isWorkingDirectoryClean()
+    os.chdir(cwd)
+    return isClean
 
 def getActiveSubprojects():
     return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
 
-
+def getModifiedSubprojects():
+    return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefices()
+                                                                                                             
+                                                                                                      
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 
     if os.name == "nt":

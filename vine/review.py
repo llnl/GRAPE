@@ -204,7 +204,7 @@ class Review(option.Option):
             
        
         if not quiet:
-            utility.printMsg("Request generated/updated: ", request)
+            utility.printMsg("Request generated/updated: %s" % request)
         return True
 
     def setDefaultConfig(self, config):

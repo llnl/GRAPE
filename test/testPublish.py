@@ -152,8 +152,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertTrue(git.currentBranch() == self.branch)
         os.chdir(self.repo)
         
-        self.assertGrapePublishWorked(["--startAt=test", "--stopAt=tagVersion", "--tickVersion=True",
-                                       "-T", "--slot=3", "-T", "--tag", "-T", "--file=VERSION.txt"])
+        self.assertGrapePublishWorked(["--merge"])
         
         os.chdir(self.subproject)
         self.assertTrue(git.currentBranch() == "master", "on %s, expected to be on master" % git.currentBranch())
