@@ -130,7 +130,7 @@ class Review(option.Option):
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
 
-        cwd = git.baseDir(quiet=quiet)
+        cwd = utility.workspaceDir()
         os.chdir(cwd)
 
         # submodules
@@ -167,7 +167,7 @@ class Review(option.Option):
         projectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
         for proj, url in zip(nestedProjectPrefices, projectURLs):
             os.chdir(proj)
-            git.push("origin %s" % branch)
+            git.push("origin %s" % branch, quiet=quiet)
             os.chdir(cwd)
             url = utility.parseSubprojectRemoteURL(url)
 
@@ -246,7 +246,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 print("STASH: %s" % e.message)
                 exit(1)
         else:
-            print ("STASH: No pull request  from %s to %s to update" % (branch, target_branch))
+            utility.printMsg("No pull request  from %s to %s to update" % (branch, target_branch))
 
     else:
         if not args["--add"]:
@@ -255,14 +255,16 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             try:
 
                 if reviewers:
+                    
                     if args["--prepend"] or args["--append"]:
                         revList = [r[0] for r in request.reviewers()]
                     else:
                         revList = []
-                    reviewers = revList
+                    reviewers += revList
                 if not reviewers: 
                     reviewers = [r[0] for r in request.reviewers()]
-                
+                if not quiet:
+                    utility.printMsg("reviewer list is: %s" % reviewers)
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):

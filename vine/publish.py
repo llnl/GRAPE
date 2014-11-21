@@ -272,6 +272,11 @@ class Publish(resumable.Resumable):
 
         if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Stash")
+            
+        if args["--tickVersion"].lower() == "false": 
+            args["--tickVersion"] = False
+        else:
+            args["--tickVersion"] = True
 
     def abort(self, args):
         #undo any commits done since we first started
@@ -672,6 +677,8 @@ class Publish(resumable.Resumable):
         return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
+        if not args["--tickVersion"]:
+            return True
         menu = grapeMenu.menu()
         if not args["--noReview"]:
             atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
@@ -702,7 +709,7 @@ class Publish(resumable.Resumable):
     @staticmethod
     def tagVersion(args):
         ret = True
-        if args["--tickVersion"].lower() == "true":
+        if args["--tickVersion"]:
             versionArgs = ["tick", "--tag", "--notick", "--nocommit"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]

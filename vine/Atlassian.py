@@ -148,7 +148,7 @@ class Repo(StashyNode):
         """reviewers"""
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
         
-        return PullRequest(stashyRequest,repo.pull_requests)
+        return PullRequest(stashyRequest,self.repo.pull_requests)
 
 class PullRequest(StashyNode):
     """
