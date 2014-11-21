@@ -224,7 +224,7 @@ class Publish(resumable.Resumable):
         self._section = "Gitflow Tasks"
         self.branchPrefix = None
         self.modifiedSubtrees = []
-        self.st_prefices = {}
+        self.st_prefixes = {}
         self.st_remotes = {}
         self.st_branches = {}
 
@@ -697,7 +697,7 @@ class Publish(resumable.Resumable):
                 "a previous call to grape publish. Not ticking version again.")
                 return True
         ret = True
-        if args["--tickVersion"].lower() == "true":
+        if args["--tickVersion"]:
             versionArgs = ["tick", "--notag"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
@@ -886,21 +886,13 @@ class Publish(resumable.Resumable):
                 if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet):
                     self.modifiedSubtrees.append(st)
             for st in self.modifiedSubtrees:
-                self.st_prefices[st] = config.get('subtree-%s' % st, 'prefix')
+                self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')
                 self.st_remotes[st] = utility.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
                 self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
         
         # deal with nested subprojects
-        self.modifiedNestedProjects = []
-        activeSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()
-        cwd = os.getcwd()
-        for nested in activeSubprojects: 
-            prefix = config.get("nested-%s" % nested, "prefix")
-            os.chdir(os.path.join(cwd,prefix))
-            if git.currentBranch() == topic:
-                self.modifiedNestedProjects.append({"name":nested,"prefix":prefix})
-            os.chdir(cwd)
-            
+        self.modifiedNestedProjects =  grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(public,topic)
+                                                                                                           
         
         return True
 
@@ -920,12 +912,12 @@ class Publish(resumable.Resumable):
         
         useAnd = False
         if recurse:
-            userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submoudlePublic"], "\n\t\t".join(submodules))
+            userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submodulePublic"], "\n\t\t".join(submodules))
             useAnd = True
             
         if self.modifiedNestedProjects: 
-            prefices = [proj["prefix"] for proj in self.modifiedNestedProjects ]
-            userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefices))
+            prefixes = [proj["prefix"] for proj in self.modifiedNestedProjects ]
+            userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
             useAnd = True
         
         userMsg += "%s%s for the outer level repo. \nProceed? [y/n]" % ("and " if useAnd else "", public)
@@ -939,7 +931,7 @@ class Publish(resumable.Resumable):
             if self.modifiedSubtrees:
                 utility.printMsg("When ready, grape will publish the following subtrees to the following destinations:")
                 for st in self.modifiedSubtrees:
-                    print("subtree: %s\trepo: %s\tbranch:%s" % (self.st_prefices[st], self.st_remotes[st],
+                    print("subtree: %s\trepo: %s\tbranch:%s" % (self.st_prefixes[st], self.st_remotes[st],
                                                                 self.st_branches[st]))
                 proceed = utility.userInput("Proceed? [y/n]", 'y')
                 if not proceed:
@@ -1044,20 +1036,20 @@ class Publish(resumable.Resumable):
                 if proceed:
                     squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, self.st_prefices[st],
+                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, self.st_prefixes[st],
                                                                               self.st_remotes[st], self.st_branches[st]))
 
                         try:
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefices[st],
+                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st],  self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
                         except git.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefices[st],
+                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefices[st],
+                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
                             utility.printMsg("Succeeded!")
@@ -1067,7 +1059,7 @@ class Publish(resumable.Resumable):
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
             for nested in self.modifiedNestedProjects:
-                os.chdir(os.path.join(cwd,  nested["prefix"]))
+                os.chdir(os.path.join(cwd,  nested))
                 self.publish(policy, public, topic, args)
                 os.chdir(cwd)
             self.publish(policy, public, topic, args)

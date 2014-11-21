@@ -129,14 +129,14 @@ class UpdateView(option.Option):
 
             # handle nested subprojects
             os.chdir(base)
-            includedNestedSubprojectPrefices = self.defineActiveNestedSubprojects(quiet=quiet)
+            includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
 
             allNestedSubprojects = config.getAllNestedSubprojects()
             reverseLookupByPrefix = {config.get("nested-%s" % sub, "prefix") : sub for sub in allNestedSubprojects} 
 
             userConfig = grapeConfig.grapeUserConfig()
             updatedActiveList = []
-            for subproject, nowActive in includedNestedSubprojectPrefices.items():
+            for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                 section = "nested-%s" % reverseLookupByPrefix[subproject]
                 userConfig.ensureSection(section)
                 previouslyActive = userConfig.getboolean(section, "active")
@@ -166,7 +166,7 @@ class UpdateView(option.Option):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
-        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices():
+        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             #ensure nested subprojects are on the appropriate branch (nested projects should have same branch layout)
             # as outer level repo. 
             desiredSubprojectBranch = git.currentBranch()

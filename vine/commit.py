@@ -46,7 +46,7 @@ class Commit(option.Option):
         os.chdir(baseDir)
 
         submodules = git.getModifiedSubmodules()
-        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices() 
+        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes() 
         for sub in submodules +  subprojects:
             os.chdir(os.path.join(baseDir,sub))
             subStatus = git.status("--porcelain", quiet=quiet)

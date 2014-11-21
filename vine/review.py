@@ -154,7 +154,7 @@ class Review(option.Option):
                 repo_name = url[-1]
 
                 # strip off the .git extension
-                repo_name = repo_name.split('.')[0]
+                repo_name = '.'.join(repo_name.split('.')[:-1])
                 repo = stash.project(proj).repo(repo_name)
                 prefix = branch.split('/')[0]
                 sub_target_branch = submoduleBranchMappings[prefix]
@@ -163,9 +163,9 @@ class Review(option.Option):
         
         #nested subprojects
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
-        nestedProjectPrefices = [config.get("nested-%s" % proj, "prefix") for proj in nestedProjects]
-        projectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
-        for proj, url in zip(nestedProjectPrefices, projectURLs):
+        nestedProjectPrefixes = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(target_branch)
+        nestedProjectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
+        for proj, url in zip(nestedProjectPrefixes, nestedProjectURLs):
             os.chdir(proj)
             git.push("origin %s" % branch, quiet=quiet)
             os.chdir(cwd)
@@ -175,7 +175,7 @@ class Review(option.Option):
             proj = urlTokens[-2]
             repo_name = urlTokens[-1]           
             # strip off the .git extension
-            repo_name = repo_name.split('.')[0]
+            repo_name = '.'.join(repo_name.split('.')[:-1])
             repo = stash.project(proj).repo(repo_name)
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)

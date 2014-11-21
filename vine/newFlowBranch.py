@@ -69,13 +69,13 @@ class NewBranchOption(option.Option):
         branchName = "%s/%s/%s" % (subArgs[1], subArgs[2], subArgs[3])
         # handle nested subprojects
 
-        subprojectPrefices = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
-        if subprojectPrefices: 
+        subprojectPrefixes = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+        if subprojectPrefixes: 
             proceed = args["--noverify"] or utility.userInput("About to create the branch %s off of %s "
                                                                       "for all active nested subprojects.\n"
                                                                       "Proceed? [y/n]" % (branchName, start) , 'y')        
-            for sub in subprojectPrefices: 
-                if proceed: 
+            if proceed:
+                for sub in subprojectPrefixes: 
                     os.chdir(sub)
                     git.checkout(start)
                     grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start])

@@ -70,7 +70,7 @@ class DeleteBranch(option.Option):
         os.chdir(cwd)
         
         # then the branch in nested subprojects
-        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
+        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
         if subprojects:
             utility.printMsg("Deleting %s from your active nested subprojects: " % branch)
         for sub in subprojects:

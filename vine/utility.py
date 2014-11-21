@@ -140,7 +140,7 @@ def workspaceDir():
 
 def isWorkspaceClean():
     isClean = git.isWorkingDirectoryClean()
-    activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
+    activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()
     cwd = os.getcwd()
     for sub in activeNestedSubprojects:
@@ -152,10 +152,10 @@ def isWorkspaceClean():
     return isClean
 
 def getActiveSubprojects():
-    return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefices()
+    return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
 
 def getModifiedSubprojects():
-    return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefices()
+    return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
                                                                                                              
                                                                                                       
 # returns the absolute path to the grape executable this file is bundled with

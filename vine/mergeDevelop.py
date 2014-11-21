@@ -107,13 +107,13 @@ class MergeDevelop(resumable.Resumable):
         try:
             nested = self.progress["nested"]
         except KeyError:
-            nested = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefices(branch)
+            nested = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(branch)
                                                                                          
                                                                                          
         
         config = grapeConfig.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurse = recurse and not args["--norecurse"] and submodules
+        recurse = recurse and (not args["--norecurse"]) and submodules
         args["--recurse"] = recurse
 
         # if we stored cwd in self.progress, make sure we end up there
@@ -133,7 +133,7 @@ class MergeDevelop(resumable.Resumable):
         else:
             recurse = True
             
-        # outerLevelMerge returns False if there was a non-conflict relatd issue
+        # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
             utility.printMsg("Initial merge failed. Resolve issue and try again. ")
             return False
