@@ -931,11 +931,6 @@ class Publish(resumable.Resumable):
         userMsg += "%s%s for the outer level repo. \nProceed? [y/n]" % ("and " if useAnd else "", public)
         
         proceed = utility.userInput(userMsg, 'y')
-           # proceed = utility.userInput("When ready, grape will publish " + topic + " to "
-           #                             + args["--submodulePublic"] +
-           #                             " for the following submodules:\n%s\n " % '\n'.join(submodules) +
-           #                             "\n and %s to %s for the outer level repo. Proceed? [y/n]" % (topic, public),
-           #                             'y')
         if not proceed:
             return False
 
