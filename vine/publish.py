@@ -1065,7 +1065,7 @@ class Publish(resumable.Resumable):
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
             for nested in self.modifiedNestedProjects:
-                os.chdir(os.path.join(cwd), nested["prefix"])
+                os.chdir(os.path.join(cwd,  nested["prefix"]))
                 self.publish(policy, public, topic, args)
                 os.chdir(cwd)
             self.publish(policy, public, topic, args)

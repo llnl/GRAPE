@@ -150,6 +150,7 @@ class TestPublish(testGrape.TestGrape):
         os.chdir(self.subproject)
        
         self.assertTrue(git.currentBranch() == self.branch)
+        git.branch("master origin/master")
         os.chdir(self.repo)
         
         self.assertGrapePublishWorked(["--merge"])

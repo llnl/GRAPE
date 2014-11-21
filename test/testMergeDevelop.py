@@ -67,7 +67,7 @@ class TestMD(testGrape.TestGrape):
 
     def createTestSubmodule(self):
         # make a repo to turn into a submodule
-        git.clone("%s %s " % (self.repo, self.repos[1]))
+        git.clone("--mirror %s %s " % (self.repo, self.repos[1]))
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
         git.submodule("add %s %s" % (os.path.join(self.repos[1]), "submodule1"))

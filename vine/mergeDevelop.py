@@ -181,7 +181,7 @@ class MergeDevelop(resumable.Resumable):
             return grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
 
 
-    def mergeSubproject(self, args, subproject, subPublic, submodules, cwd, isSubmodule=True):
+    def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):
         # if we did this merge in a previous run, don't do it again
         try:
             if self.progress["Subproject: %s" % subproject] == "finished":
@@ -196,7 +196,8 @@ class MergeDevelop(resumable.Resumable):
         conflict = not ret
         if conflict:
             self.progress["stopPoint"] = "Subproject: %s" % subproject
-            self.progress["subprojects"] = submodules
+            subprojectKey = "submodules" if isSubmodule else "nested"
+            self.progress[subprojectKey] = subprojects
             self.progress["cwd"] = cwd
             utility.printMsg("Merge in subproject %s failed. You likely need to resolve conflicts (git mergetool)\n"
                              " or stash/commit your current changes before doing the merge.\n"
@@ -244,9 +245,6 @@ class MergeDevelop(resumable.Resumable):
             # recover from conflicts by continuing the rebase
             git.rebase("--continue", not args["-v"])
             return True
-
-        if self.progress["stopPoint"] == "outer level merge":
-            return self.outerLevelMerge(args, args["--public"])
 
         return self.execute(args)
 
