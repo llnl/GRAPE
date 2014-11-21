@@ -1,5 +1,22 @@
 
 
+Fri Nov 21 15:35:46 2014 Peter B. Robinson
+v1.0.4
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Ben Liu, Chris White, Aaron Fisher
+
+SUMMARY
+NEW FEATURE: grape now can manage nested subprojects. These are nested repositories that are ignore by git and managed entirely by grape. 
+Nested Subprojects: 
+can be created using grape addSubproject --nested
+can be activated using grape uv
+are active (cloned, checked out, and managed by grape) only when a user activates them using grape uv. 
+are ignored by git (entire directory is added to the outer level .gitignore)
+have a branch structure identical to the outer repository. 
+are ideal for repositories containing large binary data that you don't want clogging up your source code repository.
+
+
 Thu Nov  6 16:14:55 2014 Peter B. Robinson
 v1.0.3
 
