@@ -921,7 +921,7 @@ class Publish(resumable.Resumable):
             userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefices))
             useAnd = True
         
-        userMsg += "%s%s for the outer level repo. \nProceed? [y\n]" % ("and " if useAnd else "", public)
+        userMsg += "%s%s for the outer level repo. \nProceed? [y/n]" % ("and " if useAnd else "", public)
         
         proceed = utility.userInput(userMsg, 'y')
            # proceed = utility.userInput("When ready, grape will publish " + topic + " to "

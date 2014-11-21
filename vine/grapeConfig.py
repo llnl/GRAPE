@@ -186,7 +186,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     @staticmethod
     def getAllModifiedNestedSubprojectPrefices(since, now="HEAD"): 
         config = grapeConfig()
-        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllModifiedNestedSubprojects()]
+        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllModifiedNestedSubprojects(since)]
         
     def setActiveNestedSubprojects(self, listOfActiveSubprojects):
         allNested = grapeConfig().getAllNestedSubprojects()
