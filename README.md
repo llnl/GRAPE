@@ -495,11 +495,12 @@ options are at least listed below.
     
 ## checkout
 
-    Usage: grape-checkout  [-b] <branch>
+    Usage: grape-checkout  [-b] <branch> [-v]
 
     Options:
 
     -b      Create the branch off of the current HEAD in each project.
+    -v      Be more verbose. 
     
 
     Arguments:
@@ -869,9 +870,9 @@ options are at least listed below.
         --repo=<repo>               The repo name part of the stash url, e.g. the "grape" in
                                     https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
-        --recurse                   If set, adds a pull request for each modified submodule. The pull request for the
-                                    outer level repo will have a description with links to the submodules' pull
-                                    requests.
+        --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
+                                    The pull request for the outer level repo will have a description with links to the 
+                                    submodules' pull requests.
         -v                          Be more verbose with git commands.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
@@ -945,7 +946,7 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [-v] [--checkSubprojects]
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b]
 
     Options:
         
@@ -954,6 +955,8 @@ options are at least listed below.
         -v                      Be more verbose.
         --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
                                 not go through the 'which submodules do you want' script.
+        -b                      Automatically creates subproject branches that should be there according to your branching
+                                model. 
 
     
 ## version
