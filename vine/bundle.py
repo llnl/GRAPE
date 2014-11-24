@@ -67,16 +67,21 @@ class Bundle(option.Option):
         self._key = "bundle"
         self._section = "Patches"
 
+    def config(self):
+        localConfig =  grapeConfig.grapeRepoConfig(git.baseDir())
+        if not localConfig: 
+            return grapeConfig.grapeConfig()
+        return 
     def description(self):
-        name = self.config.get("patch", "tagprefix")
+         # since bundle calls grape recursively, we give it configuration based on current repository semantics, 
+        # whereas grape typically has full workspace semantics. 
+        # TODO: move bundle to a model where it's the outer level repo that governs all bundling. Should be 
+        # easier to maintain in the long run.
+        name = self.config().get("patch", "tagprefix")
         return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
     def execute(self, args):
-        # since bundle calls grape recursively, we give it configuration based on current repository semantics, 
-        # whereas grape typically has full workspace semantics. 
-        # TODO: move bundle to a model where it's the outer level repo that governs all bundling. Should be 
-        # easier to maintain in the long run. 
-        self.config = grapeConfig.grapeRepoConfig(git.baseDir())
+
         tagprefix = args["--tagprefix"]
         branches = args["--branches"]
         reponame = args["--name"]

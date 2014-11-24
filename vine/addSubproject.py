@@ -4,7 +4,6 @@ import grapeConfig
 import option
 import utility
 import grapeGit as git
-import subtree
 
 
 class AddSubproject(option.Option):
