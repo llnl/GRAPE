@@ -79,9 +79,8 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
     return userInput("Enter %s User Name:" % service, defaultName)
 
 
-def parseArgs(docstr, arguments):
+def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
-    config = grapeConfig.grapeConfig()
     for key in args:
         if type(args[key]) is str and ".grapeconfig." in args[key]:
             tokens = args[key].split('.')

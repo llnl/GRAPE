@@ -34,10 +34,11 @@ def grapeUserConfig():
     return userConfig
 
 
-# returns a config object that only has the state associated with the given repo's .grapeconfig
+# overwrite the global config with the given repo's .grapeconfig
 def grapeRepoConfig(repoPath): 
-    repoConfig = GrapeConfigParser()
+    repoConfig = grapeConfig()
     repoConfig.read(os.path.join(repoPath,".grapeconfig"))
+    return repoConfig
 
 def resetGrapeConfig(newInstance=None):
     """

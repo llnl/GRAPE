@@ -66,12 +66,13 @@ class Bundle(option.Option):
         super(Bundle, self).__init__()
         self._key = "bundle"
         self._section = "Patches"
-
+        self._config = git.baseDir() 
     def config(self):
         localConfig =  grapeConfig.grapeRepoConfig(git.baseDir())
         if not localConfig: 
             return grapeConfig.grapeConfig()
-        return 
+        else:
+            return localConfig 
     def description(self):
          # since bundle calls grape recursively, we give it configuration based on current repository semantics, 
         # whereas grape typically has full workspace semantics. 
