@@ -22,6 +22,7 @@ class Config(option.Option):
     """
 
     def __init__(self):
+        super(Config,self).__init__()
         self._key = "config"
         self._section = "Getting Started"
 

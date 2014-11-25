@@ -12,6 +12,7 @@ class MergeRemote(option.Option):
     
     """
     def __init__(self):
+        super(MergeRemote, self).__init__()
         self._key = "mr"
         self._section = "Merge"
 

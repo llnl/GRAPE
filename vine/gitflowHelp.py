@@ -3,6 +3,7 @@ import option
 # Display a help image for gitflow tasks
 class GitflowHelp(option.Option):
     def __init__(self):
+        super(GitflowHelp, self).__init__()
         self._key = "help"
         self._section = "Gitflow Tasks"
 

@@ -17,6 +17,7 @@ class ForEach(option.Option):
 
     """
     def __init__(self):
+        super(ForEach, self).__init__()
         self._key = "foreach"
         self._section = "Workspace"
 

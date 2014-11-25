@@ -19,6 +19,7 @@ class Commit(option.Option):
 
     """
     def __init__(self):
+        super(Commit,self).__init__()
         self._key = "commit"
         self._section = "Workspace"
 
