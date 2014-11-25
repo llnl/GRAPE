@@ -1,6 +1,7 @@
 import os
 import time
 import tempfile
+import traceback
 import smtplib
 try:
     from email.mime.text import MIMEText
@@ -354,7 +355,7 @@ class Publish(resumable.Resumable):
                 ret = steps[step](args)
             except BaseException as e:
                 self.bailOut(step, args)
-                print(e.message)
+                print(traceback.format_exc())
                 return False
             if ret:
                 currentStep = order[order.index(currentStep) + 1]
@@ -918,7 +919,7 @@ class Publish(resumable.Resumable):
             useAnd = True
             
         if self.modifiedNestedProjects: 
-            prefixes = [proj["prefix"] for proj in self.modifiedNestedProjects ]
+            prefixes = self.modifiedNestedProjects 
             userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
             useAnd = True
         
