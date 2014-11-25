@@ -273,10 +273,12 @@ class Publish(resumable.Resumable):
         if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Stash")
             
-        if args["--tickVersion"].lower() == "false": 
-            args["--tickVersion"] = False
-        else:
-            args["--tickVersion"] = True
+        
+        if args["--tickVersion"] is not False and args["--tickVersion"] is not True:
+            if args["--tickVersion"].lower() == "false":
+                args["--tickVersion"] = False
+            else:
+                args["--tickVersion"] = True
 
     def abort(self, args):
         #undo any commits done since we first started
