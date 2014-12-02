@@ -108,7 +108,7 @@ class Config(option.Option):
                print("Could not find p4diff script at %s" % p4diffScript)
         else:
             #revert diff.external to the default value
-            git.config("diff.external","")
+            git.config("--unset diff.external")
         useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
