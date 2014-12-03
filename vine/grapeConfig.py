@@ -55,10 +55,7 @@ def readDefaults(config=None):
 
 
 def readGlobal():
-    if os.name == "nt":
-        globalconfigfile = os.path.join(os.environ["USERPROFILE"], ".grapeconfig")
-    else:
-        globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
+    globalconfigfile = os.path.join(utility.getHomeDirectory(), ".grapeconfig")
     grapeConfig().read([globalconfigfile])
 
 

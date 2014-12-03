@@ -182,3 +182,12 @@ def parseSubprojectRemoteURL(subtreeRemote):
         n += 1
 
     return '/'.join(originURL)
+
+
+# returns the user's home directory: 
+def getHomeDirectory(): 
+    if os.name == "nt":
+        home = os.environ["USERPROFILE"]
+    else:
+        home = os.environ["HOME"]
+    return home
