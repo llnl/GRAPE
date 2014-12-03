@@ -1,5 +1,11 @@
 
 
+Wed Dec  3 15:20:22 2014 Peter B. Robinson
+v1.0.4
+
+Addes nested subproject compatibility for grape foreach and grape bundle. Grape publish should now tag nested subprojects.
+
+
 Fri Nov 21 15:35:46 2014 Peter B. Robinson
 v1.0.4
 
