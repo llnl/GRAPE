@@ -36,13 +36,14 @@ class DeleteBranch(option.Option):
         except git.GrapeGitError as e:
             if forceStr == "-D" and "Cannot delete the branch" in e.gitOutput and \
                                     "which you are currently on." in e.gitOutput:
-                print("GRAPE WARNING: Detaching in order to delete current branch. You will be in a headless state.")
+                utility.printMsg("*** WARNING ***: Detaching in order to delete current branch. You will be in a headless state.")
                 git.checkout("--detach %s" % branch)
                 git.branch("-D %s" % branch, quiet=True)
             else: 
                 print e.gitOutput
         try:
-            git.push("--delete origin %s" % branch, quiet=True)
+            if "origin/%s" % branch in git.branch("-r", quiet=True): 
+                git.push("--delete origin %s" % branch, quiet=True)
         except git.GrapeGitError as e:
             print e.gitOutput
 
@@ -67,6 +68,15 @@ class DeleteBranch(option.Option):
                 git.checkout(subpublicmapping[git.branchPrefix(branch)])
             self.deleteBranch(branch, force)
         os.chdir(cwd)
+        
+        # then the branch in nested subprojects
+        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+        if subprojects:
+            utility.printMsg("Deleting %s from your active nested subprojects: " % branch)
+        for sub in subprojects:
+            os.chdir(os.path.join(cwd,sub))
+            self.deleteBranch(branch, force)
+            os.chdir(cwd)
         
         # then the outer level repository. 
         print("GRAPE: deleting branch from outer workspace")

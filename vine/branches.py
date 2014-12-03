@@ -5,6 +5,7 @@ import option
 # list local branches (git branch)
 class Branches(option.Option):
     def __init__(self):
+        super(Branches,self).__init__()
         self._key = "b"
         self._section = "Workspace"
 

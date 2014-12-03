@@ -88,6 +88,8 @@ def clone(argstr):
     try:
         return gitcmd("clone %s" % argstr, "Clone failed")
     except GrapeGitError as e:
+        if "already exists and is not an empty directory" in e.gitOutput:
+            raise e
         if e.code == 128:
             print ("GRAPE: WARNING: clone failed due to connectivity issues.")
             return e.gitOutput
@@ -100,9 +102,18 @@ def commit(argstr):
 
 
 def commitDescription(committish, quiet=True):
-    return gitcmd("log --oneline %s^1..%s" % (committish, committish),
-                  "commitDescription failed", quiet=quiet)
 
+    try:
+        descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
+                           "commitDescription failed", quiet=quiet)
+    # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
+    except GrapeGitError as e:
+        if "unknown revision" in e.gitOutput:
+            try:
+                descr = gitcmd("log --oneline %s" % committish, "commitDescription failed")
+            except GrapeGitError as e:
+                raise e
+    return descr
 
 def config(argstr, arg2=None, quiet=False):
     if arg2 is not None:
@@ -254,7 +265,7 @@ def pull(args, quiet=False):
 
 def push(args, quiet=False):
     try:
-        return gitcmd("push %s" % args, "Push failed", quiet=quiet)
+        return gitcmd("push --porcelain %s" % args, "Push failed", quiet=quiet)
     except GrapeGitError as e:
         if e.code == 128:
             print ("GRAPE: WARNING: Push failed due to connectivity issues.")

@@ -22,6 +22,7 @@ class Config(option.Option):
     """
 
     def __init__(self):
+        super(Config,self).__init__()
         self._key = "config"
         self._section = "Getting Started"
 
@@ -71,9 +72,10 @@ class Config(option.Option):
         print("setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
-        # perform an update of the active submodules if asked. 
+        # perform an update of the active subprojects if asked.
         ask = not args["--nocv"]
-        updateView = ask and (args["--cv"] or utility.userInput("do you want any submodules? (you can change this later using grape uv) [y/n]","n") )
+        updateView = ask and (args["--cv"] or utility.userInput("do you want to edit your active subprojects?"
+                                                                " (you can do this later using grape uv) [y/n]", "n"))
         if updateView:
             grapeMenu.menu().applyMenuChoice("uv")
 

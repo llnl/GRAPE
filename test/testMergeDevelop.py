@@ -7,7 +7,7 @@ if not ".." in sys.path:
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import grapeConfig
-
+import testNestedSubproject
 
 class TestMD(testGrape.TestGrape):
 
@@ -67,11 +67,12 @@ class TestMD(testGrape.TestGrape):
 
     def createTestSubmodule(self):
         # make a repo to turn into a submodule
-        git.clone("%s %s " % (self.repo, self.repos[1]))
+        git.clone("--mirror %s %s " % (self.repo, self.repos[1]))
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
         git.submodule("add %s %s" % (os.path.join(self.repos[1]), "submodule1"))
         git.commit("-m \"added submodule1\"")
+        
 
     def setUpNonConflictingSubmoduleMerge(self):
         os.chdir(self.defaultWorkingDirectory)
@@ -123,6 +124,9 @@ class TestMD(testGrape.TestGrape):
         os.chdir(self.repo)
         git.commit("submodule1 -m \"updated submodule gitlink on testSubmoduleMerge branch\"")
         self.setUpConfig()
+        
+
+
 
     def testNonConflictingSubmoduleMerge(self):
         try:
@@ -189,4 +193,56 @@ class TestMD(testGrape.TestGrape):
             self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
         except SystemExit:
             self.fail("Uncaught exit\n%s" % self.output.getvalue())
-        #except unittest.case.TestCase.failureException as e:
+
+    def setUpConflictingNestedSubprojectMerge(self):
+        os.chdir(self.defaultWorkingDirectory)
+        testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
+        os.chdir(self.subproject)
+        
+        # set up f1 with conflicting content on master  and testNestedMerge branches. 
+        git.checkout("master")
+        git.branch("testNestedMerge")
+        testGrape.writeFile2("f1")
+        git.add("f1")
+        git.commit("-m \"added f2 as f1\"")
+        git.checkout("testNestedMerge")
+        testGrape.writeFile3("f1")
+        git.add("f1")
+        git.commit("-m \"added f1 as f1\"")
+        
+        os.chdir(self.repo)
+        
+    def testConflictingNestedSubprojectMerge(self):
+        self.setUpConflictingNestedSubprojectMerge()
+        os.chdir(self.repo)
+        git.checkout(" -b testNestedMerge")
+        
+        #make sure we're not up to date with master
+        os.chdir(self.subproject)
+        self.assertFalse(git.branchUpToDateWith("testNestedMerge", "master"), msg=None)
+        os.chdir(self.repo)
+        # run grape md --am
+        ret = grapeMenu.menu().applyMenuChoice("md", ["--am", "--public=master"])
+        self.assertFalse(ret, "grape md did not return False for conflicting merge.")
+        # git status in outer repo should be clean
+        status = git.status("--porcelain")
+        self.assertFalse(status, "status is not empty in outer repo after conflict in subproject")
+        # git status in subproject should not be clean
+        os.chdir(self.subproject)
+        status = git.status("--porcelain")
+        self.assertIn("AA", status, "no conflicts in subproject status")
+        
+        # resolve the conflict
+        git.checkout("--ours f1")
+        git.add("f1")
+        status = git.status("--porcelain")
+        self.assertNotIn("AA", status, "conflict not resolved after staging f1")
+        
+        # continue the merge
+        ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
+        self.assertTrue(ret, "md didn't return successfully after conflict resolution")
+        os.chdir(self.subproject)
+
+        self.assertTrue(git.branchUpToDateWith("testNestedMerge", "master"))
+        os.chdir(self.repo)
+        self.assertTrue(git.branchUpToDateWith("testNestedMerge", "master"))

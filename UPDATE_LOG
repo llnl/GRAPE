@@ -1,5 +1,59 @@
 
 
+Wed Dec  3 15:24:08 2014 Peter B. Robinson
+v1.1.0
+
+SUMMARY: This updates the master branch from 1.0.0 to the state of develop 1.0.4.
+
+Tue Dec  2 16:22:37 2014 Peter B. Robinson
+v1.1.0
+
+SUMMARY: This updates the master branch from 1.0.0 to the state of develop 1.0.5.
+
+
+Wed Dec  3 15:20:22 2014 Peter B. Robinson
+v1.0.5
+
+Addes nested subproject compatibility for grape foreach and grape bundle. Grape publish should now tag nested subprojects.
+
+
+Fri Nov 21 15:35:46 2014 Peter B. Robinson
+v1.0.4
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Ben Liu, Chris White, Aaron Fisher
+
+SUMMARY
+NEW FEATURE: grape now can manage nested subprojects. These are nested repositories that are ignore by git and managed entirely by grape. 
+Nested Subprojects: 
+can be created using grape addSubproject --nested
+can be activated using grape uv
+are active (cloned, checked out, and managed by grape) only when a user activates them using grape uv. 
+are ignored by git (entire directory is added to the outer level .gitignore)
+have a branch structure identical to the outer repository. 
+are ideal for repositories containing large binary data that you don't want clogging up your source code repository.
+
+
+Thu Nov  6 16:14:55 2014 Peter B. Robinson
+v1.0.3
+
+Adds nested subprojects as a subproject type, allowing users to add grape managed repos that are ignored by git to a repository.
+
+
+Tue Oct 21 11:20:38 2014 Benjamin T. Liu
+v1.0.2
+
+Prevent error if missing submodule directory does not exist
+
+
+Fri Oct  3 16:07:46 2014 Peter B. Robinson
+v1.0.1
+
+Changed the behavior of grape checkout to be aware of your submodule branching model.
+Switching to a branch with a new submodule triggers a full call to grape uv, starting a dialogue asking the user which submodules she wants. 
+Switching to a branch that doesn't have a submodule that was on the previous branch will now trigger a dialogue asking if that user wants to delete the submodule, so long as the submodule is in a clean state.
+
+
 Wed Sep 24 10:06:18 2014 Peter B. Robinson
 v1.0.0
 

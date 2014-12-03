@@ -38,7 +38,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subpr
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=True,
+    process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
                                cwd=workingDirectory, stdin=stdin)
     output = ""
     for line in iter(process.stdout.readline, ''):
@@ -79,9 +79,8 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
     return userInput("Enter %s User Name:" % service, defaultName)
 
 
-def parseArgs(docstr, arguments):
+def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
-    config = grapeConfig.grapeConfig()
     for key in args:
         if type(args[key]) is str and ".grapeconfig." in args[key]:
             tokens = args[key].split('.')
@@ -138,7 +137,26 @@ def workspaceDir():
     os.chdir(cwd)
     return basedir
 
+def isWorkspaceClean():
+    isClean = git.isWorkingDirectoryClean()
+    activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+    base = workspaceDir()
+    cwd = os.getcwd()
+    for sub in activeNestedSubprojects:
+        if not isClean:
+            break
+        os.chdir(os.path.join(base, sub))
+        isClean = isClean and git.isWorkingDirectoryClean()
+    os.chdir(cwd)
+    return isClean
 
+def getActiveSubprojects():
+    return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+
+def getModifiedSubprojects():
+    return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
+                                                                                                             
+                                                                                                      
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 
     if os.name == "nt":
@@ -146,3 +164,30 @@ def getGrapeExec():
         return "c:/Python27/python.exe " + winpath.replace("\\", "/")
     else:
         return os.path.join(os.path.dirname(__file__), "..", "grape")
+
+# handles subproject remote URL parsing. Needed for subtree and nested project support. (git handles the submodules)
+def parseSubprojectRemoteURL(subtreeRemote): 
+    path = subtreeRemote.strip().split('/')
+    if "ssh:" == path[0] or "https:" == path[0]:  
+        return subtreeRemote
+    if ".." != path[0]:
+        return subtreeRemote
+
+    # the subtreeRemote is a relative path
+    originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
+    
+    n = 1
+    while path[-n] != "..": 
+        originURL[-n] = path[-n]
+        n += 1
+
+    return '/'.join(originURL)
+
+
+# returns the user's home directory: 
+def getHomeDirectory(): 
+    if os.name == "nt":
+        home = os.environ["USERPROFILE"]
+    else:
+        home = os.environ["HOME"]
+    return home

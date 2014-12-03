@@ -14,11 +14,13 @@ class TestPublish(testGrape.TestGrape):
 
     def setUpBranchToFFMerge(self):
         os.chdir(self.repo)
-        git.checkout("-b testPublish")
+        self.branch = "testPublish"
+        git.checkout("-b %s" % self.branch)
         testGrape.writeFile2("f2")
         git.add("f2")
         git.commit("-m \"added f2\"")
         self.setUpConfig()
+        
 
     def setUpDevelopBranch(self):
         os.chdir(self.repo)
@@ -136,3 +138,23 @@ class TestPublish(testGrape.TestGrape):
         self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
         # check that we never tagged a new version
         self.assertIn("v1.0.0", git.describe())
+        
+    def testPublishNestedSubprojects(self):
+        import testNestedSubproject
+        self.setUpBranchToFFMerge()
+        config = grapeConfig.grapeConfig()
+        config.set("publish", "buildCmds", "echo hello , echo world")
+        config.set("publish", "testCmds", "echo helloTest , echo worldTest")        
+        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])        
+        testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
+        os.chdir(self.subproject)
+       
+        self.assertTrue(git.currentBranch() == self.branch)
+        git.branch("master origin/master")
+        os.chdir(self.repo)
+        
+        self.assertGrapePublishWorked(["--merge"])
+        
+        os.chdir(self.subproject)
+        self.assertTrue(git.currentBranch() == "master", "on %s, expected to be on master" % git.currentBranch())
+        

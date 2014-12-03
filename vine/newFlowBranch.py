@@ -67,6 +67,22 @@ class NewBranchOption(option.Option):
         os.chdir(cwd)
         subArgs = self.createBranch(start, self._key, args['--user'], args['<descr>'], args['--noverify'])
         branchName = "%s/%s/%s" % (subArgs[1], subArgs[2], subArgs[3])
+        # handle nested subprojects
+
+        subprojectPrefixes = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+        if subprojectPrefixes: 
+            proceed = args["--noverify"] or utility.userInput("About to create the branch %s off of %s "
+                                                                      "for all active nested subprojects.\n"
+                                                                      "Proceed? [y/n]" % (branchName, start) , 'y')        
+            if proceed:
+                for sub in subprojectPrefixes: 
+                    os.chdir(sub)
+                    git.checkout(start)
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start])
+                    self.createBranch(subArgs[0], subArgs[1], subArgs[2], subArgs[3], noverify=True)
+        
+        
+        
         submodules = git.getActiveSubmodules()
         recurse = recurse and submodules
         if subArgs and recurse:

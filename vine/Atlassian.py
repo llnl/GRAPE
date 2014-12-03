@@ -17,53 +17,53 @@ class Atlassian:
     def __init__(self, username=None, url=rzstashURL, verify=True):
 
         if username is None:
-            self.userName = utility.getUserName()
+            self._userName = utility.getUserName()
         else:
-            self.userName = username
+            self._userName = username
 
         self.keyring = keyring.get_keyring()
-        self.service = url
-        password = keyring.get_password(self.service, self.userName)
+        self._service = url
+        password = keyring.get_password(self._service, self._userName)
 
-        if self.auth(self.service, self.userName, password, verify=verify):
-            print("Connected to RZStash...")
+        if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
+            print("Connected to Stash.")
         else:
-            self.stash = None
-            print("Could not connect to RZStash...")
+            self._stash = None
+            print("Could not connect to Stash...")
 
     def auth(self, service, username, password, verify=True):
-        self.userName = username
-        self.service = service
-        self.stash = stashy.connect(service, username, password, verify=verify)
+        self._userName = username
+        self._service = service
+        self._stash = stashy.connect(service, username, password, verify=verify)
         numAttempts = 0
         success = False
         while numAttempts < 3 and not success:
             try:
-                self.stash.projects.list()
+                self._stash.projects.list()
                 success = True
             except stashy.errors.AuthenticationException:
                 if numAttempts == 0:
                     print("session expired...")
                 else:
                     print("incorrect username / password...")
-                    self.userName = utility.getUserName(self.userName)
-                keyring.set_password(service, self.userName, getpass.getpass("Enter password for %s: " % service))
-                self.stash = stashy.connect(service, self.userName, keyring.get_password(service, self.userName),
+                    self._userName = utility.getUserName(self._userName)
+                keyring.set_password(service, self._userName, getpass.getpass("Enter password for %s: " % service))
+                self._stash = stashy.connect(service, self._userName, keyring.get_password(service, self._userName),
                                             verify=verify)
                 numAttempts += 1
 
         return success
 
     def projectlist(self):
-        projects = self.stash.projects.list()
+        projects = self._stash.projects.list()
         return [r["key"] for r in projects]
     
     def project(self, name):
 
-        for node in self.stash.projects:
+        for node in self._stash.projects:
             if node["key"].lower() == name.lower():
-                r = self.stash.projects[name]
+                r = self._stash.projects[name]
                 return Project(r, node)
             
         return None
@@ -124,12 +124,12 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node)
         self.repo = rpo
 
-    def pullrequests(self, state="OPEN"):
-        return [PullRequest(x) for x in self.repo.pull_requests.all(state=state)]
+    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN"):
+        return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):
         ret = None
-        requests = self.pullrequests()
+        requests = self.pullRequests()
         for request in requests:
             if request.toRef() == target and request.fromRef() == source:
                 ret = request
@@ -138,16 +138,26 @@ class Repo(StashyNode):
 
     def getMergedPullRequests(self, source, target):
         ret = []
-        requests = self.pullrequests(state="MERGED")
+        requests = self.pullRequests(state="MERGED")
         for r in requests:
             if r.toRef() == target and r.fromRef() == source:
                 ret.append(r)
         return ret
 
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+        """reviewers"""
+        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
+        
+        return PullRequest(stashyRequest,self.repo.pull_requests)
 
 class PullRequest(StashyNode):
-    def __init__(self, node):
+    """
+    node is the dictionary with the state of the Pull Request. 
+    stashy_pull_requests is the stashy object needed to update the pull request.    
+    """
+    def __init__(self, node, stashy_pull_requests):
         StashyNode.__init__(self, node)
+        self._stashy_pull_requests = stashy_pull_requests
 
     def author(self):
         return self.node["author"]["user"]["name"]
@@ -164,6 +174,18 @@ class PullRequest(StashyNode):
         return time.ctime(sec)
 
     def reviewers(self):
+        """
+        Returns [(username,bool(approved))...]
+        """
+        #Stash REST API for reviewer definition snippet:
+        # "reviewers": [
+        #     {
+        #         "user": {
+        #             "name": "charlie"
+        #         }
+        #     }
+        #   ]
+        # Which I interpret to mean the following:        
         ret = []
         for reviewer in self.node["reviewers"]:
             name = reviewer["user"]["name"]
@@ -190,6 +212,31 @@ class PullRequest(StashyNode):
             approved = reviewer[1]
             ret = ret and approved
         return ret
+    
+    def link(self): 
+        return self.node["links"]["self"][0]["href"]
+    
+    def version(self):
+        return self.node["version"]
+    
+    # reviewers is a list of username-approved(bool) pairs
+    def update(self, ver, title=None, description=None, reviewers=None): 
+        #Stash REST API for reviewer definition snippet:
+        # "reviewers": [
+        #     {
+        #         "user": {
+        #             "name": "charlie"
+        #         }
+        #     }
+        #   ]       
+        reviewerList = []
+        if reviewers is not None:
+            for r in reviewers:
+                reviewerList.append(dict(user=dict(name=r)))
+                
+        stashy_request = self._stashy_pull_requests[str(self.node["id"])]
+        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewerList), self._stashy_pull_requests)
+        
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
@@ -211,7 +258,7 @@ if __name__ == "__main__":
             print " REPONAME", reponame
             try:
                repo = project.repo(reponame)
-               for pull in repo.pullrequests():
+               for pull in repo.pullRequests():
 
                    print "  TITLE:     ", pull.title()
                    print "  STATE:     ", pull.state()
@@ -247,8 +294,32 @@ class TestPullRequest(TestStashResponse):
         links = dict(self=[dict(href=self.url)])
         toRef = dict(id=id, title=title, fromRef=fromRef, reviewers=reviewers)
         super(TestPullRequest, self).__init__(title=title, fromRef=fromRef, toRef=toRef, id=id,
+                                              description=description,
                                               reviewers=reviewers, links=links)
-
+    
+    def toRef(self):
+        return self["toRef"]
+    
+    def title(self):
+        return self["title"]
+    
+    def fromRef(self):
+        return self["fromRef"]
+    
+    def id(self):
+        return self["id"]
+    
+    def reviewers(self):
+        return self["reviewers"]
+    
+    def link(self):
+        return self["links"]["self"][0]["href"] 
+    
+    def description(self):
+        if self["description"] is not None:
+            return self["description"]
+        else:
+            return ""
 
 class TestPullRequests(TestStashResponse):
 
@@ -265,6 +336,8 @@ class TestPullRequests(TestStashResponse):
         self[newId] = TestPullRequest(title, fromRef, toRef, self.url, id=newId, description=description,
                                       reviewers=reviewers)
         return self[newId]
+    
+
 
 
 class TestRepo(TestStashResponse):
@@ -272,6 +345,15 @@ class TestRepo(TestStashResponse):
         self.url = parent + "repos/" + name
         self.name = name
         self.pull_requests = TestPullRequests(self.url)
+        
+    def pullRequests(self, direction="OUTGOING", at=None, state="OPEN"):
+        return self.pull_requests.all(direction,at,state)
+    
+    def createPullRequest(self, title,branch,target_branch, description=None,reviewers=None):
+        
+        return self.pull_requests.create(title, branch, target_branch, 
+                                        description=description, 
+                                        reviewers=reviewers)
 
 
 
@@ -279,6 +361,8 @@ class TestProject(TestStashResponse):
     def __init__(self, name, parent):
         self.url = parent+"projects/"+name+"/"
         self.repos = TestStashResponse(repo1=TestRepo("repo1", self.url))
+    def repo(self, name):
+        return self.repos[name]
 
 
 class TestStash(TestStashResponse):
@@ -288,6 +372,8 @@ class TestStash(TestStashResponse):
         self.projects = TestStashResponse(proj1=TestProject("proj1", self.url), proj2=TestProject("proj2", self.url))
         pass
 
+    def project(self,name):
+        return self.projects[name]
 
 
 
@@ -303,4 +389,7 @@ class TestAtlassian:
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to RZStash")
+        print("Connected to Stash")
+        
+    def project(self, name):
+        return self.stash.project(name)

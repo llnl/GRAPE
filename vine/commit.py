@@ -1,6 +1,7 @@
 import os
 import option
 import grapeGit as git
+import grapeConfig
 import utility
 
 class Commit(option.Option):
@@ -18,6 +19,7 @@ class Commit(option.Option):
 
     """
     def __init__(self):
+        super(Commit,self).__init__()
         self._key = "commit"
         self._section = "Workspace"
 
@@ -45,15 +47,17 @@ class Commit(option.Option):
         os.chdir(baseDir)
 
         submodules = git.getModifiedSubmodules()
-        for file in submodules:
-            os.chdir(os.path.join(baseDir,file))
+        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes() 
+        for sub in submodules +  subprojects:
+            os.chdir(os.path.join(baseDir,sub))
             subStatus = git.status("--porcelain", quiet=quiet)
             if subStatus:
                 self.commit(commitargs)
-            print(' ')
+        
         os.chdir(baseDir)
-        print("GRAPE: Performing commit in outer level project")
-        self.commit(commitargs)
+        if submodules or git.status("--porcelain", quiet=quiet): 
+            utility.printMsg("Performing commit in outer level project")
+            self.commit(commitargs)
         return True
     
     def setDefaultConfig(self,config): 

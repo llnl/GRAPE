@@ -8,8 +8,7 @@ class TestConfig(testGrape.TestGrape):
     def testConfig(self):
         os.chdir(self.repo)
 
-        self.input.writelines(["\n", "\n", "\n", "\n"])
-        self.input.seek(0)
+        self.queueUserInput(["\n", "\n", "\n", "\n"])
         ret = grapeMenu.menu().applyMenuChoice("config")
         contents = self.output.getvalue()
         self.assertTrue(contents)

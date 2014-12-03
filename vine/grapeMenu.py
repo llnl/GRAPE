@@ -1,3 +1,5 @@
+import traceback
+
 import addSubproject
 import bundle
 import branches
@@ -107,9 +109,13 @@ class _Menu(object):
         # use optdoc to parse arguments to the chosen_option.
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate.
         if option_args is None and chosen_option.__doc__:
-            #print("applyMenuCHoice:",args)
             try:
-                option_args = utility.parseArgs(chosen_option.__doc__, args[1:])
+                config = chosen_option._config
+                if config is None:
+                    config = grapeConfig.grapeConfig()
+                else:
+                    config = grapeConfig.grapeRepoConfig(config)
+                option_args = utility.parseArgs(chosen_option.__doc__, args[1:], config)
             except SystemExit as e:
                 if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
                     print("GRAPE PARSING ERROR: could not parse %s\n" % (args[1:]))
@@ -123,6 +129,7 @@ class _Menu(object):
         except git.GrapeGitError as e:
             print ("GRAPE GIT: Uncaught Error in grape-%s when executing '%s' in '%s'\n%s" %
                    (chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
+            print traceback.print_exc()
             exit(e.code)
 
     # Present the main menu

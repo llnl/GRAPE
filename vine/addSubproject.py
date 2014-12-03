@@ -4,7 +4,6 @@ import grapeConfig
 import option
 import utility
 import grapeGit as git
-import subtree
 
 
 class AddSubproject(option.Option):
@@ -13,7 +12,7 @@ class AddSubproject(option.Option):
         Adds a new project to this workspace (such as a new library or a new test suite)
 
         Usage: grape-addSubproject  --name=<name> --prefix=<prefix> --url=<url> --branch=<branch>
-                                    [--subtree [--squash | --nosquash] | --submodule]
+                                    [--subtree [--squash | --nosquash] | --submodule | --nested]
                                     [--noverify]
                                     [-v]
 
@@ -31,6 +30,9 @@ class AddSubproject(option.Option):
                             in.
         --submodule         Add this subproject as a submodule. Default behavior if
                             .grapeconfig.workspace.subprojectType is submodule.
+        --nested            Add this subproject as a nested git project. While in the main repository, git will ignore
+                            all activity in this subproject. GRAPE commands such as checkout, status, and commit will
+                            act across all nested subprojects in much the same way as grape manages submodules.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
         -v                  Set to print all git commands that are issued
 
@@ -43,24 +45,36 @@ class AddSubproject(option.Option):
     def description(self):
         return "Adds a new subproject (such as a library) as either a subtree or a submodule"
 
+    @staticmethod
+    def parseSubprojectType(config, args):
+        projectType = config.get("workspace", "subprojectType").strip().lower()
+        if args["--subtree"]:
+            projectType = "subtree"
+        if args["--submodule"]:
+            projectType = "submodule"
+        if args["--nested"]:
+            projectType = "nested"
+        # can happen with invalid type in .grapeconfig and no type specified at command line
+        if projectType != "subtree" and projectType != "submodule" and projectType != "nested":
+            utility.printMsg("Invalid subprojectType specified in .grapeconfig section [workspace].")
+        return projectType
+
     def execute(self, args):
         name = args["--name"]
         prefix = args["--prefix"]
         url = args["--url"]
+        fullurl = utility.parseSubprojectRemoteURL(url)
         branch = args["--branch"]
         quiet = not args["-v"]
         config = grapeConfig.grapeConfig()
-        usesubtree = config.get("workspace", "subprojectType").strip().lower() == "subtree"
-        usesubtree = usesubtree and not args["--submodule"]
-        usesubmodule = not usesubtree
+        projectType = self.parseSubprojectType(config, args)
         proceed = args["--noverify"]
-        if usesubtree:
+        if projectType == "subtree":
             #  whether or not to squash
             squash = args["--squash"] or config.get("subtrees", "mergePolicy").strip().lower() == "squash"
             squash = squash and not args["--nosquash"]
             squash_arg = "--squash" if squash else ""
             # expand the URL
-            fullurl = subtree.parseSubtreeRemote(url)
             if not proceed:
                 proceed = utility.userInput("About to create a subtree called %s at path %s,\n"
                                             "cloned from %s at %s " % (name, prefix, fullurl, branch) +
@@ -87,7 +101,7 @@ class AddSubproject(option.Option):
                     config.write(f)
                 print("Successfully added subtree branch. \n"
                       "Updated .grapeconfig file. Review changes and then commit. ")
-        elif usesubmodule:
+        elif projectType == "submodule":
             if not proceed:
                 proceed = utility.userInput("about to add %s as a submodule at path %s,\n"
                                             "cloned from %s at branch %s.\nproceed? [y/n]" %
@@ -95,11 +109,69 @@ class AddSubproject(option.Option):
             if proceed:
                 git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix), quiet=quiet)
                 print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
+        elif projectType == "nested":
+            if not proceed:
+                proceed = utility.userInput(" about to clone %s as a nested git repo at path %s,\n"
+                                            "cloned from %s at branch %s.\nProceed? [y/n]" %
+                                            (name, prefix, url, branch), 'y')
+            if proceed:
+                git.clone("%s %s" % (fullurl, prefix))
+                ignorePath = os.path.join(git.baseDir(), ".gitignore")
+                ignoresGrapeUserConfig = False
+                try:
+                    with open(ignorePath, 'r') as ignore:
+                        ignoresGrapeUserConfig = ".grapeuserconfig" in ignore.readlines()
+                except IOError:
+                    pass
+                with open(ignorePath, 'a') as ignore:
+                    ignore.writelines([prefix+'\n'])
+                    if not ignoresGrapeUserConfig:
+                        ignore.writelines([".grapeuserconfig\n"])
+                git.add(ignorePath)
+                wsConfig = grapeConfig.workspaceConfig()
+                currentSubprojects = wsConfig.getList("nestedProjects", "names")
+                currentSubprojects.append(name)
+                wsConfig.set("nestedProjects", "names", ' '.join(currentSubprojects))
+                newSection = "nested-%s" % name
+                wsConfig.ensureSection(newSection)
+                wsConfig.set(newSection, "prefix", prefix)
+                wsConfig.set(newSection, "url", url)
+                configFileName = os.path.join(utility.workspaceDir(), ".grapeconfig")
+                with open(os.path.join(configFileName), 'w') as f:
+                    wsConfig.write(f)
+                git.add(configFileName)
+                git.add(ignorePath)
+                git.commit("%s %s -m \"GRAPE: Added nested subproject %s\"" % (ignorePath, configFileName, prefix))
+                # update the runtime config with the new workspace .grapeconfig's settings.
+                grapeConfig.read()
+
+                userConfig = grapeConfig.grapeUserConfig()
+                userConfig.ensureSection(newSection)
+                userConfig.set(newSection, "active", "True")
+                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+
         return True
+
+    @staticmethod
+    def activateNestedSubproject(subprojectName, userconfig):
+        base = utility.workspaceDir()
+        config = grapeConfig.grapeConfig()
+        prefix = config.get("nested-%s" % subprojectName, "prefix")
+        url = config.get("nested-%s" % subprojectName, "url")
+        fullurl = utility.parseSubprojectRemoteURL(url)
+        section = "nested-%s" % subprojectName
+        userconfig.ensureSection(section)
+        currentlyActive = userconfig.getboolean(section, "active")
+        print "currentlyActive in section %s is " % section, currentlyActive
+        if not currentlyActive and not (os.path.isdir(os.path.join(base,prefix) or os.listdir(os.path.join(base,prefix)))):
+            git.clone("%s %s" % (fullurl, prefix))
+        userconfig.set(section, "active", "True")
+        grapeConfig.writeConfig(userconfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
 
     def setDefaultConfig(self, config):
         config.ensureSection("subtrees")
         config.ensureSection("workspace")
-
+        config.ensureSection("nestedProjects")
         config.set("subtrees", "mergePolicy", "squash")
         config.set("workspace", "subprojectType", "subtree")
+        config.set("nestedProjects", "names", "")

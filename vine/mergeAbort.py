@@ -5,6 +5,7 @@ import grapeGit as git
 # abort a merge
 class MergeAbort(option.Option):
     def __init__(self):
+        super(MergeAbort, self).__init__()
         self._key = "abort"
         self._section = "Merge"
 

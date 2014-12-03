@@ -18,6 +18,7 @@ class Walkthrough(option.Option):
 
     """
     def __init__(self):
+        super(Walkthrough, self).__init__()
         self._key = "w"
         self._section = "Code Reviews"
 

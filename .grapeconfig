@@ -18,12 +18,12 @@ submodulepublishpolicy = ?:merge
 [patch]
 tagprefix = bundled
 describepattern = v*
-branches = develop master ale3d ale3d_4_22 ale3d_4_24 master-cz
-branchmappings = develop:develop master:master ale3d:ale3d ale3d_4_22:ale3d_4_22 ale3d_4_24:ale3d_4_24 master-cz:master-cz
+branches = develop master  master-cz
+branchmappings = develop:develop master:master  master-cz:master-cz
 
 [flow]
 publishpolicy = ?:merge master:cascade->develop master-cz:cascade->master
-publicbranches = master develop release ale3d ale3d_4_24
+publicbranches = master develop release 
 topicprefixmappings = hotfix:master feature:develop bugfix:develop internalRelease:develop publicRelease:develop ?:develop
 topicdestinationmappings = internalRelease:master publicRelease:master-cz
 
