@@ -8,11 +8,13 @@ class ForEach(option.Option):
     """
     Executes a command in each project in this workspace (including the outer level project). 
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] <cmd> 
+    Usage: grape-foreach [--quiet] [--noTopLevel] [--currentCWD] <cmd> 
 
     Options:
     --quiet        Quiets git's printout of "Entering submodule..."
     --noTopLevel   Does not call <cmd> in the workspace directory, only in submodules and subprojects. 
+    --currentCWD   grape foreach normally starts work from the workspace top level directory. This flag 
+                   starts work from the current working directory. 
 
     Arguments:
     <cmd>        The cmd to execute. 
@@ -33,12 +35,14 @@ class ForEach(option.Option):
         cmd = args["<cmd>"]
 
         foreachcmd = "%s %s" % (quiet,cmd)
-        cwd = utility.workspaceDir()
+        if args["--currentCWD"]: 
+            cwd = os.getcwd() if args["--currentCWD"] else utility.workspaceDir()
         os.chdir(cwd)
         git.submodule("foreach %s %s" % (quiet,cmd))
         
         # execute in nested subprojects
-        for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(): 
+        for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(cwd):
+            utility.printMsg("Entering %s..." % proj)
             os.chdir(os.path.join(cwd, proj))
             utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj), 
                                       verbose=0 if quiet else 2)

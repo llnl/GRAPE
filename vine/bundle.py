@@ -97,10 +97,10 @@ class Bundle(option.Option):
         tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
 
         if not args["--norecurse"]: 
-            os.chdir(git.baseDir())
+            os.chdir(self._baseDir)
             grapecmd = os.path.join(os.path.dirname(__file__), "..", "grape")
-            grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel", grapecmd])
-            git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
+            grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle"])
+            #git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
         git.fetch()
         git.fetch("--tags")
         branchlist = branches.split()
