@@ -35,8 +35,12 @@ class ForEach(option.Option):
         cmd = args["<cmd>"]
 
         foreachcmd = "%s %s" % (quiet,cmd)
-        if args["--currentCWD"]: 
-            cwd = os.getcwd() if args["--currentCWD"] else utility.workspaceDir()
+        cwd = os.getcwd() if args["--currentCWD"] else utility.workspaceDir()
+        os.chdir(cwd)
+        # ensure cwd is the top level of the current git repository.
+        # this will be the workspaceDir if --currentCWD was not set, or the root
+        # of the project the user is in if --currentCWD is set. 
+        cwd = git.baseDir()
         os.chdir(cwd)
         git.submodule("foreach %s %s" % (quiet,cmd))
         
