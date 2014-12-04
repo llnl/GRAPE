@@ -169,6 +169,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
                 if userConfig.getboolean("nested-%s" % sub, "active"):
                     active.append(sub)
             except ConfigParser.Error:
+                userConfig.ensureSection("nested-%s" % sub)
                 userConfig.set("nested-%s" % sub, "active", "False")
         return active
 
