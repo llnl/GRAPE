@@ -52,6 +52,8 @@ def baseDir(quiet=True):
     path = utility.makePathPortable(unixStylePath)
     return path
 
+def allBranches():
+    return branch("-a", quiet=True).replace("*",' ').replace(" ",'').split()
 
 def branch(argstr="", quiet=False):
     return gitcmd("branch %s" % argstr, "Could not list branches", quiet)
