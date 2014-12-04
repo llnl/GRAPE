@@ -5,6 +5,7 @@ import utility
 import grapeMenu
 import grapeGit as git
 import option
+import config as configOption
 
 
 __configInstance = None
@@ -181,14 +182,19 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     @staticmethod
     def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
         config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+        if workspaceDir is None:
+            workspaceDir = utility.workspaceDir()
         active = GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)
         modified = []
         cwd = os.getcwd()
         for repo in active:
             prefix = config.get("nested-%s" % repo, "prefix")
             os.chdir(os.path.join(cwd,prefix))
+            configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix))
+
             if git.diff("--name-only %s %s" % (since, now), quiet=True): 
                 modified.append(repo)
+
         os.chdir(cwd)
         return modified
     
