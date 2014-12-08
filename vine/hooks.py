@@ -113,10 +113,11 @@ class RunHook(option.Option):
                     self.commands[command](args)
             except KeyError:
                 pass
-        if args["--noExit"]:
-            return True
-        else:
-            exit(0)
+            finally:
+                if args["--noExit"]:
+                    return True
+                else:
+                    exit(0)
 
     def setDefaultConfig(self, config):
         # post-commit
@@ -199,7 +200,7 @@ class RunHook(option.Option):
     def postRebase(args):
         updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
+            git.submodule("--quiet sync")
             git.submodule("update --rebase")
 
     @staticmethod

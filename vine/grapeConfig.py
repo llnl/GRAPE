@@ -189,7 +189,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         cwd = os.getcwd()
         for repo in active:
             prefix = config.get("nested-%s" % repo, "prefix")
-            os.chdir(os.path.join(cwd,prefix))
+            os.chdir(os.path.join(workspaceDir,prefix))
             configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix))
 
             if git.diff("--name-only %s %s" % (since, now), quiet=True): 
