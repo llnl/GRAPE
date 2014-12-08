@@ -108,16 +108,17 @@ class RunHook(option.Option):
 
     def execute(self, args):
         for command in args.keys():
-            try:
-                if args[command]:
-                    self.commands[command](args)
-            except KeyError:
-                pass
-            finally:
-                if args["--noExit"]:
-                    return True
-                else:
-                    exit(0)
+            if command in self.commands.keys():
+                if args[command]: 
+                    try:
+                        self.commands[command](args)
+                    except KeyError:
+                        pass
+                    finally:
+                        if args["--noExit"]:
+                            return True
+                        else:
+                            exit(0)
 
     def setDefaultConfig(self, config):
         # post-commit
