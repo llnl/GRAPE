@@ -1,11 +1,13 @@
 import option
-import grapeGit as git
+
 import os
 import re
 import StringIO
 import ConfigParser
-import grapeConfig
 
+import grapeGit as git
+import grapeConfig
+import utility
 
 class Version(option.Option):
     """
@@ -20,6 +22,7 @@ class Version(option.Option):
                               [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--file=<path>]
                               [--nocommit]
                               [--notick]
+                              [--tagNested]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -56,6 +59,7 @@ class Version(option.Option):
         --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                             version in <file>.
+        --tagNested         Tag any active nested subprojects. 
 
 
     """
@@ -127,10 +131,18 @@ class Version(option.Option):
             git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
         if (not args["--nocommit"]) or args["--tag"]:
             self.tagVersion(self.ver, args)
+            if args["--tagNested"]:
+                cwd = os.getcwd()
+                wsDir = utility.workspaceDir()
+                for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+                    os.chdir(os.path.join(wsDir, subproject))
+                    self.tagVersion(self.ver, args)
+                os.chdir(cwd)
+                
 
     @staticmethod
     def stageVersionFile(fname):
-	print ( "STAGING %s" % fname)
+        print ( "STAGING %s" % fname)
         git.add(fname)
         return True
 

@@ -5,6 +5,7 @@ import option
 import grapeGit as git
 import utility
 import grapeConfig
+import grapeMenu
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
@@ -66,9 +67,15 @@ class Bundle(option.Option):
         super(Bundle, self).__init__()
         self._key = "bundle"
         self._section = "Patches"
-        self._config = git.baseDir() 
+        try: 
+            self._config = git.baseDir()
+        except git.GrapeGitError as e: 
+            self._config = utility.getHomeDirectory()
+        finally: 
+            self._baseDir = self._config
+            
     def config(self):
-        localConfig =  grapeConfig.grapeRepoConfig(git.baseDir())
+        localConfig =  grapeConfig.grapeRepoConfig(self._baseDir)
         if not localConfig: 
             return grapeConfig.grapeConfig()
         else:
@@ -90,9 +97,10 @@ class Bundle(option.Option):
         tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
 
         if not args["--norecurse"]: 
-            os.chdir(git.baseDir())
+            os.chdir(self._baseDir)
             grapecmd = os.path.join(os.path.dirname(__file__), "..", "grape")
-            git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
+            grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle"])
+            #git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
         git.fetch()
         git.fetch("--tags")
         branchlist = branches.split()

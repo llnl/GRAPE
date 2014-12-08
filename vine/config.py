@@ -1,7 +1,12 @@
-import option, utility
-import grapeGit as git
+
 import os
+
+import grapeConfig
+import grapeGit as git
 import grapeMenu
+import option
+import utility
+
 # Configure current repo
 class Config(option.Option):
     """
@@ -136,13 +141,35 @@ class Config(option.Option):
         # install hooks here and in all submodules
         print("Installing hooks in all repos")
         cwd = git.baseDir()
-        grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
-        os.chdir(cwd)
-        for sub in git.getActiveSubmodules(False):
-            os.chdir(os.path.join(cwd,sub))
-            grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
-        os.chdir(cwd)
+        grapeMenu.menu().applyMenuChoice("foreach", ["--currentCWD","grape installHooks"])
+        
+        #  ensure all public branches are available in all repos
+        submodules = git.getActiveSubmodules()
+        config = grapeConfig.grapeConfig()
+        for sub in submodules:
+            self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub)
+        
+        # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
+        wsDir = utility.workspaceDir()
+        config = grapeConfig.grapeRepoConfig(wsDir)    
+        for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+            self.ensurePublicBranchesExist(config, os.path.join(wsDir,proj))
+            
         return True
 
     def setDefaultConfig(self, config):
         pass
+    
+    @staticmethod
+    def ensurePublicBranchesExist(config,repo):
+        cwd =  os.getcwd()
+        os.chdir(repo)
+        publicBranches = config.getList("flow", "publicbranches")
+        allBranches = git.allBranches()
+        for branch in publicBranches:
+            if ("remotes/origin/%s" % branch) not in allBranches:
+                utility.printMsg("WARNING: public branch %s does not appear to exist on the remote origin!" % branch)
+            if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
+                utility.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
+                git.branch("%s origin/%s" % (branch, branch))
+            

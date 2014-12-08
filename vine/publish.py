@@ -231,12 +231,15 @@ class Publish(resumable.Resumable):
 
     def description(self):
         try:
+            current = git.currentBranch()
             public = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
         except git.GrapeGitError:
             public = "Unknown"
+            current = "Unknown"
         except KeyError:
             public = "Unknown"
-        return "Publish the current %s branch to %s" % (git.branchPrefix(git.currentBranch()), public)
+            current = "Unknown"
+        return "Publish the current %s branch to %s" % (git.branchPrefix(current), public)
 
     def _resume(self, args):
         super(Publish, self)._resume(args)
@@ -713,7 +716,7 @@ class Publish(resumable.Resumable):
     def tagVersion(args):
         ret = True
         if args["--tickVersion"]:
-            versionArgs = ["tick", "--tag", "--notick", "--nocommit"]
+            versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)

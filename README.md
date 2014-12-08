@@ -487,10 +487,12 @@ options are at least listed below.
     
 ## status
 
-    Usage: grape-status [-v]
+    Usage: grape-status [-v] [-u | --uno]
 
     Options:
     -v      Show git commands being issued. 
+    --uno    Do not show untracked files
+    -u      Show untracked files. 
 
     
 ## checkout
@@ -727,10 +729,13 @@ options are at least listed below.
 
     Executes a command in each project in this workspace (including the outer level project). 
 
-    Usage: grape-foreach [--quiet] <cmd> 
+    Usage: grape-foreach [--quiet] [--noTopLevel] [--currentCWD] <cmd> 
 
     Options:
-    --quiet      Quiets git's printout of "Entering submodule..."
+    --quiet        Quiets git's printout of "Entering submodule..."
+    --noTopLevel   Does not call <cmd> in the workspace directory, only in submodules and subprojects. 
+    --currentCWD   grape foreach normally starts work from the workspace top level directory. This flag 
+                   starts work from the current working directory. 
 
     Arguments:
     <cmd>        The cmd to execute. 
@@ -972,6 +977,7 @@ options are at least listed below.
                               [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--file=<path>]
                               [--nocommit]
                               [--notick]
+                              [--tagNested]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -1008,6 +1014,7 @@ options are at least listed below.
         --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                             version in <file>.
+        --tagNested         Tag any active nested subprojects. 
 
 
     

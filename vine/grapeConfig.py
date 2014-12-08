@@ -5,6 +5,7 @@ import utility
 import grapeMenu
 import grapeGit as git
 import option
+import config as configOption
 
 
 __configInstance = None
@@ -55,10 +56,7 @@ def readDefaults(config=None):
 
 
 def readGlobal():
-    if os.name == "nt":
-        globalconfigfile = os.path.join(os.environ["USERPROFILE"], ".grapeconfig")
-    else:
-        globalconfigfile = os.path.join(os.environ["HOME"], ".grapeconfig")
+    globalconfigfile = os.path.join(utility.getHomeDirectory(), ".grapeconfig")
     grapeConfig().read([globalconfigfile])
 
 
@@ -101,6 +99,10 @@ class ConfigPairDict(dict):
 
 
 class GrapeConfigParser(ConfigParser.ConfigParser):
+    def __init__(self, workspaceDir=None):
+        ConfigParser.ConfigParser.__init__(self)
+        if workspaceDir:
+            self.read(os.path.join(workspaceDir,".grapeconfig"))
 
     def readWorkspaceGrapeConfigFile(self):
         self.read(os.path.join(utility.workspaceDir(), ".grapeconfig"))
@@ -149,11 +151,17 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
  
 
     def getAllNestedSubprojects(self):
-        return self.getList("nestedProjects", "names")
-
+        list = []
+        try:
+           list = self.getList("nestedProjects", "names")
+        except: 
+            pass
+        finally:
+            return list
+        
     @staticmethod
-    def getAllActiveNestedSubprojects():
-        config = grapeConfig()
+    def getAllActiveNestedSubprojects(workspaceDir=None):
+        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
         allNested = config.getAllNestedSubprojects()
         userConfig = grapeUserConfig()
         active = []
@@ -162,34 +170,40 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
                 if userConfig.getboolean("nested-%s" % sub, "active"):
                     active.append(sub)
             except ConfigParser.Error:
+                userConfig.ensureSection("nested-%s" % sub)
                 userConfig.set("nested-%s" % sub, "active", "False")
         return active
 
     @staticmethod
-    def getAllActiveNestedSubprojectPrefixes(): 
-        config = grapeConfig()
-        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllActiveNestedSubprojects()]
+    def getAllActiveNestedSubprojectPrefixes(workspaceDir = None): 
+        config = grapeConfig() if (workspaceDir is None or workspaceDir is utility.workspaceDir()) else GrapeConfigParser(workspaceDir) 
+        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)]
 
     @staticmethod
-    def getAllModifiedNestedSubprojects(since, now="HEAD"): 
-        config = grapeConfig()
-        active = GrapeConfigParser.getAllActiveNestedSubprojects()
+    def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
+        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+        if workspaceDir is None:
+            workspaceDir = utility.workspaceDir()
+        active = GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)
         modified = []
         cwd = os.getcwd()
         for repo in active:
             prefix = config.get("nested-%s" % repo, "prefix")
             os.chdir(os.path.join(cwd,prefix))
+            configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix))
+
             if git.diff("--name-only %s %s" % (since, now), quiet=True): 
                 modified.append(repo)
+
         os.chdir(cwd)
         return modified
     
     @staticmethod
-    def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD"): 
-        config = grapeConfig()
-        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllModifiedNestedSubprojects(since)]
+    def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD", workspaceDir=None): 
+        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+        return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllModifiedNestedSubprojects(since,workspaceDir=workspaceDir)]
         
-    def setActiveNestedSubprojects(self, listOfActiveSubprojects):
+    def setActiveNestedSubprojects(self, listOfActiveSubprojects) :
         allNested = grapeConfig().getAllNestedSubprojects()
         active = {}
         for proj in allNested:

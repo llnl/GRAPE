@@ -1,5 +1,17 @@
 
 
+Wed Dec  3 15:24:08 2014 Peter B. Robinson
+v1.1.0
+
+SUMMARY: This updates the master branch from 1.0.0 to the state of develop 1.0.5.
+
+
+Wed Dec  3 15:20:22 2014 Peter B. Robinson
+v1.0.5
+
+Addes nested subproject compatibility for grape foreach and grape bundle. Grape publish should now tag nested subprojects.
+
+
 Fri Nov 21 15:35:46 2014 Peter B. Robinson
 v1.0.4
 
