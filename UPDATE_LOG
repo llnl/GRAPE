@@ -1,5 +1,11 @@
 
 
+Mon Dec  8 16:12:21 2014 Peter B. Robinson
+v1.1.1
+
+Nested Project bugfixes, adds python version check, changes core subprocess execution in hopes of eliminating hangs in grape hooks.
+
+
 Wed Dec  3 15:24:08 2014 Peter B. Robinson
 v1.1.0
 
