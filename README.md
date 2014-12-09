@@ -951,7 +951,7 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b]
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b] [--skipSubmodules] [--skipNestedSubprojects]
 
     Options:
         
