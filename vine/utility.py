@@ -142,12 +142,12 @@ def writeDefaultConfig(filename):
 def workspaceDir(): 
     cwd = os.getcwd()
     basedir = None
-    while True: 
-        try: 
-            basedir = git.baseDir()
-            os.chdir(os.path.join(basedir, ".."))
-        except git.GrapeGitError:
-            break
+
+ # go until you're at the root (you don't have a head after splitting)
+    while os.path.split(os.getcwd())[1]:
+        if os.path.exists(os.path.join(os.getcwd(), ".git")): 
+            basedir = os.getcwd()
+        os.chdir(os.path.join(os.getcwd(), ".."))
     if not basedir:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
     os.chdir(cwd)
