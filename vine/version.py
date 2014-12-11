@@ -19,7 +19,7 @@ class Version(option.Option):
            grape-version tick [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
                               [--nocommit]
                               [--notick]
                               [--tagNested]
@@ -73,7 +73,15 @@ class Version(option.Option):
     def description(self):
         return "Update the version for your current project."
 
+    def parseArgs(self, args): 
+        config = grapeConfig.grapeConfig()
+        # parse tagSuffix for version mappings
+        if args["--tagSuffix"] is None: 
+            branch2suffix = config.getMapping("versioning", "branchtagsuffixmappings")
+            args["--tagSuffix"] = branch2suffix[git.currentBranch()]
+
     def execute(self, args):
+        self.parseArgs(args)
         if args["init"]:
             self.initializeVersioning(args)
         if args["tick"]:
@@ -104,6 +112,8 @@ class Version(option.Option):
         fileName = config.get("versioning", "file")
         with open(fileName) as f:
             slots = self.readVersion(f, args)
+            self.ver = self.slotsToString(args, slots)
+            
         if not args["--notick"]:
             slot = args["--slot"]
             if not slot:
@@ -123,12 +133,13 @@ class Version(option.Option):
             while slot < len(slots):
                 slots[slot] = 0
                 slot += 1
-
-        with open(fileName, 'r+') as f:
-            self.ver = self.writeVersion(f, slots, args)
-        self.stageVersionFile(fileName)
-        if not args["--nocommit"]:
-            git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
+            # write the new version number to the version file. 
+            with open(fileName, 'r+') as f:
+                self.ver = self.writeVersion(f, slots, args)
+            self.stageVersionFile(fileName)
+            if not args["--nocommit"]:
+                git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
+                
         if (not args["--nocommit"]) or args["--tag"]:
             self.tagVersion(self.ver, args)
             if args["--tagNested"]:
@@ -160,6 +171,25 @@ class Version(option.Option):
         else:
             doTag = args["--tag"]
         if doTag:
+            prefix = args["--prefix"]
+            suffix = args["--suffix"]
+            tagPrefix = args["--tagPrefix"]
+            tagSuffix = args["--tagSuffix"]
+            
+            print prefix, suffix, tagPrefix, tagSuffix 
+            if tagPrefix and tagPrefix != prefix:
+                if prefix: 
+                    version.replace(prefix,tagPrefix,1)
+                else: 
+                    version = tagPrefix+version
+            if tagSuffix and tagSuffix != suffix:
+                if suffix:
+                    l = len(suffix)
+                    version = version[0:-l] + version[-l:].replace(suffix, tagSuffix, 1)
+                else:
+                    version = version + tagSuffix
+                    
+                
             git.tag("-a %s -m \"Tagged by grape\"" % version)
         return True
 
@@ -195,16 +225,28 @@ class Version(option.Option):
                 VERSION_ID = map(int, m1.group(3).split("."))
                 self.matchedLine = l
         if VERSION_ID is None:
-            print("GRAPE: string not found.")
+            print("GRAPE: .")
 
         return VERSION_ID
 
     def versionLine(self, version):
         return self.r.sub(r'\g<1>\g<2>' + '.'.join(['%s' % v for v in version]) + r'\g<4>', self.matchedLine)
 
-    def writeVersion(self, fileName, version, args):
+    def slotsToString(self, args, slots): 
+        return args["--prefix"] + '.'.join(['%s' % v for v in slots])+args["--suffix"]
+    
+    def stringToSlots(self, args, string):
         prefix = args["--prefix"]
         suffix = args["--suffix"]
+        if prefix: 
+            # strip off the prefix
+            string = ''.join(string.strip().split(prefix)[1:])
+        if suffix:
+            string = ''.join(string.strip().split(suffix)[:-1])
+        return string.strip().split('.')
+        
+
+    def writeVersion(self, fileName, version, args):
         fileName.seek(0)
         lines = []
         if args["init"]:
@@ -215,8 +257,7 @@ class Version(option.Option):
             lines.append(l)
         fileName.seek(0)
         fileName.writelines(lines)
-        verStr = prefix + '.'.join(['%s' % v for v in version])+suffix
-        return verStr
+        return self.slotsToString(args, version)
 
     def setDefaultConfig(self, config):
         """
@@ -230,3 +271,9 @@ class Version(option.Option):
         config.set("versioning", "branchSuffixMappings", "?:")
         config.set("versioning", "branchTagSuffixMappings", "?:")
         config.set("versioning", "prefix", "v")
+        
+if __name__ is "__main__": 
+    import grapeMenu
+    import sys
+    menu = grapeMenu.menu()
+    menu.applyMenuChoice("version", sys.argv[1:])

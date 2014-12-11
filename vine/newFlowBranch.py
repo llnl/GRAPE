@@ -125,3 +125,9 @@ class NewBranchOptionFactory():
             if topic != '?': 
                 options.append(NewBranchOption(topic, topicPublicMapping[topic]))
         return options
+
+
+if __name__ is "__main__":
+    import grapeMenu
+    menu = grapeMenu.menu()
+    menu.applyMenuChoice("feature", [])

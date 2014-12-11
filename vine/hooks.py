@@ -40,7 +40,7 @@ class InstallHooks(option.Option):
             with open(h, 'w') as f:
                 f.write("#!/bin/sh\n")
                 grapeCmd = utility.getGrapeExec()
-                f.write("%s runHook %s \"$@\" \n" % (grapeCmd, h))
+                f.write("%s runHook %s \"$@\" \n\n" % (grapeCmd, h))
             os.chmod(h, 0755)
         os.chdir(cwd)
 
@@ -48,7 +48,7 @@ class InstallHooks(option.Option):
         workspaceDir = utility.workspaceDir()
         utility.printMsg("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
-        for sub in git.getActiveSubmodules():
+        for sub in utility.getActiveSubprojects():
             utility.printMsg("Installing hooks in %s." % sub)
             self.installHooksInRepo(sub, args)
         return True
