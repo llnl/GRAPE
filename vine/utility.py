@@ -39,18 +39,34 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subpr
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
     process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
-                               cwd=workingDirectory, stdin=stdin)
+                               cwd=workingDirectory, stdin=stdin, bufsize=1)
     output = ""
-    for line in iter(process.stdout.readline, ''):
-        line = line.replace('\r', '').replace('\n', '')
-        if verbose > 0: 
-            print line
+    
+    # this might be the cause of a hangout, trying alternative below to see if hang reports diminish...
+    #for line in iter(process.stdout.readline, b''):
+        #line = line.replace('\r', '').replace('\n', '')
+        #if verbose > 0: 
+            #print line
+            #sys.stdout.flush()
+            #sys.stderr.flush()
+        #line += "\n"
+        #output = output+line
+        
+        
+    while process.poll() is None:
+        out = process.stdout.read(1)
+        if verbose > 0:
+            sys.stdout.write(out)
             sys.stdout.flush()
-        line += "\n"
-        output = output+line
+        output += out
+        
     process.wait()
     
-    #output = process.communicate()[0]
+    out =  process.communicate()[0]
+    if verbose > 0:
+        sys.stdout.write(out)
+        sys.stdout.flush()
+    output += out
     #if verbose > 0:
     #    print(output.strip())
     process.output = output
@@ -126,12 +142,12 @@ def writeDefaultConfig(filename):
 def workspaceDir(): 
     cwd = os.getcwd()
     basedir = None
-    while True: 
-        try: 
-            basedir = git.baseDir()
-            os.chdir(os.path.join(basedir, ".."))
-        except git.GrapeGitError:
-            break
+
+ # go until you're at the root (you don't have a head after splitting)
+    while os.path.split(os.getcwd())[1]:
+        if os.path.exists(os.path.join(os.getcwd(), ".git")): 
+            basedir = os.getcwd()
+        os.chdir(os.path.join(os.getcwd(), ".."))
     if not basedir:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
     os.chdir(cwd)

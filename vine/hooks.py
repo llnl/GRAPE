@@ -108,15 +108,17 @@ class RunHook(option.Option):
 
     def execute(self, args):
         for command in args.keys():
-            try:
-                if args[command]:
-                    self.commands[command](args)
-            except KeyError:
-                pass
-        if args["--noExit"]:
-            return True
-        else:
-            exit(0)
+            if command in self.commands.keys():
+                if args[command]: 
+                    try:
+                        self.commands[command](args)
+                    except KeyError:
+                        pass
+                    finally:
+                        if args["--noExit"]:
+                            return True
+                        else:
+                            exit(0)
 
     def setDefaultConfig(self, config):
         # post-commit
@@ -199,19 +201,23 @@ class RunHook(option.Option):
     def postRebase(args):
         updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
+            git.submodule("--quiet sync")
             git.submodule("update --rebase")
 
     @staticmethod
     def postMerge(args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
-            git.submodule("update --merge")
+            utility.printMsg("Post-Merge Hook: Syncing submodule URLs...")
+            git.submodule("--quiet sync")
+            utility.printMsg("Post-Merge Hook: Updating submodules...")
+            git.submodule("--quiet update --merge")
 
     @staticmethod
     def postCheckout(args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
-            git.submodule("update")
+            utility.printMsg("Post-Checkout Hook: Syncing submodule URLs...")
+            git.submodule("--quiet sync")
+            utility.printMsg("Post-Checkout Hook: Updating submodules...")
+            git.submodule("--quiet update")

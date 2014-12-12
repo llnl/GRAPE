@@ -154,6 +154,8 @@ class Config(option.Option):
         config = grapeConfig.grapeRepoConfig(wsDir)    
         for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             self.ensurePublicBranchesExist(config, os.path.join(wsDir,proj))
+        
+        self.ensurePublicBranchesExist(config, wsDir)
             
         return True
 

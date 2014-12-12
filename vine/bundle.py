@@ -151,6 +151,12 @@ class Unbundle(option.Option):
         super(Unbundle, self).__init__()
         self._key = "unbundle"
         self._section = "Patches"
+        try: 
+            self._config = git.baseDir()
+        except git.GrapeGitError as e: 
+            self._config = utility.getHomeDirectory()
+        finally: 
+            self._baseDir = self._config        
 
     def description(self):
         return "Unbundle the given bundle into this repo, update all updated branches"
