@@ -109,7 +109,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
 
     def readWorkspaceUserConfigFile(self):
         try:
-            self.read(os.path.join(utility.workspaceDir(),".git", ".grapeuserconfig"))
+            self.read(os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
         except IOError:
             pass
 

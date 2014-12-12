@@ -116,7 +116,10 @@ class AddSubproject(option.Option):
                                             (name, prefix, url, branch), 'y')
             if proceed:
                 git.clone("%s %s" % (fullurl, prefix))
-
+                ignorePath = os.path.join(git.baseDir(), ".gitignore")
+                with open(ignorePath, 'a') as ignore:
+                    ignore.writelines([prefix+'\n'])
+                git.add(ignorePath)
                 wsConfig = grapeConfig.workspaceConfig()
                 currentSubprojects = wsConfig.getList("nestedProjects", "names")
                 currentSubprojects.append(name)
@@ -129,7 +132,6 @@ class AddSubproject(option.Option):
                 with open(os.path.join(configFileName), 'w') as f:
                     wsConfig.write(f)
                 git.add(configFileName)
-
                 git.commit("%s %s -m \"GRAPE: Added nested subproject %s\"" % (ignorePath, configFileName, prefix))
                 # update the runtime config with the new workspace .grapeconfig's settings.
                 grapeConfig.read()

@@ -844,29 +844,25 @@ class Publish(resumable.Resumable):
         print("You are currently on %s" % public)
         
     def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination, repoType="outer"):
-            # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
-            policyToks = policy.strip().lower().split('->')
-            if policyToks[0] == "cascade":
-                policy = "squash"
-                # restore cascade info from an abort if necessary
-                if "<<cascadeDict>>" in args and args["<<cascadeDict>>"] is not None:
-                    self.cascadeDict = args["<<cascadeDict>>"]
-                    args["<<cascadeDict>>"] = None
-                    
-                
-                        
-                if len(policyToks) > 1:
-                    self.cascadeDict[repoType] = policyToks[1:]
-                else:
-                    self.cascadeDict[repoType] = [defaultCascadeDestination]
-                
-                # overwrite cascade with args[--cascade] to respect command line
-                if repoType == "outer":
-                    if args["--cascade"]:
-                        self.cascadeDict["outer"] = args["--cascade"]            
-            
+        # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
+        policyToks = policy.strip().lower().split('->')
+        if policyToks[0] == "cascade":
+            policy = "squash"
+            # restore cascade info from an abort if necessary
+            if "<<cascadeDict>>" in args and args["<<cascadeDict>>"] is not None:
+                self.cascadeDict = args["<<cascadeDict>>"]
+                args["<<cascadeDict>>"] = None    
+            if len(policyToks) > 1:
+                self.cascadeDict[repoType] = policyToks[1:]
+            else:
+                self.cascadeDict[repoType] = [defaultCascadeDestination]
+        args["<<cascadeDict>>"] = self.cascadeDict
+        return policy
+    
+    def parseCascadeArgs(self, args): 
+        if args["--cascade"]:
+            self.cascadeDict["outer"] = args["--cascade"]
             args["<<cascadeDict>>"] = self.cascadeDict
-            return policy
 
     def performCascades(self, args):
         self.loadPublishTargets(args)
@@ -1042,7 +1038,9 @@ class Publish(resumable.Resumable):
         # update policy from config if not set on CL
         if not policy:
             policy = self.parseConfigPublishPolicy(args, config.getMapping('flow', 'publishPolicy')[public], topic)
-
+        
+        self.parseCascadeArgs(args)
+            
         cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 

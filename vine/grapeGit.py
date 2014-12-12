@@ -208,17 +208,19 @@ def getModifiedSubmodules(branch1="", branch2="", quiet=True):
 def gitDir():
     base = baseDir()
     gitPath = os.path.join(base, ".git")
+    toReturn = None
     if os.path.isdir(gitPath):
-        return gitPath
+        toReturn = gitPath
     elif os.path.isfile(gitPath):
         with open(gitPath) as f:
             line = f.read()
             words = line.split()
             if words[0] == 'gitdir:':
                 relUnixPath = words[1]
-                return utility.makePathPortable(relUnixPath)
+                toReturn = utility.makePathPortable(relUnixPath)   
             else:
                 raise GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
+    return toReturn
 
 
 def hasBranch(b):

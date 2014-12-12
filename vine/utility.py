@@ -53,6 +53,17 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2, stdin=sy
             sys.stdout.write(out)
             sys.stdout.flush()
         output += out
+    
+    process.wait()    
+    
+    for out in outFile:
+        if verbose > 0:
+            sys.stdout.write(out)
+            sys.stdout.flush()            
+        output += out
+    
+    outFile.close()
+    
     process.output = output
     if process.returncode != 0 and verbose > 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))

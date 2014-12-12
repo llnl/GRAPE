@@ -14,7 +14,8 @@ class Resumable(option.Option):
         super(Resumable, self).__init__()
         self.progress = {}
         try:
-            self.progressFile = os.path.join(git.gitDir(), "grapeProgress")
+            gitDir = git.gitDir()
+            self.progressFile = os.path.join(gitDir, "grapeProgress")
         except git.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
             # in the user's $HOME directory
