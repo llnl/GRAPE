@@ -1,5 +1,21 @@
 
 
+Fri Dec 12 13:35:03 2014 Peter B. Robinson
+v1.1.4
+
+SUMMARY: Fixes several critical issues with nested subprojects and version tagging.  Adds arbitrary cascade definitions for publish policies. 
+BREAKING CHANGE: moved .grapeuserconfig location to workspace .git directory. This prevents the accidental removal of .grapeuserconfig with git clean calls. 
+
+DETAILS: 
+Fixes an issue where submodules did not get new branches if the user had an active nested subproject. 
+Fixed uv bug that could put .grapuserconfig in a bad state and cause requested nested projects to not clone.
+Fix branch tagging for squash and cascade commits, respecting branch-specific tag suffixes. 
+Adds arbitrary cascade definitions for publish policies.  New grape config syntax is: 
+[flow]
+publishpolicy = PUBLICBRANCH:cascade->BRANCH1->BRANCH2->...->BRANCHN
+Adds cascade commits as a separate publish step.
+
+
 Tue Dec  9 16:21:19 2014 Peter B. Robinson
 v1.1.3
 

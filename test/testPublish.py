@@ -39,7 +39,8 @@ class TestPublish(testGrape.TestGrape):
         self.assertFalse(git.diff("--name-only %s %s" % (toBranch, fromBranch)))
 
     def assertSuccessfulSquashCascadeMerge(self, fromBranch="testPublish", toBranch="master", cascadeDest="develop"):
-        self.assertTrue(git.currentBranch() == cascadeDest)
+        currentBranch = git.currentBranch()
+        self.assertTrue(currentBranch == cascadeDest)
         self.assertFalse(git.diff("--name-only %s %s" % (toBranch, fromBranch)))
         self.assertFalse(git.diff("--name-only %s %s" % (toBranch, cascadeDest)))
         self.assertTrue(git.branchUpToDateWith(toBranch, cascadeDest))

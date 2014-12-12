@@ -33,7 +33,7 @@ class Publish(resumable.Resumable):
     grapeconfig.flow.publishPolicy for the top-level repo and the publish policy for
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
-    Usage:  grape-publish [--squash [--cascade=<branch> ] | --merge |  --rebase]
+    Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
                          [-m <msg>]
                          [--recurse | --norecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
@@ -69,7 +69,9 @@ class Publish(resumable.Resumable):
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
     --cascade=<branch>      For squash merges, can choose to cascade back to <branch> after the merge is
-                            completed.
+                            completed. Define multiple times to setup a chain of cascades. Overrides outer repo and 
+                            nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
+                            submodule publish policies. 
     --merge                 Perform a normal merge.
     -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
                             --rebase.
@@ -165,8 +167,8 @@ class Publish(resumable.Resumable):
 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
-                            this branch will be updated to contain this message. If you don't specify a filename, it is
-                            assumed that the contents of the pull request description are intended for the update
+                            this branch will be updated to contain this message. If you don't specify a filename, grape
+                            will give you an opportunity to use contents of the pull request description are intended for the update
                             message. Both the commit message for the merge and an update log will contain this message.
                             Additionally, if email notification is configured, the contents of the email will have
                             this message.
@@ -228,6 +230,7 @@ class Publish(resumable.Resumable):
         self.st_prefixes = {}
         self.st_remotes = {}
         self.st_branches = {}
+        self.cascadeDict = {}
 
     def description(self):
         try:
@@ -308,7 +311,7 @@ class Publish(resumable.Resumable):
         order = ["ensureReview", "verifyCompletedReview", "testForCleanWorkspace1", "verifyPublishActions",
                  "md", "markInProgress", "tickVersion", "updateLog",
                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                 "tagVersion", "markAsDone", "notify", "deleteTopic", "done"]
+                 "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
 
         if args["--quick"]:
             order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
@@ -330,6 +333,7 @@ class Publish(resumable.Resumable):
                  "prePublish": self.performCustomPrePublishSteps,
                  "tickVersion": self.tickVersion,
                  "tagVersion": self.tagVersion,
+                 "performCascades": self.performCascades,
                  "publish": self.publishAllProjects,
                  "postPublish": self.performCustomPostPublishSteps,
                  "deleteTopic": self.deleteTopicBranch,
@@ -828,10 +832,7 @@ class Publish(resumable.Resumable):
         git.commit("-m \"%s\"" % args["-m"])
         print("%s squash-merged successfully to %s" % (topic, public))
         print("You are currently on %s" % public)
-        if args["--cascade"]:
-            cascade = args["--cascade"]
-            git.checkout(cascade)
-            git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, cascade))
+        
 
     @staticmethod
     def rebase(public, topic):
@@ -841,6 +842,65 @@ class Publish(resumable.Resumable):
         git.checkout(public)
         git.merge(topic)
         print("You are currently on %s" % public)
+        
+    def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination, repoType="outer"):
+        # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
+        policyToks = policy.strip().lower().split('->')
+        if policyToks[0] == "cascade":
+            policy = "squash"
+            # restore cascade info from an abort if necessary
+            if "<<cascadeDict>>" in args and args["<<cascadeDict>>"] is not None:
+                self.cascadeDict = args["<<cascadeDict>>"]
+                args["<<cascadeDict>>"] = None    
+            if len(policyToks) > 1:
+                self.cascadeDict[repoType] = policyToks[1:]
+            else:
+                self.cascadeDict[repoType] = [defaultCascadeDestination]
+        args["<<cascadeDict>>"] = self.cascadeDict
+        return policy
+    
+    def parseCascadeArgs(self, args): 
+        if args["--cascade"]:
+            self.cascadeDict["outer"] = args["--cascade"]
+            args["<<cascadeDict>>"] = self.cascadeDict
+
+    def performCascades(self, args):
+        self.loadPublishTargets(args)
+        
+        if "<<cascadeDict>>" in args and args["<<cascadeDict>>"]:
+            self.cascadeDict = args["<<cascadeDict>>"]
+         
+        wsdir = utility.workspaceDir()    
+        if self.cascadeDict:
+            # do outer level and nested project cascades
+            cascade = self.cascadeDict["outer"]
+            repos= [""]+grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+            repos = [os.path.join(wsdir,r) for r in repos]
+            for repo in repos:
+                public = args["--public"]
+                os.chdir(repo)
+                for branch in cascade:
+                    git.checkout(branch)
+                    git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
+                    public = branch 
+                    git.push("origin %s" % branch)
+                    
+            if "submodules" in self.cascadeDict and "<<publishedSubmodules>>" in args:
+                cascade = self.cascadeDict["submodules"]
+                repos = [os.path.join(wsdir,r) for r in args["<<publishedSubmodules>>"]]
+                for repo in repos:
+                    os.chdir(repo)
+                    public = args["--submodulePublic"]
+                    for branch in cascade:
+                        git.checkout(branch)
+                        git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
+                        public = branch 
+                        git.push("origin %s" % branch)
+            os.chdir(wsdir)
+            
+        return True
+                 
+                
 
     def publish(self, policy, public, topic, args):
         # don't bother publishing if public and topic are the same commit
@@ -946,17 +1006,7 @@ class Publish(resumable.Resumable):
         return True
 
 
-    def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination):
-        # if the policy starts with cascade, we allow a cascade->Branch syntax in the config file
-        policyToks = policy.strip().lower().split('-')
-        if policyToks[0] == "cascade":
-            policy = "squash"
-
-            if len(policyToks) > 1 and policyToks[1][0] == '>':
-                args["--cascade"] = policyToks[1][1:]
-            else:
-                args["--cascade"] = defaultCascadeDestination
-        return policy
+    
 
 
     def publishAllProjects(self, args):
@@ -988,7 +1038,9 @@ class Publish(resumable.Resumable):
         # update policy from config if not set on CL
         if not policy:
             policy = self.parseConfigPublishPolicy(args, config.getMapping('flow', 'publishPolicy')[public], topic)
-
+        
+        self.parseCascadeArgs(args)
+            
         cwd = git.baseDir(quiet=quiet)
         os.chdir(cwd)
 
@@ -1002,7 +1054,7 @@ class Publish(resumable.Resumable):
             outerCascadeOption = args["--cascade"]
             if not submodulePolicy:
                 submodulePolicy = config.getMapping('workspace', 'submodulePublishPolicy')[submodulePublic]
-                submodulePolicy = self.parseConfigPublishPolicy(args, submodulePolicy, topic)
+                submodulePolicy = self.parseConfigPublishPolicy(args, submodulePolicy, topic, repoType="submodule")
 
             valid = self.validateInput(submodulePolicy, args)
             if valid and self.verifyPublishTargetsWithUser(args):
@@ -1020,8 +1072,10 @@ class Publish(resumable.Resumable):
                     git.commit("-m \"%s - submodules published\"" % args["-m"])
                 except git.GrapeGitError:
                     pass
+            
 
-            # restore value for args[--cascade]
+            # restore value for args["--cascade"]
+            args["<<publishedSubmodules>>"] = submodules
             args["--cascade"] = outerCascadeOption
             os.chdir(cwd)
 

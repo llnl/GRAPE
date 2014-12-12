@@ -30,7 +30,7 @@ def makePathPortable(path):
     return newPath
 
 
-def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subprocess.PIPE, verbose=2,
+def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin):
     if verbose > 1:
         print("Executing: " + command + "\n\t Working Directory: " + workingDirectory)
@@ -38,7 +38,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), outFileHandle=subpr
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    process = subprocess.Popen(command, stdout=outFileHandle, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
                                cwd=workingDirectory, stdin=stdin, bufsize=1)
     output = ""
     
