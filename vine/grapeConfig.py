@@ -75,7 +75,7 @@ def read(additionalFileNames=None):
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
     except:
         pass
 
@@ -109,7 +109,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
 
     def readWorkspaceUserConfigFile(self):
         try:
-            self.read(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+            self.read(os.path.join(utility.workspaceDir(),".git", ".grapeuserconfig"))
         except IOError:
             pass
 

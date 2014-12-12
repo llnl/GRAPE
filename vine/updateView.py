@@ -164,7 +164,7 @@ class UpdateView(option.Option):
                         if proceed:
                             shutil.rmtree(subprojectdir)
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
-                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
         checkoutArgs = "-b" if args["-b"] else ""
 
