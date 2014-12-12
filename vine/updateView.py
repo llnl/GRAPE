@@ -138,27 +138,28 @@ class UpdateView(option.Option):
                 userConfig = grapeConfig.grapeUserConfig()
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
+                    subprojectName = reverseLookupByPrefix[subproject]
                     section = "nested-%s" % reverseLookupByPrefix[subproject]
                     userConfig.ensureSection(section)
                     previouslyActive = userConfig.getboolean(section, "active")
-    
+                    previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject))
+                    userConfig.set(section, "active", "True" if previouslyActive else "False")
                     if nowActive and previouslyActive:
-                        updatedActiveList.append(subproject)
+                        updatedActiveList.append(subprojectName)
     
                     if nowActive and not previouslyActive:
                         utility.printMsg("Activating Nested Subproject %s" % subproject)
-                        subprojectName = reverseLookupByPrefix[subproject]
                         addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig)
                         updatedActiveList.append(subprojectName)
     
                     if not nowActive and not previouslyActive:
                         pass
                     if not nowActive and previouslyActive:
-                        #remove the submodule
+                        #remove the subproject
                         subprojectdir = os.path.join(base, utility.makePathPortable(subproject))
                         proceed = args["-f"] or \
-                                  utility.userInput("About to delete all contents in %s. Any uncommitted changes, branches "
-                                                    "that are not pushed, or ignored files will be removed.  Proceed?" %
+                                  utility.userInput("About to delete all contents in %s. Any uncommitted changes, committed changes "
+                                                    "that have not been pushed, or ignored files will be lost.  Proceed?" %
                                                     subproject, 'n')
                         if proceed:
                             shutil.rmtree(subprojectdir)
