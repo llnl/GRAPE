@@ -37,7 +37,7 @@ def gitcmd(cmd, errmsg, quiet=False):
     else:
         verbose = 2
     cwd = os.getcwd()
-    process = utility.executeSubProcess(_cmd, cwd, subprocess.PIPE, verbose=verbose)
+    process = utility.executeSubProcess(_cmd, cwd, verbose=verbose)
     if process.returncode != 0:
         raise GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, quiet=quiet, cwd=cwd)
     return process.output.strip()
