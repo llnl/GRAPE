@@ -30,7 +30,7 @@ topicdestinationmappings = internalRelease:master publicRelease:master-cz
 [publish]
 buildcmds = 
 builddir = 
-testcmds = .grape test
+testcmds = ./grape test
 testdir = ./
 prepublishcmds = vine/gendocs.py README.md , git add README.md
 prepublishdir = .

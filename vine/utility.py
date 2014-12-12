@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-import tempfile
 import ConfigParser
 
 import grapeGit as git
@@ -31,39 +30,45 @@ def makePathPortable(path):
     return newPath
 
 
-def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2, stdin=sys.stdin):
+def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
+                      stdin=sys.stdin):
     if verbose > 1:
         print("Executing: " + command + "\n\t Working Directory: " + workingDirectory)
     #***************************************************************************************************************
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    # using tempfile to avoid buffer hang issues that can arise by using PIPE (often see this with git fetch)
-    # http://thraxil.org/users/anders/posts/2008/03/13/Subprocess-Hanging-PIPE-is-your-enemy/
-
-    outFile = tempfile.TemporaryFile()
-    process = subprocess.Popen(command, stdout=outFile, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
-                               cwd=workingDirectory, stdin=stdin, bufsize=-1)
-
-    # read out lines from the temporary file to the screen to stream output live
-    output = ""        
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+                               cwd=workingDirectory, stdin=stdin, bufsize=1)
+    output = ""
+    
+    # this might be the cause of a hangout, trying alternative below to see if hang reports diminish...
+    #for line in iter(process.stdout.readline, b''):
+        #line = line.replace('\r', '').replace('\n', '')
+        #if verbose > 0: 
+            #print line
+            #sys.stdout.flush()
+            #sys.stderr.flush()
+        #line += "\n"
+        #output = output+line
+        
+        
     while process.poll() is None:
-        out = outFile.readline()
+        out = process.stdout.read(1)
         if verbose > 0:
             sys.stdout.write(out)
             sys.stdout.flush()
         output += out
+        
+    process.wait()
     
-    process.wait()    
-    
-    for out in outFile:
-        if verbose > 0:
-            sys.stdout.write(out)
-            sys.stdout.flush()            
-        output += out
-    
-    outFile.close()
-    
+    out =  process.communicate()[0]
+    if verbose > 0:
+        sys.stdout.write(out)
+        sys.stdout.flush()
+    output += out
+    #if verbose > 0:
+    #    print(output.strip())
     process.output = output
     if process.returncode != 0 and verbose > 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
