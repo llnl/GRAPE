@@ -33,24 +33,24 @@ class Push(option.Option):
         os.chdir(baseDir)
         submodules = git.getActiveSubmodules()
         
-        print("GRAPE: Performing push in outer level project")
+        utility.printMsg("GRAPE: Performing push in outer level project")
         git.push(pushargs, quiet=quiet)
         if submodules:
-            print("GRAPE: Performing pushes in all submodules")
+            utility.printMsg("GRAPE: Performing pushes in all submodules")
         for sub in submodules: 
             os.chdir(os.path.join(baseDir, sub))
             git.push(pushargs, quiet=quiet)
 
         nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
         if nestedSubprojects:
-            print("GRAPE: Performing pushes in all active subprojects")
+            utility.printMsg("GRAPE: Performing pushes in all active subprojects")
         for proj in nestedSubprojects:
             os.chdir(os.path.join(baseDir, proj))
             git.push(pushargs, quiet=quiet)
 
         os.chdir(cwd)
         
-        print("GRAPE: pushed current branch to origin")
+        utility.printMsg("GRAPE: pushed current branch to origin")
         return True
     
     def setDefaultConfig(self, config):
