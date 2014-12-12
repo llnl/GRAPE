@@ -2,6 +2,7 @@ import os
 import option
 import grapeGit as git
 import utility
+import grapeConfig
 
 
 class Push(option.Option):
@@ -39,6 +40,14 @@ class Push(option.Option):
         for sub in submodules: 
             os.chdir(os.path.join(baseDir, sub))
             git.push(pushargs, quiet=quiet)
+
+        nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
+        if nestedSubprojects:
+            print("GRAPE: Performing pushes in all active subprojects")
+        for proj in nestedSubprojects:
+            os.chdir(os.path.join(baseDir, proj))
+            git.push(pushargs, quiet=quiet)
+
         os.chdir(cwd)
         
         print("GRAPE: pushed current branch to origin")
