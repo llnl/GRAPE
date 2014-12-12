@@ -56,7 +56,7 @@ class MergeDevelop(resumable.Resumable):
             print("WARNING: prefix %s does not have an associated topic branch, nor is a default"
                   "public branch configured. \n"
                   "use --public=<branch> to define, or add %s:<branch> or ?:<branch> to \n"
-                  "your .grapeconfig or .grapeuserconfig. " % (branchPrefix, branchPrefix))
+                  "your .grapeconfig or .git/.grapeuserconfig. " % (branchPrefix, branchPrefix))
             branch = None
         return branch
 
