@@ -239,7 +239,7 @@ class WriteConfig(option.Option):
     def __init__(self): 
         self._section = "Getting Started"
         self._key = "writeConfig"
-
+        self._config = None
     def description(self):
         return "write a .grapeconfig file based on your current environment"
 
