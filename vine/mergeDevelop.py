@@ -107,7 +107,7 @@ class MergeDevelop(resumable.Resumable):
         try:
             nested = self.progress["nested"]
         except KeyError:
-            nested = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(branch)
+            nested = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
                                                                                          
                                                                                          
         
