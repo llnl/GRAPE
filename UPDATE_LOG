@@ -1,5 +1,13 @@
 
 
+Thu Dec 18 07:56:59 2014 Benjamin T. Liu
+v1.1.5
+
+* Properly revert external diff.
+* Extend grape push to nested subprojects
+* Fix uv when local is ahead of remote
+
+
 Fri Dec 12 13:35:03 2014 Peter B. Robinson
 v1.1.4
 
