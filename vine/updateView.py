@@ -222,6 +222,9 @@ class UpdateView(option.Option):
                   except git.GrapeGitError as e2:
                      utility.printMsg("Local and remote versions of %s may have diverged" % branch)
                      utility.printMsg("%s" % e2.gitOutput)
+                     mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
+                     if mr.lower()[0] == "y":
+                        grapeMenu.menu().applyMenuChoice("mr",[git.currentBranch()])
                else:
                   raise(e)
 
