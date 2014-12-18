@@ -6,6 +6,7 @@ import option
 import utility
 import grapeGit as git
 import grapeConfig
+import grapeMenu
 import checkout
 
 
@@ -223,7 +224,7 @@ class UpdateView(option.Option):
                      utility.printMsg("Local and remote versions of %s may have diverged" % branch)
                      utility.printMsg("%s" % e2.gitOutput)
                      mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
-                     if mr.lower()[0] == "y":
+                     if mr:
                         grapeMenu.menu().applyMenuChoice("mr",[git.currentBranch()])
                else:
                   raise(e)
