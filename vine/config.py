@@ -143,16 +143,18 @@ class Config(option.Option):
         #  ensure all public branches are available in all repos
         submodules = git.getActiveSubmodules()
         config = grapeConfig.grapeConfig()
+        publicBranches = config.getList("flow", "publicbranches")
+        submodulePublicBranches = config.getMapping('workspace', 'submoduleTopicPrefixMappings').values()
         for sub in submodules:
-            self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub)
+            self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub, submodulePublicBranches)
         
         # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
         wsDir = utility.workspaceDir()
         config = grapeConfig.grapeRepoConfig(wsDir)    
         for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            self.ensurePublicBranchesExist(config, os.path.join(wsDir,proj))
+            self.ensurePublicBranchesExist(config, os.path.join(wsDir,proj), publicBranches)
         
-        self.ensurePublicBranchesExist(config, wsDir)
+        self.ensurePublicBranchesExist(config, wsDir, publicBranches)
             
         return True
 
@@ -160,15 +162,17 @@ class Config(option.Option):
         pass
     
     @staticmethod
-    def ensurePublicBranchesExist(config,repo):
+    def ensurePublicBranchesExist(config,repo, publicBranches):
         cwd =  os.getcwd()
         os.chdir(repo)
-        publicBranches = config.getList("flow", "publicbranches")
         allBranches = git.allBranches()
+        missingBranches = []
         for branch in publicBranches:
             if ("remotes/origin/%s" % branch) not in allBranches:
-                utility.printMsg("WARNING: public branch %s does not appear to exist on the remote origin of %s!" % (branch, repo))
+               missingBranches.append(branch)
             if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
                 utility.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
                 git.branch("%s origin/%s" % (branch, branch))
+        if len(missingBranches) > 0:
+            utility.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
         os.chdir(cwd)
