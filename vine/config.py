@@ -138,7 +138,7 @@ class Config(option.Option):
         # install hooks here and in all submodules
         print("Installing hooks in all repos")
         cwd = git.baseDir()
-        grapeMenu.menu().applyMenuChoice("foreach", ["--currentCWD","grape installHooks"])
+        grapeMenu.menu().applyMenuChoice("installHooks")
         
         #  ensure all public branches are available in all repos
         submodules = git.getActiveSubmodules()
@@ -167,8 +167,8 @@ class Config(option.Option):
         allBranches = git.allBranches()
         for branch in publicBranches:
             if ("remotes/origin/%s" % branch) not in allBranches:
-                utility.printMsg("WARNING: public branch %s does not appear to exist on the remote origin!" % branch)
+                utility.printMsg("WARNING: public branch %s does not appear to exist on the remote origin of %s!" % (branch, repo))
             if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
                 utility.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
                 git.branch("%s origin/%s" % (branch, branch))
-            
+        os.chdir(cwd)

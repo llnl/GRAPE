@@ -16,6 +16,7 @@ class InstallHooks(option.Option):
     Usage: grape-installHooks [--noRecurse] [--toInstall=<hook>]...
 
     Options:
+    --noRecurse           If set, do not recurse into submodules and nested subprojects.
     --toInstall=<hook>    the list of hook-types to install
                           [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
@@ -48,9 +49,10 @@ class InstallHooks(option.Option):
         workspaceDir = utility.workspaceDir()
         utility.printMsg("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
-        for sub in utility.getActiveSubprojects():
-            utility.printMsg("Installing hooks in %s." % sub)
-            self.installHooksInRepo(sub, args)
+        if not args["--noRecurse"]:
+           for sub in utility.getActiveSubprojects():
+               utility.printMsg("Installing hooks in %s." % sub)
+               self.installHooksInRepo(sub, args)
         return True
 
     def setDefaultConfig(self, config):
