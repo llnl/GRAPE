@@ -225,7 +225,7 @@ class UpdateView(option.Option):
                      utility.printMsg("%s" % e2.gitOutput)
                      mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
                      if mr:
-                        grapeMenu.menu().applyMenuChoice("mr",[git.currentBranch()])
+                        grapeMenu.menu().applyMenuChoice("mr", ["mr",git.currentBranch()])
                else:
                   raise(e)
 
