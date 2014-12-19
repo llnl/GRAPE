@@ -26,8 +26,10 @@ class MergeRemote(option.Option):
             git.branch('-r')
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
         git.fetch("origin")
-        # update our local reference to the remote branch so long as it's fast-forwardable
-        if git.hasBranch("origin/%s" % otherBranch) and  git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch):
+        # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
+        hasRemote = git.hasBranch("origin/%s" % otherBranch)
+        hasBranch = git.hasBranch(otherBranch)
+        if  hasRemote and  (git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch) or not hasBranch):
             git.fetch("origin %s:%s" % (otherBranch, otherBranch))
         args["<branch>"] = otherBranch
         args["--continue"] = False
