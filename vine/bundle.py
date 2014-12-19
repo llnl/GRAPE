@@ -119,7 +119,7 @@ class Bundle(option.Option):
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
-                    git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
+                git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
         return True
 
     def setDefaultConfig(self, config):
