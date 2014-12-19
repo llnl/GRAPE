@@ -30,6 +30,7 @@ class MergeRemote(option.Option):
         if git.hasBranch("origin/%s" % otherBranch) and  git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch):
             git.fetch("origin %s:%s" % (otherBranch, otherBranch))
         args["<branch>"] = otherBranch
+        args["--continue"] = False
         return grapeMenu.menu().getOption('m').execute(args)
 
     def setDefaultConfig(self, config):
