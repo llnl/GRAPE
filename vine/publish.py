@@ -1118,7 +1118,7 @@ class Publish(resumable.Resumable):
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in self.modifiedNestedProjects:
+            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
                 os.chdir(os.path.join(cwd,  nested))
                 self.publish(policy, public, topic, args)
                 os.chdir(cwd)
