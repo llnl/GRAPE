@@ -724,6 +724,10 @@ class Publish(resumable.Resumable):
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
+            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+               os.chdir(os.path.join(cwd,  nested))
+               git.push("--tags origin")
+               os.chdir(cwd)
             git.push("--tags origin")
         return ret
 
