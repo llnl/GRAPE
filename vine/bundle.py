@@ -100,6 +100,7 @@ class Bundle(option.Option):
             os.chdir(self._baseDir)
             grapecmd = os.path.join(os.path.dirname(__file__), "..", "grape")
             grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle"])
+            os.chdir(self._baseDir)
             #git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
         git.fetch()
         git.fetch("--tags")
@@ -119,7 +120,7 @@ class Bundle(option.Option):
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
-                    git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
+                git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
         return True
 
     def setDefaultConfig(self, config):
