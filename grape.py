@@ -1,6 +1,14 @@
 #!/bin/sh
 "exec" "python" "-B" "$0" "$@"
 import os, shutil, subprocess, sys
+
+pythonMajorVersion = sys.version_info[0]
+pythonMinorVersion = sys.version_info[1]
+
+if not (pythonMajorVersion == 2 and pythonMinorVersion > 6): 
+    print('Grape requires python 2.x, where x is greater than or equal to 7.')
+    exit(1)
+
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
 import StringIO

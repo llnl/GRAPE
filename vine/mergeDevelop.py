@@ -56,7 +56,7 @@ class MergeDevelop(resumable.Resumable):
             print("WARNING: prefix %s does not have an associated topic branch, nor is a default"
                   "public branch configured. \n"
                   "use --public=<branch> to define, or add %s:<branch> or ?:<branch> to \n"
-                  "your .grapeconfig or .grapeuserconfig. " % (branchPrefix, branchPrefix))
+                  "your .grapeconfig or .git/.grapeuserconfig. " % (branchPrefix, branchPrefix))
             branch = None
         return branch
 
@@ -107,7 +107,7 @@ class MergeDevelop(resumable.Resumable):
         try:
             nested = self.progress["nested"]
         except KeyError:
-            nested = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(branch)
+            nested = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
                                                                                          
                                                                                          
         
@@ -191,8 +191,9 @@ class MergeDevelop(resumable.Resumable):
         os.chdir(os.path.join(git.baseDir(), subproject))
         mergeArgs = args
         mergeArgs["<branch>"] = subPublic
-        print("GRAPE: Merging %s into %s for submodule %s" % (subPublic, git.currentBranch(), subproject))
-        ret = grapeMenu.menu().getOption("m").execute(mergeArgs)
+        utility.printMsg("Merging %s into %s for %s %s" % (subPublic, git.currentBranch(), "submodule" if isSubmodule else "subproject", 
+                                                       subproject))
+        ret = grapeMenu.menu().getOption("mr").execute(mergeArgs)
         conflict = not ret
         if conflict:
             self.progress["stopPoint"] = "Subproject: %s" % subproject

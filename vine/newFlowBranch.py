@@ -12,7 +12,7 @@ class NewBranchOption(option.Option):
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [-v] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -22,6 +22,7 @@ class NewBranchOption(option.Option):
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
     --norecurse             Don't create the branch in submodules.
+    -v                      Be more verbose. 
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -53,7 +54,9 @@ class NewBranchOption(option.Option):
         return branchPoint, prefix, user, branch
 
     def execute(self, args):
-        grapeMenu.menu().applyMenuChoice('up', ['up'])
+        quiet = not args["-v"]
+        upArgs = [] if quiet else ["-v"]
+        grapeMenu.menu().applyMenuChoice('up', upArgs)
         start = args["--start"]
         recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
         if args["--recurse"]:
@@ -63,7 +66,8 @@ class NewBranchOption(option.Option):
         if not start: 
             start = self._public
         
-        cwd = utility.workspaceDir()
+        wsdir = utility.workspaceDir()
+        cwd = wsdir
         os.chdir(cwd)
         subArgs = self.createBranch(start, self._key, args['--user'], args['<descr>'], args['--noverify'])
         branchName = "%s/%s/%s" % (subArgs[1], subArgs[2], subArgs[3])
@@ -76,13 +80,13 @@ class NewBranchOption(option.Option):
                                                                       "Proceed? [y/n]" % (branchName, start) , 'y')        
             if proceed:
                 for sub in subprojectPrefixes: 
-                    os.chdir(sub)
+                    os.chdir(os.path.join(wsdir,sub))
                     git.checkout(start)
                     grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start])
                     self.createBranch(subArgs[0], subArgs[1], subArgs[2], subArgs[3], noverify=True)
         
         
-        
+        os.chdir(wsdir)
         submodules = git.getActiveSubmodules()
         recurse = recurse and submodules
         if subArgs and recurse:
@@ -125,3 +129,9 @@ class NewBranchOptionFactory():
             if topic != '?': 
                 options.append(NewBranchOption(topic, topicPublicMapping[topic]))
         return options
+
+
+if __name__ is "__main__":
+    import grapeMenu
+    menu = grapeMenu.menu()
+    menu.applyMenuChoice("feature", [])

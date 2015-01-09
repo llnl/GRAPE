@@ -1,7 +1,12 @@
-import option, utility
-import grapeGit as git
+
 import os
+
+import grapeConfig
+import grapeGit as git
 import grapeMenu
+import option
+import utility
+
 # Configure current repo
 class Config(option.Option):
     """
@@ -106,9 +111,6 @@ class Config(option.Option):
                print("configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
                print("Could not find p4diff script at %s" % p4diffScript)
-        else:
-            #revert diff.external to the default value
-            git.config("diff.external","")
         useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
@@ -136,13 +138,41 @@ class Config(option.Option):
         # install hooks here and in all submodules
         print("Installing hooks in all repos")
         cwd = git.baseDir()
-        grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
-        os.chdir(cwd)
-        for sub in git.getActiveSubmodules(False):
-            os.chdir(os.path.join(cwd,sub))
-            grapeMenu.menu().applyMenuChoice("installHooks",["installHooks"])
-        os.chdir(cwd)
+        grapeMenu.menu().applyMenuChoice("installHooks")
+        
+        #  ensure all public branches are available in all repos
+        submodules = git.getActiveSubmodules()
+        config = grapeConfig.grapeConfig()
+        publicBranches = config.getList("flow", "publicbranches")
+        submodulePublicBranches = config.getMapping('workspace', 'submoduleTopicPrefixMappings').values()
+        for sub in submodules:
+            self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub, submodulePublicBranches)
+        
+        # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
+        wsDir = utility.workspaceDir()
+        config = grapeConfig.grapeRepoConfig(wsDir)    
+        for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+            self.ensurePublicBranchesExist(config, os.path.join(wsDir,proj), publicBranches)
+        
+        self.ensurePublicBranchesExist(config, wsDir, publicBranches)
+            
         return True
 
     def setDefaultConfig(self, config):
         pass
+    
+    @staticmethod
+    def ensurePublicBranchesExist(config,repo, publicBranches):
+        cwd =  os.getcwd()
+        os.chdir(repo)
+        allBranches = git.allBranches()
+        missingBranches = []
+        for branch in publicBranches:
+            if ("remotes/origin/%s" % branch) not in allBranches:
+               missingBranches.append(branch)
+            if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
+                utility.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
+                git.branch("%s origin/%s" % (branch, branch))
+        if len(missingBranches) > 0:
+            utility.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
+        os.chdir(cwd)

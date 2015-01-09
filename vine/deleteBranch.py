@@ -75,6 +75,8 @@ class DeleteBranch(option.Option):
             utility.printMsg("Deleting %s from your active nested subprojects: " % branch)
         for sub in subprojects:
             os.chdir(os.path.join(cwd,sub))
+            if git.currentBranch() == branch:
+                git.checkout(config.getPublicBranchFor(branch))
             self.deleteBranch(branch, force)
             os.chdir(cwd)
         

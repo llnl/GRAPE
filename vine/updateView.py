@@ -6,6 +6,7 @@ import option
 import utility
 import grapeGit as git
 import grapeConfig
+import grapeMenu
 import checkout
 
 
@@ -13,7 +14,7 @@ import checkout
 class UpdateView(option.Option):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b]
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b] [--skipSubmodules] [--skipNestedSubprojects]
 
     Options:
         
@@ -79,7 +80,7 @@ class UpdateView(option.Option):
                     included[subproject] = False
             if opt.lower()[0] == "s":
                 for subproject in subprojects: 
-                    included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects),
+                    included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
                                                             'n')
         for subprojects in toplevelSubs:
             included[subprojects] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects), 'n')
@@ -99,7 +100,7 @@ class UpdateView(option.Option):
         base = git.baseDir()
         if base == "":
             return False
-        hasSubmodules = len(git.getAllSubmodules()) > 0
+        hasSubmodules = len(git.getAllSubmodules()) > 0 and not args["--skipSubmodules"]
         if not args["--checkSubprojects"]:
             # handle submodules first
             if hasSubmodules:
@@ -129,40 +130,42 @@ class UpdateView(option.Option):
 
             # handle nested subprojects
             os.chdir(base)
-            includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
-
-            allNestedSubprojects = config.getAllNestedSubprojects()
-            reverseLookupByPrefix = {config.get("nested-%s" % sub, "prefix") : sub for sub in allNestedSubprojects} 
-
-            userConfig = grapeConfig.grapeUserConfig()
-            updatedActiveList = []
-            for subproject, nowActive in includedNestedSubprojectPrefixes.items():
-                section = "nested-%s" % reverseLookupByPrefix[subproject]
-                userConfig.ensureSection(section)
-                previouslyActive = userConfig.getboolean(section, "active")
-
-                if nowActive and previouslyActive:
-                    updatedActiveList.append(subproject)
-
-                if nowActive and not previouslyActive:
-                    utility.printMsg("Activating Nested Subproject %s" % subproject)
+            if not args["--skipNestedSubprojects"]: 
+                includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
+    
+                allNestedSubprojects = config.getAllNestedSubprojects()
+                reverseLookupByPrefix = {config.get("nested-%s" % sub, "prefix") : sub for sub in allNestedSubprojects} 
+    
+                userConfig = grapeConfig.grapeUserConfig()
+                updatedActiveList = []
+                for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
-                    addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig)
-                    updatedActiveList.append(subprojectName)
-
-                if not nowActive and not previouslyActive:
-                    pass
-                if not nowActive and previouslyActive:
-                    #remove the submodule
-                    subprojectdir = os.path.join(base, utility.makePathPortable(subproject))
-                    proceed = args["-f"] or \
-                              utility.userInput("About to delete all contents in %s. Any uncommitted changes, branches "
-                                                "that are not pushed, or ignored files will be removed.  Proceed?" %
-                                                subproject, 'n')
-                    if proceed:
-                        shutil.rmtree(subprojectdir)
-            userConfig.setActiveNestedSubprojects(updatedActiveList)
-            grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+                    section = "nested-%s" % reverseLookupByPrefix[subproject]
+                    userConfig.ensureSection(section)
+                    previouslyActive = userConfig.getboolean(section, "active")
+                    previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject))
+                    userConfig.set(section, "active", "True" if previouslyActive else "False")
+                    if nowActive and previouslyActive:
+                        updatedActiveList.append(subprojectName)
+    
+                    if nowActive and not previouslyActive:
+                        utility.printMsg("Activating Nested Subproject %s" % subproject)
+                        addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig)
+                        updatedActiveList.append(subprojectName)
+    
+                    if not nowActive and not previouslyActive:
+                        pass
+                    if not nowActive and previouslyActive:
+                        #remove the subproject
+                        subprojectdir = os.path.join(base, utility.makePathPortable(subproject))
+                        proceed = args["-f"] or \
+                                  utility.userInput("About to delete all contents in %s. Any uncommitted changes, committed changes "
+                                                    "that have not been pushed, or ignored files will be lost.  Proceed?" %
+                                                    subproject, 'n')
+                        if proceed:
+                            shutil.rmtree(subprojectdir)
+                userConfig.setActiveNestedSubprojects(updatedActiveList)
+                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
         checkoutArgs = "-b" if args["-b"] else ""
 
@@ -209,7 +212,21 @@ class UpdateView(option.Option):
             return
 
         if git.hasBranch(branch):
-            git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
+            try:
+                git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
+            except git.GrapeGitError as e:
+                if "[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput:
+                    utility.printMsg("Fetch of %s rejected as non-fast-forward\nAttempting push of local %s in %s" % (branch, branch, repo))
+                    try:
+                        git.push("origin %s" % branch, quiet=quiet)
+                    except git.GrapeGitError as e2:
+                        utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
+                        utility.printMsg("%s" % e2.gitOutput)
+                        mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
+                        if mr:
+                            grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
+                else:    
+                    raise(e)
 
         checkout.Checkout.handledCheckout(checkoutArgs, branch, repo, quiet=quiet)
 

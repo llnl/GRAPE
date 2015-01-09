@@ -16,6 +16,7 @@ class InstallHooks(option.Option):
     Usage: grape-installHooks [--noRecurse] [--toInstall=<hook>]...
 
     Options:
+    --noRecurse           If set, do not recurse into submodules and nested subprojects.
     --toInstall=<hook>    the list of hook-types to install
                           [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
@@ -40,7 +41,7 @@ class InstallHooks(option.Option):
             with open(h, 'w') as f:
                 f.write("#!/bin/sh\n")
                 grapeCmd = utility.getGrapeExec()
-                f.write("%s runHook %s \"$@\" \n" % (grapeCmd, h))
+                f.write("%s runHook %s \"$@\" \n\n" % (grapeCmd, h))
             os.chmod(h, 0755)
         os.chdir(cwd)
 
@@ -48,9 +49,10 @@ class InstallHooks(option.Option):
         workspaceDir = utility.workspaceDir()
         utility.printMsg("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
-        for sub in git.getActiveSubmodules():
-            utility.printMsg("Installing hooks in %s." % sub)
-            self.installHooksInRepo(sub, args)
+        if not args["--noRecurse"]:
+           for sub in utility.getActiveSubprojects():
+               utility.printMsg("Installing hooks in %s." % sub)
+               self.installHooksInRepo(sub, args)
         return True
 
     def setDefaultConfig(self, config):
@@ -108,15 +110,17 @@ class RunHook(option.Option):
 
     def execute(self, args):
         for command in args.keys():
-            try:
-                if args[command]:
-                    self.commands[command](args)
-            except KeyError:
-                pass
-        if args["--noExit"]:
-            return True
-        else:
-            exit(0)
+            if command in self.commands.keys():
+                if args[command]: 
+                    try:
+                        self.commands[command](args)
+                    except KeyError:
+                        pass
+                    finally:
+                        if args["--noExit"]:
+                            return True
+                        else:
+                            exit(0)
 
     def setDefaultConfig(self, config):
         # post-commit
@@ -199,19 +203,23 @@ class RunHook(option.Option):
     def postRebase(args):
         updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
+            git.submodule("--quiet sync")
             git.submodule("update --rebase")
 
     @staticmethod
     def postMerge(args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
-            git.submodule("update --merge")
+            utility.printMsg("Post-Merge Hook: Syncing submodule URLs...")
+            git.submodule("--quiet sync")
+            utility.printMsg("Post-Merge Hook: Updating submodules...")
+            git.submodule("--quiet update --merge")
 
     @staticmethod
     def postCheckout(args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("sync")
-            git.submodule("update")
+            utility.printMsg("Post-Checkout Hook: Syncing submodule URLs...")
+            git.submodule("--quiet sync")
+            utility.printMsg("Post-Checkout Hook: Updating submodules...")
+            git.submodule("--quiet update")

@@ -222,7 +222,10 @@ class TestMD(testGrape.TestGrape):
         self.assertFalse(git.branchUpToDateWith("testNestedMerge", "master"), msg=None)
         os.chdir(self.repo)
         # run grape md --am
-        ret = grapeMenu.menu().applyMenuChoice("md", ["--am", "--public=master"])
+        try:
+            ret = grapeMenu.menu().applyMenuChoice("md", ["--am", "--public=master"])
+        except SystemExit as e: 
+            self.assertTrue(False, "grape md raised exception %s" % e)
         self.assertFalse(ret, "grape md did not return False for conflicting merge.")
         # git status in outer repo should be clean
         status = git.status("--porcelain")

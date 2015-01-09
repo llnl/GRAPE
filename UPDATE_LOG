@@ -1,11 +1,73 @@
 
 
+Fri Jan  9 14:15:58 2015 Peter B. Robinson
+v1.2.0
+
+Equivalent to grape 1.1.7.  (Previously 1.0.4) See UPDATE_LOG for more details.
+
+
+Fri Jan  9 13:14:57 2015 Benjamin T. Liu
+v1.1.7
+
+Miscellaneous fixes:
+
+Fix config to run clean
+Fix db for subprojects (GRP-80)
+Fix bundle at top level (GRP-89)
+
+
+Wed Jan  7 15:09:30 2015 Benjamin T. Liu
+v1.1.7
+
+Miscellaneous fixes:
+
+Fix config to run clean
+Fix db for subprojects (GRP-80)
+
+
+Thu Dec 18 15:57:06 2014 Peter B. Robinson
+v1.1.6
+
+Make subprojects fetch before merging, updating status message to reflect subproject merges.
+
+
+Thu Dec 18 07:56:59 2014 Benjamin T. Liu
+v1.1.5
+
+* Properly revert external diff.
+* Extend grape push to nested subprojects
+* Fix uv when local is ahead of remote
+
+
+Fri Dec 12 13:35:03 2014 Peter B. Robinson
+v1.1.4
+
+SUMMARY: Fixes several critical issues with nested subprojects and version tagging.  Adds arbitrary cascade definitions for publish policies. 
+BREAKING CHANGE: moved .grapeuserconfig location to workspace .git directory. This prevents the accidental removal of .grapeuserconfig with git clean calls. 
+
+DETAILS: 
+Fixes an issue where submodules did not get new branches if the user had an active nested subproject. 
+Fixed uv bug that could put .grapuserconfig in a bad state and cause requested nested projects to not clone.
+Fix branch tagging for squash and cascade commits, respecting branch-specific tag suffixes. 
+Adds arbitrary cascade definitions for publish policies.  New grape config syntax is: 
+[flow]
+publishpolicy = PUBLICBRANCH:cascade->BRANCH1->BRANCH2->...->BRANCHN
+Adds cascade commits as a separate publish step.
+
+
+Tue Dec  9 16:21:19 2014 Peter B. Robinson
+v1.1.3
+
+Removes git basedir call from workspaceDir - git basedir ignores current working directory when git is calling grape runHook. I do not know how this happens, can only observe that it does.
+
+
+Mon Dec  8 16:12:21 2014 Peter B. Robinson
+v1.1.1
+
+Nested Project bugfixes, adds python version check, changes core subprocess execution in hopes of eliminating hangs in grape hooks.
+
+
 Wed Dec  3 15:24:08 2014 Peter B. Robinson
-v1.1.0
-
-SUMMARY: This updates the master branch from 1.0.0 to the state of develop 1.0.4.
-
-Tue Dec  2 16:22:37 2014 Peter B. Robinson
 v1.1.0
 
 SUMMARY: This updates the master branch from 1.0.0 to the state of develop 1.0.5.

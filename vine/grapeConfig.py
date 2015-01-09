@@ -5,6 +5,7 @@ import utility
 import grapeMenu
 import grapeGit as git
 import option
+import config as configOption
 
 
 __configInstance = None
@@ -74,7 +75,7 @@ def read(additionalFileNames=None):
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
     except:
         pass
 
@@ -108,7 +109,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
 
     def readWorkspaceUserConfigFile(self):
         try:
-            self.read(os.path.join(utility.workspaceDir(), ".grapeuserconfig"))
+            self.read(os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
         except IOError:
             pass
 
@@ -169,6 +170,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
                 if userConfig.getboolean("nested-%s" % sub, "active"):
                     active.append(sub)
             except ConfigParser.Error:
+                userConfig.ensureSection("nested-%s" % sub)
                 userConfig.set("nested-%s" % sub, "active", "False")
         return active
 
@@ -180,14 +182,20 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     @staticmethod
     def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
         config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+        publicBranches = config.getList("flow","publicbranches")
+        if workspaceDir is None:
+            workspaceDir = utility.workspaceDir()
         active = GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)
         modified = []
         cwd = os.getcwd()
         for repo in active:
             prefix = config.get("nested-%s" % repo, "prefix")
-            os.chdir(os.path.join(cwd,prefix))
+            os.chdir(os.path.join(workspaceDir,prefix))
+            configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix), publicBranches)
+
             if git.diff("--name-only %s %s" % (since, now), quiet=True): 
                 modified.append(repo)
+
         os.chdir(cwd)
         return modified
     
@@ -232,7 +240,7 @@ class WriteConfig(option.Option):
     def __init__(self): 
         self._section = "Getting Started"
         self._key = "writeConfig"
-
+        self._config = None
     def description(self):
         return "write a .grapeconfig file based on your current environment"
 

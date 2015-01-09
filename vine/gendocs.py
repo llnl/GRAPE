@@ -386,7 +386,7 @@ A nested subproject is a git repository that is ignored by git, but grape manage
 actions, gathering information with status, etc. Individual developers decide whether they want the nested subproject in
 their workspace by using 'grape uv'. 
 
-Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .grapeuserconfig 
+Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig 
 to know which ones to expect to find in the user's workspace. 
 
 nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at 
@@ -408,7 +408,7 @@ All of these are analagous to the same named options in the subtrees and subtree
     active = True
     
 The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will 
-only look in .grapeuserconfig for this particular setting, since the intended use cases for nested projects tend to be highly
+only look in .git/.grapeuserconfig for this particular setting, since the intended use cases for nested projects tend to be highly
 individualized. 
 
 

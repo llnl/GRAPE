@@ -25,8 +25,17 @@ class MergeRemote(option.Option):
             # list remote branches that are available
             git.branch('-r')
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
-        git.fetch("origin %s:%s" % (otherBranch, otherBranch))
+        git.fetch("origin")
+        # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
+        hasRemote = git.hasBranch("origin/%s" % otherBranch)
+        hasBranch = git.hasBranch(otherBranch)
+        if  hasRemote and  (git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch) or not hasBranch):
+            git.fetch("origin %s:%s" % (otherBranch, otherBranch))
         args["<branch>"] = otherBranch
+        # if mr is called by the user, need to initialize the --continue argument. 
+        # if it is called by md, it will be set already. 
+        if not "--continue" in args:
+            args["--continue"] = False
         return grapeMenu.menu().getOption('m').execute(args)
 
     def setDefaultConfig(self, config):

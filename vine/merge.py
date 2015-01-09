@@ -8,6 +8,9 @@ import resumable
 
 
 # merge in a local branch into this branch
+#
+# NOTE: any updates to merge's arguments should be reflected in Merge Remote's arguments, or at least given values
+# by mergeRemote before the call to merge. 
 class Merge(resumable.Resumable):
     """
     grape m
