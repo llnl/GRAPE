@@ -32,7 +32,10 @@ class MergeRemote(option.Option):
         if  hasRemote and  (git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch) or not hasBranch):
             git.fetch("origin %s:%s" % (otherBranch, otherBranch))
         args["<branch>"] = otherBranch
-        args["--continue"] = False
+        # if mr is called by the user, need to initialize the --continue argument. 
+        # if it is called by md, it will be set already. 
+        if not "--continue" in args:
+            args["--continue"] = False
         return grapeMenu.menu().getOption('m').execute(args)
 
     def setDefaultConfig(self, config):
