@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 import sys
 import os
 import inspect
@@ -13,13 +11,11 @@ if grapePath not in sys.path:
     sys.path.append(grapePath)
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
-
 import unittest
 
-def printStr(str):
-    print str
-
-
+#A grape project in a command list form that has reset capability.
+#Another way to make work this would be to take a user generated reset function
+#in the constructor and just apply that.  
 class ResettableProject:
     def __init__(self, projectDir):
         self.projectDir = projectDir
@@ -49,54 +45,59 @@ class ResettableProject:
             os.chdir(os.path.abspath(os.path.join(self.projectDir,"..")))
             shutil.rmtree(self.projectDir, True)
 
+#This takes a project and various test methods and generates a test method using
+#a closure pattern.  It is part of the magic of createGridTestClass.
+def generateTest(project, method, testClassSetUp, testClassTearDown):
+    def test(self):
+        testClassSetUp(self)
+        project.reset()
+        method(self)
+        testClassTearDown(self)
+    return test
 
 
+#Beware, this is a bit of a wonky piece of metacode.  It takes a length M list of resettable projects, and 
+#a length N list of tests encapsulated in what would normally be a unittest.TestCase class.  It then 
+#pulls the test methods out the TestClass and generates a new GridTest class with M*N test methods in it   
 def createGridTestClass(projectList, testClass, gridTestName):
-    #Digest the class into pieces we can work with
+    #Digest the class into pieces we can work with namely the method names and the methods pulled out of the class
     testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method)) 
-                            and not (method in ["__init__", "setUp", "tearDown"])]  #Extract the test methods out of the class
-    testMethods = [getattr(testClass, method) for method in testMethodNames] 
+                            and not (method in ["__init__", "setUp", "tearDown"])]
+    testMethods = [getattr(testClass, method).__func__ for method in testMethodNames] 
 
+    #If the testClass has setUp and/or tearDown methods we need to grab and apply them
     if hasattr(testClass, "setUp"):
         testClassSetUp = getattr(testClass, "setUp")
     else:
-        testClassSetUp = lambda : None
+        testClassSetUp = lambda self : None
     
     if hasattr(testClass, "tearDown"):
         testClassTearDown = getattr(testClass, "tearDown")
     else:
-        testClassTearDown = lambda : None
+        testClassTearDown = lambda self : None
 
-    #Now create a dict with all of the generated TestCase methods
-    grid_class_dict = {}
+    #Now create a new class with all of the generated TestCase methods
+    GridTest = type(gridTestName, (unittest.TestCase, object), {})
     for projecti in range(len(projectList)):
         project = projectList[projecti]
         for (name, method) in zip(testMethodNames, testMethods):
-            def dummy(self):
-                testClassSetUp()
-                project.reset()
-                method()
-                testClassTearDown()
-            grid_class_dict[name + str(projecti)] = dummy
+            test = generateTest(project, method, testClassSetUp, testClassTearDown)
+            setattr(GridTest, name + str(projecti), test)
 
-    #Create and return the GridTest class
-    GridTest = type(gridTestName, (unittest.TestCase, object), grid_class_dict)
     return GridTest
 
 
 class QuickGridTests:
-    def oneEqOne(self):
+    def testOneEqOne(self):
         self.assertEqual(1, 1)
 
-    def oneEqTwo(self):
+    def testOneEqTwo(self):
         self.assertEqual(1, 2)
 
-    def twoEqTwo(self):
+    def testTwoEqTwo(self):
         self.assertEqual(2, 2)
 
-
-def main():
-    #tests = QuickTests()
+if __name__ == "__main__":
     projects = [ResettableProject("/g/g13/afisher/wcispace/test/repo1"), 
                 ResettableProject("/g/g13/afisher/wcispace/test/repo2"), 
                 ResettableProject("/g/g13/afisher/wcispace/test/repo3")]
@@ -105,8 +106,3 @@ def main():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(GridTest))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-    print GridTest().oneEqTwo1()
-
-
-if __name__ == "__main__":
-    main()
