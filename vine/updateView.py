@@ -6,6 +6,7 @@ import option
 import utility
 import grapeGit as git
 import grapeConfig
+import grapeMenu
 import checkout
 
 
@@ -212,18 +213,20 @@ class UpdateView(option.Option):
 
         if git.hasBranch(branch):
             try:
-               git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
+                git.fetch("origin", "%s:%s" % (branch, branch), quiet=quiet)
             except git.GrapeGitError as e:
-               if "[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput:
-                  utility.printMsg("Fetch of %s rejected as non-fast-forward" % branch)
-                  utility.printMsg("Attempting push of local %s" % branch)
-                  try:
-                     git.push("origin %s" % branch, quiet=quiet)
-                  except git.GrapeGitError as e2:
-                     utility.printMsg("Local and remote versions of %s may have diverged" % branch)
-                     utility.printMsg("%s" % e2.gitOutput)
-               else:
-                  raise(e)
+                if "[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput:
+                    utility.printMsg("Fetch of %s rejected as non-fast-forward\nAttempting push of local %s in %s" % (branch, branch, repo))
+                    try:
+                        git.push("origin %s" % branch, quiet=quiet)
+                    except git.GrapeGitError as e2:
+                        utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
+                        utility.printMsg("%s" % e2.gitOutput)
+                        mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
+                        if mr:
+                            grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
+                else:    
+                    raise(e)
 
         checkout.Checkout.handledCheckout(checkoutArgs, branch, repo, quiet=quiet)
 

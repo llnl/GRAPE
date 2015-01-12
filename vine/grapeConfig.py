@@ -182,6 +182,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     @staticmethod
     def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
         config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+        publicBranches = config.getList("flow","publicbranches")
         if workspaceDir is None:
             workspaceDir = utility.workspaceDir()
         active = GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)
@@ -190,7 +191,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         for repo in active:
             prefix = config.get("nested-%s" % repo, "prefix")
             os.chdir(os.path.join(workspaceDir,prefix))
-            configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix))
+            configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix), publicBranches)
 
             if git.diff("--name-only %s %s" % (since, now), quiet=True): 
                 modified.append(repo)

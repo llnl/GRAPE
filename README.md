@@ -913,6 +913,7 @@ options are at least listed below.
     Usage: grape-installHooks [--noRecurse] [--toInstall=<hook>]...
 
     Options:
+    --noRecurse           If set, do not recurse into submodules and nested subprojects.
     --toInstall=<hook>    the list of hook-types to install
                           [default: pre-commit pre-push pre-rebase post-commit post-rebase post-merge post-checkout]
 
