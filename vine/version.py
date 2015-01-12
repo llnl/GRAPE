@@ -176,7 +176,6 @@ class Version(option.Option):
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
             
-            print prefix, suffix, tagPrefix, tagSuffix 
             if tagPrefix and tagPrefix != prefix:
                 if prefix: 
                     version.replace(prefix,tagPrefix,1)
