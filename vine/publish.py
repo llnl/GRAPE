@@ -308,7 +308,7 @@ class Publish(resumable.Resumable):
         self.parseArgs(args)
         
         startPoint = args["--startAt"]
-        order = ["md", "ensureReview", "verifyCompletedReview", "testForCleanWorkspace1", "verifyPublishActions",
+        order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureReview", "verifyCompletedReview", 
                  "markInProgress", "tickVersion", "updateLog",
                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                  "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
