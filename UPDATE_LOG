@@ -1,5 +1,17 @@
 
 
+Mon Jan 12 14:58:21 2015 Peter B. Robinson
+v1.1.9
+
+Exposes full CLI syntax to the grape menu.
+
+
+Mon Jan 12 14:53:24 2015 Benjamin T. Liu
+v1.1.8
+
+Fixes for publish
+
+
 Fri Jan  9 14:15:58 2015 Peter B. Robinson
 v1.2.0
 

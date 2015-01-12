@@ -724,6 +724,10 @@ class Publish(resumable.Resumable):
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
+            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+               os.chdir(os.path.join(cwd,  nested))
+               git.push("--tags origin")
+               os.chdir(cwd)
             git.push("--tags origin")
         return ret
 
@@ -1118,7 +1122,7 @@ class Publish(resumable.Resumable):
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in self.modifiedNestedProjects:
+            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
                 os.chdir(os.path.join(cwd,  nested))
                 self.publish(policy, public, topic, args)
                 os.chdir(cwd)
