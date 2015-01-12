@@ -14,11 +14,14 @@ from vine import grapeGit as git
 import unittest
 
 #A grape project in a command list form that has reset capability.
-#Another way to make work this would be to take a user generated reset function
+#Another way to make this work would be to take a user generated reset function
 #in the constructor and just apply that.  
 class ResettableProject:
     def __init__(self, projectDir):
         self.projectDir = projectDir
+        if os.path.exists(projectDir):
+            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % projectDir
+            sys.exit(1)
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
         #param itself can be a tuple or a single parameter
@@ -33,7 +36,7 @@ class ResettableProject:
     def reset(self):
         self.tearDown()
 
-        #Run the commands using python's 1st order reresentations of the functions and tuples
+        #Run the commands using python's 1st order representations of the functions and tuples
         for (cmd, param) in self.cmdList:
             if type(param) == type(()):
                 cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
@@ -56,9 +59,9 @@ def generateTest(project, method, testClassSetUp, testClassTearDown):
     return test
 
 
-#Beware, this is a bit of a wonky piece of metacode.  It takes a length M list of resettable projects, and 
+#Beware, this is a wonky piece of metacode.  It takes a length M list of resettable projects, and 
 #a length N list of tests encapsulated in what would normally be a unittest.TestCase class.  It then 
-#pulls the test methods out the TestClass and generates a new GridTest class with M*N test methods in it   
+#pulls the test methods out the TestClass and generates a new GridTest class with M*N test methods in it.  
 def createGridTestClass(projectList, testClass, gridTestName):
     #Digest the class into pieces we can work with namely the method names and the methods pulled out of the class
     testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method)) 
