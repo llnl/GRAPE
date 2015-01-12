@@ -28,7 +28,7 @@ class ResettableProject:
                          (git.gitcmd, ("init", "Setup Failed"))]
 
     def addCommands(self, newCmds):
-        self.cmdList.append(newCmds)
+        self.cmdList.extend(newCmds)
 
     def reset(self):
         self.tearDown()
@@ -51,7 +51,7 @@ def generateTest(project, method, testClassSetUp, testClassTearDown):
     def test(self):
         testClassSetUp(self)
         project.reset()
-        method(self)
+        method(self, project)
         testClassTearDown(self)
     return test
 
@@ -85,24 +85,3 @@ def createGridTestClass(projectList, testClass, gridTestName):
             setattr(GridTest, name + str(projecti), test)
 
     return GridTest
-
-
-class QuickGridTests:
-    def testOneEqOne(self):
-        self.assertEqual(1, 1)
-
-    def testOneEqTwo(self):
-        self.assertEqual(1, 2)
-
-    def testTwoEqTwo(self):
-        self.assertEqual(2, 2)
-
-if __name__ == "__main__":
-    projects = [ResettableProject("/g/g13/afisher/wcispace/test/repo1"), 
-                ResettableProject("/g/g13/afisher/wcispace/test/repo2"), 
-                ResettableProject("/g/g13/afisher/wcispace/test/repo3")]
-    
-    GridTest = createGridTestClass(projects, QuickGridTests, "myFirstGridTest")
-    suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(GridTest))
-    result = unittest.TextTestRunner(verbosity=2).run(suite)
