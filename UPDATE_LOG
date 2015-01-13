@@ -1,5 +1,11 @@
 
 
+Tue Jan 13 10:37:32 2015 Peter B. Robinson
+v1.2.4
+
+Moved md to first publish step to ensure submodules are up to date, preventing situations where ensure review will fail.
+
+
 Mon Jan 12 16:03:17 2015 Aaron Fisher
 v1.1.10
 
