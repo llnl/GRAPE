@@ -1,5 +1,11 @@
 
 
+Mon Jan 12 16:03:17 2015 Aaron Fisher
+v1.1.10
+
+Adds some machinery for creating grids of unit tests with various grape projects in different states being run through a list of tests wrapped up in a Class.
+
+
 Mon Jan 12 14:58:21 2015 Peter B. Robinson
 v1.1.9
 
