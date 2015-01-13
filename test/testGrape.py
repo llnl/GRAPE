@@ -67,7 +67,7 @@ class TestGrape(unittest.TestCase):
         self.cwd = os.getcwd()
         sys.stdout = self.output
         sys.stderr = self.error
-        self.menu = grapeMenu.menu()
+
         # create a test repository to operate in.
         try:
             try:
@@ -83,9 +83,13 @@ class TestGrape(unittest.TestCase):
             self.file1 = fname
             git.gitcmd("add %s" % fname, "Add Failed")
             git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
+            # create a develop branch in addition to master by default
+            git.branch("develop")
             os.chdir(os.path.join(self.repo, ".."))
         except git.GrapeGitError:
             pass
+        
+        self.menu = grapeMenu.menu()
 
     def tearDown(self):
         def onError(func, path, exc_info):

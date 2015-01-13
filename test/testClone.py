@@ -14,9 +14,13 @@ class TestClone(testGrape.TestGrape):
         args = [self.repo, self.repos[1], "--recursive"]
         ret =grapeMenu.menu().applyMenuChoice("clone", args)
         self.assertTrue(ret)
+        
         # check to make sure we didn't get a usage string dump
         contents = self.output.getvalue()
         self.assertNotIn(contents, "Usage: grape-clone")
+        
+        # check to make sure we didn't see a GRAPE WARNING
+        self.assertNotIn("WARNING", contents, "GRAPE ISSUED A WARNING DURING A CLONE")
 
         # check to make sure the new repo has the old repo as a remote
         os.chdir(self.repos[1])

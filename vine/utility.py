@@ -139,7 +139,7 @@ def writeDefaultConfig(filename):
 
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir(): 
+def workspaceDir(warnIfNotFound = True): 
     cwd = os.getcwd()
     basedir = None
 
@@ -148,7 +148,7 @@ def workspaceDir():
         if os.path.exists(os.path.join(os.getcwd(), ".git")): 
             basedir = os.getcwd()
         os.chdir(os.path.join(os.getcwd(), ".."))
-    if not basedir:
+    if not basedir and warnIfNotFound:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
     os.chdir(cwd)
     return basedir
