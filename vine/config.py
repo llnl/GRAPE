@@ -144,7 +144,7 @@ class Config(option.Option):
         submodules = git.getActiveSubmodules()
         config = grapeConfig.grapeConfig()
         publicBranches = config.getList("flow", "publicbranches")
-        submodulePublicBranches = config.getMapping('workspace', 'submoduleTopicPrefixMappings').values()
+        submodulePublicBranches = set(config.getMapping('workspace', 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
             self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub, submodulePublicBranches)
         
