@@ -56,7 +56,7 @@ def allBranches():
     return branch("-a", quiet=True).replace("*",' ').replace(" ",'').split()
 
 def branch(argstr="", quiet=False):
-    return gitcmd("branch %s" % argstr, "Could not list branches", quiet)
+    return gitcmd("branch %s" % argstr, "Could not execute git branch command", quiet)
 
 
 def branchPrefix(branchName):
