@@ -159,3 +159,10 @@ class TestPublish(testGrape.TestGrape):
         os.chdir(self.subproject)
         self.assertTrue(git.currentBranch() == "master", "on %s, expected to be on master" % git.currentBranch())
         
+    def testPublishFromWithinNestedSubproject(self):
+        import testNestedSubproject
+        testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
+ 
+        self.setUpBranchToFFMerge()
+        os.chdir(self.subproject)
+        self.assertGrapePublishWorked()
