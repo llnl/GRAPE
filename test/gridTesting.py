@@ -11,6 +11,7 @@ if grapePath not in sys.path:
     sys.path.append(grapePath)
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
+import testGrape
 import unittest
 
 #A grape project in a command list form that has reset capability.
@@ -62,7 +63,7 @@ def generateTest(project, method, testClassSetUp, testClassTearDown):
 #Beware, this is a wonky piece of metacode.  It takes a length M list of resettable projects, and 
 #a length N list of tests encapsulated in what would normally be a unittest.TestCase class.  It then 
 #pulls the test methods out the TestClass and generates a new GridTest class with M*N test methods in it.  
-def createGridTestClass(projectList, testClass, gridTestName):
+def createGridTestClass(projectList, testClass, gridTestName, inheritsFromClass=testGrape.TestGrape):
     #Digest the class into pieces we can work with namely the method names and the methods pulled out of the class
     testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method)) 
                             and not (method in ["__init__", "setUp", "tearDown"])]
@@ -80,7 +81,7 @@ def createGridTestClass(projectList, testClass, gridTestName):
         testClassTearDown = lambda self : None
 
     #Now create a new class with all of the generated TestCase methods
-    GridTest = type(gridTestName, (unittest.TestCase, object), {})
+    GridTest = type(gridTestName, (inheritsFromClass, object), {})
     for projecti in range(len(projectList)):
         project = projectList[projecti]
         for (name, method) in zip(testMethodNames, testMethods):
