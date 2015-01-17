@@ -49,43 +49,28 @@ class ResettableProject:
             os.chdir(os.path.abspath(os.path.join(self.projectDir,"..")))
             shutil.rmtree(self.projectDir, True)
 
-#This takes a project and various test methods and generates a test method using
-#a closure pattern.  It is part of the magic of createGridTestClass.
-def generateTest(project, method, testClassSetUp, testClassTearDown):
+# This takes a project and various test methods and generates a test method using
+# a closure pattern.  It is part of the magic of createGridTestClass.
+def generateTest(project, method):
     def test(self):
-        testClassSetUp(self)
         project.reset()
         method(self, project)
-        testClassTearDown(self)
     return test
 
 
-#Beware, this is a wonky piece of metacode.  It takes a length M list of resettable projects, and 
-#a length N list of tests encapsulated in what would normally be a unittest.TestCase class.  It then 
-#pulls the test methods out the TestClass and generates a new GridTest class with M*N test methods in it.  
-def createGridTestClass(projectList, testClass, gridTestName, inheritsFromClass=testGrape.TestGrape):
+# Beware, this is a wonky piece of metacode.  It takes a length M list of resettable projects, and 
+# a length N list of tests encapsulated in a unittest.TestCase class.  The test methods must be prefixed with
+# "gridtest" instead of test.  It then generates test methods for the M*N cases in that class.
+def gridifyTestClass(projectList, testClass):
     #Digest the class into pieces we can work with namely the method names and the methods pulled out of the class
     testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method)) 
-                            and not (method in ["__init__", "setUp", "tearDown"])]
+                            and method.find("gridtest") == 0]
     testMethods = [getattr(testClass, method).__func__ for method in testMethodNames] 
 
-    #If the testClass has setUp and/or tearDown methods we need to grab and apply them
-    if hasattr(testClass, "setUp"):
-        testClassSetUp = getattr(testClass, "setUp")
-    else:
-        testClassSetUp = lambda self : None
-    
-    if hasattr(testClass, "tearDown"):
-        testClassTearDown = getattr(testClass, "tearDown")
-    else:
-        testClassTearDown = lambda self : None
-
-    #Now create a new class with all of the generated TestCase methods
-    GridTest = type(gridTestName, (inheritsFromClass, object), {})
+    #Now add the N*M test methods to the class test class
     for projecti in range(len(projectList)):
         project = projectList[projecti]
         for (name, method) in zip(testMethodNames, testMethods):
-            test = generateTest(project, method, testClassSetUp, testClassTearDown)
-            setattr(GridTest, name + str(projecti), test)
-
-    return GridTest
+            test = generateTest(project, method)
+            mangled_name = name[4:] + str(projecti)
+            setattr(testClass, mangled_name, test)

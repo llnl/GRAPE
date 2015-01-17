@@ -1,8 +1,8 @@
 import gridTesting
 from testGrape import *
 
-class QuickGridTests:
-    def testAddCommitFile(self, project):
+class QuickGridTests(unittest.TestCase):
+    def gridtestAddCommitFile(self, project):
         os.chdir(project.projectDir)
         f1name = os.path.join(project.projectDir, "f1")
         writeFile1(f1name)
@@ -26,9 +26,9 @@ if __name__ == "__main__":
     projects = [empty_project,
                 onedir_project]
     
-    GridTest = gridTesting.createGridTestClass(projects, QuickGridTests, "Basic GridTests")
+    gridTesting.gridifyTestClass(projects, QuickGridTests)
     suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(GridTest))
+    suite.addTest(unittest.makeSuite(QuickGridTests))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
 
 
