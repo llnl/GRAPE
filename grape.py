@@ -1,5 +1,5 @@
 #!/bin/sh
-"exec" "python" "-B" "$0" "$@"
+"exec" "python" "-u" "-B" "$0" "$@"
 import os, shutil, subprocess, sys
 
 pythonMajorVersion = sys.version_info[0]
