@@ -189,8 +189,8 @@ def parseSubprojectRemoteURL(subtreeRemote):
     if ".." != path[0]:
         return subtreeRemote
 
-    # the subtreeRemote is a relative path
-    originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
+    # We have a relative path so start with the cwd
+    originURL = os.getcwd().strip().split('/')
     
     n = 1
     while path[-n] != "..": 
