@@ -2,7 +2,7 @@ import os, sys, StringIO, unittest
 import testGrape
 if not ".." in sys.path:
     sys.path.append( ".." )
-from vine import grapeMenu, utility
+from vine import grapeMenu, utility, grapeGit as git, grapeConfig
 
 class TestConfig(testGrape.TestGrape):
     def testConfig(self):
