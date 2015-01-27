@@ -63,7 +63,7 @@ class AddSubproject(option.Option):
         name = args["--name"]
         prefix = args["--prefix"]
         url = args["--url"]
-        fullurl = utility.parseSubprojectRemoteURL(url)
+        fullurl = utility.getHardLinkFromURL(url)
         branch = args["--branch"]
         quiet = not args["-v"]
         config = grapeConfig.grapeConfig()
@@ -149,7 +149,7 @@ class AddSubproject(option.Option):
         config = grapeConfig.grapeConfig()
         prefix = config.get("nested-%s" % subprojectName, "prefix")
         url = config.get("nested-%s" % subprojectName, "url")
-        fullurl = utility.parseSubprojectRemoteURL(url)
+        fullurl = utility.getHardLinkFromURL(url)
         section = "nested-%s" % subprojectName
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")

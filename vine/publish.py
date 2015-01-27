@@ -957,7 +957,7 @@ class Publish(resumable.Resumable):
                     self.modifiedSubtrees.append(st)
             for st in self.modifiedSubtrees:
                 self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')
-                self.st_remotes[st] = utility.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
+                self.st_remotes[st] = utility.getHardLinkFromURL(config.get('subtree-%s' % st, 'remote'))
                 self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
         
         # deal with nested subprojects
