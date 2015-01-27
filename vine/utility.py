@@ -187,7 +187,7 @@ def parseSubprojectRemoteURL(url):
     if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
         return url      #Already a hard path
 
-    # We have a relative path so start with the cwd
+    # We have a relative path so start the remote origin URL
     originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
 
     #Now parse path and modify originURL to make a hard path
