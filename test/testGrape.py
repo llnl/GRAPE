@@ -173,6 +173,7 @@ def main():
     import testPublish
     import testCO
     import testNestedSubproject
+    import testUtility
 
     testClasses = [testBranches.TestBranches,
                    testClone.TestClone,
@@ -183,7 +184,8 @@ def main():
                    testVersion.TestVersion,
                    testPublish.TestPublish,
                    testCO.TestCheckout,
-                   testNestedSubproject.TestNestedSubproject]
+                   testNestedSubproject.TestNestedSubproject,
+                   testUtility.TestUtility]
 
     suite = unittest.TestSuite()
     for cls in testClasses:
