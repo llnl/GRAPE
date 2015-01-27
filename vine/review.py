@@ -169,7 +169,7 @@ class Review(option.Option):
             os.chdir(proj)
             git.push("origin %s" % branch, quiet=quiet)
             os.chdir(cwd)
-            url = utility.getHardLinkFromURL(url)
+            url = utility.parseSubprojectRemoteURL(url)
 
             urlTokens = url.split('/')
             proj = urlTokens[-2]

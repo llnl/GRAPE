@@ -182,13 +182,13 @@ def getGrapeExec():
         return os.path.join(os.path.dirname(__file__), "..", "grape")
 
 # Takes a URL and returns a hard path for it
-def getHardLinkFromURL(url): 
+def parseSubprojectRemoteURL(url): 
     path = url.strip().split('/')
-    if "https:" == path[0] or "http:" == path[0] or "ssh:" == path[0] or "" == path[0]:
+    if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
         return url      #Already a hard path
 
     # We have a relative path so start with the cwd
-    originURL = os.getcwd().strip().split('/')
+    originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
 
     #Now parse path and modify originURL to make a hard path
     for p in path:
