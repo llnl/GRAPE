@@ -184,6 +184,7 @@ def main(argv):
     import testCO
     import testNestedSubproject
     import testStatus
+    import testUtility
 
     testClasses = {"Branches":testBranches.TestBranches,
                    "Clone":testClone.TestClone,
@@ -195,7 +196,10 @@ def main(argv):
                    "Publish":testPublish.TestPublish,
                    "CO":testCO.TestCheckout,
                    "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
-                   "Status":testStatus.createStatusTester()}
+                   "Status":testStatus.createStatusTester(),
+				   "Utility":testUtility.TestUtility }
+
+
 
     suite = unittest.TestSuite()
     if len(argv) == 0: 

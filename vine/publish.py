@@ -668,7 +668,7 @@ class Publish(resumable.Resumable):
             return True
         logFile = args["--updateLog"]
         cwd = os.getcwd()
-        os.chdir(git.baseDir())
+        os.chdir(utility.workspaceDir())
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
@@ -723,12 +723,15 @@ class Publish(resumable.Resumable):
             versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
+            cwd = os.getcwd()
+            wsdir = utility.workspaceDir()    
+            os.chdir(wsdir)
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
             for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-               os.chdir(os.path.join(cwd,  nested))
+               os.chdir(os.path.join(wsdir, nested))
                git.push("--tags origin")
-               os.chdir(cwd)
             git.push("--tags origin")
+            os.chdir(cwd)
         return ret
 
     def sendNotificationEmail(self, args):
@@ -1045,8 +1048,8 @@ class Publish(resumable.Resumable):
         
         self.parseCascadeArgs(args)
             
-        cwd = git.baseDir(quiet=quiet)
-        os.chdir(cwd)
+        wsdir = utility.workspaceDir()    
+        os.chdir(wsdir)
 
         if recurse:
             submodulePublic = args["--submodulePublic"]
@@ -1063,11 +1066,11 @@ class Publish(resumable.Resumable):
             valid = self.validateInput(submodulePolicy, args)
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in submodules:
-                    os.chdir(os.path.join(cwd, sub))
+                    os.chdir(os.path.join(wsdir, sub))
 
                     grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
                     self.publish(submodulePolicy, submodulePublic, topic, args)
-                    os.chdir(cwd)
+                    os.chdir(wsdir)
                     #add and commit any new merge commits in submodules as a result of the publish
                     git.add(sub)
                 try:
@@ -1081,7 +1084,7 @@ class Publish(resumable.Resumable):
             # restore value for args["--cascade"]
             args["<<publishedSubmodules>>"] = submodules
             args["--cascade"] = outerCascadeOption
-            os.chdir(cwd)
+            os.chdir(wsdir)
 
 
         # push subtrees to their respective remote branches
@@ -1123,9 +1126,9 @@ class Publish(resumable.Resumable):
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
             for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-                os.chdir(os.path.join(cwd,  nested))
+                os.chdir(os.path.join(wsdir,  nested))
                 self.publish(policy, public, topic, args)
-                os.chdir(cwd)
+            os.chdir(wsdir)
             self.publish(policy, public, topic, args)
             return True
         else:

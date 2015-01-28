@@ -117,7 +117,7 @@ class UpdateView(option.Option):
                         deinitStr += ' %s' % submodule
 
                 utility.printMsg("Configuring submodules...")
-                git.submodule("init", quiet=quiet)
+                git.submodule("init %s" % initStr.strip(), quiet=quiet)
                 os.chdir(git.baseDir())
                 utility.printMsg("Initializing submodules...")
                 if deinitStr or deinitStr == "-f":
