@@ -22,15 +22,15 @@ from vine import grapeMenu
 class GrapeStatusTester(testGrape.TestGrape): 
 
     def gridtestGrapeStatus(self, testProjectScenario): 
-        self.switchToStdout()
+        #self.switchToStdout()
         testProjectScenario.reset(projectPrefix=self.defaultWorkingDirectory)
         os.chdir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfInconsistent"])
         if testProjectScenario.isConsistent(): 
-            self.assertTrue(ret == 0, "status thought a consistent project was inconsistent")
+            self.assertTrue(ret, "status thought a consistent project was inconsistent")
         else:
-            self.assertTrue(ret > 0, "status thought an inconsistent project was consistent")
-        self.switchToHiddenOutput()
+            self.assertFalse(ret, "status thought an inconsistent project was consistent")
+        #self.switchToHiddenOutput()
 
 def createStatusTester(): 
     scenarios = [testProjectScenarios.singleRepo("singleRepo"),

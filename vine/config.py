@@ -176,3 +176,17 @@ class Config(option.Option):
         if len(missingBranches) > 0:
             utility.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
         os.chdir(cwd)
+        
+    @staticmethod
+    def checkIfPublicBranchesExist(config, repo, publicBranches):
+        cwd =  os.getcwd()
+        os.chdir(repo)
+        allBranches = git.allBranches()
+        missingBranches = []
+        for branch in publicBranches:
+            if ("remotes/origin/%s" % branch) not in allBranches:
+               missingBranches.append("remotes/origin/%s" % branch)
+            if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
+                missingBranches.append(branch)
+        os.chdir(cwd)
+        return missingBranches

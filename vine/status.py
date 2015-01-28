@@ -2,11 +2,12 @@ import os
 import option
 import grapeGit as git
 import utility
+import config
 
 
 class Status(option.Option):
     """
-    Usage: grape-status [-v] [-u | --uno]
+    Usage: grape-status [-v] [-u | --uno] [--failIfInconsistent]
 
     Options:
     -v      Show git commands being issued. 
@@ -57,7 +58,20 @@ class Status(option.Option):
         
         for line in status: 
             print ' ' + line.strip()
-        return True
+        
+        # Sanity check workspace layout
+        retval = True
+        # Check that all public branches exist locally. 
+        cfg = config.grapeConfig.grapeConfig()
+        missingBranches = config.Config.checkIfPublicBranchesExist(cfg, utility.workspaceDir(), 
+                                                                   cfg.getList("flow", "publicbranches"))
+        
+        if (len(missingBranches) >0 ): 
+            for mb in missingBranches:
+                utility.printMsg("Repository is missing public branch %s" % mb)
+            retval=False
+        
+        return retval if args["--failIfInconsistent"] else True
     
     def setDefaultConfig(self, config):
         pass

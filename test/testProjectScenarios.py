@@ -8,7 +8,7 @@ class grapeProject(gridTesting.ResettableProject):
         super(grapeProject, self).__init__(path)
         self._consistent = True
 
-    def isConsistent(): 
+    def isConsistent(self): 
         return self._consistent
     
 class singleRepo(grapeProject): 

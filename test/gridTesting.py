@@ -63,10 +63,10 @@ class ResettableProject(object):
 # a closure pattern.  It is part of the magic of createGridTestClass.
 def generateTest(project, method):
     def test(self):
-        self.switchToStdout()
+        #self.switchToStdout()
         project.reset()
         method(self, project)
-        self.switchToHiddenOutput()
+        #self.switchToHiddenOutput()
     return test
 
 
