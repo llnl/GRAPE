@@ -39,7 +39,17 @@ def writeFile3(path):
 
 
 class TestGrape(unittest.TestCase):
-
+    def printToScreen(self, str): 
+        self.stdout.write(str)
+        
+    def switchToStdout(self):
+        sys.stdout = self.stdout
+        sys.stderr = self.stderr
+        
+    def switchToHiddenOutput(self):
+        sys.stdout = self.output
+        sys.stderr = self.error
+        
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
         self.defaultWorkingDirectory = tempfile.mkdtemp()
@@ -161,7 +171,7 @@ def buildSuite(cls, appendTo=None):
     return suite
 
 
-def main():
+def main(argv):
    
     import testBranches
     import testClone
@@ -175,24 +185,29 @@ def main():
     import testNestedSubproject
     import testStatus
 
-    testClasses = [testBranches.TestBranches,
-                   testClone.TestClone,
-                   testConfig.TestConfig,
-                   testGrapeGit.TestGrapeGit,
-                   testMergeDevelop.TestMD,
-                   testReview.TestReview,
-                   testVersion.TestVersion,
-                   testPublish.TestPublish,
-                   testCO.TestCheckout,
-                   testNestedSubproject.TestNestedSubproject, 
-                   testStatus.createStatusTester()]
+    testClasses = {"Branches":testBranches.TestBranches,
+                   "Clone":testClone.TestClone,
+                   "Config":testConfig.TestConfig,
+                   "GrapeGit":testGrapeGit.TestGrapeGit,
+                   "MergeDevelop":testMergeDevelop.TestMD,
+                   "Review":testReview.TestReview,
+                   "Version":testVersion.TestVersion,
+                   "Publish":testPublish.TestPublish,
+                   "CO":testCO.TestCheckout,
+                   "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
+                   "Status":testStatus.createStatusTester()}
 
     suite = unittest.TestSuite()
-    for cls in testClasses:
-        suite = buildSuite(cls, suite)
+    if len(argv) == 0: 
+        for cls in testClasses.values():
+            suite = buildSuite(cls, suite)
+    else:
+        for cls in  [testClasses[arg] for arg in argv]:
+            suite = buildSuite(cls, suite)
+            
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

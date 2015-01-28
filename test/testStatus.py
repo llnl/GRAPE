@@ -19,17 +19,22 @@ from vine import grapeMenu
 
 
 
-class GrapeStatusTester(): 
-    def testGrapeStatus(self, testProjectScenario): 
-        os.chdir(testProjectScenario.projectDir)
+class GrapeStatusTester(testGrape.TestGrape): 
+
+    def gridtestGrapeStatus(self, testProjectScenario): 
+        self.switchToStdout()
+        testProjectScenario.reset(projectPrefix=self.defaultWorkingDirectory)
+        os.chdir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfInconsistent"])
         if testProjectScenario.isConsistent(): 
             self.assertTrue(ret == 0, "status thought a consistent project was inconsistent")
         else:
             self.assertTrue(ret > 0, "status thought an inconsistent project was consistent")
+        self.switchToHiddenOutput()
 
-def createStatusTester(rootPath): 
-    scenarios = [testProjectScenarios.singleRepo(os.path.join(rootPath,"singleRepo")),
-                 testProjectScenarios.singleRepoWithMissingPublicBranches, "singleRepoWithMissingPublicBranches"]
-    return  gridTesting.createGridTestClass(scenarios, GrapeStatusTester, "Test Grape Status")
+def createStatusTester(): 
+    scenarios = [testProjectScenarios.singleRepo("singleRepo"),
+                 testProjectScenarios.singleRepoWithMissingPublicBranches("singleRepoWithMissingPublicBranches")]
+    gridTesting.gridifyTestClass(scenarios, GrapeStatusTester)
+    return GrapeStatusTester
     

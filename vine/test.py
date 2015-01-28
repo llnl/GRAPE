@@ -6,6 +6,13 @@ import utility
 
 
 class Test(option.Option):
+    """
+    grape test
+    Runs grape's unit tests.    
+    Usage: grape-test [<suites>]...
+
+                 
+    """
     def __init__(self):
         super(Test, self).__init__()
         self._key = "test"
@@ -20,8 +27,7 @@ class Test(option.Option):
             print "appending %s to path" % testDir
             sys.path.append(testDir)
         import testGrape
-
-        good = testGrape.main()
+        good = testGrape.main(args["<suites>"])
         if not good:
             print "*"*80
             print "*"*80

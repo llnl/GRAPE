@@ -17,8 +17,9 @@ import unittest
 #A grape project in a command list form that has reset capability.
 #Another way to make this work would be to take a user generated reset function
 #in the constructor and just apply that.  
-class ResettableProject:
+class ResettableProject(object):
     def __init__(self, projectDir):
+        self.projectPrefix = ""
         self.projectDir = projectDir
         if os.path.exists(projectDir):
             print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % projectDir
@@ -27,22 +28,31 @@ class ResettableProject:
         #cmdList is a list of 2-tuples containing (function, param) pairs
         #param itself can be a tuple or a single parameter
         #Default commands set up an empty repository 
-        self.cmdList =  [(os.mkdir, self.projectDir),
-                         (os.chdir, (self.projectDir,)),
+        self.cmdList =  [(os.mkdir, os.path.join(self.projectPrefix,self.projectDir)),
+                         (os.chdir, os.path.join(self.projectPrefix,self.projectDir)),
                          (git.gitcmd, ("init", "Setup Failed"))]
+
+    def getProjectDir(self): 
+        return os.path.join(self.projectPrefix,self.projectDir)
 
     def addCommands(self, newCmds):
         self.cmdList.extend(newCmds)
 
-    def reset(self):
+    def reset(self, projectPrefix=None):
+        if (not projectPrefix is None):
+            self.projectPrefix = projectPrefix
         self.tearDown()
 
         #Run the commands using python's 1st order representations of the functions and tuples
         for (cmd, param) in self.cmdList:
-            if type(param) == type(()):
-                cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
-            else:
-                cmd(param)      #This allows a non-tuple type for param if the user wants it
+            try:
+                if type(param) == type(()):
+                    cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
+                else:
+                    cmd(param)      #This allows a non-tuple type for param if the user wants it
+            except git.GrapeGitError as e:
+                print e.gitCommand, e.gitOutput
+                raise e
 
     def tearDown(self):
         if os.path.exists(self.projectDir) and os.path.isdir(self.projectDir):
@@ -53,8 +63,10 @@ class ResettableProject:
 # a closure pattern.  It is part of the magic of createGridTestClass.
 def generateTest(project, method):
     def test(self):
+        self.switchToStdout()
         project.reset()
         method(self, project)
+        self.switchToHiddenOutput()
     return test
 
 

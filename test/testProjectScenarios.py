@@ -13,21 +13,21 @@ class grapeProject(gridTesting.ResettableProject):
     
 class singleRepo(grapeProject): 
     def __init__(self, path): 
-        super(grapeProject, self).__init__(path)
+        super(singleRepo, self).__init__(path)
         
         self.addCommands([
-            (writeFile11, "f1")
-            (git.add,"f1")
+            (writeFile1, "f1"),
+            (git.add,"f1"),
             (git.commit, "-m \"added a single file\"")
         ])
         
 class singleRepoWithMissingPublicBranches(singleRepo): 
     def __init__(self,path): 
-        super(grapeProject, self).__init__(path)
+        super(singleRepoWithMissingPublicBranches, self).__init__(path)
         
         self.addCommands([
-            (git.checkout, "-b feature/user/f1")
-            (git.branch, "-d master")
+            (git.checkout, "-b feature/user/f1"),
+            (git.branch, "-D master")
         ])
         
         self._consistent = False
