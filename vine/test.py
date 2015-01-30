@@ -9,9 +9,11 @@ class Test(option.Option):
     """
     grape test
     Runs grape's unit tests.    
-    Usage: grape-test [<suites>]...
+    Usage: grape-test [<suite>]...
 
-                 
+
+    Arguments:
+    <suite>  The name of the suite to test. The default is all. 
     """
     def __init__(self):
         super(Test, self).__init__()
@@ -24,10 +26,9 @@ class Test(option.Option):
     def execute(self, args):
         testDir = os.path.join(utility.grapeDir(), "test")
         if not testDir in sys.path:
-            print "appending %s to path" % testDir
             sys.path.append(testDir)
         import testGrape
-        good = testGrape.main(args["<suites>"])
+        good = testGrape.main(args["<suite>"])
         if not good:
             print "*"*80
             print "*"*80

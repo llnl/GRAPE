@@ -7,9 +7,13 @@ class grapeProject(gridTesting.ResettableProject):
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
         self._consistent = False
+        self._debugging = False
 
     def isConsistent(self): 
         return self._consistent
+    
+    def debugging(self):
+        return self._debugging
     
 class singleRepo(grapeProject): 
     def __init__(self, path): 
@@ -85,7 +89,8 @@ class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
 class WorkspaceOnDevelopSubmoduleOnDevelop(WorkspaceWithSubmoduleOnDevelop):
     def __init__(self, path):
         super(WorkspaceOnDevelopSubmoduleOnDevelop,self).__init__(path)
-        self.addCommands([(git.checkout,"develop")])
+        self.addCommands([(git.checkout,"-B develop master"), 
+                          ])
         # outer on public branch means we expect submodule on master
         self._consistent = False
         
