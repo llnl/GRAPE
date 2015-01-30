@@ -6,7 +6,7 @@ from testGrape import *
 class grapeProject(gridTesting.ResettableProject): 
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
-        self._consistent = True
+        self._consistent = False
 
     def isConsistent(self): 
         return self._consistent
@@ -21,7 +21,19 @@ class singleRepo(grapeProject):
             (git.commit, "-m \"added a single file\"")
         ])
         
-class singleRepoWithMissingPublicBranches(singleRepo): 
+        self._consistent = False
+
+class repoWithLocalGitflowBranches(singleRepo):
+    def __init__(self, path): 
+        super(repoWithLocalGitflowBranches, self).__init__(path)
+        self.addCommands([
+            (git.branch, "release master"),
+            (git.branch, "develop master")
+            ])
+        
+        self._consistent = False
+    
+class singleRepoWithMissingPublicBranches(repoWithLocalGitflowBranches): 
     def __init__(self,path): 
         super(singleRepoWithMissingPublicBranches, self).__init__(path)
         
@@ -31,3 +43,4 @@ class singleRepoWithMissingPublicBranches(singleRepo):
         ])
         
         self._consistent = False
+        

@@ -17,12 +17,17 @@ if grapePath not in sys.path:
 from vine import grapeMenu  
 
 
-
+def find_subclasses(module, clazz):
+    return [
+        cls
+            for name, cls in inspect.getmembers(module)
+                if inspect.isclass(cls) and issubclass(cls, clazz) and not cls is clazz
+    ]
 
 class GrapeStatusTester(testGrape.TestGrape): 
 
     def gridtestGrapeStatus(self, testProjectScenario): 
-        #self.switchToStdout()
+        self.switchToStdout()
         testProjectScenario.reset(projectPrefix=self.defaultWorkingDirectory)
         os.chdir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfInconsistent"])
@@ -30,11 +35,14 @@ class GrapeStatusTester(testGrape.TestGrape):
             self.assertTrue(ret, "status thought a consistent project was inconsistent")
         else:
             self.assertFalse(ret, "status thought an inconsistent project was consistent")
-        #self.switchToHiddenOutput()
+        self.switchToHiddenOutput()
 
 def createStatusTester(): 
-    scenarios = [testProjectScenarios.singleRepo("singleRepo"),
-                 testProjectScenarios.singleRepoWithMissingPublicBranches("singleRepoWithMissingPublicBranches")]
-    gridTesting.gridifyTestClass(scenarios, GrapeStatusTester)
+    # create a tester for all grapeProject scenarios in the testProjectScenarios module. 
+    scenarioClasses = find_subclasses(testProjectScenarios, testProjectScenarios.grapeProject)
+    names = [cls.__name__ for cls in scenarioClasses]
+    print "NAMES: " , names
+    scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
+    gridTesting.gridifyTestClass(scenarios, GrapeStatusTester, names)
     return GrapeStatusTester
     
