@@ -47,10 +47,18 @@ class TestNestedSubproject(testGrape.TestGrape):
         subdir = os.path.split(subproject1path)[-1]
         testGrapeObject.assertTrue(basedir == subdir, "subproject1's git repo is %s, not %s" % (basedir, subdir))
         # check to see that edits that occur in the new subproject are ignored by outer repo
-        testGrape.writeFile2(os.path.join(subproject1path, "f2"))
+        testGrape.writeFile3(os.path.join(subproject1path, "f3"))
+        # make sure there is an edit
+        testGrapeObject.assertFalse(git.isWorkingDirectoryClean(), "subproject1 clean after adding f3")
         os.chdir(testGrapeObject.repo)
         # check that grape left the repository in a clean state
         testGrapeObject.assertTrue(git.isWorkingDirectoryClean(), "repo not clean after added subproject1")
+        # check in the edit
+        os.chdir(subproject1path)
+        git.add("f3")
+        git.commit("-m \"added f3\"")
+        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(), "subproject1 not clean")
+        os.chdir(testGrapeObject.repo)
         testGrapeObject.subproject = subproject1path
 
     def switchToMaster(self):
