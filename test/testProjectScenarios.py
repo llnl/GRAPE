@@ -38,6 +38,8 @@ class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
         super(repoWithLocalAndOriginGitflowBranches, self).__init__(path)
         self.addCommands([(git.push, "origin --all")])
         self._consistent = True
+
+
     
 class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
     def __init__(self,path): 
@@ -50,3 +52,54 @@ class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBran
         
         self._consistent = False
         
+
+# setting up subrojects
+# default grapeconfig expects all submodules to be on master branch when on 
+# public branch in workspace. 
+class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches): 
+    def __init__(self,path):
+        super(validRepoWithSubmodule, self).__init__(path)
+        self.addCommands([(grapeMenu.menu().applyMenuChoice,
+                         lambda: ("addSubproject", ["--name=submodule1",
+                                            "--prefix=submodule1",
+                                            "--url=%s" % self.getOriginDir(),
+                                            "--branch=master", 
+                                            "--submodule", 
+                                            "--noverify",
+                                            "-v"] )),
+                          (git.commit, "-m \"added submodule1\"")])
+        self._consistent = True
+        
+class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
+    def __init__(self,path):
+        super(WorkspaceWithSubmoduleOnDevelop, self).__init__(path)
+        self.addCommands([
+                           (os.chdir, "submodule1"),
+                           (git.checkout, "develop"),
+                           self.cdToProjectDirCmd(),
+                         ])
+        # outer on public branch means expect submodule on master
+        self._consistent = False 
+        
+        
+class WorkspaceOnDevelopSubmoduleOnDevelop(WorkspaceWithSubmoduleOnDevelop):
+    def __init__(self, path):
+        super(WorkspaceOnDevelopSubmoduleOnDevelop,self).__init__(path)
+        self.addCommands([(git.checkout,"develop")])
+        # outer on public branch means we expect submodule on master
+        self._consistent = False
+        
+class WorkspaceOnTopicSubmoduleOnMaster(validRepoWithSubmodule):
+    def __init__(self, path):
+        super(WorkspaceOnTopicSubmoduleOnMaster, self).__init__(path)
+        self.addCommands([(git.checkout, "-b topicBranch")])
+        # outer on topic branch means we expect submodule on topic branch
+        self._consistent = False
+        
+class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
+    def __init__(self, path):
+        super(WorkspaceOnTopicSubmoduleOnTopic, self).__init__(path)
+        self.addCommands([(os.chdir,"submodule1"),
+                          (git.checkout,"-b topicBranch")])
+        # now both are on topicBranch
+        self._consistent = True

@@ -45,6 +45,12 @@ class ResettableProject(object):
     
     def getOriginDir(self): 
         return os.path.abspath(self.getProjectDir()+".origin")
+    
+    def cdToProjectDirCmd(self): 
+        return (os.chdir, lambda : self.getProjectDir())
+    
+    def cdToOriginDirCmd(self):
+        return (os.chdir, lambda : self.getOriginDir*())
 
     def addCommands(self, newCmds):
         self.cmdList.extend(newCmds)
@@ -57,10 +63,11 @@ class ResettableProject(object):
         #Run the commands using python's 1st order representations of the functions and tuples
         for (cmd, param) in self.cmdList:
             try:
+                # evaluate param if it's a function type
+                if type(param) is types.FunctionType:
+                    param = param()                
                 if type(param) == types.TupleType:
                     cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
-                elif type(param) is types.FunctionType:
-                    cmd(param())      #This allows lambdas for parameters to handle JIT state dependencies. 
                 else: 
                     cmd(param)
             except git.GrapeGitError as e:
