@@ -63,6 +63,8 @@ class TestPublish(testGrape.TestGrape):
             self.assertTrue(ret, "publish returned false")
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
+        #origin has not been set up for these repos yet
+        #self.assertNotIn("fatal:", self.output.getvalue())
 
     def testFFDefaultPublish(self):
         self.setUpBranchToFFMerge()
@@ -149,20 +151,21 @@ class TestPublish(testGrape.TestGrape):
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])        
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
         os.chdir(self.subproject)
-       
         self.assertTrue(git.currentBranch() == self.branch)
-        git.branch("master origin/master")
+
         os.chdir(self.repo)
-        
         self.assertGrapePublishWorked(["--merge"])
+        self.assertSuccessfulFastForwardMerge()
         
         os.chdir(self.subproject)
         self.assertTrue(git.currentBranch() == "master", "on %s, expected to be on master" % git.currentBranch())
         
     def testPublishFromWithinNestedSubproject(self):
         import testNestedSubproject
+        self.setUpBranchToFFMerge()
+        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])        
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
  
-        self.setUpBranchToFFMerge()
         os.chdir(self.subproject)
         self.assertGrapePublishWorked()
+        self.assertSuccessfulFastForwardMerge()
