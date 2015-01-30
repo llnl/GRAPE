@@ -108,3 +108,12 @@ class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
                           (git.checkout,"-b topicBranch")])
         # now both are on topicBranch
         self._consistent = True
+        
+class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
+    def __init__(self, path):
+        super(WorkspaceWithDetachedSubmodule, self).__init__(path)
+        self.addCommands([(os.chdir,"submodule1"),
+                          (git.checkout, "--detach")])
+        # detached submodule is a bad place to be
+        self._consistent = False
+        
