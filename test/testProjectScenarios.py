@@ -32,10 +32,16 @@ class repoWithLocalGitflowBranches(singleRepo):
             ])
         
         self._consistent = False
-    
-class singleRepoWithMissingPublicBranches(repoWithLocalGitflowBranches): 
+        
+class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
     def __init__(self,path): 
-        super(singleRepoWithMissingPublicBranches, self).__init__(path)
+        super(repoWithLocalAndOriginGitflowBranches, self).__init__(path)
+        self.addCommands([(git.push, "origin --all")])
+        self._consistent = True
+    
+class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
+    def __init__(self,path): 
+        super(singleRepoWithMissingLocalPublicBranches, self).__init__(path)
         
         self.addCommands([
             (git.checkout, "-b feature/user/f1"),
