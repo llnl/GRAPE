@@ -778,6 +778,7 @@ class Publish(resumable.Resumable):
             for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
                os.chdir(os.path.join(wsdir, nested))
                git.push("--tags origin")
+            os.chdir(wsdir)
             git.push("--tags origin")
             os.chdir(cwd)
         return ret
