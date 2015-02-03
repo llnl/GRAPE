@@ -609,7 +609,7 @@ class Publish(resumable.Resumable):
         # Get list of modified files in submodules
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
-            submodules = self.getModifiedSubmodules(public, topic)
+            submodules = git.getModifiedSubmodules(public, topic)
             for sub in submodules:
                os.chdir(os.path.join(wsdir, sub))
                self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic)]
