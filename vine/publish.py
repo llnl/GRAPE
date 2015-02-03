@@ -813,6 +813,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("-- Begin update message --")
             utility.printMsg(mf.read())
             utility.printMsg("-- End update message --")
+            mf.close()
             return True
 
         # Open the file back up and attach it to a MIME message
