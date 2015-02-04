@@ -59,7 +59,7 @@ class Publish(resumable.Resumable):
                          [--useStash=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
-                          --emailServer=<smtpserver>]]
+                          --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
             grape-publish --continue
             grape-publish --abort
@@ -163,6 +163,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
+    --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
+                            [default: .grapeconfig.publish.emailMaxFiles]
     --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
 
     Optional Arguments:
@@ -220,6 +222,7 @@ class Publish(resumable.Resumable):
         config.set('publish', 'emailServer', 'smtp.email.server')
         config.set('publish', 'emailSendTo', 'user.list@company.com')
         config.set('publish', 'emailSubject', '<public> updated to <version>')
+        config.set('publish', 'emailMaxFiles', '100')
 
     def __init__(self):
         super(Publish, self).__init__()
@@ -573,12 +576,12 @@ class Publish(resumable.Resumable):
         return self.performCustomStep("postpublish", args)
 
     @staticmethod
-    def getModifiedFileList(public, topic):
+    def getModifiedFileList(public, topic, args):
         # Limit the number of updated files displayed per subproject
-        maxFilesUpdated = 100
+        emailMaxFiles = args["--emailMaxFiles"]
         updatelist = git.diff("--name-only %s %s" % (public, topic)).split('\n')
-        if len(updatelist) > maxFilesUpdated:
-            updatelist.append("** file list truncated **")
+        if len(updatelist) > emailMaxFiles:
+            updatelist.append("[ Additional files not shown ]")
         return updatelist
 
     def loadModifiedFiles(self, args):
@@ -595,7 +598,7 @@ class Publish(resumable.Resumable):
         self.progress["modifiedFiles"] = []
 
         # Get list of modified files in main repo
-        self.progress["modifiedFiles"] += self.getModifiedFileList(public, topic)
+        self.progress["modifiedFiles"] += self.getModifiedFileList(public, topic, args)
 
         # Get list of modified files in submodules
         if args["--recurse"]:
@@ -603,13 +606,13 @@ class Publish(resumable.Resumable):
             submodules = git.getModifiedSubmodules(public, topic)
             for sub in submodules:
                os.chdir(os.path.join(wsdir, sub))
-               self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic)]
+               self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic, args)]
             os.chdir(wsdir)
 
         # Get list of modified files in nested subprojects
         for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             os.chdir(os.path.join(wsdir, nested))
-            self.progress["modifiedFiles"] += [nested + "/" + s for s in self.getModifiedFileList(public, topic)]
+            self.progress["modifiedFiles"] += [nested + "/" + s for s in self.getModifiedFileList(public, topic, args)]
         os.chdir(wsdir)
 
         return True
@@ -797,7 +800,6 @@ class Publish(resumable.Resumable):
            if len(updatelist) > 0:
                mf.write("\nFILES UPDATED:\n")
                mf.write("\n".join(updatelist))
-           mf.close()
 
         if not args["--emailNotification"].lower() == "true":
             utility.printMsg("Skipping E-mail notification..")
@@ -805,7 +807,6 @@ class Publish(resumable.Resumable):
                utility.printMsg("-- Begin update message --")
                utility.printMsg(mf.read())
                utility.printMsg("-- End update message --")
-               mf.close()
             return True
 
         # Open the file back up and attach it to a MIME message
