@@ -1,5 +1,13 @@
 
 
+Wed Feb  4 15:25:24 2015 Benjamin T. Liu
+v1.2.5
+
+Extend commit file list to handle submodules and nested subprojects
+Extend prepublish to commit to nested subprojects
+Print notification email to display, even if not being sent
+
+
 Tue Jan 13 10:37:32 2015 Peter B. Robinson
 v1.2.4
 
