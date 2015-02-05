@@ -97,6 +97,8 @@ class UpdateView(option.Option):
     def execute(self, args):
         config = grapeConfig.grapeConfig()
         quiet = not args["-v"]
+        cwd = os.getcwd()
+        os.chdir(utility.workspaceDir())
         base = git.baseDir()
         if base == "":
             return False
@@ -118,7 +120,6 @@ class UpdateView(option.Option):
 
                 utility.printMsg("Configuring submodules...")
                 git.submodule("init %s" % initStr.strip(), quiet=quiet)
-                os.chdir(git.baseDir())
                 utility.printMsg("Initializing submodules...")
                 if deinitStr or deinitStr == "-f":
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
@@ -129,7 +130,6 @@ class UpdateView(option.Option):
                     git.submodule("update", quiet=quiet)
 
             # handle nested subprojects
-            os.chdir(base)
             if not args["--skipNestedSubprojects"]: 
                 includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
     
@@ -187,6 +187,8 @@ class UpdateView(option.Option):
             for sub in activeSubmodules:
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, checkoutArgs, quiet)
+
+        os.chdir(cwd)
 
         return True
 
