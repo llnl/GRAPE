@@ -97,7 +97,7 @@ class UpdateView(option.Option):
     def execute(self, args):
         config = grapeConfig.grapeConfig()
         quiet = not args["-v"]
-        cwd = os.getcwd()
+        origwd = os.getcwd()
         os.chdir(utility.workspaceDir())
         base = git.baseDir()
         if base == "":
@@ -188,7 +188,7 @@ class UpdateView(option.Option):
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, checkoutArgs, quiet)
 
-        os.chdir(cwd)
+        os.chdir(origwd)
 
         return True
 

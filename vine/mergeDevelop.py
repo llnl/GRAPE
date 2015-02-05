@@ -180,9 +180,9 @@ class MergeDevelop(resumable.Resumable):
         else:
             grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
 
-        uvArgs = ["--checkSubprojects"]
-        utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
-        grapeMenu.menu().applyMenuChoice('uv', uvArgs)
+            uvArgs = ["--checkSubprojects"]
+            utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
+            grapeMenu.menu().applyMenuChoice('uv', uvArgs)
         return True
 
 
