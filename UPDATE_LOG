@@ -1,5 +1,11 @@
 
 
+Fri Feb  6 10:56:22 2015 Benjamin T. Liu
+v1.2.6
+
+Ensure uv operates from the project level
+
+
 Wed Feb  4 15:25:24 2015 Benjamin T. Liu
 v1.2.5
 
