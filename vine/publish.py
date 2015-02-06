@@ -521,6 +521,7 @@ class Publish(resumable.Resumable):
         cwd = os.getcwd()
         os.chdir(utility.workspaceDir())
         ret = utility.isWorkspaceClean()
+        ret = ret and grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"])
         os.chdir(cwd)
         return ret
 

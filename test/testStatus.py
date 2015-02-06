@@ -31,6 +31,8 @@ class GrapeStatusTester(testGrape.TestGrape):
         if testProjectScenario.debugging() or debugging:
             self.switchToStdout()
         os.chdir(testProjectScenario.getProjectDir())
+        self.assertTrue(self.menu.applyMenuChoice("status"), 
+                        "status Failed when no flags requesting fail codes were used.")
         ret = self.menu.applyMenuChoice("status", ["--failIfInconsistent"])
         if testProjectScenario.isConsistent(): 
             self.assertTrue(ret, "status thought a consistent project was inconsistent")
