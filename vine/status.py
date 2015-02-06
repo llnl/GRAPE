@@ -7,12 +7,19 @@ import config
 
 class Status(option.Option):
     """
-    Usage: grape-status [-v] [-u | --uno] [--failIfInconsistent]
+    Usage: grape-status [-v] [-u | --uno] 
+              [--failIfInconsistent] 
+              [--failIfMissingPublicBranches]
+              [--failIfBranchesInconsistent]
 
     Options:
-    -v      Show git commands being issued. 
-    --uno    Do not show untracked files
-    -u      Show untracked files. 
+    -v                             Show git commands being issued. 
+    --uno                          Do not show untracked files
+    -u                             Show untracked files. 
+    --failIfInconsistent           Fail if any consistency checks fail. 
+    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
+    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    
 
     """
     def __init__(self):
@@ -61,6 +68,7 @@ class Status(option.Option):
         
         # Sanity check workspace layout
         retval = True
+        publicBranchesExist = True
         # Check that all public branches exist locally. 
         cfg = config.grapeConfig.grapeConfig()
         publicBranches = cfg.getList("flow", "publicbranches")
@@ -70,10 +78,12 @@ class Status(option.Option):
         if (len(missingBranches) >0 ): 
             for mb in missingBranches:
                 utility.printMsg("Repository is missing public branch %s" % mb)
-            retval=False
+            publicBranchesExist=False
+        
+        
         
         # Check that submodule branching is consistent
-        
+        consistentBranchState = True
         os.chdir(cwd)
         wsBranch = git.currentBranch()
         subPubMap = cfg.getMapping("workspace", "submodulepublicmappings")
@@ -82,19 +92,32 @@ class Status(option.Option):
                 os.chdir(os.path.join(cwd,sub))
                 subbranch = git.currentBranch()
                 if subbranch != subPubMap[wsBranch]:
-                    retval=False
-                    utility.printMsg("Submodule %s on branch %s when grape expects it on %s" %
+                    consistentBranchState=False
+                    utility.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
                                      (sub, subbranch, subPubMap[wsBranch]))
         else:
             for sub in git.getActiveSubmodules():
                 os.chdir(os.path.join(cwd,sub))
                 subbranch = git.currentBranch()
                 if subbranch != wsBranch:
-                    retval = False
-                    utility.printMsg("Submodule %s on branch %s when grape expects it on %s" % 
+                    consistentBranchState = False
+                    utility.printMsg("Submodule %s on branch %s when grape expects it to be on %s" % 
                                      (sub, subbranch, subbranch))
-                    
-        return retval if args["--failIfInconsistent"] else True
+        # check that nested subproject branching is consistent
+        #if wsBranch in publicBranches: 
+            
+        
+        # if --failIfInconsistent set, fail if any test failed
+        allTestsPassed = True
+        if args["--failIfInconsistent"]:  
+            allTestsPassed = publicBranchesExist and consistentBranchState
+        # disable individual checks if they weren't asked for specifically
+        publicBranchesExist = not args["--failIfMissingPublicBranches"]  or publicBranchesExist
+        consistentBranchState = not args["--failIfBranchesInconsistent"] or consistentBranchState
+                                     
+        retval = allTestsPassed and publicBranchesExist and consistentBranchState
+        
+        return retval 
     
     def setDefaultConfig(self, config):
         pass

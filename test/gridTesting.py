@@ -50,7 +50,7 @@ class ResettableProject(object):
         return (os.chdir, lambda : self.getProjectDir())
     
     def cdToOriginDirCmd(self):
-        return (os.chdir, lambda : self.getOriginDir*())
+        return (os.chdir, lambda : self.getOriginDir())
 
     def addCommands(self, newCmds):
         self.cmdList.extend(newCmds)
@@ -88,7 +88,7 @@ class ResettableProject(object):
 def generateTest(project, method):
     def test(self):
         #self.switchToStdout()
-        project.reset()
+        project.reset(self.defaultWorkingDirectory)
         method(self, project)
         #self.switchToHiddenOutput()
     return test

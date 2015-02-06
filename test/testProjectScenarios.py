@@ -6,11 +6,18 @@ from testGrape import *
 class grapeProject(gridTesting.ResettableProject): 
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
-        self._consistent = False
         self._debugging = False
+        self._publicBranchesValid = False
+        self._branchModelConsistent = False
 
     def isConsistent(self): 
-        return self._consistent
+        return self._publicBranchesValid and self._branchModelConsistent
+    
+    def arePublicBranchesValid(self):
+        return self._publicBranchesValid
+    
+    def isStateConsistentWithBranchModel(self):
+        return self._branchModelConsistent
     
     def debugging(self):
         return self._debugging
@@ -25,7 +32,8 @@ class singleRepo(grapeProject):
             (git.commit, "-m \"added a single file\"")
         ])
         
-        self._consistent = False
+        self._publicBranchesValid = False
+        self._branchModelConsistent = True
 
 class repoWithLocalGitflowBranches(singleRepo):
     def __init__(self, path): 
@@ -35,13 +43,15 @@ class repoWithLocalGitflowBranches(singleRepo):
             (git.branch, "develop master")
             ])
         
-        self._consistent = False
+        self._publicBranchesValid = False
+        self._branchModelConsistent = True
         
 class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
     def __init__(self,path): 
         super(repoWithLocalAndOriginGitflowBranches, self).__init__(path)
         self.addCommands([(git.push, "origin --all")])
-        self._consistent = True
+        self._publicBranchesValid = True
+        self._branchModelConsistent = True
 
 
     
@@ -54,8 +64,8 @@ class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBran
             (git.branch, "-D master")
         ])
         
-        self._consistent = False
-        
+        self._publicBranchesValid = False
+        self._branchModelConsistent = True
 
 # setting up subrojects
 # default grapeconfig expects all submodules to be on master branch when on 
@@ -72,7 +82,8 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                                             "--noverify",
                                             "-v"] )),
                           (git.commit, "-m \"added submodule1\"")])
-        self._consistent = True
+        self._publicBranchesValid = True
+        self._branchModelConsistent = True
         
 class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
     def __init__(self,path):
@@ -83,7 +94,8 @@ class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
                            self.cdToProjectDirCmd(),
                          ])
         # outer on public branch means expect submodule on master
-        self._consistent = False 
+        self._publicBranchesValid = True
+        self._branchModelConsistent = False
         
         
 class WorkspaceOnDevelopSubmoduleOnDevelop(WorkspaceWithSubmoduleOnDevelop):
@@ -92,14 +104,16 @@ class WorkspaceOnDevelopSubmoduleOnDevelop(WorkspaceWithSubmoduleOnDevelop):
         self.addCommands([(git.checkout,"-B develop master"), 
                           ])
         # outer on public branch means we expect submodule on master
-        self._consistent = False
+        self._publicBranchesValid = True
+        self._branchModelConsistent = False
         
 class WorkspaceOnTopicSubmoduleOnMaster(validRepoWithSubmodule):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnMaster, self).__init__(path)
         self.addCommands([(git.checkout, "-b topicBranch")])
         # outer on topic branch means we expect submodule on topic branch
-        self._consistent = False
+        self._publicBranchesValid = True
+        self._branchModelConsistent = False
         
 class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
     def __init__(self, path):
@@ -107,7 +121,8 @@ class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
         self.addCommands([(os.chdir,"submodule1"),
                           (git.checkout,"-b topicBranch")])
         # now both are on topicBranch
-        self._consistent = True
+        self._publicBranchesValid = True
+        self._branchModelConsistent= True
         
 class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
     def __init__(self, path):
@@ -115,5 +130,7 @@ class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
         self.addCommands([(os.chdir,"submodule1"),
                           (git.checkout, "--detach")])
         # detached submodule is a bad place to be
-        self._consistent = False
+        self._publicBranchesValid = True
+        self._branchModelConsistent = False
         
+#class ValidRepoWithNestedSubproject

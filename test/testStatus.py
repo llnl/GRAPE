@@ -15,7 +15,7 @@ if grapePath not in sys.path:
     sys.path.append(grapePath)
 
 from vine import grapeMenu  
-
+from vine import grapeGit as git
 
 def find_subclasses(module, clazz):
     return [
@@ -27,9 +27,9 @@ def find_subclasses(module, clazz):
 class GrapeStatusTester(testGrape.TestGrape): 
 
     def gridtestGrapeStatus(self, testProjectScenario):
-        if testProjectScenario.debugging():
+        debugging = False
+        if testProjectScenario.debugging() or debugging:
             self.switchToStdout()
-        testProjectScenario.reset(projectPrefix=self.defaultWorkingDirectory)
         os.chdir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfInconsistent"])
         if testProjectScenario.isConsistent(): 
@@ -37,7 +37,25 @@ class GrapeStatusTester(testGrape.TestGrape):
         else:
             self.assertFalse(ret, "status thought an inconsistent project was consistent")
         
-        if testProjectScenario.debugging():
+        if testProjectScenario.debugging() or debugging:
+            self.switchToHiddenOutput()
+            
+    def gridtestGrapeCheckoutOfMasterFixesGrapeStatusBranchConsistency(self, testProjectScenario): 
+        debugging = False
+        if testProjectScenario.debugging() or debugging:
+            self.switchToStdout()
+        os.chdir(testProjectScenario.getProjectDir())
+        ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])
+        if testProjectScenario.isStateConsistentWithBranchModel(): 
+            self.assertTrue(ret, "grape thought consistent branch model repo was inconsistent")
+        else:
+            self.assertFalse(ret, "grape thought inconsistent branch model repo was consistent")
+            self.menu.applyMenuChoice("checkout", ["master"])
+            ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])
+            self.assertTrue(ret, "status not consistent after a grape checkout of master")
+
+        
+        if testProjectScenario.debugging() or debugging:
             self.switchToHiddenOutput()
 
 def createStatusTester(): 
