@@ -1,4 +1,4 @@
-
+\
 import gridTesting
 from testGrape import *
 
@@ -133,4 +133,30 @@ class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
         self._publicBranchesValid = True
         self._branchModelConsistent = False
         
-#class ValidRepoWithNestedSubproject
+class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
+    def __init__(self,path):
+        super(ValidRepoWithNestedSubproject, self).__init__(path)
+        self.addCommands([(grapeMenu.menu().applyMenuChoice,
+                         lambda: ("addSubproject", ["--name=subproject1",
+                                            "--prefix=subproject1",
+                                            "--url=%s" % self.getOriginDir(),
+                                            "--branch=master", 
+                                            "--nested", 
+                                            "--noverify",
+                                            "-v"] ))])
+        self._publicBranchesValid = True
+        self._branchModelConsistent = True
+        
+class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
+    def __init__(self,path):
+        super(WorkspaceWithNestedOnDevelop, self).__init__(path)
+        self.addCommands([
+                           (os.chdir, "subproject1"),
+                           (git.checkout, "develop"),
+                           self.cdToProjectDirCmd(),
+                         ])
+        # outer on public branch means expect submodule on master
+        self._publicBranchesValid = True
+        self._branchModelConsistent = False
+        
+        

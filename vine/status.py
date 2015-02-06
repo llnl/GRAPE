@@ -103,9 +103,17 @@ class Status(option.Option):
                     consistentBranchState = False
                     utility.printMsg("Submodule %s on branch %s when grape expects it to be on %s" % 
                                      (sub, subbranch, subbranch))
+                    
         # check that nested subproject branching is consistent
-        #if wsBranch in publicBranches: 
-            
+        if wsBranch in publicBranches: 
+            for nested in config.grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+                os.chdir(os.path.join(cwd,nested))
+                nestedbranch = git.currentBranch()
+                if nestedbranch != wsBranch: 
+                    consistentBranchState = False
+                    utility.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" % 
+                                     (nested,nestedbranch, wsBranch))
+                                                              
         
         # if --failIfInconsistent set, fail if any test failed
         allTestsPassed = True
