@@ -59,7 +59,7 @@ class Publish(resumable.Resumable):
                          [--useStash=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
-                          --emailServer=<smtpserver>]]
+                          --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
             grape-publish --continue
             grape-publish --abort
@@ -163,6 +163,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
+    --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
+                            [default: .grapeconfig.publish.emailMaxFiles]
     --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
 
     Optional Arguments:
@@ -220,6 +222,7 @@ class Publish(resumable.Resumable):
         config.set('publish', 'emailServer', 'smtp.email.server')
         config.set('publish', 'emailSendTo', 'user.list@company.com')
         config.set('publish', 'emailSubject', '<public> updated to <version>')
+        config.set('publish', 'emailMaxFiles', '100')
 
     def __init__(self):
         super(Publish, self).__init__()
@@ -463,7 +466,7 @@ class Publish(resumable.Resumable):
 
     def releaseInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping verification of code review...")
+            utility.printMsg("Skipping In Progress Lock Release...")
             return True
 
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
@@ -555,24 +558,63 @@ class Publish(resumable.Resumable):
         if not ret:
             return ret
         self.loadModifiedFiles(args)
+
+        # Commit any files that may have been added to the main repo.
+        # The custom prepublish step is responsible for performing the git add for any
+        # modified files.
+        # Submodules and nested subprojects are not handled here.  If any files there are
+        # modified during the prepublish step, the git add *and* the git commit must be
+        # handled in the custom step.
         try:
             git.commit(" -m \"%s\"" % args["-m"])
         except git.GrapeGitError:
             pass
+
         return self.checkInProgressLock(args)
 
     def performCustomPostPublishSteps(self, args):
         return self.performCustomStep("postpublish", args)
 
+    @staticmethod
+    def getModifiedFileList(public, topic, args):
+        # Limit the number of updated files displayed per subproject
+        emailMaxFiles = args["--emailMaxFiles"]
+        updatelist = git.diff("--name-only %s %s" % (public, topic)).split('\n')
+        if len(updatelist) > emailMaxFiles:
+            updatelist.append("[ Additional files not shown ]")
+        return updatelist
+
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
             return True
+        wsdir = utility.workspaceDir()    
+        os.chdir(wsdir)
         public = args["--public"]
         topic = args["--topic"]
         if git.SHA(public) == git.SHA(topic):
             public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
                                        "modified file list." % topic)
-        self.progress["modifiedFiles"] = git.diff("--name-only %s %s" % (public, topic)).split('\n')
+
+        self.progress["modifiedFiles"] = []
+
+        # Get list of modified files in main repo
+        self.progress["modifiedFiles"] += self.getModifiedFileList(public, topic, args)
+
+        # Get list of modified files in submodules
+        if args["--recurse"]:
+            submodulePublic = args["--submodulePublic"]
+            submodules = git.getModifiedSubmodules(public, topic)
+            for sub in submodules:
+               os.chdir(os.path.join(wsdir, sub))
+               self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic, args)]
+            os.chdir(wsdir)
+
+        # Get list of modified files in nested subprojects
+        for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+            os.chdir(os.path.join(wsdir, nested))
+            self.progress["modifiedFiles"] += [nested + "/" + s for s in self.getModifiedFileList(public, topic, args)]
+        os.chdir(wsdir)
+
         return True
 
     def loadVersion(self, args):
@@ -730,36 +772,42 @@ class Publish(resumable.Resumable):
             for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
                os.chdir(os.path.join(wsdir, nested))
                git.push("--tags origin")
+            os.chdir(wsdir)
             git.push("--tags origin")
             os.chdir(cwd)
         return ret
 
     def sendNotificationEmail(self, args):
 
-        if not args["--emailNotification"].lower() == "true":
-            # skip email send
-            return True
         if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadModifiedFiles(args)):
             return False
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
-        mf = open(mailfile, 'w')
 
-        date = time.asctime()
-        emailHeader = args["--emailHeader"]
-        emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
-        emailHeader = emailHeader.replace("<date>", date)
-        emailHeader = emailHeader.replace("<version>", self.progress["version"])
-        emailHeader = emailHeader.replace("<public>", args["--public"])
-        emailHeader = emailHeader.split("\\n")
-        mf.write('\n'.join(emailHeader))
-        comments = self.progress["commitMsg"]
-        mf.write(comments)
-        updatelist = self.progress["modifiedFiles"]
-        if len(updatelist) > 0:
-            mf.write("\n FILES UPDATED:\n")
-            mf.write("\n".join(updatelist))
-        mf.close()
+        with open(mailfile, 'w') as mf:
+           date = time.asctime()
+           emailHeader = args["--emailHeader"]
+           emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
+           emailHeader = emailHeader.replace("<date>", date)
+           emailHeader = emailHeader.replace("<version>", self.progress["version"])
+           emailHeader = emailHeader.replace("<public>", args["--public"])
+           emailHeader = emailHeader.split("\\n")
+           mf.write('\n'.join(emailHeader))
+           comments = self.progress["commitMsg"]
+           mf.write('\n')
+           mf.write(comments)
+           updatelist = self.progress["modifiedFiles"]
+           if len(updatelist) > 0:
+               mf.write("\nFILES UPDATED:\n")
+               mf.write("\n".join(updatelist))
+
+        if not args["--emailNotification"].lower() == "true":
+            utility.printMsg("Skipping E-mail notification..")
+            with open(mailfile, 'r') as mf:
+               utility.printMsg("-- Begin update message --")
+               utility.printMsg(mf.read())
+               utility.printMsg("-- End update message --")
+            return True
 
         # Open the file back up and attach it to a MIME message
         t = open(mailfile, 'rb')
