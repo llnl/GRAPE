@@ -71,11 +71,11 @@ def read(additionalFileNames=None):
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(), ".grapeconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False), ".git", ".grapeuserconfig"))
     except:
         pass
 

@@ -178,7 +178,12 @@ class MergeDevelop(resumable.Resumable):
                                     "and then \n continue by calling 'grape md --continue' .")
             return False
         else:
-            return grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+            grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+
+            uvArgs = ["--checkSubprojects"]
+            utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
+            grapeMenu.menu().applyMenuChoice('uv', uvArgs)
+        return True
 
 
     def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):

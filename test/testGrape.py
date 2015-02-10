@@ -39,7 +39,17 @@ def writeFile3(path):
 
 
 class TestGrape(unittest.TestCase):
-
+    def printToScreen(self, str): 
+        self.stdout.write(str)
+        
+    def switchToStdout(self):
+        sys.stdout = self.stdout
+        sys.stderr = self.stderr
+        
+    def switchToHiddenOutput(self):
+        sys.stdout = self.output
+        sys.stderr = self.error
+        
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
         self.defaultWorkingDirectory = tempfile.mkdtemp()
@@ -67,25 +77,33 @@ class TestGrape(unittest.TestCase):
         self.cwd = os.getcwd()
         sys.stdout = self.output
         sys.stderr = self.error
-        self.menu = grapeMenu.menu()
+
         # create a test repository to operate in.
         try:
             try:
-                os.mkdir(self.repo)
+                os.mkdir(self.repo + "-origin")
             except OSError:
                 pass
-            os.chdir(self.repo)
+
+            os.chdir(self.repo + "-origin")
             cwd = os.getcwd()
-            print cwd
-            git.gitcmd("init", "Setup Failed")
+            git.gitcmd("init --bare", "Setup Failed")
+            os.chdir(os.path.join(self.repo+"-origin",".."))
+            git.gitcmd("clone %s %s" % (self.repo +"-origin",self.repo), "could not clone test bare repo")
+            os.chdir(self.repo)
             fname = os.path.join(self.repo, "testRepoFile")
             writeFile1(fname)
             self.file1 = fname
             git.gitcmd("add %s" % fname, "Add Failed")
             git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
+            git.gitcmd("push origin master", "push to master failed")
+            # create a develop branch in addition to master by default
+            git.branch("develop")
             os.chdir(os.path.join(self.repo, ".."))
         except git.GrapeGitError:
             pass
+        
+        self.menu = grapeMenu.menu()
 
     def tearDown(self):
         def onError(func, path, exc_info):
@@ -157,7 +175,7 @@ def buildSuite(cls, appendTo=None):
     return suite
 
 
-def main():
+def main(argv):
    
     import testBranches
     import testClone
@@ -169,24 +187,35 @@ def main():
     import testPublish
     import testCO
     import testNestedSubproject
+    import testStatus
+    import testUtility
 
-    testClasses = [testBranches.TestBranches,
-                   testClone.TestClone,
-                   testConfig.TestConfig,
-                   testGrapeGit.TestGrapeGit,
-                   testMergeDevelop.TestMD,
-                   testReview.TestReview,
-                   testVersion.TestVersion,
-                   testPublish.TestPublish,
-                   testCO.TestCheckout,
-                   testNestedSubproject.TestNestedSubproject]
+    testClasses = {"Branches":testBranches.TestBranches,
+                   "Clone":testClone.TestClone,
+                   "Config":testConfig.TestConfig,
+                   "GrapeGit":testGrapeGit.TestGrapeGit,
+                   "MergeDevelop":testMergeDevelop.TestMD,
+                   "Review":testReview.TestReview,
+                   "Version":testVersion.TestVersion,
+                   "Publish":testPublish.TestPublish,
+                   "CO":testCO.TestCheckout,
+                   "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
+                   "Status":testStatus.createStatusTester(),
+				   "Utility":testUtility.TestUtility }
+
+
 
     suite = unittest.TestSuite()
-    for cls in testClasses:
-        suite = buildSuite(cls, suite)
+    if len(argv) == 0: 
+        for cls in testClasses.values():
+            suite = buildSuite(cls, suite)
+    else:
+        for cls in  [testClasses[arg] for arg in argv]:
+            suite = buildSuite(cls, suite)
+            
 
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

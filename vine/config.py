@@ -11,12 +11,13 @@ import utility
 class Config(option.Option):
     """
     Configures the current repo to be optimized for GRAPE on LC
-    Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] 
+    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
+                        [--nocredcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
-        --cv            walks you through setting up a sparse checkout for this repo. (interactive)
-        --nocv          skips custom-view questions
+        --uv            walks you through setting up a sparse checkout for this repo. (interactive)
+        --nouv          skips custom-view questions
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
         --p4merge       will set up p4merge as your merge tool. 
         --nop4merge     will skip p4merge questions.
@@ -78,11 +79,11 @@ class Config(option.Option):
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
         # perform an update of the active subprojects if asked.
-        ask = not args["--nocv"]
-        updateView = ask and (args["--cv"] or utility.userInput("do you want to edit your active subprojects?"
+        ask = not args["--nouv"]
+        updateView = ask and (args["--uv"] or utility.userInput("do you want to edit your active subprojects?"
                                                                 " (you can do this later using grape uv) [y/n]", "n"))
         if updateView:
-            grapeMenu.menu().applyMenuChoice("uv")
+            grapeMenu.menu().applyMenuChoice("uv", args["--uvArg"])
 
         # configure git to use p4merge for conflict resolution
         # and diffing
@@ -144,7 +145,7 @@ class Config(option.Option):
         submodules = git.getActiveSubmodules()
         config = grapeConfig.grapeConfig()
         publicBranches = config.getList("flow", "publicbranches")
-        submodulePublicBranches = config.getMapping('workspace', 'submoduleTopicPrefixMappings').values()
+        submodulePublicBranches = set(config.getMapping('workspace', 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
             self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub, submodulePublicBranches)
         
@@ -176,3 +177,17 @@ class Config(option.Option):
         if len(missingBranches) > 0:
             utility.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
         os.chdir(cwd)
+        
+    @staticmethod
+    def checkIfPublicBranchesExist(config, repo, publicBranches):
+        origcwd =  os.getcwd()
+        os.chdir(repo)
+        allBranches = git.allBranches()
+        missingBranches = []
+        for branch in publicBranches:
+            if ("remotes/origin/%s" % branch) not in allBranches:
+               missingBranches.append("remotes/origin/%s" % branch)
+            if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
+                missingBranches.append(branch)
+        os.chdir(origcwd)
+        return missingBranches

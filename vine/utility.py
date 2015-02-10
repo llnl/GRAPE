@@ -139,7 +139,7 @@ def writeDefaultConfig(filename):
 
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir(): 
+def workspaceDir(warnIfNotFound = True): 
     cwd = os.getcwd()
     basedir = None
 
@@ -148,7 +148,7 @@ def workspaceDir():
         if os.path.exists(os.path.join(os.getcwd(), ".git")): 
             basedir = os.getcwd()
         os.chdir(os.path.join(os.getcwd(), ".."))
-    if not basedir:
+    if not basedir and warnIfNotFound:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
     os.chdir(cwd)
     return basedir
@@ -181,21 +181,23 @@ def getGrapeExec():
     else:
         return os.path.join(os.path.dirname(__file__), "..", "grape")
 
-# handles subproject remote URL parsing. Needed for subtree and nested project support. (git handles the submodules)
-def parseSubprojectRemoteURL(subtreeRemote): 
-    path = subtreeRemote.strip().split('/')
-    if "ssh:" == path[0] or "https:" == path[0]:  
-        return subtreeRemote
-    if ".." != path[0]:
-        return subtreeRemote
+# Takes a URL and returns a hard path for it
+def parseSubprojectRemoteURL(url): 
+    path = url.strip().split('/')
+    if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
+        return url      #Already a hard path
 
-    # the subtreeRemote is a relative path
+    # We have a relative path so start the remote origin URL
     originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
-    
-    n = 1
-    while path[-n] != "..": 
-        originURL[-n] = path[-n]
-        n += 1
+
+    #Now parse path and modify originURL to make a hard path
+    for p in path:
+        if p == ".." and len(originURL) > 0:
+            originURL.pop()
+        elif p == ".":
+            pass
+        else:
+            originURL.append(p)
 
     return '/'.join(originURL)
 

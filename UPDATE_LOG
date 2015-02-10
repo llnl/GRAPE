@@ -1,5 +1,71 @@
 
 
+Tue Feb 10 13:58:37 2015 Peter B. Robinson
+v1.3.0
+
+Same as 1.2.7.
+
+
+Tue Feb 10 10:34:11 2015 Peter B. Robinson
+v1.2.7
+
+SUMMARY: Adds public branch and branch model consistency checks to grape status. 
+
+
+
+DETAILS - GRAPE: 
+BREAKING CHANGE - Grape config has lost the out-of-date --cv / --nocv options. They have been replaced with uv / --nouv options instead. 
+
+Grape clone has learned the \"--allNested\" option, which will clone all nested subprojects without asking for user input. 
+Grape config can pass options to grape uv using the [--uvArg=<arg>] flag. 
+Grape status has learned the --failIfInconsistent, --failIfMissingPublicBranches, and --failIfOnInconsistentBranches flags. These affect the return code when grape detects missing public branches and inconsistent subproject branches. Grape status will always print a message when detecting these issues regardless of the use of these flags. 
+Grape publish now uses grape status --failIfInconsistent as part of its checkForCleanWorkspace step. 
+An individual suite can now be tested using grape test. 
+grape uv has learned the --allSubmodules and --allNestedSubprojects flags. 
+
+DETAILS - TESTING
+TestGrape can now switch back and forth from hiding stdout, allowing easier debugging of failing tests. 
+Grape status is now tested using the new grid testing infrastructure.
+
+
+Fri Feb  6 10:56:22 2015 Benjamin T. Liu
+v1.2.6
+
+Ensure uv operates from the project level
+
+
+Wed Feb  4 15:25:24 2015 Benjamin T. Liu
+v1.2.5
+
+Extend commit file list to handle submodules and nested subprojects
+Extend prepublish to commit to nested subprojects
+Print notification email to display, even if not being sent
+
+
+Tue Jan 13 10:37:32 2015 Peter B. Robinson
+v1.2.4
+
+Moved md to first publish step to ensure submodules are up to date, preventing situations where ensure review will fail.
+
+
+Mon Jan 12 16:03:17 2015 Aaron Fisher
+v1.1.10
+
+Adds some machinery for creating grids of unit tests with various grape projects in different states being run through a list of tests wrapped up in a Class.
+
+
+Mon Jan 12 14:58:21 2015 Peter B. Robinson
+v1.1.9
+
+Exposes full CLI syntax to the grape menu.
+
+
+Mon Jan 12 14:53:24 2015 Benjamin T. Liu
+v1.1.8
+
+Fixes for publish
+
+
 Fri Jan  9 14:15:58 2015 Peter B. Robinson
 v1.2.0
 

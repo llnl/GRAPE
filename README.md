@@ -487,12 +487,19 @@ options are at least listed below.
     
 ## status
 
-    Usage: grape-status [-v] [-u | --uno]
+    Usage: grape-status [-v] [-u | --uno] 
+              [--failIfInconsistent] 
+              [--failIfMissingPublicBranches]
+              [--failIfBranchesInconsistent]
 
     Options:
-    -v      Show git commands being issued. 
-    --uno    Do not show untracked files
-    -u      Show untracked files. 
+    -v                             Show git commands being issued. 
+    --uno                          Do not show untracked files
+    -u                             Show untracked files. 
+    --failIfInconsistent           Fail if any consistency checks fail. 
+    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
+    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    
 
     
 ## checkout
@@ -571,7 +578,7 @@ options are at least listed below.
                          [--useStash=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
-                          --emailServer=<smtpserver>]]
+                          --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
             grape-publish --continue
             grape-publish --abort
@@ -675,6 +682,8 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailSendTo]
     --emailServer=<server>  The smtp email server address.
                             [default: .grapeconfig.publish.emailServer]
+    --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
+                            [default: .grapeconfig.publish.emailMaxFiles]
     --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
 
     Optional Arguments:
@@ -692,7 +701,7 @@ options are at least listed below.
  grape-clone
     Clones a git repo and configures it for use with git.
 
-    Usage: grape-clone <url> <path> [--recursive]
+    Usage: grape-clone <url> <path> [--recursive] [--allNested]
 
     Arguments:
         <url>       The URL of the remote repository
@@ -700,16 +709,19 @@ options are at least listed below.
 
     Options:
         --recursive   Recursively clone submodules.
+        --allNested   Get all nested subprojects. 
+        
     
 ## config
 
     Configures the current repo to be optimized for GRAPE on LC
-    Usage: grape-config [--cv | --nocv] [--nocredcache] [--p4merge] 
+    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
+                        [--nocredcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
-        --cv            walks you through setting up a sparse checkout for this repo. (interactive)
-        --nocv          skips custom-view questions
+        --uv            walks you through setting up a sparse checkout for this repo. (interactive)
+        --nouv          skips custom-view questions
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
         --p4merge       will set up p4merge as your merge tool. 
         --nop4merge     will skip p4merge questions.
@@ -891,6 +903,16 @@ options are at least listed below.
 
 
     
+## test
+
+    grape test
+    Runs grape's unit tests.    
+    Usage: grape-test [<suite>]...
+
+
+    Arguments:
+    <suite>  The name of the suite to test. The default is all. 
+    
 ## up
 
     grape up
@@ -954,7 +976,8 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b] [--skipSubmodules] [--skipNestedSubprojects]
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
+                    [--skipNestedSubprojects] [--allNestedSubprojects]
 
     Options:
         
@@ -965,6 +988,8 @@ options are at least listed below.
                                 not go through the 'which submodules do you want' script.
         -b                      Automatically creates subproject branches that should be there according to your branching
                                 model. 
+        --allSubmodules         Automatically add all submodules to your workspace. 
+        --allNestedSubprojects  Automatically add all nested subprojects to your workspace. 
 
     
 ## version
