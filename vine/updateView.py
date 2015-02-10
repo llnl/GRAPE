@@ -98,7 +98,6 @@ class UpdateView(option.Option):
         return UpdateView.defineActiveSubmodules(quiet=quiet, projectType="nested subproject")
 
     def execute(self, args):
-        print "HERE!!! ", args
         config = grapeConfig.grapeConfig()
         quiet = not args["-v"]
         origwd = os.getcwd()
@@ -145,10 +144,7 @@ class UpdateView(option.Option):
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
-                print "allNested", allNestedSubprojects
-                print "includedNested", includedNestedSubprojectPrefixes    
                 reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects} 
-                print "reverse:", reverseLookupByPrefix
                 userConfig = grapeConfig.grapeUserConfig()
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
