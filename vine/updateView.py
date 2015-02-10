@@ -14,7 +14,8 @@ import checkout
 class UpdateView(option.Option):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b] [--skipSubmodules] [--skipNestedSubprojects]
+    Usage: grape-uv [-f ] [-v] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
+                    [--skipNestedSubprojects] [--allNestedSubprojects]
 
     Options:
         
@@ -25,6 +26,8 @@ class UpdateView(option.Option):
                                 not go through the 'which submodules do you want' script.
         -b                      Automatically creates subproject branches that should be there according to your branching
                                 model. 
+        --allSubmodules         Automatically add all submodules to your workspace. 
+        --allNestedSubprojects  Automatically add all nested subprojects to your workspace. 
 
     """
     def __init__(self):
@@ -95,6 +98,7 @@ class UpdateView(option.Option):
         return UpdateView.defineActiveSubmodules(quiet=quiet, projectType="nested subproject")
 
     def execute(self, args):
+        print "HERE!!! ", args
         config = grapeConfig.grapeConfig()
         quiet = not args["-v"]
         origwd = os.getcwd()
@@ -106,7 +110,10 @@ class UpdateView(option.Option):
         if not args["--checkSubprojects"]:
             # handle submodules first
             if hasSubmodules:
-                includedSubmodules = self.defineActiveSubmodules(quiet=quiet)
+                if args["--allSubmodules"]: 
+                    includedSubmodules = {sub:True for sub in git.getAllSubmodules(quiet = quiet)}
+                else:
+                    includedSubmodules = self.defineActiveSubmodules(quiet=quiet)
                 initStr = ""
                 if args["-f"]:
                     deinitStr = "-f"
@@ -131,11 +138,17 @@ class UpdateView(option.Option):
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]: 
-                includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
-    
+                
+                nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
                 allNestedSubprojects = config.getAllNestedSubprojects()
-                reverseLookupByPrefix = {config.get("nested-%s" % sub, "prefix") : sub for sub in allNestedSubprojects} 
-    
+                if args["--allNestedSubprojects"]: 
+                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
+                else:
+                    includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects(quiet=quiet)
+                print "allNested", allNestedSubprojects
+                print "includedNested", includedNestedSubprojectPrefixes    
+                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects} 
+                print "reverse:", reverseLookupByPrefix
                 userConfig = grapeConfig.grapeUserConfig()
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():

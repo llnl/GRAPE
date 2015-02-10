@@ -105,7 +105,7 @@ def gridifyTestClass(projectList, testClass, projectNames=None):
                             and method.find("gridtest") == 0]
     testMethods = [getattr(testClass, method).__func__ for method in testMethodNames] 
 
-    #Now add the N*M test methods to the class test class
+    #Now add the N*M test methods to the class testClass
     for projecti in range(len(projectList)):
         project = projectList[projecti]
         for (name, method) in zip(testMethodNames, testMethods):

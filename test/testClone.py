@@ -10,6 +10,7 @@ from vine import grapeMenu, clone, grapeGit as git
 
 class TestClone(testGrape.TestGrape):
     def testClone(self):
+        self.setUpConfig()
         self.queueUserInput(['\n', '\n', '\n', '\n'])
         args = [self.repo, self.repos[1], "--recursive"]
         ret =grapeMenu.menu().applyMenuChoice("clone", args)
@@ -20,7 +21,7 @@ class TestClone(testGrape.TestGrape):
         self.assertNotIn(contents, "Usage: grape-clone")
         
         # check to make sure we didn't see a GRAPE WARNING
-        self.assertNotIn("WARNING", contents, "GRAPE ISSUED A WARNING DURING A CLONE")
+        self.assertNotIn("WARNING", contents, "GRAPE ISSUED A WARNING DURING A CLONE\n%s" % contents)
 
         # check to make sure the new repo has the old repo as a remote
         os.chdir(self.repos[1])
@@ -83,7 +84,7 @@ class TestClone(testGrape.TestGrape):
         try:
             tempDir = tempfile.mkdtemp()
             self.queueUserInput(["\n", "\n", "\n", "\n"])
-            args = [self.repo, tempDir, "--recursive"]
+            args = [self.repo, tempDir, "--recursive", "--allNested"]
             ret = grapeMenu.menu().applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
@@ -91,4 +92,5 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")
         finally:
             shutil.rmtree(tempDir)
+
 

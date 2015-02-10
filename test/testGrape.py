@@ -81,18 +81,22 @@ class TestGrape(unittest.TestCase):
         # create a test repository to operate in.
         try:
             try:
-                os.mkdir(self.repo)
+                os.mkdir(self.repo + "-origin")
             except OSError:
                 pass
-            os.chdir(self.repo)
+
+            os.chdir(self.repo + "-origin")
             cwd = os.getcwd()
-            print cwd
-            git.gitcmd("init", "Setup Failed")
+            git.gitcmd("init --bare", "Setup Failed")
+            os.chdir(os.path.join(self.repo+"-origin",".."))
+            git.gitcmd("clone %s %s" % (self.repo +"-origin",self.repo), "could not clone test bare repo")
+            os.chdir(self.repo)
             fname = os.path.join(self.repo, "testRepoFile")
             writeFile1(fname)
             self.file1 = fname
             git.gitcmd("add %s" % fname, "Add Failed")
             git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
+            git.gitcmd("push origin master", "push to master failed")
             # create a develop branch in addition to master by default
             git.branch("develop")
             os.chdir(os.path.join(self.repo, ".."))

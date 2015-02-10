@@ -10,7 +10,7 @@ class Clone(option.Option):
     """ grape-clone
     Clones a git repo and configures it for use with git.
 
-    Usage: grape-clone <url> <path> [--recursive]
+    Usage: grape-clone <url> <path> [--recursive] [--allNested]
 
     Arguments:
         <url>       The URL of the remote repository
@@ -18,6 +18,8 @@ class Clone(option.Option):
 
     Options:
         --recursive   Recursively clone submodules.
+        --allNested   Get all nested subprojects. 
+        
     """
 
     def __init__(self):
@@ -38,7 +40,11 @@ class Clone(option.Option):
         os.chdir(destpath)
         grapeConfig.read()
         menu = grapeMenu.menu()
-        return menu.applyMenuChoice("config")
+        if args["--allNested"]:
+            configArgs = ["--uv","--uvArg=--allNestedSubprojects"]
+        else: 
+            configArgs = []
+        return menu.applyMenuChoice("config", configArgs)
 
     def setDefaultConfig(self, config):
         pass
