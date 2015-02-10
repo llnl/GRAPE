@@ -1,5 +1,27 @@
 
 
+Tue Feb 10 10:34:11 2015 Peter B. Robinson
+v1.2.7
+
+SUMMARY: Adds public branch and branch model consistency checks to grape status. 
+
+
+
+DETAILS - GRAPE: 
+BREAKING CHANGE - Grape config has lost the out-of-date --cv / --nocv options. They have been replaced with uv / --nouv options instead. 
+
+Grape clone has learned the \"--allNested\" option, which will clone all nested subprojects without asking for user input. 
+Grape config can pass options to grape uv using the [--uvArg=<arg>] flag. 
+Grape status has learned the --failIfInconsistent, --failIfMissingPublicBranches, and --failIfOnInconsistentBranches flags. These affect the return code when grape detects missing public branches and inconsistent subproject branches. Grape status will always print a message when detecting these issues regardless of the use of these flags. 
+Grape publish now uses grape status --failIfInconsistent as part of its checkForCleanWorkspace step. 
+An individual suite can now be tested using grape test. 
+grape uv has learned the --allSubmodules and --allNestedSubprojects flags. 
+
+DETAILS - TESTING
+TestGrape can now switch back and forth from hiding stdout, allowing easier debugging of failing tests. 
+Grape status is now tested using the new grid testing infrastructure.
+
+
 Fri Feb  6 10:56:22 2015 Benjamin T. Liu
 v1.2.6
 
