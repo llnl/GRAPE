@@ -51,7 +51,7 @@ class Status(option.Option):
         for sub in subprojects:
             if not sub.strip():
                 continue
-            os.chdir(sub)
+            os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain %s" % statusArgs, quiet).split('\n')
             for line in subStatus: 
                 strippedL = line.strip()
