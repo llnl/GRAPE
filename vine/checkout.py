@@ -135,7 +135,7 @@ class Checkout(option.Option):
         addedModules = []
         removedModules = []
         uvArgs = []
-        noSubmoduleChange = True
+        submodulesDidChange = False
         if submoduleListDidChange and grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
 
             self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (previousSHA, branch)), addedModules,
@@ -143,7 +143,7 @@ class Checkout(option.Option):
             if not addedModules and not removedModules:
                 pass
             else:
-                noSubmoduleChange = False
+                submodulesDidChange = True
 
                 if removedModules:
                     for sub in removedModules:
@@ -197,7 +197,7 @@ class Checkout(option.Option):
                                          "Note this project is NOT active in %s. " % (projPrefix, branch))
                         os.chdir(workspaceDir)                          
                         
-        if noSubmoduleChange and not nestedProjectListDidChange:
+        if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
         if not quiet:
             uvArgs.append("-v")
