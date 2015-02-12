@@ -146,7 +146,6 @@ class Checkout(option.Option):
                 noSubmoduleChange = False
 
                 if removedModules:
-                    noSubmoduleChange = False
                     for sub in removedModules:
                         try:
                             os.chdir(os.path.join(workspaceDir, sub))
