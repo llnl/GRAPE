@@ -1,5 +1,11 @@
 
 
+Thu Feb 12 10:39:47 2015 Peter B. Robinson
+v1.3.1
+
+Addresses GRP-86 (new / dropped nested subproject detection on checkout) and GRP-83 (suggested version string for grape publish --startAt)
+
+
 Tue Feb 10 13:58:37 2015 Peter B. Robinson
 v1.3.0
 
