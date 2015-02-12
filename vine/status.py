@@ -101,7 +101,7 @@ class Status(option.Option):
                 if subbranch != wsBranch:
                     consistentBranchState = False
                     utility.printMsg("Submodule %s on branch %s when grape expects it to be on %s" % 
-                                     (sub, subbranch, subbranch))
+                                     (sub, subbranch, wsBranch))
                     
         # check that nested subproject branching is consistent
         if wsBranch in publicBranches: 

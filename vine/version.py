@@ -13,6 +13,7 @@ class Version(option.Option):
     """
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
+    The read subcommand is a no-op - it is used internally by other grape/vine modules. 
 
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
@@ -23,6 +24,7 @@ class Version(option.Option):
                               [--nocommit]
                               [--notick]
                               [--tagNested]
+           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -45,6 +47,7 @@ class Version(option.Option):
         --prefix=<prefix>   The version number prefix for version string to match in <file>, such as the 'v' in v1.2.3.
                             [default: .grapeconfig.versioning.prefix]
         --suffix=<suffix>   The version number suffix for grape-version to match in <file>, such as the 'm' in v1.2.3.m
+                            [default: ]
         --major             Tick the Major (1st) version number.
         --minor             Tick the Minor (2nd) version number.
         --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
@@ -86,6 +89,12 @@ class Version(option.Option):
             self.initializeVersioning(args)
         if args["tick"]:
             self.tickVersion(args)
+        if args["read"]:
+            config = grapeConfig.grapeConfig()
+            fileName = config.get("versioning","file")
+            with open(fileName) as f:
+                slots = self.readVersion(f, args)
+                self.ver = self.slotsToString(args, slots)
         return True
 
     def initializeVersioning(self, args):

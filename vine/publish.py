@@ -622,7 +622,10 @@ class Publish(resumable.Resumable):
         if "version" in self.progress:
             return True
         else:
-            self.progress["version"] = utility.userInput("Please enter version string for this commit")
+            menu = grapeMenu.menu()
+            menu.applyMenuChoice("version", ["read"])
+            guess = menu.getOption("version").ver
+            self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
         return True
 
     def loadCommitMessage(self, args):
