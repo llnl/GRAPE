@@ -1161,7 +1161,7 @@ class Publish(resumable.Resumable):
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
                             git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st]), quiet=quiet)
-                            git.subtree("push %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
+                            git.subtree("push --prefix=%s %s %s " % ( self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st]), quiet=quiet)
                             utility.printMsg("Succeeded!")
 

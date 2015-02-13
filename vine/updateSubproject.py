@@ -30,7 +30,7 @@ class UpdateSubproject(option.Option):
         self._key = "updateSubproject"
         
     def description(self):
-        return "Updates a subproject (such as  a subtree) from the subproject's host repository."
+        return "Updates a subproject (such as a subtree) from the subproject's host repository."
     
     def execute(self, args):
         if args["subtree"]:
