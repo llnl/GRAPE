@@ -927,6 +927,21 @@ options are at least listed below.
 
 
     
+## updateSubproject
+
+        grape updateSubproject
+        Updates an existing subproject from its host repository.  
+        
+        Usage: grape-updateSubproject subtree --name=<name> --branch=<committish>
+
+        Options:
+        --name=<name>  The name of the subproject. Must match a [subtree-<name>] section in .grapeconfig
+                       that has prefix and remote options defined. 
+        
+        --branch=<b>   The branch in the subtree's host repository whose state you want in your 
+                       repository.
+
+    
 ## installHooks
  grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
