@@ -1153,16 +1153,16 @@ class Publish(resumable.Resumable):
                                                                               self.st_remotes[st], self.st_branches[st]))
 
                         try:
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
+                            git.subtree("push %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st],  self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
                         except git.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
+                            git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
+                            git.subtree("push %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st],
                                                                                  args["-m"]), quiet=quiet)
                             utility.printMsg("Succeeded!")
