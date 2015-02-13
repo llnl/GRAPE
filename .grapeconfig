@@ -6,6 +6,7 @@ sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
 
 [subtrees]
 mergepolicy = squash
+names = stashy
 pushonpublish = True
 
 [workspace]
@@ -80,5 +81,8 @@ prefix = v
 [project]
 name = GRP
 
-
+[subtree-stashy]
+prefix = stashy
+remote = ../stashy.git
+topicprefixmappings = ?:grape
 
