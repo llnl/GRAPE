@@ -26,6 +26,7 @@ import review
 import status
 import test
 import updateLocal
+import updateSubproject
 import updateView
 import utility
 import version
@@ -72,7 +73,7 @@ class _Menu(object):
                          foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                          deleteBranch.DeleteBranch(), newWorkingTree.NewWorkingTree(),
                          resolveConflicts.ResolveConflicts(),
-                         review.Review(), test.Test(), updateLocal.UpdateLocal(),
+                         review.Review(), test.Test(), updateLocal.UpdateLocal(), updateSubproject.UpdateSubproject(),
                          hooks.InstallHooks(), hooks.RunHook(),
                          updateView.UpdateView(), version.Version(), walkthrough.Walkthrough(), quit.Quit()]
 
