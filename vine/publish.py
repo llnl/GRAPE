@@ -41,6 +41,7 @@ class Publish(resumable.Resumable):
                          [--noverify]
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
+                         [--forcePushSubtree=<subtreeName>]...
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
@@ -1005,7 +1006,7 @@ class Publish(resumable.Resumable):
         args["--pushSubtrees"] = push_subtrees
         if push_subtrees:
             allsubtrees = config.get('subtrees', 'names').strip().split()
-
+            self.modifiedSubtrees += args["--forcePushSubtree"]
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
                 if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet):
