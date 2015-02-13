@@ -1143,15 +1143,8 @@ class Publish(resumable.Resumable):
         # push subtrees to their respective remote branches
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
-
-            allsubtrees = config.get('subtrees', 'names').strip().split()
-            modifiedSubtrees = []
-            for st in allsubtrees:
-                prefix = config.get('subtree-%s' % st, 'prefix')
-                if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet): 
-                    modifiedSubtrees.append(st)
+            modifiedSubtrees = self.modifiedSubtrees
             if modifiedSubtrees: 
-
                 proceed = self.verifyPublishTargetsWithUser(args)
                 if proceed:
                     squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
