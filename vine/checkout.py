@@ -168,6 +168,7 @@ class Checkout(option.Option):
         addedProjects = []
         removedProjects = []
         nestedProjectListDidChange = False
+        os.chdir(workspaceDir)
         if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch), quiet=quiet): 
             configDiff = git.diff("--no-ext-diff %s %s -- %s" % (previousSHA, branch, ".grapeconfig"))
             nestedProjectListDidChange = "[nestedprojects]" in configDiff.lower()

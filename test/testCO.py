@@ -67,6 +67,9 @@ class TestCheckout(testGrape.TestGrape):
                          "submodule exists when it should not")
 
     def testSwitchingToBranchWithNewSubmodule(self):
+        debug = False
+        if debug:
+            self.switchToStdout()
         try:
             self.setUpSubmoduleBranch()
             
@@ -91,3 +94,6 @@ class TestCheckout(testGrape.TestGrape):
         except git.GrapeGitError as e:
             self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand )
             pass
+        finally:
+            if debug:
+                self.switchToHiddenOutput()
