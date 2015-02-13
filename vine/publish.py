@@ -1149,11 +1149,11 @@ class Publish(resumable.Resumable):
                 if proceed:
                     squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, self.st_prefixes[st],
+                        print("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
                                                                               self.st_remotes[st], self.st_branches[st]))
 
                         try:
-                            git.subtree("push %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
+                            git.subtree("push --prefix=%s %s %s " % (self.st_prefixes[st],
                                                                                  self.st_remotes[st],  self.st_branches[st]),
                                                                                  quiet=quiet)
                         except git.GrapeGitError:
