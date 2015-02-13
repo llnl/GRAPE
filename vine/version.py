@@ -92,9 +92,12 @@ class Version(option.Option):
         if args["read"]:
             config = grapeConfig.grapeConfig()
             fileName = config.get("versioning","file")
-            with open(fileName) as f:
-                slots = self.readVersion(f, args)
-                self.ver = self.slotsToString(args, slots)
+            try:
+                with open(fileName) as f:
+                    slots = self.readVersion(f, args)
+                    self.ver = self.slotsToString(args, slots)
+            except IOError:
+                self.ver = ""
         return True
 
     def initializeVersioning(self, args):
