@@ -230,7 +230,7 @@ class Publish(resumable.Resumable):
         self._key = "publish"
         self._section = "Gitflow Tasks"
         self.branchPrefix = None
-        self.modifiedSubtrees = []
+        self.modifiedSubtrees = set()
         self.st_prefixes = {}
         self.st_remotes = {}
         self.st_branches = {}
@@ -1006,7 +1006,7 @@ class Publish(resumable.Resumable):
         args["--pushSubtrees"] = push_subtrees
         if push_subtrees:
             allsubtrees = config.get('subtrees', 'names').strip().split()
-            self.modifiedSubtrees += args["--forcePushSubtree"]
+            self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
                 if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet):
