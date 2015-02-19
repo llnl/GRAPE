@@ -39,6 +39,8 @@ class DeleteBranch(option.Option):
                 utility.printMsg("*** WARNING ***: Detaching in order to delete current branch. You will be in a headless state.")
                 git.checkout("--detach %s" % branch)
                 git.branch("-D %s" % branch, quiet=True)
+            elif "not deleting branch" in e.gitOutput and "even though it is merged to HEAD." in e.gitOutput:
+                git.branch("-D %s" % branch, quiet=True)
             else: 
                 print e.gitOutput
         try:
