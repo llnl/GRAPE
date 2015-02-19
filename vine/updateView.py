@@ -125,8 +125,8 @@ class UpdateView(option.Option):
                         deinitStr += ' %s' % submodule
 
                 utility.printMsg("Configuring submodules...")
-                git.submodule("init %s" % initStr.strip(), quiet=quiet)
                 utility.printMsg("Initializing submodules...")
+                git.submodule("init %s" % initStr.strip(), quiet=quiet)
                 if deinitStr or deinitStr == "-f":
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
                     git.submodule("deinit %s" % deinitStr.strip(), quiet=quiet)
@@ -178,6 +178,9 @@ class UpdateView(option.Option):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
+        if args["--checkSubprojects"]:
+            utility.printMsg("Making sure all submodules are initialized...")
+            git.submodule("init")
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             #ensure nested subprojects are on the appropriate branch (nested projects should have same branch layout)
             # as outer level repo. 
@@ -187,7 +190,7 @@ class UpdateView(option.Option):
             self.safeSwitchHeadlessRepoToBranch(subproject, desiredSubprojectBranch, checkoutArgs, quiet)
 
 
-        # ensure submodule is on apppropriate branch
+        # ensure submodule is on appropriate branch
         if config.getboolean("workspace", "manageSubmodules"):
             desiredSubmoduleBranch = self.getDesiredSubmoduleBranch(config)
             activeSubmodules = git.getActiveSubmodules(quiet=quiet)
