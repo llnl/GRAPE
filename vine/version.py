@@ -24,6 +24,7 @@ class Version(option.Option):
                               [--nocommit]
                               [--notick]
                               [--tagNested]
+                              [--public=<branch>]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>]
 
     Arguments:
@@ -52,7 +53,10 @@ class Version(option.Option):
         --minor             Tick the Minor (2nd) version number.
         --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
                             than the current max number of digits, the version number will be extended to have <int>
-                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings
+                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings. 
+        --public=<branch>   The public branch to use for determine the slot to tick. Default based on 
+                            .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the version
+                            ticking is consistent with the --public option passed to grape publish. 
         --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
         --tag               Forces updateTag to be True.
         --notag             Forces updateTag to be False.
@@ -63,6 +67,7 @@ class Version(option.Option):
         --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                             version in <file>.
         --tagNested         Tag any active nested subprojects. 
+        
 
 
     """
@@ -130,7 +135,10 @@ class Version(option.Option):
             slot = args["--slot"]
             if not slot:
                 slotMappings = config.getMapping("versioning", "branchSlotMappings")
-                publicBranch = config.getPublicBranchFor(git.currentBranch())
+                if args["--public"]:
+                    publicBranch = args["--public"]
+                else:
+                    publicBranch = config.getPublicBranchFor(git.currentBranch())
                 slot = int(slotMappings[publicBranch])
             else:
                 slot = int(slot)
