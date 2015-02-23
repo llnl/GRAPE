@@ -1,5 +1,12 @@
 
 
+Mon Feb 23 12:14:52 2015 Benjamin T. Liu
+v1.3.2
+
+- Fix for deletion of nested subproject branch after publish (it is merged up to HEAD, but not pushed)
+- Initialize submodules during uv --subprojects (this prevents crash if a new submodule appears, as after a md with new submodules)
+
+
 Fri Feb 13 10:48:57 2015 Peter B. Robinson
 v1.3.1
 
