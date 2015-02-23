@@ -7,7 +7,7 @@ sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
 [subtrees]
 mergepolicy = squash
 names = stashy
-pushonpublish = False
+pushonpublish = True
 
 [workspace]
 subprojecttype = subtree

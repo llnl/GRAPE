@@ -41,6 +41,7 @@ class Publish(resumable.Resumable):
                          [--noverify]
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
+                         [--forcePushSubtree=<subtreeName>]...
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
@@ -229,7 +230,7 @@ class Publish(resumable.Resumable):
         self._key = "publish"
         self._section = "Gitflow Tasks"
         self.branchPrefix = None
-        self.modifiedSubtrees = []
+        self.modifiedSubtrees = set()
         self.st_prefixes = {}
         self.st_remotes = {}
         self.st_branches = {}
@@ -622,7 +623,10 @@ class Publish(resumable.Resumable):
         if "version" in self.progress:
             return True
         else:
-            self.progress["version"] = utility.userInput("Please enter version string for this commit")
+            menu = grapeMenu.menu()
+            menu.applyMenuChoice("version", ["read"])
+            guess = menu.getOption("version").ver
+            self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
         return True
 
     def loadCommitMessage(self, args):
@@ -1002,7 +1006,7 @@ class Publish(resumable.Resumable):
         args["--pushSubtrees"] = push_subtrees
         if push_subtrees:
             allsubtrees = config.get('subtrees', 'names').strip().split()
-
+            self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
                 if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet):
@@ -1139,35 +1143,26 @@ class Publish(resumable.Resumable):
         # push subtrees to their respective remote branches
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
-
-            allsubtrees = config.get('subtrees', 'names').strip().split()
-            modifiedSubtrees = []
-            for st in allsubtrees:
-                prefix = config.get('subtree-%s' % st, 'prefix')
-                if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet): 
-                    modifiedSubtrees.append(st)
+            modifiedSubtrees = self.modifiedSubtrees
             if modifiedSubtrees: 
-
                 proceed = self.verifyPublishTargetsWithUser(args)
                 if proceed:
                     squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        print("%s pushing subtree %s to %s (branch %s)..." % (squash, self.st_prefixes[st],
+                        print("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
                                                                               self.st_remotes[st], self.st_branches[st]))
 
                         try:
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
-                                                                                 self.st_remotes[st],  self.st_branches[st],
-                                                                                 args["-m"]), quiet=quiet)
+                            git.subtree("push --prefix=%s %s %s " % (self.st_prefixes[st],
+                                                                                 self.st_remotes[st],  self.st_branches[st]),
+                                                                                 quiet=quiet)
                         except git.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree("pull %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st],
-                                                                                 args["-m"]), quiet=quiet)
-                            git.subtree("push %s --prefix=%s %s %s -m \"%s\"" % (squash, self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st],
-                                                                                 args["-m"]), quiet=quiet)
+                            git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
+                                                                                 self.st_remotes[st], self.st_branches[st]), quiet=quiet)
+                            git.subtree("push --prefix=%s %s %s " % ( self.st_prefixes[st],
+                                                                                 self.st_remotes[st], self.st_branches[st]), quiet=quiet)
                             utility.printMsg("Succeeded!")
 
 

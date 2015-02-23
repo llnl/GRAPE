@@ -1,5 +1,37 @@
 
 
+Mon Feb 23 14:51:19 2015 Peter B. Robinson
+v1.3.4
+
+Same as 1.3.3
+
+
+
+Mon Feb 23 14:42:11 2015 Peter B. Robinson
+v1.3.3
+
+subtree publish fixes and subtree update capability is added.
+
+
+Mon Feb 23 12:14:52 2015 Benjamin T. Liu
+v1.3.2
+
+- Fix for deletion of nested subproject branch after publish (it is merged up to HEAD, but not pushed)
+- Initialize submodules during uv --subprojects (this prevents crash if a new submodule appears, as after a md with new submodules)
+
+
+Fri Feb 13 10:48:57 2015 Peter B. Robinson
+v1.3.1
+
+Addresses GRP-86 (new / dropped nested subproject detection on checkout) and GRP-83 (suggested version string for grape publish --startAt)
+
+
+Thu Feb 12 10:39:47 2015 Peter B. Robinson
+v1.3.1
+
+Addresses GRP-86 (new / dropped nested subproject detection on checkout) and GRP-83 (suggested version string for grape publish --startAt)
+
+
 Tue Feb 10 13:58:37 2015 Peter B. Robinson
 v1.3.0
 

@@ -78,7 +78,7 @@ class Checkout(option.Option):
 
     @staticmethod
     def parseGitModulesDiffOutput(output, addedModules, removedModules):
-        print output.split('\n')
+
         for line in output.split('\n'):
             if "+[submodule" in line:
                 print line
@@ -88,6 +88,33 @@ class Checkout(option.Option):
                 removedModules.append(line.split('"')[1])
 
         return addedModules, removedModules
+    
+    @staticmethod
+    def parseGrapeConfigNestedProjectDiffOutput(output, addedModules, removedModules): 
+        print output
+        nestedSection = False
+        oldProjects = []
+        newProjects = []
+        for line in output.split('\n'): 
+            ll = line.lower()
+            if "[nestedprojects]" in ll:
+                nestedSection = True
+            elif "[" in ll and "]" in ll:
+                nestedSection = False
+            if nestedSection:
+                if "-names" in ll: 
+                    oldProjects = ll.split('=')[1].strip().split()
+                if "+names" in ll:
+                    newProjects = ll.split('=')[1].strip().split()
+        for np in newProjects: 
+            if np not in oldProjects:
+                addedModules.append(np)
+        for op in oldProjects:
+            if op not in newProjects:
+                removedModules.append(op)
+                
+        return addedModules, removedModules
+            
 
     def execute(self, args):
         quiet = not args["-v"]
@@ -108,33 +135,71 @@ class Checkout(option.Option):
         addedModules = []
         removedModules = []
         uvArgs = []
+        submodulesDidChange = False
         if submoduleListDidChange and grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
 
             self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (previousSHA, branch)), addedModules,
                                            removedModules)
             if not addedModules and not removedModules:
-                uvArgs.append("--checkSubprojects")
+                pass
+            else:
+                submodulesDidChange = True
 
-            if removedModules:
-                for sub in removedModules:
-                    try:
-                       os.chdir(os.path.join(workspaceDir, sub))
-                       if git.isWorkingDirectoryClean():
-                           clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
-                           if clean:
-                               utility.printMsg("Removing clean submodule %s." % sub)
-                               os.chdir(workspaceDir)
-                               shutil.rmtree(os.path.join(workspaceDir, sub))
-                       else:
-                           utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
-                           os.chdir(workspaceDir)
-                    except OSError:
-                       pass
-            if addedModules:
-                utility.printMsg("New submodules %s are on branch %s. Updating view ..." % (addedModules, branch))
-        else:
+                if removedModules:
+                    for sub in removedModules:
+                        try:
+                            os.chdir(os.path.join(workspaceDir, sub))
+                            if git.isWorkingDirectoryClean():
+                                clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
+                                if clean:
+                                    utility.printMsg("Removing clean submodule %s." % sub)
+                                    os.chdir(workspaceDir)
+                                    shutil.rmtree(os.path.join(workspaceDir, sub))
+                            else:
+                                utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
+                                os.chdir(workspaceDir)
+                        except OSError:
+                            pass
+                if addedModules:
+                    utility.printMsg("New submodules %s are on branch %s. Updating view ..." % (addedModules, branch))
+
+
+        # check to see if nested project list changed
+        addedProjects = []
+        removedProjects = []
+        nestedProjectListDidChange = False
+        os.chdir(workspaceDir)
+        if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch), quiet=quiet): 
+            configDiff = git.diff("--no-ext-diff %s %s -- %s" % (previousSHA, branch, ".grapeconfig"))
+            nestedProjectListDidChange = "[nestedprojects]" in configDiff.lower()
+            self.parseGrapeConfigNestedProjectDiffOutput(configDiff, addedProjects, removedProjects)
+            if addedProjects: 
+                update = utility.userInput("New nested subprojects %s are on branch %s. "
+                                           "Would you like to update your view?" % (addedProjects, branch), 'n')
+                if not update and not removedProjects:
+                    nestedProjectListDidChange = False
+            
+            if removedProjects: 
+                config = grapeConfig.grapeConfig()
+                for proj in removedProjects:
+                    projPrefix = config.get("nested-%s" % proj, "prefix")
+                    os.chdir(os.path.join(workspaceDir, proj))
+                    if git.isWorkingDirectoryClean():
+                        remove = utility.userInput("Would you like to remove the nested subproject %s? \n"
+                                                   "All work that has not been pushed will be lost. " % projPrefix, 'n'  )
+                        if remove:
+                            remove = utility.userInput("Are you sure? When you switch back to the previous branch, you will have to\n"
+                                                       "reclone %s." % projPrefix, '\n')
+                        if remove:
+                            os.chdir(workspaceDir)
+                            shutil.rmtree(os.path.join(workspaceDir,projPrefix))
+                    else:
+                        utility.printMsg("Unstaged / committed changes in %s, not removing. \n"
+                                         "Note this project is NOT active in %s. " % (projPrefix, branch))
+                        os.chdir(workspaceDir)                          
+                        
+        if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
-
         if not quiet:
             uvArgs.append("-v")
             

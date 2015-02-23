@@ -560,6 +560,7 @@ options are at least listed below.
                          [--noverify]
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
+                         [--forcePushSubtree=<subtreeName>]...
                          [-v]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
@@ -927,6 +928,21 @@ options are at least listed below.
 
 
     
+## updateSubproject
+
+        grape updateSubproject
+        Updates an existing subproject from its host repository.  
+        
+        Usage: grape-updateSubproject subtree --name=<name> --branch=<committish>
+
+        Options:
+        --name=<name>  The name of the subproject. Must match a [subtree-<name>] section in .grapeconfig
+                       that has prefix and remote options defined. 
+        
+        --branch=<b>   The branch in the subtree's host repository whose state you want in your 
+                       repository.
+
+    
 ## installHooks
  grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
@@ -996,6 +1012,7 @@ options are at least listed below.
 
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
+    The read subcommand is a no-op - it is used internally by other grape/vine modules. 
 
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
@@ -1006,6 +1023,7 @@ options are at least listed below.
                               [--nocommit]
                               [--notick]
                               [--tagNested]
+           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -1028,6 +1046,7 @@ options are at least listed below.
         --prefix=<prefix>   The version number prefix for version string to match in <file>, such as the 'v' in v1.2.3.
                             [default: .grapeconfig.versioning.prefix]
         --suffix=<suffix>   The version number suffix for grape-version to match in <file>, such as the 'm' in v1.2.3.m
+                            [default: ]
         --major             Tick the Major (1st) version number.
         --minor             Tick the Minor (2nd) version number.
         --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger

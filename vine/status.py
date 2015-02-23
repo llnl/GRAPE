@@ -51,7 +51,7 @@ class Status(option.Option):
         for sub in subprojects:
             if not sub.strip():
                 continue
-            os.chdir(sub)
+            os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain %s" % statusArgs, quiet).split('\n')
             for line in subStatus: 
                 strippedL = line.strip()
@@ -101,7 +101,7 @@ class Status(option.Option):
                 if subbranch != wsBranch:
                     consistentBranchState = False
                     utility.printMsg("Submodule %s on branch %s when grape expects it to be on %s" % 
-                                     (sub, subbranch, subbranch))
+                                     (sub, subbranch, wsBranch))
                     
         # check that nested subproject branching is consistent
         if wsBranch in publicBranches: 
