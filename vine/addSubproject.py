@@ -43,7 +43,7 @@ class AddSubproject(option.Option):
         self._section = "Project Management"
 
     def description(self):
-        return "Adds a new subproject (such as a library) as either a subtree or a submodule"
+        return "Adds a new subproject (such as a library) as a subtree, submodule, or nested subproject. "
 
     @staticmethod
     def parseSubprojectType(config, args):
