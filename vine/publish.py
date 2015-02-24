@@ -742,11 +742,7 @@ class Publish(resumable.Resumable):
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()
-            versionArgs = ["tick", "--notag", "--notick", "--nocommit"]
-            for arg in args["-T"]:
-                newArg  = arg.strip()
-                if "--tag" not in newArg and "--tick" not in newArg: 
-                    versionArgs += [arg.strip()]
+            versionArgs = ["read"]
             menu.applyMenuChoice("version", versionArgs)
             currentVer = grapeMenu.menu().getOption("version").ver
             if currentVer in requestTitle:
@@ -755,7 +751,7 @@ class Publish(resumable.Resumable):
                 return True
         ret = True
         if args["--tickVersion"]:
-            versionArgs = ["tick", "--notag"]
+            versionArgs = ["tick", "--notag", "--public=%s" % args["--public"]]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
