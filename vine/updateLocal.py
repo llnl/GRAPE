@@ -35,7 +35,7 @@ class UpdateLocal(option.Option):
             if currentBranch != pubBranch.strip():
                 fetchArgs += "%s:%s " % (pubBranch, pubBranch)
         try:
-            git.fetch(fetchArgs)
+            git.fetch(fetchArgs, quiet=quiet)
         except git.GrapeGitError as e:
             # let non-fast-forward fetches slide
             if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:

@@ -98,6 +98,32 @@ class MergeDevelop(resumable.Resumable):
             if not branch:
                 utility.printMsg("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
+
+        config = grapeConfig.grapeConfig()
+
+        # if we stored cwd in self.progress, make sure we end up there
+        if "cwd" in self.progress:
+            cwd = self.progress["cwd"]
+        else:
+            cwd = utility.workspaceDir()
+        os.chdir(cwd)
+
+        utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
+        # make sure public branches are to date.
+        grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])
+        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+            os.chdir(os.path.join(git.baseDir(), subproject))
+            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])
+            os.chdir(cwd)
+        allsubmodules = git.getAllSubmodules()
+        if len(allsubmodules) > 0: 
+            subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
+            subPublic = subBranchMappings[git.branchPrefix(branch)]
+            for submodule in allsubmodules:
+                os.chdir(os.path.join(git.baseDir(), submodule))
+                grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % subPublic])
+                os.chdir(cwd)
+
         # determine whether to merge in subprojects that have changed
         try:
             submodules = self.progress["submodules"]
@@ -109,19 +135,9 @@ class MergeDevelop(resumable.Resumable):
         except KeyError:
             nested = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
                                                                                          
-                                                                                         
-        
-        config = grapeConfig.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurse = recurse and (not args["--norecurse"]) and submodules
         args["--recurse"] = recurse
-
-        # if we stored cwd in self.progress, make sure we end up there
-        if "cwd" in self.progress:
-            cwd = self.progress["cwd"]
-        else:
-            cwd = utility.workspaceDir()
-        os.chdir(cwd)
 
         if "conflictedFiles" in self.progress:
             conflictedFiles = self.progress["conflictedFiles"]
@@ -149,27 +165,23 @@ class MergeDevelop(resumable.Resumable):
         os.chdir(cwd)
         # merge submodules        
         if recurse:
-            if len(submodules) > 0: 
-                subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
-                subPublic = subBranchMappings[git.branchPrefix(branch)]
-                
-                for submodule in submodules:
-                    if submodule in conflictedFiles or ("stopPoint" in self.progress and
-                                                        submodule in self.progress["stopPoint"]):
-                        if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
-                            # stop for user to resolve conflicts
-                            self.progress["conflictedFiles"] = conflictedFiles
-                            self.dumpProgress(args)
-                            return False
-                os.chdir(cwd)
+            for submodule in submodules:
+                if submodule in conflictedFiles or ("stopPoint" in self.progress and
+                                                    submodule in self.progress["stopPoint"]):
+                    if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
+                        # stop for user to resolve conflicts
+                        self.progress["conflictedFiles"] = conflictedFiles
+                        self.dumpProgress(args)
+                        return False
+            os.chdir(cwd)
+            conflictedFiles = git.conflictedFiles()
+            # now that we resolved the submodule conflicts, continue the outer level merge 
+            if len(conflictedFiles) == 0:
+                mergeArgs = args
+                mergeArgs["--continue"] = True
+                mergeArgs["--quiet"] = True
+                grapeMenu.menu().getOption("m").execute(mergeArgs)
                 conflictedFiles = git.conflictedFiles()
-                # now that we resolved the submodule conflicts, continue the outer level merge 
-                if len(conflictedFiles) == 0:
-                    mergeArgs = args
-                    mergeArgs["--continue"] = True
-                    mergeArgs["--quiet"] = True
-                    grapeMenu.menu().getOption("m").execute(mergeArgs)
-                    conflictedFiles = git.conflictedFiles()
 
         if conflictedFiles:
             self.progress["stopPoint"] = "resolve conflicts"
