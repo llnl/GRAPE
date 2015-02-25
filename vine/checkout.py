@@ -43,6 +43,7 @@ class Checkout(option.Option):
                 if createNewBranch:
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
                     git.checkout(checkoutargs+" -b "+branch, quiet=quiet)
+                    git.push("-u origin %s" % branch)
 
             elif "already exists" in e.gitOutput:
                 utility.printMsg("Branch %s already exists in %s." % (branch, project))
