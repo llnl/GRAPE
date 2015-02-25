@@ -41,12 +41,16 @@ class UpdateLocal(option.Option):
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurse = recurse and (not args["--norecurse"])
 
+        # fetch branches in outer level repo
         self.fetchLocal(args, baseDir, cwd,
                         [x.strip() for x in args["--public"].split()])
 
+        # fetch branches in nested subprojects
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             self.fetchLocal(args, os.path.join(baseDir, subproject), cwd,
                             [x.strip() for x in args["--public"].split()])
+
+        # fetch branches in submodules
         allsubmodules = git.getAllSubmodules()
         if len(allsubmodules) > 0: 
             subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
