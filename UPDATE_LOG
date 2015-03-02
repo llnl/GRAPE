@@ -1,5 +1,11 @@
 
 
+Mon Mar  2 14:42:38 2015 Benjamin T. Liu
+v1.4.3
+
+Fix up to only fetch public branches of active submodules
+
+
 Mon Mar  2 10:27:58 2015 Benjamin T. Liu
 v1.4.2
 
