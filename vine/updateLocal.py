@@ -51,10 +51,10 @@ class UpdateLocal(option.Option):
                             [x.strip() for x in args["--public"].split()])
 
         # fetch branches in submodules
-        allsubmodules = git.getAllSubmodules()
-        if len(allsubmodules) > 0: 
+        activeSubmodules = git.getActiveSubmodules()
+        if len(activeSubmodules) > 0: 
             subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
-            for submodule in allsubmodules:
+            for submodule in activeSubmodules:
                 self.fetchLocal(args, os.path.join(baseDir, submodule), cwd,
                                 [subBranchMappings[x.strip()] for x in args["--public"].split()])
         return True
