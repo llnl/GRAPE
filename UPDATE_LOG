@@ -1,5 +1,13 @@
 
 
+Mon Mar  2 10:27:58 2015 Benjamin T. Liu
+v1.4.2
+
+- Ensure upstream branch is created/pushed when new branch is created during checkout or uv
+- Limit git submodule init in uv --checkSubprojects to active submodules
+- Set defaults in uv based on current state
+
+
 Wed Feb 25 14:22:31 2015 Benjamin T. Liu
 v1.4.1
 
