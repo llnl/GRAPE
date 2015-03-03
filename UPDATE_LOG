@@ -1,5 +1,11 @@
 
 
+Mon Mar  2 16:12:27 2015 Peter B. Robinson
+v1.4.4
+
+grape installHooks is now workspace aware - won't break if called from within submodules or nested subprojects.
+
+
 Mon Mar  2 14:42:38 2015 Benjamin T. Liu
 v1.4.3
 
