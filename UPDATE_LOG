@@ -1,5 +1,12 @@
 
 
+Tue Mar  3 17:13:02 2015 Peter B. Robinson
+v1.4.5
+
+Grape publish will now ask before deleting branches. 
+Grape publish has much more robust --continue support during the PERFORM CASCADE step.
+
+
 Mon Mar  2 16:12:27 2015 Peter B. Robinson
 v1.4.4
 
