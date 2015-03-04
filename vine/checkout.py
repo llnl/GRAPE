@@ -207,7 +207,7 @@ class Checkout(option.Option):
         if args["-b"]: 
             uvArgs.append("-b")
         
-        utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
+        utility.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(workspaceDir)

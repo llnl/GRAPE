@@ -102,7 +102,7 @@ class NewBranchOption(option.Option):
 
             proceed = proceed or utility.userInput("About to create the branch " + branchName + " off of "
                                                    + submodulePublic +
-                                                   " for all submodules.\nProceed? [y/n]", 'y')
+                                                   " for all active submodules.\nProceed? [y/n]", 'y')
             if proceed:
                 for sub in submodules: 
                     os.chdir(os.path.join(cwd, sub))
