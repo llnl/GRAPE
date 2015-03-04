@@ -36,7 +36,7 @@ class Push(option.Option):
         utility.printMsg("Performing push in outer level project")
         git.push(pushargs, quiet=quiet)
         if submodules:
-            utility.printMsg("Performing pushes in all submodules")
+            utility.printMsg("Performing pushes in all active submodules")
         for sub in submodules: 
             os.chdir(os.path.join(baseDir, sub))
             git.push(pushargs, quiet=quiet)
