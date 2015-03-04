@@ -73,8 +73,8 @@ def merge(branch, strategy, args):
     except git.GrapeGitError as error:
         print error.gitOutput
         if "conflict" in error.gitOutput.lower():
-            print("GRAPE: Conflicts generated. Resolve using git mergetool, then continue "
-                  "with grape m --continue. ")
+            utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
+                              "with grape m --continue. ")
         else:
             print("Merge command %s failed. Quitting." % error.gitCommand)
         return False
