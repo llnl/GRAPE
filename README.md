@@ -814,12 +814,13 @@ options are at least listed below.
     
 ## db
  Deletes a topic branch both locally and on origin for all projects in this workspace. 
-    Usage: grape-db [-D] [<branch>]
+    Usage: grape-db [-D] [<branch>] [--verify]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
                     are trying to delete, this will detach you from the branch and then 
                     delete it, issuing a warning that you are in a detached state.  
+     --verify       Verifies the delete before performing it. 
 
     Arguments: 
     <branch>        The branch to delete. Will ask for branch name if not included. 
@@ -918,12 +919,17 @@ options are at least listed below.
 
     grape up
     Updates the current branch and any public branches. 
-    Usage: grape-up [--public=<branch> ] [-v]
+    Usage: grape-up [--public=<branch> ]
+                    [--recurse | --norecurse]
+                    [-v]
+                    
 
     Options:
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
+    --recurse               Update branches in submodules.
+    --norecurse             Do not update branches in submodules.
     -v                      Be more verbose.
 
 

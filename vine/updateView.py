@@ -47,6 +47,7 @@ class UpdateView(option.Option):
         """
         if projectType == "submodule":
             allSubprojects = git.getAllSubmodules(quiet=quiet)
+            activeSubprojects = git.getActiveSubmodules(quiet=quiet)
 
         if projectType == "nested subproject":
             config = grapeConfig.grapeConfig()
@@ -54,8 +55,10 @@ class UpdateView(option.Option):
             allSubprojects = []
             for project in allSubprojectNames:
                 allSubprojects.append(config.get("nested-%s" % project, "prefix"))
+            activeSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
 
         toplevelDirs = {}
+        toplevelActiveDirs = {}
         toplevelSubs = []
         for sub in allSubprojects:
             # we are taking advantage of the fact that branchPrefixes are the same as directory prefixes for local
@@ -63,17 +66,31 @@ class UpdateView(option.Option):
             prefix = git.branchPrefix(sub)
             if sub != prefix:
                 toplevelDirs[prefix] = []
+                toplevelActiveDirs[prefix] = []
         for sub in allSubprojects:
             prefix = git.branchPrefix(sub)
             if sub != prefix:
                 toplevelDirs[prefix].append(sub)
             else:
                 toplevelSubs.append(sub)
+        for sub in activeSubprojects:
+            prefix = git.branchPrefix(sub)
+            if sub != prefix:
+                toplevelActiveDirs[prefix].append(sub)
 
         included = {}
         for directory, subprojects in toplevelDirs.items():
+
+            activeDir = toplevelActiveDirs[directory]
+            if len(activeDir) == 0:
+                defaultValue = "none"
+            elif set(activeDir) == set(subprojects):
+                defaultValue = "all"
+            else:
+                defaultValue = "some"
+
             opt = utility.userInput("Would you like all, some, or none of the %ss in %s?" % (projectType,directory),
-                                    default="all")
+                                    default=defaultValue)
             if opt.lower()[0] == "a":
                 for subproject in subprojects:
                     included[subproject] = True
@@ -84,9 +101,10 @@ class UpdateView(option.Option):
             if opt.lower()[0] == "s":
                 for subproject in subprojects: 
                     included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
-                                                            'n')
-        for subprojects in toplevelSubs:
-            included[subprojects] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subprojects), 'n')
+                                                             'y' if (subproject in activeSubprojects) else 'n')
+        for subproject in toplevelSubs:
+            included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
+                                                     'y' if (subproject in activeSubprojects) else 'n')
         return included
 
     @staticmethod
@@ -178,9 +196,6 @@ class UpdateView(option.Option):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
-        if args["--checkSubprojects"]:
-            utility.printMsg("Making sure all submodules are initialized...")
-            git.submodule("init")
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             #ensure nested subprojects are on the appropriate branch (nested projects should have same branch layout)
             # as outer level repo. 
@@ -197,6 +212,8 @@ class UpdateView(option.Option):
             if activeSubmodules:
                 utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
             for sub in activeSubmodules:
+                if args["--checkSubprojects"]:
+                   git.submodule("init %s" % sub)
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, checkoutArgs, quiet)
 

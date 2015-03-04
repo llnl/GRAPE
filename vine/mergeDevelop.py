@@ -123,6 +123,10 @@ class MergeDevelop(resumable.Resumable):
             cwd = utility.workspaceDir()
         os.chdir(cwd)
 
+        utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
+        # make sure public branches are to date.
+        grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--recurse'])
+
         if "conflictedFiles" in self.progress:
             conflictedFiles = self.progress["conflictedFiles"]
         else:
@@ -224,7 +228,7 @@ class MergeDevelop(resumable.Resumable):
         print("Merging changes from %s into your current branch..." % branch)
         mergeArgs = args
         mergeArgs["<branch>"] = branch
-        mergeArgs["--quiet"] = True
+        mergeArgs["--quiet"] = not args["-v"]
         conflict = not grapeMenu.menu().getOption("mr").execute(mergeArgs)
         if conflict:
             conflictedFiles = git.conflictedFiles()
