@@ -1,5 +1,33 @@
 
 
+Wed Mar  4 11:12:52 2015 Peter B. Robinson
+v1.5.0
+
+Same as v1.4.5
+Grape publish will now ask before deleting branches.
+Grape publish has much more robust --continue support during the PERFORM CASCADE step.
+grape installHooks is now workspace aware - won't break if called from within submodules or nested subprojects.
+Fix up to only fetch public branches of active submodules
+Ensure upstream branch is created/pushed when new branch is created during checkout or uv
+Limit git submodule init in uv --checkSubprojects to active submodules
+Set defaults in uv based on current state
+Update local branches before md. GRP-110
+
+
+
+Tue Mar  3 17:13:02 2015 Peter B. Robinson
+v1.4.5
+
+Grape publish will now ask before deleting branches. 
+Grape publish has much more robust --continue support during the PERFORM CASCADE step.
+
+
+Mon Mar  2 16:12:27 2015 Peter B. Robinson
+v1.4.4
+
+grape installHooks is now workspace aware - won't break if called from within submodules or nested subprojects.
+
+
 Mon Mar  2 14:42:38 2015 Benjamin T. Liu
 v1.4.3
 

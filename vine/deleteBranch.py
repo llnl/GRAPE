@@ -8,12 +8,13 @@ import grapeConfig
 
 class DeleteBranch(option.Option):
     """ Deletes a topic branch both locally and on origin for all projects in this workspace. 
-    Usage: grape-db [-D] [<branch>]
+    Usage: grape-db [-D] [<branch>] [--verify]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
                     are trying to delete, this will detach you from the branch and then 
                     delete it, issuing a warning that you are in a detached state.  
+     --verify       Verifies the delete before performing it. 
 
     Arguments: 
     <branch>        The branch to delete. Will ask for branch name if not included. 
@@ -57,6 +58,10 @@ class DeleteBranch(option.Option):
         
         cwd = utility.workspaceDir()
         os.chdir(cwd)
+        if args["--verify"]:
+            proceed = utility.userInput("Would you like to delete the branch %s" % branch, 'y')
+            if not proceed:
+                return True
         # delete the branch in submodules first
         submodules = git.getActiveSubmodules()
         config = grapeConfig.grapeConfig()

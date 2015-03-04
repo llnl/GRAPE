@@ -260,7 +260,7 @@ class Publish(resumable.Resumable):
         topic = args["--topic"]
         if not topic:
             topic = git.currentBranch()
-        if topic != git.currentBranch():
+        if topic != git.currentBranch() and self.after(self.order, "publish", args["--startAt"]):
             git.checkout(topic)
         args["--topic"] = topic
 
@@ -304,31 +304,40 @@ class Publish(resumable.Resumable):
         utility.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
 
+    @staticmethod
+    def after(array, item1, item2): 
+        try: 
+            pos1 = array.index(item1)
+            pos2 = array.index(item2)
+        except ValueError:
+            return False
+    
     def execute(self, args):
         if args["--abort"]: 
             self.abort(args)
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
+            
+        self.order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureReview", "verifyCompletedReview", 
+                 "markInProgress", "tickVersion", "updateLog",
+                 "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                 "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
+        if args["--quick"]:
+            self.order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
+        
         self.parseArgs(args)
         
         startPoint = args["--startAt"]
-        order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureReview", "verifyCompletedReview", 
-                 "markInProgress", "tickVersion", "updateLog",
-                 "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                 "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
-
-        if args["--quick"]:
-            order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
 
         if args["--printSteps"]:
-            print order
+            print self.order
             return True
 
         if startPoint:
-            if startPoint not in order:
-                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, order))
+            if startPoint not in self.order:
+                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, self.order))
         else:
-            startPoint = order[0]
+            startPoint = self.order[0]
 
         stopPoint = args["--stopAt"]
 
@@ -354,7 +363,7 @@ class Publish(resumable.Resumable):
 
 
         currentStep = startPoint
-        for step in order:
+        for step in self.order:
             if step == "done":
                 break
             if step == stopPoint:
@@ -369,7 +378,7 @@ class Publish(resumable.Resumable):
                 print(traceback.format_exc())
                 return False
             if ret:
-                currentStep = order[order.index(currentStep) + 1]
+                currentStep = self.order[self.order.index(currentStep) + 1]
             else:
                 self.bailOut(step, args)
                 return False
@@ -854,7 +863,7 @@ class Publish(resumable.Resumable):
     @staticmethod
     def deleteTopicBranch(args):
         if args["--deleteTopic"].lower() == "true":
-            grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
+            grapeMenu.menu().applyMenuChoice("db", [args["--topic"], "--verify"])
         return True
 
     @staticmethod
@@ -920,12 +929,50 @@ class Publish(resumable.Resumable):
             self.cascadeDict["outer"] = args["--cascade"]
             args["<<cascadeDict>>"] = self.cascadeDict
 
+    def performCascade(self, args, status,mergeID,repo, branch, public):
+        if not mergeID in status:
+            status[mergeID] = "READY"
+        if status[mergeID] == "DONE":
+            return True
+        if status[mergeID] == "READY": 
+            git.checkout(branch)
+        if not status[mergeID] == "MERGING":
+            status[mergeID] = "MERGING"
+            try:
+                git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
+            except git.GrapeGitError as e: 
+                if "conflict" in e.gitOutput.lower():
+                    utility.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
+                                     "Please use git mergetool to resolve, and then git commit to commit your changes.\n"
+                                     "Once done, please run grape publish --continue ."% (public, branch, repo))
+                return False
+                    
+        elif status[mergeID] == "MERGING":
+            clean = self.testForCleanWorkspace(args)
+            if clean: 
+                utility.printMsg("Resuming with cascades...")
+            if not clean: 
+                utility.printMsg("Workspace not clean after resuming from a cascade.\n"
+                                 "Please commit your merge resolution or otherwise clean up your workspace.")
+                return False
+        else:
+            # fall through
+            pass
+        status[mergeID] = "MERGED"
+        public = branch 
+        git.push("origin %s" % branch)
+        status[mergeID] = "DONE"
+        return True
+
     def performCascades(self, args):
         self.loadPublishTargets(args)
         
         if "<<cascadeDict>>" in args and args["<<cascadeDict>>"]:
             self.cascadeDict = args["<<cascadeDict>>"]
-         
+        if "<<cascadeMergeStatus>>" not in args:
+            args["<<cascadeMergeStatus>>"] = {}
+        status = args["<<cascadeMergeStatus>>"]
+        print status
         wsdir = utility.workspaceDir()    
         if self.cascadeDict:
             # do outer level and nested project cascades
@@ -936,10 +983,9 @@ class Publish(resumable.Resumable):
                 public = args["--public"]
                 os.chdir(repo)
                 for branch in cascade:
-                    git.checkout(branch)
-                    git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
-                    public = branch 
-                    git.push("origin %s" % branch)
+                    mergeID = "%s_%s_%s" % ("outer", repo, branch)
+                    if not self.performCascade(status, args, mergeID, repo, branch, public): 
+                        return False
                     
             if "submodules" in self.cascadeDict and "<<publishedSubmodules>>" in args:
                 cascade = self.cascadeDict["submodules"]
@@ -948,10 +994,9 @@ class Publish(resumable.Resumable):
                     os.chdir(repo)
                     public = args["--submodulePublic"]
                     for branch in cascade:
-                        git.checkout(branch)
-                        git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
-                        public = branch 
-                        git.push("origin %s" % branch)
+                        mergeID = "%s_%s_%s" % ("submodules", repo, branch)
+                        if not self.performCascade(status, args, mergeID, repo, branch, public):
+                            return False
             os.chdir(wsdir)
             
         return True
