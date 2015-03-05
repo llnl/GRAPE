@@ -1023,7 +1023,7 @@ class Publish(resumable.Resumable):
         config = grapeConfig.grapeConfig()
         public = args["--public"]
         topic = args["--topic"]
-        quiet = args["-v"]
+        quiet = not args["-v"]
         
         # decide whether to recurse into submodules
         recurse = config.get('workspace', 'manageSubmodules')
@@ -1050,8 +1050,8 @@ class Publish(resumable.Resumable):
             self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
-                if git.diff("--name-only %s %s -- %s" % (public, topic, prefix), quiet=quiet):
-                    self.modifiedSubtrees.append(st)
+                if git.diff("--name-only %s %s -- %s" % (public, topic, os.path.join(utility.workspaceDir(),prefix)), quiet=quiet):
+                    self.modifiedSubtrees.add(st)
             for st in self.modifiedSubtrees:
                 self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')
                 self.st_remotes[st] = utility.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
@@ -1075,7 +1075,7 @@ class Publish(resumable.Resumable):
         topic = args["--topic"]
         submodules = git.getModifiedSubmodules(public, topic)
         
-        userMsg = "When ready, grape will publish %s to:\n" % topic
+        userMsg = "GRAPE: When ready, grape will publish %s to:\n" % topic
         
         useAnd = False
         if recurse:
@@ -1087,22 +1087,21 @@ class Publish(resumable.Resumable):
             userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
             useAnd = True
         
-        userMsg += "%s%s for the outer level repo. \nProceed? [y/n]" % ("and " if useAnd else "", public)
+        userMsg += "%s%s for the outer level repo. \n" % ("and " if useAnd else "", public)
         
-        proceed = utility.userInput(userMsg, 'y')
-        if not proceed:
-            return False
+
 
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
             if self.modifiedSubtrees:
-                utility.printMsg("When ready, grape will publish the following subtrees to the following destinations:")
+                userMsg += "Additionally, grape will publish the following subtrees to the following destinations:\n"
                 for st in self.modifiedSubtrees:
-                    print("subtree: %s\trepo: %s\tbranch:%s" % (self.st_prefixes[st], self.st_remotes[st],
-                                                                self.st_branches[st]))
-                proceed = utility.userInput("Proceed? [y/n]", 'y')
-                if not proceed:
-                    return False
+                    userMsg += "subtree: %s\trepo: %s\tbranch:%s\n" % (self.st_prefixes[st], self.st_remotes[st],
+                                                                     self.st_branches[st])
+
+        proceed = utility.userInput(userMsg + "\nProceed? [y/n]", 'y')
+        if not proceed:
+            return False        
         self.progress["targetsVerified"] = True
         return True
 
