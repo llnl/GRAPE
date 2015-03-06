@@ -92,8 +92,12 @@ class Walkthrough(option.Option):
            pass
         return True
 
+# Base class for navigating files in a workspace
 class ProjectManager:
-   def __init__(self, master, height='600', width='600',
+   def __init__(self, master,
+                showInactive=True, showToplevel=True,
+                showSubmodules=True, showSubtrees=True, showNestedSubprojects=True,
+                height=0, width=0,
                 fginit='black', bginit='gray',
                 fgvisited='slate gray', bgvisited='light gray',
                 fgselected='black', bgselected='goldenrod',
@@ -113,6 +117,7 @@ class ProjectManager:
       self.bgactive = bgactive
 
       # Panel labels
+      # These variables should be set by derived classes
       self.filepanelabel = Tk.StringVar()
       self.projpanelabel = Tk.StringVar()
 
@@ -149,44 +154,48 @@ class ProjectManager:
       # Populate subproject navigation list
 
       # Outer level repo
-      self.projects = [ "" ]
-      self.projtype = [ "Outer" ]
-      self.projlist.insert(Tk.END, "<Outer Level Project>")
+      if showToplevel:
+         self.projects = [ "" ]
+         self.projtype = [ "Outer" ]
+         self.projlist.insert(Tk.END, "<Outer Level Project>")
 
       # Nested subprojects
-      activeNestedSubprojects = (grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes())
-      inactiveNestedSubprojects = list(set(grapeConfig.grapeConfig().getAllNestedSubprojects()) - set(grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()))
-      
-      self.projects.extend(activeNestedSubprojects)
-      for proj in activeNestedSubprojects:
-         self.projlist.insert(Tk.END, "%s <Nested Subproject>" % proj)
-         self.projtype.append("Active Nested")
-      self.projects.extend(inactiveNestedSubprojects)
-      for proj in inactiveNestedSubprojects:
-         self.projlist.insert(Tk.END, "%s <Inactive Nested Subproject>" % proj)
-         self.projtype.append("Inactive Nested")
+      if showNestedSubprojects:
+         activeNestedSubprojects = (grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes())
+         self.projects.extend(activeNestedSubprojects)
+         for proj in activeNestedSubprojects:
+            self.projlist.insert(Tk.END, "%s <Nested Subproject>" % proj)
+            self.projtype.append("Active Nested")
+         if showInactive:
+            inactiveNestedSubprojects = list(set(grapeConfig.grapeConfig().getAllNestedSubprojects()) - set(grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()))
+            self.projects.extend(inactiveNestedSubprojects)
+            for proj in inactiveNestedSubprojects:
+               self.projlist.insert(Tk.END, "%s <Inactive Nested Subproject>" % proj)
+               self.projtype.append("Inactive Nested")
 
       # Submodules
-      activeSubmodules = (git.getActiveSubmodules())
-      inactiveSubmodules = list(set(git.getAllSubmodules()) - set(git.getActiveSubmodules()))
-      
-      self.projects.extend(activeSubmodules)
-      for proj in activeSubmodules:
-         self.projlist.insert(Tk.END, "%s <Submodule>" % proj)
-         self.projtype.append("Submodule")
-      self.projects.extend(inactiveSubmodules)
-      for proj in inactiveSubmodules:
-         self.projlist.insert(Tk.END, "%s <Inactive Submodule>" % proj)
-         self.projtype.append("Inactive Submodule")
+      if showSubmodules:
+         activeSubmodules = (git.getActiveSubmodules())
+         self.projects.extend(activeSubmodules)
+         for proj in activeSubmodules:
+            self.projlist.insert(Tk.END, "%s <Submodule>" % proj)
+            self.projtype.append("Submodule")
+         if showInactive:
+            inactiveSubmodules = list(set(git.getAllSubmodules()) - set(git.getActiveSubmodules()))
+            self.projects.extend(inactiveSubmodules)
+            for proj in inactiveSubmodules:
+               self.projlist.insert(Tk.END, "%s <Inactive Submodule>" % proj)
+               self.projtype.append("Inactive Submodule")
 
       # Subtrees
       # These should also show up in the outer level repo diff, but this
       # should provide the ability to diff just the subproject.
-      allSubtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get('subtrees', 'names').strip().split() ]
-      self.projects.extend(allSubtrees)
-      for proj in allSubtrees:
-         self.projlist.insert(Tk.END, "%s <Subtree>" % proj)
-         self.projtype.append("Subtree")
+      if showSubtrees:
+         allSubtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get('subtrees', 'names').strip().split() ]
+         self.projects.extend(allSubtrees)
+         for proj in allSubtrees:
+            self.projlist.insert(Tk.END, "%s <Subtree>" % proj)
+            self.projtype.append("Subtree")
 
       # Resize the project pane based on its contents
       self.projlistwidth = 0
@@ -222,8 +231,16 @@ class ProjectManager:
       except:
          pass
 
+   # This should be implemented by derived classes
+   def initFiles(self, index):
+      pass
+
+   # This should be implemented by derived classes
+   def execute(self, file):
+      pass
+
 class DiffManager(ProjectManager):
-   def __init__(self, master, height='600', width='600',
+   def __init__(self, master, height=0, width=0,
                 branchA="", branchB="", difftool="", diffargs=""):
       # Configurable parameters
       if difftool == "":
@@ -261,6 +278,23 @@ class DiffManager(ProjectManager):
       self.filelist.delete(0,Tk.END)
       dir = self.projects[index]
       type = self.projtype[index]
+
+      if type.endswith("Submodule"):
+         submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
+         branchParts = self.branchA.split("/",1)
+         if len(branchParts) == 1 or branchParts[0] == "origin":
+            if branchParts[-1] in submapping.keys():
+               branchParts[-1] = submapping[branchParts[-1]]
+         self.diffbranchA.set("/".join(branchParts))
+         branchParts = self.branchB.split("/",1)
+         if len(branchParts) == 1 or branchParts[0] == "origin":
+            if branchParts[-1] in submapping.keys():
+               branchParts[-1] = submapping[branchParts[-1]]
+         self.diffbranchB.set("/".join(branchParts))
+      else:
+         self.diffbranchA.set(self.branchA)
+         self.diffbranchB.set(self.branchB)
+
       if type.startswith("Inactive"):
          remotels = git.gitcmd("ls-remote")
          self.filelist.insert(Tk.END, "<Unable to diff>")
@@ -268,21 +302,6 @@ class DiffManager(ProjectManager):
       else:
          os.chdir(os.path.join(utility.workspaceDir(), dir))
          self.filenames = []
-         if type.endswith("Submodule"):
-            submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
-            branchParts = self.branchA.split("/",1)
-            if len(branchParts) == 1 or branchParts[0] == "origin":
-               if branchParts[-1] in submapping.keys():
-                  branchParts[-1] = submapping[branchParts[-1]]
-            self.diffbranchA.set("/".join(branchParts))
-            branchParts = self.branchB.split("/",1)
-            if len(branchParts) == 1 or branchParts[0] == "origin":
-               if branchParts[-1] in submapping.keys():
-                  branchParts[-1] = submapping[branchParts[-1]]
-            self.diffbranchB.set("/".join(branchParts))
-         else:
-            self.diffbranchA.set(self.branchA)
-            self.diffbranchB.set(self.branchB)
          diffoutput = git.diff("--name-status %s %s %s" % (self.diffargs, self.diffbranchA.get(), self.diffbranchB.get()), quiet=True).splitlines()
          statusdict = { "A":"<Only in B>",
                         "C":"<File copied>",
