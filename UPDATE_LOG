@@ -1,5 +1,11 @@
 
 
+Fri Mar  6 10:43:23 2015 Peter B. Robinson
+v1.5.1
+
+Cleans up some publish output, fixes some subtree publish path bugs.
+
+
 Wed Mar  4 11:12:52 2015 Peter B. Robinson
 v1.5.0
 
