@@ -108,9 +108,13 @@ class DiffManager:
       self.oldprojindex = 0
       # Configurable parameters
       self.difftool = difftool
+      self.diffargs = diffargs
       self.branchA = branchA
       self.branchB = branchB
-      self.diffargs = diffargs
+      self.diffbranchA = Tk.StringVar()
+      self.diffbranchA.set(branchA)
+      self.diffbranchB = Tk.StringVar()
+      self.diffbranchB.set(branchB)
 
       # Main resizable window
       self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
@@ -129,8 +133,16 @@ class DiffManager:
       self.filepanel.pack(fill=Tk.BOTH, expand=1)
       
       # Branch specification pane
-      self.branchpanel = Tk.Label(master, text="Branch A: %s       Branch B: %s" % (branchA, branchB))
-      self.branchpanel.pack(side=Tk.TOP, fill=Tk.Y)
+      self.branchpane = Tk.Frame(master)
+      self.branchlabelA= Tk.Label(self.branchpane, text="Branch A:")
+      self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffbranchA)
+      self.branchlabelB= Tk.Label(self.branchpane, text="Branch B:")
+      self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffbranchB)
+      self.branchlabelA.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchnameA.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchlabelB.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchpane.pack(side=Tk.TOP)
 
       # Create subproject navigation widgets
       self.projpanel = Tk.Frame()
@@ -205,11 +217,28 @@ class DiffManager:
       dir = self.projects[index]
       type = self.projtype[index]
       if type.startswith("Inactive"):
-         pass
+         remotels = git.gitcmd("ls-remote")
+         self.filelist.insert(Tk.END, "<Unable to diff>")
+         self.filenames.append("")
       else:
          os.chdir(os.path.join(utility.workspaceDir(), dir))
          self.filenames = []
-         diffoutput = git.diff("--name-status %s %s %s" % (self.diffargs, self.branchA, self.branchB), quiet=True).splitlines()
+         if type.endswith("Submodule"):
+            submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
+            branchParts = self.branchA.split("/",1)
+            if len(branchParts) == 1 or branchParts[0] == "origin":
+               if branchParts[-1] in submapping.keys():
+                  branchParts[-1] = submapping[branchParts[-1]]
+            self.diffbranchA.set("/".join(branchParts))
+            branchParts = self.branchB.split("/",1)
+            if len(branchParts) == 1 or branchParts[0] == "origin":
+               if branchParts[-1] in submapping.keys():
+                  branchParts[-1] = submapping[branchParts[-1]]
+            self.diffbranchB.set("/".join(branchParts))
+         else:
+            self.diffbranchA.set(self.branchA)
+            self.diffbranchB.set(self.branchB)
+         diffoutput = git.diff("--name-status %s %s %s" % (self.diffargs, self.diffbranchA.get(), self.diffbranchB.get()), quiet=True).splitlines()
          statusdict = { "A":"<Only in B>",
                         "C":"<File copied>",
                         "D":"<Only in A>", 
@@ -230,10 +259,10 @@ class DiffManager:
 
    def chooseProject(self):
       index = self.projlist.index(Tk.ACTIVE)
+      self.projlist.itemconfig(self.oldprojindex, bg=bgdone, fg=fgdone)
       try:
          self.initFiles(index)
          self.projlist.itemconfig(index, bg=bgactive, fg=fgactive)
-         self.projlist.itemconfig(self.oldprojindex, bg=bgdone, fg=fgdone)
          self.oldprojindex = index
       except:
          pass
@@ -250,5 +279,5 @@ class DiffManager:
       except:
          pass
    def runDiff(self, file):
-      difftooloutput = git.gitcmd("difftool -t %s -y %s %s %s \"%s\"" % (self.difftool, self.diffargs, self.branchA, self.branchB, file), "Failed to launch difftool", quiet=False)
+      difftooloutput = git.gitcmd("difftool -t %s -y %s %s %s \"%s\"" % (self.difftool, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool", quiet=True)
 
