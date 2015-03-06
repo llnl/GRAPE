@@ -79,7 +79,8 @@ class Walkthrough(option.Option):
         root = Tk.Tk()
         root.title("GRAPE walkthrough")
         
-        diffmanager = DiffManager(root, height, width, b1, b2, difftool, diffargs)
+        diffmanager = DiffManager(master=root, height=height, width=width,
+                                  branchA=b1, branchB=b2, difftool=difftool, diffargs=diffargs)
         
         root.mainloop()
         
@@ -91,38 +92,37 @@ class Walkthrough(option.Option):
            pass
         return True
 
-
-bginit = 'gray'
-fginit = 'black'
-bgdone = 'light gray'
-fgdone = 'slate gray'
-bgactive = 'light goldenrod'
-fgactive = 'black'
-bgselected = 'goldenrod'
-fgselected = 'black'
-
-class DiffManager:
-   def __init__(self, master, height, width, branchA, branchB, difftool, diffargs):
+class ProjectManager:
+   def __init__(self, master, height='600', width='600',
+                fginit='black', bginit='gray',
+                fgvisited='slate gray', bgvisited='light gray',
+                fgselected='black', bgselected='goldenrod',
+                fgactive='black', bgactive='light goldenrod'):
       self.master = master
       self.grapeconfig = grapeConfig.grapeConfig()
       self.oldprojindex = 0
-      # Configurable parameters
-      self.difftool = difftool
-      self.diffargs = diffargs
-      self.branchA = branchA
-      self.branchB = branchB
-      self.diffbranchA = Tk.StringVar()
-      self.diffbranchA.set(branchA)
-      self.diffbranchB = Tk.StringVar()
-      self.diffbranchB.set(branchB)
+
+      # Colors
+      self.fginit = fginit
+      self.bginit = bginit
+      self.fgvisited = fgvisited
+      self.bgvisited = bgvisited
+      self.fgselected = fgselected
+      self.bgselected = bgselected
+      self.fgactive = fgactive
+      self.bgactive = bgactive
+
+      # Panel labels
+      self.filepanelabel = Tk.StringVar()
+      self.projpanelabel = Tk.StringVar()
 
       # Main resizable window
       self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
       # Create file navigation pane widgets
       self.filepanel = Tk.Frame()
-      self.filelabel = Tk.Label(self.filepanel, text="Double click to launch %s" % self.difftool)
+      self.filelabel = Tk.Label(self.filepanel, textvariable=self.filepanelabel)
       self.filescroll = Tk.Scrollbar(self.filepanel, width=10)
-      self.filelist = Tk.Listbox(self.filepanel, background=bginit, foreground=fginit, selectbackground=bgselected, selectforeground=fgselected, yscrollcommand=self.filescroll.set, selectmode=Tk.SINGLE)
+      self.filelist = Tk.Listbox(self.filepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=self.filescroll.set, selectmode=Tk.SINGLE)
       self.filescroll.config(command=self.filelist.yview)
       self.filelist.bind("<Double-Button-1>", lambda e: self.spawnDiff())
 
@@ -132,23 +132,11 @@ class DiffManager:
       self.filelist.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
       self.filepanel.pack(fill=Tk.BOTH, expand=1)
       
-      # Branch specification pane
-      self.branchpane = Tk.Frame(master)
-      self.branchlabelA= Tk.Label(self.branchpane, text="Branch A:")
-      self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffbranchA)
-      self.branchlabelB= Tk.Label(self.branchpane, text="Branch B:")
-      self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffbranchB)
-      self.branchlabelA.pack(side=Tk.LEFT, fill=Tk.Y)
-      self.branchnameA.pack(side=Tk.LEFT, fill=Tk.Y)
-      self.branchlabelB.pack(side=Tk.LEFT, fill=Tk.Y)
-      self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
-      self.branchpane.pack(side=Tk.TOP)
-
       # Create subproject navigation widgets
       self.projpanel = Tk.Frame()
-      self.projlabel = Tk.Label(self.projpanel, text="Double click to choose a project")
+      self.projlabel = Tk.Label(self.projpanel, textvariable=self.projpanelabel)
       self.projscroll = Tk.Scrollbar(self.projpanel, width=10)
-      self.projlist = Tk.Listbox(self.projpanel, background=bginit, foreground=fginit, selectbackground=bgselected, selectforeground=fgselected, yscrollcommand=self.projscroll.set, selectmode=Tk.SINGLE)
+      self.projlist = Tk.Listbox(self.projpanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=self.projscroll.set, selectmode=Tk.SINGLE)
       self.projscroll.config(command=self.projlist.yview)
       self.projlist.bind("<Double-Button-1>", lambda e: self.chooseProject())
 
@@ -212,6 +200,63 @@ class DiffManager:
       self.main.add(self.filepanel)
       self.main.pack(fill=Tk.BOTH, expand=1, side=Tk.BOTTOM)
 
+   def chooseProject(self):
+      index = self.projlist.index(Tk.ACTIVE)
+      self.projlist.itemconfig(self.oldprojindex, bg=self.bgvisited, fg=self.fgvisited)
+      try:
+         self.initFiles(index)
+         self.projlist.itemconfig(index, bg=self.bgactive, fg=self.fgactive)
+         self.oldprojindex = index
+      except:
+         pass
+      self.master.update()
+
+   def spawnDiff(self):
+      index = self.filelist.index(Tk.ANCHOR)
+      try:
+         file = self.filenames[index]
+         if file != "":
+            t = threading.Thread(target=self.execute, kwargs={'file':file})
+            t.start()
+            self.filelist.itemconfig(index, bg=self.bgvisited, fg=self.fgvisited)
+      except:
+         pass
+
+class DiffManager(ProjectManager):
+   def __init__(self, master, height='600', width='600',
+                branchA="", branchB="", difftool="", diffargs=""):
+      # Configurable parameters
+      if difftool == "":
+         self.difftool = "default difftool"
+         self.difftoolarg = ""
+      else:
+         self.difftool = difftool
+         self.difftoolarg = "-t %s" % difftool
+      self.diffargs = diffargs
+      self.branchA = branchA
+      self.branchB = branchB
+      self.diffbranchA = Tk.StringVar()
+      self.diffbranchA.set(branchA)
+      self.diffbranchB = Tk.StringVar()
+      self.diffbranchB.set(branchB)
+
+      # Branch specification pane
+      self.branchpane = Tk.Frame(master)
+      self.branchlabelA= Tk.Label(self.branchpane, text="Branch A:")
+      self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffbranchA)
+      self.branchlabelB= Tk.Label(self.branchpane, text="Branch B:")
+      self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffbranchB)
+      self.branchlabelA.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchnameA.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchlabelB.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.branchpane.pack(side=Tk.TOP)
+
+      ProjectManager.__init__(self, master, height=height, width=width)
+
+      self.filepanelabel.set("Double click to launch %s" % self.difftool)
+      self.filepanelabel.set("Double click to choose a project")
+
    def initFiles(self, index):
       self.filelist.delete(0,Tk.END)
       dir = self.projects[index]
@@ -257,27 +302,6 @@ class DiffManager:
             self.filelist.insert(Tk.END, "<No differences>")
             self.filenames.append("")
 
-   def chooseProject(self):
-      index = self.projlist.index(Tk.ACTIVE)
-      self.projlist.itemconfig(self.oldprojindex, bg=bgdone, fg=fgdone)
-      try:
-         self.initFiles(index)
-         self.projlist.itemconfig(index, bg=bgactive, fg=fgactive)
-         self.oldprojindex = index
-      except:
-         pass
-      self.master.update()
-
-   def spawnDiff(self):
-      index = self.filelist.index(Tk.ANCHOR)
-      try:
-         file = self.filenames[index]
-         if file != "":
-            t = threading.Thread(target=self.runDiff, kwargs={'file':file})
-            t.start()
-            self.filelist.itemconfig(index, bg=bgdone, fg=fgdone)
-      except:
-         pass
-   def runDiff(self, file):
-      difftooloutput = git.gitcmd("difftool -t %s -y %s %s %s \"%s\"" % (self.difftool, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool", quiet=True)
+   def execute(self, file):
+      difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool", quiet=True)
 
