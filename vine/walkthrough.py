@@ -62,6 +62,8 @@ class Walkthrough(option.Option):
 
         diffargs = ""
                
+        # TODO: fetch branches (remote tracking?) before diff
+
         # make sure our remote references are up to date if we're
         # comparing with something in the origin repo
         if 'origin' in b1:
@@ -152,6 +154,8 @@ class ProjectManager:
       self.projpanel.pack(fill=Tk.BOTH, expand=1)
 
       # Populate subproject navigation list
+
+      # TODO: Mark/eliminate entries based on status
 
       # Outer level repo
       if showToplevel:
