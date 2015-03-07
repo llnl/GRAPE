@@ -11,7 +11,7 @@ class UpdateLocal(option.Option):
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
-                    [--recurse | --norecurse]
+                    [--recurse | --norecurse | --recurse-changed]
                     [-v]
                     
 
@@ -20,6 +20,7 @@ class UpdateLocal(option.Option):
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --recurse               Update branches in submodules.
+    --recurse-changed       Only update branches in submodules that have changed.
     --norecurse             Do not update branches in submodules.
     -v                      Be more verbose.
 
@@ -38,8 +39,12 @@ class UpdateLocal(option.Option):
         cwd = os.getcwd()
 
         config = grapeConfig.grapeConfig()
-        recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurse = recurse and (not args["--norecurse"])
+        recurse = config.getboolean("workspace", "manageSubmodules")
+        if args["--recurse"] or args["--recurse-changed"]:
+           recurse = True
+        elif args["--norecurse"]:
+           recurse = True
+        quiet = not args["-v"]
 
         # fetch branches in outer level repo
         self.fetchLocal(args, baseDir, cwd,
@@ -51,12 +56,21 @@ class UpdateLocal(option.Option):
                             [x.strip() for x in args["--public"].split()])
 
         # fetch branches in submodules
-        activeSubmodules = git.getActiveSubmodules()
-        if len(activeSubmodules) > 0: 
-            subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
-            for submodule in activeSubmodules:
-                self.fetchLocal(args, os.path.join(baseDir, submodule), cwd,
-                                [subBranchMappings[x.strip()] for x in args["--public"].split()])
+        if recurse:
+           if args["--recurse-changed"]:
+              changedSubmodules = set()
+              currentBranch = git.currentBranch().strip()
+              for public in args["--public"].split():
+                 for submodule in git.getModifiedSubmodules(currentBranch, public.strip(), quiet=quiet):
+                    changedSubmodules.add(submodule)
+              activeSubmodules = list(changedSubmodules)
+           else:
+              activeSubmodules = git.getActiveSubmodules()
+           if len(activeSubmodules) > 0: 
+               subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
+               for submodule in activeSubmodules:
+                   self.fetchLocal(args, os.path.join(baseDir, submodule), cwd,
+                                   [subBranchMappings[x.strip()] for x in args["--public"].split()])
         return True
 
     @staticmethod

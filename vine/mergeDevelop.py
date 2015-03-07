@@ -125,7 +125,7 @@ class MergeDevelop(resumable.Resumable):
 
         utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
         # make sure public branches are to date.
-        grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--recurse'])
+        grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--recurse-changed'])
 
         if "conflictedFiles" in self.progress:
             conflictedFiles = self.progress["conflictedFiles"]
