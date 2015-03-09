@@ -54,6 +54,7 @@ class UpdateLocal(option.Option):
 
         # fetch branches in submodules
         if recurse:
+           os.chdir(wsDir)
            activeSubmodules = git.getActiveSubmodules()
            if len(activeSubmodules) > 0: 
                subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
