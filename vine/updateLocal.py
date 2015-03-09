@@ -34,7 +34,7 @@ class UpdateLocal(option.Option):
         return "Update local branches that are tracked in your remote repo"
 
     def execute(self, args):
-        baseDir = utility.workspaceDir()
+        wsDir = utility.workspaceDir()
         cwd = os.getcwd()
 
         config = grapeConfig.grapeConfig()
@@ -46,11 +46,11 @@ class UpdateLocal(option.Option):
         publicBranches = [x.strip() for x in args["--public"].split()]
 
         # fetch branches in outer level repo
-        self.fetchLocal(args, baseDir, cwd, publicBranches)
+        self.fetchLocal(args, wsDir, cwd, publicBranches)
 
         # fetch branches in nested subprojects
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            self.fetchLocal(args, os.path.join(baseDir, subproject), cwd, publicBranches)
+            self.fetchLocal(args, os.path.join(wsDir, subproject), cwd, publicBranches)
 
         # fetch branches in submodules
         if recurse:
@@ -59,13 +59,13 @@ class UpdateLocal(option.Option):
                subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
                for submodule in activeSubmodules:
                    try:
-                      os.chdir(baseDir)
+                      os.chdir(wsDir)
                       # First figure out the SHA for the branch on the submodule.
                       # The output of ls-tree should look like:
                       # 160000 commit <submodule SHA>  <submodule name>
                       gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
                                               "Failed to execute ls-tree", quiet=quiet).split()[2]
-                      os.chdir(os.path.join(baseDir, submodule))
+                      os.chdir(os.path.join(wsDir, submodule))
                       # Check to see if the SHA in submodule matches
                       branchUpdate = True if git.SHA(currentBranch, quiet=quiet) != gitlinkSHA else False
                    except:
@@ -79,10 +79,10 @@ class UpdateLocal(option.Option):
                       try:
                          submodulePublicBranch = subBranchMappings[public]
                          try:
-                            os.chdir(baseDir)
+                            os.chdir(wsDir)
                             gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
                                                     "Failed to execute ls-tree", quiet=quiet).split()[2]
-                            os.chdir(os.path.join(baseDir, submodule))
+                            os.chdir(os.path.join(wsDir, submodule))
                             if git.SHA(submodulePublicBranch, quiet=quiet) != gitlinkSHA:
                                publicUpdate.append(submodulePublicBranch)
                          except:
@@ -95,7 +95,7 @@ class UpdateLocal(option.Option):
 
                    # Fetch branches on the submodule only something is not up-to-date
                    if branchUpdate or len(publicUpdate) > 0:
-                      self.fetchLocal(args, os.path.join(baseDir, submodule), cwd, publicUpdate)
+                      self.fetchLocal(args, os.path.join(wsDir, submodule), cwd, publicUpdate)
                    else:
                       os.chdir(cwd)
         return True
