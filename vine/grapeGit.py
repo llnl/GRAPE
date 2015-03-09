@@ -323,11 +323,11 @@ def safeForceBranchToOriginRef(branchToSync, quiet=True):
 
 
 def shortSHA(branchName="HEAD", quiet=True):
-    return gitcmd("rev-parse --short %s" % branchName, "rev-parse of HEAD failed!", quiet=quiet)
+    return gitcmd("rev-parse --short %s" % branchName, "rev-parse of %s failed!" % branchName, quiet=quiet)
 
 
 def SHA(branchName="HEAD", quiet=True):
-    return gitcmd("rev-parse %s" % branchName, "rev-parse of HEAD failed!", quiet=quiet)
+    return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName, quiet=quiet)
 
 
 def showRemote():

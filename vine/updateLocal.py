@@ -11,7 +11,7 @@ class UpdateLocal(option.Option):
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
-                    [--recurse | --norecurse | --recurse-changed]
+                    [--recurse | --norecurse]
                     [-v]
                     
 
@@ -20,7 +20,6 @@ class UpdateLocal(option.Option):
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --recurse               Update branches in submodules.
-    --recurse-changed       Only update branches in submodules that have changed.
     --norecurse             Do not update branches in submodules.
     -v                      Be more verbose.
 
@@ -39,38 +38,66 @@ class UpdateLocal(option.Option):
         cwd = os.getcwd()
 
         config = grapeConfig.grapeConfig()
-        recurse = config.getboolean("workspace", "manageSubmodules")
-        if args["--recurse"] or args["--recurse-changed"]:
-           recurse = True
-        elif args["--norecurse"]:
-           recurse = True
+        recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
+        recurse = recurse and (not args["--norecurse"])
         quiet = not args["-v"]
 
+        currentBranch = git.currentBranch().strip()
+        publicBranches = [x.strip() for x in args["--public"].split()]
+
         # fetch branches in outer level repo
-        self.fetchLocal(args, baseDir, cwd,
-                        [x.strip() for x in args["--public"].split()])
+        self.fetchLocal(args, baseDir, cwd, publicBranches)
 
         # fetch branches in nested subprojects
         for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            self.fetchLocal(args, os.path.join(baseDir, subproject), cwd,
-                            [x.strip() for x in args["--public"].split()])
+            self.fetchLocal(args, os.path.join(baseDir, subproject), cwd, publicBranches)
 
         # fetch branches in submodules
         if recurse:
-           if args["--recurse-changed"]:
-              changedSubmodules = set()
-              currentBranch = git.currentBranch().strip()
-              for public in args["--public"].split():
-                 for submodule in git.getModifiedSubmodules(currentBranch, public.strip(), quiet=quiet):
-                    changedSubmodules.add(submodule)
-              activeSubmodules = list(changedSubmodules)
-           else:
-              activeSubmodules = git.getActiveSubmodules()
+           activeSubmodules = git.getActiveSubmodules()
            if len(activeSubmodules) > 0: 
-               subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
+               subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
                for submodule in activeSubmodules:
-                   self.fetchLocal(args, os.path.join(baseDir, submodule), cwd,
-                                   [subBranchMappings[x.strip()] for x in args["--public"].split()])
+                   try:
+                      os.chdir(baseDir)
+                      # First figure out the SHA for the branch on the submodule.
+                      # The output of ls-tree should look like:
+                      # 160000 commit <submodule SHA>  <submodule name>
+                      gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
+                                              "Failed to execute ls-tree", quiet=quiet).split()[2]
+                      os.chdir(os.path.join(baseDir, submodule))
+                      # Check to see if the SHA in submodule matches
+                      branchUpdate = True if git.SHA(currentBranch, quiet=quiet) != gitlinkSHA else False
+                   except:
+                      # This may fail if the branch does not exist on the submodule, 
+                      # in which case we do not want to update it.
+                      branchUpdate = False
+
+                   # Repeat this for the public branches
+                   publicUpdate = []
+                   for public in publicBranches:
+                      try:
+                         submodulePublicBranch = subBranchMappings[public]
+                         try:
+                            os.chdir(baseDir)
+                            gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
+                                                    "Failed to execute ls-tree", quiet=quiet).split()[2]
+                            os.chdir(os.path.join(baseDir, submodule))
+                            if git.SHA(submodulePublicBranch, quiet=quiet) != gitlinkSHA:
+                               publicUpdate.append(submodulePublicBranch)
+                         except:
+                            # This may fail if the branch does not exist on the submodule, 
+                            # in which case we do not want to update it.
+                            pass
+                      except KeyError:
+                         # Do nothing if the public branch mapping has not been defined.
+                         pass
+
+                   # Fetch branches on the submodule only something is not up-to-date
+                   if branchUpdate or len(publicUpdate) > 0:
+                      self.fetchLocal(args, os.path.join(baseDir, submodule), cwd, publicUpdate)
+                   else:
+                      os.chdir(cwd)
         return True
 
     @staticmethod
