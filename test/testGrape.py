@@ -188,6 +188,7 @@ def main(argv):
     import testCO
     import testNestedSubproject
     import testStatus
+    import testUpdateLocal
     import testUtility
 
     testClasses = {"Branches":testBranches.TestBranches,
@@ -201,7 +202,8 @@ def main(argv):
                    "CO":testCO.TestCheckout,
                    "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
                    "Status":testStatus.createStatusTester(),
-				   "Utility":testUtility.TestUtility }
+                   "UpdateLocal":testUpdateLocal.createUpTester(),
+                   "Utility":testUtility.TestUtility }
 
 
 

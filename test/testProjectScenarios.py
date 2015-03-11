@@ -2,6 +2,13 @@ import gridTesting
 from testGrape import *
 
 
+def find_subclasses(module, clazz):
+    return [
+        cls
+            for name, cls in inspect.getmembers(module)
+                if inspect.isclass(cls) and issubclass(cls, clazz) and not cls is clazz
+    ]
+
 class grapeProject(gridTesting.ResettableProject): 
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
@@ -80,7 +87,8 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                                             "--submodule", 
                                             "--noverify",
                                             "-v"] )),
-                          (git.commit, "-m \"added submodule1\"")])
+                          (git.commit, "-m \"added submodule1\""),
+                          (git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
         
@@ -122,6 +130,43 @@ class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
         # now both are on topicBranch
         self._publicBranchesValid = True
         self._branchModelConsistent= True
+        
+class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopic):
+    def __init__(self, path):
+        super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
+        self.secondProjectDir = self.projectDir + "2"
+        if os.path.exists(self.secondProjectDir):
+            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % self.secondProjectDir
+            sys.exit(1)
+
+        self.addCommands([(git.clone, lambda : "--recursive %s %s" % (self.getOriginDir(), self.getSecondProjectDir())), 
+                          (os.chdir, lambda : self.getSecondProjectDir()),
+                          (os.chdir,"submodule1"),
+                          (git.checkout, "master"),
+                          (writeFile1, "f2"),
+                          (git.add,"f2"),
+                          (git.commit, "-m \"added a second file to submodule\""),
+                          (git.push, "origin master"),
+                          (os.chdir, lambda : self.getSecondProjectDir()),
+                          (git.checkout, "master"),
+                          # We have to pull here because the submodule repo is the same as the original one
+                          (git.pull, "origin"),
+                          (git.add,"submodule1"),
+                          (git.commit, "-m \"update gitlink\""),
+                          (git.push, "origin master"),
+                          self.cdToProjectDirCmd()
+                         ])
+        # now both are on topicBranch, but master is behind in both
+        self._publicBranchesValid = True
+        self._branchModelConsistent= True
+    def getSecondProjectDir(self): 
+        return os.path.abspath(os.path.join(self.projectPrefix,self.secondProjectDir))
+    def tearDown(self): 
+        super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).tearDown()
+        secondProjectDir = self.getSecondProjectDir()
+        if os.path.exists(secondProjectDir) and os.path.isdir(secondProjectDir):
+            os.chdir(os.path.abspath(os.path.join(secondProjectDir,"..")))
+            shutil.rmtree(secondProjectDir, ignore_errors=True)
         
 class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
     def __init__(self, path):
