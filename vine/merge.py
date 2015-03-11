@@ -82,7 +82,7 @@ def merge(branch, strategy, args):
 
 def mergeIntoCurrent(branchName, args):
     quiet = not args["-v"]
-    updateArgs = ['up']
+    updateArgs = ['up', '--wd=%s' % os.getcwd(), '--norecurse', '--public=%s' % branchName]
     if not quiet:
         updateArgs.append('-v')
     grapeMenu.menu().applyMenuChoice('up', updateArgs)
