@@ -12,15 +12,17 @@ class UpdateLocal(option.Option):
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
                     [--recurse | --norecurse]
-                    [-v]
+                    [-v] [--wd=<working dir>]
                     
 
     Options:
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
-    --recurse               Update branches in submodules.
-    --norecurse             Do not update branches in submodules.
+    --recurse               Update branches in submodules and nested subprojects.
+    --norecurse             Do not update branches in submodules and nested subprojects.
+    --wd=<working dir>      Working directory which should be updated. 
+                            Top level workspace will be updated if this is unspecified.
     -v                      Be more verbose.
 
 
@@ -34,12 +36,13 @@ class UpdateLocal(option.Option):
         return "Update local branches that are tracked in your remote repo"
 
     def execute(self, args):
-        wsDir = utility.workspaceDir()
+        wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
         cwd = os.getcwd()
 
         config = grapeConfig.grapeConfig()
-        recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurse = recurse and (not args["--norecurse"])
+        recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
+        recurseSubmodules = recurseSubmodules and (not args["--norecurse"])
+        recurseNestedSubprojects = not args["--norecurse"]
         quiet = not args["-v"]
 
         currentBranch = git.currentBranch().strip()
@@ -48,12 +51,13 @@ class UpdateLocal(option.Option):
         # fetch branches in outer level repo
         self.fetchLocal(args, wsDir, cwd, publicBranches)
 
-        # fetch branches in nested subprojects
-        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            self.fetchLocal(args, os.path.join(wsDir, subproject), cwd, publicBranches)
+        if recurseNestedSubprojects:
+           # fetch branches in nested subprojects
+           for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(workspaceDir=wsDir):
+               self.fetchLocal(args, os.path.join(wsDir, subproject), cwd, publicBranches)
 
-        # fetch branches in submodules
-        if recurse:
+        if recurseSubmodules:
+           # fetch branches in submodules
            os.chdir(wsDir)
            activeSubmodules = git.getActiveSubmodules()
            if len(activeSubmodules) > 0: 
@@ -97,8 +101,8 @@ class UpdateLocal(option.Option):
                    # Fetch branches on the submodule only something is not up-to-date
                    if branchUpdate or len(publicUpdate) > 0:
                       self.fetchLocal(args, os.path.join(wsDir, submodule), cwd, publicUpdate)
-                   else:
-                      os.chdir(cwd)
+
+        os.chdir(cwd)
         return True
 
     @staticmethod
@@ -129,8 +133,6 @@ class UpdateLocal(option.Option):
                 git.pull("origin %s" % currentBranch)
         except git.GrapeGitError:
             print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
-
-        os.chdir(cwd)
 
     def setDefaultConfig(self, config):
         pass
