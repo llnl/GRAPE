@@ -1,5 +1,14 @@
 
 
+Thu Mar 12 09:19:37 2015 Benjamin T. Liu
+v1.5.2
+
+Reduce the amount of fetches that occur during a grape up.  This especially should help grape md, which calls grape up prior to the merge.
+- Only branches/public branches that are not up-to-date with the fetched gitlinks are fetched.
+- Also removed extraneous recursive call to up in merge and merge Develop (which resulted in N-squared fetches in submodules)
+- Added fetch grid test and two-client test scenario
+
+
 Fri Mar  6 10:43:23 2015 Peter B. Robinson
 v1.5.1
 
