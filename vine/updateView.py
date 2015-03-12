@@ -213,7 +213,7 @@ class UpdateView(option.Option):
                 utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
             for sub in activeSubmodules:
                 if args["--checkSubprojects"]:
-                   git.submodule("init %s" % sub)
+                    git.submodule("init %s" % sub, quiet=quiet)
                 utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
                 self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, checkoutArgs, quiet)
 

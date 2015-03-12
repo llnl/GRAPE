@@ -64,7 +64,9 @@ class Status(option.Option):
             os.chdir(wsDir)
         
         for line in status: 
-            print ' ' + line.strip()
+            lstripped = line.strip()
+            if lstripped:
+                print ' ' + lstripped
         
         # Sanity check workspace layout
         publicBranchesExist = True

@@ -107,7 +107,9 @@ class UpdateLocal(option.Option):
 
     @staticmethod
     def fetchLocal(args, workingDir, cwd, branches):
+        
         os.chdir(workingDir)
+        utility.printMsg("updating %s in %s" % (branches, workingDir))
         quiet = not args["-v"]
         git.fetch("--prune", quiet=quiet)
         git.fetch("--tags", quiet=quiet)
@@ -115,7 +117,9 @@ class UpdateLocal(option.Option):
         currentBranch = git.currentBranch().strip()
         for pubBranch in branches:
             if currentBranch != pubBranch:
-                fetchArgs += "%s:%s " % (pubBranch, pubBranch)
+                arg = "%s:%s" % (pubBranch, pubBranch)
+                if arg not in fetchArgs: 
+                    fetchArgs += arg + " "
         try:
             git.fetch(fetchArgs, quiet=quiet)
         except git.GrapeGitError as e:
@@ -130,7 +134,7 @@ class UpdateLocal(option.Option):
         
         try:
             if currentBranch.strip() != "HEAD": 
-                git.pull("origin %s" % currentBranch)
+                git.pull("origin %s" % currentBranch, quiet=quiet)
         except git.GrapeGitError:
             print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
 

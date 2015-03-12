@@ -99,7 +99,7 @@ class AddSubproject(option.Option):
                 config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
-                print("Successfully added subtree branch. \n"
+                utility.printMsg("Successfully added subtree branch. \n"
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:

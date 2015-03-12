@@ -229,7 +229,7 @@ def hasBranch(b):
 
 
 def isWorkingDirectoryClean():
-    statusOutput = status("-u")
+    statusOutput = status("-u", quiet=True)
     return "nothing to commit" in statusOutput and "working directory clean" in statusOutput and\
            "conflict" not in statusOutput
 

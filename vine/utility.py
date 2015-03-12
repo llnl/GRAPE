@@ -105,7 +105,7 @@ def parseArgs(docstr, arguments, config):
 
 
 def printMsg(msg):
-    print("\nGRAPE: %s\n" % msg)
+    print("GRAPE: %s" % msg)
 
 
 # ask the user for something and return what they put in
