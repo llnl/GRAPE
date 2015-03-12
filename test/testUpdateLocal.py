@@ -20,19 +20,32 @@ from vine import grapeGit as git
 class GrapeUpTester(testGrape.TestGrape): 
 
     def gridtestGrapeUp(self, testProjectScenario):
-        debugging = False
+        debugging = True
         if testProjectScenario.debugging() or debugging:
             self.switchToStdout()
         os.chdir(testProjectScenario.getProjectDir())
+        oldstdout = sys.stdout
+        # make sure the output is captured so we can check the number of fetches that occur
+        if testProjectScenario.debugging() or debugging:
+           self.switchToHiddenOutput()
         grapeMenu.menu().applyMenuChoice("up", ["-v"])
-        # This currently does nothing!
-        # We need to capture the output of up and count the fetches
+        upoutput = "%s" % self.output.getvalue()
+
+        # print out the captured output if we were debugging
+        if testProjectScenario.debugging() or debugging:
+            self.switchToStdout()
+            print upoutput
+
+        numberOfFetches = upoutput.count("Executing: git fetch origin")
+        self.assertEqual(numberOfFetches, testProjectScenario.numExpectedFetches(),
+                         "Unexpected number of fetches %d != %d" % (numberOfFetches, testProjectScenario.numExpectedFetches()))
         
         if testProjectScenario.debugging() or debugging:
             self.switchToHiddenOutput()
 
 def createUpTester(): 
-    scenarioClasses = [ testProjectScenarios.WorkspaceOnTopicSubmoduleOnTopicTwoClients ]
+    # create a tester for all grapeProject scenarios in the testProjectScenarios module. 
+    scenarioClasses = testProjectScenarios.find_subclasses(testProjectScenarios, testProjectScenarios.grapeProject)
     names = [cls.__name__ for cls in scenarioClasses]
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
     gridTesting.gridifyTestClass(scenarios, GrapeUpTester, names)

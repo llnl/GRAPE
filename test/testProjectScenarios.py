@@ -15,6 +15,7 @@ class grapeProject(gridTesting.ResettableProject):
         self._debugging = False
         self._publicBranchesValid = False
         self._branchModelConsistent = False
+        self._numExpectedFetches = 0
 
     def isConsistent(self): 
         return self._publicBranchesValid and self._branchModelConsistent
@@ -25,9 +26,12 @@ class grapeProject(gridTesting.ResettableProject):
     def isStateConsistentWithBranchModel(self):
         return self._branchModelConsistent
     
+    def numExpectedFetches(self):
+        return self._numExpectedFetches
+    
     def debugging(self):
         return self._debugging
-    
+
 class singleRepo(grapeProject): 
     def __init__(self, path): 
         super(singleRepo, self).__init__(path)
@@ -40,6 +44,8 @@ class singleRepo(grapeProject):
         
         self._publicBranchesValid = False
         self._branchModelConsistent = True
+        # there should be one fetch for the outer level master
+        self._numExpectedFetches = 1
 
 class repoWithLocalGitflowBranches(singleRepo):
     def __init__(self, path): 
@@ -58,8 +64,6 @@ class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
         self.addCommands([(git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-
-
     
 class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
     def __init__(self,path): 
@@ -159,6 +163,8 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         # now both are on topicBranch, but master is behind in both
         self._publicBranchesValid = True
         self._branchModelConsistent= True
+        # there should be one fetch for the outer level master and one for the submodule master
+        self._numExpectedFetches = 2
     def getSecondProjectDir(self): 
         return os.path.abspath(os.path.join(self.projectPrefix,self.secondProjectDir))
     def tearDown(self): 
@@ -190,6 +196,8 @@ class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
                                             "-v"] ))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
+        # there should be one fetch for the outer level master and one for the nested master
+        self._numExpectedFetches = 2
         
 class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
     def __init__(self,path):
