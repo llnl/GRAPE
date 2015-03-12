@@ -20,7 +20,7 @@ from vine import grapeGit as git
 class GrapeUpTester(testGrape.TestGrape): 
 
     def gridtestGrapeUp(self, testProjectScenario):
-        debugging = True
+        debugging = False
         if testProjectScenario.debugging() or debugging:
             self.switchToStdout()
         os.chdir(testProjectScenario.getProjectDir())
