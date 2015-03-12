@@ -921,15 +921,17 @@ options are at least listed below.
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
                     [--recurse | --norecurse]
-                    [-v]
+                    [-v] [--wd=<working dir>]
                     
 
     Options:
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
-    --recurse               Update branches in submodules.
-    --norecurse             Do not update branches in submodules.
+    --recurse               Update branches in submodules and nested subprojects.
+    --norecurse             Do not update branches in submodules and nested subprojects.
+    --wd=<working dir>      Working directory which should be updated. 
+                            Top level workspace will be updated if this is unspecified.
     -v                      Be more verbose.
 
 
