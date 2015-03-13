@@ -44,11 +44,11 @@ def gitcmd(cmd, errmsg, quiet=False):
 
 
 def add(filedescription, quiet=False):
-    return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription, quiet=quiet)
+    return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
 
 def baseDir(quiet=True):
-    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory", quiet=quiet)
+    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
     path = utility.makePathPortable(unixStylePath)
     return path
 
@@ -64,7 +64,7 @@ def branchPrefix(branchName):
 
 
 def branchUpToDateWith(branchName, targetBranch, quiet=True):
-    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed", quiet=quiet)
+    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
@@ -79,11 +79,11 @@ def branchUpToDateWith(branchName, targetBranch, quiet=True):
 
 
 def bundle(argstr, quiet=False):
-    return gitcmd("bundle %s" % argstr, "Bundle failed", quiet=quiet)
+    return gitcmd("bundle %s" % argstr, "Bundle failed")
 
 
 def checkout(argstr, quiet=False):
-    return gitcmd("checkout %s" % argstr, "Checkout failed", quiet=quiet)
+    return gitcmd("checkout %s" % argstr, "Checkout failed")
 
 
 def clone(argstr):
@@ -119,9 +119,9 @@ def commitDescription(committish, quiet=True):
 
 def config(argstr, arg2=None, quiet=False):
     if arg2 is not None:
-        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed", quiet=quiet)
+        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed")
     else:
-        return gitcmd('config %s ' % argstr, "Config failed", quiet=quiet)
+        return gitcmd('config %s ' % argstr, "Config failed")
 
 
 def conflictedFiles(quiet=True):
@@ -131,20 +131,20 @@ def conflictedFiles(quiet=True):
 
 
 def currentBranch(quiet=True):
-    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch", quiet=quiet)
+    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
 
 def describe(argstr="", quiet=False):
-    return gitcmd("describe %s" % argstr, "could not describe commit", quiet=quiet)
+    return gitcmd("describe %s" % argstr, "could not describe commit")
 
 
 def diff(argstr, quiet=False):
-    return gitcmd("diff %s" % argstr, "could not perform diff", quiet=quiet)
+    return gitcmd("diff %s" % argstr, "could not perform diff")
 
 
 def fetch(repo="", branchArg="", quiet=True):
     try:
-        return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed", quiet=quiet)
+        return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
         if e.code == 128:
             if not quiet:
@@ -239,7 +239,7 @@ def log(args=""):
 
 
 def merge(args, quiet=False):
-    return gitcmd("merge %s" % args, "merge failed", quiet=quiet)
+    return gitcmd("merge %s" % args, "merge failed")
 
 
 def mergeAbort():
@@ -258,7 +258,7 @@ def numberCommitsSinceRoot():
 
 def pull(args, quiet=False):
     try:
-        return gitcmd("pull %s" % args, "Pull failed", quiet=quiet)
+        return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
         if e.code == 128:
             print ("GRAPE: WARNING: Pull failed due to connectivity issues.")
@@ -269,7 +269,7 @@ def pull(args, quiet=False):
 
 def push(args, quiet=False):
     try:
-        return gitcmd("push --porcelain %s" % args, "Push failed", quiet=quiet)
+        return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
         if e.code == 128:
             print ("GRAPE: WARNING: Push failed due to connectivity issues.")
@@ -279,11 +279,11 @@ def push(args, quiet=False):
 
 
 def rebase(args, quiet=False):
-    return gitcmd("rebase %s" % args, "Rebase failed", quiet=quiet)
+    return gitcmd("rebase %s" % args, "Rebase failed")
 
 
 def revert(args, quiet=False):
-    return gitcmd("revert %s" % args, "Revert failed", quiet=quiet)
+    return gitcmd("revert %s" % args, "Revert failed")
 
 
 def safeForceBranchToOriginRef(branchToSync, quiet=True):
@@ -323,11 +323,11 @@ def safeForceBranchToOriginRef(branchToSync, quiet=True):
 
 
 def shortSHA(branchName="HEAD", quiet=True):
-    return gitcmd("rev-parse --short %s" % branchName, "rev-parse of %s failed!" % branchName, quiet=quiet)
+    return gitcmd("rev-parse --short %s" % branchName, "rev-parse of %s failed!" % branchName)
 
 
 def SHA(branchName="HEAD", quiet=True):
-    return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName, quiet=quiet)
+    return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName)
 
 
 def showRemote():
@@ -343,11 +343,11 @@ def showRemote():
 
 
 def status(argstr="", quiet=False):
-    return gitcmd("status %s" % argstr, "git status failed for some reason", quiet=quiet)
+    return gitcmd("status %s" % argstr, "git status failed for some reason")
 
 
 def submodule(argstr, quiet=False):
-    return gitcmd("submodule %s" % argstr, "git submodule %s failed" % argstr, quiet=quiet)
+    return gitcmd("submodule %s" % argstr, "git submodule %s failed" % argstr)
 
 
 def subtree(argstr, quiet=False):

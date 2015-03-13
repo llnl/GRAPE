@@ -82,7 +82,7 @@ class AddSubproject(option.Option):
 
             if proceed:
                 os.chdir(utility.workspaceDir())
-                git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch), quiet=quiet)
+                git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch))
 
                 #update the configuration file
                 current_cfg_names = config.get("subtrees", "names").split()
@@ -107,7 +107,7 @@ class AddSubproject(option.Option):
                                             "cloned from %s at branch %s.\nproceed? [y/n]" %
                                             (name, prefix, url, branch), "y")
             if proceed:
-                git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix), quiet=quiet)
+                git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix))
                 print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
         elif projectType == "nested":
             if not proceed:

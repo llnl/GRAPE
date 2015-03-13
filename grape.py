@@ -11,21 +11,51 @@ if not (pythonMajorVersion == 2 and pythonMinorVersion > 6):
 
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
+
+from docopt.docopt import docopt
 import StringIO
 import stashy.stashy as stashy
 import keyring.keyring as keyring
 import getpass
+import os
 
-#*** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
+import vine
+vinePath = os.path.dirname(vine.__file__)
+
+
+CLI =  """
+*** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
+Calling grape by itself will pull up the grape menu. 
+Usage: grape [-v | -q] [--version] [<command> <args>...]
+
+Options:
+-v           Run in verbose mode. This will print out git output as git commands complete.
+-q           Quiet mode. Quiet's all output except for user input prompts.
+
+
+
+"""
 
 def startup():
     #TODO - allow addition grape config file to be specified at command line
     #additionalConfigFiles = []
     #grapeConfig.read(additionalConfigFiles)
+    with open(os.path.join(vinePath,"VERSION"),'r') as f:
+        grapeVersion = f.read().split()[2]
+        
+    args = docopt(CLI,  version=grapeVersion, options_first=True )
     myMenu = grapeMenu.menu()
 
+    if args["-v"]:
+        utility.setVerbosity(2)
+    elif args["-q"]:
+        utility.setVerbosity(0)
+    else:
+        utility.setVerbosity(1)
+        
+    
     try:
-        if (len(sys.argv) == 1):
+        if (args["<command>"] is None):
             done = 0
             while not done:
                 myMenu.presentTextMenu()
@@ -34,9 +64,9 @@ def startup():
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif (len(sys.argv) > 1):
-            myMenu.applyMenuChoice(sys.argv[1],sys.argv[1:])
+            myMenu.applyMenuChoice(args["<command>"],args["<args>"])
     except KeyboardInterrupt:
-        print("Operation interrupted by user...")
+        utility.printMsg(" ERROR: Operation interrupted by user, exiting...")
 
     # Exit the script
     print("Thank you - good bye")

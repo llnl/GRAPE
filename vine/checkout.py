@@ -34,15 +34,15 @@ class Checkout(option.Option):
     def handledCheckout(checkoutargs, branch, project, quiet=False):
         git.fetch(quiet=quiet)
         try:
-            git.checkout(checkoutargs + ' ' + branch, quiet=quiet)
-            git.pull("origin %s" % branch, quiet=quiet)
+            git.checkout(checkoutargs + ' ' + branch)
+            git.pull("origin %s" % branch)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 createNewBranch = utility.userInput("Branch not found locally or remotely. Would you like to create a "
                                                     "new branch called %s?\n(y,n)" % branch, 'y')
                 if createNewBranch:
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
-                    git.checkout(checkoutargs+" -b "+branch, quiet=quiet)
+                    git.checkout(checkoutargs+" -b "+branch)
                     git.push("-u origin %s" % branch)
 
             elif "already exists" in e.gitOutput:
@@ -64,9 +64,9 @@ class Checkout(option.Option):
                         if not valid:
                             utility.printMsg("Invalid input. Enter k or f. ")
                 if action == 'k':
-                    git.checkout(branch, quiet=quiet)
+                    git.checkout(branch)
                 elif action == 'f':
-                    git.checkout("-B %s" % branch, quiet=quiet)
+                    git.checkout("-B %s" % branch)
             elif "conflict" in e.gitOutput.lower(): 
                 utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
             elif "does not appear to be a git repository" in e.gitOutput.lower():
@@ -129,10 +129,10 @@ class Checkout(option.Option):
         currentSHA = git.shortSHA("HEAD")
 
         utility.printMsg("Performing checkout in outer level project.")
-        self.handledCheckout(checkoutargs, branch, git.baseDir(), quiet=quiet)
+        self.handledCheckout(checkoutargs, branch, git.baseDir())
         previousSHA = currentSHA
 
-        submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch), quiet=quiet)
+        submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch))
         addedModules = []
         removedModules = []
         uvArgs = []
@@ -170,7 +170,7 @@ class Checkout(option.Option):
         removedProjects = []
         nestedProjectListDidChange = False
         os.chdir(workspaceDir)
-        if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch), quiet=quiet): 
+        if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch)): 
             configDiff = git.diff("--no-ext-diff %s %s -- %s" % (previousSHA, branch, ".grapeconfig"))
             nestedProjectListDidChange = "[nestedprojects]" in configDiff.lower()
             self.parseGrapeConfigNestedProjectDiffOutput(configDiff, addedProjects, removedProjects)

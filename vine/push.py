@@ -34,19 +34,19 @@ class Push(option.Option):
         submodules = git.getActiveSubmodules()
         
         utility.printMsg("Performing push in outer level project")
-        git.push(pushargs, quiet=quiet)
+        git.push(pushargs)
         if submodules:
             utility.printMsg("Performing pushes in all active submodules")
         for sub in submodules: 
             os.chdir(os.path.join(baseDir, sub))
-            git.push(pushargs, quiet=quiet)
+            git.push(pushargs)
 
         nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
         if nestedSubprojects:
             utility.printMsg("Performing pushes in all active subprojects")
         for proj in nestedSubprojects:
             os.chdir(os.path.join(baseDir, proj))
-            git.push(pushargs, quiet=quiet)
+            git.push(pushargs)
 
         os.chdir(cwd)
         

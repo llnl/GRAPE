@@ -50,12 +50,12 @@ class Commit(option.Option):
         subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes() 
         for sub in submodules +  subprojects:
             os.chdir(os.path.join(baseDir,sub))
-            subStatus = git.status("--porcelain", quiet=quiet)
+            subStatus = git.status("--porcelain")
             if subStatus:
                 self.commit(commitargs)
         
         os.chdir(baseDir)
-        if submodules or git.status("--porcelain", quiet=quiet): 
+        if submodules or git.status("--porcelain"): 
             utility.printMsg("Performing commit in outer level project")
             self.commit(commitargs)
         return True

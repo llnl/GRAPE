@@ -72,7 +72,7 @@ class UpdateLocal(option.Option):
                                               "Failed to execute ls-tree", quiet=quiet).split()[2]
                       os.chdir(os.path.join(wsDir, submodule))
                       # Check to see if the SHA in submodule matches
-                      branchUpdate = True if git.SHA(currentBranch, quiet=quiet) != gitlinkSHA else False
+                      branchUpdate = True if git.SHA(currentBranch) != gitlinkSHA else False
                    except:
                       # This may fail if the branch does not exist on the submodule, 
                       # in which case we do not want to update it.
@@ -88,7 +88,7 @@ class UpdateLocal(option.Option):
                             gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
                                                     "Failed to execute ls-tree", quiet=quiet).split()[2]
                             os.chdir(os.path.join(wsDir, submodule))
-                            if git.SHA(submodulePublicBranch, quiet=quiet) != gitlinkSHA:
+                            if git.SHA(submodulePublicBranch) != gitlinkSHA:
                                publicUpdate.append(submodulePublicBranch)
                          except:
                             # This may fail if the branch does not exist on the submodule, 
@@ -111,8 +111,8 @@ class UpdateLocal(option.Option):
         os.chdir(workingDir)
         utility.printMsg("updating %s in %s" % (branches, workingDir))
         quiet = not args["-v"]
-        git.fetch("--prune", quiet=quiet)
-        git.fetch("--tags", quiet=quiet)
+        git.fetch("--prune")
+        git.fetch("--tags")
         fetchArgs = "origin "
         currentBranch = git.currentBranch().strip()
         for pubBranch in branches:
@@ -121,7 +121,7 @@ class UpdateLocal(option.Option):
                 if arg not in fetchArgs: 
                     fetchArgs += arg + " "
         try:
-            git.fetch(fetchArgs, quiet=quiet)
+            git.fetch(fetchArgs)
         except git.GrapeGitError as e:
             # let non-fast-forward fetches slide
             if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
@@ -134,7 +134,7 @@ class UpdateLocal(option.Option):
         
         try:
             if currentBranch.strip() != "HEAD": 
-                git.pull("origin %s" % currentBranch, quiet=quiet)
+                git.pull("origin %s" % currentBranch)
         except git.GrapeGitError:
             print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
 

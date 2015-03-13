@@ -1050,7 +1050,7 @@ class Publish(resumable.Resumable):
             self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
-                if git.diff("--name-only %s %s -- %s" % (public, topic, os.path.join(utility.workspaceDir(),prefix)), quiet=quiet):
+                if git.diff("--name-only %s %s -- %s" % (public, topic, os.path.join(utility.workspaceDir(),prefix))):
                     self.modifiedSubtrees.add(st)
             for st in self.modifiedSubtrees:
                 self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')

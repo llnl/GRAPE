@@ -29,6 +29,10 @@ def makePathPortable(path):
         newPath = path
     return newPath
 
+globalVerbosity = 1
+def setVerbosity(level):
+    global globalVerbosity
+    globalVerbosity = level
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin):
@@ -98,7 +102,7 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
 def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
     for key in args:
-        if type(args[key]) is str and ".grapeconfig." in args[key]:
+        if type(args[key]) is str and ".grapeconfig." in args[key] and config is not None:
             tokens = args[key].split('.')
             args[key] = config.get(tokens[2].strip(), tokens[3].strip())
     return args

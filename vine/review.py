@@ -123,7 +123,7 @@ class Review(option.Option):
 
         #ensure branch is pushed
         utility.printMsg("Pushing %s to stash..." % branch)
-        git.push("origin %s" % branch, quiet=quiet)
+        git.push("origin %s" % branch)
         #target branch for outer level repo
         target_branch = args["--target"]
 
@@ -146,7 +146,7 @@ class Review(option.Option):
                 # push branch
                 os.chdir(submodule)
                 utility.printMsg("Pushing %s to stash..." % branch)
-                git.push("origin %s" % branch, quiet=quiet)
+                git.push("origin %s" % branch)
                 os.chdir(cwd)
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
@@ -167,7 +167,7 @@ class Review(option.Option):
         nestedProjectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
         for proj, url in zip(nestedProjectPrefixes, nestedProjectURLs):
             os.chdir(proj)
-            git.push("origin %s" % branch, quiet=quiet)
+            git.push("origin %s" % branch)
             os.chdir(cwd)
             url = utility.parseSubprojectRemoteURL(url)
 
