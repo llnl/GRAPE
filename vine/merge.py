@@ -15,7 +15,7 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [-v] [--quiet]
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--quiet]
 
     Options:
         --am            Use git's default merge. 
@@ -24,7 +24,6 @@ class Merge(resumable.Resumable):
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
         --continue      Resume your previous merge after resolving conflicts.
-        -v              Display git commands.
         --quiet         Don't issue messages if conflicts occur.
 
     Arguments:
@@ -48,7 +47,7 @@ class Merge(resumable.Resumable):
         return mergeIntoCurrent(otherBranch, args)
 
     def _resume(self, args):
-        status = git.status(quiet=True)
+        status = git.status()
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
         elif git.isWorkingDirectoryClean():
@@ -68,7 +67,7 @@ class Merge(resumable.Resumable):
 
 def merge(branch, strategy, args):
     try:
-        git.merge("%s %s" % (branch, strategy), quiet=not args["-v"])
+        git.merge("%s %s" % (branch, strategy))
         return True
     except git.GrapeGitError as error:
         print error.gitOutput
@@ -107,8 +106,7 @@ def mergeIntoCurrent(branchName, args):
 
     if strategy == 'am':
         args["--am"] = True
-        if not args["--quiet"]:
-            print("GRAPE: merging using git's default strategy")
+        utility.printMsg("merging using git's default strategy")
         choice = merge(branchName, "", args)
     elif strategy == 'as':
         args["--as"] = True
@@ -119,7 +117,7 @@ def mergeIntoCurrent(branchName, args):
         # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
         # for details.
         if not args["--quiet"]:
-            print("GRAPE: merging forcing conflicts whenever both branches edited the same file...")
+            utility.printMsg("GRAPE: merging forcing conflicts whenever both branches edited the same file...")
         base = git.gitDir()
         if base == "":
             return False

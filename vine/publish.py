@@ -1005,7 +1005,7 @@ class Publish(resumable.Resumable):
 
     def publish(self, policy, public, topic, args):
         # don't bother publishing if public and topic are the same commit
-        if git.shortSHA(public).strip() == git.shortSHA(topic, quiet=True).strip():
+        if git.shortSHA(public).strip() == git.shortSHA(topic, ).strip():
             git.checkout(public)
             return
         policy = policy.strip().lower()

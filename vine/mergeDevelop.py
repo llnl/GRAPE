@@ -44,7 +44,7 @@ class MergeDevelop(resumable.Resumable):
     def lookupPublicBranch():
         config = grapeConfig.grapeConfig()
         try:
-            currentBranch = git.currentBranch(quiet=True)
+            currentBranch = git.currentBranch()
         except git.GrapeGitError:
             return 'unknown'
         if currentBranch in config.get('flow', 'publicBranches'):
@@ -62,7 +62,7 @@ class MergeDevelop(resumable.Resumable):
 
     def description(self):
         try: 
-            currentBranch = git.currentBranch(quiet=True)
+            currentBranch = git.currentBranch()
         except git.GrapeGitError:
             currentBranch = 'unknown'
         publicBranch = self.lookupPublicBranch()
@@ -91,10 +91,10 @@ class MergeDevelop(resumable.Resumable):
 
         branch = args["--public"]
         if not branch:
-            currentBranch = git.currentBranch(quiet)
+            currentBranch = git.currentBranch()
             if currentBranch in grapeConfig.grapeConfig().get('flow', 'publicBranches'):
                 return self.mergeCurrentPublicBranch(args)
-            branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch(quiet))
+            branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
                 utility.printMsg("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
@@ -102,7 +102,7 @@ class MergeDevelop(resumable.Resumable):
         try:
             submodules = self.progress["submodules"]
         except KeyError:
-            submodules = git.getModifiedSubmodules(branch, git.currentBranch(quiet), quiet)
+            submodules = git.getModifiedSubmodules(branch, git.currentBranch(), quiet)
             
         try:
             nested = self.progress["nested"]

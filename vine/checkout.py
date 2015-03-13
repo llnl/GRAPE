@@ -10,12 +10,11 @@ import utility
 
 class Checkout(option.Option):
     """
-    Usage: grape-checkout  [-b] <branch> [-v]
+    Usage: grape-checkout  [-b] <branch> 
 
     Options:
 
     -b      Create the branch off of the current HEAD in each project.
-    -v      Be more verbose. 
     
 
     Arguments:
@@ -32,7 +31,7 @@ class Checkout(option.Option):
 
     @staticmethod
     def handledCheckout(checkoutargs, branch, project):
-        git.fetch(quiet=quiet)
+        git.fetch()
         try:
             git.checkout(checkoutargs + ' ' + branch)
             git.pull("origin %s" % branch)
