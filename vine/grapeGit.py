@@ -17,7 +17,7 @@ class GrapeGitError(Exception):
                                                                             self.gitOutput)
 
 
-def gitcmd(cmd, errmsg, quiet=False):
+def gitcmd(cmd, errmsg, quiet=True):
     _cmd = None
     try:
         cnfg = grapeConfig.grapeConfig()
@@ -32,12 +32,9 @@ def gitcmd(cmd, errmsg, quiet=False):
         _cmd = "\"C:\\Program Files (x86)\\Git\\bin\\git.exe\" %s" % cmd
     else:
         _cmd = "git %s" % cmd
-    if quiet:
-        verbose = 0
-    else:
-        verbose = 2
+
     cwd = os.getcwd()
-    process = utility.executeSubProcess(_cmd, cwd, verbose=verbose)
+    process = utility.executeSubProcess(_cmd, cwd, verbose=-1)
     if process.returncode != 0:
         raise GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, quiet=quiet, cwd=cwd)
     return process.output.strip()
@@ -55,8 +52,8 @@ def baseDir(quiet=True):
 def allBranches():
     return branch("-a", quiet=True).replace("*",' ').replace(" ",'').split()
 
-def branch(argstr="", quiet=False):
-    return gitcmd("branch %s" % argstr, "Could not execute git branch command", quiet)
+def branch(argstr=""):
+    return gitcmd("branch %s" % argstr, "Could not execute git branch command")
 
 
 def branchPrefix(branchName):
@@ -224,7 +221,7 @@ def gitDir():
 
 
 def hasBranch(b):
-    branches = branch(quiet=True).split()
+    branches = branch().split()
     return b in branches
 
 
@@ -261,7 +258,7 @@ def pull(args, quiet=False):
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
         if e.code == 128:
-            print ("GRAPE: WARNING: Pull failed due to connectivity issues.")
+            utility.printMsg("WARNING: Pull failed due to connectivity issues.")
             return e.gitOutput
         else:
             raise e
@@ -272,7 +269,7 @@ def push(args, quiet=False):
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
         if e.code == 128:
-            print ("GRAPE: WARNING: Push failed due to connectivity issues.")
+            utility.printMsg("WARNING: Push failed due to connectivity issues.")
             return e.gitOutput
         else:
             raise e
@@ -300,14 +297,14 @@ def safeForceBranchToOriginRef(branchToSync, quiet=True):
             continue
 
     if branchExists and not remoteRefExists:
-        print("origin does not have branch %s" % branchToSync)
+        utility.printMsg("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync, quiet=quiet)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef, quiet=quiet)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch(quiet=quiet):
-                print("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
+                utility.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 pull("origin %s" % branchToSync)
             else:
                 branch("-f %s %s" % (branchToSync, remoteRef))
@@ -317,8 +314,8 @@ def safeForceBranchToOriginRef(branchToSync, quiet=True):
         else:
             return False
     if not branchExists and remoteRefExists:
-        print("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
-        branch("%s %s" % (branchToSync, remoteRef), quiet=True)
+        utility.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
+        branch("%s %s" % (branchToSync, remoteRef))
         return True
 
 

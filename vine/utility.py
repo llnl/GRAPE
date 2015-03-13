@@ -15,9 +15,7 @@ from docopt.docopt import docopt
 
 def ensure_dir(f):
     d = os.path.dirname(f)
-    print("d:"+d)
     if not os.path.exists(d):
-        print("making "+d)
         os.makedirs(d)
 
 
@@ -35,7 +33,9 @@ def setVerbosity(level):
     globalVerbosity = level
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
-                      stdin=sys.stdin):
+                      stdin=sys.stdin, stream = False):
+    if verbose == -1:
+        verbose = globalVerbosity
     if verbose > 1:
         print("Executing: " + command + "\n\t Working Directory: " + workingDirectory)
     #***************************************************************************************************************
@@ -56,18 +56,18 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
         #line += "\n"
         #output = output+line
         
-        
-    while process.poll() is None:
-        out = process.stdout.read(1)
-        if verbose > 0:
-            sys.stdout.write(out)
-            sys.stdout.flush()
-        output += out
+    if stream:    
+        while process.poll() is None:
+            out = process.stdout.read(1)
+            if verbose > 0:
+                sys.stdout.write(out)
+                sys.stdout.flush()
+            output += out
         
     process.wait()
     
     out =  process.communicate()[0]
-    if verbose > 0:
+    if verbose > 0 and stream:
         sys.stdout.write(out)
         sys.stdout.flush()
     output += out
@@ -109,7 +109,9 @@ def parseArgs(docstr, arguments, config):
 
 
 def printMsg(msg):
-    print("GRAPE: %s" % msg)
+    global globalVerbosity
+    if globalVerbosity > 0:    
+        print("GRAPE: %s" % msg)
 
 
 # ask the user for something and return what they put in
