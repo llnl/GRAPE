@@ -219,7 +219,7 @@ class MergeDevelop(resumable.Resumable):
         # stage the updated submodule
         os.chdir(cwd)
         if isSubmodule:
-            git.add(subproject, quiet=True)
+            git.add(subproject)
         self.progress["Submodule: %s" % subproject] = "finished"
         return True
 

@@ -194,7 +194,7 @@ def parseSubprojectRemoteURL(url):
         return url      #Already a hard path
 
     # We have a relative path so start the remote origin URL
-    originURL = git.config("--get remote.origin.url", quiet=True).strip().split('/')
+    originURL = git.config("--get remote.origin.url").strip().split('/')
 
     #Now parse path and modify originURL to make a hard path
     for p in path:

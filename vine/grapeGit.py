@@ -6,7 +6,7 @@ import grapeConfig
 
 
 class GrapeGitError(Exception):
-    def __init__(self, errmsg, returnCode, gitOutput, gitCommand, quiet=False, cwd=os.getcwd()):
+    def __init__(self, errmsg, returnCode, gitOutput, gitCommand, cwd=os.getcwd()):
         self.msg = errmsg
         self.code = returnCode
         self.gitOutput = gitOutput
@@ -17,7 +17,7 @@ class GrapeGitError(Exception):
                                                                             self.gitOutput)
 
 
-def gitcmd(cmd, errmsg, quiet=True):
+def gitcmd(cmd, errmsg):
     _cmd = None
     try:
         cnfg = grapeConfig.grapeConfig()
@@ -40,7 +40,7 @@ def gitcmd(cmd, errmsg, quiet=True):
     return process.output.strip()
 
 
-def add(filedescription, quiet=False):
+def add(filedescription):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
 
@@ -50,7 +50,7 @@ def baseDir(quiet=True):
     return path
 
 def allBranches():
-    return branch("-a", quiet=True).replace("*",' ').replace(" ",'').split()
+    return branch("-a").replace("*",' ').replace(" ",'').split()
 
 def branch(argstr=""):
     return gitcmd("branch %s" % argstr, "Could not execute git branch command")
@@ -60,7 +60,7 @@ def branchPrefix(branchName):
     return branchName.split('/')[0]
 
 
-def branchUpToDateWith(branchName, targetBranch, quiet=True):
+def branchUpToDateWith(branchName, targetBranch):
     allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
@@ -75,11 +75,11 @@ def branchUpToDateWith(branchName, targetBranch, quiet=True):
     return upToDate
 
 
-def bundle(argstr, quiet=False):
+def bundle(argstr):
     return gitcmd("bundle %s" % argstr, "Bundle failed")
 
 
-def checkout(argstr, quiet=False):
+def checkout(argstr):
     return gitcmd("checkout %s" % argstr, "Checkout failed")
 
 
@@ -100,7 +100,7 @@ def commit(argstr):
     return gitcmd("commit %s" % argstr, "Commit failed")
 
 
-def commitDescription(committish, quiet=True):
+def commitDescription(committish):
 
     try:
         descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
@@ -114,7 +114,7 @@ def commitDescription(committish, quiet=True):
                 raise e
     return descr
 
-def config(argstr, arg2=None, quiet=False):
+def config(argstr, arg2=None):
     if arg2 is not None:
         return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed")
     else:
@@ -131,15 +131,15 @@ def currentBranch(quiet=True):
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
 
-def describe(argstr="", quiet=False):
+def describe(argstr=""):
     return gitcmd("describe %s" % argstr, "could not describe commit")
 
 
-def diff(argstr, quiet=False):
+def diff(argstr):
     return gitcmd("diff %s" % argstr, "could not perform diff")
 
 
-def fetch(repo="", branchArg="", quiet=True):
+def fetch(repo="", branchArg=""):
     try:
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
@@ -176,7 +176,7 @@ def getAllSubmodules(quiet=True):
     return submodules
 
 
-def getModifiedSubmodules(branch1="", branch2="", quiet=True):
+def getModifiedSubmodules(branch1="", branch2=""):
     cwd = os.getcwd()
     base = baseDir()
     os.chdir(base)
@@ -226,7 +226,7 @@ def hasBranch(b):
 
 
 def isWorkingDirectoryClean():
-    statusOutput = status("-u", quiet=True)
+    statusOutput = status("-u")
     return "nothing to commit" in statusOutput and "working directory clean" in statusOutput and\
            "conflict" not in statusOutput
 
@@ -235,7 +235,7 @@ def log(args=""):
     return gitcmd("log %s" % args, "git log failed")
 
 
-def merge(args, quiet=False):
+def merge(args):
     return gitcmd("merge %s" % args, "merge failed")
 
 
@@ -253,7 +253,7 @@ def numberCommitsSinceRoot():
     return numberCommitsSince(root)
 
 
-def pull(args, quiet=False):
+def pull(args):
     try:
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
@@ -264,7 +264,7 @@ def pull(args, quiet=False):
             raise e
 
 
-def push(args, quiet=False):
+def push(args):
     try:
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
@@ -275,15 +275,15 @@ def push(args, quiet=False):
             raise e
 
 
-def rebase(args, quiet=False):
+def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
 
 
-def revert(args, quiet=False):
+def revert(args):
     return gitcmd("revert %s" % args, "Revert failed")
 
 
-def safeForceBranchToOriginRef(branchToSync, quiet=True):
+def safeForceBranchToOriginRef(branchToSync):
     # first, check to see that branch exists
     branchExists = False
     remoteRefExists = False
@@ -319,11 +319,11 @@ def safeForceBranchToOriginRef(branchToSync, quiet=True):
         return True
 
 
-def shortSHA(branchName="HEAD", quiet=True):
+def shortSHA(branchName="HEAD"):
     return gitcmd("rev-parse --short %s" % branchName, "rev-parse of %s failed!" % branchName)
 
 
-def SHA(branchName="HEAD", quiet=True):
+def SHA(branchName="HEAD"):
     return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName)
 
 
@@ -339,15 +339,15 @@ def showRemote():
             raise e
 
 
-def status(argstr="", quiet=False):
+def status(argstr=""):
     return gitcmd("status %s" % argstr, "git status failed for some reason")
 
 
-def submodule(argstr, quiet=False):
+def submodule(argstr):
     return gitcmd("submodule %s" % argstr, "git submodule %s failed" % argstr)
 
 
-def subtree(argstr, quiet=False):
+def subtree(argstr):
     return gitcmd("subtree %s" % argstr, "git subtree %s failed - maybe subtree isn't installed on your system?",
                   quiet=quiet)
 
