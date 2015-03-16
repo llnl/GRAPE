@@ -41,9 +41,6 @@ def applyGlobalArgs(args):
     global globalArgs
     global globalCLI
     def __apply__(args): 
-        print "in __apply__ with args %s" % args
-        print type(args)
-        print docoptDict
         if type(args) is docoptDict:
             if args["-v"]:
                 print "setting verbosity to 2"
