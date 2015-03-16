@@ -202,7 +202,7 @@ def main(argv):
                    "CO":testCO.TestCheckout,
                    "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
                    "Status":testStatus.createStatusTester(),
-                   "UpdateLocal":testUpdateLocal.createUpTester(),
+                   "GrapeUp":testUpdateLocal.createUpTester(),
                    "Utility":testUtility.TestUtility }
 
 

@@ -18,11 +18,11 @@ class TestGrapeGit(TestGrape):
             f1name = os.path.join(self.repo, "f1")
             writeFile1(f1name)
             git.add("f1")
-            git.status()
+            statusStr = git.status()
         except git.GrapeGitError as error:
             self.handleGitError(error)
 
-        self.assertTrue("new file:   f1" in self.output.getvalue())
+        self.assertTrue("new file:   f1" in statusStr)
 
 
     def testCommit(self):
@@ -196,8 +196,7 @@ class TestGrapeGit(TestGrape):
             os.chdir(local)
             git.branch("testBranch/newBranch HEAD")
             branches = git.branch()
-            self.assertTrue("testBranch/newBranch" in branches, "new branch not in returned string")
-            self.assertTrue("testBranch/newBranch" in self.output.getvalue(), "new branch not output")
+            self.assertTrue("testBranch/newBranch" in branches, "new branch not in returned string %s " % branches)
         except git.GrapeGitError as error:
             self.handleGitError(error)
 
@@ -209,15 +208,11 @@ class TestGrapeGit(TestGrape):
         try:
             self.assertTrue(git.clone("%s %s" % (localSource,localClone) ))
             os.chdir(localClone)
-            self.assertTrue(git.showRemote())
-            contents = self.output.getvalue()
+            fetchLine = "Fetch URL: %s" % localSource
+            showRemoteOutput = git.showRemote()
+            self.assertTrue(fetchLine in showRemoteOutput,"coud not find %s in output" % fetchLine)
         except git.GrapeGitError as error:
             self.handleGitError(error)
-        fetchLine = "Fetch URL: %s" % localSource
-
-        self.assertTrue(fetchLine in contents,"coud not find %s in output" % fetchLine)
-
-
 
 
     def testRebase(self):

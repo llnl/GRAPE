@@ -223,7 +223,7 @@ class TestMD(testGrape.TestGrape):
         os.chdir(self.repo)
         # run grape md --am
         try:
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--am", "--public=master"], ["-v"])
+            ret = grapeMenu.menu().applyMenuChoice("md", ["--am", "--public=master"], globalArgs=["-v"])
         except SystemExit as e: 
             self.assertTrue(False, "grape md raised exception %s" % e)
         self.assertFalse(ret, "grape md did not return False for conflicting merge.")

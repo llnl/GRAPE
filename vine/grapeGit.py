@@ -142,7 +142,6 @@ def fetch(repo="", branchArg=""):
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
         if e.code == 128:
-            utility.printMsg("WARNING: Fetch failed due to connectivity issues.")
             return e.gitOutput
         else:
             raise e
@@ -255,7 +254,6 @@ def pull(args):
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
         if e.code == 128:
-            utility.printMsg("WARNING: Pull failed due to connectivity issues.")
             return e.gitOutput
         else:
             raise e
@@ -330,7 +328,7 @@ def showRemote():
         return gitcmd("remote show origin", "unable to show remote")
     except GrapeGitError as e:
         if e.code == 128:
-            print ("GRAPE: WARNING: git remote failed due to connectivity issues.")
+            utility.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
             return e.gitOutput
         else:
             raise e

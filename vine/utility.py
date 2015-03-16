@@ -36,24 +36,23 @@ globalVerbosity = 1
 def setVerbosity(level):
     global globalVerbosity
     globalVerbosity = level
+
+def __apply__(args): 
+    if type(args) is docoptDict:
+        if args["-v"]:
+            setVerbosity(2)
+        elif args["-q"]:
+            setVerbosity(0)
+        else:
+            setVerbosity(1)
+    if type(args) is types.ListType:
+        # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
+        global globalCLI
+        return __apply__(docopt(globalCLI,args, options_first=True))
     
 def applyGlobalArgs(args):
     global globalArgs
     global globalCLI
-    def __apply__(args): 
-        if type(args) is docoptDict:
-            if args["-v"]:
-                setVerbosity(2)
-            elif args["-q"]:
-                setVerbosity(0)
-            else:
-                setVerbosity(1)
-        if type(args) is types.ListType:
-            # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
-            global globalCLI
-            return __apply__(docopt(globalCLI,args, options_first=True))
-        
-        
     __apply__(args)
     globalArgs.append(args)
     
@@ -61,7 +60,7 @@ def popGlobalArgs():
     global globalArgs
     if len(globalArgs) > 1:
         globalArgs.pop()
-    applyGlobalArgs.__apply__(globalArgs[-1])
+    __apply__(globalArgs[-1])
         
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,

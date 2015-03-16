@@ -41,7 +41,7 @@ class Publish(resumable.Resumable):
                          [--noverify]
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
-                         [--forcePushSubtree=<subtreeName>]..
+                         [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]

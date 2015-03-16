@@ -90,6 +90,7 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                                             "--branch=master", 
                                             "--submodule", 
                                             "--noverify"],
+                                            None,
                                             ["-v"] )),
                           (git.commit, "-m \"added submodule1\""),
                           (git.push, "origin --all")])
@@ -192,7 +193,7 @@ class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
                                             "--url=%s" % self.getOriginDir(),
                                             "--branch=master", 
                                             "--nested", 
-                                            "--noverify"],
+                                            "--noverify"], None, 
                                             ["-v"] ))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True

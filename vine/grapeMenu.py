@@ -97,7 +97,6 @@ class _Menu(object):
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None, globalArgs=None):
-        
         chosen_option = self.getOption(choice)
         if chosen_option is None:
             return False
