@@ -12,7 +12,7 @@ class NewBranchOption(option.Option):
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [-v] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -22,7 +22,6 @@ class NewBranchOption(option.Option):
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
     --norecurse             Don't create the branch in submodules.
-    -v                      Be more verbose. 
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -54,8 +53,7 @@ class NewBranchOption(option.Option):
         return branchPoint, prefix, user, branch
 
     def execute(self, args):
-        quiet = not args["-v"]
-        upArgs = [] if quiet else ["-v"]
+        upArgs = [] 
         grapeMenu.menu().applyMenuChoice('up', upArgs)
         start = args["--start"]
         recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')

@@ -12,9 +12,7 @@ class GrapeGitError(Exception):
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
         self.cwd = cwd
-        if not quiet:
-            print "When executing %s,Error %d raised with msg: %s \n %s" % (self.gitCommand, self.code, self.msg,
-                                                                            self.gitOutput)
+
 
 
 def gitcmd(cmd, errmsg):
@@ -36,7 +34,7 @@ def gitcmd(cmd, errmsg):
     cwd = os.getcwd()
     process = utility.executeSubProcess(_cmd, cwd, verbose=-1)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, quiet=quiet, cwd=cwd)
+        raise GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, cwd=cwd)
     return process.output.strip()
 
 
@@ -44,7 +42,7 @@ def add(filedescription):
     return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
 
 
-def baseDir(quiet=True):
+def baseDir():
     unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
     path = utility.makePathPortable(unixStylePath)
     return path
@@ -104,7 +102,7 @@ def commitDescription(committish):
 
     try:
         descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
-                           "commitDescription failed", quiet=quiet)
+                           "commitDescription failed")
     # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
     except GrapeGitError as e:
         if "unknown revision" in e.gitOutput:
@@ -121,13 +119,13 @@ def config(argstr, arg2=None):
         return gitcmd('config %s ' % argstr, "Config failed")
 
 
-def conflictedFiles(quiet=True):
-    fileStr = diff("--name-only --diff-filter=U", quiet=quiet).strip()
+def conflictedFiles():
+    fileStr = diff("--name-only --diff-filter=U").strip()
     lines = fileStr.split('\n') if fileStr else []
     return lines
 
 
-def currentBranch(quiet=True):
+def currentBranch():
     return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
 
 
@@ -144,24 +142,23 @@ def fetch(repo="", branchArg=""):
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
         if e.code == 128:
-            if not quiet:
-                print ("GRAPE: WARNING: Fetch failed due to connectivity issues.")
+            utility.printMsg("WARNING: Fetch failed due to connectivity issues.")
             return e.gitOutput
         else:
             raise e
 
 
-def getActiveSubmodules(quiet=True):
+def getActiveSubmodules():
 
     if os.name == "nt":
-        submoduleList = submodule("foreach --quiet \"echo $path\"", quiet)
+        submoduleList = submodule("foreach --quiet \"echo $path\"")
     else:
-        submoduleList = submodule("foreach --quiet \"echo \$path\"", quiet)
+        submoduleList = submodule("foreach --quiet \"echo \$path\"")
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     return submoduleList
 
 
-def getAllSubmodules(quiet=True):
+def getAllSubmodules():
     subconfig = ConfigParser.ConfigParser()
     try:
         subconfig.read(os.path.join(baseDir(), ".gitmodules"))
@@ -180,13 +177,13 @@ def getModifiedSubmodules(branch1="", branch2=""):
     cwd = os.getcwd()
     base = baseDir()
     os.chdir(base)
-    submodules = getActiveSubmodules(quiet=quiet)
+    submodules = getActiveSubmodules()
     # if there are no submodules, then return the empty list
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
         return [] 
     submodulesString = ' '.join(submodules)
-    modifiedSubmodules = diff("--name-only %s %s -- %s" % (branch1, branch2,  submodulesString),
-                              quiet=quiet).split('\n')
+    modifiedSubmodules = diff("--name-only %s %s -- %s" % 
+                              (branch1, branch2,  submodulesString)).split('\n')
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
 
@@ -287,7 +284,7 @@ def safeForceBranchToOriginRef(branchToSync):
     # first, check to see that branch exists
     branchExists = False
     remoteRefExists = False
-    branches = branch("-a", quiet=quiet).split("\n")
+    branches = branch("-a").split("\n")
     remoteRef = "remotes/origin/%s" % branchToSync
     for b in branches:
         b = b.replace('*', '')
@@ -300,10 +297,10 @@ def safeForceBranchToOriginRef(branchToSync):
         utility.printMsg("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
-        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync, quiet=quiet)
-        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef, quiet=quiet)
+        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
+        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
-            if branchToSync == currentBranch(quiet=quiet):
+            if branchToSync == currentBranch():
                 utility.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 pull("origin %s" % branchToSync)
             else:
@@ -348,8 +345,7 @@ def submodule(argstr):
 
 
 def subtree(argstr):
-    return gitcmd("subtree %s" % argstr, "git subtree %s failed - maybe subtree isn't installed on your system?",
-                  quiet=quiet)
+    return gitcmd("subtree %s" % argstr, "git subtree %s failed - maybe subtree isn't installed on your system?")
 
 
 def tag(argstr):

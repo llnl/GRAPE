@@ -24,7 +24,6 @@ class Review(option.Option):
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
-                        [-v]
                         [--test]
                         [--prepend | --append]
 
@@ -60,7 +59,6 @@ class Review(option.Option):
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
                                     submodules' pull requests.
-        -v                          Be more verbose with git commands.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
@@ -85,7 +83,6 @@ class Review(option.Option):
         https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
         """
         config = grapeConfig.grapeConfig()
-        quiet = not args["-v"]
         name = args["--user"]
         if not name:
             name = utility.getUserName()
@@ -188,8 +185,7 @@ class Review(option.Option):
 
         repo_name = args["--repo"]
         repo = stash.project(project_name).repo(repo_name)
-        if not quiet:
-            utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
+        utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
         request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
         updatedDescription = request.description()
         for link in submoduleLinks:
@@ -203,8 +199,7 @@ class Review(option.Option):
         
             
        
-        if not quiet:
-            utility.printMsg("Request generated/updated: %s" % request)
+        utility.printMsg("Request generated/updated: %s" % request)
         return True
 
     def setDefaultConfig(self, config):
@@ -217,7 +212,6 @@ class Review(option.Option):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
-    quiet = not args["-v"]
     utility.printMsg("Gathering active pull requests on %s" % branch)
     pull_requests = repo.pullRequests(direction="OUTGOING", at="refs/heads/%s" % branch, state=args["--state"])
 
@@ -236,9 +230,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             try:
                 utility.printMsg("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
                       (title, branch, target_branch))
-                if not quiet:
-                    utility.printMsg("descr: %s" % descr)
-                    utility.printMsg("reviewers: %s" % reviewers)
+                utility.printMsg("reviewers: %s" % reviewers)
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
                 url = request.link()
                 utility.printMsg("Pull request created at %s ." % url)
@@ -263,8 +255,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     reviewers += revList
                 if not reviewers: 
                     reviewers = [r[0] for r in request.reviewers()]
-                if not quiet:
-                    utility.printMsg("reviewer list is: %s" % reviewers)
+                utility.printMsg("reviewer list is: %s" % reviewers)
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
@@ -282,8 +273,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
 
 
                 if title is not None or descr is not None or reviewers:
-                    if not quiet:
-                        utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
+                    utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
                     request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
                     url = request.link()
                     utility.printMsg("Pull request updated at %s ." % url)

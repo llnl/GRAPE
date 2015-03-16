@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 import ConfigParser
+import types
 
 import grapeGit as git
 import grapeMenu
@@ -11,6 +12,7 @@ toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
 if toplevel not in sys.path:
     sys.path.append(toplevel)
 from docopt.docopt import docopt
+from docopt.docopt import Dict as docoptDict
 
 
 def ensure_dir(f):
@@ -27,13 +29,50 @@ def makePathPortable(path):
         newPath = path
     return newPath
 
+globalArgs = []
+globalCLI = ""
+
 globalVerbosity = 1
 def setVerbosity(level):
     global globalVerbosity
     globalVerbosity = level
+    
+def applyGlobalArgs(args):
+    global globalArgs
+    global globalCLI
+    def __apply__(args): 
+        print "in __apply__ with args %s" % args
+        print type(args)
+        print docoptDict
+        if type(args) is docoptDict:
+            if args["-v"]:
+                print "setting verbosity to 2"
+                setVerbosity(2)
+            elif args["-q"]:
+                print "setting verbosity to 0"
+                setVerbosity(0)
+            else:
+                print "setting verbosity to 1"
+                setVerbosity(1)
+        if type(args) is types.ListType:
+            # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
+            global globalCLI
+            return __apply__(docopt(globalCLI,args, options_first=True))
+        
+        
+    __apply__(args)
+    globalArgs.append(args)
+    
+def popGlobalArgs():
+    global globalArgs
+    if len(globalArgs) > 1:
+        globalArgs.pop()
+    applyGlobalArgs.__apply__(globalArgs[-1])
+        
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin, stream = False):
+    
     if verbose == -1:
         verbose = globalVerbosity
     if verbose > 1:
@@ -43,36 +82,28 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
-                               cwd=workingDirectory, stdin=stdin, bufsize=1)
+                               cwd=workingDirectory, stdin=stdin)
     output = ""
-    
-    # this might be the cause of a hangout, trying alternative below to see if hang reports diminish...
-    #for line in iter(process.stdout.readline, b''):
-        #line = line.replace('\r', '').replace('\n', '')
-        #if verbose > 0: 
-            #print line
-            #sys.stdout.flush()
-            #sys.stderr.flush()
-        #line += "\n"
-        #output = output+line
         
-    if stream:    
+    if stream:
         while process.poll() is None:
             out = process.stdout.read(1)
             if verbose > 0:
                 sys.stdout.write(out)
                 sys.stdout.flush()
-            output += out
-        
+            output += out 
     process.wait()
-    
-    out =  process.communicate()[0]
-    if verbose > 0 and stream:
+    out = ''
+    # this seems to flush out process.stdout even when the subprocess doesn't terminate it with an EOF
+    for l in process.stdout:
+        out += l
+    out +=  process.communicate()[0]
+    if verbose > 1 and stream:
         sys.stdout.write(out)
         sys.stdout.flush()
     output += out
-    #if verbose > 0:
-    #    print(output.strip())
+    if verbose > 1 and not stream:
+        print(output.strip())
     process.output = output
     if process.returncode != 0 and verbose > 0:
         print("Command '" + command + "': exited with error code " + str(process.returncode))

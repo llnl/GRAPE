@@ -14,7 +14,7 @@ class AddSubproject(option.Option):
         Usage: grape-addSubproject  --name=<name> --prefix=<prefix> --url=<url> --branch=<branch>
                                     [--subtree [--squash | --nosquash] | --submodule | --nested]
                                     [--noverify]
-                                    [-v]
+
 
         Options:
         --name=<name>       The name of the subproject.
@@ -34,7 +34,7 @@ class AddSubproject(option.Option):
                             all activity in this subproject. GRAPE commands such as checkout, status, and commit will
                             act across all nested subprojects in much the same way as grape manages submodules.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
-        -v                  Set to print all git commands that are issued
+
 
     """
     def __init__(self):
@@ -65,7 +65,6 @@ class AddSubproject(option.Option):
         url = args["--url"]
         fullurl = utility.parseSubprojectRemoteURL(url)
         branch = args["--branch"]
-        quiet = not args["-v"]
         config = grapeConfig.grapeConfig()
         projectType = self.parseSubprojectType(config, args)
         proceed = args["--noverify"]

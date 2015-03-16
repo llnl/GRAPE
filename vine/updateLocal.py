@@ -12,7 +12,7 @@ class UpdateLocal(option.Option):
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
                     [--recurse | --norecurse]
-                    [-v] [--wd=<working dir>]
+                    [--wd=<working dir>]
                     
 
     Options:
@@ -23,7 +23,6 @@ class UpdateLocal(option.Option):
     --norecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated. 
                             Top level workspace will be updated if this is unspecified.
-    -v                      Be more verbose.
 
 
     """
@@ -43,7 +42,6 @@ class UpdateLocal(option.Option):
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurseSubmodules = recurseSubmodules and (not args["--norecurse"])
         recurseNestedSubprojects = not args["--norecurse"]
-        quiet = not args["-v"]
 
         currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
@@ -69,7 +67,7 @@ class UpdateLocal(option.Option):
                       # The output of ls-tree should look like:
                       # 160000 commit <submodule SHA>  <submodule name>
                       gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
-                                              "Failed to execute ls-tree", quiet=quiet).split()[2]
+                                              "Failed to execute ls-tree").split()[2]
                       os.chdir(os.path.join(wsDir, submodule))
                       # Check to see if the SHA in submodule matches
                       branchUpdate = True if git.SHA(currentBranch) != gitlinkSHA else False
@@ -86,7 +84,7 @@ class UpdateLocal(option.Option):
                          try:
                             os.chdir(wsDir)
                             gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
-                                                    "Failed to execute ls-tree", quiet=quiet).split()[2]
+                                                    "Failed to execute ls-tree").split()[2]
                             os.chdir(os.path.join(wsDir, submodule))
                             if git.SHA(submodulePublicBranch) != gitlinkSHA:
                                publicUpdate.append(submodulePublicBranch)
@@ -110,7 +108,6 @@ class UpdateLocal(option.Option):
         
         os.chdir(workingDir)
         utility.printMsg("updating %s in %s" % (branches, workingDir))
-        quiet = not args["-v"]
         git.fetch("--prune")
         git.fetch("--tags")
         fetchArgs = "origin "

@@ -6,11 +6,10 @@ import utility
 
 class Commit(option.Option):
     """
-    Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
+    Usage: grape-commit [-m <message>] [-a | <filetree>]  
 
     Options:
     -m <message>    The commit message.
-    -v              Show git commands being issued.
     -a              Commit modified files that have not been staged.
     
 
@@ -33,7 +32,6 @@ class Commit(option.Option):
             print("commit failed. Perhaps there were no staged changes? Use -a to commit all modified files.")
 
     def execute(self, args):
-        quiet = not args["-v"]
         commitargs = ""
         if args['-a']: 
             commitargs = commitargs +  " -a"

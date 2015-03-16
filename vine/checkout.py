@@ -117,7 +117,6 @@ class Checkout(option.Option):
             
 
     def execute(self, args):
-        quiet = not args["-v"]
         checkoutargs = ''
         branch = args["<branch>"]
         if args['-b']: 
@@ -200,8 +199,6 @@ class Checkout(option.Option):
                         
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
-        if not quiet:
-            uvArgs.append("-v")
             
         if args["-b"]: 
             uvArgs.append("-b")

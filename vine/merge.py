@@ -15,7 +15,7 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--quiet]
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] 
 
     Options:
         --am            Use git's default merge. 
@@ -24,7 +24,6 @@ class Merge(resumable.Resumable):
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
         --continue      Resume your previous merge after resolving conflicts.
-        --quiet         Don't issue messages if conflicts occur.
 
     Arguments:
         <branch>        The branch you want to merge in. 
@@ -80,10 +79,7 @@ def merge(branch, strategy, args):
 
 
 def mergeIntoCurrent(branchName, args):
-    quiet = not args["-v"]
     updateArgs = ['up', '--wd=%s' % os.getcwd(), '--norecurse', '--public=%s' % branchName]
-    if not quiet:
-        updateArgs.append('-v')
     grapeMenu.menu().applyMenuChoice('up', updateArgs)
     choice = False
     strategy = None
@@ -116,8 +112,7 @@ def mergeIntoCurrent(branchName, args):
         # see
         # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
         # for details.
-        if not args["--quiet"]:
-            utility.printMsg("GRAPE: merging forcing conflicts whenever both branches edited the same file...")
+        utility.printMsg("GRAPE: merging forcing conflicts whenever both branches edited the same file...")
         base = git.gitDir()
         if base == "":
             return False
@@ -146,14 +141,12 @@ def mergeIntoCurrent(branchName, args):
 
     elif strategy == 'at':
         args["--at"] = True
-        if not args["--quiet"]:
-            print("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
+        utility.printMsg("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
         choice = merge(branchName, "-Xtheirs", args)
 
     elif strategy == 'ay':
         args["--ay"] = True
-        if not args["--quiet"]:
-            print("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
+        utility.printMsg("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
         choice = merge(branchName, "-Xours", args)
 
     return choice

@@ -89,8 +89,8 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                                             "--url=%s" % self.getOriginDir(),
                                             "--branch=master", 
                                             "--submodule", 
-                                            "--noverify",
-                                            "-v"] )),
+                                            "--noverify"],
+                                            ["-v"] )),
                           (git.commit, "-m \"added submodule1\""),
                           (git.push, "origin --all")])
         self._publicBranchesValid = True
@@ -192,8 +192,8 @@ class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
                                             "--url=%s" % self.getOriginDir(),
                                             "--branch=master", 
                                             "--nested", 
-                                            "--noverify",
-                                            "-v"] ))])
+                                            "--noverify"],
+                                            ["-v"] ))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
         # there should be one fetch for the outer level master and one for the nested master

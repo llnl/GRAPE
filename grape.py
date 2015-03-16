@@ -42,16 +42,11 @@ def startup():
     #grapeConfig.read(additionalConfigFiles)
     with open(os.path.join(vinePath,"VERSION"),'r') as f:
         grapeVersion = f.read().split()[2]
-        
+    utility.globalCLI = CLI    
     args = docopt(CLI,  version=grapeVersion, options_first=True )
     myMenu = grapeMenu.menu()
+    utility.applyGlobalArgs(args)
 
-    if args["-v"]:
-        utility.setVerbosity(2)
-    elif args["-q"]:
-        utility.setVerbosity(0)
-    else:
-        utility.setVerbosity(1)
         
     
     try:

@@ -41,8 +41,7 @@ class Publish(resumable.Resumable):
                          [--noverify]
                          [--nopush]
                          [--pushSubtrees | --noPushSubtrees]
-                         [--forcePushSubtree=<subtreeName>]...
-                         [-v]
+                         [--forcePushSubtree=<subtreeName>]..
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
@@ -65,7 +64,7 @@ class Publish(resumable.Resumable):
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [-v] [--user=<StashUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -89,7 +88,6 @@ class Publish(resumable.Resumable):
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    -v                      Be more verbose.
     --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
                             "publish", "postPublish", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
@@ -1023,7 +1021,6 @@ class Publish(resumable.Resumable):
         config = grapeConfig.grapeConfig()
         public = args["--public"]
         topic = args["--topic"]
-        quiet = not args["-v"]
         
         # decide whether to recurse into submodules
         recurse = config.get('workspace', 'manageSubmodules')
@@ -1111,7 +1108,6 @@ class Publish(resumable.Resumable):
 
     def publishAllProjects(self, args):
         # make sure we have a commit message
-        quiet = not args["-v"]
         if not (self.loadCommitMessage(args) and self.loadPublishTargets(args)):
             return False
         public = args["--public"]
@@ -1194,15 +1190,14 @@ class Publish(resumable.Resumable):
 
                         try:
                             git.subtree("push --prefix=%s %s %s " % (self.st_prefixes[st],
-                                                                                 self.st_remotes[st],  self.st_branches[st]),
-                                                                                 quiet=quiet)
+                                                                                 self.st_remotes[st],  self.st_branches[st]))
                         except git.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
                             git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st]), quiet=quiet)
+                                                                                 self.st_remotes[st], self.st_branches[st]))
                             git.subtree("push --prefix=%s %s %s " % ( self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st]), quiet=quiet)
+                                                                                 self.st_remotes[st], self.st_branches[st]))
                             utility.printMsg("Succeeded!")
 
 

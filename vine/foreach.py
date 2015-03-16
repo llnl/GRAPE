@@ -46,12 +46,12 @@ class ForEach(option.Option):
         
         # execute in nested subprojects
         for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(cwd):
-            utility.printMsg("Entering %s..." % proj)
+            if not quiet:
+                utility.printMsg("Entering %s..." % proj)
             os.chdir(os.path.join(cwd, proj))
-            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj), 
-                                      verbose=0 if quiet else 2)
+            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj))
         if not args["--noTopLevel"]:
-            utility.executeSubProcess(cmd,cwd,verbose = 0 if quiet else 2)
+            utility.executeSubProcess(cmd,cwd)
         
         return True
     
