@@ -43,13 +43,10 @@ def applyGlobalArgs(args):
     def __apply__(args): 
         if type(args) is docoptDict:
             if args["-v"]:
-                print "setting verbosity to 2"
                 setVerbosity(2)
             elif args["-q"]:
-                print "setting verbosity to 0"
                 setVerbosity(0)
             else:
-                print "setting verbosity to 1"
                 setVerbosity(1)
         if type(args) is types.ListType:
             # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
