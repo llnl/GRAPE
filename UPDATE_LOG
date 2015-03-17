@@ -1,5 +1,21 @@
 
 
+Tue Mar 17 11:33:07 2015 Peter B. Robinson
+v1.5.3
+
+Developer: Peter Robinson
+Reviewers: Ben Liu, Aaron Fisher, Chris White. 
+
+SUMMARY: Overhaul of GRAPE's verbosity mechanism. 
+
+DETAILS: All menu options have lost their [-v] flag. Grape itself has gained the options [--version] [-v | -q]. 
+Default verbosity: 
+ utility.printMsg commands, typically used for general progress in GRAPE,  are printed, as well as user input prompts.
+[-v] All subprocess launches (mostly git commands ) will print out what is being run and where, with output being printed out upon completion. 
+[-q] utility.printMsg commands are muted. User input prompts are still printed. 
+[--version] grape will print the version of grape being used and then exit.
+
+
 Thu Mar 12 09:19:37 2015 Benjamin T. Liu
 v1.5.2
 
