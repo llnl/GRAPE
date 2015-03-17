@@ -61,7 +61,7 @@ def startup():
         elif (len(sys.argv) > 1):
             myMenu.applyMenuChoice(args["<command>"],args["<args>"])
     except KeyboardInterrupt:
-        utility.printMsg(" ERROR: Operation interrupted by user, exiting...")
+        print("GRAPE ERROR: Operation interrupted by user, exiting...")
 
     # Exit the script
     print("Thank you - good bye")

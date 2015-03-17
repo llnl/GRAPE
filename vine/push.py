@@ -37,6 +37,7 @@ class Push(option.Option):
             utility.printMsg("Performing pushes in all active submodules")
         for sub in submodules: 
             os.chdir(os.path.join(baseDir, sub))
+            utility.printMsg("Pushing in %s..." % sub)
             git.push(pushargs)
 
         nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
@@ -44,6 +45,7 @@ class Push(option.Option):
             utility.printMsg("Performing pushes in all active subprojects")
         for proj in nestedSubprojects:
             os.chdir(os.path.join(baseDir, proj))
+            utility.printMsg("Pushing in %s..." % proj)
             git.push(pushargs)
 
         os.chdir(cwd)

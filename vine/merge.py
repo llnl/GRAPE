@@ -112,7 +112,7 @@ def mergeIntoCurrent(branchName, args):
         # see
         # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
         # for details.
-        utility.printMsg("GRAPE: merging forcing conflicts whenever both branches edited the same file...")
+        utility.printMsg("merging forcing conflicts whenever both branches edited the same file...")
         base = git.gitDir()
         if base == "":
             return False
