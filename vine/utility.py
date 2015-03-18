@@ -50,13 +50,13 @@ def __apply__(args):
         # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
         global globalCLI
         return __apply__(docopt(globalCLI,args, options_first=True))
-    
+
 def applyGlobalArgs(args):
     global globalArgs
     global globalCLI
     __apply__(args)
     globalArgs.append(args)
-    
+
 def popGlobalArgs():
     global globalArgs
     if len(globalArgs) > 1:
@@ -66,7 +66,7 @@ def popGlobalArgs():
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin, stream = False):
-    
+
     if verbose == -1:
         verbose = globalVerbosity
     if verbose > 1:
@@ -78,7 +78,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     if stream: 
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
                                    cwd=workingDirectory, stdin=stdin, bufsize=1)
-
+        output = ''
         while process.poll() is None:
             out = process.stdout.read(1)
             if verbose > 0:
@@ -91,7 +91,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             sys.stdout.write(out)
             sys.stdout.flush()
         output += out	
-	
+
     else:
         with tempfile.TemporaryFile() as tmpFile:
             process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
@@ -100,7 +100,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             tmpFile.seek( 0 )
             output = tmpFile.read()
             if verbose > 1:
-	        print(output.strip())
+                print(output.strip())
 
     process.output = output
     if process.returncode != 0 and verbose > 1:
@@ -178,7 +178,7 @@ def workspaceDir(warnIfNotFound = True):
     cwd = os.getcwd()
     basedir = None
 
- # go until you're at the root (you don't have a head after splitting)
+    # go until you're at the root (you don't have a head after splitting)
     while os.path.split(os.getcwd())[1]:
         if os.path.exists(os.path.join(os.getcwd(), ".git")): 
             basedir = os.getcwd()
@@ -206,8 +206,8 @@ def getActiveSubprojects():
 
 def getModifiedSubprojects():
     return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
-                                                                                                             
-                                                                                                      
+
+
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 
     if os.name == "nt":
