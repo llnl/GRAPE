@@ -45,10 +45,12 @@ class NewBranchOption(option.Option):
         proceed = noverify or utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint +
                                                 ".\nProceed? [y/n]", 'y')
         if proceed:
+            utility.printMsg("switching to %s in %s" % (fullBranch, os.getcwd()))
             git.checkout("-b %s %s " % (fullBranch, branchPoint))
+            utility.printMsg("pushing %s to origin" % fullBranch)
             git.push("-u origin %s" % fullBranch)
         else:
-            print("Branch not created")
+            utility.printMSg("Branch not created")
 
         return branchPoint, prefix, user, branch
 
@@ -106,7 +108,7 @@ class NewBranchOption(option.Option):
                     cwd = os.path.join(wsdir, sub)
                     os.chdir(cwd)
                     git.checkout(submodulePublic)
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic, '--wd=%s' % cwd], '--norecurse')
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic, '--wd=%s' % cwd, '--norecurse'])
                     self.createBranch(submodulePublic, self._key, subArgs[2], subArgs[3], True)
 
     def setDefaultConfig(self, config):
