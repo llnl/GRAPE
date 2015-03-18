@@ -50,7 +50,7 @@ class NewBranchOption(option.Option):
             utility.printMsg("pushing %s to origin" % fullBranch)
             git.push("-u origin %s" % fullBranch)
         else:
-            utility.printMSg("Branch not created")
+            utility.printMsg("Branch not created")
 
         return branchPoint, prefix, user, branch
 

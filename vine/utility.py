@@ -94,16 +94,14 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
 	
     else:
         with tempfile.TemporaryFile() as tmpFile:
-	    process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
-	                                stderr=subprocess.STDOUT )
-	 
-	    process.wait()
-	    tmpFile.seek( 0 )
-	    output = tmpFile.read()
-	    if verbose > 1:
-		    print(output.strip())	    
-            
-            
+            process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
+                                        stderr=subprocess.STDOUT ) 
+            process.wait()
+            tmpFile.seek( 0 )
+            output = tmpFile.read()
+            if verbose > 1:
+	        print(output.strip())
+
     process.output = output
     if process.returncode != 0 and verbose > 1:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
