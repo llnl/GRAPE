@@ -1,5 +1,13 @@
 
 
+Wed Mar 18 11:14:58 2015 Peter B. Robinson
+v1.5.4
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Aaron Fisher, Benjamin Liu
+SUMMARY: Tweaks verbosity, fixes obscenely long new branch creation
+
+
 Tue Mar 17 11:33:07 2015 Peter B. Robinson
 v1.5.3
 
