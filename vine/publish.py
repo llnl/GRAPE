@@ -548,7 +548,8 @@ class Publish(resumable.Resumable):
                     self.loadVersion(args)
                     verStr = self.progress["version"]
                     cmd = cmd.replace("<version>", verStr)
-                returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd()).returncode
+                returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd(), 
+                                                       stream=True).returncode
                 print(returnCode)
                 ret = ret and (returnCode == 0)
                 if not ret: 
