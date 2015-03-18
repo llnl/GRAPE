@@ -67,9 +67,10 @@ class DeleteBranch(option.Option):
         config = grapeConfig.grapeConfig()
         subpublicmapping = config.getMapping("workspace", "submoduletopicprefixmappings")
         if submodules:
-            print("GRAPE: deleting branches from submodules")
+            utility.printMsg("deleting branches from submodules")
 
         for sub in submodules:
+            utility.printMsg("deleting branch %s in %s" % (branch, sub))
             os.chdir(os.path.join(cwd, sub))
             if git.currentBranch() == branch:
                 git.checkout(subpublicmapping[git.branchPrefix(branch)])
@@ -82,6 +83,7 @@ class DeleteBranch(option.Option):
             utility.printMsg("Deleting %s from your active nested subprojects: " % branch)
         for sub in subprojects:
             os.chdir(os.path.join(cwd,sub))
+            utility.printMsg("deleting branch %s in %s" % (branch, sub))
             if git.currentBranch() == branch:
                 git.checkout(config.getPublicBranchFor(branch))
             self.deleteBranch(branch, force)

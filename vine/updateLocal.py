@@ -122,6 +122,8 @@ class UpdateLocal(option.Option):
         except git.GrapeGitError as e:
             # let non-fast-forward fetches slide
             if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
+                print e.gitCommand
+                print e.gitOutput
                 print("GRAPE WARNING: one or more of your public branches have local commits! "
                       "Did you forget to create a topic branch?")
                 pass

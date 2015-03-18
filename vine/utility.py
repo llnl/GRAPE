@@ -3,6 +3,7 @@ import subprocess
 import sys
 import ConfigParser
 import types
+import tempfile
 
 import grapeGit as git
 import grapeMenu
@@ -61,7 +62,7 @@ def popGlobalArgs():
     if len(globalArgs) > 1:
         globalArgs.pop()
     __apply__(globalArgs[-1])
-        
+
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin, stream = False):
@@ -74,31 +75,37 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
-                               cwd=workingDirectory, stdin=stdin)
-    output = ""
-        
-    if stream:
+    if stream: 
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+                                   cwd=workingDirectory, stdin=stdin, bufsize=1)
+
         while process.poll() is None:
             out = process.stdout.read(1)
             if verbose > 0:
                 sys.stdout.write(out)
                 sys.stdout.flush()
             output += out 
-    process.wait()
-    out = ''
-    # this seems to flush out process.stdout even when the subprocess doesn't terminate it with an EOF
-    for l in process.stdout:
-        out += l
-    out +=  process.communicate()[0]
-    if verbose > 1 and stream:
-        sys.stdout.write(out)
-        sys.stdout.flush()
-    output += out
-    if verbose > 1 and not stream:
-        print(output.strip())
+        process.wait() # should be a noop
+        out +=  process.communicate()[0] # also should be a noop
+        if verbose > 0:
+            sys.stdout.write(out)
+            sys.stdout.flush()
+        output += out	
+	
+    else:
+        with tempfile.TemporaryFile() as tmpFile:
+	    process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
+	                                stderr=subprocess.STDOUT )
+	 
+	    process.wait()
+	    tmpFile.seek( 0 )
+	    output = tmpFile.read()
+	    if verbose > 1:
+		    print(output.strip())	    
+            
+            
     process.output = output
-    if process.returncode != 0 and verbose > 0:
+    if process.returncode != 0 and verbose > 1:
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
 
