@@ -10,6 +10,7 @@ class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [<b1>] [<b2>]
+           grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--staged | --workspace] [<b1>]
 
     Options:
         --difftool=<tool>  Command to use for diff.
@@ -21,6 +22,8 @@ class Walkthrough(option.Option):
                            [default: .grapeconfig.walkthrough.height]
         --width=<width>    Width of window in pixels.
                            [default: .grapeconfig.walkthrough.width]
+        --staged           Compare staged changes with cached version.
+        --workspace        Compare workspace files with branch.
         <b1>               The first branch to compare.
                            Defaults to the current branch of workspace.
         <b2>               The second branch to compare
@@ -53,12 +56,19 @@ class Walkthrough(option.Option):
         b1 = args["<b1>"] 
         if not b1: 
             b1 = git.currentBranch()
-        b2 = args["<b2>"]
-        if not b2: 
-           try:
-              b2 = config.getPublicBranchFor(b1)
-           except:
-              b2 = ""
+
+        if args["--staged"]:
+           b2 = b1
+           b1 = "--cached"
+        elif args["--workspace"]:
+           b2 = "--"
+        else:
+           b2 = args["<b2>"]
+           if not b2: 
+              try:
+                 b2 = config.getPublicBranchFor(b1)
+              except:
+                 b2 = ""
 
         diffargs = ""
                
@@ -258,19 +268,27 @@ class DiffManager(ProjectManager):
       self.branchB = branchB
       self.diffbranchA = Tk.StringVar()
       self.diffbranchA.set(branchA)
+      self.diffAnnotationA = Tk.StringVar()
+      self.diffAnnotationA.set("")
       self.diffbranchB = Tk.StringVar()
       self.diffbranchB.set(branchB)
+      self.diffAnnotationB = Tk.StringVar()
+      self.diffAnnotationB.set("")
 
       # Branch specification pane
       self.branchpane = Tk.Frame(master)
       self.branchlabelA= Tk.Label(self.branchpane, text="Branch A:")
       self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffbranchA)
+      self.annotationA = Tk.Label(self.branchpane, textvariable=self.diffAnnotationA)
       self.branchlabelB= Tk.Label(self.branchpane, text="Branch B:")
       self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffbranchB)
+      self.annotationB = Tk.Label(self.branchpane, textvariable=self.diffAnnotationB)
       self.branchlabelA.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchnameA.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.annotationA.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchlabelB.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
+      self.annotationB.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchpane.pack(side=Tk.TOP)
 
       ProjectManager.__init__(self, master, height=height, width=width)
@@ -283,18 +301,27 @@ class DiffManager(ProjectManager):
       dir = self.projects[index]
       type = self.projtype[index]
 
+      if self.branchA == "--cached":
+         self.diffAnnotationB.set("<staged>")
+      elif self.branchB == "--":
+         self.diffAnnotationB.set("<workspace>")
+      else:
+         self.diffAnnotationB.set("")
+
       if type.endswith("Submodule"):
          submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
-         branchParts = self.branchA.split("/",1)
-         if len(branchParts) == 1 or branchParts[0] == "origin":
-            if branchParts[-1] in submapping.keys():
-               branchParts[-1] = submapping[branchParts[-1]]
-         self.diffbranchA.set("/".join(branchParts))
-         branchParts = self.branchB.split("/",1)
-         if len(branchParts) == 1 or branchParts[0] == "origin":
-            if branchParts[-1] in submapping.keys():
-               branchParts[-1] = submapping[branchParts[-1]]
-         self.diffbranchB.set("/".join(branchParts))
+         if not self.branchA.startswith("--"):
+            branchParts = self.branchA.split("/",1)
+            if len(branchParts) == 1 or branchParts[0] == "origin":
+               if branchParts[-1] in submapping.keys():
+                  branchParts[-1] = submapping[branchParts[-1]]
+            self.diffbranchA.set("/".join(branchParts))
+         if not self.branchB.startswith("--"):
+            branchParts = self.branchB.split("/",1)
+            if len(branchParts) == 1 or branchParts[0] == "origin":
+               if branchParts[-1] in submapping.keys():
+                  branchParts[-1] = submapping[branchParts[-1]]
+            self.diffbranchB.set("/".join(branchParts))
       else:
          self.diffbranchA.set(self.branchA)
          self.diffbranchB.set(self.branchB)
@@ -326,5 +353,7 @@ class DiffManager(ProjectManager):
             self.filenames.append("")
 
    def execute(self, file):
-      difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool")
-
+      try:
+         difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool")
+      except git.GrapeGitError as e:
+         utility.printMsg("%s (return code %d)\n%s" % (e.msg, e.returnCode, e.gitOutput))
