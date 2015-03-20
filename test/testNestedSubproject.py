@@ -119,7 +119,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             f1Path = os.path.join(self.subproject, "f1")
             testGrape.writeFile1(f1Path)
             self.assertTrue(git.isWorkingDirectoryClean(), "subproject1/f1 shows up in git status when it shouldn't")
-            grapeMenu.menu().applyMenuChoice("status", ['-v', '-u'])
+            grapeMenu.menu().applyMenuChoice("status", ['-u'],globalArgs=["-v"])
             self.assertTrue(" ?? subs/subproject1/f1" in '\n'.join(self.output.buflist), "subproject1/f1 does not show up in grape "
                                                                          "status")
 

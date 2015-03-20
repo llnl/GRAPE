@@ -7,13 +7,12 @@ import config
 
 class Status(option.Option):
     """
-    Usage: grape-status [-v] [-u | --uno] 
+    Usage: grape-status [-u | --uno] 
               [--failIfInconsistent] 
               [--failIfMissingPublicBranches]
               [--failIfBranchesInconsistent]
 
     Options:
-    -v                             Show git commands being issued. 
     --uno                          Do not show untracked files
     -u                             Show untracked files. 
     --failIfInconsistent           Fail if any consistency checks fail. 
@@ -34,14 +33,13 @@ class Status(option.Option):
         utility.printMsg("gathering status on outer level project")
         wsDir = utility.workspaceDir() 
         os.chdir(wsDir)
-        quiet = not args["-v"]
         statusArgs = ""
         if args["-u"]:
             statusArgs += "-u "
         if args["--uno"]:
             statusArgs += "-uno "
 
-        status = git.status("--porcelain %s" % statusArgs, quiet).split('\n')
+        status = git.status("--porcelain %s" % statusArgs).split('\n')
         if status[0] and status[0][0] != ' ':
             status[0] = ' ' + status[0]
 
@@ -52,7 +50,7 @@ class Status(option.Option):
             if not sub.strip():
                 continue
             os.chdir(os.path.join(wsDir,sub))
-            subStatus = git.status("--porcelain %s" % statusArgs, quiet).split('\n')
+            subStatus = git.status("--porcelain %s" % statusArgs).split('\n')
             for line in subStatus: 
                 strippedL = line.strip()
                 if strippedL:
@@ -64,7 +62,9 @@ class Status(option.Option):
             os.chdir(wsDir)
         
         for line in status: 
-            print ' ' + line.strip()
+            lstripped = line.strip()
+            if lstripped:
+                print ' ' + lstripped
         
         # Sanity check workspace layout
         publicBranchesExist = True

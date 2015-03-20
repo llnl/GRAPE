@@ -14,7 +14,7 @@ class AddSubproject(option.Option):
         Usage: grape-addSubproject  --name=<name> --prefix=<prefix> --url=<url> --branch=<branch>
                                     [--subtree [--squash | --nosquash] | --submodule | --nested]
                                     [--noverify]
-                                    [-v]
+
 
         Options:
         --name=<name>       The name of the subproject.
@@ -34,7 +34,7 @@ class AddSubproject(option.Option):
                             all activity in this subproject. GRAPE commands such as checkout, status, and commit will
                             act across all nested subprojects in much the same way as grape manages submodules.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
-        -v                  Set to print all git commands that are issued
+
 
     """
     def __init__(self):
@@ -65,7 +65,6 @@ class AddSubproject(option.Option):
         url = args["--url"]
         fullurl = utility.parseSubprojectRemoteURL(url)
         branch = args["--branch"]
-        quiet = not args["-v"]
         config = grapeConfig.grapeConfig()
         projectType = self.parseSubprojectType(config, args)
         proceed = args["--noverify"]
@@ -82,7 +81,7 @@ class AddSubproject(option.Option):
 
             if proceed:
                 os.chdir(utility.workspaceDir())
-                git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch), quiet=quiet)
+                git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch))
 
                 #update the configuration file
                 current_cfg_names = config.get("subtrees", "names").split()
@@ -99,7 +98,7 @@ class AddSubproject(option.Option):
                 config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
-                print("Successfully added subtree branch. \n"
+                utility.printMsg("Successfully added subtree branch. \n"
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:
@@ -107,7 +106,7 @@ class AddSubproject(option.Option):
                                             "cloned from %s at branch %s.\nproceed? [y/n]" %
                                             (name, prefix, url, branch), "y")
             if proceed:
-                git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix), quiet=quiet)
+                git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix))
                 print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
         elif projectType == "nested":
             if not proceed:

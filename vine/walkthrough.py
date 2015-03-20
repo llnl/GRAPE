@@ -306,7 +306,7 @@ class DiffManager(ProjectManager):
       else:
          os.chdir(os.path.join(utility.workspaceDir(), dir))
          self.filenames = []
-         diffoutput = git.diff("--name-status %s %s %s" % (self.diffargs, self.diffbranchA.get(), self.diffbranchB.get()), quiet=True).splitlines()
+         diffoutput = git.diff("--name-status %s %s %s" % (self.diffargs, self.diffbranchA.get(), self.diffbranchB.get())).splitlines()
          statusdict = { "A":"<Only in B>",
                         "C":"<File copied>",
                         "D":"<Only in A>", 
@@ -326,5 +326,5 @@ class DiffManager(ProjectManager):
             self.filenames.append("")
 
    def execute(self, file):
-      difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool", quiet=True)
+      difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool")
 

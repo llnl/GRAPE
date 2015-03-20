@@ -33,20 +33,20 @@ class DeleteBranch(option.Option):
     def deleteBranch(branch, force=False):
         forceStr = "-D" if force else "-d"
         try: 
-            git.branch("%s %s" % (forceStr, branch), quiet=True)
+            git.branch("%s %s" % (forceStr, branch))
         except git.GrapeGitError as e:
             if forceStr == "-D" and "Cannot delete the branch" in e.gitOutput and \
                                     "which you are currently on." in e.gitOutput:
                 utility.printMsg("*** WARNING ***: Detaching in order to delete current branch. You will be in a headless state.")
                 git.checkout("--detach %s" % branch)
-                git.branch("-D %s" % branch, quiet=True)
+                git.branch("-D %s" % branch)
             elif "not deleting branch" in e.gitOutput and "even though it is merged to HEAD." in e.gitOutput:
-                git.branch("-D %s" % branch, quiet=True)
+                git.branch("-D %s" % branch)
             else: 
                 print e.gitOutput
         try:
-            if "origin/%s" % branch in git.branch("-r", quiet=True): 
-                git.push("--delete origin %s" % branch, quiet=True)
+            if "origin/%s" % branch in git.branch("-r"): 
+                git.push("--delete origin %s" % branch)
         except git.GrapeGitError as e:
             print e.gitOutput
 
@@ -67,9 +67,10 @@ class DeleteBranch(option.Option):
         config = grapeConfig.grapeConfig()
         subpublicmapping = config.getMapping("workspace", "submoduletopicprefixmappings")
         if submodules:
-            print("GRAPE: deleting branches from submodules")
+            utility.printMsg("deleting branches from submodules")
 
         for sub in submodules:
+            utility.printMsg("deleting branch %s in %s" % (branch, sub))
             os.chdir(os.path.join(cwd, sub))
             if git.currentBranch() == branch:
                 git.checkout(subpublicmapping[git.branchPrefix(branch)])
@@ -82,6 +83,7 @@ class DeleteBranch(option.Option):
             utility.printMsg("Deleting %s from your active nested subprojects: " % branch)
         for sub in subprojects:
             os.chdir(os.path.join(cwd,sub))
+            utility.printMsg("deleting branch %s in %s" % (branch, sub))
             if git.currentBranch() == branch:
                 git.checkout(config.getPublicBranchFor(branch))
             self.deleteBranch(branch, force)

@@ -1,5 +1,44 @@
 
 
+Wed Mar 18 11:14:58 2015 Peter B. Robinson
+v1.5.4
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Aaron Fisher, Benjamin Liu
+SUMMARY: Tweaks verbosity, fixes obscenely long new branch creation
+
+
+Tue Mar 17 11:33:07 2015 Peter B. Robinson
+v1.5.3
+
+Developer: Peter Robinson
+Reviewers: Ben Liu, Aaron Fisher, Chris White. 
+
+SUMMARY: Overhaul of GRAPE's verbosity mechanism. 
+
+DETAILS: All menu options have lost their [-v] flag. Grape itself has gained the options [--version] [-v | -q]. 
+Default verbosity: 
+ utility.printMsg commands, typically used for general progress in GRAPE,  are printed, as well as user input prompts.
+[-v] All subprocess launches (mostly git commands ) will print out what is being run and where, with output being printed out upon completion. 
+[-q] utility.printMsg commands are muted. User input prompts are still printed. 
+[--version] grape will print the version of grape being used and then exit.
+
+
+Thu Mar 12 09:19:37 2015 Benjamin T. Liu
+v1.5.2
+
+Reduce the amount of fetches that occur during a grape up.  This especially should help grape md, which calls grape up prior to the merge.
+- Only branches/public branches that are not up-to-date with the fetched gitlinks are fetched.
+- Also removed extraneous recursive call to up in merge and merge Develop (which resulted in N-squared fetches in submodules)
+- Added fetch grid test and two-client test scenario
+
+
+Fri Mar  6 10:43:23 2015 Peter B. Robinson
+v1.5.1
+
+Cleans up some publish output, fixes some subtree publish path bugs.
+
+
 Wed Mar  4 11:12:52 2015 Peter B. Robinson
 v1.5.0
 

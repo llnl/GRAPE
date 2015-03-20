@@ -6,11 +6,10 @@ import utility
 
 class Commit(option.Option):
     """
-    Usage: grape-commit [-v] [-m <message>] [-a | <filetree>]  
+    Usage: grape-commit [-m <message>] [-a | <filetree>]  
 
     Options:
     -m <message>    The commit message.
-    -v              Show git commands being issued.
     -a              Commit modified files that have not been staged.
     
 
@@ -33,7 +32,6 @@ class Commit(option.Option):
             print("commit failed. Perhaps there were no staged changes? Use -a to commit all modified files.")
 
     def execute(self, args):
-        quiet = not args["-v"]
         commitargs = ""
         if args['-a']: 
             commitargs = commitargs +  " -a"
@@ -50,12 +48,12 @@ class Commit(option.Option):
         subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes() 
         for sub in submodules +  subprojects:
             os.chdir(os.path.join(baseDir,sub))
-            subStatus = git.status("--porcelain", quiet=quiet)
+            subStatus = git.status("--porcelain")
             if subStatus:
                 self.commit(commitargs)
         
         os.chdir(baseDir)
-        if submodules or git.status("--porcelain", quiet=quiet): 
+        if submodules or git.status("--porcelain"): 
             utility.printMsg("Performing commit in outer level project")
             self.commit(commitargs)
         return True

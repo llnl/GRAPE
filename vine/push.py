@@ -10,11 +10,10 @@ class Push(option.Option):
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--norecurse] [-v]
+    Usage: grape-push [--norecurse] 
 
     Options:
     --norecurse     Don't perform pushes in submodules.  
-    -v              Show more git output. 
 
     """
     def __init__(self):
@@ -26,7 +25,6 @@ class Push(option.Option):
         return "Pushes your current branch to origin in all projects in this workspace."
 
     def execute(self, args):
-        quiet = not args["-v"]
         baseDir = utility.workspaceDir()
         pushargs = "-u origin HEAD"
         cwd = os.getcwd()
@@ -34,19 +32,21 @@ class Push(option.Option):
         submodules = git.getActiveSubmodules()
         
         utility.printMsg("Performing push in outer level project")
-        git.push(pushargs, quiet=quiet)
+        git.push(pushargs)
         if submodules:
-            utility.printMsg("Performing pushes in all submodules")
+            utility.printMsg("Performing pushes in all active submodules")
         for sub in submodules: 
             os.chdir(os.path.join(baseDir, sub))
-            git.push(pushargs, quiet=quiet)
+            utility.printMsg("Pushing in %s..." % sub)
+            git.push(pushargs)
 
         nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
         if nestedSubprojects:
             utility.printMsg("Performing pushes in all active subprojects")
         for proj in nestedSubprojects:
             os.chdir(os.path.join(baseDir, proj))
-            git.push(pushargs, quiet=quiet)
+            utility.printMsg("Pushing in %s..." % proj)
+            git.push(pushargs)
 
         os.chdir(cwd)
         

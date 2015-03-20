@@ -2,12 +2,20 @@ import gridTesting
 from testGrape import *
 
 
+def find_subclasses(module, clazz):
+    return [
+        cls
+            for name, cls in inspect.getmembers(module)
+                if inspect.isclass(cls) and issubclass(cls, clazz) and not cls is clazz
+    ]
+
 class grapeProject(gridTesting.ResettableProject): 
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
         self._debugging = False
         self._publicBranchesValid = False
         self._branchModelConsistent = False
+        self._numExpectedFetches = 0
 
     def isConsistent(self): 
         return self._publicBranchesValid and self._branchModelConsistent
@@ -18,9 +26,12 @@ class grapeProject(gridTesting.ResettableProject):
     def isStateConsistentWithBranchModel(self):
         return self._branchModelConsistent
     
+    def numExpectedFetches(self):
+        return self._numExpectedFetches
+    
     def debugging(self):
         return self._debugging
-    
+
 class singleRepo(grapeProject): 
     def __init__(self, path): 
         super(singleRepo, self).__init__(path)
@@ -33,6 +44,8 @@ class singleRepo(grapeProject):
         
         self._publicBranchesValid = False
         self._branchModelConsistent = True
+        # there should be one fetch for the outer level master
+        self._numExpectedFetches = 1
 
 class repoWithLocalGitflowBranches(singleRepo):
     def __init__(self, path): 
@@ -51,8 +64,6 @@ class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
         self.addCommands([(git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-
-
     
 class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
     def __init__(self,path): 
@@ -78,9 +89,11 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                                             "--url=%s" % self.getOriginDir(),
                                             "--branch=master", 
                                             "--submodule", 
-                                            "--noverify",
-                                            "-v"] )),
-                          (git.commit, "-m \"added submodule1\"")])
+                                            "--noverify"],
+                                            None,
+                                            ["-v"] )),
+                          (git.commit, "-m \"added submodule1\""),
+                          (git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
         
@@ -123,6 +136,45 @@ class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
         self._publicBranchesValid = True
         self._branchModelConsistent= True
         
+class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopic):
+    def __init__(self, path):
+        super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
+        self.secondProjectDir = self.projectDir + "2"
+        if os.path.exists(self.secondProjectDir):
+            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % self.secondProjectDir
+            sys.exit(1)
+
+        self.addCommands([(git.clone, lambda : "--recursive %s %s" % (self.getOriginDir(), self.getSecondProjectDir())), 
+                          (os.chdir, lambda : self.getSecondProjectDir()),
+                          (os.chdir,"submodule1"),
+                          (git.checkout, "master"),
+                          (writeFile1, "f2"),
+                          (git.add,"f2"),
+                          (git.commit, "-m \"added a second file to submodule\""),
+                          (git.push, "origin master"),
+                          (os.chdir, lambda : self.getSecondProjectDir()),
+                          (git.checkout, "master"),
+                          # We have to pull here because the submodule repo is the same as the original one
+                          (git.pull, "origin"),
+                          (git.add,"submodule1"),
+                          (git.commit, "-m \"update gitlink\""),
+                          (git.push, "origin master"),
+                          self.cdToProjectDirCmd()
+                         ])
+        # now both are on topicBranch, but master is behind in both
+        self._publicBranchesValid = True
+        self._branchModelConsistent= True
+        # there should be one fetch for the outer level master and one for the submodule master
+        self._numExpectedFetches = 2
+    def getSecondProjectDir(self): 
+        return os.path.abspath(os.path.join(self.projectPrefix,self.secondProjectDir))
+    def tearDown(self): 
+        super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).tearDown()
+        secondProjectDir = self.getSecondProjectDir()
+        if os.path.exists(secondProjectDir) and os.path.isdir(secondProjectDir):
+            os.chdir(os.path.abspath(os.path.join(secondProjectDir,"..")))
+            shutil.rmtree(secondProjectDir, ignore_errors=True)
+        
 class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
     def __init__(self, path):
         super(WorkspaceWithDetachedSubmodule, self).__init__(path)
@@ -141,10 +193,12 @@ class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
                                             "--url=%s" % self.getOriginDir(),
                                             "--branch=master", 
                                             "--nested", 
-                                            "--noverify",
-                                            "-v"] ))])
+                                            "--noverify"], None, 
+                                            ["-v"] ))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
+        # there should be one fetch for the outer level master and one for the nested master
+        self._numExpectedFetches = 2
         
 class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
     def __init__(self,path):

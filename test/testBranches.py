@@ -12,6 +12,4 @@ class TestBranches(testGrape.TestGrape):
         self.assertTrue(ret, "vine.branches returned failure.")
 
         contents = self.output.getvalue()
-        workingDirectory = os.path.abspath(".")
-        self.assertNotEquals(-1, contents.find("Working Directory: " + workingDirectory), "vine.branches did not find the correct working directory")
         self.assertNotEquals(-1, contents.find("master"), "vine.branches could not find the master branch")
