@@ -268,10 +268,10 @@ class DiffManager(ProjectManager):
       self.branchB = branchB
       self.diffbranchA = ""
       self.diffAnnotationA = Tk.StringVar()
-      self.diffAnnotationA.set("")
+      self.diffAnnotationA.set(branchA)
       self.diffbranchB = ""
       self.diffAnnotationB = Tk.StringVar()
-      self.diffAnnotationB.set("")
+      self.diffAnnotationB.set(branchB)
 
       # Branch specification pane
       self.branchpane = Tk.Frame(master)
