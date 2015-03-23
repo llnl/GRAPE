@@ -135,7 +135,7 @@ class UpdateLocal(option.Option):
             if currentBranch.strip() != "HEAD": 
                 git.pull("origin %s" % currentBranch)
         except git.GrapeGitError:
-            print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
+            print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
 
     def setDefaultConfig(self, config):
         pass
