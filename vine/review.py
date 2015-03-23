@@ -235,7 +235,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 url = request.link()
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
-                print("STASH: %s" % e.data["message"])
+                print("STASH: %s" % e.data["errors"][0]["message"])
+                print("STASH: %s" % e.data)
                 exit(1)
         else:
             utility.printMsg("No pull request  from %s to %s to update" % (branch, target_branch))
