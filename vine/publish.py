@@ -1016,7 +1016,13 @@ class Publish(resumable.Resumable):
             self.rebase(public, topic)
 
         if not args["--nopush"]:
-            git.push("-u origin HEAD")
+            try:
+                git.push("-u origin HEAD", throwOnFail=True)
+            except git.GrapeGitError as e:
+                if "Could not read" in e.gitOutput:
+                    utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
+                raise e
+                
 
     def loadPublishTargets(self, args):
         config = grapeConfig.grapeConfig()

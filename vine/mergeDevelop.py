@@ -71,18 +71,25 @@ class MergeDevelop(resumable.Resumable):
 
     def mergeCurrentPublicBranch(self, args):
         try:
-            git.pull("--rebase origin %s" % git.currentBranch())
+            git.pull("--rebase origin %s" % git.currentBranch(), throwOnFail=True)
         except git.GrapeGitError as e:
+            self.progress["stopPoint"] = "public rebase"
+            self.dumpProgress(args)
             # on conflict, ask user to resolve conflicts and then resume using grape md --continue
             if "conflict:" in e.gitOutput.lower():
-                self.progress["stopPoint"] = "public rebase"
                 self.dumpProgress(args)
                 utility.printMsg("pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
                       "continue by calling 'grape md --continue' .")
                 return False
+            elif "fatal: Could not read" in e.gitOutput.lower():
+                self.dumpProgress(args)
+                utility.printMsg("Could not communicate with origin. Check your connection and/or remote URL and then"
+                                 "continue by calling 'grape md --continue'.")
+                return False
             else:
-                print("GRAPE ERROR: pull --rebase failed for unknown reason")
-                exit(1)
+                utility.printMsg("ERROR: pull --rebase failed for unhandled reason.")
+                print e.gitOutput
+                return False
         return True
 
     def execute(self, args):
