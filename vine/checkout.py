@@ -126,7 +126,7 @@ class Checkout(option.Option):
         os.chdir(workspaceDir)
         currentSHA = git.shortSHA("HEAD")
 
-        utility.printMsg("Performing checkout in outer level project.")
+        utility.printMsg("Performing checkout of %s in outer level project." % branch)
         self.handledCheckout(checkoutargs, branch, git.baseDir())
         previousSHA = currentSHA
 

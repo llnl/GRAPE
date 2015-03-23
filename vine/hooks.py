@@ -50,9 +50,9 @@ class InstallHooks(option.Option):
         utility.printMsg("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
         if not args["--noRecurse"]:
-           for sub in utility.getActiveSubprojects():
-               utility.printMsg("Installing hooks in %s." % sub)
-               self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
+            for sub in utility.getActiveSubprojects():
+                utility.printMsg("Installing hooks in %s." % sub)
+                self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
         return True
 
     def setDefaultConfig(self, config):

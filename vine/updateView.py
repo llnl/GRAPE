@@ -221,7 +221,7 @@ class UpdateView(option.Option):
 
     @staticmethod
     def getDesiredSubmoduleBranch(config):
-        publicBranches = config.getList("flow", "publicBranches")
+        publicBranches = config.getPublicBranchList()
         currentBranch = git.currentBranch()
         if currentBranch in publicBranches:
             desiredSubmoduleBranch = config.getMapping("workspace", "submodulepublicmappings")[currentBranch]
