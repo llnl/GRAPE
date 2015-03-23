@@ -43,6 +43,8 @@ class Checkout(option.Option):
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
                     git.checkout(checkoutargs+" -b "+branch)
                     git.push("-u origin %s" % branch)
+                else:
+                    return False
 
             elif "already exists" in e.gitOutput:
                 utility.printMsg("Branch %s already exists in %s." % (branch, project))
@@ -75,7 +77,7 @@ class Checkout(option.Option):
                 utility.printMsg("Remote does not have reference to %s. You may want to push this branch. " % branch)
             else:
                 raise e
-
+        return True
     @staticmethod
     def parseGitModulesDiffOutput(output, addedModules, removedModules):
 
@@ -127,7 +129,8 @@ class Checkout(option.Option):
         currentSHA = git.shortSHA("HEAD")
 
         utility.printMsg("Performing checkout of %s in outer level project." % branch)
-        self.handledCheckout(checkoutargs, branch, git.baseDir())
+        if not self.handledCheckout(checkoutargs, branch, git.baseDir()):
+            return False
         previousSHA = currentSHA
 
         submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch))
