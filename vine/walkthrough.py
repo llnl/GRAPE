@@ -266,29 +266,23 @@ class DiffManager(ProjectManager):
       self.diffargs = diffargs
       self.branchA = branchA
       self.branchB = branchB
-      self.diffbranchA = Tk.StringVar()
-      self.diffbranchA.set(branchA)
+      self.diffbranchA = ""
       self.diffAnnotationA = Tk.StringVar()
       self.diffAnnotationA.set("")
-      self.diffbranchB = Tk.StringVar()
-      self.diffbranchB.set(branchB)
+      self.diffbranchB = ""
       self.diffAnnotationB = Tk.StringVar()
       self.diffAnnotationB.set("")
 
       # Branch specification pane
       self.branchpane = Tk.Frame(master)
       self.branchlabelA= Tk.Label(self.branchpane, text="Branch A:")
-      self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffbranchA)
-      self.annotationA = Tk.Label(self.branchpane, textvariable=self.diffAnnotationA)
+      self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffAnnotationA)
       self.branchlabelB= Tk.Label(self.branchpane, text="Branch B:")
-      self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffbranchB)
-      self.annotationB = Tk.Label(self.branchpane, textvariable=self.diffAnnotationB)
+      self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffAnnotationB)
       self.branchlabelA.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchnameA.pack(side=Tk.LEFT, fill=Tk.Y)
-      self.annotationA.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchlabelB.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
-      self.annotationB.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchpane.pack(side=Tk.TOP)
 
       ProjectManager.__init__(self, master, height=height, width=width)
@@ -301,13 +295,6 @@ class DiffManager(ProjectManager):
       dir = self.projects[index]
       type = self.projtype[index]
 
-      if self.branchA == "--cached":
-         self.diffAnnotationB.set("<staged>")
-      elif self.branchB == "--":
-         self.diffAnnotationB.set("<workspace>")
-      else:
-         self.diffAnnotationB.set("")
-
       if type.endswith("Submodule"):
          submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
          if not self.branchA.startswith("--"):
@@ -315,16 +302,26 @@ class DiffManager(ProjectManager):
             if len(branchParts) == 1 or branchParts[0] == "origin":
                if branchParts[-1] in submapping.keys():
                   branchParts[-1] = submapping[branchParts[-1]]
-            self.diffbranchA.set("/".join(branchParts))
+            self.diffbranchA = "/".join(branchParts)
          if not self.branchB.startswith("--"):
             branchParts = self.branchB.split("/",1)
             if len(branchParts) == 1 or branchParts[0] == "origin":
                if branchParts[-1] in submapping.keys():
                   branchParts[-1] = submapping[branchParts[-1]]
-            self.diffbranchB.set("/".join(branchParts))
+            self.diffbranchB = "/".join(branchParts)
       else:
-         self.diffbranchA.set(self.branchA)
-         self.diffbranchB.set(self.branchB)
+         self.diffbranchA = self.branchA
+         self.diffbranchB = self.branchB
+
+      if self.branchA == "--cached":
+         self.diffAnnotationA.set("%s <cached>" % self.diffbranchB)
+         self.diffAnnotationB.set("%s <staged>" % self.diffbranchB)
+      elif self.branchB == "--":
+         self.diffAnnotationA.set(self.diffbranchA)
+         self.diffAnnotationB.set("<workspace>")
+      else:
+         self.diffAnnotationA.set(self.diffbranchA)
+         self.diffAnnotationB.set(self.diffbranchB)
 
       if type.startswith("Inactive"):
          remotels = git.gitcmd("ls-remote")
@@ -333,7 +330,7 @@ class DiffManager(ProjectManager):
       else:
          os.chdir(os.path.join(utility.workspaceDir(), dir))
          self.filenames = []
-         diffoutput = git.diff("--name-status %s %s %s" % (self.diffargs, self.diffbranchA.get(), self.diffbranchB.get())).splitlines()
+         diffoutput = git.diff("--name-status %s %s %s ." % (self.diffargs, self.diffbranchA, self.diffbranchB)).splitlines()
          statusdict = { "A":"<Only in B>",
                         "C":"<File copied>",
                         "D":"<Only in A>", 
@@ -354,6 +351,6 @@ class DiffManager(ProjectManager):
 
    def execute(self, file):
       try:
-         difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA.get(), self.diffbranchB.get(), file), "Failed to launch difftool")
+         difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA, self.diffbranchB, file), "Failed to launch difftool")
       except git.GrapeGitError as e:
          utility.printMsg("%s (return code %d)\n%s" % (e.msg, e.returnCode, e.gitOutput))
