@@ -182,7 +182,13 @@ class Checkout(option.Option):
                 config = grapeConfig.grapeConfig()
                 for proj in removedProjects:
                     projPrefix = config.get("nested-%s" % proj, "prefix")
-                    os.chdir(os.path.join(workspaceDir, proj))
+                    try:
+                        os.chdir(os.path.join(workspaceDir, proj))
+                    except OSError as e:
+                        if e.errno == 2:
+                            # directory doesn't exist, that's OK since we're thinking about removing it
+                            # anyways at this point...
+                            continue
                     if git.isWorkingDirectoryClean():
                         remove = utility.userInput("Would you like to remove the nested subproject %s? \n"
                                                    "All work that has not been pushed will be lost. " % projPrefix, 'n'  )
