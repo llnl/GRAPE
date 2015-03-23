@@ -41,13 +41,13 @@ class Config(option.Option):
             return False
         dotGit = git.gitDir()
          
-        utility.printMsg("optimizing git performance on slow file systems...")
+        utility.printMsg("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
         #have git automatically do some garbage collection / optimization
-        utility.printMsg("setting up automatic git garbage collection...")
+        utility.printMsg("Setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
         #prevents false conflict detection due to differences in filesystem
@@ -75,7 +75,7 @@ class Config(option.Option):
             utility.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
-        utility.printMsg("setting lg as an alias for a pretty log call...")
+        utility.printMsg("Setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
         # perform an update of the active subprojects if asked.
@@ -98,7 +98,7 @@ class Config(option.Option):
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
-            utility.printMsg("configured repo to use p4merge for conflict resolution")
+            utility.printMsg("Configured repo to use p4merge for conflict resolution")
         else:
             git.config("merge.tool","tkdiff")
 
@@ -108,10 +108,10 @@ class Config(option.Option):
         if (useP4Diff):
             p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
             if os.path.exists(p4diffScript): 
-               git.config("diff.external",p4diffScript)
-               utility.printMsg("configured repo to use p4merge for diff calls - p4merge must be in your path")
+                git.config("diff.external",p4diffScript)
+                utility.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
-               utility.printMsg("Could not find p4diff script at %s" % p4diffScript)
+                utility.printMsg("Could not find p4diff script at %s" % p4diffScript)
         useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
@@ -137,7 +137,7 @@ class Config(option.Option):
                     return False
 
         # install hooks here and in all submodules
-        utility.printMsg("Installing hooks in all repos")
+        utility.printMsg("Installing hooks in all repos...")
         cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks")
         

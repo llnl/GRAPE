@@ -40,7 +40,7 @@ class Clone(option.Option):
         utility.printMsg("Clone succeeded!")
         os.chdir(destpath)
         grapeConfig.read()
-        # ensure you start on a reasonable publich branch
+        # ensure you start on a reasonable publish branch
         menu = grapeMenu.menu()
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
