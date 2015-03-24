@@ -319,7 +319,8 @@ class DiffManager(ProjectManager):
          haveDiff = False
          if type == "Outer":
             if self.branchA == "--cached":
-               pass
+               if len(git.diff("--cached --name-only").split()) > 0:
+                  haveDiff = True
             elif self.branchB == "--":
                shaA = git.shortSHA(self.branchA)
                shaB = re.sub(".*-g","", git.describe("--long --always"))
