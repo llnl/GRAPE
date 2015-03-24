@@ -15,7 +15,7 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] 
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse]
 
     Options:
         --am            Use git's default merge. 
@@ -43,7 +43,18 @@ class Merge(resumable.Resumable):
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
                                                                                   " to merge into this branch")
         args["<branch>"] = otherBranch
-        return mergeIntoCurrent(otherBranch, args)
+        if args["--noRecurse"]:
+            return mergeIntoCurrent(otherBranch, args)
+        else:
+            mdArgs = {}
+            mdArgs["--am"] = args["--am"]
+            mdArgs["--as"] = args["--as"]
+            mdArgs["--at"] = args["--at"]
+            mdArgs["--ay"] = args["--ay"]
+            mdArgs["--public"] = args["<branch"]
+            
+            
+            return grapeMenu.menu().getOption("md").execute(mdArgs)
 
     def _resume(self, args):
         status = git.status()
