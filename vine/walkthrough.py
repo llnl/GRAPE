@@ -3,6 +3,7 @@ import option
 import grapeConfig
 import grapeGit as git
 import utility
+import re
 import threading
 import Tkinter as Tk
 
@@ -165,26 +166,32 @@ class ProjectManager:
 
       # Populate subproject navigation list
 
-      # TODO: Mark/eliminate entries based on status
+      # TODO: Optionally eliminate entries based on status
 
       # Outer level repo
       if showToplevel:
+         status = "?"
          self.projects = [ "" ]
+         self.projlist.insert(Tk.END, "%s <Outer Level Project>" % status)
+         self.projstatus = [ status ]
          self.projtype = [ "Outer" ]
-         self.projlist.insert(Tk.END, "<Outer Level Project>")
 
       # Nested subprojects
       if showNestedSubprojects:
          activeNestedSubprojects = (grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes())
          self.projects.extend(activeNestedSubprojects)
          for proj in activeNestedSubprojects:
-            self.projlist.insert(Tk.END, "%s <Nested Subproject>" % proj)
+            status = "?"
+            self.projlist.insert(Tk.END, "%s %s <Nested Subproject>" % (status, proj))
+            self.projstatus.append(status)
             self.projtype.append("Active Nested")
          if showInactive:
             inactiveNestedSubprojects = list(set(grapeConfig.grapeConfig().getAllNestedSubprojects()) - set(grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()))
             self.projects.extend(inactiveNestedSubprojects)
             for proj in inactiveNestedSubprojects:
-               self.projlist.insert(Tk.END, "%s <Inactive Nested Subproject>" % proj)
+               status = "?"
+               self.projlist.insert(Tk.END, "%s %s <Inactive Nested Subproject>" % (status, proj))
+               self.projstatus.append(status)
                self.projtype.append("Inactive Nested")
 
       # Submodules
@@ -192,13 +199,17 @@ class ProjectManager:
          activeSubmodules = (git.getActiveSubmodules())
          self.projects.extend(activeSubmodules)
          for proj in activeSubmodules:
-            self.projlist.insert(Tk.END, "%s <Submodule>" % proj)
+            status = "?"
+            self.projlist.insert(Tk.END, "%s %s <Submodule>" % (status, proj))
+            self.projstatus.append(status)
             self.projtype.append("Submodule")
          if showInactive:
             inactiveSubmodules = list(set(git.getAllSubmodules()) - set(git.getActiveSubmodules()))
             self.projects.extend(inactiveSubmodules)
             for proj in inactiveSubmodules:
-               self.projlist.insert(Tk.END, "%s <Inactive Submodule>" % proj)
+               status = "?"
+               self.projlist.insert(Tk.END, "%s %s <Inactive Submodule>" % (status, proj))
+               self.projstatus.append(status)
                self.projtype.append("Inactive Submodule")
 
       # Subtrees
@@ -208,14 +219,18 @@ class ProjectManager:
          allSubtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get('subtrees', 'names').strip().split() ]
          self.projects.extend(allSubtrees)
          for proj in allSubtrees:
-            self.projlist.insert(Tk.END, "%s <Subtree>" % proj)
+            status = "?"
+            self.projlist.insert(Tk.END, "%s %s <Subtree>" % (status, proj))
+            self.projstatus.append(status)
             self.projtype.append("Subtree")
 
       # Resize the project pane based on its contents
       self.projlistwidth = 0
+      self.numprojects = 0
       for proj in self.projlist.get(0, Tk.END):
          if len(proj) > self.projlistwidth:
             self.projlistwidth = len(proj)
+         self.numprojects += 1
       self.projlist.config(width=self.projlistwidth)
 
       # Place the panes in the main window 
@@ -244,6 +259,13 @@ class ProjectManager:
             self.filelist.itemconfig(index, bg=self.bgvisited, fg=self.fgvisited)
       except:
          pass
+
+   def setProjectStatus(self, index, status):
+      oldString = self.projlist.get(index)
+      newString = status + oldString[1:]
+      self.projstatus[index] = status
+      self.projlist.delete(index)
+      self.projlist.insert(index, newString)
 
    # This should be implemented by derived classes
    def initFiles(self, index):
@@ -289,6 +311,38 @@ class DiffManager(ProjectManager):
 
       self.filepanelabel.set("Double click to launch %s" % self.difftool)
       self.filepanelabel.set("Double click to choose a project")
+
+      os.chdir(utility.workspaceDir())
+      for index in range(self.numprojects):
+         dir = self.projects[index]
+         type = self.projtype[index]
+         haveDiff = False
+         if type == "Outer":
+            if self.branchA == "--cached":
+               pass
+            elif self.branchB == "--":
+               shaA = git.shortSHA(self.branchA)
+               shaB = re.sub(".*-g","", git.describe("--long --always"))
+               if shaA != shaB:
+                  haveDiff = True    
+               elif git.status("--porcelain -uno --ignore-submodules=dirty") != "":
+                  haveDiff = True    
+            else:
+               haveDiff = (git.shortSHA(self.branchA) != git.shortSHA(self.branchB))
+         elif type.endswith("Submodule"):
+            if self.branchA == "--cached":
+               pass
+            elif self.branchB == "--":
+               pass
+            else:
+               shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
+               shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchB, dir), "Failed to execute ls-tree").split()[2]
+               haveDiff = (shaA != shaB)
+
+         if haveDiff:
+            self.setProjectStatus(index, "*")
+         else:
+            self.setProjectStatus(index, " ")
 
    def initFiles(self, index):
       self.filelist.delete(0,Tk.END)
