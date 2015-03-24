@@ -7,6 +7,16 @@ class MergeRemote(option.Option):
     grape mr (merge remote branch). Updates the branch you're merging from and then performs the merge.
     Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [--noRecurse] [--continue]
 
+
+    Options:
+        --am                    Perform the merge using git's default strategy.
+        --as                    Perform the merge issuing conflicts on any file modified by both branches.
+        --at                    Perform the merge resolving conficts using the public branch's version. 
+        --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
+                                grape md --public=<branch> to handle submodule and nested project merges. 
+        --continue              Resume your previous merge after resolving conflicts.
+        
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
     

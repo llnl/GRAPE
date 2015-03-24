@@ -23,6 +23,8 @@ class Merge(resumable.Resumable):
                         are touched by both branches. 
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --noRecurse     Perform the merge in the current repository only. Otherwise, this will call
+                        grape md --public=<branch> to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
 
     Arguments:
@@ -54,7 +56,9 @@ class Merge(resumable.Resumable):
             mdArgs["--as"] = args["--as"]
             mdArgs["--at"] = args["--at"]
             mdArgs["--ay"] = args["--ay"]
-            mdArgs["--public"] = args["<branch"]
+            mdArgs["--public"] = args["<branch>"]
+            mdArgs["--recurse"] = True
+            mdArgs["--norecurse"] = False
             
             
             return grapeMenu.menu().getOption("md").execute(mdArgs)
@@ -64,10 +68,10 @@ class Merge(resumable.Resumable):
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
         elif git.isWorkingDirectoryClean():
-            utility.printMsg("GRAPE MERGE: no commit necessary, working directory clean.")
+            utility.printMsg("MERGE: no commit necessary, working directory clean.")
             pass
         else:
-            print("GRAPE: Does not appear a merge is ready to be continued. ")
+            utility.printMsg("Does not appear a merge is ready to be continued. ")
         return True
 
     def _saveProgress(self, args):

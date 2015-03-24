@@ -182,7 +182,7 @@ class MergeDevelop(resumable.Resumable):
                 if len(conflictedFiles) == 0:
                     mergeArgs = args
                     mergeArgs["--continue"] = True
-                    mergeArgs["--noReurse"] = True
+                    mergeArgs["--noRecurse"] = True
                     grapeMenu.menu().getOption("m").execute(mergeArgs)
                     conflictedFiles = git.conflictedFiles()
 
