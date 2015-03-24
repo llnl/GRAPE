@@ -1,5 +1,11 @@
 
 
+Tue Mar 24 11:24:55 2015 Peter B. Robinson
+v1.5.6
+
+Addresses GRP-111 and GRP-104 by adding the option for pull and push to throw exceptions.
+
+
 Mon Mar 23 11:32:40 2015 Peter B. Robinson
 v1.5.5
 
