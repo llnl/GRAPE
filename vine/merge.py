@@ -38,6 +38,9 @@ class Merge(resumable.Resumable):
         return "Merge another local branch into your current branch."
 
     def execute(self, args):
+        # this is necessary due to the unholy relationships between mr, m, and md. 
+        if not "<<cmd>>" in args:
+            args["<<cmd>>"] = 'm'
         if args["--continue"]:
             self._resume(args)
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
@@ -61,7 +64,7 @@ class Merge(resumable.Resumable):
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
         elif git.isWorkingDirectoryClean():
-            print("GRAPE MERGE: no commit necessary, working directory clean.")
+            utility.printMsg("GRAPE MERGE: no commit necessary, working directory clean.")
             pass
         else:
             print("GRAPE: Does not appear a merge is ready to be continued. ")
@@ -83,7 +86,7 @@ def merge(branch, strategy, args):
         print error.gitOutput
         if "conflict" in error.gitOutput.lower():
             utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
-                              "with grape m --continue. ")
+                              "with grape %s --continue. " % args["<<cmd>>"])
         else:
             print("Merge command %s failed. Quitting." % error.gitCommand)
         return False
