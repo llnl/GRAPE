@@ -23,8 +23,8 @@ class Merge(resumable.Resumable):
                         are touched by both branches. 
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
-        --noRecurse     Perform the merge in the current repository only. Otherwise, this will call
-                        grape md --public=<branch> to handle submodule and nested project merges.
+        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
+                        will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
 
     Arguments:
@@ -64,6 +64,17 @@ class Merge(resumable.Resumable):
             return grapeMenu.menu().getOption("md").execute(mdArgs)
 
     def _resume(self, args):
+        if not ("inMD" in self.progress and self.progress["inMD"]):
+            tmpArgs = {}
+            try:
+                super(Merge,self)._resume(args, deleteProgressFile=False)
+            except IOError as e:
+                # going to assume this --continue was called internally before we output a progress file...
+                pass
+            else:
+                if self.progress["inMD"]:
+                    return grapeMenu.menu().getOption("md")._resume(args)             
+            
         status = git.status()
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
@@ -71,7 +82,8 @@ class Merge(resumable.Resumable):
             utility.printMsg("MERGE: no commit necessary, working directory clean.")
             pass
         else:
-            utility.printMsg("Does not appear a merge is ready to be continued. ")
+            utility.printMsg("MERGE: Does not appear a merge is ready to be continued. ")
+        self._removeProgressFile()
         return True
 
     def _saveProgress(self, args):
@@ -120,7 +132,7 @@ def mergeIntoCurrent(branchName, args):
 
     if strategy == 'am':
         args["--am"] = True
-        utility.printMsg("merging using git's default strategy")
+        utility.printMsg("Merging using git's default strategy...")
         choice = merge(branchName, "", args)
     elif strategy == 'as':
         args["--as"] = True
@@ -130,7 +142,7 @@ def mergeIntoCurrent(branchName, args):
         # see
         # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
         # for details.
-        utility.printMsg("merging forcing conflicts whenever both branches edited the same file...")
+        utility.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
         base = git.gitDir()
         if base == "":
             return False
@@ -159,12 +171,12 @@ def mergeIntoCurrent(branchName, args):
 
     elif strategy == 'at':
         args["--at"] = True
-        utility.printMsg("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
+        utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
         choice = merge(branchName, "-Xtheirs", args)
 
     elif strategy == 'ay':
         args["--ay"] = True
-        utility.printMsg("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
+        utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
         choice = merge(branchName, "-Xours", args)
 
     return choice

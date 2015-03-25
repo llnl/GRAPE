@@ -273,13 +273,17 @@ class MergeDevelop(resumable.Resumable):
         config.set("flow", "topicDestinationMappings", "none")
 
     def _resume(self, args):
-        super(MergeDevelop, self)._resume(args)
+        super(MergeDevelop, self)._resume(args, deleteProgressFile=False)
         if self.progress["stopPoint"] == "public rebase":
             # recover from conflicts by continuing the rebase
             git.rebase("--continue")
-            return True
-
-        return self.execute(args)
+            retval = True
+        else:
+            retval = self.execute(args)
+        self._removeProgressFile()
+        return retval
 
     def _saveProgress(self, args):
         super(MergeDevelop, self)._saveProgress(args)
+        # this lets grape m know that the --continue is for grape md to resume...
+        self.progress["inMD"] = True
