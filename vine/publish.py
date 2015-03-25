@@ -1019,7 +1019,7 @@ class Publish(resumable.Resumable):
             try:
                 git.push("-u origin HEAD", throwOnFail=True)
             except git.GrapeGitError as e:
-                if "Could not read" in e.gitOutput:
+                if e.commError:
                     utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
                 raise e
                 

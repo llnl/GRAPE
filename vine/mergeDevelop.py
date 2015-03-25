@@ -81,7 +81,7 @@ class MergeDevelop(resumable.Resumable):
                 utility.printMsg("pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
                       "continue by calling 'grape md --continue' .")
                 return False
-            elif "fatal: Could not read" in e.gitOutput.lower():
+            elif e.commError:
                 self.dumpProgress(args)
                 utility.printMsg("Could not communicate with origin. Check your connection and/or remote URL and then"
                                  "continue by calling 'grape md --continue'.")

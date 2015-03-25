@@ -11,6 +11,8 @@ class GrapeGitError(Exception):
         self.code = returnCode
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
+        self.commError = True if (self.code == 128 and "fatal: Could not read from remote" in self.gitOutput ) \
+            or "fatal: unable to access" in self.gitOutput else False
         self.cwd = cwd
 
 
@@ -87,10 +89,12 @@ def clone(argstr):
     except GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput:
             raise e
-        if e.code == 128:
+        if e.commError:
             print ("GRAPE: WARNING: clone failed due to connectivity issues.")
             return e.gitOutput
         else:
+            print ("GRAPE: Clone failed. Maybe you ran out of disk space?")
+            print e.gitOutput
             raise e
 
 
@@ -141,7 +145,7 @@ def fetch(repo="", branchArg=""):
     try:
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
-        if e.code == 128:
+        if e.commError:
             return e.gitOutput
         else:
             raise e
@@ -253,7 +257,7 @@ def pull(args, throwOnFail=False):
     try:
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
-        if (e.code == 128 and "fatal: Could not read from remote" in e.gitOutput) or "fatal: unable to access" in e.gitOutput:
+        if e.commError:
             utility.printMsg("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail: 
                 raise e
@@ -268,7 +272,7 @@ def push(args, throwOnFail = False):
     try:
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
-        if (e.code == 128 and "fatal: Could not read from remote" in e.gitOutput) or "fatal: unable to access" in e.gitOutput:
+        if e.commError:
             utility.printMsg("WARNING: Push failed due to connectivity issues.")
             if throwOnFail: 
                 raise e
