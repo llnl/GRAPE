@@ -754,7 +754,7 @@ options are at least listed below.
 
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] 
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse]
 
     Options:
         --am            Use git's default merge. 
@@ -762,6 +762,8 @@ options are at least listed below.
                         are touched by both branches. 
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
+                        will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
 
     Arguments:
@@ -798,8 +800,18 @@ options are at least listed below.
 ## mr
 
     grape mr (merge remote branch). Updates the branch you're merging from and then performs the merge.
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] 
+    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [--noRecurse] [--continue]
 
+
+    Options:
+        --am                    Perform the merge using git's default strategy.
+        --as                    Perform the merge issuing conflicts on any file modified by both branches.
+        --at                    Perform the merge resolving conficts using the public branch's version. 
+        --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
+                                grape md --public=<branch> to handle submodule and nested project merges. 
+        --continue              Resume your previous merge after resolving conflicts.
+        
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
     
@@ -899,11 +911,13 @@ options are at least listed below.
 
     grape test
     Runs grape's unit tests.    
-    Usage: grape-test [<suite>]...
+    Usage: grape-test [--debug] [<suite>]...
 
 
     Arguments:
     <suite>  The name of the suite to test. The default is all. 
+
+
     
 ## up
 
