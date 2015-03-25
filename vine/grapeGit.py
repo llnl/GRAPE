@@ -253,7 +253,7 @@ def pull(args, throwOnFail=False):
     try:
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
-        if e.code == 128 and "fatal: Could not read from remote" in e.gitOutput:
+        if (e.code == 128 and "fatal: Could not read from remote" in e.gitOutput) or "fatal: unable to access" in e.gitOutput:
             utility.printMsg("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail: 
                 raise e
@@ -268,7 +268,7 @@ def push(args, throwOnFail = False):
     try:
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
-        if e.code == 128 and "fatal: Could not read from remote" in e.gitOutput:
+        if (e.code == 128 and "fatal: Could not read from remote" in e.gitOutput) or "fatal: unable to access" in e.gitOutput:
             utility.printMsg("WARNING: Push failed due to connectivity issues.")
             if throwOnFail: 
                 raise e
