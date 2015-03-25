@@ -28,8 +28,10 @@ class Commit(option.Option):
     def commit(self, commitargs):
         try:
             git.commit(commitargs)
+            return True
         except git.GrapeGitError as e: 
-            print("commit failed. Perhaps there were no staged changes? Use -a to commit all modified files.")
+            utility.printMsg("Commit failed. Perhaps there were no staged changes? Use -a to commit all modified files.")
+            return False
 
     def execute(self, args):
         commitargs = ""
@@ -50,11 +52,15 @@ class Commit(option.Option):
             os.chdir(os.path.join(baseDir,sub))
             subStatus = git.status("--porcelain")
             if subStatus:
-                self.commit(commitargs)
+                utility.printMsg("Committing in %s..." % sub)
+                if self.commit(commitargs): 
+                    os.chdir(baseDir)
+                    utility.printMsg("Staging committed change in %s..." % sub)
+                    git.add(sub)
         
         os.chdir(baseDir)
         if submodules or git.status("--porcelain"): 
-            utility.printMsg("Performing commit in outer level project")
+            utility.printMsg("Performing commit in outer level project...")
             self.commit(commitargs)
         return True
     
