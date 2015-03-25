@@ -1,5 +1,17 @@
 
 
+Wed Mar 25 14:59:39 2015 Peter B. Robinson
+v1.5.7
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Aaron Fisher, Ben LIu
+
+Sumamry: Fixes GRP-57 and GRP-108
+
+Details: 
+grape m and grape mr now call grape md by default, so that all three options treat submodules and nested subprojects correctly.
+
+
 Tue Mar 24 11:24:55 2015 Peter B. Robinson
 v1.5.6
 
