@@ -49,7 +49,7 @@ class DeleteBranch(option.Option):
                 try:
                     git.push("--delete origin %s" % branch, throwOnFail=True)
                 except git.GrapeGitError as e:
-                    if "Could not read" in e.gitOutput:
+                    if e.commError:
                         utility.printMsg("Could not connect to origin to delete remote references to your branch "
                                          "You may want to call grape db %s again once you've reconnected." % branch)
                     else:
