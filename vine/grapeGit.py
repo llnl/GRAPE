@@ -158,6 +158,7 @@ def getActiveSubmodules():
     else:
         submoduleList = submodule("foreach --quiet \"echo \$path\"")
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    submoduleList = [x.strip() for x in submoduleList]
     return submoduleList
 
 
