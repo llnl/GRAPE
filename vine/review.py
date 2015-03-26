@@ -199,7 +199,7 @@ class Review(option.Option):
         
             
        
-        utility.printMsg("Request generated/updated: %s" % request)
+        utility.printMsg("Request generated/updated:\n%s" % request)
         return True
 
     def setDefaultConfig(self, config):
