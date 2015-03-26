@@ -10,8 +10,8 @@ import Tkinter as Tk
 class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
-    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [<b1>] [<b2>]
-           grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--staged | --workspace] [<b1>]
+    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [<b1>] [<b2>]
+           grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--staged | --workspace] [<b1>]
 
     Options:
         --difftool=<tool>  Command to use for diff.
@@ -25,6 +25,7 @@ class Walkthrough(option.Option):
                            [default: .grapeconfig.walkthrough.width]
         --staged           Compare staged changes with cached version.
         --workspace        Compare workspace files with branch.
+        --showUnchanged    Show unchanged subprojects.
         <b1>               The first branch to compare.
                            Defaults to the current branch of workspace.
         <b2>               The second branch to compare
@@ -93,7 +94,8 @@ class Walkthrough(option.Option):
         root.title("GRAPE walkthrough")
         
         diffmanager = DiffManager(master=root, height=height, width=width,
-                                  branchA=b1, branchB=b2, difftool=difftool, diffargs=diffargs)
+                                  branchA=b1, branchB=b2, difftool=difftool, diffargs=diffargs,
+                                  showUnchanged=args["--showUnchanged"])
         
         root.mainloop()
         
@@ -267,6 +269,12 @@ class ProjectManager:
       self.projlist.delete(index)
       self.projlist.insert(index, newString)
 
+   def removeProjectEntry(self, index):
+      del self.projects[index]
+      self.projlist.delete(index)
+      del self.projstatus[index]
+      del self.projtype[index]
+
    # This should be implemented by derived classes
    def initFiles(self, index):
       pass
@@ -277,7 +285,8 @@ class ProjectManager:
 
 class DiffManager(ProjectManager):
    def __init__(self, master, height=0, width=0,
-                branchA="", branchB="", difftool="", diffargs=""):
+                branchA="", branchB="", difftool="", diffargs="",
+                showUnchanged=False):
       # Configurable parameters
       if difftool == "":
          self.difftool = "default difftool"
@@ -294,6 +303,7 @@ class DiffManager(ProjectManager):
       self.diffbranchB = ""
       self.diffAnnotationB = Tk.StringVar()
       self.diffAnnotationB.set(branchB)
+      self.showUnchanged = showUnchanged
 
       # Branch specification pane
       self.branchpane = Tk.Frame(master)
@@ -313,7 +323,7 @@ class DiffManager(ProjectManager):
       self.filepanelabel.set("Double click to choose a project")
 
       os.chdir(utility.workspaceDir())
-      for index in range(self.numprojects):
+      for index in reversed(range(self.numprojects)):
          dir = self.projects[index]
          type = self.projtype[index]
          haveDiff = False
@@ -342,8 +352,10 @@ class DiffManager(ProjectManager):
 
          if haveDiff:
             self.setProjectStatus(index, "*")
-         else:
+         elif self.showUnchanged:
             self.setProjectStatus(index, " ")
+         else:
+            self.removeProjectEntry(index)
 
    def initFiles(self, index):
       self.filelist.delete(0,Tk.END)
