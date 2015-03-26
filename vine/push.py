@@ -10,10 +10,10 @@ class Push(option.Option):
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--norecurse] 
+    Usage: grape-push [--noRecurse] 
 
     Options:
-    --norecurse     Don't perform pushes in submodules.  
+    --noRecurse     Don't perform pushes in submodules.  
 
     """
     def __init__(self):
@@ -42,7 +42,7 @@ class Push(option.Option):
 
         try:
             push(currentBranch, baseDir)
-            if not args["--norecurse"]:
+            if not args["--noRecurse"]:
                 if submodules:
                     utility.printMsg("Performing pushes in all active submodules")
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")

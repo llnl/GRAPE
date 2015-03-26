@@ -58,7 +58,7 @@ class Merge(resumable.Resumable):
             mdArgs["--ay"] = args["--ay"]
             mdArgs["--public"] = args["<branch>"]
             mdArgs["--recurse"] = True
-            mdArgs["--norecurse"] = False
+            mdArgs["--noRecurse"] = False
             
             
             return grapeMenu.menu().getOption("md").execute(mdArgs)
@@ -109,7 +109,7 @@ def merge(branch, strategy, args):
 
 
 def mergeIntoCurrent(branchName, args):
-    updateArgs = ['up', '--wd=%s' % os.getcwd(), '--norecurse', '--public=%s' % branchName]
+    updateArgs = ['up', '--wd=%s' % os.getcwd(), '--noRecurse', '--public=%s' % branchName]
     grapeMenu.menu().applyMenuChoice('up', updateArgs)
     choice = False
     strategy = None

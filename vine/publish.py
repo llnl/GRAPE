@@ -35,7 +35,7 @@ class Publish(resumable.Resumable):
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
                          [-m <msg>]
-                         [--recurse | --norecurse]
+                         [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
@@ -79,7 +79,7 @@ class Publish(resumable.Resumable):
                             topic.
     --recurse               Perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --norecurse             Do not perform the publish action in submodules.
+    --noRecurse             Do not perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
     --topic=<branch>        The branch to publish. Defaults to the current branch.
     --noverify              Set to skip interactive verification of publish commands.
@@ -1033,7 +1033,7 @@ class Publish(resumable.Resumable):
         recurse = config.get('workspace', 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
-        if args["--norecurse"]:
+        if args["--noRecurse"]:
             recurse = False
 
         # no need to recurse if there are no modified submodules

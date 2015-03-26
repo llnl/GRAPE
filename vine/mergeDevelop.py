@@ -16,7 +16,7 @@ class MergeDevelop(resumable.Resumable):
     Usage: grape-md [--public=<branch>]
                     [--am | --as | --at | --ay]
                     [--continue]
-                    [--recurse | --norecurse]
+                    [--recurse | --noRecurse]
                     
 
     Options:
@@ -29,7 +29,7 @@ class MergeDevelop(resumable.Resumable):
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
-        --norecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
+        --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
         
 
@@ -119,7 +119,7 @@ class MergeDevelop(resumable.Resumable):
         
         config = grapeConfig.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurse = recurse and (not args["--norecurse"]) and len(submodules) > 0
+        recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse
 
         # if we stored cwd in self.progress, make sure we end up there
@@ -138,7 +138,7 @@ class MergeDevelop(resumable.Resumable):
         if not "updateLocalDone" in self.progress:
             # make sure public branches are to date in outer level repo.
             utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
-            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--norecurse'])  
+            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--noRecurse'])  
             self.progress["updateLocalDone"] = True
         
         # do an outer merge if we haven't done it yet        
