@@ -74,7 +74,7 @@ class Checkout(option.Option):
                 utility.printMsg("Remote 'origin' does not exist. "
                                  "This branch was not updated from a remote repository.")
             elif "Couldn't find remote ref" in e.gitOutput:
-                utility.printMsg("Remote does not have reference to %s. You may want to push this branch. " % branch)
+                utility.printMsg("Remote of %s does not have reference to %s. You may want to push this branch. " %(project, branch))
             else:
                 raise e
         return True

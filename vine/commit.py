@@ -43,22 +43,22 @@ class Commit(option.Option):
             args["-m"] = utility.userInput("Please enter commit message:")
         commitargs += " -m \"%s\"" % args["-m"]
          
-        baseDir = utility.workspaceDir()
-        os.chdir(baseDir)
+        wsDir = utility.workspaceDir()
+        os.chdir(wsDir)
 
         submodules = [(True, x ) for x in git.getModifiedSubmodules()]
         subprojects = [(False, x) for x in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()]
         for stage,sub in submodules +  subprojects:
-            os.chdir(os.path.join(baseDir,sub))
+            os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain")
             if subStatus:
                 utility.printMsg("Committing in %s..." % sub)
                 if self.commit(commitargs) and stage: 
-                    os.chdir(baseDir)
+                    os.chdir(wsDir)
                     utility.printMsg("Staging committed change in %s..." % sub)
                     git.add(sub)
         
-        os.chdir(baseDir)
+        os.chdir(wsDir)
         if submodules or git.status("--porcelain"): 
             utility.printMsg("Performing commit in outer level project...")
             self.commit(commitargs)

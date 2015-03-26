@@ -172,9 +172,17 @@ def writeDefaultConfig(filename):
     with open(filename, 'w') as f:
         config.write(f)
 
+class NoWorkspaceDirException(Exception):
+    def __init__(self, cwd=''):
+        self.cwd = cwd
+        if cwd:
+            self.message = "No .git found in %s" % cwd
+        else:
+            self.message = "No .git found"
+    
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir(warnIfNotFound = True): 
+def workspaceDir(warnIfNotFound = True, throwIfNotFound=True): 
     cwd = os.getcwd()
     basedir = None
 
@@ -185,6 +193,8 @@ def workspaceDir(warnIfNotFound = True):
         os.chdir(os.path.join(os.getcwd(), ".."))
     if not basedir and warnIfNotFound:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
+    if not basedir and throwIfNotFound:
+        raise NoWorkspaceDirException(cwd)
     os.chdir(cwd)
     return basedir
 

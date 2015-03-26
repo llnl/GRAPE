@@ -144,7 +144,7 @@ class AddSubproject(option.Option):
 
     @staticmethod
     def activateNestedSubproject(subprojectName, userconfig):
-        base = utility.workspaceDir()
+        wsDir = utility.workspaceDir()
         config = grapeConfig.grapeConfig()
         prefix = config.get("nested-%s" % subprojectName, "prefix")
         url = config.get("nested-%s" % subprojectName, "url")
@@ -153,10 +153,10 @@ class AddSubproject(option.Option):
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
         print "currentlyActive in section %s is " % section, currentlyActive
-        if not currentlyActive and not (os.path.isdir(os.path.join(base,prefix) or os.listdir(os.path.join(base,prefix)))):
+        if not currentlyActive and not (os.path.isdir(os.path.join(wsDir,prefix) or os.listdir(os.path.join(wsDir,prefix)))):
             git.clone("%s %s" % (fullurl, prefix))
         userconfig.set(section, "active", "True")
-        grapeConfig.writeConfig(userconfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
+        grapeConfig.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))
 
     def setDefaultConfig(self, config):
         config.ensureSection("subtrees")

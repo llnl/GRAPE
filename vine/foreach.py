@@ -59,5 +59,5 @@ class ForEach(option.Option):
         return True
     
     def setDefaultConfig(self,config): 
-       pass
+        pass
     
