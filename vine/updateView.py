@@ -257,6 +257,9 @@ class UpdateView(option.Option):
                         mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
                         if mr:
                             grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
+                if e.commError:
+                    utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
+                                     "local version. " % branch)
                 else:    
                     raise(e)
 

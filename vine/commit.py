@@ -46,14 +46,14 @@ class Commit(option.Option):
         baseDir = utility.workspaceDir()
         os.chdir(baseDir)
 
-        submodules = git.getModifiedSubmodules()
-        subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes() 
-        for sub in submodules +  subprojects:
+        submodules = [(True, x ) for x in git.getModifiedSubmodules()]
+        subprojects = [(False, x) for x in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()]
+        for stage,sub in submodules +  subprojects:
             os.chdir(os.path.join(baseDir,sub))
             subStatus = git.status("--porcelain")
             if subStatus:
                 utility.printMsg("Committing in %s..." % sub)
-                if self.commit(commitargs): 
+                if self.commit(commitargs) and stage: 
                     os.chdir(baseDir)
                     utility.printMsg("Staging committed change in %s..." % sub)
                     git.add(sub)

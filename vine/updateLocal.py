@@ -124,7 +124,7 @@ class UpdateLocal(option.Option):
             if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
                 print e.gitCommand
                 print e.gitOutput
-                print("GRAPE WARNING: one or more of your public branches have local commits! "
+                print("GRAPE: WARNING: one or more of your public branches have local commits! "
                       "Did you forget to create a topic branch?")
                 pass
             else:
@@ -132,7 +132,7 @@ class UpdateLocal(option.Option):
                 raise e
         
         try:
-            if currentBranch.strip() != "HEAD": 
+            if currentBranch != "HEAD": 
                 git.pull("origin %s" % currentBranch)
         except git.GrapeGitError:
             print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
