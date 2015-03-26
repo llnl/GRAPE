@@ -155,13 +155,16 @@ def fetch(repo="", branchArg=""):
 
 
 def getActiveSubmodules():
-
+    cwd = os.getcwd()
+    wsDir = utility.workspaceDir()
+    os.chdir(wsDir)
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"")
     else:
         submoduleList = submodule("foreach --quiet \"echo \$path\"")
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]
+    os.chdir(cwd)
     return submoduleList
 
 
@@ -182,9 +185,9 @@ def getAllSubmodules():
 
 def getModifiedSubmodules(branch1="", branch2=""):
     cwd = os.getcwd()
-    base = baseDir()
-    os.chdir(base)
-    submodules = getActiveSubmodules()
+    wsDir = utility.workspaceDir()
+    os.chdir(wsDir)
+    submodules = getAllSubmodules()
     # if there are no submodules, then return the empty list
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
         return [] 
@@ -292,6 +295,9 @@ def rebase(args):
 
 def revert(args):
     return gitcmd("revert %s" % args, "Revert failed")
+
+def rm(args):
+    return gitcmd("rm %s" % args, "Remove failed")
 
 
 def safeForceBranchToOriginRef(branchToSync):

@@ -316,12 +316,14 @@ class Publish(resumable.Resumable):
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
             
-        self.order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureReview", "verifyCompletedReview", 
-                 "markInProgress", "tickVersion", "updateLog",
-                 "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                 "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
+        self.order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureModifiedSubmodulesAreActive", 
+                      "ensureReview", "verifyCompletedReview", 
+                      "markInProgress", "tickVersion", "updateLog",
+                      "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                      "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
         if args["--quick"]:
-            self.order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
+            self.order = ["md","ensureModifiedSubmodulesAreActive","ensureReview","markInProgress", "publish", 
+                          "markAsDone", "deleteTopic", "done"]
         
         self.parseArgs(args)
         
@@ -356,11 +358,13 @@ class Publish(resumable.Resumable):
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
                  "ensureReview": self.ensureReview,
+                 "ensureModifiedSubmodulesAreActive": self.ensureModifiedSubmodulesAreActive,
                  "md": self.mergePublic,
                  "verifyPublishActions": self.verifyPublishTargetsWithUser}
 
 
         currentStep = startPoint
+        os.chdir(utility.workspaceDir())
         for step in self.order:
             if step == "done":
                 break
@@ -389,6 +393,20 @@ class Publish(resumable.Resumable):
         args["--startAt"] = step
         self.dumpProgress(args)
         return
+
+    def ensureModifiedSubmodulesAreActive(self, args):
+        modifiedSubs = git.getModifiedSubmodules(branch1=args["--public"], branch2=args["--topic"])
+        activeSubs = git.getActiveSubmodules()
+        missing = []
+        for sub in modifiedSubs:
+            if sub not in activeSubs:
+                missing.append(sub)
+        if missing:
+            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+                             "You should activate them using grape uv and then call grape md --continue")
+            utility.printMsg(','.join(missing))
+            return False
+        return True
 
     def mergePublic(self, args):
         menu = grapeMenu.menu()

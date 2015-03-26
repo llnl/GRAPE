@@ -260,11 +260,13 @@ class UpdateView(option.Option):
                 if e.commError:
                     utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
                                      "local version. " % branch)
+                if "Couldn't find remote ref" in e.gitOutput:
+                    utility.printMsg("No remote reference to %s in origin. You may want to push this branch.\n"
+                                     "Checking out most recent local version." % branch)
                 else:    
                     raise(e)
 
         checkout.Checkout.handledCheckout(checkoutArgs, branch, repo)
-
         os.chdir(cwd)
         return
 
