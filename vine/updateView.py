@@ -134,11 +134,13 @@ class UpdateView(option.Option):
                     deinitStr = "-f"
                 else:
                     deinitStr = ""
+                rmCachedStr = ""
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += ' %s' % submodule
                     else:
                         deinitStr += ' %s' % submodule
+                        rmCachedStr += ' %s' % submodule
 
                 utility.printMsg("Configuring submodules...")
                 utility.printMsg("Initializing submodules...")
@@ -146,6 +148,7 @@ class UpdateView(option.Option):
                 if deinitStr or deinitStr == "-f":
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
                     git.submodule("deinit %s" % deinitStr.strip())
+                    git.rm("--cached %s" % rmCachedStr)
 
                 if initStr:
                     utility.printMsg("Updating active submodules...(%s)" % initStr)
@@ -221,7 +224,7 @@ class UpdateView(option.Option):
 
     @staticmethod
     def getDesiredSubmoduleBranch(config):
-        publicBranches = config.getList("flow", "publicBranches")
+        publicBranches = config.getPublicBranchList()
         currentBranch = git.currentBranch()
         if currentBranch in publicBranches:
             desiredSubmoduleBranch = config.getMapping("workspace", "submodulepublicmappings")[currentBranch]

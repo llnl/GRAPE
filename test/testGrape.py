@@ -57,6 +57,7 @@ class TestGrape(unittest.TestCase):
         self.repos = [os.path.join(self.defaultWorkingDirectory, "testRepo"),
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
+        self._debug = False
 
     def setUpConfig(self):
         grapeMenu._resetMenu()
@@ -104,6 +105,9 @@ class TestGrape(unittest.TestCase):
             pass
         
         self.menu = grapeMenu.menu()
+        
+        if self._debug:
+            self.switchToStdout()
 
     def tearDown(self):
         def onError(func, path, exc_info):
@@ -124,7 +128,8 @@ class TestGrape(unittest.TestCase):
                 func(path)
             else:
                 raise Exception
-
+        if self._debug:
+            self.switchToHiddenOutput()
         os.chdir(os.path.abspath(os.path.join(self.defaultWorkingDirectory,"..")))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
@@ -175,7 +180,7 @@ def buildSuite(cls, appendTo=None):
     return suite
 
 
-def main(argv):
+def main(argv, debug=False):
    
     import testBranches
     import testClone
@@ -215,9 +220,15 @@ def main(argv):
         for cls in  [testClasses[arg] for arg in argv]:
             suite = buildSuite(cls, suite)
             
-
+    if debug:
+        for cls in suite:
+            for case in cls:
+                print case
+                case._debug = True
+        suite._tests    
+    
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    main(sys.argv[1:], debug=False)

@@ -39,9 +39,19 @@ class Resumable(option.Option):
         with open(self.progressFile, 'r') as f:
             p = pickle.Unpickler(f)
             self.progress = p.load()
+    
+    def _removeProgressFile(self):
+        #remove the file
+        try:
+            os.remove(self.progressFile)
+        except OSError as e:
+            if e.errno == 2: 
+                pass
+            else:
+                raise e
 
     @abc.abstractmethod
-    def _resume(self, args):
+    def _resume(self, args, deleteProgressFile=True):
         try:
             self._readProgressFile()
         except IOError:
@@ -49,7 +59,7 @@ class Resumable(option.Option):
             try:
                 self.progressFile = os.path.join(utility.workspaceDir(), ".git", "grapeProgress")
                 self._readProgressFile()
-            except IOError:
+            except IOError as e:
                 try:
                     # look for it at the home directory level
                     self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
@@ -57,12 +67,12 @@ class Resumable(option.Option):
                 except:
                     utility.printMsg("No progress file found to continue from. Please enter a command without the "
                                      "--continue option. ")
-                    exit(1)
+                    raise e
         newArgs = self.progress["args"]
         #overwrite args with the loaded args
         for key in newArgs.keys():
             args[key] = newArgs[key]
         #load the config
         grapeConfig.resetGrapeConfig(self.progress["config"])
-        #remove the file
-        os.remove(self.progressFile)
+        if deleteProgressFile:
+            self._removeProgressFile()

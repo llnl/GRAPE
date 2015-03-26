@@ -70,7 +70,7 @@ class Status(option.Option):
         publicBranchesExist = True
         # Check that all public branches exist locally. 
         cfg = config.grapeConfig.grapeConfig()
-        publicBranches = cfg.getList("flow", "publicbranches")
+        publicBranches = cfg.getPublicBranchList()
         missingBranches = config.Config.checkIfPublicBranchesExist(cfg, utility.workspaceDir(), 
                                                                    publicBranches)
         

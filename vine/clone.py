@@ -35,11 +35,27 @@ class Clone(option.Option):
         remotepath = args["<url>"]
         destpath = args["<path>"]
         rstr = "--recursive" if args["--recursive"] else ""
+        utility.printMsg("Cloning %s into %s %s" % (remotepath, destpath, "recursively" if args["--recursive"] else ""))
         git.clone(" %s %s %s" % (rstr, remotepath, destpath))
-        print("Clone succeeded!")
+        utility.printMsg("Clone succeeded!")
         os.chdir(destpath)
         grapeConfig.read()
+        # ensure you start on a reasonable publish branch
         menu = grapeMenu.menu()
+        config = grapeConfig.grapeConfig()
+        publicBranches = config.getPublicBranchList()
+        if publicBranches:
+            if "develop" in publicBranches:
+                initialBranch = "develop"
+            elif "master" in publicBranches:
+                initialBranch = "master"
+            else:
+                initialBranch = publicBranches[0]
+                
+        menu.applyMenuChoice("checkout", args=[initialBranch])
+            
+
+
         if args["--allNested"]:
             configArgs = ["--uv","--uvArg=--allNestedSubprojects"]
         else: 

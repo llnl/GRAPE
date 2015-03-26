@@ -51,55 +51,55 @@ class UpdateLocal(option.Option):
 
         if recurseNestedSubprojects:
            # fetch branches in nested subprojects
-           for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(workspaceDir=wsDir):
-               self.fetchLocal(args, os.path.join(wsDir, subproject), cwd, publicBranches)
+            for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(workspaceDir=wsDir):
+                self.fetchLocal(args, os.path.join(wsDir, subproject), cwd, publicBranches)
 
         if recurseSubmodules:
            # fetch branches in submodules
-           os.chdir(wsDir)
-           activeSubmodules = git.getActiveSubmodules()
-           if len(activeSubmodules) > 0: 
-               subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
-               for submodule in activeSubmodules:
-                   try:
-                      os.chdir(wsDir)
-                      # First figure out the SHA for the branch on the submodule.
-                      # The output of ls-tree should look like:
-                      # 160000 commit <submodule SHA>  <submodule name>
-                      gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
-                                              "Failed to execute ls-tree").split()[2]
-                      os.chdir(os.path.join(wsDir, submodule))
-                      # Check to see if the SHA in submodule matches
-                      branchUpdate = True if git.SHA(currentBranch) != gitlinkSHA else False
-                   except:
-                      # This may fail if the branch does not exist on the submodule, 
-                      # in which case we do not want to update it.
-                      branchUpdate = False
-
-                   # Repeat this for the public branches
-                   publicUpdate = []
-                   for public in publicBranches:
-                      try:
-                         submodulePublicBranch = subBranchMappings[public]
-                         try:
-                            os.chdir(wsDir)
-                            gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
-                                                    "Failed to execute ls-tree").split()[2]
-                            os.chdir(os.path.join(wsDir, submodule))
-                            if git.SHA(submodulePublicBranch) != gitlinkSHA:
-                               publicUpdate.append(submodulePublicBranch)
-                         except:
-                            # This may fail if the branch does not exist on the submodule, 
-                            # in which case we do not want to update it.
+            os.chdir(wsDir)
+            activeSubmodules = git.getActiveSubmodules()
+            if len(activeSubmodules) > 0: 
+                subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
+                for submodule in activeSubmodules:
+                    try:
+                        os.chdir(wsDir)
+                        # First figure out the SHA for the branch on the submodule.
+                        # The output of ls-tree should look like:
+                        # 160000 commit <submodule SHA>  <submodule name>
+                        gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
+                                                "Failed to execute ls-tree").split()[2]
+                        os.chdir(os.path.join(wsDir, submodule))
+                        # Check to see if the SHA in submodule matches
+                        branchUpdate = True if git.SHA(currentBranch) != gitlinkSHA else False
+                    except:
+                        # This may fail if the branch does not exist on the submodule, 
+                        # in which case we do not want to update it.
+                        branchUpdate = False
+  
+                    # Repeat this for the public branches
+                    publicUpdate = []
+                    for public in publicBranches:
+                        try:
+                            submodulePublicBranch = subBranchMappings[public]
+                            try:
+                                os.chdir(wsDir)
+                                gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
+                                                        "Failed to execute ls-tree").split()[2]
+                                os.chdir(os.path.join(wsDir, submodule))
+                                if git.SHA(submodulePublicBranch) != gitlinkSHA:
+                                    publicUpdate.append(submodulePublicBranch)
+                            except:
+                                # This may fail if the branch does not exist on the submodule, 
+                                # in which case we do not want to update it.
+                                pass
+                        except KeyError:
+                            # Do nothing if the public branch mapping has not been defined.
                             pass
-                      except KeyError:
-                         # Do nothing if the public branch mapping has not been defined.
-                         pass
-
-                   # Fetch branches on the submodule only something is not up-to-date
-                   if branchUpdate or len(publicUpdate) > 0:
-                      self.fetchLocal(args, os.path.join(wsDir, submodule), cwd, publicUpdate)
-
+    
+                     # Fetch branches on the submodule only something is not up-to-date
+                    if branchUpdate or len(publicUpdate) > 0:
+                        self.fetchLocal(args, os.path.join(wsDir, submodule), cwd, publicUpdate)
+ 
         os.chdir(cwd)
         return True
 
@@ -135,7 +135,7 @@ class UpdateLocal(option.Option):
             if currentBranch.strip() != "HEAD": 
                 git.pull("origin %s" % currentBranch)
         except git.GrapeGitError:
-            print("Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
+            print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
 
     def setDefaultConfig(self, config):
         pass

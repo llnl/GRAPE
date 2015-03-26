@@ -135,11 +135,14 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             except KeyError:
                 pass
 
-        publicBranches = self.get("flow", "publicbranches").split()
+        publicBranches = self.getPublicBranchList()
         if branch in publicBranches:
             return branch
         publicMapping = self.getMapping("flow", "topicPrefixMappings")
         return publicMapping[git.branchPrefix(branch)]
+    
+    def getPublicBranchList(self):
+        return self.get("flow", "publicbranches").split()
 
     def ensureSection(self, section):
         try:
@@ -182,7 +185,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     @staticmethod
     def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
         config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
-        publicBranches = config.getList("flow","publicbranches")
+        publicBranches = config.getPublicBranchList()
         if workspaceDir is None:
             workspaceDir = utility.workspaceDir()
         active = GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)

@@ -32,22 +32,28 @@ class Push(option.Option):
         submodules = git.getActiveSubmodules()
         
         utility.printMsg("Performing push in outer level project")
-        git.push(pushargs)
-        if submodules:
-            utility.printMsg("Performing pushes in all active submodules")
-        for sub in submodules: 
-            os.chdir(os.path.join(baseDir, sub))
-            utility.printMsg("Pushing in %s..." % sub)
-            git.push(pushargs)
-
-        nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
-        if nestedSubprojects:
-            utility.printMsg("Performing pushes in all active subprojects")
-        for proj in nestedSubprojects:
-            os.chdir(os.path.join(baseDir, proj))
-            utility.printMsg("Pushing in %s..." % proj)
-            git.push(pushargs)
-
+        try:
+            git.push(pushargs, throwOnFail=True)
+            if submodules:
+                utility.printMsg("Performing pushes in all active submodules")
+            for sub in submodules: 
+                os.chdir(os.path.join(baseDir, sub))
+                utility.printMsg("Pushing in %s..." % sub)
+                git.push(pushargs)
+    
+            nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
+            if nestedSubprojects:
+                utility.printMsg("Performing pushes in all active subprojects")
+            for proj in nestedSubprojects:
+                os.chdir(os.path.join(baseDir, proj))
+                utility.printMsg("Pushing in %s..." % proj)
+                git.push(pushargs)
+        except git.GrapeGitError as e:
+            utility.printMsg("Failed to push branch.")
+            print e.gitCommand
+            print e.cwd
+            print e.gitOutput
+            return False
         os.chdir(cwd)
         
         utility.printMsg("Pushed current branch to origin")

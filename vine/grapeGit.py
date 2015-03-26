@@ -249,23 +249,31 @@ def numberCommitsSinceRoot():
     return numberCommitsSince(root)
 
 
-def pull(args):
+def pull(args, throwOnFail=False):
     try:
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
-        if e.code == 128:
-            return e.gitOutput
+        if e.code == 128 and "fatal: Could not read from remote" in e.gitOutput:
+            utility.printMsg("WARNING: Pull failed due to connectivity issues.")
+            if throwOnFail: 
+                raise e
+            else:
+                return e.gitOutput
+        
         else:
             raise e
 
 
-def push(args):
+def push(args, throwOnFail = False):
     try:
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
-        if e.code == 128:
+        if e.code == 128 and "fatal: Could not read from remote" in e.gitOutput:
             utility.printMsg("WARNING: Push failed due to connectivity issues.")
-            return e.gitOutput
+            if throwOnFail: 
+                raise e
+            else:
+                return e.gitOutput
         else:
             raise e
 
@@ -300,7 +308,11 @@ def safeForceBranchToOriginRef(branchToSync):
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch():
                 utility.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
-                pull("origin %s" % branchToSync)
+                try:
+                    pull("origin %s" % branchToSync, throwOnFail=True)
+                except:
+                    utility.printMsg("Can't pull %s. Aborting...")
+                    return False
             else:
                 branch("-f %s %s" % (branchToSync, remoteRef))
             return True

@@ -43,6 +43,8 @@ class Checkout(option.Option):
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
                     git.checkout(checkoutargs+" -b "+branch)
                     git.push("-u origin %s" % branch)
+                else:
+                    return False
 
             elif "already exists" in e.gitOutput:
                 utility.printMsg("Branch %s already exists in %s." % (branch, project))
@@ -75,7 +77,7 @@ class Checkout(option.Option):
                 utility.printMsg("Remote does not have reference to %s. You may want to push this branch. " % branch)
             else:
                 raise e
-
+        return True
     @staticmethod
     def parseGitModulesDiffOutput(output, addedModules, removedModules):
 
@@ -126,8 +128,9 @@ class Checkout(option.Option):
         os.chdir(workspaceDir)
         currentSHA = git.shortSHA("HEAD")
 
-        utility.printMsg("Performing checkout in outer level project.")
-        self.handledCheckout(checkoutargs, branch, git.baseDir())
+        utility.printMsg("Performing checkout of %s in outer level project." % branch)
+        if not self.handledCheckout(checkoutargs, branch, git.baseDir()):
+            return False
         previousSHA = currentSHA
 
         submoduleListDidChange = ".gitmodules" in git.diff("--name-only %s %s" % (previousSHA, branch))
@@ -182,7 +185,13 @@ class Checkout(option.Option):
                 config = grapeConfig.grapeConfig()
                 for proj in removedProjects:
                     projPrefix = config.get("nested-%s" % proj, "prefix")
-                    os.chdir(os.path.join(workspaceDir, proj))
+                    try:
+                        os.chdir(os.path.join(workspaceDir, proj))
+                    except OSError as e:
+                        if e.errno == 2:
+                            # directory doesn't exist, that's OK since we're thinking about removing it
+                            # anyways at this point...
+                            continue
                     if git.isWorkingDirectoryClean():
                         remove = utility.userInput("Would you like to remove the nested subproject %s? \n"
                                                    "All work that has not been pushed will be lost. " % projPrefix, 'n'  )

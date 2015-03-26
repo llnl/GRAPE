@@ -1,5 +1,36 @@
 
 
+Thu Mar 26 13:07:18 2015 Benjamin T. Liu
+v1.5.8
+Reviewers: Peter B. Robinson, Christopher A. White
+Fix extraneous nested subproject in updated file list.  
+Add reviewer header option for publish log/email messages.
+
+
+Wed Mar 25 14:59:39 2015 Peter B. Robinson
+v1.5.7
+
+DEVELOPER: Peter Robinson
+REVIEWERS: Aaron Fisher, Ben LIu
+
+Sumamry: Fixes GRP-57 and GRP-108
+
+Details: 
+grape m and grape mr now call grape md by default, so that all three options treat submodules and nested subprojects correctly.
+
+
+Tue Mar 24 11:24:55 2015 Peter B. Robinson
+v1.5.6
+
+Addresses GRP-111 and GRP-104 by adding the option for pull and push to throw exceptions.
+
+
+Mon Mar 23 11:32:40 2015 Peter B. Robinson
+v1.5.5
+
+
+
+
 Wed Mar 18 11:14:58 2015 Peter B. Robinson
 v1.5.4
 

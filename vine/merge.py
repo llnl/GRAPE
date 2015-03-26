@@ -15,7 +15,7 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] 
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse]
 
     Options:
         --am            Use git's default merge. 
@@ -23,6 +23,8 @@ class Merge(resumable.Resumable):
                         are touched by both branches. 
         --at            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
+                        will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
 
     Arguments:
@@ -38,22 +40,50 @@ class Merge(resumable.Resumable):
         return "Merge another local branch into your current branch."
 
     def execute(self, args):
+        # this is necessary due to the unholy relationships between mr, m, and md. 
+        if not "<<cmd>>" in args:
+            args["<<cmd>>"] = 'm'
         if args["--continue"]:
             self._resume(args)
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
                                                                                   " to merge into this branch")
         args["<branch>"] = otherBranch
-        return mergeIntoCurrent(otherBranch, args)
+        if args["--noRecurse"]:
+            return mergeIntoCurrent(otherBranch, args)
+        else:
+            mdArgs = {}
+            mdArgs["--am"] = args["--am"]
+            mdArgs["--as"] = args["--as"]
+            mdArgs["--at"] = args["--at"]
+            mdArgs["--ay"] = args["--ay"]
+            mdArgs["--public"] = args["<branch>"]
+            mdArgs["--recurse"] = True
+            mdArgs["--norecurse"] = False
+            
+            
+            return grapeMenu.menu().getOption("md").execute(mdArgs)
 
     def _resume(self, args):
+        if not ("inMD" in self.progress and self.progress["inMD"]):
+            tmpArgs = {}
+            try:
+                super(Merge,self)._resume(args, deleteProgressFile=False)
+            except IOError as e:
+                # going to assume this --continue was called internally before we output a progress file...
+                pass
+            else:
+                if self.progress["inMD"]:
+                    return grapeMenu.menu().getOption("md")._resume(args)             
+            
         status = git.status()
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["<branch>"])
         elif git.isWorkingDirectoryClean():
-            print("GRAPE MERGE: no commit necessary, working directory clean.")
+            utility.printMsg("MERGE: no commit necessary, working directory clean.")
             pass
         else:
-            print("GRAPE: Does not appear a merge is ready to be continued. ")
+            utility.printMsg("MERGE: Does not appear a merge is ready to be continued. ")
+        self._removeProgressFile()
         return True
 
     def _saveProgress(self, args):
@@ -72,7 +102,7 @@ def merge(branch, strategy, args):
         print error.gitOutput
         if "conflict" in error.gitOutput.lower():
             utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
-                              "with grape m --continue. ")
+                              "with grape %s --continue. " % args["<<cmd>>"])
         else:
             print("Merge command %s failed. Quitting." % error.gitCommand)
         return False
@@ -102,7 +132,7 @@ def mergeIntoCurrent(branchName, args):
 
     if strategy == 'am':
         args["--am"] = True
-        utility.printMsg("merging using git's default strategy")
+        utility.printMsg("Merging using git's default strategy...")
         choice = merge(branchName, "", args)
     elif strategy == 'as':
         args["--as"] = True
@@ -112,7 +142,7 @@ def mergeIntoCurrent(branchName, args):
         # see
         # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
         # for details.
-        utility.printMsg("merging forcing conflicts whenever both branches edited the same file...")
+        utility.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
         base = git.gitDir()
         if base == "":
             return False
@@ -141,12 +171,12 @@ def mergeIntoCurrent(branchName, args):
 
     elif strategy == 'at':
         args["--at"] = True
-        utility.printMsg("merging using recursive strategy, resolving conflicts cleanly with %s's changes" % branchName)
+        utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
         choice = merge(branchName, "-Xtheirs", args)
 
     elif strategy == 'ay':
         args["--ay"] = True
-        utility.printMsg("merging using recursive strategy, resolving conflicts cleanly with current branch's changes")
+        utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
         choice = merge(branchName, "-Xours", args)
 
     return choice
