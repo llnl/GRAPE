@@ -505,7 +505,7 @@ class Publish(resumable.Resumable):
         if pullRequest:
             verified = pullRequest.approved()
             reviewers = pullRequest.reviewers()
-            print ", ".join(x[0] for x in reviewers)
+            print ", ".join(x[2] for x in reviewers)
             if not verified:
                 print reviewers
                 if not reviewers:
@@ -518,7 +518,7 @@ class Publish(resumable.Resumable):
                             print(reviewer[0], reviewer[1])
             else:
                 utility.printMsg("All reviewers have approved your request.")
-                self.progress["reviewers"] = ", ".join(reviewers)
+                self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
