@@ -172,11 +172,6 @@ class Checkout(option.Option):
             configDiff = git.diff("--no-ext-diff %s %s -- %s" % (previousSHA, branch, ".grapeconfig"))
             nestedProjectListDidChange = "[nestedprojects]" in configDiff.lower()
             self.parseGrapeConfigNestedProjectDiffOutput(configDiff, addedProjects, removedProjects)
-            if addedProjects: 
-                update = utility.userInput("New nested subprojects %s are on branch %s. "
-                                           "Would you like to update your view?" % (addedProjects, branch), 'n')
-                if not update and not removedProjects:
-                    nestedProjectListDidChange = False
             
             if removedProjects: 
                 config = grapeConfig.grapeConfig()
@@ -206,7 +201,11 @@ class Checkout(option.Option):
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
         else:
-            updateView = utility.userInput("Submodules or subprojects were added/removed as a result of this checkout. \n"
+            updateView = utility.userInput("Submodules or subprojects were added/removed as a result of this checkout. \n" + 
+                                           "%s" % ("Added Projects: %s\n" % ','.join(addedProjects) if addedProjects else "") + 
+                                           "%s" % ("Added Submodules: %s\n"% ','.join(addedModules) if addedModules else "") +
+                                           "%s" % ("Removed Projects: %s\n" % ','.join(removedProjects) if removedProjects else "") +
+                                           "%s" % ("Removed Submodules: %s\n" % ','.join(removedModules) if removedModules else "") +
                                            "Would you like to update your workspace view? [y/n]", 'n')
             if not updateView:
                 uvArgs.append("--checkSubprojects")

@@ -403,7 +403,7 @@ class Publish(resumable.Resumable):
                 missing.append(sub)
         if missing:
             utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
-                             "You should activate them using grape uv and then call grape md --continue")
+                             "You should activate them using grape uv and then call publish --continue")
             utility.printMsg(','.join(missing))
             return False
         return True
