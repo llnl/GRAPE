@@ -513,7 +513,7 @@ class Publish(resumable.Resumable):
                     utility.printMsg("The following reviewers have not approved your request:\n")
                     for reviewer in reviewers:
                         if reviewer[1] is False:
-                            print "%s (%%s)" (reviewer[0], reviewer[2])
+                            print "%s (%s)" (reviewer[0], reviewer[2])
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
