@@ -505,6 +505,7 @@ class Publish(resumable.Resumable):
         if pullRequest:
             verified = pullRequest.approved()
             reviewers = pullRequest.reviewers()
+            print ", ".join(reviewers.keys())
             if not verified:
                 print reviewers
                 if not reviewers:
