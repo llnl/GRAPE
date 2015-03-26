@@ -493,10 +493,10 @@ class Publish(resumable.Resumable):
             utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
-    @staticmethod
-    def verifyCompletedReview(args):
+    def verifyCompletedReview(self, args):
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
+            self.progress["reviewers"] = "No reviewers"
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
@@ -504,8 +504,8 @@ class Publish(resumable.Resumable):
         verified = False
         if pullRequest:
             verified = pullRequest.approved()
+            reviewers = pullRequest.reviewers()
             if not verified:
-                reviewers = pullRequest.reviewers()
                 print reviewers
                 if not reviewers:
                     utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
@@ -517,6 +517,7 @@ class Publish(resumable.Resumable):
                             print(reviewer[0], reviewer[1])
             else:
                 utility.printMsg("All reviewers have approved your request.")
+                self.progress["reviewers"] = ", ".join(reviewers)
         else:
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
@@ -622,7 +623,9 @@ class Publish(resumable.Resumable):
         # Get list of modified files in nested subprojects
         for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
             os.chdir(os.path.join(wsdir, nested))
-            self.progress["modifiedFiles"] += [nested + "/" + s for s in self.getModifiedFileList(public, topic, args)]
+            modified = self.getModifiedFileList(public, topic, args)
+            if len(modified) > 0:
+               self.progress["modifiedFiles"] += [nested + "/" + s for s in modified]
         os.chdir(wsdir)
 
         return True
@@ -729,6 +732,7 @@ class Publish(resumable.Resumable):
             header = header.replace("<date>", time.asctime())
             header = header.replace("<user>", git.config("--get user.name"))
             header = header.replace("<version>", self.progress["version"])
+            header = header.replace("<reviewers>", self.progress["reviewers"])
             header = ["\n"]+header.split("\\n")
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
@@ -799,6 +803,7 @@ class Publish(resumable.Resumable):
            emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
            emailHeader = emailHeader.replace("<date>", date)
            emailHeader = emailHeader.replace("<version>", self.progress["version"])
+           emailHeader = emailHeader.replace("<reviewers>", self.progress["reviewers"])
            emailHeader = emailHeader.replace("<public>", args["--public"])
            emailHeader = emailHeader.split("\\n")
            mf.write('\n'.join(emailHeader))
