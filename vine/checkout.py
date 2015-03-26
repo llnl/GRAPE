@@ -83,8 +83,6 @@ class Checkout(option.Option):
 
         for line in output.split('\n'):
             if "+[submodule" in line:
-                print line
-                print line.split('"')
                 addedModules.append(line.split('"')[1])
             if "-[submodule" in line:
                 removedModules.append(line.split('"')[1])
@@ -93,7 +91,6 @@ class Checkout(option.Option):
     
     @staticmethod
     def parseGrapeConfigNestedProjectDiffOutput(output, addedModules, removedModules): 
-        print output
         nestedSection = False
         oldProjects = []
         newProjects = []
@@ -208,6 +205,11 @@ class Checkout(option.Option):
                         
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
+        else:
+            updateView = utility.userInput("Submodules or subprojects were added/removed as a result of this checkout. \n"
+                                           "Would you like to update your workspace view? [y/n]", 'n')
+            if not updateView:
+                uvArgs.append("--checkSubprojects")
             
         if args["-b"]: 
             uvArgs.append("-b")
