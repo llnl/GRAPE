@@ -159,8 +159,6 @@ class Checkout(option.Option):
                                 os.chdir(workspaceDir)
                         except OSError:
                             pass
-                if addedModules:
-                    utility.printMsg("New submodules %s are on branch %s. Updating view ..." % (addedModules, branch))
 
 
         # check to see if nested project list changed
