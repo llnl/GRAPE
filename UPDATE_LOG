@@ -1,5 +1,18 @@
 
 
+Fri Mar 27 13:33:36 2015 Peter B. Robinson
+v1.5.10
+Reviewers: Benjamin T. Liu
+
+Resolves GRP-119, GRP-131, and GRP-82.
+
+Details:
+Publish will now ensure any modified submodules you have are active before publishing.
+Publish now always executes from the workspaceDirectory.
+Users now confirm whether they want to update the view if submodules/subprojects are added or removed.
+Related to https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/pull-requests/106/overview
+
+
 Fri Mar 27 11:53:29 2015 Peter B. Robinson
 v1.5.9
 Reviewers: Christopher A. White, Benjamin T. Liu
