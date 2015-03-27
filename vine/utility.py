@@ -64,6 +64,59 @@ def popGlobalArgs():
     __apply__(globalArgs[-1])
 
 
+# thanks to jcollado at stackoverflow for inspiration:
+# http://stackoverflow.com/questions/1191374/subprocess-with-timeout
+import threading
+import tailer
+class Command(object):
+    def __init__(self, cmd, wd, outfile, stdin):
+        self.cmd = cmd
+        self.process = None
+        self.wd = wd
+        self.outfile = outfile
+        self.fileno = outfile.fileno()
+#        print self.outfile.name
+        self.stopFollowing = False
+        self.stdin = stdin
+        self.generator = None
+
+    def run(self, startStreaming=5):
+        def target():
+            self.process = subprocess.Popen(self.cmd, stdout=self.outfile.fileno(), stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+                                   cwd=self.wd, stdin=self.stdin, bufsize=1)
+            self.process.wait()
+        
+        def followTarget():
+            fo = open(self.outfile.name, mode='r')
+            self.generator = tailer.follow(fo)
+            for l in self.generator:
+                if self.stopFollowing:
+                    break
+                print l 
+            fo.close()
+        
+        thread = threading.Thread(target=target)
+        followThread = threading.Thread(target=followTarget)
+        thread.start()
+
+        thread.join(0.1)
+        if thread.is_alive():
+            # follow output in the outfile
+            followThread.start()
+            # keep going until the subprocess is done
+            thread.join()
+            self.stopFollowing = True
+            # flush outfile with a newline to force a yield in tailer.
+            with open(self.outfile.name, mode='a') as f:
+                f.writelines(['\n'])
+            # stop following the subprocess
+            followThread.join()
+            #if followThread.is_alive():
+            #    print 'killing follow thread'
+            #    self.followProcess.kill()
+            #    followThread.join()
+
+
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin, stream = False):
 
@@ -93,14 +146,18 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
         output += out	
 
     else:
-        with tempfile.TemporaryFile() as tmpFile:
-            process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
-                                        stderr=subprocess.STDOUT ) 
-            process.wait()
+        with tempfile.NamedTemporaryFile() as tmpFile:
+            command = Command(command, workingDirectory, tmpFile, stdin)
+            command.run(startStreaming=2.0)
+            #process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
+            #                            stderr=subprocess.STDOUT ) 
+            #process.wait()
             tmpFile.seek( 0 )
             output = tmpFile.read()
-            if verbose > 1:
+            #print output
+            if verbose > 1 and not command.stopFollowing:
                 print(output.strip())
+            process = command.process
 
     process.output = output
     if process.returncode != 0 and verbose > 1:
