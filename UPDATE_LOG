@@ -1,5 +1,21 @@
 
 
+Fri Mar 27 11:53:29 2015 Peter B. Robinson
+v1.5.9
+Reviewers: Christopher A. White, Benjamin T. Liu
+
+DEVELOPERS: Peter Robinson and Al Nichols
+REVIEWERS: Chris White and Aaron Fisher
+SUMMARY:
+Addresses GRP-112 and GRP-114. 
+For the purposes of consistency, all --norecurse CLI options have been converted to camelcase, --noRecurse. 
+DETAILS:
+Grape commit without the -a flag with staged changes in submodules will now stage and commit the modified gitlink of the submodules with staged changes.
+Grape push is now branch model aware for submodules. 
+Fixes a windows issue where parsing output from git submodule foreach left carriage returns in the tokens.
+Merge and mergedevelop have been merged!
+
+
 Thu Mar 26 13:07:18 2015 Benjamin T. Liu
 v1.5.8
 Reviewers: Peter B. Robinson, Christopher A. White
