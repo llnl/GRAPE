@@ -26,12 +26,12 @@ vinePath = os.path.dirname(vine.__file__)
 CLI =  """
 *** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
 Calling grape by itself will pull up the grape menu. 
-Usage: grape [-v | -q] [--version] [--noprogress][<command> <args>...]
+Usage: grape [-v | -q] [--version] [--noProgress][<command> <args>...]
 
 Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
---noprogress Do not show progress for long-running git subprocesses. This will remove
+--noProgress Do not show progress for long-running git subprocesses. This will remove
              a fair amount of thread-launch overhead in GRAPE, which can have a speedup of
              about a third. 
 

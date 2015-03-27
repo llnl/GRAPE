@@ -51,7 +51,7 @@ def __apply__(args):
             setVerbosity(0)
         else:
             setVerbosity(1)
-        if args["--noprogress"]:
+        if args["--noProgress"]:
             setShowProgress(False)
         else: 
             setShowProgress(True)
