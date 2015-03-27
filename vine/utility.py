@@ -34,9 +34,14 @@ globalArgs = []
 globalCLI = ""
 
 globalVerbosity = 1
+globalShowProgress = True
 def setVerbosity(level):
     global globalVerbosity
     globalVerbosity = level
+    
+def setShowProgress(val):
+    global globalShowProgress
+    globalShowProgress = val
 
 def __apply__(args): 
     if type(args) is docoptDict:
@@ -46,6 +51,10 @@ def __apply__(args):
             setVerbosity(0)
         else:
             setVerbosity(1)
+        if args["--noprogress"]:
+            setShowProgress(False)
+        else: 
+            setShowProgress(True)
     if type(args) is types.ListType:
         # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
         global globalCLI
@@ -75,10 +84,8 @@ class Command(object):
         self.wd = wd
         self.outfile = outfile
         self.fileno = outfile.fileno()
-#        print self.outfile.name
         self.stopFollowing = multiprocessing.Value('i', 0)
         self.stdin = stdin
-        self.generator = None
         self.finishedProcesses = multiprocessing.Queue()
 
 
@@ -95,8 +102,8 @@ class Command(object):
         def followTarget(fname):
             # uses tailer to follow the output of the running process
             fo = open(fname, mode='r')
-            self.generator = tailer.follow(fo)
-            for l in self.generator:
+            generator = tailer.follow(fo)
+            for l in generator:
                 if self.stopFollowing.value > 0:
                     break
                 print l 
@@ -115,7 +122,8 @@ class Command(object):
             # keep going until the subprocess is done
             thread.join()
             self.stopFollowing.value = 1
-            # flush outfile with a newline to force a yield in tailer.
+            # flush outfile with a newline to force a yield in the tailer generator for subprocesses that fail to put an EOF
+            # in their output stream
             with open(self.outfile.name, mode='a') as f:
                 f.writelines(['\n'])
             # stop following the subprocess
@@ -151,19 +159,25 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             sys.stdout.flush()
         output += out	
 
-    else:
+        
+    elif globalShowProgress:
         with tempfile.NamedTemporaryFile() as tmpFile:
             launcher = Command(command, workingDirectory, tmpFile, stdin)
             launcher.run(startStreaming=2.0)
-            #process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
-            #                            stderr=subprocess.STDOUT ) 
-            #process.wait()
             tmpFile.seek( 0 )
             output = tmpFile.read()
-            #print output
-            if verbose > 1 and not launcher.stopFollowing:
+            if verbose > 1 and launcher.stopFollowing.value == 0:
                 print(output.strip())
             process = launcher.finishedProcesses.get()
+    else:
+        with tempfile.TemporaryFile() as tmpFile:
+            process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
+                                        stderr=subprocess.STDOUT ) 
+            process.wait()
+            tmpFile.seek( 0 )
+            output = tmpFile.read()
+            if verbose > 1:
+                print(output.strip())        
 
     process.output = output
     if process.returncode != 0 and verbose > 1:
