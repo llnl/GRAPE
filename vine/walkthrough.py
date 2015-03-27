@@ -10,8 +10,8 @@ import Tkinter as Tk
 class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
-    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [<b1>] [<b2>]
-           grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--staged | --workspace] [<b1>]
+    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
+                   [<b1>] [--staged | --workspace | <b2>]
 
     Options:
         --difftool=<tool>  Command to use for diff.
@@ -23,12 +23,13 @@ class Walkthrough(option.Option):
                            [default: .grapeconfig.walkthrough.height]
         --width=<width>    Width of window in pixels.
                            [default: .grapeconfig.walkthrough.width]
-        --staged           Compare staged changes with cached version.
-        --workspace        Compare workspace files with branch.
+        --staged           Compare staged changes with branch <b1>.
+        --workspace        Compare workspace files with branch <b1>.
         --showUnchanged    Show unchanged subprojects.
+        --noFetch          Show unchanged subprojects.
         <b1>               The first branch to compare.
                            Defaults to the current branch of workspace.
-        <b2>               The second branch to compare
+        <b2>               The second branch to compare.
                            Defaults to the public branch for <b1>.
 
     """
@@ -57,7 +58,7 @@ class Walkthrough(option.Option):
 
         b1 = args["<b1>"] 
         if not b1: 
-            b1 = git.currentBranch()
+           b1 = git.currentBranch()
 
         if args["--staged"]:
            b2 = b1
@@ -74,28 +75,13 @@ class Walkthrough(option.Option):
 
         diffargs = ""
                
-        # TODO: fetch branches (remote tracking?) before diff
-
-        # make sure our remote references are up to date if we're
-        # comparing with something in the origin repo
-        if 'origin' in b1:
-            try: 
-                git.fetch("origin", b1)
-            except:
-                pass
-
-        if 'origin' in b2:
-            try: 
-                git.fetch("origin", b2)
-            except:
-                pass
-
         root = Tk.Tk()
         root.title("GRAPE walkthrough")
         
         diffmanager = DiffManager(master=root, height=height, width=width,
                                   branchA=b1, branchB=b2, difftool=difftool, diffargs=diffargs,
-                                  showUnchanged=args["--showUnchanged"])
+                                  showUnchanged=args["--showUnchanged"],
+                                  noFetch=args["--noFetch"])
         
         root.mainloop()
         
@@ -166,9 +152,7 @@ class ProjectManager:
       self.projlist.pack(side=Tk.LEFT, fill=Tk.BOTH, expand=1)
       self.projpanel.pack(fill=Tk.BOTH, expand=1)
 
-      # Populate subproject navigation list
-
-      # TODO: Optionally eliminate entries based on status
+      # Populate subproject navigation list 
 
       # Outer level repo
       if showToplevel:
@@ -286,7 +270,7 @@ class ProjectManager:
 class DiffManager(ProjectManager):
    def __init__(self, master, height=0, width=0,
                 branchA="", branchB="", difftool="", diffargs="",
-                showUnchanged=False):
+                showUnchanged=False, noFetch=False):
       # Configurable parameters
       if difftool == "":
          self.difftool = "default difftool"
@@ -295,14 +279,15 @@ class DiffManager(ProjectManager):
          self.difftool = difftool
          self.difftoolarg = "-t %s" % difftool
       self.diffargs = diffargs
-      self.branchA = branchA
-      self.branchB = branchB
+      self.noFetch = noFetch
+      self.branchA = self.getBranch(branchA)
+      self.branchB = self.getBranch(branchB)
       self.diffbranchA = ""
       self.diffAnnotationA = Tk.StringVar()
-      self.diffAnnotationA.set(branchA)
+      self.diffAnnotationA.set(self.branchA)
       self.diffbranchB = ""
       self.diffAnnotationB = Tk.StringVar()
-      self.diffAnnotationB.set(branchB)
+      self.diffAnnotationB.set(self.branchB)
       self.showUnchanged = showUnchanged
 
       # Branch specification pane
@@ -349,6 +334,7 @@ class DiffManager(ProjectManager):
                shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
                shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchB, dir), "Failed to execute ls-tree").split()[2]
                haveDiff = (shaA != shaB)
+         # TODO handle nested subprojects and subtrees
 
          if haveDiff:
             self.setProjectStatus(index, "*")
@@ -356,6 +342,17 @@ class DiffManager(ProjectManager):
             self.setProjectStatus(index, " ")
          else:
             self.removeProjectEntry(index)
+
+   def getBranch(self, branch):
+      try:
+         # -- and --cached just return themselves
+         git.shortSHA(branch)
+      except:
+         if not branch.startswith("origin/"):
+            branch = "origin/"+branch
+      if not self.noFetch and branch.startswith("origin/"):
+         git.fetch("origin", branch.partition("/")[2])
+      return branch
 
    def initFiles(self, index):
       self.filelist.delete(0,Tk.END)
@@ -380,21 +377,14 @@ class DiffManager(ProjectManager):
          self.diffbranchA = self.branchA
          self.diffbranchB = self.branchB
 
-      if self.branchA == "--cached":
-         self.diffAnnotationA.set("%s <cached>" % self.diffbranchB)
-         self.diffAnnotationB.set("%s <staged>" % self.diffbranchB)
-      elif self.branchB == "--":
-         self.diffAnnotationA.set(self.diffbranchA)
-         self.diffAnnotationB.set("<workspace>")
-      else:
-         self.diffAnnotationA.set(self.diffbranchA)
-         self.diffAnnotationB.set(self.diffbranchB)
-
       if type.startswith("Inactive"):
          remotels = git.gitcmd("ls-remote")
          self.filelist.insert(Tk.END, "<Unable to diff>")
          self.filenames.append("")
       else:
+         self.diffbranchA = self.getBranch(self.diffbranchA)
+         self.diffbranchB = self.getBranch(self.diffbranchB)
+         # TODO handle non-existent branches on subprojects
          os.chdir(os.path.join(utility.workspaceDir(), dir))
          self.filenames = []
          diffoutput = git.diff("--name-status %s %s %s ." % (self.diffargs, self.diffbranchA, self.diffbranchB)).splitlines()
@@ -415,6 +405,17 @@ class DiffManager(ProjectManager):
          else:
             self.filelist.insert(Tk.END, "<No differences>")
             self.filenames.append("")
+
+      if self.branchA == "--cached":
+         self.diffAnnotationA.set("%s <cached>" % self.diffbranchB)
+         self.diffAnnotationB.set("%s <staged>" % self.diffbranchB)
+      elif self.branchB == "--":
+         self.diffAnnotationA.set(self.diffbranchA)
+         self.diffAnnotationB.set("<workspace>")
+      else:
+         self.diffAnnotationA.set(self.diffbranchA)
+         self.diffAnnotationB.set(self.diffbranchB)
+
 
    def execute(self, file):
       try:
