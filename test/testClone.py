@@ -61,7 +61,7 @@ class TestClone(testGrape.TestGrape):
         try:
             tempDir = tempfile.mkdtemp()
             args = [self.repo, tempDir, "--recursive"]
-            self.queueUserInput(["\n", "\n", "\n", "\n"])
+            self.queueUserInput(["\n", "\n", "\n", "\n","\n","\n"])
             ret = grapeMenu.menu().applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 

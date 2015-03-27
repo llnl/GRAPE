@@ -42,19 +42,22 @@ class ForEach(option.Option):
         # of the project the user is in if --currentCWD is set. 
         cwd = git.baseDir()
         os.chdir(cwd)
-        git.submodule("foreach %s %s" % (quiet,cmd))
+        for sub in git.getActiveSubmodules():
+            if not quiet:
+                utility.printMsg("Entering %s..." % sub) 
+            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,sub), verbose=-1)
         
         # execute in nested subprojects
         for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(cwd):
-            utility.printMsg("Entering %s..." % proj)
+            if not quiet:
+                utility.printMsg("Entering %s..." % proj)
             os.chdir(os.path.join(cwd, proj))
-            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj), 
-                                      verbose=0 if quiet else 2)
+            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj), verbose=-1)
         if not args["--noTopLevel"]:
-            utility.executeSubProcess(cmd,cwd,verbose = 0 if quiet else 2)
-        
+            utility.executeSubProcess(cmd,cwd)
+        os.chdir(cwd)
         return True
     
     def setDefaultConfig(self,config): 
-       pass
+        pass
     

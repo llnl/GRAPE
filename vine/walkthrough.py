@@ -50,7 +50,7 @@ class Walkthrough(option.Option):
             p = git.diff("%s %s -- %s" % (b1,b2,files) )
         else:
             # use kompare to browse the diffs.
-            p = git.diff("--no-ext-diff -U2000 %s %s -- %s" % (b1,b2,files),quiet = True)
+            p = git.diff("--no-ext-diff -U2000 %s %s -- %s" % (b1,b2,files))
             fname = os.path.join(tempfile.gettempdir(),"gitdifftmp")
             with open(fname,'w') as f:
                 f.write(p)

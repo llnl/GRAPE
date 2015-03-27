@@ -17,13 +17,6 @@ if grapePath not in sys.path:
 from vine import grapeMenu  
 from vine import grapeGit as git
 
-def find_subclasses(module, clazz):
-    return [
-        cls
-            for name, cls in inspect.getmembers(module)
-                if inspect.isclass(cls) and issubclass(cls, clazz) and not cls is clazz
-    ]
-
 class GrapeStatusTester(testGrape.TestGrape): 
 
     def gridtestGrapeStatus(self, testProjectScenario):
@@ -62,7 +55,7 @@ class GrapeStatusTester(testGrape.TestGrape):
 
 def createStatusTester(): 
     # create a tester for all grapeProject scenarios in the testProjectScenarios module. 
-    scenarioClasses = find_subclasses(testProjectScenarios, testProjectScenarios.grapeProject)
+    scenarioClasses = testProjectScenarios.find_subclasses(testProjectScenarios, testProjectScenarios.grapeProject)
     names = [cls.__name__ for cls in scenarioClasses]
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
     gridTesting.gridifyTestClass(scenarios, GrapeStatusTester, names)

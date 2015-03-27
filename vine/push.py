@@ -10,11 +10,10 @@ class Push(option.Option):
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--norecurse] [-v]
+    Usage: grape-push [--noRecurse] 
 
     Options:
-    --norecurse     Don't perform pushes in submodules.  
-    -v              Show more git output. 
+    --noRecurse     Don't perform pushes in submodules.  
 
     """
     def __init__(self):
@@ -26,32 +25,49 @@ class Push(option.Option):
         return "Pushes your current branch to origin in all projects in this workspace."
 
     def execute(self, args):
-        quiet = not args["-v"]
         baseDir = utility.workspaceDir()
-        pushargs = "-u origin HEAD"
+
         cwd = os.getcwd()
         os.chdir(baseDir)
+        currentBranch = git.currentBranch()
+        config = grapeConfig.grapeConfig()
+        publicBranches = config.getPublicBranchList()
+
+        def push(currentBranch, proj): 
+            utility.printMsg("Pushing %s in %s..." % (currentBranch, proj))
+            git.push("-u origin %s" % currentBranch, throwOnFail=True)
+            
         submodules = git.getActiveSubmodules()
         
-        utility.printMsg("Performing push in outer level project")
-        git.push(pushargs, quiet=quiet)
-        if submodules:
-            utility.printMsg("Performing pushes in all submodules")
-        for sub in submodules: 
-            os.chdir(os.path.join(baseDir, sub))
-            git.push(pushargs, quiet=quiet)
 
-        nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
-        if nestedSubprojects:
-            utility.printMsg("Performing pushes in all active subprojects")
-        for proj in nestedSubprojects:
-            os.chdir(os.path.join(baseDir, proj))
-            git.push(pushargs, quiet=quiet)
-
+        try:
+            push(currentBranch, baseDir)
+            if not args["--noRecurse"]:
+                if submodules:
+                    utility.printMsg("Performing pushes in all active submodules")
+                subPubMap = config.getMapping("workspace", "submodulepublicmappings")
+                subbranch = subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
+                for sub in submodules: 
+                    os.chdir(os.path.join(baseDir, sub))
+                    push(subbranch, sub)
+        
+                nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
+                if nestedSubprojects:
+                    utility.printMsg("Performing pushes in all active subprojects")
+                for proj in nestedSubprojects:
+                    os.chdir(os.path.join(baseDir, proj))
+                    push(currentBranch, proj)
+                    
+        except git.GrapeGitError as e:
+            utility.printMsg("Failed to push branch.")
+            print e.gitCommand
+            print e.cwd
+            print e.gitOutput
+            return False
         os.chdir(cwd)
         
         utility.printMsg("Pushed current branch to origin")
         return True
     
     def setDefaultConfig(self, config):
-       pass
+        pass

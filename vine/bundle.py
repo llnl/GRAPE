@@ -24,7 +24,7 @@ class Bundle(option.Option):
 
 
     Usage:
-       grape-bundle [--norecurse] [--branches=<config.patch.branches>]
+       grape-bundle [--noRecurse] [--branches=<config.patch.branches>]
                     [--tagprefix=<config.patch.tagprefix>]
                     [--describePattern=<config.patch.describePattern>]
                     [--name=<config.repo.name>]
@@ -33,7 +33,7 @@ class Bundle(option.Option):
 
 
     Options:
-       --norecurse                      bundle only current level
+       --noRecurse                      bundle only current level
        --branches=<list>                the space delimited list of branches to bundle.
                                         [default: .grapeconfig.patch.branches]
        --tagprefix=<str>                the prefix used to tag start points to bundle
@@ -96,7 +96,7 @@ class Bundle(option.Option):
         describePattern = args["--describePattern"]
         tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
 
-        if not args["--norecurse"]: 
+        if not args["--noRecurse"]: 
             os.chdir(self._baseDir)
             grapecmd = os.path.join(os.path.dirname(__file__), "..", "grape")
             grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle"])
@@ -112,8 +112,8 @@ class Bundle(option.Option):
                 print("Branch %s has diverged from or is ahead of origin. Sync branches before bundling." % branch) 
                 return False
             tagname = "%s/%s" % (tagprefix, branch)
-            previousLocation = git.describe("--match '%s' %s" % (describePattern, tagname), quiet=True)
-            currentLocation = git.describe("--match '%s' %s" % (describePattern, branch), quiet=True)
+            previousLocation = git.describe("--match '%s' %s" % (describePattern, tagname))
+            currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
             if previousLocation.strip() != currentLocation.strip():
                 revlists = " %s..%s" % (tagname, branch)
                 bundlename = args["--outfile"]
@@ -174,7 +174,7 @@ class Unbundle(option.Option):
                 sourceDestPair = token.split(":")
                 source = sourceDestPair[0]
                 dest = sourceDestPair[1]
-                bundleHeads = git.bundle("list-heads %s" % bundleName, quiet=True).split("\n")
+                bundleHeads = git.bundle("list-heads %s" % bundleName).split("\n")
                 bundleBranches = []
                 for line in bundleHeads:
                     if "refs/heads" in line:
@@ -183,13 +183,13 @@ class Unbundle(option.Option):
                     mappings += "%s:%s " % (source, dest)
 
             try:
-                git.bundle("verify %s" % bundleName, quiet=True)
+                git.bundle("verify %s" % bundleName)
             except git.GrapeGitError as e:
                 print e.gitCommand
                 print e.cwd
                 print e.gitOutput
                 return False
-            git.fetch("-u %s %s" % (bundleName, mappings), quiet=False)
+            git.fetch("-u %s %s" % (bundleName, mappings))
         return True
         
     def setDefaultConfig(self, config):

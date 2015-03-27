@@ -71,11 +71,11 @@ def read(additionalFileNames=None):
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False), ".grapeconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False, throwIfNotFound=False), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False), ".git", ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False, throwIfNotFound=False), ".git", ".grapeuserconfig"))
     except:
         pass
 
@@ -135,11 +135,14 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             except KeyError:
                 pass
 
-        publicBranches = self.get("flow", "publicbranches").split()
+        publicBranches = self.getPublicBranchList()
         if branch in publicBranches:
             return branch
         publicMapping = self.getMapping("flow", "topicPrefixMappings")
         return publicMapping[git.branchPrefix(branch)]
+    
+    def getPublicBranchList(self):
+        return self.get("flow", "publicbranches").split()
 
     def ensureSection(self, section):
         try:
@@ -182,7 +185,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     @staticmethod
     def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
         config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
-        publicBranches = config.getList("flow","publicbranches")
+        publicBranches = config.getPublicBranchList()
         if workspaceDir is None:
             workspaceDir = utility.workspaceDir()
         active = GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)
@@ -193,7 +196,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             os.chdir(os.path.join(workspaceDir,prefix))
             configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix), publicBranches)
 
-            if git.diff("--name-only %s %s" % (since, now), quiet=True): 
+            if git.diff("--name-only %s %s" % (since, now)): 
                 modified.append(repo)
 
         os.chdir(cwd)

@@ -14,7 +14,7 @@ class Branches(option.Option):
 
     def execute(self, args):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        git.branch()
+        print(git.branch())
         return True
 
     def setDefaultConfig(self, config):

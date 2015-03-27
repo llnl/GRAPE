@@ -41,18 +41,18 @@ class Config(option.Option):
             return False
         dotGit = git.gitDir()
          
-        print("optimizing git performance on slow file systems...")
+        utility.printMsg("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
         #have git automatically do some garbage collection / optimization
-        print("setting up automatic git garbage collection...")
+        utility.printMsg("Setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
         #prevents false conflict detection due to differences in filesystem
         # time stamps
-        print("Optimizing cross platform portability...")
+        utility.printMsg("Optimizing cross platform portability...")
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZStash)
@@ -60,7 +60,7 @@ class Config(option.Option):
         if not args["--nocredcache"]:
             cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
-                print("Enabling 12 hr caching of https credentials...")
+                utility.printMsg("Enabling 12 hr caching of https credentials...")
                 git.config("--global credential.helper", "cache --timeout=43200")
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
@@ -68,19 +68,19 @@ class Config(option.Option):
         mergeVerifyPath = os.path.join(os.path.dirname(__file__),"..","merge-and-verify-driver")
         
         if os.path.exists(mergeVerifyPath): 
-           print("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
-           git.config("merge.verify.name","merge and verify driver")
-           git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
+            utility.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
+            git.config("merge.verify.name","merge and verify driver")
+            git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
         else:
-           print("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
+            utility.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
-        print("setting lg as an alias for a pretty log call...")
+        utility.printMsg("Setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
         # perform an update of the active subprojects if asked.
         ask = not args["--nouv"]
-        updateView = ask and (args["--uv"] or utility.userInput("do you want to edit your active subprojects?"
+        updateView = ask and (args["--uv"] or utility.userInput("Do you want to edit your active subprojects?"
                                                                 " (you can do this later using grape uv) [y/n]", "n"))
         if updateView:
             grapeMenu.menu().applyMenuChoice("uv", args["--uvArg"])
@@ -98,7 +98,7 @@ class Config(option.Option):
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
-            print("configured repo to use p4merge for conflict resolution")
+            utility.printMsg("Configured repo to use p4merge for conflict resolution")
         else:
             git.config("merge.tool","tkdiff")
 
@@ -108,10 +108,10 @@ class Config(option.Option):
         if (useP4Diff):
             p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
             if os.path.exists(p4diffScript): 
-               git.config("diff.external",p4diffScript)
-               print("configured repo to use p4merge for diff calls - p4merge must be in your path")
+                git.config("diff.external",p4diffScript)
+                utility.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
-               print("Could not find p4diff script at %s" % p4diffScript)
+                utility.printMsg("Could not find p4diff script at %s" % p4diffScript)
         useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
@@ -137,14 +137,14 @@ class Config(option.Option):
                     return False
 
         # install hooks here and in all submodules
-        print("Installing hooks in all repos")
+        utility.printMsg("Installing hooks in all repos...")
         cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks")
         
         #  ensure all public branches are available in all repos
         submodules = git.getActiveSubmodules()
         config = grapeConfig.grapeConfig()
-        publicBranches = config.getList("flow", "publicbranches")
+        publicBranches = config.getPublicBranchList()
         submodulePublicBranches = set(config.getMapping('workspace', 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
             self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub, submodulePublicBranches)
