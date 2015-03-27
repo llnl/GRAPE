@@ -99,7 +99,7 @@ class Command(object):
         followThread = threading.Thread(target=followTarget)
         thread.start()
 
-        thread.join(0.1)
+        thread.join(startStreaming)
         if thread.is_alive():
             # follow output in the outfile
             followThread.start()
