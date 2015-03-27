@@ -16,7 +16,7 @@ class Walkthrough(option.Option):
     Options:
         --difftool=<tool>  Command to use for diff.
                            Valid choices are: kdiff3, kompare, tkdiff,
-                              meld, xxdiff, emerge, vimdiff, gvimdiff,
+                              meld, xxdiff, emerge, gvimdiff,
                               ecmerge, diffuse, opendiff, p4merge, and araxis.
                            [default: .grapeconfig.walkthrough.difftool]
         --height=<height>  Height of window in pixels.
@@ -304,10 +304,8 @@ class DiffManager(ProjectManager):
 
       ProjectManager.__init__(self, master, height=height, width=width)
 
-      self.filepanelabel.set("Double click to launch %s" % self.difftool)
-      self.filepanelabel.set("Double click to choose a project")
-
       os.chdir(utility.workspaceDir())
+      # Loop over list backwards so we can delete entries
       for index in reversed(range(self.numprojects)):
          dir = self.projects[index]
          type = self.projtype[index]
@@ -343,6 +341,13 @@ class DiffManager(ProjectManager):
          else:
             self.removeProjectEntry(index)
 
+      self.filepanelabel.set("Double click to launch %s" % self.difftool)
+      if len(self.projects) > 0:
+         self.projpanelabel.set("Double click to choose a project")
+      else:
+         self.projpanelabel.set("No differences")
+
+
    def getBranch(self, branch):
       try:
          # -- and --cached just return themselves
@@ -350,6 +355,9 @@ class DiffManager(ProjectManager):
       except:
          if not branch.startswith("origin/"):
             branch = "origin/"+branch
+      # TODO figure out what to do with SHA's
+      # TODO always fetch the origin
+      # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
       if not self.noFetch and branch.startswith("origin/"):
          git.fetch("origin", branch.partition("/")[2])
       return branch
