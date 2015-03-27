@@ -66,7 +66,7 @@ def popGlobalArgs():
 
 # thanks to jcollado at stackoverflow for inspiration:
 # http://stackoverflow.com/questions/1191374/subprocess-with-timeout
-import threading
+import multiprocessing
 import tailer
 class Command(object):
     def __init__(self, cmd, wd, outfile, stdin):
@@ -76,45 +76,51 @@ class Command(object):
         self.outfile = outfile
         self.fileno = outfile.fileno()
 #        print self.outfile.name
-        self.stopFollowing = False
+        self.stopFollowing = multiprocessing.Value('i', 0)
         self.stdin = stdin
         self.generator = None
+        self.finishedProcesses = multiprocessing.Queue()
+
 
     def run(self, startStreaming=5):
-        def target():
-            self.process = subprocess.Popen(self.cmd, stdout=self.outfile.fileno(), stderr=subprocess.STDOUT, shell=(os.name != "nt"),
-                                   cwd=self.wd, stdin=self.stdin, bufsize=1)
-            self.process.wait()
+        def target(cmd, fileno, workingDirectory,infile):
+            # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue. 
+ 
+            process = subprocess.Popen(cmd, stdout=fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+                                   cwd=workingDirectory, stdin=sys.stdin, bufsize=1)
+            process.wait()
+            self.finishedProcesses.put(process, block=False)
+            
         
-        def followTarget():
-            fo = open(self.outfile.name, mode='r')
+        def followTarget(fname):
+            # uses tailer to follow the output of the running process
+            fo = open(fname, mode='r')
             self.generator = tailer.follow(fo)
             for l in self.generator:
-                if self.stopFollowing:
+                if self.stopFollowing.value > 0:
                     break
                 print l 
             fo.close()
-        
-        thread = threading.Thread(target=target)
-        followThread = threading.Thread(target=followTarget)
+        # the cmd launch process
+        thread = multiprocessing.Process(target=target,args=(self.cmd, self.outfile.fileno(), self.wd, self.stdin))
+        # the tailer.follow process
+        followThread = multiprocessing.Process(target=followTarget, args=[self.outfile.name])
         thread.start()
 
         thread.join(startStreaming)
         if thread.is_alive():
             # follow output in the outfile
+            print "Executing %s\n\tWorking Directory: %s..." % (self.cmd, self.wd)
             followThread.start()
             # keep going until the subprocess is done
             thread.join()
-            self.stopFollowing = True
+            self.stopFollowing.value = 1
             # flush outfile with a newline to force a yield in tailer.
             with open(self.outfile.name, mode='a') as f:
                 f.writelines(['\n'])
             # stop following the subprocess
             followThread.join()
-            #if followThread.is_alive():
-            #    print 'killing follow thread'
-            #    self.followProcess.kill()
-            #    followThread.join()
+
 
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
@@ -147,17 +153,17 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
 
     else:
         with tempfile.NamedTemporaryFile() as tmpFile:
-            command = Command(command, workingDirectory, tmpFile, stdin)
-            command.run(startStreaming=2.0)
+            launcher = Command(command, workingDirectory, tmpFile, stdin)
+            launcher.run(startStreaming=2.0)
             #process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
             #                            stderr=subprocess.STDOUT ) 
             #process.wait()
             tmpFile.seek( 0 )
             output = tmpFile.read()
             #print output
-            if verbose > 1 and not command.stopFollowing:
+            if verbose > 1 and not launcher.stopFollowing:
                 print(output.strip())
-            process = command.process
+            process = launcher.finishedProcesses.get()
 
     process.output = output
     if process.returncode != 0 and verbose > 1:
