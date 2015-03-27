@@ -1,5 +1,24 @@
 
 
+Fri Mar 27 14:10:12 2015 Peter B. Robinson
+v1.6.0
+Reviewers: Benjamin T. Liu
+
+This is the equivalent of v1.5.10. 
+
+INTERFACE CHANGES: 
+Grape's verbosity mechanism has received a significant overhaul, and is significantly less noisy. There is now a global -v option for verbose, and -q option for quiet. All options have lost their own -v flag.
+Grape has learned how to report its version, grape --version. 
+All grape commands that had the --norecurse option now have --noRecurse instead. 
+Grape m has lost it's --quiet flag.
+Grape review has gained --subprojectsOnly, which causes only pull requests associated with submodules and nested subprojects to be created/updated. 
+Grape test has gained --debug mode, which dumps all output in tests to stdout. 
+Grape up has gained --wd=<working dir> , which specifies which repository to update public branches in. 
+
+INTERNAL CHANGES
+grape m, mr, and md all share the same code path (lives in md).
+
+
 Fri Mar 27 13:33:36 2015 Peter B. Robinson
 v1.5.10
 Reviewers: Benjamin T. Liu
