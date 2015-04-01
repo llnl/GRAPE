@@ -1,5 +1,12 @@
 
 
+Wed Apr  1 16:21:23 2015 Peter B. Robinson
+v1.6.1
+Reviewers: Christopher A. White, Aaron C. Fisher, Benjamin T. Liu
+
+Adds the capability for grape to print output of processes that last more than a few seconds. Adds the capability to disable this using --noProgress.
+
+
 Fri Mar 27 14:10:12 2015 Peter B. Robinson
 v1.6.0
 Reviewers: Benjamin T. Liu
