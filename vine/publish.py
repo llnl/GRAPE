@@ -1185,9 +1185,10 @@ class Publish(resumable.Resumable):
             valid = self.validateInput(submodulePolicy, args)
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in submodules:
-                    os.chdir(os.path.join(wsdir, sub))
+                    subpath = os.path.join(wsdir,sub)
+                    os.chdir(subpath)
 
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--noRecurse', '--wd=%s' % subpath, '--public=%s' % submodulePublic])
                     self.publish(submodulePolicy, submodulePublic, topic, args)
                     os.chdir(wsdir)
                     #add and commit any new merge commits in submodules as a result of the publish
