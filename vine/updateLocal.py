@@ -36,8 +36,9 @@ class UpdateLocal(option.Option):
 
     def execute(self, args):
         wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
+        wsDir = os.path.abspath(wsDir)
         cwd = os.getcwd()
-
+        
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurseSubmodules = recurseSubmodules and (not args["--noRecurse"])
