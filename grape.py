@@ -32,7 +32,7 @@ Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
 --noProgress Do not show progress for long-running git subprocesses. This will remove
-             a fair amount of thread-launch overhead in GRAPE, which can have a speedup of
+             a fair amount of process-launch overhead in GRAPE, which can have a speedup of
              about a third. 
 
 

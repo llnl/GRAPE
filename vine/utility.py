@@ -77,7 +77,7 @@ def popGlobalArgs():
 # http://stackoverflow.com/questions/1191374/subprocess-with-timeout
 import multiprocessing
 import tailer
-class Command(object):
+class FollowableCommand(object):
     def __init__(self, cmd, wd, outfile, stdin):
         self.cmd = cmd
         self.process = None
@@ -101,13 +101,13 @@ class Command(object):
         
         def followTarget(fname):
             # uses tailer to follow the output of the running process
-            fo = open(fname, mode='r')
-            generator = tailer.follow(fo)
-            for l in generator:
-                if self.stopFollowing.value > 0:
-                    break
-                print l 
-            fo.close()
+            with open(fname, mode='r') as fo:
+                generator = tailer.follow(fo)
+                for l in generator:
+                    if self.stopFollowing.value > 0:
+                        break
+                    print l 
+                
         # the cmd launch process
         thread = multiprocessing.Process(target=target,args=(self.cmd, self.outfile.fileno(), self.wd, self.stdin))
         # the tailer.follow process
@@ -162,7 +162,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
         
     elif globalShowProgress:
         with tempfile.NamedTemporaryFile() as tmpFile:
-            launcher = Command(command, workingDirectory, tmpFile, stdin)
+            launcher = FollowableCommand(command, workingDirectory, tmpFile, stdin)
             launcher.run(startStreaming=2.0)
             tmpFile.seek( 0 )
             output = tmpFile.read()

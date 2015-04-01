@@ -316,7 +316,8 @@ class Publish(resumable.Resumable):
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
             
-        self.order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureModifiedSubmodulesAreActive", 
+        self.order = ["testForCleanWorkspace1",  "md", "ensureModifiedSubmodulesAreActive", 
+                      "verifyPublishActions",
                       "ensureReview", "verifyCompletedReview", 
                       "markInProgress", "tickVersion", "updateLog",
                       "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
