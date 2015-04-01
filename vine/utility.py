@@ -90,7 +90,7 @@ class FollowableCommand(object):
 
 
     def run(self, startStreaming=5):
-        def target(cmd, fileno, workingDirectory,infile):
+        def runTarget(cmd, fileno, workingDirectory,infile):
             # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue. 
  
             process = subprocess.Popen(cmd, stdout=fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
@@ -109,7 +109,7 @@ class FollowableCommand(object):
                     print l 
                 
         # the cmd launch process
-        thread = multiprocessing.Process(target=target,args=(self.cmd, self.outfile.fileno(), self.wd, self.stdin))
+        thread = multiprocessing.Process(target=runTarget,args=(self.cmd, self.outfile.fileno(), self.wd, self.stdin))
         # the tailer.follow process
         followThread = multiprocessing.Process(target=followTarget, args=[self.outfile.name])
         thread.start()
