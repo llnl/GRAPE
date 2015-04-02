@@ -36,12 +36,12 @@ class Pull(option.Option):
 
         def pull(currentBranch, proj):
             if args["--rebase"]:
-                argStr = "--rebase %s" % currentBranch
+                argStr = "--rebase origin %s" % currentBranch
             else:
-                argStr = currentBranch
+                argStr = "origin %s " % currentBranch
             
             utility.printMsg("Pulling %s in %s..." % (currentBranch, proj))
-            git.pull("origin %s" % argStr, throwOnFail=True)
+            git.pull(argStr, throwOnFail=True)
             
         submodules = git.getActiveSubmodules()
         
