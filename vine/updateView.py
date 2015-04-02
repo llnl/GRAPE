@@ -257,10 +257,10 @@ class UpdateView(option.Option):
                         mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
                         if mr:
                             grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
-                if e.commError:
+                elif e.commError:
                     utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
                                      "local version. " % branch)
-                if "Couldn't find remote ref" in e.gitOutput:
+                elif "Couldn't find remote ref" in e.gitOutput:
                     utility.printMsg("No remote reference to %s in origin. You may want to push this branch.\n"
                                      "Checking out most recent local version." % branch)
                 else:    

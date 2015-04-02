@@ -13,7 +13,7 @@ class Pull(option.Option):
     Usage: grape-pull [--noRecurse] [--rebase] 
 
     Options:
-    --noRecurse     Don't perform pulles in submodules or subprojects.   
+    --noRecurse     Don't perform pulls in submodules or subprojects.   
     --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
 
     """
@@ -23,7 +23,7 @@ class Pull(option.Option):
         self._section = "Workspace"
 
     def description(self):
-        return "Pulles your current branch to origin in all projects in this workspace."
+        return "Pulls your current branch to origin in all projects in this workspace."
 
     def execute(self, args):
         baseDir = utility.workspaceDir()
@@ -52,9 +52,11 @@ class Pull(option.Option):
                 if submodules:
                     utility.printMsg("Performing pulls in all active submodules")
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
-                subbranch = subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
+                subPubBranch = subPubMap[currentBranch]
+                subbranch = subPubBranch if currentBranch in publicBranches else currentBranch
                 for sub in submodules: 
                     os.chdir(os.path.join(baseDir, sub))
+                    
                     pull(subbranch, sub)
         
                 nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
@@ -70,7 +72,8 @@ class Pull(option.Option):
             print e.cwd
             print e.gitOutput
             return False
-        os.chdir(cwd)
+        finally:
+            os.chdir(cwd)
         
         utility.printMsg("Pulled current branch from origin")
         return True
