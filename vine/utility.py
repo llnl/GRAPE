@@ -163,7 +163,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     elif globalShowProgress:
         with tempfile.NamedTemporaryFile() as tmpFile:
             launcher = FollowableCommand(command, workingDirectory, tmpFile, stdin)
-            launcher.run(startStreaming=2.0)
+            launcher.run(startStreaming=3.0)
             tmpFile.seek( 0 )
             output = tmpFile.read()
             if verbose > 1 and launcher.stopFollowing.value == 0:
