@@ -525,6 +525,18 @@ options are at least listed below.
     --noRecurse     Don't perform pushes in submodules.  
 
     
+## pull
+
+    grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
+    it uses 'git pull origin <currentBranch>' for the git command.
+
+    Usage: grape-pull [--noRecurse] [--rebase] 
+
+    Options:
+    --noRecurse     Don't perform pulls in submodules or subprojects.   
+    --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
+
+    
 ## commit
 
     Usage: grape-commit [-m <message>] [-a | <filetree>]  
