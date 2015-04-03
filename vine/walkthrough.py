@@ -225,6 +225,9 @@ class ProjectManager:
       self.main.pack(fill=Tk.BOTH, expand=1, side=Tk.BOTTOM)
 
    def chooseProject(self):
+      oldlabel = self.projpanelabel.get()
+      self.projpanelabel.set("Working...")
+      self.master.update()
       index = self.projlist.index(Tk.ACTIVE)
       self.projlist.itemconfig(self.oldprojindex, bg=self.bgvisited, fg=self.fgvisited)
       try:
@@ -233,6 +236,7 @@ class ProjectManager:
          self.oldprojindex = index
       except:
          pass
+      self.projpanelabel.set(oldlabel)
       self.master.update()
 
    def spawnDiff(self):
@@ -349,17 +353,18 @@ class DiffManager(ProjectManager):
 
 
    def getBranch(self, branch):
-      try:
-         # -- and --cached just return themselves
-         git.shortSHA(branch)
-      except:
-         if not branch.startswith("origin/"):
-            branch = "origin/"+branch
-      # TODO figure out what to do with SHA's
-      # TODO always fetch the origin
-      # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
-      if not self.noFetch and branch.startswith("origin/"):
-         git.fetch("origin", branch.partition("/")[2])
+      if not branch.startswith("--"):
+         try:
+            # -- and --cached just return themselves
+            git.shortSHA(branch)
+         except:
+            if not branch.startswith("origin/"):
+               branch = "origin/"+branch
+         # TODO figure out what to do with SHA's
+         # TODO always fetch the origin
+         # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
+         if not self.noFetch and branch.startswith("origin/"):
+            git.fetch("origin", branch.partition("/")[2])
       return branch
 
    def initFiles(self, index):
