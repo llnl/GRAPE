@@ -1,5 +1,12 @@
 
 
+Wed Apr  8 14:59:45 2015 Benjamin T. Liu
+v1.6.3
+Reviewers: Aaron C. Fisher, Peter B. Robinson
+
+Fixes for grape publish --abort: Allow abort if nothing has yet been committed and allow release of lock for open, rather than merged, pull requests (not sure how this ever worked for abort).
+
+
 Fri Apr  3 14:31:05 2015 Peter B. Robinson
 v1.6.2
 Reviewers: Ben Liu, Aaron C. Fisher
