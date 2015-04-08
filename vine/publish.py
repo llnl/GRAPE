@@ -500,15 +500,17 @@ class Publish(resumable.Resumable):
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        state = "open"
         if not request:
             matchingRequests = repo.getMergedPullRequests(args["--topic"], args["--public"])
+            state = "merged"
             for r in matchingRequests:
                 if "**IN PROGRESS**" in r.title():
                     request = r
                     break
         if request:
             title = request.title().replace("**IN PROGRESS**", "")
-            return self.markReview(args, ["--title=%s" % title, "--state=merged"], "")
+            return self.markReview(args, ["--title=%s" % title, "--state=%s" % state], "")
         else:
             utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
