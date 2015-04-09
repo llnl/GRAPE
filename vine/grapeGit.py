@@ -292,6 +292,8 @@ def push(args, throwOnFail = False):
 def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
 
+def reset(args):
+    return gitcmd("reset %s" % args, "Reset failed") 
 
 def revert(args):
     return gitcmd("revert %s" % args, "Revert failed")

@@ -135,12 +135,14 @@ class UpdateView(option.Option):
                 else:
                     deinitStr = ""
                 rmCachedStr = ""
+                resetStr = ""
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += ' %s' % submodule
                     else:
                         deinitStr += ' %s' % submodule
                         rmCachedStr += ' %s' % submodule
+                        resetStr += ' %s' % submodule
 
                 utility.printMsg("Configuring submodules...")
                 utility.printMsg("Initializing submodules...")
@@ -149,6 +151,7 @@ class UpdateView(option.Option):
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
                     git.submodule("deinit %s" % deinitStr.strip())
                     git.rm("--cached %s" % rmCachedStr)
+                    git.reset(" %s" % resetStr)
 
                 if initStr:
                     utility.printMsg("Updating active submodules...(%s)" % initStr)
@@ -240,7 +243,7 @@ class UpdateView(option.Option):
         git.fetch()
 
         if git.currentBranch() == branch:
-            os.chdir(cwd)
+            os.chdir(cwd) 
             return
 
         if git.hasBranch(branch):
