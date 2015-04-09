@@ -1,5 +1,13 @@
 
 
+Thu Apr  9 10:37:36 2015 Peter B. Robinson
+v1.7.0
+Reviewers: Ben Liu
+
+Hotfix to fix unintentional removal of submodules in updateView.
+
+
+
 Wed Apr  8 14:59:45 2015 Benjamin T. Liu
 v1.6.3
 Reviewers: Aaron C. Fisher, Peter B. Robinson
@@ -19,6 +27,9 @@ v1.6.1
 Reviewers: Christopher A. White, Aaron C. Fisher, Benjamin T. Liu
 
 Adds the capability for grape to print output of processes that last more than a few seconds. Adds the capability to disable this using --noProgress.
+
+
+
 
 
 Fri Mar 27 14:10:12 2015 Peter B. Robinson
