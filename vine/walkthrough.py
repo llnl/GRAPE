@@ -351,32 +351,32 @@ class DiffManager(ProjectManager):
          type = self.projtype[index]
          haveDiff = False
          if type == "Outer":
-               # should check against branch B
             if self.branchA == "--cached":
-               if len(git.diff("--cached --name-only").split()) > 0:
+               if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
                   haveDiff = True
-            # should check against branch B as well
             elif self.branchB == "--":
                # Outer is always last in the reverse iteration,
                # so all submodule entries should have already been removed.
-               haveDiff = (len(changedFiles) > 0)
+               haveDiff = (len(changedFiles) > 0) or git.shortSHA("HEAD") != git.shortSHA(self.branchA)
             else:
                haveDiff = (git.shortSHA(self.branchA) != git.shortSHA(self.branchB))
          elif type.endswith("Submodule"):
-            if self.branchA == "--cached":
+            if type.startswith("Inactive"):
+               #TODO
+               pass
+            elif self.branchA == "--cached":
                os.chdir(os.path.join(utility.workspaceDir(), dir))
-               # should check against branch B
-               if len(git.diff("--cached --name-only").split()) > 0:
+               if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
                   haveDiff = True
                os.chdir(utility.workspaceDir())
-            # should check against branch B as well
             elif self.branchB == "--":
                if dir in changedFiles:
                   haveDiff = True
                   changedFiles.remove(dir)
-            elif type.startswith("Inactive"):
-               #TODO
-               pass
+               if not haveDiff:
+                  shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
+                  shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % ("HEAD", dir), "Failed to execute ls-tree").split()[2]
+                  haveDiff = (shaA != shaB)
             else:
                shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
                shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchB, dir), "Failed to execute ls-tree").split()[2]
@@ -386,6 +386,7 @@ class DiffManager(ProjectManager):
             pass
          elif type.endswith("Subtree"):
             #TODO
+            haveDiff = True
             pass
 
          if haveDiff:
@@ -472,7 +473,7 @@ class DiffManager(ProjectManager):
 
       if self.branchA == "--cached":
          self.diffAnnotationA.set("%s <cached>" % self.diffbranchB)
-         self.diffAnnotationB.set("%s <staged>" % self.diffbranchB)
+         self.diffAnnotationB.set("<staged>")
       elif self.branchB == "--":
          self.diffAnnotationA.set(self.diffbranchA)
          self.diffAnnotationB.set("<workspace>")
