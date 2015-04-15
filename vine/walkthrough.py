@@ -18,7 +18,7 @@ class Walkthrough(option.Option):
                            Valid choices are: kdiff3, kompare, tkdiff,
                               meld, xxdiff, emerge, gvimdiff,
                               ecmerge, diffuse, opendiff, p4merge, and araxis.
-                           [default: .grapeconfig.walkthrough.difftool]
+                           If unspecified, default git difftool will be used.
         --height=<height>  Height of window in pixels.
                            [default: .grapeconfig.walkthrough.height]
         --width=<width>    Width of window in pixels.
@@ -281,15 +281,29 @@ class ProjectManager:
 
 class DiffManager(ProjectManager):
    def __init__(self, master, height=0, width=0,
-                branchA="", branchB="", difftool="", diffargs="",
+                branchA="", branchB="", difftool=None, diffargs="",
                 showUnchanged=False, noFetch=False):
+      validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
+
       # Configurable parameters
-      if difftool == "":
+      if difftool == None: 
+         try:
+            difftool = git.config("--get diff.tool")
+         except:
+            pass
+
+         if difftool == "vimdiff":
+            utility.printMsg("Using gvimdiff instead of vimdiff.")
+            difftool = "gvimdiff"
+
+      if difftool not in validDiffTools:
+         utility.printMsg("Using default difftool.")
          self.difftool = "default difftool"
          self.difftoolarg = ""
       else:
          self.difftool = difftool
          self.difftoolarg = "-t %s" % difftool
+
       self.diffargs = diffargs
       self.noFetch = noFetch
       self.branchA = self.getBranch(branchA)
