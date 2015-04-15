@@ -3,6 +3,7 @@ import subprocess
 import utility
 import ConfigParser
 import grapeConfig
+import StringIO
 
 
 class GrapeGitError(Exception):
@@ -163,12 +164,22 @@ def getAllSubmodules():
         subconfig.read(os.path.join(baseDir(), ".gitmodules"))
     except ConfigParser.ParsingError:
         # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
-        # read section names in succussfully, which is all we need
+        # read section names in successfully, which is all we need
         pass
     sections = subconfig.sections()
     submodules = []
     for s in sections:
         submodules.append(s.split()[1].split('"')[1])
+    return submodules
+
+def getAllSubmoduleURLs():
+    subconfig = ConfigParser.ConfigParser()
+    fp = StringIO.StringIO('\n'.join(line.strip() for line in open(os.path.join(baseDir(), ".gitmodules"))))
+    subconfig.readfp(fp)
+    sections = subconfig.sections()
+    submodules = []
+    for s in sections:
+        submodules.append(subconfig.get(s, "url"))
     return submodules
 
 

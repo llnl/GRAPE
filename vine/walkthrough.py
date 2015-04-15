@@ -337,9 +337,11 @@ class DiffManager(ProjectManager):
          type = self.projtype[index]
          haveDiff = False
          if type == "Outer":
+               # should check against branch B
             if self.branchA == "--cached":
                if len(git.diff("--cached --name-only").split()) > 0:
                   haveDiff = True
+            # should check against branch B as well
             elif self.branchB == "--":
                # Outer is always last in the reverse iteration,
                # so all submodule entries should have already been removed.
@@ -349,13 +351,18 @@ class DiffManager(ProjectManager):
          elif type.endswith("Submodule"):
             if self.branchA == "--cached":
                os.chdir(os.path.join(utility.workspaceDir(), dir))
+               # should check against branch B
                if len(git.diff("--cached --name-only").split()) > 0:
                   haveDiff = True
                os.chdir(utility.workspaceDir())
+            # should check against branch B as well
             elif self.branchB == "--":
                if dir in changedFiles:
                   haveDiff = True
                   changedFiles.remove(dir)
+            elif type.startswith("Inactive"):
+               #TODO
+               pass
             else:
                shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
                shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchB, dir), "Failed to execute ls-tree").split()[2]
