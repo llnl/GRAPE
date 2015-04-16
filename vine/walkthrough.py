@@ -342,6 +342,9 @@ class DiffManager(ProjectManager):
          changedFiles = { x.strip().split()[1] for x in git.status(statusStr).splitlines() }
          utility.printMsg("Done.")
 
+      # Get the url mapping for all submodules
+      submoduleURLMap = git.getAllSubmoduleURLMap()
+
       utility.printMsg("Examining projects...")
 
       os.chdir(utility.workspaceDir())
@@ -362,8 +365,10 @@ class DiffManager(ProjectManager):
                haveDiff = (git.shortSHA(self.branchA) != git.shortSHA(self.branchB))
          elif type.endswith("Submodule"):
             if type.startswith("Inactive"):
-               #TODO
-               pass
+               fullurl = utility.parseSubprojectRemoteURL(submoduleURLMap[dir])
+               # TODO need to strip off origin
+               remotels = git.gitcmd("ls-remote --heads %s %s %s" % (fullurl,self.getSubBranch(self.branchA),self.getSubBranch(self.branchB)), "Failed to execute ls-remote")
+               print remotels
             elif self.branchA == "--cached":
                os.chdir(os.path.join(utility.workspaceDir(), dir))
                if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
@@ -419,6 +424,17 @@ class DiffManager(ProjectManager):
             git.fetch("origin", branch.partition("/")[2])
       return branch
 
+   def getSubBranch(self, branch):
+      submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
+      if not branch.startswith("--"):
+         branchParts = branch.split("/",1)
+         if len(branchParts) == 1 or branchParts[0] == "origin":
+            if branchParts[-1] in submapping.keys():
+               branchParts[-1] = submapping[branchParts[-1]]
+         return "/".join(branchParts)
+      else:
+         return branch
+
    def initFiles(self, index):
       self.filelist.delete(0,Tk.END)
       dir = self.projects[index]
@@ -428,19 +444,8 @@ class DiffManager(ProjectManager):
       self.diffbranchB = self.branchB
 
       if type.endswith("Submodule"):
-         submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
-         if not self.branchA.startswith("--"):
-            branchParts = self.branchA.split("/",1)
-            if len(branchParts) == 1 or branchParts[0] == "origin":
-               if branchParts[-1] in submapping.keys():
-                  branchParts[-1] = submapping[branchParts[-1]]
-            self.diffbranchA = "/".join(branchParts)
-         if not self.branchB.startswith("--"):
-            branchParts = self.branchB.split("/",1)
-            if len(branchParts) == 1 or branchParts[0] == "origin":
-               if branchParts[-1] in submapping.keys():
-                  branchParts[-1] = submapping[branchParts[-1]]
-            self.diffbranchB = "/".join(branchParts)
+         self.diffbranchA = self.getSubBranch(self.branchA) 
+         self.diffbranchB = self.getSubBranch(self.branchB) 
 
       if type.startswith("Inactive"):
          remotels = git.gitcmd("ls-remote")
