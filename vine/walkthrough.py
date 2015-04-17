@@ -11,26 +11,32 @@ class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
+                   [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
     Options:
-        --difftool=<tool>  Command to use for diff.
-                           Valid choices are: kdiff3, kompare, tkdiff,
-                              meld, xxdiff, emerge, gvimdiff,
-                              ecmerge, diffuse, opendiff, p4merge, and araxis.
-                           If unspecified, default git difftool will be used.
-        --height=<height>  Height of window in pixels.
-                           [default: .grapeconfig.walkthrough.height]
-        --width=<width>    Width of window in pixels.
-                           [default: .grapeconfig.walkthrough.width]
-        --staged           Compare staged changes with branch <b1>.
-        --workspace        Compare workspace files with branch <b1>.
-        --showUnchanged    Show unchanged subprojects.
-        --noFetch          Show unchanged subprojects.
-        <b1>               The first branch to compare.
-                           Defaults to the current branch of workspace.
-        <b2>               The second branch to compare.
-                           Defaults to the public branch for <b1>.
+        --difftool=<tool>           Command to use for diff.
+                                    Valid choices are: kdiff3, kompare, tkdiff,
+                                       meld, xxdiff, emerge, gvimdiff,
+                                       ecmerge, diffuse, opendiff, p4merge, and araxis.
+                                    If unspecified, default git difftool will be used.
+        --height=<height>           Height of window in pixels.
+                                    [default: .grapeconfig.walkthrough.height]
+        --width=<width>             Width of window in pixels.
+                                    [default: .grapeconfig.walkthrough.width]
+        --staged                    Compare staged changes with branch <b1>.
+        --workspace                 Compare workspace files with branch <b1>.
+        --showUnchanged             Show unchanged subprojects.
+        --noFetch                   Do not fetch.
+        --noInactive                Do not show inactive subprojects.
+        --noTopLevel                Do not show outer level project.
+        --noSubmodules              Do not show submodules.
+        --noSubtrees                Do not show nested subtrees.
+        --noNestedSubprojects       Do not show nested subprojects.
+        <b1>                        The first branch to compare.
+                                    Defaults to the current branch of workspace.
+        <b2>                        The second branch to compare.
+                                    Defaults to the public branch for <b1>.
 
     """
     def setDefaultConfig(self, config):
@@ -81,6 +87,9 @@ class Walkthrough(option.Option):
         diffmanager = DiffManager(master=root, height=height, width=width,
                                   branchA=b1, branchB=b2, difftool=difftool, diffargs=diffargs,
                                   showUnchanged=args["--showUnchanged"],
+                                  showInactive=not args["--noInactive"], showToplevel=not args["--noTopLevel"],
+                                  showSubmodules=not args["--noSubmodules"], showSubtrees=not args["--noSubtrees"],
+                                  showNestedSubprojects=not args["--noNestedSubprojects"],
                                   noFetch=args["--noFetch"])
         
         root.mainloop()
@@ -95,32 +104,28 @@ class Walkthrough(option.Option):
 
 # Base class for navigating files in a workspace
 class ProjectManager:
-   def __init__(self, master,
-                showInactive=True, showToplevel=True,
-                showSubmodules=True, showSubtrees=True, showNestedSubprojects=True,
-                height=0, width=0,
-                fginit='black', bginit='gray',
-                fgvisited='slate gray', bgvisited='light gray',
-                fgselected='black', bgselected='goldenrod',
-                fgactive='black', bgactive='light goldenrod'):
+   def __init__(self, master, **kwargs):
+      height = kwargs.get('height', 0)
+      width  = kwargs.get('width', 0)
+
       self.master = master
       self.grapeconfig = grapeConfig.grapeConfig()
       self.oldprojindex = 0
-      self.showInactive = showInactive
-      self.showToplevel = showToplevel
-      self.showSubmodules = showSubmodules
-      self.showSubtrees = showSubtrees
-      self.showNestedSubprojects = showNestedSubprojects
+      self.showInactive          = kwargs.get('showInactive', True)
+      self.showToplevel          = kwargs.get('showToplevel', True)
+      self.showSubmodules        = kwargs.get('showSubmodules', True)
+      self.showSubtrees          = kwargs.get('showSubtrees', True)
+      self.showNestedSubprojects = kwargs.get('showNestedSubprojects', True)
 
       # Colors
-      self.fginit = fginit
-      self.bginit = bginit
-      self.fgvisited = fgvisited
-      self.bgvisited = bgvisited
-      self.fgselected = fgselected
-      self.bgselected = bgselected
-      self.fgactive = fgactive
-      self.bgactive = bgactive
+      self.fginit     = kwargs.get('fginit', 'black')
+      self.bginit     = kwargs.get('bginit', 'gray')
+      self.fgvisited  = kwargs.get('fgvisited', 'slate gray')
+      self.bgvisited  = kwargs.get('bgvisited', 'light gray')
+      self.fgselected = kwargs.get('fgselected', 'black')
+      self.bgselected = kwargs.get('bgselected', 'goldenrod')
+      self.fgactive   = kwargs.get('fgactive', 'black')
+      self.bgactive   = kwargs.get('bgactive', 'light goldenrod')
 
       # Panel labels
       # These variables should be set by derived classes
@@ -280,12 +285,11 @@ class ProjectManager:
       pass
 
 class DiffManager(ProjectManager):
-   def __init__(self, master, height=0, width=0,
-                branchA="", branchB="", difftool=None, diffargs="",
-                showUnchanged=False, noFetch=False):
+   def __init__(self, master, **kwargs):
       validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
 
       # Configurable parameters
+      difftool = kwargs.get('difftool', None)
       if difftool == None: 
          try:
             difftool = git.config("--get diff.tool")
@@ -304,17 +308,17 @@ class DiffManager(ProjectManager):
          self.difftool = difftool
          self.difftoolarg = "-t %s" % difftool
 
-      self.diffargs = diffargs
-      self.noFetch = noFetch
-      self.branchA = self.getBranch(branchA)
-      self.branchB = self.getBranch(branchB)
+      self.diffargs = kwargs.get('diffargs', "")
+      self.noFetch = kwargs.get('noFetch', False)
+      self.branchA = self.getBranch(kwargs.get('branchA', ""))
+      self.branchB = self.getBranch(kwargs.get('branchB', ""))
       self.diffbranchA = ""
       self.diffAnnotationA = Tk.StringVar()
       self.diffAnnotationA.set(self.branchA)
       self.diffbranchB = ""
       self.diffAnnotationB = Tk.StringVar()
       self.diffAnnotationB.set(self.branchB)
-      self.showUnchanged = showUnchanged
+      self.showUnchanged = kwargs.get('showUnchanged', False)
 
       # Branch specification pane
       self.branchpane = Tk.Frame(master)
@@ -328,7 +332,7 @@ class DiffManager(ProjectManager):
       self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
       self.branchpane.pack(side=Tk.TOP)
 
-      ProjectManager.__init__(self, master, height=height, width=width)
+      ProjectManager.__init__(self, master, **kwargs)
 
       # If we are diffing against the workspace, get the status of the workspace
       # and save the set of changed files (including submodules).

@@ -172,14 +172,14 @@ def getAllSubmodules():
         submodules.append(s.split()[1].split('"')[1])
     return submodules
 
-def getAllSubmoduleURLs():
+def getAllSubmoduleURLMap():
     subconfig = ConfigParser.ConfigParser()
     fp = StringIO.StringIO('\n'.join(line.strip() for line in open(os.path.join(baseDir(), ".gitmodules"))))
     subconfig.readfp(fp)
     sections = subconfig.sections()
-    submodules = []
+    submodules = {}
     for s in sections:
-        submodules.append(subconfig.get(s, "url"))
+        submodules[subconfig.get(s,"path")] = subconfig.get(s, "url")
     return submodules
 
 
