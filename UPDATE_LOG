@@ -1,5 +1,12 @@
 
 
+Tue Apr 21 15:03:42 2015 Peter B. Robinson
+v1.7.1
+Reviewers: Ben Liu
+
+Fix for pulls on feature branches and N^2 bundles..
+
+
 Thu Apr  9 10:37:36 2015 Peter B. Robinson
 v1.7.0
 Reviewers: Ben Liu
