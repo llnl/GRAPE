@@ -52,7 +52,7 @@ class Pull(option.Option):
                 if submodules:
                     utility.printMsg("Performing pulls in all active submodules")
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
-                subbranch = subPubBranch[currentBranch] if currentBranch in publicBranches else currentBranch
+                subbranch = subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 for sub in submodules: 
                     os.chdir(os.path.join(baseDir, sub))
                     
