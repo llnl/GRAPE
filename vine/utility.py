@@ -142,6 +142,8 @@ def runInRepo(dirBrnchLmbda):
     os.chdir(curDir)
 
 import multiprocessing.pool  
+# Thanks to Chris Arndt at http://stackoverflow.com/questions/6974695/python-process-pool-non-daemonic
+# for this lovely magic. 
 class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False
     def _get_daemon(self):
