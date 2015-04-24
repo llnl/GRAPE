@@ -78,11 +78,11 @@ def popGlobalArgs():
 import multiprocessing
 import tailer
 
-def runFollowableTarget(followableCmd, cmd, fileno, workingDirectory, infile):
-    followableCmd.runTarget(cmd, fileno, workingDirectory, infile)
+def runFollowableTarget(followableCmd):
+    followableCmd.runTarget()
     
 def followFollowableTarget(followableCmd, fname):
-    followableCmd.followTarget(fname)
+    followableCmd.followTarget()
     
 class FollowableCommand(object):
     def __init__(self, cmd, wd, outfile, stdin):
@@ -95,17 +95,17 @@ class FollowableCommand(object):
         self.stdin = stdin
         self.finishedProcesses = multiprocessing.Queue()
 
-    def runTarget(self, cmd, fileno, workingDirectory,infile):
+    def runTarget(self):
         # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue. 
 
-        process = subprocess.Popen(cmd, stdout=fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
-                               cwd=workingDirectory, stdin=sys.stdin, bufsize=1)
+        process = subprocess.Popen(self.cmd, stdout=self.fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+                               cwd=self.wd, stdin=sys.stdin, bufsize=1)
         process.wait()
         self.finishedProcesses.put(process, block=False)
     
-    def followTarget(self, fname):
+    def followTarget(self):
         # uses tailer to follow the output of the running process
-        with open(fname, mode='r') as fo:
+        with open(self.outfile.name, mode='r') as fo:
             generator = tailer.follow(fo)
             for l in generator:
                 if self.stopFollowing.value > 0:
@@ -115,9 +115,9 @@ class FollowableCommand(object):
     def run(self, startStreaming=5):
      
         # the cmd launch process
-        thread = multiprocessing.Process(target=runFollowableTarget,args=(self, self.cmd, self.outfile.fileno(), self.wd, self.stdin))
+        thread = multiprocessing.Process(target=runFollowableTarget,args=[self])
         # the tailer.follow process
-        followThread = multiprocessing.Process(target=followFollowableTarget, args=[self, self.outfile.name])
+        followThread = multiprocessing.Process(target=followFollowableTarget, args=[self])
         thread.start()
 
         thread.join(startStreaming)
