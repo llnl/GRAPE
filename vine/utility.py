@@ -131,6 +131,67 @@ class FollowableCommand(object):
 
 
 
+
+def runInRepo(dirBrnchLmbda):
+    curDir = os.getcwd()
+    repo = dirBrnchLmbda[0]
+    branch = dirBrnchLmbda[1]
+    f = dirBrnchLmbda[2]
+    os.chdir(repo)
+    f(repo=repo, branch=branch)
+    os.chdir(curDir)
+
+import multiprocessing.pool  
+class NoDaemonProcess(multiprocessing.Process):
+    # make 'daemon' attribute always return False
+    def _get_daemon(self):
+        return False
+    def _set_daemon(self, value):
+        pass
+    daemon = property(_get_daemon, _set_daemon)
+
+# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
+# because the latter is only a wrapper function, not a proper class.
+class MyPool(multiprocessing.pool.Pool):
+    Process = NoDaemonProcess
+    
+class MultiRepoCommandLauncher(object):    
+    # lmbda needs to match the signature of f(repo=...) as called in runInRepo (above)
+    def __init__(self, lmbda, nProcesses=4, runInSubmodules=True, runInSubprojects=True, runInOuter=False):
+        self.lmbda = lmbda
+        self.runSubmodules = runInSubmodules
+        self.runSubprojects = runInSubprojects
+        self.runOuter = runInOuter
+        self.pool = MyPool(processes=nProcesses)
+        
+    def launchFromWorkspaceDir(self):
+        cwd = os.getcwd()
+        os.chdir(workspaceDir())
+        repos = []
+        branches = []
+        config = grapeConfig.grapeConfig()
+        publicBranches = config.getPublicBranchList()
+        currentBranch = git.currentBranch()
+        
+        if self.runSubmodules:
+            activeSubmodules = git.getActiveSubmodules()
+            repos = repos + activeSubmodules
+            subPubMap = config.getMapping("workspace", "submodulepublicmappings")
+            submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
+            branches = branches + [ submoduleBranch for x in activeSubmodules ]
+        if self.runSubprojects:
+            activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+            repos = repos + activeSubprojects
+            branches = branches + [currentBranch for x in activeSubprojects]
+        if self.runOuter:
+            repos.append(workspaceDir)
+            branches.append(currentBranch)
+            
+        self.pool.map(runInRepo, [(repo, branch, self.lmbda) for repo, branch in zip(repos, branches)])
+        os.chdir(cwd)
+        
+        
+
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin, stream = False):
 
