@@ -162,20 +162,18 @@ class MergeDevelop(resumable.Resumable):
                 return False
         os.chdir(cwd)
 
-        # merge submodules        
+        # merge submodules
         if recurse:
             if len(submodules) > 0: 
                 subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
                 subPublic = subBranchMappings[git.branchPrefix(branch)]
                 
                 for submodule in submodules:
-                    if submodule in conflictedFiles or ("stopPoint" in self.progress and
-                                                        submodule in self.progress["stopPoint"]):
-                        if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
-                            # stop for user to resolve conflicts
-                            self.progress["conflictedFiles"] = conflictedFiles
-                            self.dumpProgress(args)
-                            return False
+                    if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
+                        # stop for user to resolve conflicts
+                        self.progress["conflictedFiles"] = conflictedFiles
+                        self.dumpProgress(args)
+                        return False
                 os.chdir(cwd)
                 conflictedFiles = git.conflictedFiles()
                 # now that we resolved the submodule conflicts, continue the outer level merge 
