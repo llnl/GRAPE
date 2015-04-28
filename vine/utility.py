@@ -81,8 +81,14 @@ import tailer
 def runFollowableTarget(followableCmd):
     followableCmd.runTarget()
     
-def followFollowableTarget(followableCmd, fname):
+def followFollowableTarget(followableCmd):
     followableCmd.followTarget()
+
+class FollowableProcess(object):
+    def __init__(self, process):
+        self.output = ''
+        self.returncode = process.returncode
+        self.pid = process.pid
     
 class FollowableCommand(object):
     def __init__(self, cmd, wd, outfile, stdin):
@@ -101,7 +107,7 @@ class FollowableCommand(object):
         process = subprocess.Popen(self.cmd, stdout=self.fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
                                cwd=self.wd, stdin=sys.stdin, bufsize=1)
         process.wait()
-        self.finishedProcesses.put(process, block=False)
+        self.finishedProcesses.put(FollowableProcess(process), block=False)
     
     def followTarget(self):
         # uses tailer to follow the output of the running process
