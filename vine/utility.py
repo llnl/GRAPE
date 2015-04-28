@@ -89,7 +89,7 @@ class FollowableCommand(object):
         self.cmd = cmd
         self.process = None
         self.wd = wd
-        self.outfile = outfile
+        self.outfileName = outfile.name
         self.fileno = outfile.fileno()
         self.stopFollowing = multiprocessing.Value('i', 0)
         self.stdin = stdin
@@ -105,7 +105,7 @@ class FollowableCommand(object):
     
     def followTarget(self):
         # uses tailer to follow the output of the running process
-        with open(self.outfile.name, mode='r') as fo:
+        with open(self.outfileName, mode='r') as fo:
             generator = tailer.follow(fo)
             for l in generator:
                 if self.stopFollowing.value > 0:
@@ -130,7 +130,7 @@ class FollowableCommand(object):
             self.stopFollowing.value = 1
             # flush outfile with a newline to force a yield in the tailer generator for subprocesses that fail to put an EOF
             # in their output stream
-            with open(self.outfile.name, mode='a') as f:
+            with open(self.outfileName, mode='a') as f:
                 f.writelines(['\n'])
             # stop following the subprocess
             followThread.join()
