@@ -1,5 +1,12 @@
 
 
+Wed Apr 29 16:29:27 2015 Benjamin T. Liu
+v1.7.3
+Reviewers: Peter B. Robinson
+
+Fix publish to prevent exceptions when used with --startAt (GRP-135)
+
+
 Mon Apr 27 16:21:27 2015 Peter B. Robinson
 v1.7.2
 Reviewers: Ben Liu
