@@ -88,8 +88,11 @@ class Publish(resumable.Resumable):
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
-                            "publish", "postPublish", or "deleteTopic".
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
@@ -662,6 +665,9 @@ class Publish(resumable.Resumable):
         return True
 
     def loadCommitMessage(self, args):
+        if "reviewers" not in self.progress:
+            # fill in the reviewers entry in progress, but don't check the review status.
+            self.verifyCompletedReview(args)
         if "commitMsg" in self.progress:
             if not args["-m"]:
                 args["-m"] = self.progress["commitMsg"]
