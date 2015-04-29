@@ -534,11 +534,13 @@ class Publish(resumable.Resumable):
                 if not reviewers:
                     utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
                                      (args["--topic"], args["--public"]))
+                    self.progress["reviewers"] = "No reviewers"
                 else:
                     utility.printMsg("The following reviewers have not approved your request:\n")
                     for reviewer in reviewers:
                         if reviewer[1] is False:
                             print "%s (%s)" % (reviewer[0], reviewer[2])
+                    self.progress["reviewers"] = ", ".join(x[2] for x in reviewers if x[1] is not False)
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
@@ -546,6 +548,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
                                                         args["--repo"], "pull-requests"])))
+            self.progress["reviewers"] = "No reviewers"
         return verified
 
     @staticmethod
