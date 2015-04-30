@@ -134,6 +134,12 @@ class MergeDevelop(resumable.Resumable):
         else:
             conflictedFiles = []
         
+        # checking for a consistent workspace before doing a merge
+        utility.printMsg("Checking for a consistent workspace before performing merge...")
+        ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
+        if ret is False:
+            return False
+            
         
         if not "updateLocalDone" in self.progress:
             # make sure public branches are to date in outer level repo.
@@ -153,6 +159,7 @@ class MergeDevelop(resumable.Resumable):
             return False
         
         # merge nested subprojects
+        print nested
         for subproject in nested:
             if not self.mergeSubproject(args, subproject, branch, nested, cwd, isSubmodule=False):
                 # stop for user to resolve conflicts
@@ -162,12 +169,14 @@ class MergeDevelop(resumable.Resumable):
                 return False
         os.chdir(cwd)
 
-        # merge submodules        
+        # merge submodules
+        print submodules
         if recurse:
             if len(submodules) > 0: 
                 subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
+                print branch
                 subPublic = subBranchMappings[git.branchPrefix(branch)]
-                
+                print subPublic
                 for submodule in submodules:
                     if submodule in conflictedFiles or ("stopPoint" in self.progress and
                                                         submodule in self.progress["stopPoint"]):

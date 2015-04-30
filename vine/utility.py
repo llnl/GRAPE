@@ -251,8 +251,12 @@ class MultiRepoCommandLauncher(object):
         if self.runOuter:
             repos.append(workspaceDir)
             branches.append(currentBranch)
-            
-        self.pool.map(runInRepo, [(repo, branch, self.lmbda) for repo, branch in zip(repos, branches)])
+        
+        # run the first entry first so that things like logging in to the project's server happen up front
+        if len(repos) > 0:
+            runInRepo((repos[0], branches[0], self.lmbda))
+        if len(repos) > 1:            
+            self.pool.map(runInRepo, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
         os.chdir(cwd)
 
 def grapeDir(): 
