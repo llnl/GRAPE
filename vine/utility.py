@@ -99,6 +99,7 @@ class FollowableCommand(object):
         self.fileno = outfile.fileno()
         self.stdin = stdin
         self.finishedProcesses = multiprocessing.Queue()
+        self.stopFollowing = 0
 
     def runTarget(self):
         # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue. 
@@ -131,6 +132,7 @@ class FollowableCommand(object):
             # keep going until the subprocess is done
             thread.join()
             followThread.terminate()
+            self.stopFollowing = 1
 
 
 
@@ -175,7 +177,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             launcher.run(startStreaming=3.0)
             tmpFile.seek( 0 )
             output = tmpFile.read()
-            if verbose > 1 and launcher.stopFollowing.value == 0:
+            if verbose > 1 and launcher.stopFollowing == 0:
                 print(output.strip())
             process = launcher.finishedProcesses.get()
     else:
