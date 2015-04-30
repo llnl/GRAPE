@@ -30,8 +30,7 @@ class Checkout(option.Option):
     def description(self):
         return "Checks out a branch in all projects in this workspace."
 
-    @staticmethod
-    def handledCheckout(checkoutargs, branch, project):
+    def handledCheckout(self, checkoutargs, branch, project):
         git.fetch()
         try:
             git.checkout(checkoutargs + ' ' + branch)

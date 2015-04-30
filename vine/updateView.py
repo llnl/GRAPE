@@ -269,7 +269,7 @@ class UpdateView(option.Option):
                 else:    
                     raise(e)
 
-        checkout.Checkout.handledCheckout(checkoutArgs, branch, repo)
+        checkout.Checkout().handledCheckout(checkoutArgs, branch, repo)
         os.chdir(cwd)
         return
 
