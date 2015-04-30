@@ -111,10 +111,20 @@ class FollowableCommand(object):
     
     def followTarget(self):
         # uses tailer to follow the output of the running process
-        with open(self.outfileName, mode='r') as fo:
+        if os.name == "nt":
+            flags = os.O_RDWR | os.O_TEMPORARY
+        else:
+            flags = os.O_RDWR
+        
+        try:
+            f = os.open(self.outfileName, flags)
+            fo = os.fdopen(f,'r'); 
             generator = tailer.follow(fo)
             for l in generator:
                 print l
+        finally:
+            os.close(fo)
+            os.close(f)
                 
     def run(self, startStreaming=5):
      
