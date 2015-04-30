@@ -34,7 +34,6 @@ class Checkout(option.Option):
         git.fetch()
         try:
             git.checkout(checkoutargs + ' ' + branch)
-            git.pull("origin %s" % branch)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 createNewBranch = self._createNewBranch
@@ -222,7 +221,8 @@ class Checkout(option.Option):
 
         os.chdir(workspaceDir)
         
-        utility.printMsg("Switched to %s." % branch)
+        utility.printMsg("Switched to %s. Updating from remote..." % branch)
+        grapeMenu.menu().applyMenuChoice("pull")
         return True
     
     def setDefaultConfig(self, config):
