@@ -35,7 +35,7 @@ class Publish(resumable.Resumable):
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
                          [-m <msg>]
-                         [--recurse | --norecurse]
+                         [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
@@ -79,7 +79,7 @@ class Publish(resumable.Resumable):
                             topic.
     --recurse               Perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --norecurse             Do not perform the publish action in submodules.
+    --noRecurse             Do not perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
     --topic=<branch>        The branch to publish. Defaults to the current branch.
     --noverify              Set to skip interactive verification of publish commands.
@@ -88,8 +88,11 @@ class Publish(resumable.Resumable):
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
-                            "publish", "postPublish", or "deleteTopic".
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
@@ -293,11 +296,12 @@ class Publish(resumable.Resumable):
         #undo any commits done since we first started
         super(Publish, self)._resume(args)
         branch = git.currentBranch()
-        utility.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
-                                                                          git.SHA(branch)))
-        revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
-        if revert:
-            git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
+        if self.progress["startingSHA"] != git.SHA(branch):
+           utility.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
+                                                                             git.SHA(branch)))
+           revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
+           if revert:
+               git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
         # release IN PROGRESS LOCK
         utility.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
@@ -316,12 +320,15 @@ class Publish(resumable.Resumable):
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
             
-        self.order = ["testForCleanWorkspace1", "verifyPublishActions", "md", "ensureReview", "verifyCompletedReview", 
-                 "markInProgress", "tickVersion", "updateLog",
-                 "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                 "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
+        self.order = ["testForCleanWorkspace1",  "md", "ensureModifiedSubmodulesAreActive", 
+                      "verifyPublishActions",
+                      "ensureReview", "verifyCompletedReview", 
+                      "markInProgress", "tickVersion", "updateLog",
+                      "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                      "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
         if args["--quick"]:
-            self.order = ["md", "ensureReview", "markInProgress", "publish", "markAsDone", "deleteTopic", "done"]
+            self.order = ["md","ensureModifiedSubmodulesAreActive","ensureReview","markInProgress", "publish", 
+                          "markAsDone", "deleteTopic", "done"]
         
         self.parseArgs(args)
         
@@ -356,11 +363,13 @@ class Publish(resumable.Resumable):
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
                  "ensureReview": self.ensureReview,
+                 "ensureModifiedSubmodulesAreActive": self.ensureModifiedSubmodulesAreActive,
                  "md": self.mergePublic,
                  "verifyPublishActions": self.verifyPublishTargetsWithUser}
 
 
         currentStep = startPoint
+        os.chdir(utility.workspaceDir())
         for step in self.order:
             if step == "done":
                 break
@@ -389,6 +398,20 @@ class Publish(resumable.Resumable):
         args["--startAt"] = step
         self.dumpProgress(args)
         return
+
+    def ensureModifiedSubmodulesAreActive(self, args):
+        modifiedSubs = git.getModifiedSubmodules(branch1=args["--public"], branch2=args["--topic"])
+        activeSubs = git.getActiveSubmodules()
+        missing = []
+        for sub in modifiedSubs:
+            if sub not in activeSubs:
+                missing.append(sub)
+        if missing:
+            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+                             "You should activate them using grape uv and then call publish --continue")
+            utility.printMsg(','.join(missing))
+            return False
+        return True
 
     def mergePublic(self, args):
         menu = grapeMenu.menu()
@@ -480,15 +503,17 @@ class Publish(resumable.Resumable):
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        state = "open"
         if not request:
             matchingRequests = repo.getMergedPullRequests(args["--topic"], args["--public"])
+            state = "merged"
             for r in matchingRequests:
                 if "**IN PROGRESS**" in r.title():
                     request = r
                     break
         if request:
             title = request.title().replace("**IN PROGRESS**", "")
-            return self.markReview(args, ["--title=%s" % title, "--state=merged"], "")
+            return self.markReview(args, ["--title=%s" % title, "--state=%s" % state], "")
         else:
             utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
@@ -509,11 +534,19 @@ class Publish(resumable.Resumable):
                 if not reviewers:
                     utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
                                      (args["--topic"], args["--public"]))
+                    self.progress["reviewers"] = "No reviewers"
                 else:
                     utility.printMsg("The following reviewers have not approved your request:\n")
+                    approvedReviewerNames = []
                     for reviewer in reviewers:
                         if reviewer[1] is False:
                             print "%s (%s)" % (reviewer[0], reviewer[2])
+                        else:
+                            approvedReviewerNames.append(reviewer[2])
+                    if len(approvedReviewerNames) > 0:
+                        self.progress["reviewers"] = ", ".join(approvedReviewerNames)
+                    else:
+                        self.progress["reviewers"] = "No reviewers"
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
@@ -521,6 +554,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
                                                         args["--repo"], "pull-requests"])))
+            self.progress["reviewers"] = "No reviewers"
         return verified
 
     @staticmethod
@@ -640,6 +674,9 @@ class Publish(resumable.Resumable):
         return True
 
     def loadCommitMessage(self, args):
+        if "reviewers" not in self.progress:
+            # fill in the reviewers entry in progress, but don't check the review status.
+            self.verifyCompletedReview(args)
         if "commitMsg" in self.progress:
             if not args["-m"]:
                 args["-m"] = self.progress["commitMsg"]
@@ -1023,7 +1060,7 @@ class Publish(resumable.Resumable):
             try:
                 git.push("-u origin HEAD", throwOnFail=True)
             except git.GrapeGitError as e:
-                if "Could not read" in e.gitOutput:
+                if e.commError:
                     utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
                 raise e
                 
@@ -1037,7 +1074,7 @@ class Publish(resumable.Resumable):
         recurse = config.get('workspace', 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
-        if args["--norecurse"]:
+        if args["--noRecurse"]:
             recurse = False
 
         # no need to recurse if there are no modified submodules
@@ -1166,9 +1203,10 @@ class Publish(resumable.Resumable):
             valid = self.validateInput(submodulePolicy, args)
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in submodules:
-                    os.chdir(os.path.join(wsdir, sub))
+                    subpath = os.path.join(wsdir,sub)
+                    os.chdir(subpath)
 
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic])
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--noRecurse', '--wd=%s' % subpath, '--public=%s' % submodulePublic])
                     self.publish(submodulePolicy, submodulePublic, topic, args)
                     os.chdir(wsdir)
                     #add and commit any new merge commits in submodules as a result of the publish

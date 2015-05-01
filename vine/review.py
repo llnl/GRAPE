@@ -26,6 +26,7 @@ class Review(option.Option):
                         [--recurse]
                         [--test]
                         [--prepend | --append]
+                        [--subprojectsOnly]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -65,7 +66,9 @@ class Review(option.Option):
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
-
+        --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
+                                    arising
+ 
 
 
     """
@@ -182,24 +185,22 @@ class Review(option.Option):
             
         ## OUTER LEVEL REPO
         # load the repo level REST resource
-
-        repo_name = args["--repo"]
-        repo = stash.project(project_name).repo(repo_name)
-        utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
-        request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
-        updatedDescription = request.description()
-        for link in submoduleLinks:
-            if link not in updatedDescription: 
-                updatedDescription+="\nThis pull request is related to the pull request at: %s" % link
-        if updatedDescription != request.description(): 
-            request = postPullRequest(repo, title, branch, target_branch, 
-                                     updatedDescription, 
-                                     reviewers, 
-                                     args)
-        
-            
-       
-        utility.printMsg("Request generated/updated:\n%s" % request)
+        if not args["--subprojectsOnly"]:
+            repo_name = args["--repo"]
+            repo = stash.project(project_name).repo(repo_name)
+            utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
+            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
+            updatedDescription = request.description()
+            for link in submoduleLinks:
+                if link not in updatedDescription: 
+                    updatedDescription+="\nThis pull request is related to the pull request at: %s" % link
+            if updatedDescription != request.description(): 
+                request = postPullRequest(repo, title, branch, target_branch, 
+                                         updatedDescription, 
+                                         reviewers, 
+                                         args)
+                       
+            utility.printMsg("Request generated/updated:\n %s" % request)
         return True
 
     def setDefaultConfig(self, config):

@@ -12,6 +12,11 @@ class GrapeGitError(Exception):
         self.code = returnCode
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
+        self.commError = True if \
+            (self.code == 128 and "fatal: Could not read from remote" in self.gitOutput )  or \
+            ("fatal: unable to access" in self.gitOutput) or \
+            ("fatal: The remote end hung up unexpectedly" in self.gitOutput) \
+            else False
         self.cwd = cwd
 
 
@@ -88,10 +93,12 @@ def clone(argstr):
     except GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput:
             raise e
-        if e.code == 128:
+        if e.commError:
             print ("GRAPE: WARNING: clone failed due to connectivity issues.")
             return e.gitOutput
         else:
+            print ("GRAPE: Clone failed. Maybe you ran out of disk space?")
+            print e.gitOutput
             raise e
 
 
@@ -142,19 +149,23 @@ def fetch(repo="", branchArg=""):
     try:
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
-        if e.code == 128:
+        if e.commError:
             return e.gitOutput
         else:
             raise e
 
 
 def getActiveSubmodules():
-
+    cwd = os.getcwd()
+    wsDir = utility.workspaceDir()
+    os.chdir(wsDir)
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"")
     else:
         submoduleList = submodule("foreach --quiet \"echo \$path\"")
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    submoduleList = [x.strip() for x in submoduleList]
+    os.chdir(cwd)
     return submoduleList
 
 
@@ -185,9 +196,9 @@ def getAllSubmoduleURLMap():
 
 def getModifiedSubmodules(branch1="", branch2=""):
     cwd = os.getcwd()
-    base = baseDir()
-    os.chdir(base)
-    submodules = getActiveSubmodules()
+    wsDir = utility.workspaceDir()
+    os.chdir(wsDir)
+    submodules = getAllSubmodules()
     # if there are no submodules, then return the empty list
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
         return [] 
@@ -264,7 +275,7 @@ def pull(args, throwOnFail=False):
     try:
         return gitcmd("pull %s" % args, "Pull failed")
     except GrapeGitError as e:
-        if e.code == 128 and "fatal: Could not read from remote" in e.gitOutput:
+        if e.commError:
             utility.printMsg("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail: 
                 raise e
@@ -279,7 +290,7 @@ def push(args, throwOnFail = False):
     try:
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except GrapeGitError as e:
-        if e.code == 128 and "fatal: Could not read from remote" in e.gitOutput:
+        if e.commError:
             utility.printMsg("WARNING: Push failed due to connectivity issues.")
             if throwOnFail: 
                 raise e
@@ -292,9 +303,14 @@ def push(args, throwOnFail = False):
 def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
 
+def reset(args):
+    return gitcmd("reset %s" % args, "Reset failed") 
 
 def revert(args):
     return gitcmd("revert %s" % args, "Revert failed")
+
+def rm(args):
+    return gitcmd("rm %s" % args, "Remove failed")
 
 
 def safeForceBranchToOriginRef(branchToSync):

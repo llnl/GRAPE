@@ -12,7 +12,7 @@ class NewBranchOption(option.Option):
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -21,7 +21,7 @@ class NewBranchOption(option.Option):
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -55,13 +55,13 @@ class NewBranchOption(option.Option):
         return branchPoint, prefix, user, branch
 
     def execute(self, args):
-        upArgs = ["--norecurse"] 
+        upArgs = ["--noRecurse"] 
         grapeMenu.menu().applyMenuChoice('up', upArgs)
         start = args["--start"]
         recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
-        if args["--norecurse"]:
+        if args["--noRecurse"]:
             recurse = False
         if not start: 
             start = self._public
@@ -82,7 +82,7 @@ class NewBranchOption(option.Option):
                     cwd = os.path.join(wsdir,sub)
                     os.chdir(cwd)
                     git.checkout(start)
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start, '--norecurse', '--wd=%s' % cwd])
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start, '--noRecurse', '--wd=%s' % cwd])
                     self.createBranch(subArgs[0], subArgs[1], subArgs[2], subArgs[3], noverify=True)
         
         
@@ -108,7 +108,7 @@ class NewBranchOption(option.Option):
                     cwd = os.path.join(wsdir, sub)
                     os.chdir(cwd)
                     git.checkout(submodulePublic)
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic, '--wd=%s' % cwd, '--norecurse'])
+                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic, '--wd=%s' % cwd, '--noRecurse'])
                     self.createBranch(submodulePublic, self._key, subArgs[2], subArgs[3], True)
 
     def setDefaultConfig(self, config):

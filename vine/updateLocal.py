@@ -11,7 +11,7 @@ class UpdateLocal(option.Option):
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
-                    [--recurse | --norecurse]
+                    [--recurse | --noRecurse]
                     [--wd=<working dir>]
                     
 
@@ -20,7 +20,7 @@ class UpdateLocal(option.Option):
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --recurse               Update branches in submodules and nested subprojects.
-    --norecurse             Do not update branches in submodules and nested subprojects.
+    --noRecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated. 
                             Top level workspace will be updated if this is unspecified.
 
@@ -36,12 +36,13 @@ class UpdateLocal(option.Option):
 
     def execute(self, args):
         wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
+        wsDir = os.path.abspath(wsDir)
         cwd = os.getcwd()
-
+        
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurseSubmodules = recurseSubmodules and (not args["--norecurse"])
-        recurseNestedSubprojects = not args["--norecurse"]
+        recurseSubmodules = recurseSubmodules and (not args["--noRecurse"])
+        recurseNestedSubprojects = not args["--noRecurse"]
 
         currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
@@ -124,7 +125,7 @@ class UpdateLocal(option.Option):
             if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
                 print e.gitCommand
                 print e.gitOutput
-                print("GRAPE WARNING: one or more of your public branches have local commits! "
+                print("GRAPE: WARNING: one or more of your public branches have local commits! "
                       "Did you forget to create a topic branch?")
                 pass
             else:
@@ -132,7 +133,7 @@ class UpdateLocal(option.Option):
                 raise e
         
         try:
-            if currentBranch.strip() != "HEAD": 
+            if currentBranch != "HEAD": 
                 git.pull("origin %s" % currentBranch)
         except git.GrapeGitError:
             print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)

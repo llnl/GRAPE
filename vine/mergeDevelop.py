@@ -16,7 +16,7 @@ class MergeDevelop(resumable.Resumable):
     Usage: grape-md [--public=<branch>]
                     [--am | --as | --at | --ay]
                     [--continue]
-                    [--recurse | --norecurse]
+                    [--recurse | --noRecurse]
                     
 
     Options:
@@ -29,7 +29,7 @@ class MergeDevelop(resumable.Resumable):
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
-        --norecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
+        --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
         
 
@@ -81,7 +81,7 @@ class MergeDevelop(resumable.Resumable):
                 utility.printMsg("pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
                       "continue by calling 'grape md --continue' .")
                 return False
-            elif "fatal: Could not read" in e.gitOutput.lower():
+            elif e.commError:
                 self.dumpProgress(args)
                 utility.printMsg("Could not communicate with origin. Check your connection and/or remote URL and then"
                                  "continue by calling 'grape md --continue'.")
@@ -119,7 +119,7 @@ class MergeDevelop(resumable.Resumable):
         
         config = grapeConfig.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurse = recurse and (not args["--norecurse"]) and len(submodules) > 0
+        recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse
 
         # if we stored cwd in self.progress, make sure we end up there
@@ -138,7 +138,7 @@ class MergeDevelop(resumable.Resumable):
         if not "updateLocalDone" in self.progress:
             # make sure public branches are to date in outer level repo.
             utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
-            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--norecurse'])  
+            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--noRecurse'])  
             self.progress["updateLocalDone"] = True
         
         # do an outer merge if we haven't done it yet        
@@ -162,28 +162,23 @@ class MergeDevelop(resumable.Resumable):
                 return False
         os.chdir(cwd)
 
-        # merge submodules        
+        # merge submodules
         if recurse:
             if len(submodules) > 0: 
                 subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
                 subPublic = subBranchMappings[git.branchPrefix(branch)]
                 
                 for submodule in submodules:
-                    if submodule in conflictedFiles or ("stopPoint" in self.progress and
-                                                        submodule in self.progress["stopPoint"]):
-                        if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
-                            # stop for user to resolve conflicts
-                            self.progress["conflictedFiles"] = conflictedFiles
-                            self.dumpProgress(args)
-                            return False
+                    if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
+                        # stop for user to resolve conflicts
+                        self.progress["conflictedFiles"] = conflictedFiles
+                        self.dumpProgress(args)
+                        return False
                 os.chdir(cwd)
                 conflictedFiles = git.conflictedFiles()
                 # now that we resolved the submodule conflicts, continue the outer level merge 
                 if len(conflictedFiles) == 0:
-                    mergeArgs = args
-                    mergeArgs["--continue"] = True
-                    mergeArgs["--noRecurse"] = True
-                    grapeMenu.menu().getOption("m").execute(mergeArgs)
+                    self.continueLocalMerge(args)
                     conflictedFiles = git.conflictedFiles()
 
         if conflictedFiles:
@@ -200,7 +195,6 @@ class MergeDevelop(resumable.Resumable):
             grapeMenu.menu().applyMenuChoice('uv', uvArgs)
         return True
 
-
     def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):
         # if we did this merge in a previous run, don't do it again
         try:
@@ -209,12 +203,18 @@ class MergeDevelop(resumable.Resumable):
         except KeyError:
             pass
         os.chdir(os.path.join(git.baseDir(), subproject))
-        mergeArgs = args
-        mergeArgs["<branch>"] = subPublic
-        mergeArgs["--noRecurse"] = True
+        mergeArgs = args.copy()
+        mergeArgs["--public"] = subPublic
+
         utility.printMsg("Merging %s into %s for %s %s" % 
                          (subPublic, git.currentBranch(), "submodule" if isSubmodule else "subproject", subproject))
-        ret = grapeMenu.menu().getOption("mr").execute(mergeArgs)
+        git.fetch("origin")
+        # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
+        hasRemote = git.hasBranch("origin/%s" % subPublic)
+        hasBranch = git.hasBranch(subPublic)
+        if  hasRemote and  (git.branchUpToDateWith(subPublic, "origin/%s" % subPublic) or not hasBranch):
+            git.fetch("origin %s:%s" % (subPublic, subPublic))
+        ret = self.mergeIntoCurrent(subPublic, mergeArgs)
         conflict = not ret
         if conflict:
             self.progress["stopPoint"] = "Subproject: %s" % subproject
@@ -248,10 +248,9 @@ class MergeDevelop(resumable.Resumable):
 
     def outerLevelMerge(self, args, branch):
         utility.printMsg("Merging changes from %s into your current branch..." % branch)
-        mergeArgs = args
-        mergeArgs["<branch>"] = branch
-        mergeArgs["--noRecurse"] = True
-        conflict = not grapeMenu.menu().getOption("mr").execute(mergeArgs)
+              
+        conflict = not self.mergeIntoCurrent(branch, args)
+
         if conflict:
             conflictedFiles = git.conflictedFiles()
             if conflictedFiles:
@@ -263,6 +262,105 @@ class MergeDevelop(resumable.Resumable):
             self.progress["outerLevelDone"] = True
             return []
 
+    def merge(self, branch, strategy, args):
+        try:
+            git.merge("%s %s" % (branch, strategy))
+            return True
+        except git.GrapeGitError as error:
+            print error.gitOutput
+            if "conflict" in error.gitOutput.lower():
+                utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
+                                  "with grape %s --continue. " % args["<<cmd>>"])
+            else:
+                print("Merge command %s failed. Quitting." % error.gitCommand)
+            return False
+
+    def continueLocalMerge(self, args):
+        status = git.status()
+        if "All conflicts fixed but you are still merging." in status:
+            git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["--public"])
+            return True
+        elif git.isWorkingDirectoryClean():
+            return False
+        else:
+            return False
+
+    def mergeIntoCurrent(self, branchName, args):
+        updateArgs = ['up', '--wd=%s' % os.getcwd(), '--noRecurse', '--public=%s' % branchName]
+        grapeMenu.menu().applyMenuChoice('up', updateArgs)
+        choice = False
+        strategy = None
+        if args["--continue"]:
+            if self.continueLocalMerge(args):
+                return True
+        if args['--am']:
+            strategy = 'am'
+        elif args['--as']: 
+            strategy = 'as' 
+        elif args['--at']: 
+            strategy = 'at'
+        elif args['--ay']: 
+            strategy = 'ay'
+    
+        if not strategy: 
+            strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n" +
+                                         "am: Auto Merge (default) \n" +
+                                         "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
+                                         "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" %
+                                         branchName + "ay: Accept Yours - resolves conflicts by using changes "
+                                                      "in current branch.", "am")
+    
+        if strategy == 'am':
+            args["--am"] = True
+            utility.printMsg("Merging using git's default strategy...")
+            choice = self.merge(branchName, "", args)
+        elif strategy == 'as':
+            args["--as"] = True
+            # this employs using the custom low-level merge driver "verify" and
+            # appending a "* merge=verify" to the .gitattributes file.
+            #
+            # see
+            # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
+            # for details.
+            utility.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
+            base = git.gitDir()
+            if base == "":
+                return False
+            attributes = os.path.join(base, ".gitattributes")
+            tmpattributes = None
+            if os.path.exists(attributes): 
+                tmpattributes = os.path.join(base, ".gitattributes.tmp")
+                # save original attributes file
+                shutil.copyfile(attributes, tmpattributes)
+                #append merge driver strategy to the attributes file
+                with open(attributes, 'a') as f:
+                    f.write("* merge=verify")
+            else: 
+                with open(attributes, 'w') as f:
+                    f.write("* merge=verify")
+    
+            # perform the merge
+            choice = self.merge(branchName, "", args)
+    
+            # restore original attributes file
+            if tmpattributes:
+                shutil.copyfile(tmpattributes, attributes)
+                os.remove(tmpattributes)
+            else:
+                os.remove(attributes)
+    
+        elif strategy == 'at':
+            args["--at"] = True
+            utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
+            choice = self.merge(branchName, "-Xtheirs", args)
+    
+        elif strategy == 'ay':
+            args["--ay"] = True
+            utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
+            choice = self.merge(branchName, "-Xours", args)
+    
+        return choice
+
     def setDefaultConfig(self, config):
         try:
             config.add_section("flow")
@@ -273,14 +371,13 @@ class MergeDevelop(resumable.Resumable):
         config.set("flow", "topicDestinationMappings", "none")
 
     def _resume(self, args):
-        super(MergeDevelop, self)._resume(args, deleteProgressFile=False)
+        super(MergeDevelop, self)._resume(args)
         if self.progress["stopPoint"] == "public rebase":
             # recover from conflicts by continuing the rebase
             git.rebase("--continue")
             retval = True
         else:
             retval = self.execute(args)
-        self._removeProgressFile()
         return retval
 
     def _saveProgress(self, args):

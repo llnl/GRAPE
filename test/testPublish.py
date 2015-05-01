@@ -133,14 +133,16 @@ class TestPublish(testGrape.TestGrape):
         config.set("publish", "buildCmds", "echo hello , echo world")
         config.set("publish", "testCmds", "echo helloTest , echo worldTest")
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
-        self.assertGrapePublishWorked(["--startAt=test", "--stopAt=tagVersion", "--tickVersion=True",
-                                       "-T", "--slot=3", "-T", "--tag", "-T", "--file=VERSION.txt"])
+        self.assertGrapePublishWorked(["--startAt=tickVersion", "--stopAt=updateLog", "--tickVersion=True",
+                                       "-T", "--slot=3", "-T", "--file=VERSION.txt"])
+        self.assertGrapePublishWorked(["--startAt=test", "--stopAt=deleteTopic", "--tickVersion=True",
+                                       "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         # check test occurred
         self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
         # check that build never occurred
         self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
-        # check that we never tagged a new version
-        self.assertIn("v1.0.0", git.describe())
+        # check that we tagged a new version
+        self.assertIn("v1.0.1", git.describe())
         
     def testPublishNestedSubprojects(self):
         import testNestedSubproject

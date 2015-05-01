@@ -18,6 +18,7 @@ import mergeRemote
 import newFlowBranch
 import newWorkingTree
 import publish
+import pull
 import push
 import quit
 import resolveConflicts
@@ -68,7 +69,7 @@ class _Menu(object):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(), branches.Branches(),
-                         status.Status(), checkout.Checkout(), push.Push(), commit.Commit(), publish.Publish(),
+                         status.Status(), checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(), publish.Publish(),
                          clone.Clone(), config.Config(), grapeConfig.WriteConfig(),
                          foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                          deleteBranch.DeleteBranch(), newWorkingTree.NewWorkingTree(),
@@ -133,7 +134,11 @@ class _Menu(object):
             print ("GRAPE: Uncaught Error %s in grape-%s when executing '%s' in '%s'\n%s" %
                    (e.code, chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
             exit(e.code)
-
+            
+        except utility.NoWorkspaceDirException as e:
+            print ("GRAPE: grape %s must be run from a grape workspace." % chosen_option.key)
+            print ("GRAPE: %s" % e.message)
+            exit(1)
         finally:
             if globalArgs is not None:
                 utility.popGlobalArgs()

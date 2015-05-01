@@ -5,24 +5,25 @@ import utility
 import grapeConfig
 
 
-class Push(option.Option):
+class Pull(option.Option):
     """
-    grape push pushes your current branch to origin for your outer level repo and all submodules.
-    it uses 'git push -u origin HEAD' for the git command.
+    grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
+    it uses 'git pull origin <currentBranch>' for the git command.
 
-    Usage: grape-push [--noRecurse] 
+    Usage: grape-pull [--noRecurse] [--rebase] 
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.  
+    --noRecurse     Don't perform pulls in submodules or subprojects.   
+    --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
 
     """
     def __init__(self):
-        super(Push, self).__init__()
-        self._key = "push"
+        super(Pull, self).__init__()
+        self._key = "pull"
         self._section = "Workspace"
 
     def description(self):
-        return "Pushes your current branch to origin in all projects in this workspace."
+        return "Pulls your current branch to origin in all projects in this workspace."
 
     def execute(self, args):
         baseDir = utility.workspaceDir()
@@ -33,40 +34,47 @@ class Push(option.Option):
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
-        def push(currentBranch, proj): 
-            utility.printMsg("Pushing %s in %s..." % (currentBranch, proj))
-            git.push("-u origin %s" % currentBranch, throwOnFail=True)
+        def pull(currentBranch, proj):
+            if args["--rebase"]:
+                argStr = "--rebase origin %s" % currentBranch
+            else:
+                argStr = "origin %s " % currentBranch
+            
+            utility.printMsg("Pulling %s in %s..." % (currentBranch, proj))
+            git.pull(argStr, throwOnFail=True)
             
         submodules = git.getActiveSubmodules()
         
 
         try:
-            push(currentBranch, baseDir)
+            pull(currentBranch, baseDir)
             if not args["--noRecurse"]:
                 if submodules:
-                    utility.printMsg("Performing pushes in all active submodules")
+                    utility.printMsg("Performing pulls in all active submodules")
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
                 subbranch = subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 for sub in submodules: 
                     os.chdir(os.path.join(baseDir, sub))
-                    push(subbranch, sub)
+                    
+                    pull(subbranch, sub)
         
                 nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
                 if nestedSubprojects:
-                    utility.printMsg("Performing pushes in all active subprojects")
+                    utility.printMsg("Performing pulls in all active subprojects")
                 for proj in nestedSubprojects:
                     os.chdir(os.path.join(baseDir, proj))
-                    push(currentBranch, proj)
+                    pull(currentBranch, proj)
                     
         except git.GrapeGitError as e:
-            utility.printMsg("Failed to push branch.")
+            utility.printMsg("Failed to pull branch.")
             print e.gitCommand
             print e.cwd
             print e.gitOutput
             return False
-        os.chdir(cwd)
+        finally:
+            os.chdir(cwd)
         
-        utility.printMsg("Pushed current branch to origin")
+        utility.printMsg("Pulled current branch from origin")
         return True
     
     def setDefaultConfig(self, config):

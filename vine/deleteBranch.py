@@ -49,7 +49,7 @@ class DeleteBranch(option.Option):
                 try:
                     git.push("--delete origin %s" % branch, throwOnFail=True)
                 except git.GrapeGitError as e:
-                    if "Could not read" in e.gitOutput:
+                    if e.commError:
                         utility.printMsg("Could not connect to origin to delete remote references to your branch "
                                          "You may want to call grape db %s again once you've reconnected." % branch)
                     else:
@@ -64,8 +64,8 @@ class DeleteBranch(option.Option):
         if not branch:
             branch = utility.userInput("Enter name of branch to delete")
         
-        cwd = utility.workspaceDir()
-        os.chdir(cwd)
+        wsDir = utility.workspaceDir()
+        os.chdir(wsDir)
         if args["--verify"]:
             proceed = utility.userInput("Would you like to delete the branch %s" % branch, 'y')
             if not proceed:
@@ -79,23 +79,23 @@ class DeleteBranch(option.Option):
 
         for sub in submodules:
             utility.printMsg("deleting branch %s in %s" % (branch, sub))
-            os.chdir(os.path.join(cwd, sub))
+            os.chdir(os.path.join(wsDir, sub))
             if git.currentBranch() == branch:
                 git.checkout(subpublicmapping[git.branchPrefix(branch)])
             self.deleteBranch(branch, force)
-        os.chdir(cwd)
+        os.chdir(wsDir)
         
         # then the branch in nested subprojects
         subprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
         if subprojects:
             utility.printMsg("Deleting %s from your active nested subprojects: " % branch)
         for sub in subprojects:
-            os.chdir(os.path.join(cwd,sub))
+            os.chdir(os.path.join(wsDir,sub))
             utility.printMsg("deleting branch %s in %s" % (branch, sub))
             if git.currentBranch() == branch:
                 git.checkout(config.getPublicBranchFor(branch))
             self.deleteBranch(branch, force)
-            os.chdir(cwd)
+            os.chdir(wsDir)
         
         # then the outer level repository. 
         print("GRAPE: deleting branch from outer workspace")

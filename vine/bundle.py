@@ -24,7 +24,7 @@ class Bundle(option.Option):
 
 
     Usage:
-       grape-bundle [--norecurse] [--branches=<config.patch.branches>]
+       grape-bundle [--noRecurse] [--branches=<config.patch.branches>]
                     [--tagprefix=<config.patch.tagprefix>]
                     [--describePattern=<config.patch.describePattern>]
                     [--name=<config.repo.name>]
@@ -33,7 +33,7 @@ class Bundle(option.Option):
 
 
     Options:
-       --norecurse                      bundle only current level
+       --noRecurse                      bundle only current level
        --branches=<list>                the space delimited list of branches to bundle.
                                         [default: .grapeconfig.patch.branches]
        --tagprefix=<str>                the prefix used to tag start points to bundle
@@ -96,10 +96,10 @@ class Bundle(option.Option):
         describePattern = args["--describePattern"]
         tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
 
-        if not args["--norecurse"]: 
+        if not args["--noRecurse"]: 
             os.chdir(self._baseDir)
             grapecmd = os.path.join(os.path.dirname(__file__), "..", "grape")
-            grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle"])
+            grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle --noRecurse"])
             os.chdir(self._baseDir)
             #git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
         git.fetch()

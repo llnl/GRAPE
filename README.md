@@ -429,7 +429,7 @@ options are at least listed below.
 
 
     Usage:
-       grape-bundle [--norecurse] [--branches=<config.patch.branches>]
+       grape-bundle [--noRecurse] [--branches=<config.patch.branches>]
                     [--tagprefix=<config.patch.tagprefix>]
                     [--describePattern=<config.patch.describePattern>]
                     [--name=<config.repo.name>]
@@ -438,7 +438,7 @@ options are at least listed below.
 
 
     Options:
-       --norecurse                      bundle only current level
+       --noRecurse                      bundle only current level
        --branches=<list>                the space delimited list of branches to bundle.
                                         [default: .grapeconfig.patch.branches]
        --tagprefix=<str>                the prefix used to tag start points to bundle
@@ -519,10 +519,22 @@ options are at least listed below.
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--norecurse] 
+    Usage: grape-push [--noRecurse] 
 
     Options:
-    --norecurse     Don't perform pushes in submodules.  
+    --noRecurse     Don't perform pushes in submodules.  
+
+    
+## pull
+
+    grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
+    it uses 'git pull origin <currentBranch>' for the git command.
+
+    Usage: grape-pull [--noRecurse] [--rebase] 
+
+    Options:
+    --noRecurse     Don't perform pulls in submodules or subprojects.   
+    --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
 
     
 ## commit
@@ -550,7 +562,7 @@ options are at least listed below.
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
                          [-m <msg>]
-                         [--recurse | --norecurse]
+                         [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
@@ -594,7 +606,7 @@ options are at least listed below.
                             topic.
     --recurse               Perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --norecurse             Do not perform the publish action in submodules.
+    --noRecurse             Do not perform the publish action in submodules.
                             Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
     --topic=<branch>        The branch to publish. Defaults to the current branch.
     --noverify              Set to skip interactive verification of publish commands.
@@ -603,8 +615,11 @@ options are at least listed below.
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
-                            "publish", "postPublish", or "deleteTopic".
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
@@ -778,7 +793,7 @@ options are at least listed below.
     Usage: grape-md [--public=<branch>]
                     [--am | --as | --at | --ay]
                     [--continue]
-                    [--recurse | --norecurse]
+                    [--recurse | --noRecurse]
                     
 
     Options:
@@ -791,7 +806,7 @@ options are at least listed below.
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
-        --norecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
+        --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
         
 
@@ -864,6 +879,7 @@ options are at least listed below.
                         [--recurse]
                         [--test]
                         [--prepend | --append]
+                        [--subprojectsOnly]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -903,7 +919,9 @@ options are at least listed below.
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
-
+        --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
+                                    arising
+ 
 
 
     
@@ -924,7 +942,7 @@ options are at least listed below.
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
-                    [--recurse | --norecurse]
+                    [--recurse | --noRecurse]
                     [--wd=<working dir>]
                     
 
@@ -933,7 +951,7 @@ options are at least listed below.
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --recurse               Update branches in submodules and nested subprojects.
-    --norecurse             Do not update branches in submodules and nested subprojects.
+    --noRecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated. 
                             Top level workspace will be updated if this is unspecified.
 
@@ -1108,7 +1126,7 @@ options are at least listed below.
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -1117,7 +1135,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -1130,7 +1148,7 @@ options are at least listed below.
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -1139,7 +1157,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -1152,7 +1170,7 @@ options are at least listed below.
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -1161,7 +1179,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -1174,7 +1192,7 @@ options are at least listed below.
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -1183,7 +1201,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -1196,7 +1214,7 @@ options are at least listed below.
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --norecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
 
     Options:
     --user=<username>       The user developing this branch. Asks by default. 
@@ -1205,7 +1223,7 @@ options are at least listed below.
                             This disables the verification. 
     --recurse               Create the branch in submodules. 
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --norecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules.
     
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.

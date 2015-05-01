@@ -34,9 +34,14 @@ globalArgs = []
 globalCLI = ""
 
 globalVerbosity = 1
+globalShowProgress = True
 def setVerbosity(level):
     global globalVerbosity
     globalVerbosity = level
+    
+def setShowProgress(val):
+    global globalShowProgress
+    globalShowProgress = val
 
 def __apply__(args): 
     if type(args) is docoptDict:
@@ -46,6 +51,10 @@ def __apply__(args):
             setVerbosity(0)
         else:
             setVerbosity(1)
+        if args["--noProgress"]:
+            setShowProgress(False)
+        else: 
+            setShowProgress(True)
     if type(args) is types.ListType:
         # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
         global globalCLI
@@ -62,6 +71,64 @@ def popGlobalArgs():
     if len(globalArgs) > 1:
         globalArgs.pop()
     __apply__(globalArgs[-1])
+
+
+# thanks to jcollado at stackoverflow for inspiration:
+# http://stackoverflow.com/questions/1191374/subprocess-with-timeout
+import multiprocessing
+import tailer
+class FollowableCommand(object):
+    def __init__(self, cmd, wd, outfile, stdin):
+        self.cmd = cmd
+        self.process = None
+        self.wd = wd
+        self.outfile = outfile
+        self.fileno = outfile.fileno()
+        self.stopFollowing = multiprocessing.Value('i', 0)
+        self.stdin = stdin
+        self.finishedProcesses = multiprocessing.Queue()
+
+
+    def run(self, startStreaming=5):
+        def runTarget(cmd, fileno, workingDirectory,infile):
+            # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue. 
+ 
+            process = subprocess.Popen(cmd, stdout=fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
+                                   cwd=workingDirectory, stdin=sys.stdin, bufsize=1)
+            process.wait()
+            self.finishedProcesses.put(process, block=False)
+            
+        
+        def followTarget(fname):
+            # uses tailer to follow the output of the running process
+            with open(fname, mode='r') as fo:
+                generator = tailer.follow(fo)
+                for l in generator:
+                    if self.stopFollowing.value > 0:
+                        break
+                    print l 
+                
+        # the cmd launch process
+        thread = multiprocessing.Process(target=runTarget,args=(self.cmd, self.outfile.fileno(), self.wd, self.stdin))
+        # the tailer.follow process
+        followThread = multiprocessing.Process(target=followTarget, args=[self.outfile.name])
+        thread.start()
+
+        thread.join(startStreaming)
+        if thread.is_alive():
+            # follow output in the outfile
+            print "Executing %s\n\tWorking Directory: %s..." % (self.cmd, self.wd)
+            followThread.start()
+            # keep going until the subprocess is done
+            thread.join()
+            self.stopFollowing.value = 1
+            # flush outfile with a newline to force a yield in the tailer generator for subprocesses that fail to put an EOF
+            # in their output stream
+            with open(self.outfile.name, mode='a') as f:
+                f.writelines(['\n'])
+            # stop following the subprocess
+            followThread.join()
+
 
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
@@ -92,6 +159,16 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             sys.stdout.flush()
         output += out	
 
+        
+    elif globalShowProgress:
+        with tempfile.NamedTemporaryFile() as tmpFile:
+            launcher = FollowableCommand(command, workingDirectory, tmpFile, stdin)
+            launcher.run(startStreaming=3.0)
+            tmpFile.seek( 0 )
+            output = tmpFile.read()
+            if verbose > 1 and launcher.stopFollowing.value == 0:
+                print(output.strip())
+            process = launcher.finishedProcesses.get()
     else:
         with tempfile.TemporaryFile() as tmpFile:
             process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
@@ -100,7 +177,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             tmpFile.seek( 0 )
             output = tmpFile.read()
             if verbose > 1:
-                print(output.strip())
+                print(output.strip())        
 
     process.output = output
     if process.returncode != 0 and verbose > 1:
@@ -172,9 +249,17 @@ def writeDefaultConfig(filename):
     with open(filename, 'w') as f:
         config.write(f)
 
+class NoWorkspaceDirException(Exception):
+    def __init__(self, cwd=''):
+        self.cwd = cwd
+        if cwd:
+            self.message = "No .git found in %s" % cwd
+        else:
+            self.message = "No .git found"
+    
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir(warnIfNotFound = True): 
+def workspaceDir(warnIfNotFound = True, throwIfNotFound=True): 
     cwd = os.getcwd()
     basedir = None
 
@@ -185,6 +270,8 @@ def workspaceDir(warnIfNotFound = True):
         os.chdir(os.path.join(os.getcwd(), ".."))
     if not basedir and warnIfNotFound:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
+    if not basedir and throwIfNotFound:
+        raise NoWorkspaceDirException(cwd)
     os.chdir(cwd)
     return basedir
 
