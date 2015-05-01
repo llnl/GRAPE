@@ -26,6 +26,7 @@ class Checkout(option.Option):
         self._key = "checkout"
         self._section = "Workspace"
         self._createNewBranch = False
+        self._skipBranchCreation = False
 
     def description(self):
         return "Checks out a branch in all projects in this workspace."
@@ -37,13 +38,22 @@ class Checkout(option.Option):
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 createNewBranch = self._createNewBranch
-                if not createNewBranch:
+                if self._skipBranchCreation:
+                    utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
                     
-                    createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
-                                                    "new branch called %s? (select to say yes for all)\n(y,n,a)" % branch, 'y')
+                if not createNewBranch:
+                    if not self._skipBranchCreation:
+                        createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
+                                                        "new branch called %s? \n"
+                                                        "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
+                                                        "\n(y,n,a,s)" % branch, 'y')
+                        
                 if str(createNewBranch).lower()[0] == 'a':
                     self._createNewBranch = True
                     createNewBranch = True
+                if str(createNewBranch).lower()[0] == 's':
+                    self._skipBranchCreation = True
+                    createNewBranch = False
                 if createNewBranch:
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
                     git.checkout(checkoutargs+" -b "+branch)
