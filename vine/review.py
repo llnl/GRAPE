@@ -134,7 +134,7 @@ class Review(option.Option):
         title = args["--title"]
         if existingOuterLevelRequest is not None and not title:
             title = existingOuterLevelRequest.title()
-            print "USING EXISTING TITLE %s" % title
+
         
         #determine pull request URL
         outerLevelURL = None
@@ -146,8 +146,7 @@ class Review(option.Option):
 
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
-            
-            print "USING EXISTING DESCR %s" % descr
+
         
         # determine pull request reviewers
         reviewers = args["--reviewers"]
@@ -155,7 +154,6 @@ class Review(option.Option):
             reviewers = reviewers.split()
         elif existingOuterLevelRequest is not None:
             reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
-            print "USING EXISTING REVIEWERS %s" % reviewers
 
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
@@ -257,8 +255,6 @@ def addLinkToDescription(descr, link):
     if descr is not None:
         if link not in descr: 
             descr +="\nThis pull request is related to the pull request at: %s" % link
-        else:
-            print "LINK %s found in description" % link
     return descr
 
 def getReposPullRequest(repo, branch, target_branch, args):
