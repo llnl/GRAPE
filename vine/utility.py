@@ -8,6 +8,7 @@ import tempfile
 import grapeGit as git
 import grapeMenu
 import grapeConfig
+ 
 
 toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
 if toplevel not in sys.path:
@@ -31,10 +32,28 @@ def makePathPortable(path):
     return newPath
 
 globalArgs = []
-globalCLI = ""
 
 globalVerbosity = 1
 globalShowProgress = True
+
+
+CLI =  """
+*** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
+Calling grape by itself will pull up the grape menu. 
+Usage: grape [-v | -q] [--version] [--noProgress][<command> <args>...]
+
+Options:
+-v           Run in verbose mode. This will print out git output as git commands complete.
+-q           Quiet mode. Quiet's all output except for user input prompts.
+--noProgress Do not show progress for long-running git subprocesses. This will remove
+             a fair amount of process-launch overhead in GRAPE, which can have a speedup of
+             about a third. 
+
+
+
+"""
+
+
 def setVerbosity(level):
     global globalVerbosity
     globalVerbosity = level
@@ -43,7 +62,7 @@ def setShowProgress(val):
     global globalShowProgress
     globalShowProgress = val
 
-def __apply__(args): 
+def __apply__(args, CLI): 
     if type(args) is docoptDict:
         if args["-v"]:
             setVerbosity(2)
@@ -57,20 +76,18 @@ def __apply__(args):
             setShowProgress(True)
     if type(args) is types.ListType:
         # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
-        global globalCLI
-        return __apply__(docopt(globalCLI,args, options_first=True))
+        return __apply__(docopt(CLI,args, options_first=True), CLI)
 
-def applyGlobalArgs(args):
+def applyGlobalArgs(args, CLI=CLI):
     global globalArgs
-    global globalCLI
-    __apply__(args)
+    __apply__(args, CLI)
     globalArgs.append(args)
 
 def popGlobalArgs():
     global globalArgs
     if len(globalArgs) > 1:
         globalArgs.pop()
-    __apply__(globalArgs[-1])
+    __apply__(globalArgs[-1], CLI)
 
 
 # thanks to jcollado at stackoverflow for inspiration:
@@ -180,8 +197,10 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             sys.stdout.flush()
         output += out	
 
-        
-    elif globalShowProgress:
+    # TODO: Followable commands aren't working in Windows right now - initially there were some pickling difficulties,
+    # but now we are seeing behaviors that look like multiprocessing subprocesses are being launched in incorrect directories.
+    # To be troubleshooted later. 
+    elif globalShowProgress and os.name != "nt":
         with tempfile.NamedTemporaryFile() as tmpFile:
             launcher = FollowableCommand(command, workingDirectory, tmpFile, stdin)
             launcher.run(startStreaming=3.0)

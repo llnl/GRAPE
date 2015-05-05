@@ -23,29 +23,14 @@ import vine
 vinePath = os.path.dirname(vine.__file__)
 
 
-CLI =  """
-*** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
-Calling grape by itself will pull up the grape menu. 
-Usage: grape [-v | -q] [--version] [--noProgress][<command> <args>...]
-
-Options:
--v           Run in verbose mode. This will print out git output as git commands complete.
--q           Quiet mode. Quiet's all output except for user input prompts.
---noProgress Do not show progress for long-running git subprocesses. This will remove
-             a fair amount of process-launch overhead in GRAPE, which can have a speedup of
-             about a third. 
-
-
-
-"""
+CLI = utility.CLI 
 
 def startup():
     #TODO - allow addition grape config file to be specified at command line
     #additionalConfigFiles = []
     #grapeConfig.read(additionalConfigFiles)
     with open(os.path.join(vinePath,"VERSION"),'r') as f:
-        grapeVersion = f.read().split()[2]
-    utility.globalCLI = CLI    
+        grapeVersion = f.read().split()[2]   
     args = docopt(CLI,  version=grapeVersion, options_first=True )
     myMenu = grapeMenu.menu()
     utility.applyGlobalArgs(args)
