@@ -318,7 +318,7 @@ class TestMD(testGrape.TestGrape):
         # git status in subproject should not be clean
         os.chdir(self.subproject)
         status = git.status("--porcelain")
-        self.assertIn("AA", status, "no conflicts in subproject status")
+        self.assertIn("AA", status, "no conflicts in subproject status \n%s " % status)
         
         # resolve the conflict
         git.checkout("--ours f1")
