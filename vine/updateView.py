@@ -149,7 +149,16 @@ class UpdateView(option.Option):
                 git.submodule("init %s" % initStr.strip())
                 if deinitStr or deinitStr == "-f":
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
-                    git.submodule("deinit %s" % deinitStr.strip())
+                    try:
+                        git.submodule("deinit %s" % deinitStr.strip())
+                    except git.GrapeGitError as e:
+                        if "the following file has local modifications" in e.gitOutput:
+                            print e.gitOutput
+                            utility.printMsg("A submodule that you wanted to remove has local modifications. "
+                                             "Use grape uv -f to force removal.")
+                            return False
+                        else:
+                            raise e
                     git.rm("--cached %s" % rmCachedStr)
                     git.reset(" %s" % resetStr)
 

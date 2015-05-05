@@ -65,5 +65,4 @@ class Commit(option.Option):
         return True
     
     def setDefaultConfig(self,config): 
-       pass
-    
+        pass
