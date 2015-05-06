@@ -147,7 +147,7 @@ class UpdateView(option.Option):
                 utility.printMsg("Configuring submodules...")
                 utility.printMsg("Initializing submodules...")
                 git.submodule("init %s" % initStr.strip())
-                if deinitStr or deinitStr == "-f":
+                if deinitStr:
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
                     try:
                         git.submodule("deinit %s" % deinitStr.strip())

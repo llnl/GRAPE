@@ -40,13 +40,13 @@ class Checkout(option.Option):
                 createNewBranch = self._createNewBranch
                 if self._skipBranchCreation:
                     utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
+                    createNewBranch = False
                     
-                if not createNewBranch:
-                    if not self._skipBranchCreation:
-                        createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
-                                                        "new branch called %s? \n"
-                                                        "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
-                                                        "\n(y,n,a,s)" % branch, 'y')
+                elif not createNewBranch:
+                    createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
+                                                    "new branch called %s? \n"
+                                                    "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
+                                                    "\n(y,n,a,s)" % branch, 'y')
                         
                 if str(createNewBranch).lower()[0] == 'a':
                     self._createNewBranch = True

@@ -200,7 +200,7 @@ class Review(option.Option):
                 prevSubDescr = getReposPullRequestDescription(repo, branch, 
                                                              sub_target_branch, 
                                                              args)
-                #ammend the subproject pull request description with the link to the outer pull request
+                #amend the subproject pull request description with the link to the outer pull request
                 subDescr = addLinkToDescription(descr, outerLevelURL)
                 if args["--prepend"] or args["--append"]:
                     subDescr = descr
