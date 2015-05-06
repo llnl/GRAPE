@@ -6,7 +6,8 @@ import grapeConfig
 
 
 class GrapeGitError(Exception):
-    def __init__(self, errmsg, returnCode, gitOutput, gitCommand, cwd=os.getcwd()):
+    # arguments must be kept as keywords to allow pickling
+    def __init__(self, errmsg='', returnCode=-1, gitOutput='', gitCommand='', cwd=os.getcwd()):
         self.msg = errmsg
         self.code = returnCode
         self.gitOutput = gitOutput
@@ -17,7 +18,17 @@ class GrapeGitError(Exception):
             ("fatal: The remote end hung up unexpectedly" in self.gitOutput) \
             else False
         self.cwd = cwd
-
+        
+    def __getinitargs__(self):
+        return (self.msg, self.code, self.gitOutput, self.gitCommand, self.cwd)
+    
+    def __str__(self):
+        return "\nWORKING DIR: " + self.cwd +  "\nCODE: " + str(self.code) + '\nCMD: ' + self.gitCommand + '\nOUTPUT: ' + self.gitOutput 
+               
+        
+    def __repr__(self):
+        return self.__str__()
+        
 
 
 def gitcmd(cmd, errmsg):

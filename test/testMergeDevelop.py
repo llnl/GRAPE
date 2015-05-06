@@ -306,7 +306,7 @@ class TestMD(testGrape.TestGrape):
         os.chdir(self.subproject)
         self.assertFalse(git.branchUpToDateWith("testNestedMerge", "master"), msg=None)
         os.chdir(self.repo)
-        # run grape md --am
+        # run grape m --am - this helps ensure m is following same code path as md. 
         try:
             ret = grapeMenu.menu().applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
         except SystemExit as e: 

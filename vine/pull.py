@@ -53,11 +53,10 @@ class Pull(option.Option):
             launcher = utility.MultiRepoCommandLauncher(pull)
             launcher.launchFromWorkspaceDir()
                     
-        except git.GrapeGitError as e:
+        except utility.MultiRepoException as e:
             utility.printMsg("Failed to pull branch.")
-            print e.gitCommand
-            print e.cwd
-            print e.gitOutput
+            for err in e:
+                print err
             return False
         finally:
             os.chdir(cwd)

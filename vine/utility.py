@@ -224,6 +224,22 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
 
+# there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
+# this is a wrapper to allow exception capture in runCommandOnRepoBranch. 
+class MultiRepoException(Exception):
+    def __init__(self):
+        self.exceptions = []
+        
+    def addException(self, e):
+        self.exceptions.append(e)
+    
+    def __getitem__(self, pos):
+        return self.exceptions[pos]
+    
+    def hasException(self):
+        return len(self.exceptions) > 0
+        
+        
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
 # a method in, and launches the method. Needs to be at the file scope for stricter implementations of
@@ -234,7 +250,11 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
     branch = repoBranchCommandTuple[1]
     f = repoBranchCommandTuple[2]
     os.chdir(repo)
-    f(repo=repo, branch=branch)
+    try:
+        return f(repo=repo, branch=branch)
+    except Exception as e:
+        return e
+        
     os.chdir(curDir)
 
 import multiprocessing.pool  
@@ -256,7 +276,8 @@ class MyPool(multiprocessing.pool.Pool):
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
-# If runInOuter is set to true (not the default), lambdas will also run in the main workspace repository. 
+# If runInOuter is set to true (not the default), lambdas will also run in the main workspace repository.
+import inspect
 class MultiRepoCommandLauncher(object):    
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
     def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=False):
@@ -277,24 +298,30 @@ class MultiRepoCommandLauncher(object):
         
         if self.runSubmodules:
             activeSubmodules = git.getActiveSubmodules()
-            repos = repos + activeSubmodules
+            repos = repos + [os.path.abspath(r) for r in activeSubmodules]
             subPubMap = config.getMapping("workspace", "submodulepublicmappings")
             submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
             branches = branches + [ submoduleBranch for x in activeSubmodules ]
         if self.runSubprojects:
             activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-            repos = repos + activeSubprojects
+            repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
             branches = branches + [currentBranch for x in activeSubprojects]
         if self.runOuter:
             repos.append(workspaceDir)
             branches.append(currentBranch)
-        
+        retvals = []
         # run the first entry first so that things like logging in to the project's server happen up front
         if len(repos) > 0:
-            runCommandOnRepoBranch((repos[0], branches[0], self.lmbda))
+            retvals.append(runCommandOnRepoBranch((repos[0], branches[0], self.lmbda)))
         if len(repos) > 1:            
-            self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
-        os.chdir(cwd)
+            retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
+        MRE = MultiRepoException()
+        for val in retvals:
+            if isinstance(val, Exception):
+                MRE.addException(val)
+        if MRE.hasException():
+            raise MRE
+        return retvals 
 
 def grapeDir(): 
     return os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
