@@ -88,8 +88,11 @@ class Publish(resumable.Resumable):
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
-                            "publish", "postPublish", or "deleteTopic".
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
@@ -531,11 +534,19 @@ class Publish(resumable.Resumable):
                 if not reviewers:
                     utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
                                      (args["--topic"], args["--public"]))
+                    self.progress["reviewers"] = "No reviewers"
                 else:
                     utility.printMsg("The following reviewers have not approved your request:\n")
+                    approvedReviewerNames = []
                     for reviewer in reviewers:
                         if reviewer[1] is False:
                             print "%s (%s)" % (reviewer[0], reviewer[2])
+                        else:
+                            approvedReviewerNames.append(reviewer[2])
+                    if len(approvedReviewerNames) > 0:
+                        self.progress["reviewers"] = ", ".join(approvedReviewerNames)
+                    else:
+                        self.progress["reviewers"] = "No reviewers"
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
@@ -543,6 +554,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
                                                         args["--repo"], "pull-requests"])))
+            self.progress["reviewers"] = "No reviewers"
         return verified
 
     @staticmethod
@@ -662,6 +674,9 @@ class Publish(resumable.Resumable):
         return True
 
     def loadCommitMessage(self, args):
+        if "reviewers" not in self.progress:
+            # fill in the reviewers entry in progress, but don't check the review status.
+            self.verifyCompletedReview(args)
         if "commitMsg" in self.progress:
             if not args["-m"]:
                 args["-m"] = self.progress["commitMsg"]
