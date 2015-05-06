@@ -315,6 +315,7 @@ class MultiRepoCommandLauncher(object):
             retvals.append(runCommandOnRepoBranch((repos[0], branches[0], self.lmbda)))
         if len(repos) > 1:            
             retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
+        os.chdir(cwd)
         MRE = MultiRepoException()
         for val in retvals:
             if isinstance(val, Exception):
