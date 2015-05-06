@@ -90,6 +90,13 @@ class Review(option.Option):
                 descr = ''.join(descr)
         
         return descr
+    
+    def parseReviewerArgs(self, args):
+        reviewers = args["--reviewers"]
+        if reviewers is not None:
+            reviewers = reviewers.split()
+        return reviewers
+        
 
     def execute(self, args):
         """
@@ -147,19 +154,17 @@ class Review(option.Option):
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-        
+    
         # determine pull request reviewers
-        reviewers = args["--reviewers"]
-        if reviewers:
-            reviewers = reviewers.split()
-        elif existingOuterLevelRequest is not None:
+        reviewers = self.parseReviewerArgs(args)
+        if reviewers is None and existingOuterLevelRequest is not None:
             reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
 
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
             title = args["--title"]
             descr = self.parseDescriptionArgs(args)
-            reviewers = args["--reviewers"]
+            reviewers = self.parseReviewerArgs(args)
             
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)

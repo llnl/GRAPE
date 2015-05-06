@@ -159,7 +159,6 @@ class MergeDevelop(resumable.Resumable):
             return False
         
         # merge nested subprojects
-        print nested
         for subproject in nested:
             if not self.mergeSubproject(args, subproject, branch, nested, cwd, isSubmodule=False):
                 # stop for user to resolve conflicts

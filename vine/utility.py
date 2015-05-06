@@ -200,7 +200,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     # TODO: Followable commands aren't working in Windows right now - initially there were some pickling difficulties,
     # but now we are seeing behaviors that look like multiprocessing subprocesses are being launched in incorrect directories.
     # To be troubleshooted later. 
-    elif globalShowProgress and os.name != "nt":
+    elif globalShowProgress and os.name == "posix":
         with tempfile.NamedTemporaryFile() as tmpFile:
             launcher = FollowableCommand(command, workingDirectory, tmpFile, stdin)
             launcher.run(startStreaming=3.0)
@@ -224,11 +224,15 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
 
-def runInRepo(dirBrnchLmbda):
+
+# Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
+# a method in, and launches the method. Needs to be at the file scope for stricter implementations of
+# pickle, used by the multiprocess module. 
+def runCommandOnRepoBranch(repoBranchCommandTuple):
     curDir = os.getcwd()
-    repo = dirBrnchLmbda[0]
-    branch = dirBrnchLmbda[1]
-    f = dirBrnchLmbda[2]
+    repo = repoBranchCommandTuple[0]
+    branch = repoBranchCommandTuple[1]
+    f = repoBranchCommandTuple[2]
     os.chdir(repo)
     f(repo=repo, branch=branch)
     os.chdir(curDir)
@@ -248,9 +252,13 @@ class NoDaemonProcess(multiprocessing.Process):
 # because the latter is only a wrapper function, not a proper class.
 class MyPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
-    
+
+# Used for executing Single Lambda Multiple Repository instructions in parallel.
+# If runInSubmodules is set to true (default), lambdas will run in active submodules.
+# If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
+# If runInOuter is set to true (not the default), lambdas will also run in the main workspace repository. 
 class MultiRepoCommandLauncher(object):    
-    # lmbda needs to match the signature of f(repo=...) as called in runInRepo (above)
+    # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
     def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=False):
         self.lmbda = lmbda
         self.runSubmodules = runInSubmodules
@@ -283,9 +291,9 @@ class MultiRepoCommandLauncher(object):
         
         # run the first entry first so that things like logging in to the project's server happen up front
         if len(repos) > 0:
-            runInRepo((repos[0], branches[0], self.lmbda))
+            runCommandOnRepoBranch((repos[0], branches[0], self.lmbda))
         if len(repos) > 1:            
-            self.pool.map(runInRepo, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
+            self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
         os.chdir(cwd)
 
 def grapeDir(): 

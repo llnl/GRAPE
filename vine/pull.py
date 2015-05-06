@@ -51,26 +51,7 @@ class Pull(option.Option):
 
         try:
             launcher = utility.MultiRepoCommandLauncher(pull)
-                                                                    
-                                                                    
             launcher.launchFromWorkspaceDir()
-            #pull(currentBranch, baseDir)
-            #if not args["--noRecurse"]:
-                #if submodules:
-                    #utility.printMsg("Performing pulls in all active submodules")
-                #subPubMap = config.getMapping("workspace", "submodulepublicmappings")
-                #subbranch = subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
-                #for sub in submodules: 
-                    #os.chdir(os.path.join(baseDir, sub))
-                    
-                    #pull(subbranch, sub)
-        
-                #nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
-                #if nestedSubprojects:
-                    #utility.printMsg("Performing pulls in all active subprojects")
-                #for proj in nestedSubprojects:
-                    #os.chdir(os.path.join(baseDir, proj))
-                    #pull(currentBranch, proj)
                     
         except git.GrapeGitError as e:
             utility.printMsg("Failed to pull branch.")
