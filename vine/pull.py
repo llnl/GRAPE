@@ -50,7 +50,7 @@ class Pull(option.Option):
         
 
         try:
-            launcher = utility.MultiRepoCommandLauncher(pull)
+            launcher = utility.MultiRepoCommandLauncher(pull, runInOuter=True)
             launcher.launchFromWorkspaceDir()
                     
         except utility.MultiRepoException as e:
