@@ -1,5 +1,12 @@
 
 
+Thu May  7 08:17:17 2015 Peter B. Robinson
+v1.7.4
+Reviewers: Aaron C. Fisher, Ben Liu
+
+Addresses GRP-133, GRP-121, GRP-140, GRP-134, and GRP-136. Adds a parallel pull. Disables tailing commands on Windows.
+
+
 Wed Apr 29 16:29:27 2015 Benjamin T. Liu
 v1.7.3
 Reviewers: Peter B. Robinson
