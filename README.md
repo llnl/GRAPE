@@ -918,7 +918,7 @@ options are at least listed below.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
+                                    <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
  
