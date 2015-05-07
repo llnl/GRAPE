@@ -249,6 +249,7 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
     repo = repoBranchCommandTuple[0]
     branch = repoBranchCommandTuple[1]
     f = repoBranchCommandTuple[2]
+    print repo
     os.chdir(repo)
     try:
         return f(repo=repo, branch=branch)
@@ -307,7 +308,7 @@ class MultiRepoCommandLauncher(object):
             repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
             branches = branches + [currentBranch for x in activeSubprojects]
         if self.runOuter:
-            repos.append(workspaceDir)
+            repos.append(workspaceDir())
             branches.append(currentBranch)
         retvals = []
         # run the first entry first so that things like logging in to the project's server happen up front
