@@ -225,7 +225,10 @@ class Checkout(option.Option):
             
         if args["-b"]: 
             uvArgs.append("-b")
-        
+
+        # in case the user switches to a branch without corresponding branches in the submodules, make sure active submodules
+        # are at the right commit before possibly creating new branches at the current HEAD. 
+        git.submodule("update")
         utility.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
