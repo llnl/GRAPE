@@ -138,7 +138,7 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.project.name]
     --repo=<repo>           Your Stash repo. See grape-review for more details.
                             [default: .grapeconfig.repo.name]
-    -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRES**:" --prepend.
+    -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
     --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
     --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
