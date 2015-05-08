@@ -249,7 +249,6 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
     repo = repoBranchCommandTuple[0]
     branch = repoBranchCommandTuple[1]
     f = repoBranchCommandTuple[2]
-    print repo
     os.chdir(repo)
     try:
         return f(repo=repo, branch=branch)
