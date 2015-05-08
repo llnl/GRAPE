@@ -100,6 +100,7 @@ class TestGrape(unittest.TestCase):
             git.gitcmd("push origin master", "push to master failed")
             # create a develop branch in addition to master by default
             git.branch("develop")
+            git.push("origin develop")
             os.chdir(os.path.join(self.repo, ".."))
         except git.GrapeGitError:
             pass

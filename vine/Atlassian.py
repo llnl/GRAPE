@@ -246,7 +246,7 @@ class PullRequest(StashyNode):
 
     def __str__(self):
         return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
-            "Reviewers: %s\n" % self.reviewers()
+            "Reviewers: %s\n" % ','.join(r[0] for r in self.reviewers()) + "Description: %s\n" % self.description() 
 
 
 if __name__ == "__main__":

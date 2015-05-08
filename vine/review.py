@@ -65,7 +65,7 @@ class Review(option.Option):
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
+                                    <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
  
@@ -79,6 +79,24 @@ class Review(option.Option):
 
     def description(self):
         return "Prepare current topic branch for review"
+
+    def parseDescriptionArgs(self, args):
+        descr = args["-m"]
+        if not descr:
+            descrFile = args["--descr"]
+            if descrFile:
+                with open(descrFile) as f:
+                    descr = f.readlines()
+                descr = ''.join(descr)
+        
+        return descr
+    
+    def parseReviewerArgs(self, args):
+        reviewers = args["--reviewers"]
+        if reviewers is not None:
+            reviewers = reviewers.split()
+        return reviewers
+        
 
     def execute(self, args):
         """
@@ -97,24 +115,11 @@ class Review(option.Option):
             verify = True if args["--verifySSL"].lower() == "true" else False
             stash = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
 
-        # determine pull request title
-        title = args["--title"]
-
-        # determine pull request description
-        descr = args["-m"]
-        if not descr:
-            descrFile = args["--descr"]
-            if descrFile:
-                with open(descrFile) as f:
-                    descr = f.readlines()
-                descr = ''.join(descr)
-        # determine pull request reviewers
-        reviewers = args["--reviewers"]
-        if reviewers:
-            reviewers = reviewers.split()
-
         # default project (outer level project)
         project_name = args["--project"]
+        
+        # default repo (outer level repo)
+        repo_name = args["--repo"]
 
         # determine source branch and target branch
         branch = args["--source"]
@@ -126,12 +131,43 @@ class Review(option.Option):
         git.push("origin %s" % branch)
         #target branch for outer level repo
         target_branch = args["--target"]
-
         if not target_branch:
-            target_branch = config.getPublicBranchFor(branch)
+            target_branch = config.getPublicBranchFor(branch)        
+        # load pull request from Stash if it already exists
+        wsRepo =  stash.project(project_name).repo(repo_name)
+        existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)  
 
-        cwd = utility.workspaceDir()
-        os.chdir(cwd)
+        # determine pull request title
+        title = args["--title"]
+        if existingOuterLevelRequest is not None and not title:
+            title = existingOuterLevelRequest.title()
+
+        
+        #determine pull request URL
+        outerLevelURL = None
+        if existingOuterLevelRequest:
+            outerLevelURL = existingOuterLevelRequest.link()
+        
+        # determine pull request description
+        descr = self.parseDescriptionArgs(args)
+
+        if not descr and existingOuterLevelRequest:
+            descr = existingOuterLevelRequest.description()
+
+    
+        # determine pull request reviewers
+        reviewers = self.parseReviewerArgs(args)
+        if reviewers is None and existingOuterLevelRequest is not None:
+            reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
+
+        # if we're in append mode, only append what was asked for:
+        if args["--append"] or args["--prepend"]:
+            title = args["--title"]
+            descr = self.parseDescriptionArgs(args)
+            reviewers = self.parseReviewerArgs(args)
+            
+        wsDir = utility.workspaceDir()
+        os.chdir(wsDir)
 
         # submodules
         submoduleLinks = []
@@ -147,7 +183,7 @@ class Review(option.Option):
                 os.chdir(submodule)
                 utility.printMsg("Pushing %s to stash..." % branch)
                 git.push("origin %s" % branch)
-                os.chdir(cwd)
+                os.chdir(wsDir)
                 # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
@@ -156,9 +192,19 @@ class Review(option.Option):
                 # strip off the .git extension
                 repo_name = '.'.join(repo_name.split('.')[:-1])
                 repo = stash.project(proj).repo(repo_name)
+                
+                # determine branch prefix
                 prefix = branch.split('/')[0]
                 sub_target_branch = submoduleBranchMappings[prefix]
-                newRequest = postPullRequest(repo, title, branch, sub_target_branch, descr, reviewers, args)
+                
+                prevSubDescr = getReposPullRequestDescription(repo, branch, 
+                                                             sub_target_branch, 
+                                                             args)
+                #amend the subproject pull request description with the link to the outer pull request
+                subDescr = addLinkToDescription(descr, outerLevelURL)
+                if args["--prepend"] or args["--append"]:
+                    subDescr = descr
+                newRequest = postPullRequest(repo, title, branch, sub_target_branch, subDescr, reviewers, args)
                 submoduleLinks.append(newRequest.link())
         
         #nested subprojects
@@ -168,7 +214,7 @@ class Review(option.Option):
         for proj, url in zip(nestedProjectPrefixes, nestedProjectURLs):
             os.chdir(proj)
             git.push("origin %s" % branch)
-            os.chdir(cwd)
+            os.chdir(wsDir)
             url = utility.parseSubprojectRemoteURL(url)
 
             urlTokens = url.split('/')
@@ -192,15 +238,15 @@ class Review(option.Option):
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
             for link in submoduleLinks:
-                if link not in updatedDescription: 
-                    updatedDescription+="\nThis pull request is related to the pull request at: %s" % link
+                updatedDescription = addLinkToDescription(updatedDescription, link)
+
             if updatedDescription != request.description(): 
                 request = postPullRequest(repo, title, branch, target_branch, 
                                          updatedDescription, 
                                          reviewers, 
                                          args)
                        
-            utility.printMsg("Request generated/updated:\n %s" % request)
+            utility.printMsg("Request generated/updated:\n\n%s" % request)
         return True
 
     def setDefaultConfig(self, config):
@@ -210,18 +256,34 @@ class Review(option.Option):
         config.set("project", "name", "My unnamed project")
         pass
 
+def addLinkToDescription(descr, link):
+    if descr is not None:
+        if link not in descr: 
+            descr +="\nThis pull request is related to the pull request at: %s" % link
+    return descr
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
-    # get the open pull requests outgoing from our public branch
-    utility.printMsg("Gathering active pull requests on %s" % branch)
+def getReposPullRequest(repo, branch, target_branch, args):
     pull_requests = repo.pullRequests(direction="OUTGOING", at="refs/heads/%s" % branch, state=args["--state"])
-
     # check to see if pull request already exists for this branch
     request = None
     for rqst in pull_requests:
         if rqst.toRef() == target_branch:
             request = rqst
             break
+    return request
+
+    
+def getReposPullRequestDescription(repo, branch, target_branch, args):
+    descr = None
+    request = getReposPullRequest(repo, branch, target_branch, args)
+    if request is not None:
+        descr = request.description()
+    return descr
+
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
+    # get the open pull requests outgoing from our public branch
+    utility.printMsg("Gathering active pull requests on %s" % branch)
+    request = getReposPullRequest(repo, branch, target_branch, args)
 
     if not request:
         if not args["--update"]:

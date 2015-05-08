@@ -306,7 +306,7 @@ class TestMD(testGrape.TestGrape):
         os.chdir(self.subproject)
         self.assertFalse(git.branchUpToDateWith("testNestedMerge", "master"), msg=None)
         os.chdir(self.repo)
-        # run grape md --am
+        # run grape m --am - this helps ensure m is following same code path as md. 
         try:
             ret = grapeMenu.menu().applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
         except SystemExit as e: 
@@ -318,7 +318,7 @@ class TestMD(testGrape.TestGrape):
         # git status in subproject should not be clean
         os.chdir(self.subproject)
         status = git.status("--porcelain")
-        self.assertIn("AA", status, "no conflicts in subproject status")
+        self.assertIn("AA", status, "no conflicts in subproject status \n%s " % status)
         
         # resolve the conflict
         git.checkout("--ours f1")
