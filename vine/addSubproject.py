@@ -152,7 +152,6 @@ class AddSubproject(option.Option):
         section = "nested-%s" % subprojectName
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
-        print "currentlyActive in section %s is " % section, currentlyActive
         if not currentlyActive and not (os.path.isdir(os.path.join(wsDir,prefix) or os.listdir(os.path.join(wsDir,prefix)))):
             git.clone("%s %s" % (fullurl, prefix))
         userconfig.set(section, "active", "True")

@@ -525,6 +525,18 @@ options are at least listed below.
     --noRecurse     Don't perform pushes in submodules.  
 
     
+## pull
+
+    grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
+    it uses 'git pull origin <currentBranch>' for the git command.
+
+    Usage: grape-pull [--noRecurse] [--rebase] 
+
+    Options:
+    --noRecurse     Don't perform pulls in submodules or subprojects.   
+    --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
+
+    
 ## commit
 
     Usage: grape-commit [-m <message>] [-a | <filetree>]  
@@ -603,8 +615,11 @@ options are at least listed below.
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "build", "test", "prePublish", "tickVersion",
-                            "publish", "postPublish", or "deleteTopic".
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
@@ -903,7 +918,7 @@ options are at least listed below.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
+                                    <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
  

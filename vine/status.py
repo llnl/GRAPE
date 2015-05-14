@@ -122,6 +122,7 @@ class Status(option.Option):
             retval = retval and publicBranchesExist
         if args["--failIfBranchesInconsistent"]:
             retval = retval and consistentBranchState
+        os.chdir(wsDir)
         return retval        
 
     

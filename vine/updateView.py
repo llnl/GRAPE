@@ -147,9 +147,18 @@ class UpdateView(option.Option):
                 utility.printMsg("Configuring submodules...")
                 utility.printMsg("Initializing submodules...")
                 git.submodule("init %s" % initStr.strip())
-                if deinitStr or deinitStr == "-f":
+                if deinitStr:
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
-                    git.submodule("deinit %s" % deinitStr.strip())
+                    try:
+                        git.submodule("deinit %s" % deinitStr.strip())
+                    except git.GrapeGitError as e:
+                        if "the following file has local modifications" in e.gitOutput:
+                            print e.gitOutput
+                            utility.printMsg("A submodule that you wanted to remove has local modifications. "
+                                             "Use grape uv -f to force removal.")
+                            return False
+                        else:
+                            raise e
                     git.rm("--cached %s" % rmCachedStr)
                     git.reset(" %s" % resetStr)
 
@@ -260,16 +269,16 @@ class UpdateView(option.Option):
                         mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
                         if mr:
                             grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
-                if e.commError:
+                elif e.commError:
                     utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
                                      "local version. " % branch)
-                if "Couldn't find remote ref" in e.gitOutput:
+                elif "Couldn't find remote ref" in e.gitOutput:
                     utility.printMsg("No remote reference to %s in origin. You may want to push this branch.\n"
                                      "Checking out most recent local version." % branch)
                 else:    
                     raise(e)
 
-        checkout.Checkout.handledCheckout(checkoutArgs, branch, repo)
+        grapeMenu.menu().getOption("checkout").handledCheckout(checkoutArgs, branch, repo)
         os.chdir(cwd)
         return
 

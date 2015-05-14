@@ -1,10 +1,95 @@
 
 
+Wed May 13 17:05:40 2015 Peter B. Robinson
+v1.8.0
+Reviewers: Ben Liu
+
+SUMMARY:  Merges 1.6.x and 1.7.x lines of development to master. 
+
+DETAILS:  On Posix systems, grape will now start following long lasting processes. This can be disabled. using grape --noProgress.
+grape has learned to do a pull (finally!). Also, grape pull is in parallel!
+grape md now attempts appropriate merges in all submodules, not just submodules that have SHA conflicts. 
+grape publish --startAt is a bit more robust. 
+grape uv now allows you to create new branches for (a)ll subprojects, or allows you to (s)kip the creation of branches for all subprojects. 
+grape m, mr, and md will now check for branch consistency before performing merges.
+grape commit doesn't fail if there are untracked files in your subprojects.
+grape review propagates reviewers, descriptions, and titles to subprojects' corresponding pull requests. 
+The output for grape uv is a bit clearer when you try to remove modified subprojects as result of a workspace change.
+
+
+Fri May  8 07:57:06 2015 Peter B. Robinson
+v1.7.6
+Reviewers: No reviewers
+
+removed unnecessary print statement.
+
+
+Thu May  7 11:39:39 2015 Peter B. Robinson
+v1.7.5
+Reviewers: Ben Liu
+
+quick fix to pull
+
+
+Thu May  7 08:17:17 2015 Peter B. Robinson
+v1.7.4
+Reviewers: Aaron C. Fisher, Ben Liu
+
+Addresses GRP-133, GRP-121, GRP-140, GRP-134, and GRP-136. Adds a parallel pull. Disables tailing commands on Windows.
+
+
+Wed Apr 29 16:29:27 2015 Benjamin T. Liu
+v1.7.3
+Reviewers: Peter B. Robinson
+
+Fix publish to prevent exceptions when used with --startAt (GRP-135)
+
+
+Mon Apr 27 16:21:27 2015 Peter B. Robinson
+v1.7.2
+Reviewers: Ben Liu
+
+Be more conservative with grape md in submodules...
+
+
+
+Tue Apr 21 15:03:42 2015 Peter B. Robinson
+v1.7.1
+Reviewers: Ben Liu
+
+Fix for pulls on feature branches and N^2 bundles..
+
+
 Thu Apr  9 10:37:36 2015 Peter B. Robinson
 v1.7.0
 Reviewers: Ben Liu
 
 Hotfix to fix unintentional removal of submodules in updateView.
+
+
+
+Wed Apr  8 14:59:45 2015 Benjamin T. Liu
+v1.6.3
+Reviewers: Aaron C. Fisher, Peter B. Robinson
+
+Fixes for grape publish --abort: Allow abort if nothing has yet been committed and allow release of lock for open, rather than merged, pull requests (not sure how this ever worked for abort).
+
+
+Fri Apr  3 14:31:05 2015 Peter B. Robinson
+v1.6.2
+Reviewers: Ben Liu, Aaron C. Fisher
+
+Adds grape pull as an option.
+
+
+Wed Apr  1 16:21:23 2015 Peter B. Robinson
+v1.6.1
+Reviewers: Christopher A. White, Aaron C. Fisher, Benjamin T. Liu
+
+Adds the capability for grape to print output of processes that last more than a few seconds. Adds the capability to disable this using --noProgress.
+
+
+
 
 
 Fri Mar 27 14:10:12 2015 Peter B. Robinson

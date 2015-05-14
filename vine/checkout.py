@@ -25,20 +25,35 @@ class Checkout(option.Option):
         super(Checkout, self).__init__()
         self._key = "checkout"
         self._section = "Workspace"
+        self._createNewBranch = False
+        self._skipBranchCreation = False
 
     def description(self):
         return "Checks out a branch in all projects in this workspace."
 
-    @staticmethod
-    def handledCheckout(checkoutargs, branch, project):
+    def handledCheckout(self, checkoutargs, branch, project):
         git.fetch()
         try:
             git.checkout(checkoutargs + ' ' + branch)
-            git.pull("origin %s" % branch)
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
-                createNewBranch = utility.userInput("Branch not found locally or remotely. Would you like to create a "
-                                                    "new branch called %s?\n(y,n)" % branch, 'y')
+                createNewBranch = self._createNewBranch
+                if self._skipBranchCreation:
+                    utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
+                    createNewBranch = False
+                    
+                elif not createNewBranch:
+                    createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
+                                                    "new branch called %s? \n"
+                                                    "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
+                                                    "\n(y,n,a,s)" % branch, 'y')
+                        
+                if str(createNewBranch).lower()[0] == 'a':
+                    self._createNewBranch = True
+                    createNewBranch = True
+                if str(createNewBranch).lower()[0] == 's':
+                    self._skipBranchCreation = True
+                    createNewBranch = False
                 if createNewBranch:
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
                     git.checkout(checkoutargs+" -b "+branch)
@@ -210,13 +225,17 @@ class Checkout(option.Option):
             
         if args["-b"]: 
             uvArgs.append("-b")
-        
+
+        # in case the user switches to a branch without corresponding branches in the submodules, make sure active submodules
+        # are at the right commit before possibly creating new branches at the current HEAD. 
+        git.submodule("update")
         utility.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(workspaceDir)
         
-        utility.printMsg("Switched to %s." % branch)
+        utility.printMsg("Switched to %s. Updating from remote..." % branch)
+        grapeMenu.menu().applyMenuChoice("pull")
         return True
     
     def setDefaultConfig(self, config):
