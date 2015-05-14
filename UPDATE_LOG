@@ -1,5 +1,22 @@
 
 
+Wed May 13 17:05:40 2015 Peter B. Robinson
+v1.8.0
+Reviewers: Ben Liu
+
+SUMMARY:  Merges 1.6.x and 1.7.x lines of development to master. 
+
+DETAILS:  On Posix systems, grape will now start following long lasting processes. This can be disabled. using grape --noProgress.
+grape has learned to do a pull (finally!). Also, grape pull is in parallel!
+grape md now attempts appropriate merges in all submodules, not just submodules that have SHA conflicts. 
+grape publish --startAt is a bit more robust. 
+grape uv now allows you to create new branches for (a)ll subprojects, or allows you to (s)kip the creation of branches for all subprojects. 
+grape m, mr, and md will now check for branch consistency before performing merges.
+grape commit doesn't fail if there are untracked files in your subprojects.
+grape review propagates reviewers, descriptions, and titles to subprojects' corresponding pull requests. 
+The output for grape uv is a bit clearer when you try to remove modified subprojects as result of a workspace change.
+
+
 Fri May  8 07:57:06 2015 Peter B. Robinson
 v1.7.6
 Reviewers: No reviewers
