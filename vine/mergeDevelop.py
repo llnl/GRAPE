@@ -110,10 +110,8 @@ class MergeDevelop(resumable.Resumable):
         except KeyError:
             modifiedSubmodules = git.getModifiedSubmodules(branch, git.currentBranch())
             activeSubmodules = git.getActiveSubmodules()
-            submodules = []
-            for sub in modifiedSubmodules:
-                if sub in activeSubmodules:
-                    submodules.append(sub)
+            submodules = [sub for sub in modifiedSubmodules if sub in activeSubmodules]
+
         try:
             nested = self.progress["nested"]
         except KeyError:

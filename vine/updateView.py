@@ -127,14 +127,14 @@ class UpdateView(option.Option):
         includedNestedSubprojectPrefixes = {}
         
         if not args["--checkSubprojects"]:
-            # handle submodules first
+            # get submodules to update
             if hasSubmodules:
                 if args["--allSubmodules"]: 
                     includedSubmodules = {sub:True for sub in git.getAllSubmodules()}
                 else:
                     includedSubmodules = self.defineActiveSubmodules()
-                    # handle nested subprojects
-            
+
+            # get subprojects to update
             if not args["--skipNestedSubprojects"]: 
                 
                 nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
