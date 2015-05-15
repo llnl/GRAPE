@@ -117,11 +117,15 @@ class UpdateView(option.Option):
     def execute(self, args):
         config = grapeConfig.grapeConfig()
         origwd = os.getcwd()
-        os.chdir(utility.workspaceDir())
+        wsDir = utility.workspaceDir()
+        os.chdir(wsDir)
         base = git.baseDir()
         if base == "":
             return False
         hasSubmodules = len(git.getAllSubmodules()) > 0 and not args["--skipSubmodules"]
+        includedSubmodules = {}
+        includedNestedSubprojectPrefixes = {}
+        
         if not args["--checkSubprojects"]:
             # handle submodules first
             if hasSubmodules:
@@ -129,6 +133,18 @@ class UpdateView(option.Option):
                     includedSubmodules = {sub:True for sub in git.getAllSubmodules()}
                 else:
                     includedSubmodules = self.defineActiveSubmodules()
+                    # handle nested subprojects
+            
+            if not args["--skipNestedSubprojects"]: 
+                
+                nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
+                allNestedSubprojects = config.getAllNestedSubprojects()
+                if args["--allNestedSubprojects"]: 
+                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
+                else:
+                    includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()                    
+            
+            if hasSubmodules:
                 initStr = ""
                 if args["-f"]:
                     deinitStr = "-f"
@@ -149,16 +165,36 @@ class UpdateView(option.Option):
                 git.submodule("init %s" % initStr.strip())
                 if deinitStr:
                     utility.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
-                    try:
-                        git.submodule("deinit %s" % deinitStr.strip())
-                    except git.GrapeGitError as e:
-                        if "the following file has local modifications" in e.gitOutput:
-                            print e.gitOutput
-                            utility.printMsg("A submodule that you wanted to remove has local modifications. "
-                                             "Use grape uv -f to force removal.")
-                            return False
-                        else:
-                            raise e
+                    done = False
+                    while not done:
+                        try:
+                            git.submodule("deinit %s" % deinitStr.strip())
+                            done = True
+                        except git.GrapeGitError as e:
+                            if "the following file has local modifications" in e.gitOutput:
+                                print e.gitOutput
+                                utility.printMsg("A submodule that you wanted to remove has local modifications. "
+                                                 "Use grape uv -f to force removal.")
+                                return False
+                            
+                            elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput:
+                                if not args["-f"]:
+                                    raise e
+                                # it is safe to move the .git of the submodule to the .git/modules area of the workspace...
+                                module = None
+                                for l in e.gitOutput.split('\n'):
+                                    if "Submodule work tree" in l and "contains a .git directory" in l:
+                                        module = l.split("'")[1]
+                                        break
+                                if module:
+                                    src = os.path.join(module, ".git")
+                                    dest =  os.path.join(wsDir, ".git", "modules", module)
+                                    utility.printMsg("Moving %s to %s"%(src, dest))
+                                    shutil.move(src, dest )
+                                else:
+                                    raise e
+                            else:
+                                raise e
                     git.rm("--cached %s" % rmCachedStr)
                     git.reset(" %s" % resetStr)
 
@@ -168,13 +204,6 @@ class UpdateView(option.Option):
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]: 
-                
-                nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
-                allNestedSubprojects = config.getAllNestedSubprojects()
-                if args["--allNestedSubprojects"]: 
-                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
-                else:
-                    includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()
                 reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects} 
                 userConfig = grapeConfig.grapeUserConfig()
                 updatedActiveList = []
