@@ -69,28 +69,6 @@ class MergeDevelop(resumable.Resumable):
 
         return "Merge latest changes on %s into %s" % (publicBranch, currentBranch)
 
-    def mergeCurrentPublicBranch(self, args):
-        try:
-            git.pull("--rebase origin %s" % git.currentBranch(), throwOnFail=True)
-        except git.GrapeGitError as e:
-            self.progress["stopPoint"] = "public rebase"
-            self.dumpProgress(args)
-            # on conflict, ask user to resolve conflicts and then resume using grape md --continue
-            if "conflict:" in e.gitOutput.lower():
-                self.dumpProgress(args)
-                utility.printMsg("pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
-                      "continue by calling 'grape md --continue' .")
-                return False
-            elif e.commError:
-                self.dumpProgress(args)
-                utility.printMsg("Could not communicate with origin. Check your connection and/or remote URL and then"
-                                 "continue by calling 'grape md --continue'.")
-                return False
-            else:
-                utility.printMsg("ERROR: pull --rebase failed for unhandled reason.")
-                print e.gitOutput
-                return False
-        return True
 
     def execute(self, args):
         if not "<<cmd>>" in args:
@@ -98,8 +76,6 @@ class MergeDevelop(resumable.Resumable):
         branch = args["--public"]
         if not branch:
             currentBranch = git.currentBranch()
-            if currentBranch in grapeConfig.grapeConfig().get('flow', 'publicBranches'):
-                return self.mergeCurrentPublicBranch(args)
             branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
                 utility.printMsg("ERROR: public branches must be configured for grape md to work.")
@@ -135,7 +111,7 @@ class MergeDevelop(resumable.Resumable):
             conflictedFiles = self.progress["conflictedFiles"]
         else:
             conflictedFiles = []
-        
+
         # checking for a consistent workspace before doing a merge
         utility.printMsg("Checking for a consistent workspace before performing merge...")
         ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
