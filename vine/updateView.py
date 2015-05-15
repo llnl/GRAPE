@@ -212,7 +212,7 @@ class UpdateView(option.Option):
                     section = "nested-%s" % reverseLookupByPrefix[subproject]
                     userConfig.ensureSection(section)
                     previouslyActive = userConfig.getboolean(section, "active")
-                    previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject))
+                    previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
                     if nowActive and previouslyActive:
                         updatedActiveList.append(subprojectName)

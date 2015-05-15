@@ -248,7 +248,7 @@ class MergeDevelop(resumable.Resumable):
         os.chdir(cwd)
         if isSubmodule:
             git.add(subproject)
-        self.progress["Submodule: %s" % subproject] = "finished"
+        self.progress["Subproject: %s" % subproject] = "finished"
         return True
 
     def outerLevelMerge(self, args, branch):
