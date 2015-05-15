@@ -152,10 +152,17 @@ class AddSubproject(option.Option):
         section = "nested-%s" % subprojectName
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
-        if not currentlyActive and not (os.path.isdir(os.path.join(wsDir,prefix) or os.listdir(os.path.join(wsDir,prefix)))):
-            git.clone("%s %s" % (fullurl, prefix))
+        if not currentlyActive:
+            destDir = os.path.join(wsDir, prefix)
+            if not (os.path.isdir(destDir) or os.listdir(destDir)):
+                git.clone("%s %s" % (fullurl, prefix))
+            else:
+                if (not os.path.isdir(os.path.join(destDir, ".git"))) and os.listdir(destDir):
+                    utility.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
+                    return False
         userconfig.set(section, "active", "True")
         grapeConfig.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))
+        return True
 
     def setDefaultConfig(self, config):
         config.ensureSection("subtrees")

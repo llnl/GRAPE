@@ -219,7 +219,10 @@ class UpdateView(option.Option):
     
                     if nowActive and not previouslyActive:
                         utility.printMsg("Activating Nested Subproject %s" % subproject)
-                        addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig)
+                        if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig):
+                            utility.printMsg("Can't activate %s. Exiting..." % subprojectName)
+                            return False
+                        
                         updatedActiveList.append(subprojectName)
     
                     if not nowActive and not previouslyActive:
