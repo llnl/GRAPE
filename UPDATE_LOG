@@ -1,5 +1,12 @@
 
 
+Tue May 19 09:17:53 2015 Peter B. Robinson
+v1.9.0
+Reviewers: Ben Liu
+
+Fixes md bug when submodules are not present.
+
+
 Fri May 15 16:59:34 2015 Peter B. Robinson
 v1.8.1
 Reviewers: Aaron C. Fisher, Ben Liu
