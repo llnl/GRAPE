@@ -15,8 +15,7 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse]
-
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
     Options:
         --am            Use git's default merge. 
         --as            Do a safe merge - force git to issue conflicts for files that
@@ -26,6 +25,8 @@ class Merge(resumable.Resumable):
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
+        --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
+                        the merge. 
 
     Arguments:
         <branch>        The branch you want to merge in. 
@@ -57,6 +58,7 @@ class Merge(resumable.Resumable):
         mdArgs["--noRecurse"] = args["--noRecurse"]
         mdArgs["--continue"] = args["--continue"]
         mdArgs["<<cmd>>"] = args["<<cmd>>"]
+        mdArgs["--noUpdate"] = args["--noUpdate"]
         
         
         return grapeMenu.menu().getOption("md").execute(mdArgs)

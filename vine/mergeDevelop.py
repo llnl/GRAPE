@@ -17,6 +17,7 @@ class MergeDevelop(resumable.Resumable):
                     [--am | --as | --at | --ay]
                     [--continue]
                     [--recurse | --noRecurse]
+                    [--noUpdate]
                     
 
     Options:
@@ -31,6 +32,7 @@ class MergeDevelop(resumable.Resumable):
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
+        --noUpdate              Do not update local versions of the public branch before attempting merges. 
         
 
 
@@ -118,8 +120,8 @@ class MergeDevelop(resumable.Resumable):
         if ret is False:
             return False
             
-        
-        if not "updateLocalDone" in self.progress:
+
+        if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
             grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--noRecurse'])  
@@ -270,7 +272,8 @@ class MergeDevelop(resumable.Resumable):
 
     def mergeIntoCurrent(self, branchName, args):
         updateArgs = ['up', '--wd=%s' % os.getcwd(), '--noRecurse', '--public=%s' % branchName]
-        grapeMenu.menu().applyMenuChoice('up', updateArgs)
+        if not args["--noUpdate"]:
+            grapeMenu.menu().applyMenuChoice('up', updateArgs)
         choice = False
         strategy = None
         if args["--continue"]:
