@@ -118,6 +118,7 @@ class MergeDevelop(resumable.Resumable):
         utility.printMsg("Checking for a consistent workspace before performing merge...")
         ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
         if ret is False:
+            utility.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
             return False
             
 
@@ -174,10 +175,6 @@ class MergeDevelop(resumable.Resumable):
             return False
         else:
             grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
-
-            uvArgs = ["--checkSubprojects"]
-            utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
-            grapeMenu.menu().applyMenuChoice('uv', uvArgs)
         return True
 
     def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):

@@ -42,9 +42,9 @@ class MergeRemote(option.Option):
             print git.branch('-r')
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
 
-        # make sure remote references are up to date        
-        cmd = lambda: git.fetch("origin")
-        utility.MultiRepoCommandLauncher(cmd).launchFromWorkspaceDir()
+        # make sure remote references are up to date
+        utility.printMsg("Fetching remote references in all projects...")
+        utility.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
         
         
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -52,8 +52,7 @@ class MergeRemote(option.Option):
         hasBranch = git.hasBranch(otherBranch)
         currentBranch = git.currentBranch()
         if  hasRemote and  (git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch) or not hasBranch) and currentBranch != otherBranch:
-            cmd = lambda repo, branch: git.fetch("origin %s:%s" % (branch, branch))
-            utility.MultiRepoCommandLauncher(lmbda, branch=otherBranch).launchFromWorkspaceDir()
+            utility.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir()
             
         args["<branch>"] = otherBranch if currentBranch != otherBranch else "origin/%s" % otherBranch
         # we've handled the update, we don't want m or md to update the local branch. 
@@ -67,3 +66,12 @@ class MergeRemote(option.Option):
 
     def setDefaultConfig(self, config):
         pass
+
+def fetchHelper():
+    return git.fetch("origin")
+
+def updateBranchHelper(branch, repo):
+    utility.printMsg("Updating local reference to %s in %s", (branch, repo))
+    return git.fetch("origin %s:%s" % (branch, branch))
+    
+    
