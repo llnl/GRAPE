@@ -1,8 +1,10 @@
 import os
 import option
 import grapeGit as git
+import grapeMenu
 import utility
 import grapeConfig
+import resumable
 
 
 def pull(branch="develop", repo=".", rebase=False):
@@ -15,16 +17,17 @@ def pull(branch="develop", repo=".", rebase=False):
     git.pull(argStr, throwOnFail=True)
 
 
-class Pull(option.Option):
+class Pull(resumable.Resumable):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
+    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
     it uses 'git pull origin <currentBranch>' for the git command.
 
-    Usage: grape-pull [--noRecurse] [--rebase] 
+    Usage: grape-pull [--continue]
 
     Options:
-    --noRecurse     Don't perform pulls in submodules or subprojects.   
-    --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
+    --continue:     Finish a pull that failed due to merge conflicts.
+
 
     """
     def __init__(self):
@@ -33,36 +36,33 @@ class Pull(option.Option):
         self._section = "Workspace"
 
     def description(self):
-        return "Pulls your current branch to origin in all projects in this workspace."
+        return "Pulls your current branch to origin in all projects in this workspace. (Calls grape mr <currentBranch>)"
 
     def execute(self, args):
-        baseDir = utility.workspaceDir()
+        mrArgs = {}
+        mrArgs["<branch>"] = git.currentBranch()
+        # the <<cmd>> stuff is for consistent --continue output
+        if not "<<cmd>>" in args:
+            args["<<cmd>>"] = "pull"
+        mrArgs["<<cmd>>"] = args["<<cmd>>"]
+        mrArgs["--am"] = False
+        mrArgs["--as"] = False
+        mrArgs["--at"] = False
+        mrArgs["--ay"] = False
+        mrArgs["--continue"] = args["--continue"]
+        mrArgs["--noRecurse"] = False
 
-        cwd = os.getcwd()
-        os.chdir(baseDir)
-        currentBranch = git.currentBranch()
-        config = grapeConfig.grapeConfig()
-        publicBranches = config.getPublicBranchList()
-
-
-            
-        submodules = git.getActiveSubmodules()
-        
-
-        try:
-            launcher = utility.MultiRepoCommandLauncher(pull, runInOuter=True)
-            launcher.launchFromWorkspaceDir()
-                    
-        except utility.MultiRepoException as e:
-            utility.printMsg("Failed to pull branch.")
-            for err in e:
-                print err
-            return False
-        finally:
-            os.chdir(cwd)
         
         utility.printMsg("Pulled current branch from origin")
+        return grapeMenu.menu().getOption("mr").execute(mrArgs)
+
+    def _resume(self, args):
+        grapeMenu.menu().getOption("md")._resume(args)             
         return True
+
+    def _saveProgress(self, args):
+        super(Merge, self)._saveProgress(args)
+        pass
     
     def setDefaultConfig(self, config):
         pass
