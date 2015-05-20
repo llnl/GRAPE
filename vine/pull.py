@@ -21,12 +21,12 @@ class Pull(resumable.Resumable):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
     Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
-    it uses 'git pull origin <currentBranch>' for the git command.
 
-    Usage: grape-pull [--continue]
+    Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
-    --continue:     Finish a pull that failed due to merge conflicts.
+    --continue     Finish a pull that failed due to merge conflicts.
+    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.  
 
 
     """
@@ -40,7 +40,8 @@ class Pull(resumable.Resumable):
 
     def execute(self, args):
         mrArgs = {}
-        mrArgs["<branch>"] = git.currentBranch()
+        currentBranch = git.currentBranch()
+        mrArgs["<branch>"] = currentBranch
         # the <<cmd>> stuff is for consistent --continue output
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = "pull"
@@ -52,9 +53,12 @@ class Pull(resumable.Resumable):
         mrArgs["--continue"] = args["--continue"]
         mrArgs["--noRecurse"] = False
 
-        
-        utility.printMsg("Pulled current branch from origin")
-        return grapeMenu.menu().getOption("mr").execute(mrArgs)
+        if args["--noRecurse"]:
+            git.pull("origin %s" % currentBranch)
+            return True
+        else:
+            utility.printMsg("Pulled current branch from origin")
+            return grapeMenu.menu().getOption("mr").execute(mrArgs)
 
     def _resume(self, args):
         grapeMenu.menu().getOption("md")._resume(args)             
