@@ -46,7 +46,7 @@ class Pull(resumable.Resumable):
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = "pull"
         mrArgs["<<cmd>>"] = args["<<cmd>>"]
-        mrArgs["--am"] = False
+        mrArgs["--am"] = True
         mrArgs["--as"] = False
         mrArgs["--at"] = False
         mrArgs["--ay"] = False
@@ -55,10 +55,13 @@ class Pull(resumable.Resumable):
 
         if args["--noRecurse"]:
             git.pull("origin %s" % currentBranch)
+            utility.printMsg("Pulled current branch from origin")
             return True
         else:
-            utility.printMsg("Pulled current branch from origin")
-            return grapeMenu.menu().getOption("mr").execute(mrArgs)
+            val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
+            if val:
+                utility.printMsg("Pulled current branch from origin")
+            return val
 
     def _resume(self, args):
         grapeMenu.menu().getOption("md")._resume(args)             
