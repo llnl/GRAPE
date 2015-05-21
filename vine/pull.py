@@ -66,7 +66,6 @@ class Pull(resumable.Resumable):
 
     def _saveProgress(self, args):
         super(Merge, self)._saveProgress(args)
-        pass
     
     def setDefaultConfig(self, config):
         pass
