@@ -291,7 +291,7 @@ class MultiRepoCommandLauncher(object):
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
         self.pool = MyPool(processes=nProcesses)
-        self.branchArg = git.currentBranch() if not branch else branch
+        self.branchArg = branch 
         
     def launchFromWorkspaceDir(self):
         cwd = os.getcwd()
@@ -300,7 +300,7 @@ class MultiRepoCommandLauncher(object):
         branches = []
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
-        currentBranch = self.branchArg
+        currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         
         if self.runSubmodules:
             activeSubmodules = git.getActiveSubmodules()
