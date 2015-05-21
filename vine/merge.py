@@ -16,6 +16,7 @@ class Merge(resumable.Resumable):
     grape m
     merge a local branch into your current branch
     Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
+
     Options:
         --am            Use git's default merge. 
         --as            Do a safe merge - force git to issue conflicts for files that
@@ -30,7 +31,7 @@ class Merge(resumable.Resumable):
 
     Arguments:
         <branch>        The branch you want to merge in. 
-        
+
     """
     def __init__(self):
         super(Merge, self).__init__()
