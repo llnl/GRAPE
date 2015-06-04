@@ -1163,8 +1163,8 @@ class Publish(resumable.Resumable):
         recurse = args["--recurse"]
         config = grapeConfig.grapeConfig()
 
-        # make sure public branches are up to date.
-        grapeMenu.menu().applyMenuChoice('up', ['up'])
+        # make sure public branch is up to date.
+        grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % public])
 
         # set any CL defined publish policy
         policy = None

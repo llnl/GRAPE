@@ -17,6 +17,7 @@ class MergeDevelop(resumable.Resumable):
                     [--am | --as | --at | --ay]
                     [--continue]
                     [--recurse | --noRecurse]
+                    [--noUpdate]
                     
 
     Options:
@@ -31,6 +32,7 @@ class MergeDevelop(resumable.Resumable):
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
+        --noUpdate              Do not update local versions of the public branch before attempting merges. 
         
 
 
@@ -69,28 +71,6 @@ class MergeDevelop(resumable.Resumable):
 
         return "Merge latest changes on %s into %s" % (publicBranch, currentBranch)
 
-    def mergeCurrentPublicBranch(self, args):
-        try:
-            git.pull("--rebase origin %s" % git.currentBranch(), throwOnFail=True)
-        except git.GrapeGitError as e:
-            self.progress["stopPoint"] = "public rebase"
-            self.dumpProgress(args)
-            # on conflict, ask user to resolve conflicts and then resume using grape md --continue
-            if "conflict:" in e.gitOutput.lower():
-                self.dumpProgress(args)
-                utility.printMsg("pull --rebase generated conflicts. Please resolve using git mergetool and then \n"
-                      "continue by calling 'grape md --continue' .")
-                return False
-            elif e.commError:
-                self.dumpProgress(args)
-                utility.printMsg("Could not communicate with origin. Check your connection and/or remote URL and then"
-                                 "continue by calling 'grape md --continue'.")
-                return False
-            else:
-                utility.printMsg("ERROR: pull --rebase failed for unhandled reason.")
-                print e.gitOutput
-                return False
-        return True
 
     def execute(self, args):
         if not "<<cmd>>" in args:
@@ -98,8 +78,6 @@ class MergeDevelop(resumable.Resumable):
         branch = args["--public"]
         if not branch:
             currentBranch = git.currentBranch()
-            if currentBranch in grapeConfig.grapeConfig().get('flow', 'publicBranches'):
-                return self.mergeCurrentPublicBranch(args)
             branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
                 utility.printMsg("ERROR: public branches must be configured for grape md to work.")
@@ -108,8 +86,10 @@ class MergeDevelop(resumable.Resumable):
         try:
             submodules = self.progress["submodules"]
         except KeyError:
-            submodules = git.getModifiedSubmodules(branch, git.currentBranch())
-            
+            modifiedSubmodules = git.getModifiedSubmodules(branch, git.currentBranch())
+            activeSubmodules = git.getActiveSubmodules()
+            submodules = [sub for sub in modifiedSubmodules if sub in activeSubmodules]
+
         try:
             nested = self.progress["nested"]
         except KeyError:
@@ -133,15 +113,16 @@ class MergeDevelop(resumable.Resumable):
             conflictedFiles = self.progress["conflictedFiles"]
         else:
             conflictedFiles = []
-        
+
         # checking for a consistent workspace before doing a merge
         utility.printMsg("Checking for a consistent workspace before performing merge...")
         ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
         if ret is False:
+            utility.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
             return False
             
-        
-        if not "updateLocalDone" in self.progress:
+
+        if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
             grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--noRecurse'])  
@@ -194,10 +175,6 @@ class MergeDevelop(resumable.Resumable):
             return False
         else:
             grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
-
-            uvArgs = ["--checkSubprojects"]
-            utility.printMsg("Calling grape uv %s to ensure branches are consistent across all subprojects and submodules." % ' '.join(uvArgs))
-            grapeMenu.menu().applyMenuChoice('uv', uvArgs)
         return True
 
     def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):
@@ -248,7 +225,7 @@ class MergeDevelop(resumable.Resumable):
         os.chdir(cwd)
         if isSubmodule:
             git.add(subproject)
-        self.progress["Submodule: %s" % subproject] = "finished"
+        self.progress["Subproject: %s" % subproject] = "finished"
         return True
 
     def outerLevelMerge(self, args, branch):
@@ -292,7 +269,8 @@ class MergeDevelop(resumable.Resumable):
 
     def mergeIntoCurrent(self, branchName, args):
         updateArgs = ['up', '--wd=%s' % os.getcwd(), '--noRecurse', '--public=%s' % branchName]
-        grapeMenu.menu().applyMenuChoice('up', updateArgs)
+        if not args["--noUpdate"]:
+            grapeMenu.menu().applyMenuChoice('up', updateArgs)
         choice = False
         strategy = None
         if args["--continue"]:

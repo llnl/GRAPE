@@ -252,6 +252,11 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
     os.chdir(repo)
     try:
         return f(repo=repo, branch=branch)
+    except TypeError:
+        try:
+            return f()
+        except Exception as e:
+            return e
     except Exception as e:
         return e
         
@@ -280,12 +285,13 @@ class MyPool(multiprocessing.pool.Pool):
 import inspect
 class MultiRepoCommandLauncher(object):    
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=False):
+    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=False, branch=""):
         self.lmbda = lmbda
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
         self.pool = MyPool(processes=nProcesses)
+        self.branchArg = branch 
         
     def launchFromWorkspaceDir(self):
         cwd = os.getcwd()
@@ -294,7 +300,7 @@ class MultiRepoCommandLauncher(object):
         branches = []
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
-        currentBranch = git.currentBranch()
+        currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         
         if self.runSubmodules:
             activeSubmodules = git.getActiveSubmodules()
