@@ -372,7 +372,7 @@ class DiffManager(ProjectManager):
                fullurl = utility.parseSubprojectRemoteURL(submoduleURLMap[dir])
                # TODO need to strip off origin
                remotels = git.gitcmd("ls-remote --heads %s %s %s" % (fullurl,self.getSubBranch(self.branchA),self.getSubBranch(self.branchB)), "Failed to execute ls-remote")
-               print remotels
+               # print remotels
             elif self.branchA == "--cached":
                os.chdir(os.path.join(utility.workspaceDir(), dir))
                if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
