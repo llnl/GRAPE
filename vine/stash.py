@@ -20,12 +20,9 @@ class Stash(option.Option):
     grape makes no attempt of tracking of which commits were stashed on the most recent call to grape stash, so if you
     do a stash with active edits in one repo, then later do a stash with active edits in another repo, then grape stash pop
     will trigger pops in both repos, in a sense breaking First-In-Last-Out semantics that one might expect.
-    
 
     Usage: grape-stash
            grape-stash pop
-
-
 
     """
     def __init__(self):
