@@ -376,7 +376,9 @@ def showRemote():
             return e.gitOutput
         else:
             raise e
-
+ 
+def stash(argstr=""):
+    return gitcmd("stash %s" % argstr, "git stash failed for some reason")
 
 def status(argstr=""):
     return gitcmd("status %s" % argstr, "git status failed for some reason")
