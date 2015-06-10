@@ -14,13 +14,17 @@ def popHelper():
 
 class Stash(option.Option):
     """
-    grape stash simply applies a git stash command to all projects in a workspace, and outputs any output that git provides.
+    grape stash can run simple git stash or git stash pop commands in all repositories in your workspace. 
+    
     Note that this is a bit scary - a simple git stash pop will attempt to apply the most recently stashed commit in each repo,
-    grape has no independent tracking of which commits were stashed on the most recent call to grape stash. 
-    Usage: grape-stash [pop]
+    grape makes no attempt of tracking of which commits were stashed on the most recent call to grape stash, so if you
+    do a stash with active edits in one repo, then later do a stash with active edits in another repo, then grape stash pop
+    will trigger pops in both repos, in a sense breaking First-In-Last-Out semantics that one might expect.
+    
 
-    Options:
-    pop    Do a pop instead of a stash. 
+    Usage: grape-stash
+           grape-stash pop
+
 
 
     """
