@@ -285,7 +285,7 @@ class MyPool(multiprocessing.pool.Pool):
 import inspect
 class MultiRepoCommandLauncher(object):    
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=False, branch=""):
+    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch=""):
         self.lmbda = lmbda
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
