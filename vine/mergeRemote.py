@@ -44,7 +44,21 @@ class MergeRemote(option.Option):
 
         # make sure remote references are up to date
         utility.printMsg("Fetching remote references in all projects...")
-        utility.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
+        try:
+            utility.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
+        except utility.MultiRepoException as mre:
+            commError = False
+            commErrorRepos = []
+            for e, r in zip(mre, mre.repos):
+                if e.commError:
+                    commErrorRepos.append(r)
+                    commError = True
+                
+            if commError:
+                utility.printMsg("ERROR: can't communicate with remotes for %s. Halting remote merge." % commErrorRepos)
+                return False
+            
+            
         
         
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -68,7 +82,7 @@ class MergeRemote(option.Option):
         pass
 
 def fetchHelper():
-    return git.fetch("origin")
+    return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True)
 
 def updateBranchHelper(branch, repo):
     utility.printMsg("Updating local reference to %s in %s", (branch, repo))

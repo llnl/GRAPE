@@ -155,12 +155,17 @@ def diff(argstr):
     return gitcmd("diff %s" % argstr, "could not perform diff")
 
 
-def fetch(repo="", branchArg=""):
+def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
     try:
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
         if e.commError:
-            return e.gitOutput
+            if warnOnCommError:
+                utility.printMsg("WARNING: could not fetch due to communication error.")
+            if raiseOnCommError:
+                raise e
+            else:
+                return e.gitOutput
         else:
             raise e
 

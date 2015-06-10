@@ -38,6 +38,7 @@ def startup():
         
     
     try:
+        retval = True
         if (args["<command>"] is None):
             done = 0
             while not done:
@@ -47,14 +48,16 @@ def startup():
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif (len(sys.argv) > 1):
-            myMenu.applyMenuChoice(args["<command>"],args["<args>"])
+            retval = myMenu.applyMenuChoice(args["<command>"],args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
 
     # Exit the script
     print("Thank you - good bye")
+    return retval
+        
 
 ## If this file is being run as a script, then run the main menu.
 ## If it's being imported, then don't
 if __name__ == '__main__':
-    startup()
+    exit(0 if startup() else 1)
