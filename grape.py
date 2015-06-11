@@ -36,9 +36,8 @@ def startup():
     utility.applyGlobalArgs(args)
 
         
-    
+    retval = True
     try:
-        retval = True
         if (args["<command>"] is None):
             done = 0
             while not done:
@@ -51,6 +50,7 @@ def startup():
             retval = myMenu.applyMenuChoice(args["<command>"],args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
+        retval = False
 
     # Exit the script
     print("Thank you - good bye")
