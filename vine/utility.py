@@ -286,7 +286,7 @@ class MyPool(multiprocessing.pool.Pool):
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
-# If runInOuter is set to true (not the default), lambdas will also run in the main workspace repository.
+# If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 class MultiRepoCommandLauncher(object):    
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
     def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch=""):

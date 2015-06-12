@@ -67,8 +67,8 @@ class Status(option.Option):
             os.chdir(wsDir)
         
         
-        for subStatus in status.keys():
-            for line in status[subStatus]: 
+        for sub in status.keys():
+            for line in status[sub]: 
                 lstripped = line.strip()
                 if lstripped:
                     # filter out branch tracking status
@@ -76,7 +76,7 @@ class Status(option.Option):
                     # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [behind 29]
                     if lstripped[0:2] == "##":
                         if "[ahead" in lstripped or "[behind" in lstripped:
-                            print os.path.abspath(os.path.join(wsDir, subStatus))+': ' + lstripped
+                            print os.path.abspath(os.path.join(wsDir, sub))+': ' + lstripped
                         continue
                     # print other statuses
                     print ' ' + lstripped
