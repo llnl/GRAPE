@@ -491,6 +491,7 @@ options are at least listed below.
               [--failIfInconsistent] 
               [--failIfMissingPublicBranches]
               [--failIfBranchesInconsistent]
+              [--checkWSOnly]
 
     Options:
     --uno                          Do not show untracked files
@@ -498,7 +499,23 @@ options are at least listed below.
     --failIfInconsistent           Fail if any consistency checks fail. 
     --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
     --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
     
+
+    
+## stash
+
+    grape stash can run simple git stash, git stash pop, or git stash list commands in all repositories
+    in your workspace. 
+    
+    Note that this is a bit scary - a simple git stash pop will attempt to apply the most recently stashed
+    commit in each repo, grape makes no attempt of tracking of which commits were stashed on the most recent
+    call to grape stash, so if you do a stash with active edits in one repo, then later do a stash with
+    active edits in another repo, then grape stash pop will trigger pops in both repos, in a sense breaking First-In-Last-Out semantics that one might expect.
+
+    Usage: grape-stash
+           grape-stash pop
+           grape-stash list
 
     
 ## checkout
@@ -727,12 +744,13 @@ options are at least listed below.
 
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache] [--p4merge] 
+                        [--nocredcache | --credcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
+        --credcache     enables https 12 hr credential cacheing. 
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
         --p4merge       will set up p4merge as your merge tool. 
         --nop4merge     will skip p4merge questions.
