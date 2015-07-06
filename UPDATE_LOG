@@ -1,5 +1,12 @@
 
 
+Mon Jul  6 16:17:37 2015 Peter B. Robinson
+v1.9.5
+Reviewers: Ben Liu
+
+Fixes a crash in grape review when creating a new pull request with a description for submodules.
+
+
 Mon Jul  6 16:05:36 2015 Benjamin T. Liu
 v1.9.4
 Reviewers: Peter B. Robinson
