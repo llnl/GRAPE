@@ -26,6 +26,13 @@ vinePath = os.path.dirname(vine.__file__)
 CLI = utility.CLI 
 
 def startup():
+    versionString = git.version().split()[-1]
+    versions = versionString.split('.') 
+   
+    if int(versions[0]) == 1 and int(versions[1]) < 8:
+      print('Grape requires at least git version 1.8, currently using %s' % versionString)
+      return False
+
     #TODO - allow addition grape config file to be specified at command line
     #additionalConfigFiles = []
     #grapeConfig.read(additionalConfigFiles)
