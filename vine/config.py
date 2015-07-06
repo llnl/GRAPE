@@ -12,12 +12,13 @@ class Config(option.Option):
     """
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache] [--p4merge] 
+                        [--nocredcache | --credcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
+        --credcache     enables https 12 hr credential cacheing. 
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
         --p4merge       will set up p4merge as your merge tool. 
         --nop4merge     will skip p4merge questions.
@@ -58,7 +59,9 @@ class Config(option.Option):
         # stores login info for 12 hrs (max allowed by RZStash)
 
         if not args["--nocredcache"]:
-            cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
+            cache = args["--credcache"]
+            if not cache:
+                cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
                 utility.printMsg("Enabling 12 hr caching of https credentials...")
                 git.config("--global credential.helper", "cache --timeout=43200")

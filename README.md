@@ -491,6 +491,7 @@ options are at least listed below.
               [--failIfInconsistent] 
               [--failIfMissingPublicBranches]
               [--failIfBranchesInconsistent]
+              [--checkWSOnly]
 
     Options:
     --uno                          Do not show untracked files
@@ -498,7 +499,23 @@ options are at least listed below.
     --failIfInconsistent           Fail if any consistency checks fail. 
     --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
     --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
     
+
+    
+## stash
+
+    grape stash can run simple git stash, git stash pop, or git stash list commands in all repositories
+    in your workspace. 
+    
+    Note that this is a bit scary - a simple git stash pop will attempt to apply the most recently stashed
+    commit in each repo, grape makes no attempt of tracking of which commits were stashed on the most recent
+    call to grape stash, so if you do a stash with active edits in one repo, then later do a stash with
+    active edits in another repo, then grape stash pop will trigger pops in both repos, in a sense breaking First-In-Last-Out semantics that one might expect.
+
+    Usage: grape-stash
+           grape-stash pop
+           grape-stash list
 
     
 ## checkout
@@ -528,13 +545,14 @@ options are at least listed below.
 ## pull
 
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
-    it uses 'git pull origin <currentBranch>' for the git command.
+    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
 
-    Usage: grape-pull [--noRecurse] [--rebase] 
+    Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
-    --noRecurse     Don't perform pulls in submodules or subprojects.   
-    --rebase        Rebase local changes onto remote changes instead of merging remote changes into local changes.
+    --continue     Finish a pull that failed due to merge conflicts.
+    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.  
+
 
     
 ## commit
@@ -726,12 +744,13 @@ options are at least listed below.
 
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache] [--p4merge] 
+                        [--nocredcache | --credcache] [--p4merge] 
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
+        --credcache     enables https 12 hr credential cacheing. 
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
         --p4merge       will set up p4merge as your merge tool. 
         --nop4merge     will skip p4merge questions.
@@ -769,7 +788,7 @@ options are at least listed below.
 
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse]
+    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
 
     Options:
         --am            Use git's default merge. 
@@ -780,10 +799,12 @@ options are at least listed below.
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
+        --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
+                        the merge. 
 
     Arguments:
         <branch>        The branch you want to merge in. 
-        
+
     
 ## md
 
@@ -794,6 +815,7 @@ options are at least listed below.
                     [--am | --as | --at | --ay]
                     [--continue]
                     [--recurse | --noRecurse]
+                    [--noUpdate]
                     
 
     Options:
@@ -808,14 +830,19 @@ options are at least listed below.
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
+        --noUpdate              Do not update local versions of the public branch before attempting merges. 
         
 
 
     
 ## mr
 
-    grape mr (merge remote branch). Updates the branch you're merging from and then performs the merge.
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [--noRecurse] [--continue]
+    grape mr (merge remote branch). If the remote branch is different from your current branch, this will update
+    or add a local version of that branch, then merge it into your current branch. If you perform a grape mr on the
+    current branch, then this will do a merge assuming the remote branch has a different line of development than
+    your local branch. (Ideal for developers working on shared branches.)
+
+    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
 
 
     Options:

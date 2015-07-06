@@ -229,13 +229,18 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
 class MultiRepoException(Exception):
     def __init__(self):
         self.exceptions = []
+        self.repos = []
         
-    def addException(self, e):
+    def addException(self, e, repo):
         self.exceptions.append(e)
+        self.repos.append(repo)
     
     def __getitem__(self, pos):
         return self.exceptions[pos]
     
+    def repos(self):
+        return self.repos
+        
     def hasException(self):
         return len(self.exceptions) > 0
         
@@ -252,6 +257,11 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
     os.chdir(repo)
     try:
         return f(repo=repo, branch=branch)
+    except TypeError:
+        try:
+            return f()
+        except Exception as e:
+            return e
     except Exception as e:
         return e
         
@@ -276,16 +286,16 @@ class MyPool(multiprocessing.pool.Pool):
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
-# If runInOuter is set to true (not the default), lambdas will also run in the main workspace repository.
-import inspect
+# If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 class MultiRepoCommandLauncher(object):    
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=False):
+    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch=""):
         self.lmbda = lmbda
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
         self.pool = MyPool(processes=nProcesses)
+        self.branchArg = branch 
         
     def launchFromWorkspaceDir(self):
         cwd = os.getcwd()
@@ -294,7 +304,7 @@ class MultiRepoCommandLauncher(object):
         branches = []
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
-        currentBranch = git.currentBranch()
+        currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         
         if self.runSubmodules:
             activeSubmodules = git.getActiveSubmodules()
@@ -317,9 +327,9 @@ class MultiRepoCommandLauncher(object):
             retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
         os.chdir(cwd)
         MRE = MultiRepoException()
-        for val in retvals:
-            if isinstance(val, Exception):
-                MRE.addException(val)
+        for val in zip(retvals, repos):
+            if isinstance(val[0], Exception):
+                MRE.addException(val[0], val[1])
         if MRE.hasException():
             raise MRE
         return retvals 

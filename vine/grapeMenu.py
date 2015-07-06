@@ -24,6 +24,7 @@ import quit
 import resolveConflicts
 import resumable
 import review
+import stash
 import status
 import test
 import updateLocal
@@ -69,7 +70,7 @@ class _Menu(object):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(), branches.Branches(),
-                         status.Status(), checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(), publish.Publish(),
+                         status.Status(), stash.Stash(), checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(), publish.Publish(),
                          clone.Clone(), config.Config(), grapeConfig.WriteConfig(),
                          foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
                          deleteBranch.DeleteBranch(), newWorkingTree.NewWorkingTree(),

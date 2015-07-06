@@ -11,6 +11,7 @@ class Status(option.Option):
               [--failIfInconsistent] 
               [--failIfMissingPublicBranches]
               [--failIfBranchesInconsistent]
+              [--checkWSOnly]
 
     Options:
     --uno                          Do not show untracked files
@@ -18,6 +19,7 @@ class Status(option.Option):
     --failIfInconsistent           Fail if any consistency checks fail. 
     --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
     --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
     
 
     """
@@ -28,21 +30,22 @@ class Status(option.Option):
 
     def description(self):
         return "Gives the status for this workspace"
-
-    def execute(self, args):
-        utility.printMsg("gathering status on outer level project")
-        wsDir = utility.workspaceDir() 
-        os.chdir(wsDir)
+    
+    # print the status for the entire workspace
+    def printStatus(self, args):
+        wsDir = utility.workspaceDir()
         statusArgs = ""
         if args["-u"]:
             statusArgs += "-u "
         if args["--uno"]:
             statusArgs += "-uno "
-
-        status = git.status("--porcelain %s" % statusArgs).split('\n')
-        if status[0] and status[0][0] != ' ':
-            status[0] = ' ' + status[0]
-
+        status = {}
+        status["."] = git.status("--porcelain -b %s" % statusArgs).split('\n')
+        
+        #tweak formatting of first line
+        if status["."] and status["."][0] and status["."][0][0] != ' ':
+            status["."][0] = ' ' + status["."][0]
+        
         subprojects = utility.getActiveSubprojects()
         if subprojects:
             utility.printMsg("gathering status on subprojects")
@@ -50,7 +53,9 @@ class Status(option.Option):
             if not sub.strip():
                 continue
             os.chdir(os.path.join(wsDir,sub))
-            subStatus = git.status("--porcelain %s" % statusArgs).split('\n')
+            subStatus = git.status("--porcelain -b %s" % statusArgs).split('\n')
+            if len(subStatus) > 0:
+                status[sub] = []
             for line in subStatus: 
                 strippedL = line.strip()
                 if strippedL:
@@ -58,15 +63,25 @@ class Status(option.Option):
                     tokens[0] = tokens[0].strip()
                     if len(tokens[0]) == 1: 
                         tokens[0] = " %s" % tokens[0] 
-                    status.append(' '.join([tokens[0], '/'.join([sub, tokens[1]])]))
+                    status[sub].append(' '.join([tokens[0], '/'.join([sub, tokens[1]])]))
             os.chdir(wsDir)
         
-        for line in status: 
-            lstripped = line.strip()
-            if lstripped:
-                print ' ' + lstripped
         
-        # Sanity check workspace layout
+        for sub in status.keys():
+            for line in status[sub]: 
+                lstripped = line.strip()
+                if lstripped:
+                    # filter out branch tracking status
+                    # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [ahead 1]
+                    # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [behind 29]
+                    if lstripped[0:2] == "##":
+                        if "[ahead" in lstripped or "[behind" in lstripped:
+                            print os.path.abspath(os.path.join(wsDir, sub))+': ' + lstripped
+                        continue
+                    # print other statuses
+                    print ' ' + lstripped
+    
+    def checkForLocalPublicBranches(self, args):
         publicBranchesExist = True
         # Check that all public branches exist locally. 
         cfg = config.grapeConfig.grapeConfig()
@@ -78,11 +93,13 @@ class Status(option.Option):
             for mb in missingBranches:
                 utility.printMsg("Repository is missing public branch %s" % mb)
             publicBranchesExist=False
-        
-        
-        
-        # Check that submodule branching is consistent
+        return publicBranchesExist
+                    
+    def checkForConsistentWorkspaceBranches(self, args):
         consistentBranchState = True
+        cfg = config.grapeConfig.grapeConfig()
+        publicBranches = cfg.getPublicBranchList()
+        wsDir = utility.workspaceDir()
         os.chdir(wsDir)
         wsBranch = git.currentBranch()
         subPubMap = cfg.getMapping("workspace", "submodulepublicmappings")
@@ -111,9 +128,24 @@ class Status(option.Option):
                 if nestedbranch != wsBranch: 
                     consistentBranchState = False
                     utility.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" % 
-                                     (nested,nestedbranch, wsBranch))
-                                                              
+                                     (nested,nestedbranch, wsBranch))        
+        return consistentBranchState
         
+    def execute(self, args):
+
+        wsDir = utility.workspaceDir() 
+        os.chdir(wsDir)
+        
+
+        if not args["--checkWSOnly"]:
+            self.printStatus(args)
+
+        # Sanity check workspace layout
+        publicBranchesExist = self.checkForLocalPublicBranches(args)       
+        
+        
+        # Check that submodule branching is consistent
+        consistentBranchState = self.checkForConsistentWorkspaceBranches(args)
     
         retval = True
         if args["--failIfInconsistent"]:

@@ -235,7 +235,10 @@ class Checkout(option.Option):
         os.chdir(workspaceDir)
         
         utility.printMsg("Switched to %s. Updating from remote..." % branch)
-        grapeMenu.menu().applyMenuChoice("pull")
+        if args["-b"]:
+            grapeMenu.menu().applyMenuChoice("push")
+        else:
+            grapeMenu.menu().applyMenuChoice("pull")
         return True
     
     def setDefaultConfig(self, config):

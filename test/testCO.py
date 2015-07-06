@@ -24,6 +24,7 @@ class TestCheckout(testGrape.TestGrape):
         git.checkout("-b addSubmodule")
         git.submodule("add %s submodule" % self.repos[1])
         git.commit("-m \"added submodule\"")
+        git.push("origin HEAD")
 
         # put the remote for the submodule into a HEAD-less state so it can accept pushes
         os.chdir(self.repos[1])
