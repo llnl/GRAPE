@@ -4,6 +4,7 @@ import shutil
 import utility
 import grapeMenu
 import grapeGit as git
+import grapeConfig
 import resumable
 
 
@@ -48,6 +49,19 @@ class Merge(resumable.Resumable):
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
                                                                                   " to merge into this branch")
         args["<branch>"] = otherBranch
+        config = grapeConfig.grapeConfig()
+        publicBranches = config.getPublicBranchList()
+        toks = otherBranch.split("origin/")
+        if toks[-1] in publicBranches:
+            public = toks[-1]
+            publicMapping = config.getMapping("workspace", "submodulePublicMappings")
+            subpublic = publicMapping[public]
+            toks[-1] = subpublic
+            subpublic = 'origin/'.join(toks)
+        else:
+            subpublic = otherBranch
+            
+        
 
         mdArgs = {}
         mdArgs["--am"] = args["--am"]
@@ -55,6 +69,7 @@ class Merge(resumable.Resumable):
         mdArgs["--at"] = args["--at"]
         mdArgs["--ay"] = args["--ay"]
         mdArgs["--public"] = args["<branch>"]
+        mdArgs["--subpublic"] = subpublic
         mdArgs["--recurse"] = not args["--noRecurse"]
         mdArgs["--noRecurse"] = args["--noRecurse"]
         mdArgs["--continue"] = args["--continue"]
