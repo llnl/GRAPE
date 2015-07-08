@@ -1,10 +1,17 @@
 
 
+Wed Jul  8 10:23:51 2015 Peter B. Robinson
+v1.10.2
+Reviewers: Aaron C. Fisher, Ben Liu
+
+fixed an issue where grape m (and thus mr and pull) would always trigger merges of public branches into topic branches for submodules, regardless of what was actually asked for.
+
+
 Mon Jul  6 16:27:32 2015 Peter B. Robinson
 v1.10.0
 Reviewers: Ben Liu
 
-Same as v1.9.4.
+Same as v1.9.5.
 
 
 Mon Jul  6 16:17:37 2015 Peter B. Robinson
