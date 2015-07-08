@@ -811,7 +811,7 @@ options are at least listed below.
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
-    Usage: grape-md [--public=<branch>]
+    Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
                     [--am | --as | --at | --ay]
                     [--continue]
                     [--recurse | --noRecurse]
@@ -822,6 +822,8 @@ options are at least listed below.
         --public=<branch>       Overrides the public branch to merge from. 
                                 Default behavior is to merge according to 
                                 .grapeconfig.flow.topicPrefixMappings.
+        --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
+                                according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
         --at                    Perform the merge resolving conficts using the public branch's version. 
