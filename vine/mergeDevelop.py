@@ -155,10 +155,13 @@ class MergeDevelop(resumable.Resumable):
         if recurse:
             if len(submodules) > 0:
                 if args["--subpublic"]:
+                    # respect the callers wishes (usually this is grape m , mr, or pull)
                     subPublic = args["--subpublic"]
                 else:
-                    subBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
-                    subPublic = subBranchMappings[git.branchPrefix(branch)]
+                    # default is to merge the submodule branch that is mapped to the public branch
+                    publicBranches = config.get
+                    subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
+                    subPublic = subBranchMappings[git.branchPrefix(config.getPublicBranchFor(branch))]
                 for submodule in submodules:
                     if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
                         # stop for user to resolve conflicts
