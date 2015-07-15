@@ -1,5 +1,16 @@
 
 
+Wed Jul 15 09:52:47 2015 Peter B. Robinson
+v1.11.0
+Reviewers: Ben Liu, Bill Aimonetti
+
+fixed bug in grape md that caused submodules to merge in the wrong branch if anything other than the default mapping was required.
+
+
+v1.10.3
+Reviewers: Bill Aimonetti, Ben Liu
+fixed an issue where grape md used wrong public branch in submodules. 
+
 Wed Jul  8 10:23:51 2015 Peter B. Robinson
 v1.10.2
 Reviewers: Aaron C. Fisher, Ben Liu
