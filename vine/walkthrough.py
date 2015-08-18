@@ -85,7 +85,8 @@ class Walkthrough(option.Option):
         root.title("GRAPE walkthrough")
         
         diffmanager = DiffManager(master=root, height=height, width=width,
-                                  branchA=b1, branchB=b2, difftool=difftool, diffargs=diffargs,
+                                  branchA=b1, branchB=b2,
+                                  difftool=difftool, diffargs=diffargs,
                                   showUnchanged=args["--showUnchanged"],
                                   showInactive=not args["--noInactive"], showToplevel=not args["--noTopLevel"],
                                   showSubmodules=not args["--noSubmodules"], showSubtrees=not args["--noSubtrees"],
@@ -456,10 +457,11 @@ class DiffManager(ProjectManager):
          self.filelist.insert(Tk.END, "<Unable to diff>")
          self.filenames.append("")
       else:
-         self.diffbranchA = self.getBranch(self.diffbranchA)
-         self.diffbranchB = self.getBranch(self.diffbranchB)
          # TODO handle non-existent branches on subprojects
          os.chdir(os.path.join(utility.workspaceDir(), dir))
+
+         self.diffbranchA = self.getBranch(self.diffbranchA)
+         self.diffbranchB = self.getBranch(self.diffbranchB)
          self.filenames = []
          diffoutput = git.diff("--name-status %s %s %s ." % (self.diffargs, self.diffbranchA, self.diffbranchB)).splitlines()
          statusdict = { "A":"<Only in B>",
