@@ -257,7 +257,7 @@ class Review(option.Option):
         pass
 
 def addLinkToDescription(descr, link):
-    if descr is not None:
+    if descr is not None and link is not None:
         if link not in descr: 
             descr +="\nThis pull request is related to the pull request at: %s" % link
     return descr
