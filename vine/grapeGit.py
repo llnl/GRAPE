@@ -43,7 +43,7 @@ def gitcmd(cmd, errmsg):
     if _cmd:
         _cmd += " %s" % cmd
     elif os.name == "nt":
-        _cmd = "\"C:\\Program Files (x86)\\Git\\bin\\git.exe\" %s" % cmd
+        _cmd = "\"C:\\Program Files\\Git\\bin\\git.exe\" %s" % cmd
     else:
         _cmd = "git %s" % cmd
 
