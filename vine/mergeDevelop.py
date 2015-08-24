@@ -160,7 +160,7 @@ class MergeDevelop(resumable.Resumable):
                 else:
                     # default is to merge the submodule branch that is mapped to the public branch
                     subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
-                    subPublic = subBranchMappings[git.branchPrefix(config.getPublicBranchFor(branch))]
+                    subPublic = subBranchMappings[config.getPublicBranchFor(branch)]
                 for submodule in submodules:
                     if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
                         # stop for user to resolve conflicts
