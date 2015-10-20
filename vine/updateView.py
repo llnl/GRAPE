@@ -33,6 +33,8 @@ class UpdateView(option.Option):
         super(UpdateView, self).__init__()
         self._key = "uv"
         self._section = "Workspace"
+        self._pushBranch = False
+        self._skipPush = False
 
     def description(self):
         return "Update the view of your current working tree"
@@ -277,8 +279,7 @@ class UpdateView(option.Option):
         return desiredSubmoduleBranch
 
 
-    @staticmethod
-    def safeSwitchHeadlessRepoToBranch(repo, branch, checkoutArgs):
+    def safeSwitchHeadlessRepoToBranch(self, repo, branch, checkoutArgs):
         cwd = os.getcwd()
         os.chdir(os.path.join(git.baseDir(), repo))
         git.fetch()
@@ -292,15 +293,33 @@ class UpdateView(option.Option):
                 git.fetch("origin", "%s:%s" % (branch, branch))
             except git.GrapeGitError as e:
                 if "[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput:
-                    utility.printMsg("Fetch of %s rejected as non-fast-forward\nAttempting push of local %s in %s" % (branch, branch, repo))
-                    try:
-                        git.push("origin %s" % branch)
-                    except git.GrapeGitError as e2:
-                        utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
-                        utility.printMsg("%s" % e2.gitOutput)
-                        mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
-                        if mr:
-                            grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
+                    utility.printMsg("Fetch of %s rejected as non-fast-forward in repo %s" % (branch, repo))
+                    pushBranch = self._pushBranch
+                    if self._skipPush:
+                       pushBranch = False
+                    elif not pushBranch:
+                       pushBranch =  utility.userInput("Would you like to push your local branch? \n"
+                                                        "(select 'a' to say yes for (a)ll subprojects, 's' to (s)kip push for all subprojects)"
+                                                        "\n(y,n,a,s)", 'y')
+                        
+                    if str(pushBranch).lower()[0] == 'a':
+                       self._pushBranch = True
+                       pushBranch = True
+                    if str(pushBranch).lower()[0] == 's':
+                       self._skipPush = True
+                       pushBranch = False
+                    if pushBranch:
+                       utility.printMsg("Attempting push of local %s in %s" % (branch, repo))
+                       try:
+                           git.push("origin %s" % branch)
+                       except git.GrapeGitError as e2:
+                           utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
+                           utility.printMsg("%s" % e2.gitOutput)
+                           mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
+                           if mr:
+                               grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
+                    else:
+                       utility.printMsg("Skipping push of local %s in %s" % (branch, repo))
                 elif e.commError:
                     utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
                                      "local version. " % branch)
