@@ -64,7 +64,10 @@ class Config(option.Option):
                 cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
                 utility.printMsg("Enabling 12 hr caching of https credentials...")
-                git.config("--global credential.helper", "cache --timeout=43200")
+                if os.name == "nt":
+                    git.config("--global credential.helper", "wincred")
+                else :
+                    git.config("--global credential.helper", "cache --timeout=43200")
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
