@@ -463,7 +463,7 @@ class DiffManager(ProjectManager):
          self.diffbranchA = self.getBranch(self.diffbranchA)
          self.diffbranchB = self.getBranch(self.diffbranchB)
          self.filenames = []
-         diffoutput = git.diff("--name-status %s %s %s ." % (self.diffargs, self.diffbranchA, self.diffbranchB)).splitlines()
+         diffoutput = git.diff("--name-status --find-renames --find-copies %s %s %s ." % (self.diffargs, self.diffbranchA, self.diffbranchB)).splitlines()
          statusdict = { "A":"<Only in B>",
                         "C":"<File copied>",
                         "D":"<Only in A>", 
@@ -476,8 +476,19 @@ class DiffManager(ProjectManager):
             for line in diffoutput:
                [status, file] = line.split(None, 1) 
                statusstring = statusdict[status[0]]
-               self.filelist.insert(Tk.END, "%s %s" % (file, statusstring))
-               self.filenames.append(file)
+               if status[0] == 'R' or status[0] == 'C':
+                  files = file.split(None,1)
+                  if status[1:] == '100':
+                     filename = ""
+                  else:
+                     statusstring += "*"
+                  filename = files
+                  filedisplay = " -> ".join(files)
+               else:
+                  filedisplay = file
+                  filename = file
+               self.filelist.insert(Tk.END, "%s %s" % (filedisplay, statusstring))
+               self.filenames.append(filename)
          else:
             self.filelist.insert(Tk.END, "<No differences>")
             self.filenames.append("")
@@ -495,6 +506,11 @@ class DiffManager(ProjectManager):
 
    def execute(self, file):
       try:
-         difftooloutput = git.gitcmd("difftool %s -y %s %s %s \"%s\"" % (self.difftoolarg, self.diffargs, self.diffbranchA, self.diffbranchB, file), "Failed to launch difftool")
+         cmd = "difftool --find-renames --find-copies  %s -y %s %s %s -- " % (self.difftoolarg, self.diffargs, self.diffbranchA, self.diffbranchB)
+         if isinstance(file,list):
+            cmd += "\"%s\" \"%s\"" % (file[0], file[1])
+         else:
+            cmd += "\"%s\"" % file
+         difftooloutput = git.gitcmd(cmd, "Failed to launch difftool")
       except git.GrapeGitError as e:
          utility.printMsg("%s (return code %d)\n%s" % (e.msg, e.returnCode, e.gitOutput))
