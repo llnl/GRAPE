@@ -364,8 +364,8 @@ class Publish(resumable.Resumable):
                  "notify": self.sendNotificationEmail,
                  "ensureReview": self.ensureReview,
                  "ensureModifiedSubmodulesAreActive": self.ensureModifiedSubmodulesAreActive,
-                 "md1": self.mergePublic1,
-                 "md2": self.mergePublic2,
+                 "md1": self.mergePublic,
+                 "md2": self.mergePublic,
                  
                  "verifyPublishActions": self.verifyPublishTargetsWithUser}
 
@@ -415,13 +415,9 @@ class Publish(resumable.Resumable):
             return False
         return True
 
-    def mergePublic1(self, args):
+    def mergePublic(self, args):
         menu = grapeMenu.menu()
-        return menu.applyMenuChoice("md1", ["--am", "--public=%s" % args["--public"]])
-
-    def mergePublic2(self, args):
-        menu = grapeMenu.menu()
-        return menu.applyMenuChoice("md2", ["--am", "--public=%s" % args["--public"]])
+        return menu.applyMenuChoice("md", ["--am", "--public=%s" % args["--public"]])
 
     @staticmethod
     def markReview(args, newArgs, skipStr, updateOnly=True):
