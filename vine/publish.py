@@ -88,9 +88,9 @@ class Publish(resumable.Resumable):
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md1",
                             "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
                             "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                             "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
@@ -167,8 +167,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailServer]
     --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
                             [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
-
+    --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
+                            markInProgress, md2, publish, markAsDone, deleteTopic, done]
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -320,14 +320,14 @@ class Publish(resumable.Resumable):
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
             
-        self.order = ["testForCleanWorkspace1",  "md", "ensureModifiedSubmodulesAreActive", 
+        self.order = ["testForCleanWorkspace1",  "md1", "ensureModifiedSubmodulesAreActive", 
                       "verifyPublishActions",
                       "ensureReview", "verifyCompletedReview", 
-                      "markInProgress", "tickVersion", "updateLog",
+                      "markInProgress", "md2", "tickVersion", "updateLog",
                       "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                       "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
         if args["--quick"]:
-            self.order = ["md","ensureModifiedSubmodulesAreActive","ensureReview","markInProgress", "publish", 
+            self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview","markInProgress", "md2", "publish", 
                           "markAsDone", "deleteTopic", "done"]
         
         self.parseArgs(args)
