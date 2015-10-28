@@ -50,6 +50,7 @@ class Pull(resumable.Resumable):
         mrArgs["--as"] = False
         mrArgs["--at"] = False
         mrArgs["--ay"] = False
+        mrArgs["--askAll"] = False
         mrArgs["--continue"] = args["--continue"]
         mrArgs["--noRecurse"] = False
 
