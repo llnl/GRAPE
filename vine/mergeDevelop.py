@@ -14,7 +14,7 @@ class MergeDevelop(resumable.Resumable):
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --ay]
+                    [--am | --as | --at | --ay | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
@@ -30,6 +30,7 @@ class MergeDevelop(resumable.Resumable):
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
         --at                    Perform the merge resolving conficts using the public branch's version. 
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --askAll                Ask to determine the merge strategy before merging each subproject.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
@@ -203,7 +204,7 @@ class MergeDevelop(resumable.Resumable):
         hasBranch = git.hasBranch(subPublic)
         if  hasRemote and  (git.branchUpToDateWith(subPublic, "origin/%s" % subPublic) or not hasBranch):
             git.fetch("origin %s:%s" % (subPublic, subPublic))
-        ret = self.mergeIntoCurrent(subPublic, mergeArgs)
+        ret = self.mergeIntoCurrent(subPublic, mergeArgs, subproject)
         conflict = not ret
         if conflict:
             self.progress["stopPoint"] = "Subproject: %s" % subproject
@@ -238,7 +239,7 @@ class MergeDevelop(resumable.Resumable):
     def outerLevelMerge(self, args, branch):
         utility.printMsg("Merging changes from %s into your current branch..." % branch)
               
-        conflict = not self.mergeIntoCurrent(branch, args)
+        conflict = not self.mergeIntoCurrent(branch, args, "outer level project")
 
         if conflict:
             conflictedFiles = git.conflictedFiles()
@@ -274,7 +275,7 @@ class MergeDevelop(resumable.Resumable):
         else:
             return False
 
-    def mergeIntoCurrent(self, branchName, args):
+    def mergeIntoCurrent(self, branchName, args, projectName):
         updateArgs = ['up', '--wd=%s' % os.getcwd(), '--noRecurse', '--public=%s' % branchName]
         if not args["--noUpdate"]:
             grapeMenu.menu().applyMenuChoice('up', updateArgs)
@@ -292,8 +293,9 @@ class MergeDevelop(resumable.Resumable):
         elif args['--ay']: 
             strategy = 'ay'
     
-        if not strategy: 
-            strategy = utility.userInput("How do you want to resolve changes? [am / as / at / ay ] \n" +
+        if not strategy or args['--askAll']:
+            repoSpec = " in %s" % projectName if args['--askAll'] else ""
+            strategy = utility.userInput("How do you want to resolve changes%s? [am / as / at / ay ] \n" % repoSpec +
                                          "am: Auto Merge (default) \n" +
                                          "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
                                          "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" %
