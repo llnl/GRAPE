@@ -1,5 +1,12 @@
 
 
+Thu Oct 29 10:12:09 2015 Benjamin T. Liu
+v1.12.2
+Reviewers: Peter B. Robinson, Aaron C. Fisher
+
+Allow choice of merge strategy by subproject with md --askAll (GRP-151)
+
+
 Thu Oct 29 10:06:54 2015 Benjamin T. Liu
 v1.12.1
 Reviewers: Peter B. Robinson, Aaron C. Fisher
