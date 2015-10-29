@@ -14,7 +14,7 @@ class MergeDevelop(resumable.Resumable):
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --ay | --askAll]
+                    [--am | --as | --at | --aT | --ay | --aY | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
@@ -28,8 +28,10 @@ class MergeDevelop(resumable.Resumable):
                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge resolving conficts using the public branch's version. 
-        --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --at                    Perform the merge using the public branch's version for any file modified by both branches.
+        --aT                    Perform the merge resolving conficts using the public branch's version. 
+        --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
+        --aY                    Perform the merge resolving conflicts using your topic branch's version.
         --askAll                Ask to determine the merge strategy before merging each subproject.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
@@ -259,11 +261,29 @@ class MergeDevelop(resumable.Resumable):
         except git.GrapeGitError as error:
             print error.gitOutput
             if "conflict" in error.gitOutput.lower():
-                utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
-                                  "with grape %s --continue. " % args["<<cmd>>"])
+               if args['--at'] or args['--ay']:
+                  if args['--at']:
+                     utility.printMsg("Resolving conflicted files by accepting changes from %s." % branch)
+                     checkoutArg = "--theirs"
+                  else:
+                     utility.printMsg("Resolving conflicted files by accepting changes from your branch.")
+                     checkoutArg = "--ours"
+                  try:
+                     path = git.baseDir()
+                     git.checkout("%s %s" % (checkoutArg, path))
+                     git.add("%s" % path)
+                     git.commit("-m 'Resolve conflicts using %s'" % checkoutArg)
+                     return True
+                  except git.GrapeGitError as resolveError:
+                     print resolveError.gitOutput
+                     return False
+               else:
+                  utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
+                                     "with grape %s --continue. " % args["<<cmd>>"])
+                  return False
             else:
-                print("Merge command %s failed. Quitting." % error.gitCommand)
-            return False
+               print("Merge command %s failed. Quitting." % error.gitCommand)
+               return False
 
     def continueLocalMerge(self, args):
         status = git.status()
@@ -290,31 +310,42 @@ class MergeDevelop(resumable.Resumable):
             strategy = 'as' 
         elif args['--at']: 
             strategy = 'at'
+        elif args['--aT']: 
+            strategy = 'aT'
         elif args['--ay']: 
             strategy = 'ay'
+        elif args['--aY']: 
+            strategy = 'aY'
     
         if not strategy or args['--askAll']:
             repoSpec = " in %s" % projectName if args['--askAll'] else ""
-            strategy = utility.userInput("How do you want to resolve changes%s? [am / as / at / ay ] \n" % repoSpec +
+            strategy = utility.userInput("How do you want to resolve changes%s? [am / as / at / aT / ay / aY] \n" % repoSpec +
                                          "am: Auto Merge (default) \n" +
                                          "as: Safe Merge - issues conflicts if both branches touch same file.\n" +
-                                         "at: Accept Theirs - resolves conflicts by accepting changes in %s\n" %
-                                         branchName + "ay: Accept Yours - resolves conflicts by using changes "
-                                                      "in current branch.", "am")
+                                         "at: Accept Theirs - accept changes in %s if both branches touch same file\n" % branchName +
+                                         "aT: Accept Theirs (if conflicted) - resolves conflicts by accepting changes in %s\n" % branchName +
+                                         "ay: Accept Yours - accept changes in current branch if both branches touch same file\n" +
+                                         "aY: Accept Yours (if conflicted) - resolves conflicts by using changes in current branch.",
+                                         "am")
     
         if strategy == 'am':
             args["--am"] = True
             utility.printMsg("Merging using git's default strategy...")
             choice = self.merge(branchName, "", args)
-        elif strategy == 'as':
-            args["--as"] = True
-            # this employs using the custom low-level merge driver "verify" and
-            # appending a "* merge=verify" to the .gitattributes file.
-            #
-            # see
-            # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
-            # for details.
-            utility.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
+        elif strategy == 'as' or strategy == 'at' or strategy == 'ay':
+            if strategy == 'as':
+               args["--as"] = True
+               # this employs using the custom low-level merge driver "verify" and
+               # appending a "* merge=verify" to the .gitattributes file.
+               #
+               # see
+               # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
+               # for details.
+               utility.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
+            elif strategy == 'at':
+               args["--at"] = True
+            elif strategy == 'ay':
+               args["--ay"] = True
             base = git.gitDir()
             if base == "":
                 return False
@@ -340,14 +371,12 @@ class MergeDevelop(resumable.Resumable):
                 os.remove(tmpattributes)
             else:
                 os.remove(attributes)
-    
-        elif strategy == 'at':
-            args["--at"] = True
+        elif strategy == 'aT':
+            args["--aT"] = True
             utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
             choice = self.merge(branchName, "-Xtheirs", args)
-    
-        elif strategy == 'ay':
-            args["--ay"] = True
+        elif strategy == 'aY':
+            args["--aY"] = True
             utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
             choice = self.merge(branchName, "-Xours", args)
     
