@@ -337,9 +337,10 @@ def handleEnsureLocalUpToDateMRE(mre):
     return
 
 def safeSwitchWorkspaceToBranch(branch, checkoutArgs):
-    
+    # Ensure local branches that you are about to check out are up to date with the remote
     launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
     launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+    # Do a checkout
     launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckoutHelper, branch = branch, globalArgs = [checkoutArgs])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
