@@ -1,5 +1,12 @@
 
 
+Tue Nov  3 09:27:19 2015 Benjamin T. Liu
+v1.12.4
+Reviewers: Peter B. Robinson
+
+Add author to reviewer list if author is not the one doing the publish
+
+
 Mon Nov  2 21:14:43 2015 Benjamin T. Liu
 v1.12.3
 Reviewers: Peter B. Robinson, Al Nichols
