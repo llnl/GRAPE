@@ -241,28 +241,10 @@ class UpdateView(option.Option):
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
                 grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
+        print "calling safeSwitch"
         checkoutArgs = "-b" if args["-b"] else ""
 
-        for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            #ensure nested subprojects are on the appropriate branch (nested projects should have same branch layout)
-            # as outer level repo. 
-            desiredSubprojectBranch = git.currentBranch()
-            utility.printMsg("Ensuring %s is on %s..." % (subproject, desiredSubprojectBranch))
-            
-            self.safeSwitchHeadlessRepoToBranch(subproject, desiredSubprojectBranch, checkoutArgs)
-
-
-        # ensure submodule is on appropriate branch
-        if config.getboolean("workspace", "manageSubmodules"):
-            desiredSubmoduleBranch = self.getDesiredSubmoduleBranch(config)
-            activeSubmodules = git.getActiveSubmodules()
-            if activeSubmodules:
-                utility.printMsg("Ensuring submodules are on %s branch..." % desiredSubmoduleBranch)
-            for sub in activeSubmodules:
-                if args["--checkSubprojects"]:
-                    git.submodule("init %s" % sub)
-                utility.printMsg("Ensuring %s is on %s" % (sub, desiredSubmoduleBranch))
-                self.safeSwitchHeadlessRepoToBranch(sub, desiredSubmoduleBranch, checkoutArgs)
+        safeSwitchWorkspaceToBranch( git.currentBranch(), checkoutArgs)
 
         os.chdir(origwd)
 
@@ -279,60 +261,86 @@ class UpdateView(option.Option):
         return desiredSubmoduleBranch
 
 
-    def safeSwitchHeadlessRepoToBranch(self, repo, branch, checkoutArgs):
-        cwd = os.getcwd()
-        os.chdir(os.path.join(git.baseDir(), repo))
-        git.fetch()
-
-        if git.currentBranch() == branch:
-            os.chdir(cwd) 
-            return
-
-        if git.hasBranch(branch):
-            try:
-                git.fetch("origin", "%s:%s" % (branch, branch))
-            except git.GrapeGitError as e:
-                if "[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput:
-                    utility.printMsg("Fetch of %s rejected as non-fast-forward in repo %s" % (branch, repo))
-                    pushBranch = self._pushBranch
-                    if self._skipPush:
-                       pushBranch = False
-                    elif not pushBranch:
-                       pushBranch =  utility.userInput("Would you like to push your local branch? \n"
-                                                        "(select 'a' to say yes for (a)ll subprojects, 's' to (s)kip push for all subprojects)"
-                                                        "\n(y,n,a,s)", 'y')
-                        
-                    if str(pushBranch).lower()[0] == 'a':
-                       self._pushBranch = True
-                       pushBranch = True
-                    if str(pushBranch).lower()[0] == 's':
-                       self._skipPush = True
-                       pushBranch = False
-                    if pushBranch:
-                       utility.printMsg("Attempting push of local %s in %s" % (branch, repo))
-                       try:
-                           git.push("origin %s" % branch)
-                       except git.GrapeGitError as e2:
-                           utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
-                           utility.printMsg("%s" % e2.gitOutput)
-                           mr = utility.userInput("Would you like to attempt to merge the remote using grape mr [y/n]", 'n')
-                           if mr:
-                               grapeMenu.menu().applyMenuChoice("mr", ["mr", branch])
-                    else:
-                       utility.printMsg("Skipping push of local %s in %s" % (branch, repo))
-                elif e.commError:
-                    utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
-                                     "local version. " % branch)
-                elif "Couldn't find remote ref" in e.gitOutput:
-                    utility.printMsg("No remote reference to %s in origin. You may want to push this branch.\n"
-                                     "Checking out most recent local version." % branch)
-                else:    
-                    raise(e)
-
-        grapeMenu.menu().getOption("checkout").handledCheckout(checkoutArgs, branch, repo)
-        os.chdir(cwd)
-        return
-
     def setDefaultConfig(self, config):
         config.ensureSection("workspace")
         config.set("workspace", "submodulepublicmappings", "?:master")
+       
+
+
+def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
+    print "LOCALUPTODATE CALL in %s for %s" % (repo, branch)    
+    with utility.cd(repo):
+        git.fetch()
+        
+        if git.currentBranch() == branch:
+            return
+
+        if git.hasBranch(branch):
+                git.fetch("origin", "%s:%s" % (branch, branch))
+
+def cleanupPush(repo='', branch='', args='none'):
+    with utility.cd(repo):
+        utility.printMsg("Attempting push of local %s in %s" % (branch, repo))
+        git.push("origin %s" % branch)                           
+
+
+def handleCleanupPushMRE(mre):
+    for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
+        try:
+            raise e
+        except git.GrapeGitError as e2:
+            utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
+            utility.printMsg("%s" % e2.gitOutput)
+            utility.printMsg("Use grape pull to merge the remote version into the local version.")    
+
+def handleEnsureLocalUpToDateMRE(mre):
+    _pushBranch = False
+    _skipPush = False
+    cleanupPushArgs = []
+    for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
+        try: 
+            raise e
+        except git.GrapeGitError as e:
+            if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
+                if "Couldn't find remote ref" in e.gitOutput:
+                    if not _pushBranch:
+                        utility.printMsg("No remote reference to %s in %s's origin. You may want to push this branch." % (branch, repo))
+                else:
+                    utility.printMsg("Fetch of %s rejected as non-fast-forward in repo %s" % (branch, repo))
+                pushBranch = _pushBranch
+                if _skipPush:
+                    pushBranch = False
+                elif not pushBranch:
+                    pushBranch =  utility.userInput("Would you like to push your local branch? \n"
+                                                    "(select 'a' to say yes for (a)ll subprojects, 's' to (s)kip push for all subprojects)"
+                                                    "\n(y,n,a,s)", 'y')
+                    
+                if str(pushBranch).lower()[0] == 'a':
+                    _pushBranch = True
+                    pushBranch = True
+                if str(pushBranch).lower()[0] == 's':
+                    _skipPush = True
+                    pushBranch = False
+                if pushBranch:
+                    
+                    cleanupPushArgs.append((repo, branch, None))
+                else:
+                    utility.printMsg("Skipping push of local %s in %s" % (branch, repo))
+                    
+            elif e.commError:
+                utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
+                                 "local version. " % branch)
+            else:    
+                raise(e)
+    
+    utility.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
+    return
+
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs):
+    
+    launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
+    launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckoutHelper, branch = branch, globalArgs = [checkoutArgs])
+    launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
+
+    return

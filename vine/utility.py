@@ -228,22 +228,29 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
 # this is a wrapper to allow exception capture in runCommandOnRepoBranch. 
 class MultiRepoException(Exception):
     def __init__(self):
-        self.exceptions = []
-        self.repos = []
+        self._exceptions = []
+        self._repos = []
+        self._branches = []
         
-    def addException(self, e, repo):
-        self.exceptions.append(e)
-        self.repos.append(repo)
+    def addException(self, e, repo, branch):
+        self._exceptions.append(e)
+        self._repos.append(repo)
+        self._branches.append(branch)
     
     def __getitem__(self, pos):
-        return self.exceptions[pos]
+        return self._exceptions[pos]
     
+    def exceptions(self):
+        return self._exceptions
+
     def repos(self):
-        return self.repos
+        return self._repos
+    
+    def branches(self):
+        return self._branches
         
     def hasException(self):
-        return len(self.exceptions) > 0
-        
+        return len(self._exceptions) > 0
         
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
@@ -254,12 +261,18 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
     repo = repoBranchCommandTuple[0]
     branch = repoBranchCommandTuple[1]
     f = repoBranchCommandTuple[2]
+    args = repoBranchCommandTuple[3]
     os.chdir(repo)
     try:
-        return f(repo=repo, branch=branch)
+        return f(repo=repo, branch=branch, args=args)
     except TypeError:
         try:
-            return f()
+            return f(repo=repo, branch=branch)
+        except TypeError:
+            try:
+                return f()
+            except Exception as e:
+                return e            
         except Exception as e:
             return e
     except Exception as e:
@@ -289,49 +302,70 @@ class MyPool(multiprocessing.pool.Pool):
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 class MultiRepoCommandLauncher(object):    
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch=""):
+    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch="",
+                 globalArgs=None,perRepoArgs=None, listOfRepoBranchArgTuples=None):
         self.lmbda = lmbda
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
         self.pool = MyPool(processes=nProcesses)
-        self.branchArg = branch 
+        self.branchArg = branch
+        self.perRepoArgs = perRepoArgs
+        self.globalArgs = globalArgs
+        self.launchTuple = listOfRepoBranchArgTuples
+
         
-    def launchFromWorkspaceDir(self):
+    def launchFromWorkspaceDir(self, handleMRE=None):
         cwd = os.getcwd()
         os.chdir(workspaceDir())
         repos = []
         branches = []
+        argLists = self.perRepoArgs
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         
-        if self.runSubmodules:
-            activeSubmodules = git.getActiveSubmodules()
-            repos = repos + [os.path.abspath(r) for r in activeSubmodules]
-            subPubMap = config.getMapping("workspace", "submodulepublicmappings")
-            submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
-            branches = branches + [ submoduleBranch for x in activeSubmodules ]
-        if self.runSubprojects:
-            activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-            repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
-            branches = branches + [currentBranch for x in activeSubprojects]
-        if self.runOuter:
-            repos.append(workspaceDir())
-            branches.append(currentBranch)
-        retvals = []
+        if self.launchTuple:
+            repos = [x[0] for x in self.launchTuple]
+            branches = [x[1] for x in self.launchTuple]
+            self.perRepoArgs = [x[2] for x in self.launchTuple]
+        else:
+            if self.runSubmodules:
+                activeSubmodules = git.getActiveSubmodules()
+                repos = repos + [os.path.abspath(r) for r in activeSubmodules]
+                subPubMap = config.getMapping("workspace", "submodulepublicmappings")
+                submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
+                branches = branches + [ submoduleBranch for x in activeSubmodules ]
+            if self.runSubprojects:
+                activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+                repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
+                branches = branches + [currentBranch for x in activeSubprojects]
+            if self.runOuter:
+                repos.append(workspaceDir())
+                branches.append(currentBranch)
+            if not self.perRepoArgs:
+                if not self.globalArgs:
+                    
+                    self.perRepoArgs = [[] for x in repos]
+                else:
+                    self.perRepoArgs = [self.globalArgs for x in repos]
+        
         # run the first entry first so that things like logging in to the project's server happen up front
+        retvals = []
         if len(repos) > 0:
-            retvals.append(runCommandOnRepoBranch((repos[0], branches[0], self.lmbda)))
+            retvals.append(runCommandOnRepoBranch((repos[0], branches[0], self.lmbda, self.perRepoArgs[0])))
         if len(repos) > 1:            
-            retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda) for repo, branch in zip(repos[1:], branches[1:])])
+            retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(repos[1:], branches[1:], self.perRepoArgs[1:])])
         os.chdir(cwd)
         MRE = MultiRepoException()
-        for val in zip(retvals, repos):
+        for val in zip(retvals, repos, branches):
             if isinstance(val[0], Exception):
-                MRE.addException(val[0], val[1])
+                MRE.addException(val[0], val[1], val[2])
         if MRE.hasException():
-            raise MRE
+            if handleMRE:
+                handleMRE(MRE)
+            else:
+                raise MRE
         return retvals 
 
 def grapeDir(): 
@@ -480,3 +514,14 @@ def getHomeDirectory():
     else:
         home = os.environ["HOME"]
     return home
+
+from contextlib import contextmanager
+
+@contextmanager
+def cd(path): 
+    old_dir   =   os.getcwd() 
+    os.chdir(path) 
+    try: 
+        yield 
+    finally:
+        os.chdir(old_dir)
