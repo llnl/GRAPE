@@ -558,8 +558,7 @@ class Publish(resumable.Resumable):
                         self.progress["reviewers"] = "No reviewers"
             else:
                 utility.printMsg("All reviewers have approved your request.")
-                author = pullRequest.author()
-                if username != author:
+                if args["--user"] != pullRequest.author():
                    reviewers.append(pullRequest.authorName())
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
