@@ -788,14 +788,17 @@ options are at least listed below.
 
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
 
     Options:
         --am            Use git's default merge. 
         --as            Do a safe merge - force git to issue conflicts for files that
                         are touched by both branches. 
-        --at            Git accept their changes in the event of a conflict (the branch you're merging from)
-        --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --at            Git accept their changes in any file touched by both branches (the branch you're merging from)
+        --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
+        --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
+        --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --askAll        Ask to determine the merge strategy before merging each subproject.
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
@@ -812,7 +815,7 @@ options are at least listed below.
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --ay]
+                    [--am | --as | --at | --aT | --ay | --aY | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
@@ -826,8 +829,11 @@ options are at least listed below.
                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge resolving conficts using the public branch's version. 
-        --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --at                    Perform the merge using the public branch's version for any file modified by both branches.
+        --aT                    Perform the merge resolving conficts using the public branch's version. 
+        --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
+        --aY                    Perform the merge resolving conflicts using your topic branch's version.
+        --askAll                Ask to determine the merge strategy before merging each subproject.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
@@ -844,14 +850,17 @@ options are at least listed below.
     current branch, then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
 
 
     Options:
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge resolving conficts using the public branch's version. 
+        --at                    Perform the merge using the remote branch's version for any file modified by both branches.
+        --aT                    Perform the merge resolving conficts using the remote branch's version. 
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --aY                    Perform the merge using your topic branch's version for any file modified by both branches.
+        --askAll                Ask to determine the merge strategy before merging each subproject.
         --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
                                 grape md --public=<branch> to handle submodule and nested project merges. 
         --continue              Resume your previous merge after resolving conflicts.

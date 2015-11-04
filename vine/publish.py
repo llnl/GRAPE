@@ -317,6 +317,7 @@ class Publish(resumable.Resumable):
     def execute(self, args):
         if args["--abort"]: 
             self.abort(args)
+            return True
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD")
             
@@ -341,10 +342,16 @@ class Publish(resumable.Resumable):
         if startPoint:
             if startPoint not in self.order:
                 utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, self.order))
+                return False
         else:
             startPoint = self.order[0]
 
         stopPoint = args["--stopAt"]
+
+        if stopPoint:
+            if stopPoint not in self.order:
+                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (stopPoint, self.order))
+                return False
 
         steps = {"build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
@@ -377,7 +384,9 @@ class Publish(resumable.Resumable):
                 break
             if step == stopPoint:
                 utility.printMsg("Stopping at %s step as requested." % stopPoint)
-                break
+                args["--startAt"] = step
+                self.dumpProgress(args)
+                return True
             if step != currentStep:
                 continue
             try:
@@ -551,6 +560,8 @@ class Publish(resumable.Resumable):
                         self.progress["reviewers"] = "No reviewers"
             else:
                 utility.printMsg("All reviewers have approved your request.")
+                if args["--user"] != pullRequest.author():
+                   reviewers.append(pullRequest.authorName())
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
