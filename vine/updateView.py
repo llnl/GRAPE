@@ -268,7 +268,7 @@ class UpdateView(option.Option):
 
 
 def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
-    print "LOCALUPTODATE CALL in %s for %s" % (repo, branch)    
+    utility.printMsg( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
     with utility.cd(repo):
         git.fetch()
         
@@ -332,7 +332,8 @@ def handleEnsureLocalUpToDateMRE(mre):
                                  "local version. " % branch)
             else:    
                 raise(e)
-    
+   
+    # do another MRC launch to do any follow up pushes that were requested. 
     utility.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
@@ -341,7 +342,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs):
     launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
     launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
-    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckoutHelper, branch = branch, globalArgs = [checkoutArgs])
+    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
     return

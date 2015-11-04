@@ -8,11 +8,13 @@ import grapeGit as git
 import utility
 
 
-def handledCheckoutHelper(repo = '', branch = 'master', args = []):
+def handledCheckout(repo = '', branch = 'master', args = []):
     checkoutargs = args[0]
     with utility.cd(repo):
         git.fetch()
+        utility.printMsg("Checking out %s in %s" % (branch, repo))
         git.checkout(checkoutargs + ' ' + branch)
+    return True
     
 def handleCheckoutMRE(mre):
     _skipBranchCreation = False
@@ -103,68 +105,6 @@ class Checkout(option.Option):
     def description(self):
         return "Checks out a branch in all projects in this workspace."
 
-    def handledCheckout(self, checkoutargs, branch, project):
-        git.fetch()
-        try:
-            git.checkout(checkoutargs + ' ' + branch)
-        except git.GrapeGitError as e:
-            if "pathspec" in e.gitOutput:
-                createNewBranch = self._createNewBranch
-                if self._skipBranchCreation:
-                    utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
-                    createNewBranch = False
-                    
-                elif not createNewBranch:
-                    createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
-                                                    "new branch called %s? \n"
-                                                    "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
-                                                    "\n(y,n,a,s)" % branch, 'y')
-                        
-                if str(createNewBranch).lower()[0] == 'a':
-                    self._createNewBranch = True
-                    createNewBranch = True
-                if str(createNewBranch).lower()[0] == 's':
-                    self._skipBranchCreation = True
-                    createNewBranch = False
-                if createNewBranch:
-                    utility.printMsg("Creating new branch %s in %s." % (branch, project))
-                    git.checkout(checkoutargs+" -b "+branch)
-                    git.push("-u origin %s" % branch)
-                else:
-                    return False
-
-            elif "already exists" in e.gitOutput:
-                utility.printMsg("Branch %s already exists in %s." % (branch, project))
-                branchDescription = git.commitDescription(branch)
-                headDescription = git.commitDescription("HEAD")
-                if branchDescription == headDescription:
-                    utility.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
-                    action = "k"
-                else:
-                    utility.printMsg("Branch %s and HEAD are not the same." % branch)
-                    action = ''
-                    valid = False
-                    while not valid:
-                        action = utility.userInput("Would you like to \n (k)eep it as is at: %s \n"
-                                                   " or \n (f)orce it to: %s? \n(k,f)" %
-                                                   (branchDescription, headDescription), 'k')
-                        valid = (action == 'k') or (action == 'f')
-                        if not valid:
-                            utility.printMsg("Invalid input. Enter k or f. ")
-                if action == 'k':
-                    git.checkout(branch)
-                elif action == 'f':
-                    git.checkout("-B %s" % branch)
-            elif "conflict" in e.gitOutput.lower(): 
-                utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
-            elif "does not appear to be a git repository" in e.gitOutput.lower():
-                utility.printMsg("Remote 'origin' does not exist. "
-                                 "This branch was not updated from a remote repository.")
-            elif "Couldn't find remote ref" in e.gitOutput:
-                utility.printMsg("Remote of %s does not have reference to %s. You may want to push this branch. " %(project, branch))
-            else:
-                raise e
-        return True
     @staticmethod
     def parseGitModulesDiffOutput(output, addedModules, removedModules):
 
@@ -213,7 +153,9 @@ class Checkout(option.Option):
         currentSHA = git.shortSHA("HEAD")
 
         utility.printMsg("Performing checkout of %s in outer level project." % branch)
-        if not self.handledCheckout(checkoutargs, branch, git.baseDir()):
+        launcher = utility.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs])])
+       
+        if not launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)[0]:
             return False
         previousSHA = currentSHA
 

@@ -326,7 +326,7 @@ class MultiRepoCommandLauncher(object):
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         
         if self.launchTuple:
-            repos = [x[0] for x in self.launchTuple]
+            repos = [os.path.abspath(x[0]) for x in self.launchTuple]
             branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
         else:
