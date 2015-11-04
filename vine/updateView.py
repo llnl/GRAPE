@@ -241,7 +241,6 @@ class UpdateView(option.Option):
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
                 grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
-        print "calling safeSwitch"
         checkoutArgs = "-b" if args["-b"] else ""
 
         safeSwitchWorkspaceToBranch( git.currentBranch(), checkoutArgs)
