@@ -1,5 +1,18 @@
 
 
+Wed Nov  4 14:55:58 2015 Emily Diana
+v1.12.5
+Reviewers: Aaron C. Fisher, Peter B. Robinson, Jamie A. Bramwell
+
+BRANCH: Bugfix/diana1/locking
+REVIEWERS: Peter Robinson, Jamie Bramwell, Aaron Fisher
+SUMMARY: Update to grape publish locking mechanism
+DETAILS: 
+* Added another 'md' step after 'mark in progress' for grape publish.
+* md1 and md2 description added
+* md1 and md2 mapped to same md command
+
+
 Tue Nov  3 09:27:19 2015 Benjamin T. Liu
 v1.12.4
 Reviewers: Peter B. Robinson
