@@ -26,7 +26,7 @@ class UpdateView(option.Option):
                                 model. 
         --allSubmodules         Automatically add all submodules to your workspace. 
         --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
-        --sync=<bool>           Take extra steps to ensure the branch youre on is up to date with origin,
+        --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
                                 either by pushing or pulling the remote tracking branch.
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]          
 
