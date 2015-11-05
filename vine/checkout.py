@@ -10,8 +10,10 @@ import utility
 
 def handledCheckout(repo = '', branch = 'master', args = []):
     checkoutargs = args[0]
+    sync = args[1]
     with utility.cd(repo):
-        git.fetch()
+        if sync:
+            git.fetch()
         utility.printMsg("Checking out %s in %s" % (branch, repo))
         git.checkout(checkoutargs + ' ' + branch)
     return True
@@ -19,9 +21,9 @@ def handledCheckout(repo = '', branch = 'master', args = []):
 def handleCheckoutMRE(mre):
     _skipBranchCreation = False
     _createNewBranch = False
-    for e in mre.exceptions():
+    for e1, branch, project in zip(mre.exceptions(), mre.branches(), mre.repos()):
         try:
-            raise e
+            raise e1
         except git.GrapeGitError as e:
             if "pathspec" in e.gitOutput:
                 createNewBranch = _createNewBranch
@@ -84,12 +86,16 @@ def handleCheckoutMRE(mre):
     
 class Checkout(option.Option):
     """
-    Usage: grape-checkout  [-b] <branch> 
+    grape checkout
+    
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] <branch> 
 
     Options:
+    -b             Create the branch off of the current HEAD in each project.
+    --sync=<bool>  Take extra steps to ensure the branch you check out is up to date with origin,
+                   either by pushing or pulling the remote tracking branch.
+                   [default: .grapeconfig.post-checkout.syncWithOrigin]
 
-    -b      Create the branch off of the current HEAD in each project.
-    
 
     Arguments:
     <branch>    The name of the branch to checkout. 
@@ -143,6 +149,9 @@ class Checkout(option.Option):
             
 
     def execute(self, args):
+        sync = args["--sync"].lower().strip()
+        sync = sync == "true" or sync == "yes"
+        args["--sync"] = sync
         checkoutargs = ''
         branch = args["<branch>"]
         if args['-b']: 
@@ -153,7 +162,7 @@ class Checkout(option.Option):
         currentSHA = git.shortSHA("HEAD")
 
         utility.printMsg("Performing checkout of %s in outer level project." % branch)
-        launcher = utility.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs])])
+        launcher = utility.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs, sync])])
        
         if not launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)[0]:
             return False
@@ -239,6 +248,10 @@ class Checkout(option.Option):
             
         if args["-b"]: 
             uvArgs.append("-b")
+        if sync:
+            uvArgs.append("--sync=True")
+        else:
+            uvArgs.append("--sync=False")
 
         # in case the user switches to a branch without corresponding branches in the submodules, make sure active submodules
         # are at the right commit before possibly creating new branches at the current HEAD. 
@@ -249,13 +262,16 @@ class Checkout(option.Option):
         os.chdir(workspaceDir)
         
         utility.printMsg("Switched to %s. Updating from remote..." % branch)
-        if args["-b"]:
-            grapeMenu.menu().applyMenuChoice("push")
-        else:
-            grapeMenu.menu().applyMenuChoice("pull")
+        if sync:
+            if args["-b"]:
+                grapeMenu.menu().applyMenuChoice("push")
+            else:
+                grapeMenu.menu().applyMenuChoice("pull")
         return True
     
     def setDefaultConfig(self, config):
+        config.ensureSection("post-checkout")
+        config.set("post-checkout", "syncWithOrigin", "True")
         pass
 
 

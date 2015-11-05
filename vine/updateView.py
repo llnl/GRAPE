@@ -15,10 +15,9 @@ class UpdateView(option.Option):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f ] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
-                    [--skipNestedSubprojects] [--allNestedSubprojects]
+                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>]
 
     Options:
-        
         -f                      Force removal of subprojects currently in your view that are taken out of the view as a
                                 result to this call to uv.
         --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
@@ -26,7 +25,10 @@ class UpdateView(option.Option):
         -b                      Automatically creates subproject branches that should be there according to your branching
                                 model. 
         --allSubmodules         Automatically add all submodules to your workspace. 
-        --allNestedSubprojects  Automatically add all nested subprojects to your workspace. 
+        --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
+        --sync=<bool>           Take extra steps to ensure the branch youre on is up to date with origin,
+                                either by pushing or pulling the remote tracking branch.
+                                [default: .grapeconfig.post-checkout.syncWithOrigin]          
 
     """
     def __init__(self):
@@ -117,6 +119,9 @@ class UpdateView(option.Option):
         return UpdateView.defineActiveSubmodules(projectType="nested subproject")
 
     def execute(self, args):
+        sync = args["--sync"].lower().strip()
+        sync = sync == "true" or sync == "yes"
+        args["--sync"] = sync
         config = grapeConfig.grapeConfig()
         origwd = os.getcwd()
         wsDir = utility.workspaceDir()
@@ -243,7 +248,7 @@ class UpdateView(option.Option):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
-        safeSwitchWorkspaceToBranch( git.currentBranch(), checkoutArgs)
+        safeSwitchWorkspaceToBranch( git.currentBranch(), checkoutArgs, sync)
 
         os.chdir(origwd)
 
@@ -296,9 +301,9 @@ def handleEnsureLocalUpToDateMRE(mre):
     _pushBranch = False
     _skipPush = False
     cleanupPushArgs = []
-    for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
+    for e1, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         try: 
-            raise e
+            raise e1
         except git.GrapeGitError as e:
             if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
                 if "Couldn't find remote ref" in e.gitOutput:
@@ -336,12 +341,13 @@ def handleEnsureLocalUpToDateMRE(mre):
     utility.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
     # Ensure local branches that you are about to check out are up to date with the remote
-    launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
-    launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+    if sync:
+        launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
+        launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
-    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs])
+    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, sync])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
     return

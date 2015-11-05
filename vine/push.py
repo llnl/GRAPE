@@ -33,41 +33,32 @@ class Push(option.Option):
         config = grapeConfig.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
-        def push(currentBranch, proj): 
-            utility.printMsg("Pushing %s in %s..." % (currentBranch, proj))
-            git.push("-u origin %s" % currentBranch, throwOnFail=True)
+
             
         submodules = git.getActiveSubmodules()
         
-
-        try:
-            push(currentBranch, baseDir)
-            if not args["--noRecurse"]:
-                if submodules:
-                    utility.printMsg("Performing pushes in all active submodules")
-                subPubMap = config.getMapping("workspace", "submodulepublicmappings")
-                subbranch = subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
-                for sub in submodules: 
-                    os.chdir(os.path.join(baseDir, sub))
-                    push(subbranch, sub)
+        retvals = utility.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
         
-                nestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(baseDir)
-                if nestedSubprojects:
-                    utility.printMsg("Performing pushes in all active subprojects")
-                for proj in nestedSubprojects:
-                    os.chdir(os.path.join(baseDir, proj))
-                    push(currentBranch, proj)
-                    
+        os.chdir(cwd)        
+        utility.printMsg("Pushed current branch to origin")
+        return False not in retvals
+    
+    def setDefaultConfig(self, config):
+        pass
+
+def push(repo='', branch='master'):
+    with utility.cd(repo):
+        utility.printMsg("Pushing %s in %s..." % (branch, repo))
+        git.push("-u origin %s" % branch, throwOnFail=True)
+        
+def handlePushMRE(mre):
+    for e1 in mre.exceptions():
+        try:
+            raise e1
         except git.GrapeGitError as e:
             utility.printMsg("Failed to push branch.")
             print e.gitCommand
             print e.cwd
             print e.gitOutput
-            return False
-        os.chdir(cwd)
-        
-        utility.printMsg("Pushed current branch to origin")
-        return True
+            return False            
     
-    def setDefaultConfig(self, config):
-        pass

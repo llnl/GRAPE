@@ -296,6 +296,8 @@ class NoDaemonProcess(multiprocessing.Process):
 class MyPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
 
+    
+
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
@@ -308,7 +310,7 @@ class MultiRepoCommandLauncher(object):
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
-        self.pool = MyPool(processes=nProcesses)
+        self.pool = MyPool(nProcesses)
         self.branchArg = branch
         self.perRepoArgs = perRepoArgs
         self.globalArgs = globalArgs
@@ -330,16 +332,16 @@ class MultiRepoCommandLauncher(object):
             branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
         else:
+            if self.runSubprojects:
+                activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+                repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
+                branches = branches + [currentBranch for x in activeSubprojects]
             if self.runSubmodules:
                 activeSubmodules = git.getActiveSubmodules()
                 repos = repos + [os.path.abspath(r) for r in activeSubmodules]
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 branches = branches + [ submoduleBranch for x in activeSubmodules ]
-            if self.runSubprojects:
-                activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-                repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
-                branches = branches + [currentBranch for x in activeSubprojects]
             if self.runOuter:
                 repos.append(workspaceDir())
                 branches.append(currentBranch)
@@ -357,6 +359,7 @@ class MultiRepoCommandLauncher(object):
         if len(repos) > 1:            
             retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(repos[1:], branches[1:], self.perRepoArgs[1:])])
         os.chdir(cwd)
+        self.pool.close()
         MRE = MultiRepoException()
         for val in zip(retvals, repos, branches):
             if isinstance(val[0], Exception):

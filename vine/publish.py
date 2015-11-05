@@ -297,11 +297,11 @@ class Publish(resumable.Resumable):
         super(Publish, self)._resume(args)
         branch = git.currentBranch()
         if self.progress["startingSHA"] != git.SHA(branch):
-           utility.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
-                                                                             git.SHA(branch)))
-           revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
-           if revert:
-               git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
+            utility.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
+                                                                              git.SHA(branch)))
+            revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
+            if revert:
+                git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
         # release IN PROGRESS LOCK
         utility.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
