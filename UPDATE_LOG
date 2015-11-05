@@ -1,5 +1,12 @@
 
 
+Thu Nov  5 11:00:37 2015 Peter B. Robinson
+v1.12.8
+Reviewers: Ben Liu
+
+Fix incorrect diagnosis of files being present but not a git repository.
+
+
 Thu Nov  5 08:43:50 2015 Peter B. Robinson
 v1.12.7
 Reviewers: Emily Ruth Diana, Ben Liu, Aaron C. Fisher
