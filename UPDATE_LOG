@@ -1,5 +1,14 @@
 
 
+Thu Nov  5 08:43:50 2015 Peter B. Robinson
+v1.12.7
+Reviewers: Emily Ruth Diana, Ben Liu, Aaron C. Fisher
+
+SUMMARY:
+Adds repo-level parallelism to the grape checkout, grape uv, grape db, and grape push.
+Adds the ability to configure whether or not the checkout process syncs the branch you check out with origin. This is controlled with .grapeconfig.post-checkout.syncWithOrigin or through the new --sync option in grape checkout and/or grape uv.
+
+
 Wed Nov  4 17:02:52 2015 Peter B. Robinson
 v1.12.6
 Reviewers: Ben Liu, Aaron C. Fisher
