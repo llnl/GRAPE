@@ -633,9 +633,9 @@ options are at least listed below.
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
     --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md",
+    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md1",
                             "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                            "verifyCompletedReview", "markInProgress", "tickVersion", "updateLog",
+                            "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
                             "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                             "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
@@ -712,8 +712,8 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailServer]
     --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
                             [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                 Perform the following steps only: ensureReview, markInProgress, publish, markAsDone
-
+    --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
+                            markInProgress, md2, publish, markAsDone, deleteTopic, done]
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -788,14 +788,16 @@ options are at least listed below.
 
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay | --askAll] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
 
     Options:
         --am            Use git's default merge. 
         --as            Do a safe merge - force git to issue conflicts for files that
                         are touched by both branches. 
-        --at            Git accept their changes in the event of a conflict (the branch you're merging from)
-        --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --at            Git accept their changes in any file touched by both branches (the branch you're merging from)
+        --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
+        --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
+        --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
         --askAll        Ask to determine the merge strategy before merging each subproject.
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
                         will be called to handle submodule and nested project merges.
@@ -813,7 +815,7 @@ options are at least listed below.
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch. 
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --ay | --askAll]
+                    [--am | --as | --at | --aT | --ay | --aY | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
@@ -827,8 +829,10 @@ options are at least listed below.
                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge resolving conficts using the public branch's version. 
-        --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --at                    Perform the merge using the public branch's version for any file modified by both branches.
+        --aT                    Perform the merge resolving conficts using the public branch's version. 
+        --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
+        --aY                    Perform the merge resolving conflicts using your topic branch's version.
         --askAll                Ask to determine the merge strategy before merging each subproject.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
@@ -846,14 +850,16 @@ options are at least listed below.
     current branch, then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay | --askAll] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
 
 
     Options:
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge resolving conficts using the public branch's version. 
+        --at                    Perform the merge using the remote branch's version for any file modified by both branches.
+        --aT                    Perform the merge resolving conficts using the remote branch's version. 
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --aY                    Perform the merge using your topic branch's version for any file modified by both branches.
         --askAll                Ask to determine the merge strategy before merging each subproject.
         --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
                                 grape md --public=<branch> to handle submodule and nested project merges. 
@@ -909,6 +915,7 @@ options are at least listed below.
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
+                        [--norecurse]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -944,7 +951,9 @@ options are at least listed below.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
-                                    submodules' pull requests.
+                                    submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
+                                    is set to true. 
+        --norecurse                 Disables adding pull requests to submodules and subprojects. 
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and

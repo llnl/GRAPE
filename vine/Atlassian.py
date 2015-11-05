@@ -161,6 +161,9 @@ class PullRequest(StashyNode):
 
     def author(self):
         return self.node["author"]["user"]["name"]
+
+    def authorName(self):
+        return self.node["author"]["user"]["displayName"]
     
     def description(self):
         try:
