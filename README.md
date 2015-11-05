@@ -915,6 +915,7 @@ options are at least listed below.
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
+                        [--norecurse]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -950,7 +951,9 @@ options are at least listed below.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
-                                    submodules' pull requests.
+                                    submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
+                                    is set to true. 
+        --norecurse                 Disables adding pull requests to submodules and subprojects. 
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
