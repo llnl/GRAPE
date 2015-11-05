@@ -520,12 +520,16 @@ options are at least listed below.
     
 ## checkout
 
-    Usage: grape-checkout  [-b] <branch> 
+    grape checkout
+    
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] <branch> 
 
     Options:
+    -b             Create the branch off of the current HEAD in each project.
+    --sync=<bool>  Take extra steps to ensure the branch you check out is up to date with origin,
+                   either by pushing or pulling the remote tracking branch.
+                   [default: .grapeconfig.post-checkout.syncWithOrigin]
 
-    -b      Create the branch off of the current HEAD in each project.
-    
 
     Arguments:
     <branch>    The name of the branch to checkout. 
@@ -1063,10 +1067,9 @@ options are at least listed below.
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f ] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
-                    [--skipNestedSubprojects] [--allNestedSubprojects]
+                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>]
 
     Options:
-        
         -f                      Force removal of subprojects currently in your view that are taken out of the view as a
                                 result to this call to uv.
         --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
@@ -1074,7 +1077,10 @@ options are at least listed below.
         -b                      Automatically creates subproject branches that should be there according to your branching
                                 model. 
         --allSubmodules         Automatically add all submodules to your workspace. 
-        --allNestedSubprojects  Automatically add all nested subprojects to your workspace. 
+        --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
+        --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
+                                either by pushing or pulling the remote tracking branch.
+                                [default: .grapeconfig.post-checkout.syncWithOrigin]          
 
     
 ## version
