@@ -1,5 +1,13 @@
 
 
+Wed Nov  4 17:02:52 2015 Peter B. Robinson
+v1.12.6
+Reviewers: Ben Liu, Aaron C. Fisher
+
+Fixes from bugfixday.
+Adds a --norecurse option to grape review.
+
+
 Wed Nov  4 14:55:58 2015 Emily Diana
 v1.12.5
 Reviewers: Aaron C. Fisher, Peter B. Robinson, Jamie A. Bramwell
