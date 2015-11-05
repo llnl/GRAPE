@@ -156,6 +156,8 @@ class AddSubproject(option.Option):
             destDir = os.path.join(wsDir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
                 git.clone("%s %s" % (fullurl, prefix))
+            elif '.git' in os.listdir(destDir):
+                pass
             else:
                 utility.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
                 return False
