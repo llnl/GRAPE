@@ -917,6 +917,15 @@ class Publish(resumable.Resumable):
     def deleteTopicBranch(args):
         if args["--deleteTopic"].lower() == "true":
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"], "--verify"])
+        # If the branch was not deleted, offer to return to that branch
+        try:
+            # SHA will raise an exception if the branch has been deleted
+            if git.SHA(args["--topic"]) != git.SHA("HEAD"):
+               checkout = utility.userInput("You are currently on %s. Would you like to checkout %s? [y,n]" % (git.currentBranch(), args["--topic"]), "n")
+               if checkout: 
+                  grapeMenu.menu().applyMenuChoice("checkout", [args["--topic"]])
+        except:
+            pass
         return True
 
     @staticmethod
