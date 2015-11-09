@@ -1,5 +1,12 @@
 
 
+Mon Nov  9 09:31:16 2015 Benjamin T. Liu
+v1.12.9
+Reviewers: Peter B. Robinson, Bryan G. Simpkins
+
+Offer to return to topic branch after publish (if not deleted)
+
+
 Thu Nov  5 11:00:37 2015 Peter B. Robinson
 v1.12.8
 Reviewers: Ben Liu
