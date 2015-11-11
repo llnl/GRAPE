@@ -1,5 +1,12 @@
 
 
+Wed Nov 11 14:51:50 2015 Peter B. Robinson
+v1.12.11
+Reviewers: Ben Liu
+
+fix a crash in grape checkout
+
+
 Tue Nov 10 13:22:16 2015 Benjamin T. Liu
 v1.12.10
 Reviewers: Peter B. Robinson
