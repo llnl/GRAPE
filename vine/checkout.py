@@ -21,7 +21,7 @@ def handledCheckout(repo = '', branch = 'master', args = []):
 def handleCheckoutMRE(mre):
     _skipBranchCreation = False
     _createNewBranch = False
-    for e1, branch, project in zip(mre.exceptions(), mre.branches(), mre.repos()):
+    for e1, branch, project, checkoutargs in zip(mre.exceptions(), mre.branches(), mre.repos(), mre.args()):
         try:
             raise e1
         except git.GrapeGitError as e:

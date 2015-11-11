@@ -231,11 +231,13 @@ class MultiRepoException(Exception):
         self._exceptions = []
         self._repos = []
         self._branches = []
+        self._args = []
         
-    def addException(self, e, repo, branch):
+    def addException(self, e, repo, branch, args):
         self._exceptions.append(e)
         self._repos.append(repo)
         self._branches.append(branch)
+        self._args.append(args)
     
     def __getitem__(self, pos):
         return self._exceptions[pos]
@@ -248,6 +250,9 @@ class MultiRepoException(Exception):
     
     def branches(self):
         return self._branches
+    
+    def args(self):
+        return self._args
         
     def hasException(self):
         return len(self._exceptions) > 0
@@ -327,7 +332,7 @@ class MultiRepoCommandLauncher(object):
         publicBranches = config.getPublicBranchList()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         
-        if self.launchTuple:
+        if self.launchTuple is not None:
             repos = [os.path.abspath(x[0]) for x in self.launchTuple]
             branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
@@ -361,9 +366,9 @@ class MultiRepoCommandLauncher(object):
         os.chdir(cwd)
         self.pool.close()
         MRE = MultiRepoException()
-        for val in zip(retvals, repos, branches):
+        for val in zip(retvals, repos, branches, self.perRepoArgs):
             if isinstance(val[0], Exception):
-                MRE.addException(val[0], val[1], val[2])
+                MRE.addException(val[0], val[1], val[2], val[3])
         if MRE.hasException():
             if handleMRE:
                 handleMRE(MRE)
