@@ -1,5 +1,12 @@
 
 
+Fri Nov 13 14:41:12 2015 Peter B. Robinson
+v1.12.12
+Reviewers: Aaron C. Fisher, Ben Liu
+
+Adds --squash option to grape m, mr, and md. 
+
+
 Wed Nov 11 14:51:50 2015 Peter B. Robinson
 v1.12.11
 Reviewers: Ben Liu
