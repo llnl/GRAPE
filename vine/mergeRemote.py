@@ -9,14 +9,17 @@ class MergeRemote(option.Option):
     current branch, then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
 
 
     Options:
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge resolving conficts using the public branch's version. 
+        --at                    Perform the merge using the remote branch's version for any file modified by both branches.
+        --aT                    Perform the merge resolving conficts using the remote branch's version. 
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
+        --aY                    Perform the merge using your topic branch's version for any file modified by both branches.
+        --askAll                Ask to determine the merge strategy before merging each subproject.
         --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
                                 grape md --public=<branch> to handle submodule and nested project merges. 
         --continue              Resume your previous merge after resolving conflicts.

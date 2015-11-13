@@ -16,14 +16,17 @@ class Merge(resumable.Resumable):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --ay] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
 
     Options:
         --am            Use git's default merge. 
         --as            Do a safe merge - force git to issue conflicts for files that
                         are touched by both branches. 
-        --at            Git accept their changes in the event of a conflict (the branch you're merging from)
-        --ay            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --at            Git accept their changes in any file touched by both branches (the branch you're merging from)
+        --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
+        --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
+        --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --askAll        Ask to determine the merge strategy before merging each subproject.
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
@@ -67,7 +70,10 @@ class Merge(resumable.Resumable):
         mdArgs["--am"] = args["--am"]
         mdArgs["--as"] = args["--as"]
         mdArgs["--at"] = args["--at"]
+        mdArgs["--aT"] = args["--aT"]
         mdArgs["--ay"] = args["--ay"]
+        mdArgs["--aY"] = args["--aY"]
+        mdArgs["--askAll"] = args["--askAll"]
         mdArgs["--public"] = args["<branch>"]
         mdArgs["--subpublic"] = subpublic
         mdArgs["--recurse"] = not args["--noRecurse"]

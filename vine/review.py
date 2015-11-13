@@ -24,6 +24,7 @@ class Review(option.Option):
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
+                        [--norecurse]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -59,7 +60,9 @@ class Review(option.Option):
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
-                                    submodules' pull requests.
+                                    submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
+                                    is set to true. 
+        --norecurse                 Disables adding pull requests to submodules and subprojects. 
         --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
@@ -171,7 +174,7 @@ class Review(option.Option):
 
         # submodules
         submoduleLinks = []
-        if args["--recurse"] or config.get("workspace", "manageSubmodules").lower() == 'true':
+        if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
             
             modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
