@@ -40,14 +40,15 @@ globalShowProgress = True
 CLI =  """
 *** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
 Calling grape by itself will pull up the grape menu. 
-Usage: grape [-v | -q] [--version] [--noProgress][<command> <args>...]
+Usage: grape [-v | -q] [--version] [--noProgress] [--np=<numProcs>][<command> <args>...]
 
 Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
 --noProgress Do not show progress for long-running git subprocesses. This will remove
              a fair amount of process-launch overhead in GRAPE, which can have a speedup of
-             about a third. 
+             about a third.
+--np=<int>   The number of processes grape should launch when doing parallel operations. 
 
 
 
@@ -72,6 +73,8 @@ def __apply__(args, CLI):
             setVerbosity(1)
         if args["--noProgress"]:
             setShowProgress(False)
+        if args["--np"]:
+            MultiRepoCommandLauncher.numProcs = int(args["--np"])
         else: 
             setShowProgress(True)
     if type(args) is types.ListType:
@@ -307,14 +310,18 @@ class MyPool(multiprocessing.pool.Pool):
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
-class MultiRepoCommandLauncher(object):    
+
+class MultiRepoCommandLauncher(object):
+    numProcs = 8
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=8, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch="",
+    def __init__(self, lmbda, nProcesses=-1, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch="",
                  globalArgs=None,perRepoArgs=None, listOfRepoBranchArgTuples=None):
         self.lmbda = lmbda
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
+        if nProcesses < 0:
+            nProcesses = MultiRepoCommandLauncher.numProcs
         self.pool = MyPool(nProcesses)
         self.branchArg = branch
         self.perRepoArgs = perRepoArgs
