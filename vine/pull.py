@@ -49,9 +49,13 @@ class Pull(resumable.Resumable):
         mrArgs["--am"] = True
         mrArgs["--as"] = False
         mrArgs["--at"] = False
+        mrArgs["--aT"] = False
         mrArgs["--ay"] = False
+        mrArgs["--aY"] = False
+        mrArgs["--askAll"] = False
         mrArgs["--continue"] = args["--continue"]
         mrArgs["--noRecurse"] = False
+        mrArgs["--squash"] = False
 
         if args["--noRecurse"]:
             git.pull("origin %s" % currentBranch)

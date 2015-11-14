@@ -1,5 +1,105 @@
 
 
+Fri Nov 13 16:18:58 2015 Peter B. Robinson
+v1.13.0
+Reviewers: Ben Liu
+
+Same as 1.12.12
+
+
+Fri Nov 13 14:41:12 2015 Peter B. Robinson
+v1.12.12
+Reviewers: Aaron C. Fisher, Ben Liu
+
+Adds --squash option to grape m, mr, and md. 
+
+
+Wed Nov 11 14:51:50 2015 Peter B. Robinson
+v1.12.11
+Reviewers: Ben Liu
+
+fix a crash in grape checkout
+
+
+Tue Nov 10 13:22:16 2015 Benjamin T. Liu
+v1.12.10
+Reviewers: Peter B. Robinson
+
+Fix offer to return to topic branch.
+
+
+Mon Nov  9 09:31:16 2015 Benjamin T. Liu
+v1.12.9
+Reviewers: Peter B. Robinson, Bryan G. Simpkins
+
+Offer to return to topic branch after publish (if not deleted)
+
+
+Thu Nov  5 11:00:37 2015 Peter B. Robinson
+v1.12.8
+Reviewers: Ben Liu
+
+Fix incorrect diagnosis of files being present but not a git repository.
+
+
+Thu Nov  5 08:43:50 2015 Peter B. Robinson
+v1.12.7
+Reviewers: Emily Ruth Diana, Ben Liu, Aaron C. Fisher
+
+SUMMARY:
+Adds repo-level parallelism to the grape checkout, grape uv, grape db, and grape push.
+Adds the ability to configure whether or not the checkout process syncs the branch you check out with origin. This is controlled with .grapeconfig.post-checkout.syncWithOrigin or through the new --sync option in grape checkout and/or grape uv.
+
+
+Wed Nov  4 17:02:52 2015 Peter B. Robinson
+v1.12.6
+Reviewers: Ben Liu, Aaron C. Fisher
+
+Fixes from bugfixday.
+Adds a --norecurse option to grape review.
+
+
+Wed Nov  4 14:55:58 2015 Emily Diana
+v1.12.5
+Reviewers: Aaron C. Fisher, Peter B. Robinson, Jamie A. Bramwell
+
+BRANCH: Bugfix/diana1/locking
+REVIEWERS: Peter Robinson, Jamie Bramwell, Aaron Fisher
+SUMMARY: Update to grape publish locking mechanism
+DETAILS: 
+* Added another 'md' step after 'mark in progress' for grape publish.
+* md1 and md2 description added
+* md1 and md2 mapped to same md command
+
+
+Tue Nov  3 09:27:19 2015 Benjamin T. Liu
+v1.12.4
+Reviewers: Peter B. Robinson
+
+Add author to reviewer list if author is not the one doing the publish
+
+
+Mon Nov  2 21:14:43 2015 Benjamin T. Liu
+v1.12.3
+Reviewers: Peter B. Robinson, Al Nichols
+
+Update --ay and --at merge options; add --aY/--aT for legacy behavior
+
+
+Thu Oct 29 10:12:09 2015 Benjamin T. Liu
+v1.12.2
+Reviewers: Peter B. Robinson, Aaron C. Fisher
+
+Allow choice of merge strategy by subproject with md --askAll (GRP-151)
+
+
+Thu Oct 29 10:06:54 2015 Benjamin T. Liu
+v1.12.1
+Reviewers: Peter B. Robinson, Aaron C. Fisher
+
+Quit after publish --abort (GRP-72); write progress file after stopAt; validate stopAt input; quit after invalid startAt/stopAt input
+
+
 Wed Oct 21 07:44:53 2015 Benjamin T. Liu
 v1.11.2
 Reviewers: Peter B. Robinson
