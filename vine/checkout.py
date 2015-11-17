@@ -45,7 +45,7 @@ def handleCheckoutMRE(mre):
                     createNewBranch = False
                 if createNewBranch:
                     utility.printMsg("Creating new branch %s in %s." % (branch, project))
-                    git.checkout(checkoutargs+" -b "+branch)
+                    git.checkout(checkoutargs[0]+" -b "+branch)
                     git.push("-u origin %s" % branch)
                 else:
                     return False
