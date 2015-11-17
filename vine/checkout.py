@@ -33,9 +33,9 @@ def handleCheckoutMRE(mre):
                     
                 elif not createNewBranch:
                     createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
-                                                    "new branch called %s? \n"
+                                                    "new branch called %s in %s? \n"
                                                     "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
-                                                    "\n(y,n,a,s)" % branch, 'y')
+                                                    "\n(y,n,a,s)" % (branch, project), 'y')
                         
                 if str(createNewBranch).lower()[0] == 'a':
                     _createNewBranch = True
