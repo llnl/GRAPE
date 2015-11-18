@@ -1,5 +1,12 @@
 
 
+Wed Nov 18 15:02:52 2015 Benjamin T. Liu
+v1.13.2
+Reviewers: Chris White
+
+Fix version checking to deal with older mac versions of git that report 'git version 1.8.5.2 (Apple Git-48)'
+
+
 Wed Nov 18 09:34:55 2015 Benjamin T. Liu
 v1.13.1
 Reviewers: Peter B. Robinson
