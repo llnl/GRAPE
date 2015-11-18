@@ -27,10 +27,10 @@ CLI = utility.CLI
 
 def startup():
     versionOutput = git.version().split()
-    versionString = versionOutput[-1]
+    versionString = versionOutput.pop()
 
-    if '.' not in versionString:
-       versionString = versionOutput[-2]
+    while '.' not in versionString:
+       versionString = versionOutput.pop()
 
     versions = versionString.split('.') 
    
