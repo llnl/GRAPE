@@ -26,7 +26,12 @@ vinePath = os.path.dirname(vine.__file__)
 CLI = utility.CLI 
 
 def startup():
-    versionString = git.version().split()[-1]
+    versionOutput = git.version().split()
+    versionString = versionOutput[-1]
+
+    if '.' not in versionString:
+       versionString = versionOutput[-2]
+
     versions = versionString.split('.') 
    
     if int(versions[0]) == 1 and int(versions[1]) < 8:
