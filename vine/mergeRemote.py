@@ -53,7 +53,7 @@ class MergeRemote(option.Option):
         except utility.MultiRepoException as mre:
             commError = False
             commErrorRepos = []
-            for e, r in zip(mre, mre.repos):
+            for e, r in zip(mre.exceptions(), mre.repos()):
                 if e.commError:
                     commErrorRepos.append(r)
                     commError = True
