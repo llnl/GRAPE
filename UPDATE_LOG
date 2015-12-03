@@ -1,5 +1,12 @@
 
 
+Thu Dec  3 14:16:48 2015 Peter B. Robinson
+v1.13.3
+Reviewers: Ben Liu
+
+add some parallel error handling to grape db.
+
+
 Wed Nov 18 15:02:52 2015 Benjamin T. Liu
 v1.13.2
 Reviewers: Chris White
