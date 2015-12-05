@@ -792,7 +792,7 @@ options are at least listed below.
 
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
 
     Options:
         --am            Use git's default merge. 
@@ -807,7 +807,8 @@ options are at least listed below.
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
         --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
-                        the merge. 
+                        the merge.
+        --squash        Perform squash merges. 
 
     Arguments:
         <branch>        The branch you want to merge in. 
@@ -823,6 +824,7 @@ options are at least listed below.
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
+                    [--squash]
                     
 
     Options:
@@ -842,7 +844,8 @@ options are at least listed below.
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
-        --noUpdate              Do not update local versions of the public branch before attempting merges. 
+        --noUpdate              Do not update local versions of the public branch before attempting merges.
+        --squash                Perform squash merges. 
         
 
 
@@ -854,7 +857,7 @@ options are at least listed below.
     current branch, then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
 
 
     Options:
@@ -868,6 +871,7 @@ options are at least listed below.
         --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
                                 grape md --public=<branch> to handle submodule and nested project merges. 
         --continue              Resume your previous merge after resolving conflicts.
+        --squash                Perform squash merges. 
         
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
