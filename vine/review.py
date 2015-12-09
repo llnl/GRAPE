@@ -231,7 +231,6 @@ class Review(option.Option):
 
             submoduleLinks.append(newRequest.link())
             
-            
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
@@ -302,9 +301,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.data["errors"][0]["message"])
-                exit(1)
+                if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
+                    exit(1)
         else:
-            utility.printMsg("No pull request  from %s to %s to update" % (branch, target_branch))
+            utility.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
 
     else:
         if not args["--add"]:
@@ -349,7 +349,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.data["errors"][0]["message"])
                 print("STASH: %s" % e.data)
-                exit(1)
+                if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
+                    exit(1)
 
         else:
             print ("STASH: Pull request from %s to %s already exists, can't add a new one" %
