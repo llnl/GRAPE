@@ -208,7 +208,8 @@ class Review(option.Option):
                 if args["--prepend"] or args["--append"]:
                     subDescr = descr
                 newRequest = postPullRequest(repo, title, branch, sub_target_branch, subDescr, reviewers, args)
-                submoduleLinks.append(newRequest.link())
+                if newRequest:
+                    submoduleLinks.append(newRequest.link())
         
         #nested subprojects
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
@@ -228,9 +229,10 @@ class Review(option.Option):
             repo = stash.project(proj).repo(repo_name)
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
-
-            submoduleLinks.append(newRequest.link())
+            if newRequest:
+                submoduleLinks.append(newRequest.link())
             
+
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
