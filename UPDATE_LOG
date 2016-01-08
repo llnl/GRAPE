@@ -1,5 +1,12 @@
 
 
+Thu Dec 10 08:55:03 2015 Benjamin T. Liu
+v1.13.4
+Reviewers: Peter B. Robinson
+
+Fix grape review for the case where a pull request has no changes.  This should only occur when the public branch of a subproject is behind origin/public (not sure whether it can happen in submodules).  There might be better fixes such as fetching the public branch and ensuring the getModifiedNestedSubprojects checks origin/public rather than public.
+
+
 Thu Dec  3 14:16:48 2015 Peter B. Robinson
 v1.13.3
 Reviewers: Ben Liu
