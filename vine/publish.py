@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import tempfile
 import traceback
@@ -523,7 +524,7 @@ class Publish(resumable.Resumable):
                     request = r
                     break
         if request:
-            title = request.title().replace("**IN PROGRESS**", "")
+            title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
             return self.markReview(args, ["--title=%s" % title, "--state=%s" % state], "")
         else:
             utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
