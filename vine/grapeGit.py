@@ -66,6 +66,9 @@ def baseDir():
 def allBranches():
     return branch("-a").replace("*",' ').replace(" ",'').split()
 
+def remoteBranches():
+    return branch("-r").replace(" ", '').split()
+
 def branch(argstr=""):
     return gitcmd("branch %s" % argstr, "Could not execute git branch command")
 

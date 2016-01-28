@@ -70,11 +70,17 @@ def deleteBranch(repo='', branch='master', args = None):
 def detachThenForceDeleteBranch(repo='', branch='master', args = None):
     with utility.cd(repo):
         utility.printMsg("*** WARNING ***: Detaching in order to delete %s in %s. You will be in a headless state." % (branch, repo))
-        git.checkout("--detach %s" % branch)
+        git.checkout("--detach HEAD")
         git.branch("-D %s" % branch)
-        if "origin/%s" % branch in git.branch("-r"):
-            git.push("--delete origin %s" % branch, throwOnFail=False)        
-        
+        if "origin/%s" % branch in git.remoteBranches():
+            git.push("--delete origin %s" % branch, throwOnFail=False)
+            
+def handleDetachThenForceMRE(mre):
+    # this shouldn't happen, but here is some verbosity for when it does...
+    for e1, branch, repo in zip(mre.exceptions(), mre.branches(), mre.repos()):
+        print e1, branch, repo
+    raise mre
+
 def handleDeleteBranchMRE(mre, force=False):
     detachTuples = []
     for e1, branch, repo in zip(mre.exceptions(), mre.branches(), mre.repos()):
@@ -106,6 +112,6 @@ def handleDeleteBranchMRE(mre, force=False):
                     utility.printMsg("Deletion of %s failed for unhandled reason." % branch)
                     print e.gitOutput
                     raise e
-                
+
     utility.MultiRepoCommandLauncher(detachThenForceDeleteBranch, 
-                                    listOfRepoBranchArgTuples=detachTuples).launchFromWorkspaceDir()
+                                    listOfRepoBranchArgTuples=detachTuples, ).launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)

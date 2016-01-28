@@ -259,6 +259,11 @@ class MultiRepoException(Exception):
         
     def hasException(self):
         return len(self._exceptions) > 0
+    
+    def __repr__(self):
+        return "MRE with \n exceptions: %s \repos: %s\n branches: %s\n args: %s" % (
+                self._exceptions, self._repos, self._branches, self._args)
+        
         
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
