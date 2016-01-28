@@ -69,7 +69,7 @@ class MergeRemote(option.Option):
         hasRemote = ("origin/%s" % otherBranch) in git.remoteBranches()
         hasBranch = git.hasBranch(otherBranch)
         currentBranch = git.currentBranch()
-        print hasRemote, hasBranch, currentBranch != otherBranch
+
         if  hasRemote and  (git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch) or not hasBranch) and currentBranch != otherBranch:
             utility.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
             
