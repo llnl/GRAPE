@@ -91,7 +91,13 @@ class Status(option.Option):
         
         if (len(missingBranches) > 0 ): 
             for mb in missingBranches:
-                utility.printMsg("Repository is missing public branch %s" % mb)
+                utility.printMsg("Repository is missing public branch %s, attempting to fetch it now..." % mb)
+                try:
+                    git.fetch("origin %s:%s" % (mb, mb))
+                    utility.printMsg("%s added as a local branch" % mb)
+                except git.GrapeGitError as e:
+                    print e.gitOutput
+                    publicBranchesExist = False
             publicBranchesExist=False
         return publicBranchesExist
                     
