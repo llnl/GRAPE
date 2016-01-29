@@ -319,9 +319,16 @@ class MyPool(multiprocessing.pool.Pool):
 class MultiRepoCommandLauncher(object):
     numProcs = 8
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=-1, runInSubmodules=True, runInSubprojects=True, runInOuter=True, branch="",
-                 globalArgs=None,perRepoArgs=None, listOfRepoBranchArgTuples=None):
+    def __init__(self, lmbda, nProcesses=-1, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
+                 globalArgs=None,perRepoArgs=None, listOfRepoBranchArgTuples=None, skipSubmodules=False):
         self.lmbda = lmbda
+        
+        config = grapeConfig.grapeConfig()
+        recurseSubmodules = config.getboolean("workspace", "manageSubmodules")
+        if not recurseSubmodules:
+            self.runSubmodules = recurseSubmodules or runInSubmodules
+            self.runSubmodules = self.runSumodules and not skipSubmodules
+            
         self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
@@ -332,6 +339,9 @@ class MultiRepoCommandLauncher(object):
         self.perRepoArgs = perRepoArgs
         self.globalArgs = globalArgs
         self.launchTuple = listOfRepoBranchArgTuples
+        
+        config = grapeConfig.grapeConfig()
+        
 
         
     def launchFromWorkspaceDir(self, handleMRE=None):

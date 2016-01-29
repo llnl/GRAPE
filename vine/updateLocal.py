@@ -42,11 +42,24 @@ class UpdateLocal(option.Option):
         
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurseSubmodules = recurseSubmodules and (not args["--noRecurse"])
+        skipSubmodules = args["--noRecurse"]
+        
+        
         recurseNestedSubprojects = not args["--noRecurse"]
 
         currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
+
+
+        for branch in publicBranches:
+            utility.MultiRepoCommandLauncher(fetchLocal,  
+                                            runInSubmodules=recurseSubmodules, 
+                                            runInSubprojects=recurseNestedSubprojects, 
+                                            branch=branch, 
+                                            listOfRepoBranchArgTuples=None, 
+                                            skipSubmodules=skipSubmodules).launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+            
+        return True
 
         # fetch branches in outer level repo
         fetchLocal( wsDir, cwd, publicBranches)
@@ -111,35 +124,42 @@ class UpdateLocal(option.Option):
     def setDefaultConfig(self, config):
         pass
    
+def fetchLocalHandler(mre):
+    print mre.exceptions()
+    raise mre
    
-def fetchLocal(workingDir, cwd, branches):
+def fetchLocal(repo='unknown', branch='master'):
     
-    os.chdir(workingDir)
-    utility.printMsg("updating %s in %s" % (branches, workingDir))
-    git.fetch("--prune --tags")
-    fetchArgs = "origin "
-    currentBranch = git.currentBranch().strip()
-    for pubBranch in branches:
-        if currentBranch != pubBranch:
-            arg = "%s:%s" % (pubBranch, pubBranch)
-            if arg not in fetchArgs: 
-                fetchArgs += arg + " "
-    try:
-        git.fetch(fetchArgs)
-    except git.GrapeGitError as e:
-        # let non-fast-forward fetches slide
-        if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
-            print e.gitCommand
-            print e.gitOutput
-            print("GRAPE: WARNING: one or more of your public branches have local commits! "
-                  "Did you forget to create a topic branch?")
-            pass
+    with utility.cd(repo):
+        try:
+            git.fetch("origin %s" % branch)
+        except git.GrapeGitError as e:
+            utility.printMsg("skipping %s in %s (does not exist)" % (branch, repo))
+            return
+        
+        currentBranch = git.currentBranch()
+        if currentBranch == "HEAD" or branch == "HEAD":
+            return
+        
+        if git.currentBranch() != branch:
+            utility.printMsg("updating %s in %s" % (branch, repo))            
+            git.fetch("--prune --tags")
+            fetchArgs = "origin %s:%s" % (branch, branch)
+            try:
+                git.fetch(fetchArgs)
+            except git.GrapeGitError as e:
+                # let non-fast-forward fetches slide
+                if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
+                    print e.gitCommand
+                    print e.gitOutput
+                    print("GRAPE: WARNING:  your public branch %s in %s has local commits! "
+                          "Did you forget to create a topic branch?" % (branch, repo))
+                    pass
+                else:
+                    raise e
         else:
-            os.chdir(cwd)
-            raise e
-    
-    try:
-        if currentBranch != "HEAD": 
-            git.pull("origin %s" % currentBranch)
-    except git.GrapeGitError:
-        print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
+            try:
+                utility.printMsg("Pulling current branch %s in %s" % (branch, repo))
+                git.pull("origin %s" % currentBranch)
+            except git.GrapeGitError:
+                print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
