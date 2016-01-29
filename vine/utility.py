@@ -326,7 +326,7 @@ class MultiRepoCommandLauncher(object):
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules")
         if not recurseSubmodules:
-            self.runSubmodules = recurseSubmodules or runInSubmodules
+            self.runSubmodules = runInSubmodules
             self.runSubmodules = self.runSumodules and not skipSubmodules
             
         self.runSubmodules = runInSubmodules

@@ -87,7 +87,7 @@ def fetchLocal(repo='unknown', branch='master'):
         if currentBranch == "HEAD" or branch == "HEAD":
             return
         
-        if git.currentBranch() != branch:
+        if currentBranch:
             utility.printMsg("updating %s in %s" % (branch, repo))            
             git.fetch("--prune --tags")
             fetchArgs = "origin %s:%s" % (branch, branch)

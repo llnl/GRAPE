@@ -114,4 +114,4 @@ def handleDeleteBranchMRE(mre, force=False):
                     raise e
 
     utility.MultiRepoCommandLauncher(detachThenForceDeleteBranch, 
-                                    listOfRepoBranchArgTuples=detachTuples, ).launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)
+                                    listOfRepoBranchArgTuples=detachTuples).launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)
