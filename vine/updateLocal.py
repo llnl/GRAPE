@@ -50,75 +50,21 @@ class UpdateLocal(option.Option):
         currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
 
-
+        launchers = []
         for branch in publicBranches:
-            utility.MultiRepoCommandLauncher(fetchLocal,  
+            launchers.append(utility.MultiRepoCommandLauncher(fetchLocal,  
                                             runInSubmodules=recurseSubmodules, 
                                             runInSubprojects=recurseNestedSubprojects, 
                                             branch=branch, 
                                             listOfRepoBranchArgTuples=None, 
-                                            skipSubmodules=skipSubmodules).launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+                                            skipSubmodules=skipSubmodules))
+        if len(launchers):
+            launcher = launchers[0]
+            for l in launchers[1:]:
+                launcher.MergeLaunchSet(l)
+            launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
             
         return True
-
-        # fetch branches in outer level repo
-        fetchLocal( wsDir, cwd, publicBranches)
-
-        if recurseNestedSubprojects:
-           # fetch branches in nested subprojects
-            for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(workspaceDir=wsDir):
-                fetchLocal(os.path.join(wsDir, subproject), cwd, publicBranches)
-
-        if recurseSubmodules:
-           # fetch branches in submodules
-            
-            activeSubmodules = git.getActiveSubmodules()
-            if len(activeSubmodules) > 0: 
-                subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
-                for submodule in activeSubmodules:
-                    try:
-                        
-                        # First figure out the SHA for the branch on the submodule.
-                        # The output of ls-tree should look like:
-                        # 160000 commit <submodule SHA>  <submodule name>
-                        gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
-                                                "Failed to execute ls-tree").split()[2]
-                        with utility.cd(os.path.join(wsDir, submodule)):
-                            # Check to see if the SHA in submodule matches
-                            branchUpdate = True if git.SHA(currentBranch) != gitlinkSHA else False
-                    except:
-                        # This may fail if the branch does not exist on the submodule, 
-                        # in which case we do not want to update it.
-                        branchUpdate = False
-  
-                    # Repeat this for the public branches
-                    publicUpdate = set()
-                    for public in publicBranches:
-                        try:
-                            submodulePublicBranch = subBranchMappings[public]
-                            try:
-                                with utility.cd(os.path.join(wsDir, submodule)):
-                                    # check to make sure the remote ref exists
-                                    git.fetch("origin %s " % submodulePublicBranch)                                    
-                                    if git.currentBranch() != submodulePublicBranch:
-                                        publicUpdate.add(submodulePublicBranch)
-                                    else:
-                                        utility.printMsg("skipping %s in %s (currently the active branch, use grape pull to update)" % (submodulePublicBranch, submodule))
-                            except git.GrapeGitError as e:
-                                # This may fail if the branch does not exist on the submodule, 
-                                # in which case we do not want to update it.
-                                utility.printMsg("skipping %s in %s (does not exist)" % (submodulePublicBranch, submodule))
-                                pass
-                        except KeyError:
-                            # Do nothing if the public branch mapping has not been defined.
-                            pass
-    
-                     # Fetch branches on the submodule only something is not up-to-date
-                    if branchUpdate or len(publicUpdate) > 0:
-                        fetchLocal( os.path.join(wsDir, submodule), cwd, list(publicUpdate))
- 
-        return True
-
 
 
     def setDefaultConfig(self, config):

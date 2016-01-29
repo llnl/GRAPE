@@ -340,55 +340,83 @@ class MultiRepoCommandLauncher(object):
         self.globalArgs = globalArgs
         self.launchTuple = listOfRepoBranchArgTuples
         
-        config = grapeConfig.grapeConfig()
+        self.repos = []
+        self.branches = []
         
 
+    def MergeLaunchSet(self, otherMRCL):
+        self.initializeCommands()
+        otherMRCL.initializeCommands()
+        for args in self.perRepoArgs + otherMRCL.perRepoArgs:
+            if args:
+                print ("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
+                break
         
-    def launchFromWorkspaceDir(self, handleMRE=None):
-        cwd = os.getcwd()
-        os.chdir(workspaceDir())
-        repos = []
-        branches = []
-        argLists = self.perRepoArgs
+        reducedSet = list(set(zip(self.branches+otherMRCL.branches,
+                                                                     self.repos+otherMRCL.repos)))
+        self.branches = []
+        self.repos = []
+        self.perRepoArgs = []
+        for t in reducedSet:
+            self.branches.append(t[0])
+            self.repos.append(t[1])
+            self.perRepoArgs.append([])
+        
+        pass
+     
+    
+    def initializeCommands(self):
         config = grapeConfig.grapeConfig()
-        publicBranches = config.getPublicBranchList()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
+        publicBranches = config.getPublicBranchList()
         
+        # don't reinit
+        if self.repos:
+            return
         if self.launchTuple is not None:
-            repos = [os.path.abspath(x[0]) for x in self.launchTuple]
-            branches = [x[1] for x in self.launchTuple]
+            self.repos = [os.path.abspath(x[0]) for x in self.launchTuple]
+            self.branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
         else:
             if self.runSubprojects:
                 activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-                repos = repos + [os.path.abspath(sub) for sub in activeSubprojects]
-                branches = branches + [currentBranch for x in activeSubprojects]
+                self.repos = self.repos + [os.path.abspath(sub) for sub in activeSubprojects]
+                self.branches = self.branches + [currentBranch for x in activeSubprojects]
             if self.runSubmodules:
                 activeSubmodules = git.getActiveSubmodules()
-                repos = repos + [os.path.abspath(r) for r in activeSubmodules]
+                self.repos = self.repos + [os.path.abspath(r) for r in activeSubmodules]
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
-                branches = branches + [ submoduleBranch for x in activeSubmodules ]
+                self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
             if self.runOuter:
-                repos.append(workspaceDir())
-                branches.append(currentBranch)
+                self.repos.append(workspaceDir())
+                self.branches.append(currentBranch)
             if not self.perRepoArgs:
                 if not self.globalArgs:
                     
-                    self.perRepoArgs = [[] for x in repos]
+                    self.perRepoArgs = [[] for x in self.repos]
                 else:
-                    self.perRepoArgs = [self.globalArgs for x in repos]
+                    self.perRepoArgs = [self.globalArgs for x in self.repos]        
+       
+    def launchFromWorkspaceDir(self, handleMRE=None):
+        cwd = os.getcwd()
+        os.chdir(workspaceDir())
+
+        argLists = self.perRepoArgs
+        config = grapeConfig.grapeConfig()
+        
+        self.initializeCommands()
         
         # run the first entry first so that things like logging in to the project's server happen up front
         retvals = []
-        if len(repos) > 0:
-            retvals.append(runCommandOnRepoBranch((repos[0], branches[0], self.lmbda, self.perRepoArgs[0])))
-        if len(repos) > 1:            
-            retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(repos[1:], branches[1:], self.perRepoArgs[1:])])
+        if len(self.repos) > 0:
+            retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
+        if len(self.repos) > 1:            
+            retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
         os.chdir(cwd)
         self.pool.close()
         MRE = MultiRepoException()
-        for val in zip(retvals, repos, branches, self.perRepoArgs):
+        for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
             if isinstance(val[0], Exception):
                 MRE.addException(val[0], val[1], val[2], val[3])
         if MRE.hasException():
