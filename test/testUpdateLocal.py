@@ -37,7 +37,7 @@ class GrapeUpTester(testGrape.TestGrape):
             if "git fetch origin" in l and "Executing" in l:
                 numberOfFetches += 1
         self.assertEqual(numberOfFetches, testProjectScenario.numExpectedFetches(),
-                         "Unexpected number of fetches %d != %d\n%s" % (numberOfFetches, testProjectScenario.numExpectedFetches(),upoutput.split('\n')))
+                         "Unexpected number of fetches %d != %d\n%s" % (numberOfFetches, testProjectScenario.numExpectedFetches(),upoutput))
         
         if testProjectScenario.debugging() or debugging:
             self.switchToHiddenOutput()
