@@ -328,8 +328,9 @@ class MultiRepoCommandLauncher(object):
         if not recurseSubmodules:
             self.runSubmodules = runInSubmodules
             self.runSubmodules = self.runSumodules and not skipSubmodules
+        else:
+            self.runSubmodules = recurseSubmodules
             
-        self.runSubmodules = runInSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
         if nProcesses < 0:

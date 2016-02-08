@@ -98,7 +98,6 @@ class Status(option.Option):
                 except git.GrapeGitError as e:
                     print e.gitOutput
                     publicBranchesExist = False
-            publicBranchesExist=False
         return publicBranchesExist
                     
     def checkForConsistentWorkspaceBranches(self, args):
@@ -134,7 +133,7 @@ class Status(option.Option):
                 if nestedbranch != wsBranch: 
                     consistentBranchState = False
                     utility.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" % 
-                                     (nested,nestedbranch, wsBranch))        
+                                     (nested,nestedbranch, wsBranch))
         return consistentBranchState
         
     def execute(self, args):

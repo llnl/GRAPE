@@ -11,7 +11,7 @@ class UpdateLocal(option.Option):
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
-                    [--recurse | --noRecurse]
+                    [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     
 
@@ -23,6 +23,7 @@ class UpdateLocal(option.Option):
     --noRecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated. 
                             Top level workspace will be updated if this is unspecified.
+    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules. 
 
 
     """
@@ -45,8 +46,7 @@ class UpdateLocal(option.Option):
         skipSubmodules = args["--noRecurse"]
         
         
-        recurseNestedSubprojects = not args["--noRecurse"]
-
+        recurseNestedSubprojects = not args["--noRecurse"] or args["--recurseSubprojects"]
         currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
 
