@@ -185,7 +185,7 @@ class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
         # detached submodule is a bad place to be
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        self._numExpectedFetches = 1
+        self._numExpectedFetches = 2
         
 class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
     def __init__(self,path):
