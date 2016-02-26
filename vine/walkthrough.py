@@ -175,9 +175,11 @@ class ProjectManager:
          self.projtype = [ "Outer" ]
 
       # Nested subprojects
+      self.subprojects = []
       if self.showNestedSubprojects:
          activeNestedSubprojects = (grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes())
          self.projects.extend(activeNestedSubprojects)
+         self.subprojects.extend(activeNestedSubprojects)
          for proj in activeNestedSubprojects:
             status = "?"
             self.projlist.insert(Tk.END, "%s %s <Nested Subproject>" % (status, proj))
@@ -186,6 +188,7 @@ class ProjectManager:
          if self.showInactive:
             inactiveNestedSubprojects = list(set(grapeConfig.grapeConfig().getAllNestedSubprojects()) - set(grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()))
             self.projects.extend(inactiveNestedSubprojects)
+            self.subprojects.extend(inactiveNestedSubprojects)
             for proj in inactiveNestedSubprojects:
                status = "?"
                self.projlist.insert(Tk.END, "%s %s <Inactive Nested Subproject>" % (status, proj))
@@ -193,9 +196,11 @@ class ProjectManager:
                self.projtype.append("Inactive Nested")
 
       # Submodules
+      self.submodules = []
       if self.showSubmodules:
          activeSubmodules = (git.getActiveSubmodules())
          self.projects.extend(activeSubmodules)
+         self.submodules.extend(activeSubmodules)
          for proj in activeSubmodules:
             status = "?"
             self.projlist.insert(Tk.END, "%s %s <Submodule>" % (status, proj))
@@ -204,6 +209,7 @@ class ProjectManager:
          if self.showInactive:
             inactiveSubmodules = list(set(git.getAllSubmodules()) - set(git.getActiveSubmodules()))
             self.projects.extend(inactiveSubmodules)
+            self.submodules.extend(inactiveSubmodules)
             for proj in inactiveSubmodules:
                status = "?"
                self.projlist.insert(Tk.END, "%s %s <Inactive Submodule>" % (status, proj))
@@ -211,12 +217,11 @@ class ProjectManager:
                self.projtype.append("Inactive Submodule")
 
       # Subtrees
-      # These should also show up in the outer level repo diff, but this
-      # should provide the ability to diff just the subproject.
+      self.subtrees = []
       if self.showSubtrees:
-         allSubtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get('subtrees', 'names').strip().split() ]
-         self.projects.extend(allSubtrees)
-         for proj in allSubtrees:
+         self.subtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get('subtrees', 'names').strip().split() ]
+         self.projects.extend(self.subtrees)
+         for proj in self.subtrees:
             status = "?"
             self.projlist.insert(Tk.END, "%s %s <Subtree>" % (status, proj))
             self.projstatus.append(status)
@@ -337,18 +342,15 @@ class DiffManager(ProjectManager):
 
       # If we are diffing against the workspace, get the status of the workspace
       # and save the set of changed files in the outer project (including submodules).
-      if self.branchB == "--":
+      changedFiles = None
+      
+      if self.showToplevel:
          utility.printMsg("Gathering status in outer level project...")
-         statusStr = "--porcelain -uno"
-         if self.showSubmodules:
-            statusStr += " --ignore-submodules=untracked"
-         else:
-            statusStr += " --ignore-submodules=all"
-         changedFiles = { x.strip().split()[1] for x in git.status(statusStr).splitlines() }
+         changedFiles = git.diff("--name-only %s %s" % (self.branchA, self.branchB)).split()
          utility.printMsg("Done.")
 
       # Get the url mapping for all submodules
-      if self.showSubmodules and len(git.getAllSubmodules()) > 0:
+      if len(self.submodules) > 0:
          submoduleURLMap = git.getAllSubmoduleURLMap()
 
       utility.printMsg("Examining projects...")
@@ -362,7 +364,7 @@ class DiffManager(ProjectManager):
          if type == "Outer":
             # Outer is always last in the reverse iteration,
             # so all submodule entries should have already been removed.
-            haveDiff = self.repoHasDiff(changedFiles)
+            haveDiff = len(changedFiles) > 0
          elif type.endswith("Submodule"):
             if type.startswith("Inactive"):
                fullurl = utility.parseSubprojectRemoteURL(submoduleURLMap[dir])
@@ -392,21 +394,18 @@ class DiffManager(ProjectManager):
                pass
             else:
                os.chdir(os.path.join(utility.workspaceDir(), dir))
-               if self.branchB == "--":
-                  utility.printMsg("Gathering status in %s..." % dir)
-                  statusStr = "--porcelain -uno"
-                  changedFiles = { x.strip().split()[1] for x in git.status(statusStr).splitlines() }
-                  utility.printMsg("Done.")
-               haveDiff = self.repoHasDiff(changedFiles)
+               utility.printMsg("Gathering status in %s..." % dir)
+               haveDiff = len(git.diff("--name-only %s %s" % (self.branchA, self.branchB)).split()) > 0
+               utility.printMsg("Done.")
                os.chdir(utility.workspaceDir())
             pass
          elif type.endswith("Subtree"):
-            # Don't know how to get the SHA's, so perform the diff.
             nestedFiles = git.diff("--name-only %s %s %s" % (self.branchA, self.branchB, dir)).split()
             if len(nestedFiles) > 0:
                haveDiff = True
-               for nestedFile in nestedFiles:
-                  changedFiles.remove(nestedFile)
+               for changedFile in changedFiles:
+                  if changedFile.startswith(dir+os.path.sep):
+                     changedFiles.remove(changedFile)
 
          if haveDiff:
             self.setProjectStatus(index, "*")
@@ -422,21 +421,6 @@ class DiffManager(ProjectManager):
          self.projpanelabel.set("Double click to choose a project")
       else:
          self.projpanelabel.set("No differences")
-
-
-
-   # Determine whether a repo has diffs.
-   # changedFiles is a list of uncommitted changes obtained from a status call.
-   def repoHasDiff(self, changedFiles):
-      haveDiff = False
-      if self.branchA == "--cached":
-         if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
-            haveDiff = True
-      elif self.branchB == "--":
-         haveDiff = (len(changedFiles) > 0) or git.shortSHA("HEAD") != git.shortSHA(self.branchA)
-      else:
-         haveDiff = (git.shortSHA(self.branchA) != git.shortSHA(self.branchB))
-      return haveDiff
 
    def getBranch(self, branch):
       if not branch.startswith("--"):
@@ -495,6 +479,7 @@ class DiffManager(ProjectManager):
                         "T":"<File type changed>", 
                         "U":"<File unmerged>", 
                         "X":"<Unknown status>" }
+            
          if len(diffoutput) > 0:
             for line in diffoutput:
                [status, file] = line.split(None, 1) 
@@ -510,9 +495,20 @@ class DiffManager(ProjectManager):
                else:
                   filedisplay = file
                   filename = file
+               if type == "Outer":
+                  if filename in self.submodules:
+                     continue
+                  inSubtree = False
+                  for subtree in self.subtrees:
+                     if filename.startswith(subtree+os.path.sep):
+                        inSubtree = True
+                        break
+                  if inSubtree:
+                     continue
+                   
                self.filelist.insert(Tk.END, "%s %s" % (filedisplay, statusstring))
                self.filenames.append(filename)
-         else:
+         if len(self.filelist) == 0:
             self.filelist.insert(Tk.END, "<No differences>")
             self.filenames.append("")
 
