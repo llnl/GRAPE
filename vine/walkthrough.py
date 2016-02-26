@@ -348,7 +348,8 @@ class DiffManager(ProjectManager):
          utility.printMsg("Done.")
 
       # Get the url mapping for all submodules
-      submoduleURLMap = git.getAllSubmoduleURLMap()
+      if self.showSubmodules and len(git.getAllSubmodules()) > 0:
+         submoduleURLMap = git.getAllSubmoduleURLMap()
 
       utility.printMsg("Examining projects...")
 
@@ -359,15 +360,9 @@ class DiffManager(ProjectManager):
          type = self.projtype[index]
          haveDiff = False
          if type == "Outer":
-            if self.branchA == "--cached":
-               if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
-                  haveDiff = True
-            elif self.branchB == "--":
-               # Outer is always last in the reverse iteration,
-               # so all submodule entries should have already been removed.
-               haveDiff = (len(changedFiles) > 0) or git.shortSHA("HEAD") != git.shortSHA(self.branchA)
-            else:
-               haveDiff = (git.shortSHA(self.branchA) != git.shortSHA(self.branchB))
+            # Outer is always last in the reverse iteration,
+            # so all submodule entries should have already been removed.
+            haveDiff = self.repoHasDiff()
          elif type.endswith("Submodule"):
             if type.startswith("Inactive"):
                fullurl = utility.parseSubprojectRemoteURL(submoduleURLMap[dir])
@@ -392,7 +387,13 @@ class DiffManager(ProjectManager):
                shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchB, dir), "Failed to execute ls-tree").split()[2]
                haveDiff = (shaA != shaB)
          elif type.endswith("Nested"):
-            #TODO
+            if type.startswith("Inactive"):
+               #TODO
+               pass
+            else:
+               os.chdir(os.path.join(utility.workspaceDir(), dir))
+               haveDiff = self.repoHasDiff()
+               os.chdir(utility.workspaceDir())
             pass
          elif type.endswith("Subtree"):
             #TODO
@@ -414,6 +415,17 @@ class DiffManager(ProjectManager):
       else:
          self.projpanelabel.set("No differences")
 
+
+   def repoHasDiff(self):
+      haveDiff = False
+      if self.branchA == "--cached":
+         if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
+            haveDiff = True
+      elif self.branchB == "--":
+         haveDiff = (len(changedFiles) > 0) or git.shortSHA("HEAD") != git.shortSHA(self.branchA)
+      else:
+         haveDiff = (git.shortSHA(self.branchA) != git.shortSHA(self.branchB))
+      return haveDiff
 
    def getBranch(self, branch):
       if not branch.startswith("--"):
