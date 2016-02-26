@@ -91,8 +91,13 @@ class Status(option.Option):
         
         if (len(missingBranches) > 0 ): 
             for mb in missingBranches:
-                utility.printMsg("Repository is missing public branch %s" % mb)
-            publicBranchesExist=False
+                utility.printMsg("Repository is missing public branch %s, attempting to fetch it now..." % mb)
+                try:
+                    git.fetch("origin %s:%s" % (mb, mb))
+                    utility.printMsg("%s added as a local branch" % mb)
+                except git.GrapeGitError as e:
+                    print e.gitOutput
+                    publicBranchesExist = False
         return publicBranchesExist
                     
     def checkForConsistentWorkspaceBranches(self, args):
@@ -128,7 +133,7 @@ class Status(option.Option):
                 if nestedbranch != wsBranch: 
                     consistentBranchState = False
                     utility.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" % 
-                                     (nested,nestedbranch, wsBranch))        
+                                     (nested,nestedbranch, wsBranch))
         return consistentBranchState
         
     def execute(self, args):

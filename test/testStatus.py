@@ -30,7 +30,7 @@ class GrapeStatusTester(testGrape.TestGrape):
         if testProjectScenario.isConsistent(): 
             self.assertTrue(ret, "status thought a consistent project was inconsistent")
         else:
-            self.assertFalse(ret, "status thought an inconsistent project was consistent")
+            self.assertFalse(ret, "status thought an inconsistent project was consistent") 
         
         if testProjectScenario.debugging() or debugging:
             self.switchToHiddenOutput()

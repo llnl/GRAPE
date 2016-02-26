@@ -218,6 +218,9 @@ def main(argv, debug=False):
         for cls in testClasses.values():
             suite = buildSuite(cls, suite)
     else:
+        if argv[0] == "listSuites":
+            print testClasses.keys()
+            exit(0)
         for cls in  [testClasses[arg] for arg in argv]:
             suite = buildSuite(cls, suite)
             

@@ -49,7 +49,7 @@ def handleCheckoutMRE(mre):
                         git.checkout(checkoutargs[0]+" -b "+branch)
                         git.push("-u origin %s" % branch)
                     else:
-                        return False
+                        continue
     
                 elif "already exists" in e.gitOutput:
                     utility.printMsg("Branch %s already exists in %s." % (branch, project))

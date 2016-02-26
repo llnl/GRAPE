@@ -15,7 +15,7 @@ class grapeProject(gridTesting.ResettableProject):
         self._debugging = False
         self._publicBranchesValid = False
         self._branchModelConsistent = False
-        self._numExpectedFetches = 0
+        self._numExpectedFetches = 2
 
     def isConsistent(self): 
         return self._publicBranchesValid and self._branchModelConsistent
@@ -42,10 +42,9 @@ class singleRepo(grapeProject):
             (git.commit, "-m \"added a single file\"")
         ])
         
-        self._publicBranchesValid = False
+        self._publicBranchesValid = True
         self._branchModelConsistent = True
-        # there should be one fetch for the outer level master
-        self._numExpectedFetches = 1
+
 
 class repoWithLocalGitflowBranches(singleRepo):
     def __init__(self, path): 
@@ -55,8 +54,9 @@ class repoWithLocalGitflowBranches(singleRepo):
             (git.branch, "develop master")
             ])
         
-        self._publicBranchesValid = False
+        self._publicBranchesValid = True
         self._branchModelConsistent = True
+
         
 class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
     def __init__(self,path): 
@@ -64,6 +64,7 @@ class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
         self.addCommands([(git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
+        
     
 class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
     def __init__(self,path): 
@@ -74,8 +75,9 @@ class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBran
             (git.branch, "-D master")
         ])
         
-        self._publicBranchesValid = False
+        self._publicBranchesValid = True
         self._branchModelConsistent = True
+        
 
 # setting up subrojects
 # default grapeconfig expects all submodules to be on master branch when on 
@@ -96,6 +98,7 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                           (git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
+        
         
 class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
     def __init__(self,path):
@@ -164,8 +167,7 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         # now both are on topicBranch, but master is behind in both
         self._publicBranchesValid = True
         self._branchModelConsistent= True
-        # there should be one fetch for the outer level master and one for the submodule master
-        self._numExpectedFetches = 2
+        
     def getSecondProjectDir(self): 
         return os.path.abspath(os.path.join(self.projectPrefix,self.secondProjectDir))
     def tearDown(self): 
@@ -183,6 +185,7 @@ class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
         # detached submodule is a bad place to be
         self._publicBranchesValid = True
         self._branchModelConsistent = False
+        self._numExpectedFetches = 2
         
 class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
     def __init__(self,path):

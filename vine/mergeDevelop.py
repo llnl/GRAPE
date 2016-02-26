@@ -132,7 +132,7 @@ class MergeDevelop(resumable.Resumable):
         if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
-            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--noRecurse'])  
+            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"],'--noRecurse', '--recurseSubprojects'])  
             self.progress["updateLocalDone"] = True
         
         # do an outer merge if we haven't done it yet        
