@@ -336,9 +336,9 @@ class DiffManager(ProjectManager):
       ProjectManager.__init__(self, master, **kwargs)
 
       # If we are diffing against the workspace, get the status of the workspace
-      # and save the set of changed files (including submodules).
+      # and save the set of changed files in the outer project (including submodules).
       if self.branchB == "--":
-         utility.printMsg("Gathering status...")
+         utility.printMsg("Gathering status in outer level project...")
          statusStr = "--porcelain -uno"
          if self.showSubmodules:
             statusStr += " --ignore-submodules=untracked"
@@ -362,7 +362,7 @@ class DiffManager(ProjectManager):
          if type == "Outer":
             # Outer is always last in the reverse iteration,
             # so all submodule entries should have already been removed.
-            haveDiff = self.repoHasDiff()
+            haveDiff = self.repoHasDiff(changedFiles)
          elif type.endswith("Submodule"):
             if type.startswith("Inactive"):
                fullurl = utility.parseSubprojectRemoteURL(submoduleURLMap[dir])
@@ -392,13 +392,21 @@ class DiffManager(ProjectManager):
                pass
             else:
                os.chdir(os.path.join(utility.workspaceDir(), dir))
-               haveDiff = self.repoHasDiff()
+               if self.branchB == "--":
+                  utility.printMsg("Gathering status in %s..." % dir)
+                  statusStr = "--porcelain -uno"
+                  changedFiles = { x.strip().split()[1] for x in git.status(statusStr).splitlines() }
+                  utility.printMsg("Done.")
+               haveDiff = self.repoHasDiff(changedFiles)
                os.chdir(utility.workspaceDir())
             pass
          elif type.endswith("Subtree"):
-            #TODO
-            haveDiff = True
-            pass
+            # Don't know how to get the SHA's, so perform the diff.
+            nestedFiles = git.diff("--name-only %s %s %s" % (self.branchA, self.branchB, dir)).split()
+            if len(nestedFiles) > 0:
+               haveDiff = True
+               for nestedFile in nestedFiles:
+                  changedFiles.remove(nestedFile)
 
          if haveDiff:
             self.setProjectStatus(index, "*")
@@ -416,7 +424,10 @@ class DiffManager(ProjectManager):
          self.projpanelabel.set("No differences")
 
 
-   def repoHasDiff(self):
+
+   # Determine whether a repo has diffs.
+   # changedFiles is a list of uncommitted changes obtained from a status call.
+   def repoHasDiff(self, changedFiles):
       haveDiff = False
       if self.branchA == "--cached":
          if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
