@@ -366,28 +366,10 @@ class DiffManager(ProjectManager):
             # so all submodule entries should have already been removed.
             haveDiff = len(changedFiles) > 0
          elif type.endswith("Submodule"):
-            if type.startswith("Inactive"):
-               fullurl = utility.parseSubprojectRemoteURL(submoduleURLMap[dir])
-               # TODO need to strip off origin
-               remotels = git.gitcmd("ls-remote --heads %s %s %s" % (fullurl,self.getSubBranch(self.branchA),self.getSubBranch(self.branchB)), "Failed to execute ls-remote")
-               # print remotels
-            elif self.branchA == "--cached":
-               os.chdir(os.path.join(utility.workspaceDir(), dir))
-               if len(git.diff("--cached --name-only %s" % self.branchB).split()) > 0:
-                  haveDiff = True
-               os.chdir(utility.workspaceDir())
-            elif self.branchB == "--":
+            if not type.startswith("Inactive") or self.showInactive:
                if dir in changedFiles:
                   haveDiff = True
                   changedFiles.remove(dir)
-               if not haveDiff:
-                  shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
-                  shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % ("HEAD", dir), "Failed to execute ls-tree").split()[2]
-                  haveDiff = (shaA != shaB)
-            else:
-               shaA = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchA, dir), "Failed to execute ls-tree").split()[2]
-               shaB = git.gitcmd("ls-tree --abbrev=7 %s %s" % (self.branchB, dir), "Failed to execute ls-tree").split()[2]
-               haveDiff = (shaA != shaB)
          elif type.endswith("Nested"):
             if type.startswith("Inactive"):
                #TODO
