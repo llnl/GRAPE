@@ -166,13 +166,17 @@ class ProjectManager:
       # Populate subproject navigation list 
       utility.printMsg("Populating projects list...")
 
+      self.projects = []
+      self.projstatus = []
+      self.projtype = []
+
       # Outer level repo
       if self.showToplevel:
          status = "?"
-         self.projects = [ "" ]
+         self.projects.append("")
          self.projlist.insert(Tk.END, "%s <Outer Level Project>" % status)
-         self.projstatus = [ status ]
-         self.projtype = [ "Outer" ]
+         self.projstatus.append(status)
+         self.projtype.append("Outer")
 
       # Nested subprojects
       self.subprojects = []
@@ -344,7 +348,7 @@ class DiffManager(ProjectManager):
       # and save the set of changed files in the outer project (including submodules).
       changedFiles = None
       
-      if self.showToplevel:
+      if self.showToplevel or len(self.submodules) > 0:
          utility.printMsg("Gathering status in outer level project...")
          changedFiles = git.diff("--name-only %s %s" % (self.branchA, self.branchB)).split()
          utility.printMsg("Done.")
@@ -372,6 +376,7 @@ class DiffManager(ProjectManager):
                   changedFiles.remove(dir)
          elif type.endswith("Nested"):
             if type.startswith("Inactive"):
+               # It might not be worth the time to check for differences in inactive subprojects
                #TODO
                pass
             else:
@@ -411,8 +416,8 @@ class DiffManager(ProjectManager):
          except:
             if not branch.startswith("origin/"):
                branch = "origin/"+branch
-         # TODO figure out what to do with SHA's
-         # TODO always fetch the origin
+         # TODO figure out what to do with SHA's in user input
+         # TODO always fetch the origin before diffing?
          # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
          if not self.noFetch and branch.startswith("origin/"):
             git.fetch("origin", branch.partition("/")[2])
