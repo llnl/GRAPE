@@ -339,9 +339,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     elif args["--append"]:
                         descr = currentDescription + "\n" + descr
 
-
-                print request.author()
                 subReviewers = reviewers
+                if request.author() in subReviewers:
+                    utility.printMsg("%s is the author of the pull request and cannot be a reviewer" % request.author())
+                    subReviewers.remove(request.author())
                 if title is not None or descr is not None or subReviewers:
                     utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
                     request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
