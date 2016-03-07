@@ -7,7 +7,7 @@ import re
 import threading
 
 try:
-   import Tkinte as Tk
+   import Tkinter as Tk
    TkinterImportError = None
 except ImportError as e:
    TkinterImportError = e
