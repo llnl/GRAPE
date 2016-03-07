@@ -5,7 +5,13 @@ import grapeGit as git
 import utility
 import re
 import threading
-import Tkinter as Tk
+
+try:
+   import Tkinte as Tk
+   TkinterImportError = None
+except ImportError as e:
+   TkinterImportError = e
+   
 
 class Walkthrough(option.Option):
     """ 
@@ -54,6 +60,9 @@ class Walkthrough(option.Option):
         return "Walk through diffs between branches"
 
     def execute(self,args):
+        if TkinterImportError:
+           utility.printMsg("grape w requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
+           return True
         config = grapeConfig.grapeConfig()
         difftool = args["--difftool"]
         height = args["--height"]
