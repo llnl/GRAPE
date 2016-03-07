@@ -1,5 +1,16 @@
 
 
+Mon Mar  7 11:49:18 2016 Benjamin T. Liu
+v1.13.7
+Reviewers: Peter B. Robinson
+
+First cut at replacement for walkthrough
+- GUI only
+- Will show whether inactive submodules differ but will not show file diffs
+- Will not show differences in inactive nested subprojects
+- Nested subtree and submodule changes will not show up in outer level diff
+
+
 Fri Jan 29 14:12:59 2016 Peter B. Robinson
 v1.13.6
 Reviewers: Ben Liu, Aaron C. Fisher
