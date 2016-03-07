@@ -340,9 +340,11 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                         descr = currentDescription + "\n" + descr
 
 
-                if title is not None or descr is not None or reviewers:
-                    utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
-                    request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
+                print request.author()
+                subReviewers = reviewers
+                if title is not None or descr is not None or subReviewers:
+                    utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
+                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
                     utility.printMsg("Pull request updated at %s ." % url)
                 else:
