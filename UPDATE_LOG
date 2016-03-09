@@ -1,5 +1,12 @@
 
 
+Wed Mar  9 10:47:26 2016 Benjamin T. Liu
+v1.13.8
+Reviewers: Peter B. Robinson
+
+Fix issue if reviewer is the pull request author
+
+
 Mon Mar  7 11:49:18 2016 Benjamin T. Liu
 v1.13.7
 Reviewers: Peter B. Robinson
