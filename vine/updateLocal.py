@@ -71,7 +71,8 @@ class UpdateLocal(option.Option):
         pass
    
 def fetchLocalHandler(mre):
-    print mre.exceptions()
+    for e in mre.exceptions():
+        print e.gitOutput
     raise mre
    
 def fetchLocal(repo='unknown', branch='master'):
@@ -101,7 +102,7 @@ def fetchLocal(repo='unknown', branch='master'):
                     print("GRAPE: WARNING:  your public branch %s in %s has local commits! "
                           "Did you forget to create a topic branch?" % (branch, repo))
                     pass
-                if "Refusing to fetch into current branch" in e.gitOutput:
+                elif "Refusing to fetch into current branch" in e.gitOutput:
                     git.pull("origin %s" % branch)
                 else:
                     raise e
