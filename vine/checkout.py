@@ -26,62 +26,62 @@ def handleCheckoutMRE(mre):
             raise e1
         except git.GrapeGitError as e:
             with utility.cd(project):
-            if "pathspec" in e.gitOutput:
-                createNewBranch = _createNewBranch
-                if _skipBranchCreation:
-                    utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
-                    createNewBranch = False
-                    
-                elif not createNewBranch:
-                    createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
-                                                        "new branch called %s in %s? \n"
-                                                    "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
-                                                        "\n(y,n,a,s)" % (branch, project), 'y')
+                if "pathspec" in e.gitOutput:
+                    createNewBranch = _createNewBranch
+                    if _skipBranchCreation:
+                        utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
+                        createNewBranch = False
                         
-                if str(createNewBranch).lower()[0] == 'a':
-                    _createNewBranch = True
-                    createNewBranch = True
-                if str(createNewBranch).lower()[0] == 's':
-                    _skipBranchCreation = True
-                    createNewBranch = False
-                if createNewBranch:
-                    utility.printMsg("Creating new branch %s in %s." % (branch, project))
+                    elif not createNewBranch:
+                        createNewBranch =  utility.userInput("Branch not found locally or remotely. Would you like to create a "
+                                                            "new branch called %s in %s? \n"
+                                                        "(select 'a' to say yes for (a)ll, 's' to (s)kip creation for branches that don't exist )"
+                                                            "\n(y,n,a,s)" % (branch, project), 'y')
+                            
+                    if str(createNewBranch).lower()[0] == 'a':
+                        _createNewBranch = True
+                        createNewBranch = True
+                    if str(createNewBranch).lower()[0] == 's':
+                        _skipBranchCreation = True
+                        createNewBranch = False
+                    if createNewBranch:
+                        utility.printMsg("Creating new branch %s in %s." % (branch, project))
                         git.checkout(checkoutargs[0]+" -b "+branch)
-                    git.push("-u origin %s" % branch)
+                        git.push("-u origin %s" % branch)
+                    else:
+                            continue
+    
+                elif "already exists" in e.gitOutput:
+                    utility.printMsg("Branch %s already exists in %s." % (branch, project))
+                    branchDescription = git.commitDescription(branch)
+                    headDescription = git.commitDescription("HEAD")
+                    if branchDescription == headDescription:
+                        utility.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
+                        action = "k"
+                    else:
+                        utility.printMsg("Branch %s and HEAD are not the same." % branch)
+                        action = ''
+                        valid = False
+                        while not valid:
+                            action = utility.userInput("Would you like to \n (k)eep it as is at: %s \n"
+                                                       " or \n (f)orce it to: %s? \n(k,f)" %
+                                                       (branchDescription, headDescription), 'k')
+                            valid = (action == 'k') or (action == 'f')
+                            if not valid:
+                                utility.printMsg("Invalid input. Enter k or f. ")
+                    if action == 'k':
+                        git.checkout(branch)
+                    elif action == 'f':
+                        git.checkout("-B %s" % branch)
+                elif "conflict" in e.gitOutput.lower(): 
+                    utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
+                elif "does not appear to be a git repository" in e.gitOutput.lower():
+                    utility.printMsg("Remote 'origin' does not exist. "
+                                     "This branch was not updated from a remote repository.")
+                elif "Couldn't find remote ref" in e.gitOutput:
+                    utility.printMsg("Remote of %s does not have reference to %s. You may want to push this branch. " %(project, branch))
                 else:
-                        continue
-
-            elif "already exists" in e.gitOutput:
-                utility.printMsg("Branch %s already exists in %s." % (branch, project))
-                branchDescription = git.commitDescription(branch)
-                headDescription = git.commitDescription("HEAD")
-                if branchDescription == headDescription:
-                    utility.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
-                    action = "k"
-                else:
-                    utility.printMsg("Branch %s and HEAD are not the same." % branch)
-                    action = ''
-                    valid = False
-                    while not valid:
-                        action = utility.userInput("Would you like to \n (k)eep it as is at: %s \n"
-                                                   " or \n (f)orce it to: %s? \n(k,f)" %
-                                                   (branchDescription, headDescription), 'k')
-                        valid = (action == 'k') or (action == 'f')
-                        if not valid:
-                            utility.printMsg("Invalid input. Enter k or f. ")
-                if action == 'k':
-                    git.checkout(branch)
-                elif action == 'f':
-                    git.checkout("-B %s" % branch)
-            elif "conflict" in e.gitOutput.lower(): 
-                utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
-            elif "does not appear to be a git repository" in e.gitOutput.lower():
-                utility.printMsg("Remote 'origin' does not exist. "
-                                 "This branch was not updated from a remote repository.")
-            elif "Couldn't find remote ref" in e.gitOutput:
-                utility.printMsg("Remote of %s does not have reference to %s. You may want to push this branch. " %(project, branch))
-            else:
-                raise e
+                    raise e
             
         
     
