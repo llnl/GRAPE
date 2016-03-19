@@ -208,7 +208,8 @@ class Review(option.Option):
                 if args["--prepend"] or args["--append"]:
                     subDescr = descr
                 newRequest = postPullRequest(repo, title, branch, sub_target_branch, subDescr, reviewers, args)
-                submoduleLinks.append(newRequest.link())
+                if newRequest:
+                    submoduleLinks.append(newRequest.link())
         
         #nested subprojects
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
@@ -228,10 +229,10 @@ class Review(option.Option):
             repo = stash.project(proj).repo(repo_name)
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
+            if newRequest:
+                submoduleLinks.append(newRequest.link())
+            
 
-            submoduleLinks.append(newRequest.link())
-            
-            
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
@@ -302,9 +303,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.data["errors"][0]["message"])
-                exit(1)
+                if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
+                    exit(1)
         else:
-            utility.printMsg("No pull request  from %s to %s to update" % (branch, target_branch))
+            utility.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
 
     else:
         if not args["--add"]:
@@ -337,10 +339,13 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     elif args["--append"]:
                         descr = currentDescription + "\n" + descr
 
-
-                if title is not None or descr is not None or reviewers:
-                    utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, reviewers))
-                    request = request.update(ver, title=title,  description=descr, reviewers=reviewers)
+                subReviewers = reviewers
+                if request.author() in subReviewers:
+                    utility.printMsg("%s is the author of the pull request and cannot be a reviewer" % request.author())
+                    subReviewers.remove(request.author())
+                if title is not None or descr is not None or subReviewers:
+                    utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
+                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
                     utility.printMsg("Pull request updated at %s ." % url)
                 else:
@@ -349,7 +354,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             except stashy.errors.GenericException as e:
                 print("STASH: %s" % e.data["errors"][0]["message"])
                 print("STASH: %s" % e.data)
-                exit(1)
+                if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
+                    exit(1)
 
         else:
             print ("STASH: Pull request from %s to %s already exists, can't add a new one" %

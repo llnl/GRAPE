@@ -3,6 +3,7 @@ import subprocess
 import utility
 import ConfigParser
 import grapeConfig
+import StringIO
 
 
 class GrapeGitError(Exception):
@@ -65,6 +66,9 @@ def baseDir():
 
 def allBranches():
     return branch("-a").replace("*",' ').replace(" ",'').split()
+
+def remoteBranches():
+    return branch("-r").replace(" ", '').split()
 
 def branch(argstr=""):
     return gitcmd("branch %s" % argstr, "Could not execute git branch command")
@@ -190,12 +194,22 @@ def getAllSubmodules():
         subconfig.read(os.path.join(baseDir(), ".gitmodules"))
     except ConfigParser.ParsingError:
         # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
-        # read section names in succussfully, which is all we need
+        # read section names in successfully, which is all we need
         pass
     sections = subconfig.sections()
     submodules = []
     for s in sections:
         submodules.append(s.split()[1].split('"')[1])
+    return submodules
+
+def getAllSubmoduleURLMap():
+    subconfig = ConfigParser.ConfigParser()
+    fp = StringIO.StringIO('\n'.join(line.strip() for line in open(os.path.join(baseDir(), ".gitmodules"))))
+    subconfig.readfp(fp)
+    sections = subconfig.sections()
+    submodules = {}
+    for s in sections:
+        submodules[subconfig.get(s,"path")] = subconfig.get(s, "url")
     return submodules
 
 

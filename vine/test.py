@@ -13,7 +13,8 @@ class Test(option.Option):
 
 
     Arguments:
-    <suite>  The name of the suite to test. The default is all. 
+    <suite>  The name of the suite to test. The default is all.
+             Enter listSuites as the suite name to list available suites. 
 
 
     """

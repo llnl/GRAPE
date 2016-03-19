@@ -1,10 +1,64 @@
 
 
-Wed Nov 18 13:39:15 2015 Benjamin T. Liu
-v1.14.0
-Reviewers: Al Nichols
+Fri Mar  18 17:47:00 2016 Peter B. Robinson
+v1.16.0
+Same as v1.13.8 with a couple of hotfixes fo grape up. 
 
-Update to 1.13.1
+v1.13.8
+Reviewers: Peter B. Robinson
+
+Fix issue if reviewer is the pull request author
+Wed Mar  9 10:47:26 2016 Benjamin T. Liu
+v1.13.8
+Reviewers: Peter B. Robinson
+
+Fix issue if reviewer is the pull request author
+
+
+Mon Mar  7 11:49:18 2016 Benjamin T. Liu
+v1.13.7
+Reviewers: Peter B. Robinson
+
+First cut at replacement for walkthrough
+- GUI only
+- Will show whether inactive submodules differ but will not show file diffs
+- Will not show differences in inactive nested subprojects
+- Nested subtree and submodule changes will not show up in outer level diff
+
+
+Fri Jan 29 14:12:59 2016 Peter B. Robinson
+v1.13.6
+Reviewers: Ben Liu, Aaron C. Fisher
+
+
+
+
+Thu Jan 21 11:36:34 2016 Benjamin T. Liu
+v1.13.5
+Reviewers: Peter B. Robinson
+
+Revert title of pull requests including version number
+
+
+Thu Dec 10 08:55:03 2015 Benjamin T. Liu
+v1.13.4
+Reviewers: Peter B. Robinson
+
+Fix grape review for the case where a pull request has no changes.  This should only occur when the public branch of a subproject is behind origin/public (not sure whether it can happen in submodules).  There might be better fixes such as fetching the public branch and ensuring the getModifiedNestedSubprojects checks origin/public rather than public.
+
+
+Thu Dec  3 14:16:48 2015 Peter B. Robinson
+v1.13.3
+Reviewers: Ben Liu
+
+add some parallel error handling to grape db.
+
+
+Wed Nov 18 15:02:52 2015 Benjamin T. Liu
+v1.13.2
+Reviewers: Chris White
+
+Fix version checking to deal with older mac versions of git that report 'git version 1.8.5.2 (Apple Git-48)'
 
 
 Wed Nov 18 09:34:55 2015 Benjamin T. Liu

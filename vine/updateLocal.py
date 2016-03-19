@@ -11,7 +11,7 @@ class UpdateLocal(option.Option):
     grape up
     Updates the current branch and any public branches. 
     Usage: grape-up [--public=<branch> ]
-                    [--recurse | --noRecurse]
+                    [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     
 
@@ -23,6 +23,7 @@ class UpdateLocal(option.Option):
     --noRecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated. 
                             Top level workspace will be updated if this is unspecified.
+    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules. 
 
 
     """
@@ -37,106 +38,77 @@ class UpdateLocal(option.Option):
     def execute(self, args):
         wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
         wsDir = os.path.abspath(wsDir)
+        os.chdir(wsDir)
         cwd = os.getcwd()
         
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
-        recurseSubmodules = recurseSubmodules and (not args["--noRecurse"])
-        recurseNestedSubprojects = not args["--noRecurse"]
-
+        skipSubmodules = args["--noRecurse"]
+        
+        
+        recurseNestedSubprojects = not args["--noRecurse"] or args["--recurseSubprojects"]
         currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
 
-        # fetch branches in outer level repo
-        self.fetchLocal(args, wsDir, cwd, publicBranches)
-
-        if recurseNestedSubprojects:
-           # fetch branches in nested subprojects
-            for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(workspaceDir=wsDir):
-                self.fetchLocal(args, os.path.join(wsDir, subproject), cwd, publicBranches)
-
-        if recurseSubmodules:
-           # fetch branches in submodules
-            os.chdir(wsDir)
-            activeSubmodules = git.getActiveSubmodules()
-            if len(activeSubmodules) > 0: 
-                subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
-                for submodule in activeSubmodules:
-                    try:
-                        os.chdir(wsDir)
-                        # First figure out the SHA for the branch on the submodule.
-                        # The output of ls-tree should look like:
-                        # 160000 commit <submodule SHA>  <submodule name>
-                        gitlinkSHA = git.gitcmd("ls-tree %s %s" % (currentBranch, submodule),
-                                                "Failed to execute ls-tree").split()[2]
-                        os.chdir(os.path.join(wsDir, submodule))
-                        # Check to see if the SHA in submodule matches
-                        branchUpdate = True if git.SHA(currentBranch) != gitlinkSHA else False
-                    except:
-                        # This may fail if the branch does not exist on the submodule, 
-                        # in which case we do not want to update it.
-                        branchUpdate = False
-  
-                    # Repeat this for the public branches
-                    publicUpdate = []
-                    for public in publicBranches:
-                        try:
-                            submodulePublicBranch = subBranchMappings[public]
-                            try:
-                                os.chdir(wsDir)
-                                gitlinkSHA = git.gitcmd("ls-tree %s %s" % (public, submodule),
-                                                        "Failed to execute ls-tree").split()[2]
-                                os.chdir(os.path.join(wsDir, submodule))
-                                if git.SHA(submodulePublicBranch) != gitlinkSHA:
-                                    publicUpdate.append(submodulePublicBranch)
-                            except:
-                                # This may fail if the branch does not exist on the submodule, 
-                                # in which case we do not want to update it.
-                                pass
-                        except KeyError:
-                            # Do nothing if the public branch mapping has not been defined.
-                            pass
-    
-                     # Fetch branches on the submodule only something is not up-to-date
-                    if branchUpdate or len(publicUpdate) > 0:
-                        self.fetchLocal(args, os.path.join(wsDir, submodule), cwd, publicUpdate)
- 
-        os.chdir(cwd)
+        launchers = []
+        for branch in publicBranches:
+            launchers.append(utility.MultiRepoCommandLauncher(fetchLocal,  
+                                            runInSubmodules=recurseSubmodules, 
+                                            runInSubprojects=recurseNestedSubprojects, 
+                                            branch=branch, 
+                                            listOfRepoBranchArgTuples=None, 
+                                            skipSubmodules=skipSubmodules))
+        if len(launchers):
+            launcher = launchers[0]
+            for l in launchers[1:]:
+                launcher.MergeLaunchSet(l)
+            launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+            
         return True
 
-    @staticmethod
-    def fetchLocal(args, workingDir, cwd, branches):
-        
-        os.chdir(workingDir)
-        utility.printMsg("updating %s in %s" % (branches, workingDir))
-        git.fetch("--prune")
-        git.fetch("--tags")
-        fetchArgs = "origin "
-        currentBranch = git.currentBranch().strip()
-        for pubBranch in branches:
-            if currentBranch != pubBranch:
-                arg = "%s:%s" % (pubBranch, pubBranch)
-                if arg not in fetchArgs: 
-                    fetchArgs += arg + " "
-        try:
-            git.fetch(fetchArgs)
-        except git.GrapeGitError as e:
-            # let non-fast-forward fetches slide
-            if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
-                print e.gitCommand
-                print e.gitOutput
-                print("GRAPE: WARNING: one or more of your public branches have local commits! "
-                      "Did you forget to create a topic branch?")
-                pass
-            else:
-                os.chdir(cwd)
-                raise e
-        
-        try:
-            if currentBranch != "HEAD": 
-                git.pull("origin %s" % currentBranch)
-        except git.GrapeGitError:
-            print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
 
     def setDefaultConfig(self, config):
         pass
+   
+def fetchLocalHandler(mre):
+    for e in mre.exceptions():
+        print e.gitOutput
+    raise mre
+   
+def fetchLocal(repo='unknown', branch='master'):
+    
+    with utility.cd(repo):
+        try:
+            git.fetch("origin %s" % branch)
+        except git.GrapeGitError as e:
+            utility.printMsg("skipping %s in %s (does not exist)" % (branch, repo))
+            return
+        
+        currentBranch = git.currentBranch()
+        if currentBranch == "HEAD" or branch == "HEAD":
+            return
+        
+        if currentBranch:
+            utility.printMsg("updating %s in %s" % (branch, repo))            
+            git.fetch("--prune --tags")
+            fetchArgs = "origin %s:%s" % (branch, branch)
+            try:
+                git.fetch(fetchArgs)
+            except git.GrapeGitError as e:
+                # let non-fast-forward fetches slide
+                if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
+                    print e.gitCommand
+                    print e.gitOutput
+                    print("GRAPE: WARNING:  your public branch %s in %s has local commits! "
+                          "Did you forget to create a topic branch?" % (branch, repo))
+                    pass
+                elif "Refusing to fetch into current branch" in e.gitOutput:
+                    git.pull("origin %s" % branch)
+                else:
+                    raise e
+        else:
+            try:
+                utility.printMsg("Pulling current branch %s in %s" % (branch, repo))
+                git.pull("origin %s" % currentBranch)
+            except git.GrapeGitError:
+                print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)

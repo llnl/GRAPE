@@ -21,6 +21,8 @@ except ImportError:  # `poll` doesn't exist on OSX and other platforms
 try:  # Test for SSL features
     SSLContext = None
     HAS_SNI = False
+    CERT_NONE = None
+    PROTOCOL_SSLv23 = None
 
     from ssl import wrap_socket, CERT_NONE, SSLError, PROTOCOL_SSLv23
     from ssl import SSLContext  # Modern SSL?
