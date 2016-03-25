@@ -1,5 +1,12 @@
 
 
+Fri Mar 25 14:42:16 2016 Peter B. Robinson
+v1.16.1
+Reviewers: Ben Liu
+
+Fixes a critical issue that can hose your workspace if you run grape up in parallel while on a public branch with an https remote.
+
+
 Fri Mar  18 17:47:00 2016 Peter B. Robinson
 v1.17.0
 Same as v1.16.0 

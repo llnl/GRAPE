@@ -57,12 +57,12 @@ class UpdateLocal(option.Option):
                                             runInSubprojects=recurseNestedSubprojects, 
                                             branch=branch, 
                                             listOfRepoBranchArgTuples=None, 
-                                            skipSubmodules=skipSubmodules))
-        if len(launchers):
-            launcher = launchers[0]
-            for l in launchers[1:]:
-                launcher.MergeLaunchSet(l)
-            launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+                                            skipSubmodules=skipSubmodules).launchFromWorkspaceDir(handleMRE=fetchLocalHandler))
+        #if len(launchers):
+        #    launcher = launchers[0]
+        #    for l in launchers[1:]:
+        #        launcher.MergeLaunchSet(l)
+        #    launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
             
         return True
 
