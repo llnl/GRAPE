@@ -11,3 +11,4 @@ build/
 *.lo
 *.swo
 \.idea
+*.egg-info
