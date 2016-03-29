@@ -384,7 +384,7 @@ class MultiRepoCommandLauncher(object):
                 newArgs.append(a)
         self.branches = newBranches
         self.repos = newRepos
-        self.perRepoArgs = newArgs                            
+        self.perRepoArgs = newArgs
      
     def printLaunchSet(self):
         for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
@@ -395,6 +395,7 @@ class MultiRepoCommandLauncher(object):
         config = grapeConfig.grapeConfig()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         publicBranches = config.getPublicBranchList()
+        wsDir = dir
         
         # don't reinit
         if self.repos:
@@ -406,11 +407,11 @@ class MultiRepoCommandLauncher(object):
         else:
             if self.runSubprojects:
                 activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-                self.repos = self.repos + [os.path.abspath(sub) for sub in activeSubprojects]
+                self.repos = self.repos + [os.path.join(workspaceDir(), sub) for sub in activeSubprojects]
                 self.branches = self.branches + [currentBranch for x in activeSubprojects]
             if self.runSubmodules:
                 activeSubmodules = git.getActiveSubmodules()
-                self.repos = self.repos + [os.path.abspath(r) for r in activeSubmodules]
+                self.repos = self.repos + [os.path.join(workspaceDir(), r) for r in activeSubmodules]
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
