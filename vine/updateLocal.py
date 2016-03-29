@@ -57,12 +57,14 @@ class UpdateLocal(option.Option):
                                             runInSubprojects=recurseNestedSubprojects, 
                                             branch=branch, 
                                             listOfRepoBranchArgTuples=None, 
-                                            skipSubmodules=skipSubmodules).launchFromWorkspaceDir(handleMRE=fetchLocalHandler))
-        #if len(launchers):
-        #    launcher = launchers[0]
-        #    for l in launchers[1:]:
-        #        launcher.MergeLaunchSet(l)
-        #    launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+                                            skipSubmodules=skipSubmodules))
+        if len(launchers):
+            launcher = launchers[0]
+            for l in launchers[1:]:
+                launcher.MergeLaunchSet(l)
+            launcher.collapseLaunchSetBranches()
+            #launcher.printLaunchSet()
+            launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
             
         return True
 
@@ -76,39 +78,40 @@ def fetchLocalHandler(mre):
     raise mre
    
 def fetchLocal(repo='unknown', branch='master'):
-    
+    # branch is actually the list of branches        
+    branches = branch
     with utility.cd(repo):
-        try:
-            git.fetch("origin %s" % branch)
-        except git.GrapeGitError as e:
-            utility.printMsg("skipping %s in %s (does not exist)" % (branch, repo))
-            return
-        
         currentBranch = git.currentBranch()
-        if currentBranch == "HEAD" or branch == "HEAD":
-            return
-        
-        if currentBranch:
-            utility.printMsg("updating %s in %s" % (branch, repo))            
+
+        if len(branches) > 0:
             git.fetch("--prune --tags")
-            fetchArgs = "origin %s:%s" % (branch, branch)
+            allRemoteBranches = git.remoteBranches()
+            fetchArgs = "origin "
+            toFetch = []
+            for b in branches:
+                if b != currentBranch:
+                    if "origin/%s" % b in allRemoteBranches:                        
+                        fetchArgs += "%s:%s " % (b, b)
+                        toFetch.append(b)
+                else:
+                    try:
+                        utility.printMsg("Pulling current branch %s in %s" % (branches, repo))
+                        git.pull("origin %s" % currentBranch)
+                    except git.GrapeGitError:
+                        print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)                    
             try:
+                utility.printMsg("updating %s in %s" % (','.join(toFetch), repo))                         
                 git.fetch(fetchArgs)
             except git.GrapeGitError as e:
                 # let non-fast-forward fetches slide
                 if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
                     print e.gitCommand
                     print e.gitOutput
-                    print("GRAPE: WARNING:  your public branch %s in %s has local commits! "
-                          "Did you forget to create a topic branch?" % (branch, repo))
+                    print("GRAPE: WARNING:  one of your public branches %s in %s has local commits! "
+                          "Did you forget to create a topic branch?" % (",".join(branches), repo))
                     pass
                 elif "Refusing to fetch into current branch" in e.gitOutput:
-                    git.pull("origin %s" % branch)
+                    print e.gitOutput
                 else:
                     raise e
-        else:
-            try:
-                utility.printMsg("Pulling current branch %s in %s" % (branch, repo))
-                git.pull("origin %s" % currentBranch)
-            except git.GrapeGitError:
-                print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
+            

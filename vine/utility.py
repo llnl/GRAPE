@@ -364,7 +364,30 @@ class MultiRepoCommandLauncher(object):
             self.perRepoArgs.append([])
         
         pass
+
+    def collapseLaunchSetBranches(self):
+        # ensures we have one launch per repo, turning the branch argument into the list of branches
+        # this launcher will use
+        newBranches = []
+        newRepos = []
+        newArgs = []
+        # this is a terrible N^2 algorithm at the moment
+        for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
+            try:
+                i = newRepos.index(r)
+                newBranches[i].append(b)                
+            except ValueError:
+                newRepos.append(r)
+                newBranches.append([b])
+                newArgs.append(a)
+        self.branches = newBranches
+        self.repos = newRepos
+        self.perRepoArgs = newArgs                            
      
+    def printLaunchSet(self):
+        for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
+            print "%s,%s,%s" % (b, r, a)
+
     
     def initializeCommands(self):
         config = grapeConfig.grapeConfig()
