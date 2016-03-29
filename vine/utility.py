@@ -320,7 +320,7 @@ class MultiRepoCommandLauncher(object):
     numProcs = 8
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
     def __init__(self, lmbda, nProcesses=-1, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
-                 globalArgs=None,perRepoArgs=None, listOfRepoBranchArgTuples=None, skipSubmodules=False):
+                 globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False):
         self.lmbda = lmbda
         
         config = grapeConfig.grapeConfig()
@@ -343,6 +343,7 @@ class MultiRepoCommandLauncher(object):
         
         self.repos = []
         self.branches = []
+        
         
 
     def MergeLaunchSet(self, otherMRCL):
@@ -368,10 +369,11 @@ class MultiRepoCommandLauncher(object):
     def collapseLaunchSetBranches(self):
         # ensures we have one launch per repo, turning the branch argument into the list of branches
         # this launcher will use
+        self.initializeCommands()
         newBranches = []
         newRepos = []
         newArgs = []
-        # this is a terrible N^2 algorithm at the moment
+        # this is a terrible N^2 algorithm at the moment            
         for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
             try:
                 i = newRepos.index(r)

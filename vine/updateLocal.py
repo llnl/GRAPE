@@ -47,9 +47,7 @@ class UpdateLocal(option.Option):
         
         
         recurseNestedSubprojects = not args["--noRecurse"] or args["--recurseSubprojects"]
-        currentBranch = git.currentBranch().strip()
         publicBranches = [x.strip() for x in args["--public"].split()]
-
         launchers = []
         for branch in publicBranches:
             launchers.append(utility.MultiRepoCommandLauncher(fetchLocal,  
@@ -63,7 +61,6 @@ class UpdateLocal(option.Option):
             for l in launchers[1:]:
                 launcher.MergeLaunchSet(l)
             launcher.collapseLaunchSetBranches()
-            #launcher.printLaunchSet()
             launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
             
         return True
@@ -78,7 +75,7 @@ def fetchLocalHandler(mre):
     raise mre
    
 def fetchLocal(repo='unknown', branch='master'):
-    # branch is actually the list of branches        
+    # branch is actually the list of branches
     branches = branch
     with utility.cd(repo):
         currentBranch = git.currentBranch()
@@ -90,7 +87,7 @@ def fetchLocal(repo='unknown', branch='master'):
             toFetch = []
             for b in branches:
                 if b != currentBranch:
-                    if "origin/%s" % b in allRemoteBranches:                        
+                    if "origin/%s" % b in allRemoteBranches:
                         fetchArgs += "%s:%s " % (b, b)
                         toFetch.append(b)
                 else:
