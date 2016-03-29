@@ -320,7 +320,7 @@ class MultiRepoCommandLauncher(object):
     numProcs = 8
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
     def __init__(self, lmbda, nProcesses=-1, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
-                 globalArgs=None,perRepoArgs=None, listOfRepoBranchArgTuples=None, skipSubmodules=False):
+                 globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False):
         self.lmbda = lmbda
         
         config = grapeConfig.grapeConfig()
@@ -344,6 +344,7 @@ class MultiRepoCommandLauncher(object):
         self.repos = []
         self.branches = []
         
+        
 
     def MergeLaunchSet(self, otherMRCL):
         self.initializeCommands()
@@ -364,12 +365,37 @@ class MultiRepoCommandLauncher(object):
             self.perRepoArgs.append([])
         
         pass
+
+    def collapseLaunchSetBranches(self):
+        # ensures we have one launch per repo, turning the branch argument into the list of branches
+        # this launcher will use
+        self.initializeCommands()
+        newBranches = []
+        newRepos = []
+        newArgs = []
+        # this is a terrible N^2 algorithm at the moment            
+        for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
+            try:
+                i = newRepos.index(r)
+                newBranches[i].append(b)                
+            except ValueError:
+                newRepos.append(r)
+                newBranches.append([b])
+                newArgs.append(a)
+        self.branches = newBranches
+        self.repos = newRepos
+        self.perRepoArgs = newArgs
      
+    def printLaunchSet(self):
+        for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
+            print "%s,%s,%s" % (b, r, a)
+
     
     def initializeCommands(self):
         config = grapeConfig.grapeConfig()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         publicBranches = config.getPublicBranchList()
+        wsDir = dir
         
         # don't reinit
         if self.repos:
@@ -381,11 +407,11 @@ class MultiRepoCommandLauncher(object):
         else:
             if self.runSubprojects:
                 activeSubprojects =  grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-                self.repos = self.repos + [os.path.abspath(sub) for sub in activeSubprojects]
+                self.repos = self.repos + [os.path.join(workspaceDir(), sub) for sub in activeSubprojects]
                 self.branches = self.branches + [currentBranch for x in activeSubprojects]
             if self.runSubmodules:
                 activeSubmodules = git.getActiveSubmodules()
-                self.repos = self.repos + [os.path.abspath(r) for r in activeSubmodules]
+                self.repos = self.repos + [os.path.join(workspaceDir(), r) for r in activeSubmodules]
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
