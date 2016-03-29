@@ -1,5 +1,12 @@
 
 
+Tue Mar 29 16:50:37 2016 Peter B. Robinson
+v1.16.2
+Reviewers: Aaron C. Fisher, Ben Liu
+
+Fixes performance issues in grape up, fixes multiprocess safety for grape up.
+
+
 Fri Mar 25 14:42:16 2016 Peter B. Robinson
 v1.16.1
 Reviewers: Ben Liu
