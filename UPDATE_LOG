@@ -1,5 +1,12 @@
 
 
+Wed Mar 30 09:24:42 2016 Peter B. Robinson
+v1.16.3
+Reviewers: David M. Dawson
+
+fixed an issue that was causing nsquared git fetches when calling grape md
+
+
 Tue Mar 29 16:50:37 2016 Peter B. Robinson
 v1.16.2 (and v1.17.2)
 Reviewers: Aaron C. Fisher, Ben Liu
