@@ -92,7 +92,7 @@ def fetchLocal(repo='unknown', branch='master'):
                         toFetch.append(b)
                 else:
                     try:
-                        utility.printMsg("Pulling current branch %s in %s" % (branches, repo))
+                        utility.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
                         git.pull("origin %s" % currentBranch)
                     except git.GrapeGitError:
                         print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)                    
