@@ -55,7 +55,8 @@ class UpdateLocal(option.Option):
                                             runInSubprojects=recurseNestedSubprojects, 
                                             branch=branch, 
                                             listOfRepoBranchArgTuples=None, 
-                                            skipSubmodules=skipSubmodules))
+                                            skipSubmodules=skipSubmodules, outer=wsDir))
+            
         if len(launchers):
             launcher = launchers[0]
             for l in launchers[1:]:
@@ -97,8 +98,9 @@ def fetchLocal(repo='unknown', branch='master'):
                     except git.GrapeGitError:
                         print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)                    
             try:
-                utility.printMsg("updating %s in %s" % (','.join(toFetch), repo))                         
-                git.fetch(fetchArgs)
+                if toFetch:
+                    utility.printMsg("updating %s in %s" % (','.join(toFetch), repo))                         
+                    git.fetch(fetchArgs)
             except git.GrapeGitError as e:
                 # let non-fast-forward fetches slide
                 if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:

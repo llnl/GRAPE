@@ -320,17 +320,17 @@ class MultiRepoCommandLauncher(object):
     numProcs = 8
     # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
     def __init__(self, lmbda, nProcesses=-1, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
-                 globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False):
+                 globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False, outer=""):
         self.lmbda = lmbda
         
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules")
         if not recurseSubmodules:
             self.runSubmodules = runInSubmodules
-            self.runSubmodules = self.runSumodules and not skipSubmodules
         else:
             self.runSubmodules = recurseSubmodules
-            
+        # apply the skipSubmodules override    
+        self.runSubmodules = self.runSubmodules and not skipSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
         if nProcesses < 0:
@@ -343,6 +343,10 @@ class MultiRepoCommandLauncher(object):
         
         self.repos = []
         self.branches = []
+        if outer:
+            self.outer = outer
+        else:
+            self.outer = workspaceDir()
         
         
 
@@ -416,7 +420,7 @@ class MultiRepoCommandLauncher(object):
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
             if self.runOuter:
-                self.repos.append(workspaceDir())
+                self.repos.append(self.outer)
                 self.branches.append(currentBranch)
             if not self.perRepoArgs:
                 if not self.globalArgs:
