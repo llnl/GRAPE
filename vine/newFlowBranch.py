@@ -116,6 +116,7 @@ def createBranch(repo="unknown", branch="master", args=[]):
             git.checkout("-b %s %s " % (fullBranch, branchPoint))
         except git.GrapeGitError as e:
             print "%s:%s" % (repo, e.gitOutput)
+            utility.printMsg("WARNING: %s in %s will not be pushed." % (fullBranch, repo))
             return
         utility.printMsg("pushing %s to origin in %s" % (fullBranch, repo))
         try:
