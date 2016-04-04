@@ -429,7 +429,7 @@ class MultiRepoCommandLauncher(object):
                 else:
                     self.perRepoArgs = [self.globalArgs for x in self.repos]        
        
-    def launchFromWorkspaceDir(self, handleMRE=None):
+    def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
         cwd = os.getcwd()
         os.chdir(workspaceDir())
 
@@ -438,12 +438,18 @@ class MultiRepoCommandLauncher(object):
         
         self.initializeCommands()
         
-        # run the first entry first so that things like logging in to the project's server happen up front
         retvals = []
-        if len(self.repos) > 0:
-            retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
-        if len(self.repos) > 1:            
-            retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
+        
+        if noPause:
+            # for purely local operations, run them all at once. 
+            if len(self.repos) > 0:            
+                retvals = self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)])            
+        else:
+            # run the first entry first so that things like logging in to the project's server happen up front            
+            if len(self.repos) > 0:
+                retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
+            if len(self.repos) > 1:            
+                retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
         os.chdir(cwd)
         self.pool.close()
         MRE = MultiRepoException()

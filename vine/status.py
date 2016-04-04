@@ -39,20 +39,15 @@ class Status(option.Option):
             statusArgs += "-u "
         if args["--uno"]:
             statusArgs += "-uno "
-        status = {}
-        status["."] = git.status("--porcelain -b %s" % statusArgs).split('\n')
-        
-        #tweak formatting of first line
-        if status["."] and status["."][0] and status["."][0][0] != ' ':
-            status["."][0] = ' ' + status["."][0]
         
         launcher = utility.MultiRepoCommandLauncher(getStatus, 
                                         runInSubmodules=True, 
                                         runInSubprojects=True, 
-                                        runInOuter=False,
+                                        runInOuter=True,
                                         globalArgs=statusArgs)
         
-        stati = launcher.launchFromWorkspaceDir()
+        stati = launcher.launchFromWorkspaceDir(noPause=True)
+        status = {}
         for s, r in (zip(stati, launcher.repos)):
             status[r] = s
             
