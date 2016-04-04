@@ -237,6 +237,7 @@ class Publish(resumable.Resumable):
         self.st_remotes = {}
         self.st_branches = {}
         self.cascadeDict = {}
+        self.doDelete = None
 
     def description(self):
         try:
@@ -914,10 +915,16 @@ class Publish(resumable.Resumable):
 
         return True
 
-    @staticmethod
-    def deleteTopicBranch(args):
-        if args["--deleteTopic"].lower() == "true":
-            grapeMenu.menu().applyMenuChoice("db", [args["--topic"], "--verify"])
+    def askWhetherToDelete(self, args):
+        if self.doDelete is None:
+            if args["--deleteTopic"].lower() == "true":
+                self.doDelete = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+                
+                
+    def deleteTopicBranch(self, args):
+        self.askWhetherToDelete(args)
+        if self.doDelete:
+            grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
             # SHA will raise an exception if the branch has been deleted
@@ -1171,6 +1178,9 @@ class Publish(resumable.Resumable):
         if not proceed:
             return False        
         self.progress["targetsVerified"] = True
+        # get the commit message here as well.
+        self.loadCommitMessage(args)
+        self.askWhetherToDelete(args)
         return True
 
 
