@@ -46,27 +46,16 @@ class Status(option.Option):
         if status["."] and status["."][0] and status["."][0][0] != ' ':
             status["."][0] = ' ' + status["."][0]
         
-        subprojects = utility.getActiveSubprojects()
-        if subprojects:
-            utility.printMsg("gathering status on subprojects")
-        for sub in subprojects:
-            if not sub.strip():
-                continue
-            os.chdir(os.path.join(wsDir,sub))
-            subStatus = git.status("--porcelain -b %s" % statusArgs).split('\n')
-            if len(subStatus) > 0:
-                status[sub] = []
-            for line in subStatus: 
-                strippedL = line.strip()
-                if strippedL:
-                    tokens = strippedL.split()
-                    tokens[0] = tokens[0].strip()
-                    if len(tokens[0]) == 1: 
-                        tokens[0] = " %s" % tokens[0] 
-                    status[sub].append(' '.join([tokens[0], '/'.join([sub, tokens[1]])]))
-            os.chdir(wsDir)
+        launcher = utility.MultiRepoCommandLauncher(getStatus, 
+                                        runInSubmodules=True, 
+                                        runInSubprojects=True, 
+                                        runInOuter=False,
+                                        globalArgs=statusArgs)
         
-        
+        stati = launcher.launchFromWorkspaceDir()
+        for s, r in (zip(stati, launcher.repos)):
+            status[r] = s
+            
         for sub in status.keys():
             for line in status[sub]: 
                 lstripped = line.strip()
@@ -138,20 +127,19 @@ class Status(option.Option):
         
     def execute(self, args):
 
-        wsDir = utility.workspaceDir() 
-        os.chdir(wsDir)
-        
-
-        if not args["--checkWSOnly"]:
-            self.printStatus(args)
-
-        # Sanity check workspace layout
-        publicBranchesExist = self.checkForLocalPublicBranches(args)       
-        
-        
-        # Check that submodule branching is consistent
-        consistentBranchState = self.checkForConsistentWorkspaceBranches(args)
+        with utility.cd(utility.workspaceDir()):
+            
     
+            if not args["--checkWSOnly"]:
+                self.printStatus(args)
+    
+            # Sanity check workspace layout
+            publicBranchesExist = self.checkForLocalPublicBranches(args)       
+            
+            
+            # Check that submodule branching is consistent
+            consistentBranchState = self.checkForConsistentWorkspaceBranches(args)
+        
         retval = True
         if args["--failIfInconsistent"]:
             retval = retval and publicBranchesExist and consistentBranchState
@@ -159,9 +147,28 @@ class Status(option.Option):
             retval = retval and publicBranchesExist
         if args["--failIfBranchesInconsistent"]:
             retval = retval and consistentBranchState
-        os.chdir(wsDir)
         return retval        
 
     
     def setDefaultConfig(self, config):
         pass
+
+def getStatus(branch='', repo='', args=''):
+    statusArgs = args
+    toReturn = []
+
+    sub = repo
+    if not sub.strip():
+        return ""
+    with utility.cd(sub):        
+        subStatus = git.status("--porcelain -b %s" % statusArgs).split('\n')
+        for line in subStatus: 
+            strippedL = line.strip()
+            if strippedL:
+                tokens = strippedL.split()
+                tokens[0] = tokens[0].strip()
+                if len(tokens[0]) == 1: 
+                    tokens[0] = " %s" % tokens[0] 
+                toReturn.append(' '.join([tokens[0], '/'.join([sub, tokens[1]])]))
+    return toReturn
+
