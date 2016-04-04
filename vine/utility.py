@@ -430,27 +430,25 @@ class MultiRepoCommandLauncher(object):
                     self.perRepoArgs = [self.globalArgs for x in self.repos]        
        
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
-        cwd = os.getcwd()
-        os.chdir(workspaceDir())
-
-        argLists = self.perRepoArgs
-        config = grapeConfig.grapeConfig()
-        
-        self.initializeCommands()
-        
-        retvals = []
-        
-        if noPause:
-            # for purely local operations, run them all at once. 
-            if len(self.repos) > 0:            
-                retvals = self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)])            
-        else:
-            # run the first entry first so that things like logging in to the project's server happen up front            
-            if len(self.repos) > 0:
-                retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
-            if len(self.repos) > 1:            
-                retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
-        os.chdir(cwd)
+        with cd(workspaceDir()):
+            argLists = self.perRepoArgs
+            config = grapeConfig.grapeConfig()
+            
+            self.initializeCommands()
+            
+            retvals = []
+            
+            if noPause:
+                # for purely local operations, run them all at once. 
+                if len(self.repos) > 0:            
+                    retvals = self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)])            
+            else:
+                # run the first entry first so that things like logging in to the project's server happen up front            
+                if len(self.repos) > 0:
+                    retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
+                if len(self.repos) > 1:            
+                    retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
+                    
         self.pool.close()
         MRE = MultiRepoException()
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
