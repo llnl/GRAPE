@@ -44,7 +44,7 @@ class Status(option.Option):
                                         runInSubmodules=True, 
                                         runInSubprojects=True, 
                                         runInOuter=True,
-                                        globalArgs=statusArgs)
+                                        globalArgs=[statusArgs, wsDir])
         
         stati = launcher.launchFromWorkspaceDir(noPause=True)
         status = {}
@@ -149,21 +149,31 @@ class Status(option.Option):
         pass
 
 def getStatus(branch='', repo='', args=''):
-    statusArgs = args
+    statusArgs = args[0]
+    wsDir = args[1]
     toReturn = []
-
+    
     sub = repo
     if not sub.strip():
         return ""
-    with utility.cd(sub):        
-        subStatus = git.status("--porcelain -b %s" % statusArgs).split('\n')
-        for line in subStatus: 
-            strippedL = line.strip()
-            if strippedL:
-                tokens = strippedL.split()
-                tokens[0] = tokens[0].strip()
-                if len(tokens[0]) == 1: 
-                    tokens[0] = " %s" % tokens[0] 
-                toReturn.append(' '.join([tokens[0], '/'.join([sub, tokens[1]])]))
-    return toReturn
+    try:
+        
+        with utility.cd(sub):        
+            subStatus = git.status("--porcelain -b %s" % statusArgs).split('\n')
+            for line in subStatus: 
+                strippedL = line.strip()
+                if strippedL:
+                    tokens = strippedL.split()
+                    tokens[0] = tokens[0].strip()
+                    if len(tokens[0]) == 1: 
+                        tokens[0] = " %s " % tokens[0]
+                    if wsDir == sub:
+                        relPath = ""
+                        toReturn.append(' '.join([tokens[0], tokens[1]]))
+                    else:
+                        relPath = os.path.relpath(sub, wsDir)                        
+                        toReturn.append(' '.join([tokens[0], '/'.join([relPath, tokens[1]])]))
+        return toReturn
+    except Exception as e:
+        print e
 
