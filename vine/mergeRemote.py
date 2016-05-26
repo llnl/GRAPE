@@ -6,7 +6,8 @@ class MergeRemote(option.Option):
     """
     grape mr (merge remote branch). If the remote branch is different from your current branch, this will update
     or add a local version of that branch, then merge it into your current branch. If you perform a grape mr on the
-    current branch, then this will do a merge assuming the remote branch has a different line of development than
+    current branch or if the remote branch can not be fastforward merged into your local version of that branch,
+    then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
     Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
@@ -69,11 +70,13 @@ class MergeRemote(option.Option):
         hasRemote = ("origin/%s" % otherBranch) in git.remoteBranches()
         hasBranch = git.hasBranch(otherBranch)
         currentBranch = git.currentBranch()
-
-        if  hasRemote and  (git.branchUpToDateWith(otherBranch, "origin/%s" % otherBranch) or not hasBranch) and currentBranch != otherBranch:
+        remoteUpToDateWithLocal = git.branchUpToDateWith("remotes/origin/%s" % otherBranch, otherBranch)
+        updateLocal =  hasRemote and  (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
+        if  updateLocal:
+            utility.printMsg("updating local branch %s from %s" % (otherBranch, "origin/%s" % otherBranch))
             utility.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
-            
-        args["<branch>"] = otherBranch if currentBranch != otherBranch else "origin/%s" % otherBranch
+        
+        args["<branch>"] = otherBranch if updateLocal else "origin/%s" % otherBranch
         # we've handled the update, we don't want m or md to update the local branch. 
         args["--noUpdate"] = True
         # if mr is called by the user, need to initialize the --continue argument. 
