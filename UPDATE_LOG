@@ -1,5 +1,12 @@
 
 
+Thu May 26 11:54:21 2016 Peter B. Robinson
+v1.17.8
+Reviewers: Ben Liu
+
+Fixes a GRP-166.
+
+
 Wed Apr 27 08:29:36 2016 Benjamin T. Liu
 v1.17.7
 Reviewers: Peter B. Robinson
