@@ -854,7 +854,8 @@ options are at least listed below.
 
     grape mr (merge remote branch). If the remote branch is different from your current branch, this will update
     or add a local version of that branch, then merge it into your current branch. If you perform a grape mr on the
-    current branch, then this will do a merge assuming the remote branch has a different line of development than
+    current branch or if the remote branch can not be fastforward merged into your local version of that branch,
+    then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
     Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
