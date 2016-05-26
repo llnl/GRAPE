@@ -1107,9 +1107,7 @@ class Publish(resumable.Resumable):
         if args["--noRecurse"]:
             recurse = False
 
-        # no need to recurse if there are no modified submodules
-        submodules = git.getModifiedSubmodules(public, topic)
-        args["--recurse"] = recurse and submodules
+        args["--recurse"] = recurse
         if args["--recurse"]:
             if not args["--submodulePublic"]:
                 submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')

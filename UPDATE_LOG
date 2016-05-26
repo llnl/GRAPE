@@ -1,5 +1,12 @@
 
 
+Wed Apr 27 08:29:36 2016 Benjamin T. Liu
+v1.17.7
+Reviewers: Peter B. Robinson
+
+Handle submodules during publish even if there are no changes to ensure that everyone is on the public branch after the publish
+
+
 Mon Apr  4 14:04:11 2016 Peter B. Robinson
 v1.17.6
 Reviewers: Ben Liu
