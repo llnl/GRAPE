@@ -17,6 +17,7 @@ class Walkthrough(option.Option):
     """ 
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
+                   [--mergeDiff | --rawDiff ]
                    [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
@@ -32,6 +33,8 @@ class Walkthrough(option.Option):
                                     [default: .grapeconfig.walkthrough.width]
         --staged                    Compare staged changes with branch <b1>.
         --workspace                 Compare workspace files with branch <b1>.
+        --mergeDiff                 Perform diff of branches from common ancestor (diff <b1>...<b2>) (default).
+        --rawDiff                   Perform raw diff of branch files (diff <b1> <b2>).
         --showUnchanged             Show unchanged subprojects.
         --noFetch                   Do not fetch.
         --noInactive                Do not show inactive subprojects.
@@ -67,6 +70,12 @@ class Walkthrough(option.Option):
         difftool = args["--difftool"]
         height = args["--height"]
         width = args["--width"]
+        doMergeDiff = True
+        if args["--rawDiff"]:
+           doMergeDiff = False
+        elif args["--mergeDiff"]:
+           # This is already the default
+           doMergeDiff = True
 
         cwd = os.getcwd()
         os.chdir(utility.workspaceDir())
@@ -75,18 +84,25 @@ class Walkthrough(option.Option):
         if not b1: 
            b1 = git.currentBranch()
 
+        b2 = args["<b2>"]
+
         if args["--staged"]:
            b2 = b1
            b1 = "--cached"
+           doMergeDiff = False
         elif args["--workspace"]:
            b2 = "--"
+           doMergeDiff = False
         else:
-           b2 = args["<b2>"]
            if not b2: 
               try:
-                 b2 = config.getPublicBranchFor(b1)
+                 # put the public branch first so merge diff shows
+                 # changes on the current branch.
+                 b2 = b1
+                 b1 = config.getPublicBranchFor(b2)
               except:
                  b2 = ""
+                 doMergeDiff = False
 
         diffargs = ""
                
@@ -95,7 +111,7 @@ class Walkthrough(option.Option):
         
         diffmanager = DiffManager(master=root, height=height, width=width,
                                   branchA=b1, branchB=b2,
-                                  difftool=difftool, diffargs=diffargs,
+                                  difftool=difftool, diffargs=diffargs, doMergeDiff=doMergeDiff,
                                   showUnchanged=args["--showUnchanged"],
                                   showInactive=not args["--noInactive"], showToplevel=not args["--noTopLevel"],
                                   showSubmodules=not args["--noSubmodules"], showSubtrees=not args["--noSubtrees"],
@@ -338,6 +354,7 @@ class DiffManager(ProjectManager):
       self.diffAnnotationB = Tk.StringVar()
       self.diffAnnotationB.set(self.branchB)
       self.showUnchanged = kwargs.get('showUnchanged', False)
+      self.doMergeDiff = kwargs.get('doMergeDiff', True)
 
       # Branch specification pane
       self.branchpane = Tk.Frame(master)
@@ -359,7 +376,7 @@ class DiffManager(ProjectManager):
       
       if self.showToplevel or len(self.submodules) > 0:
          utility.printMsg("Gathering status in outer level project...")
-         changedFiles = git.diff("--name-only %s %s" % (self.branchA, self.branchB)).split()
+         changedFiles = git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()
          utility.printMsg("Done.")
 
       # Get the url mapping for all submodules
@@ -391,12 +408,12 @@ class DiffManager(ProjectManager):
             else:
                os.chdir(os.path.join(utility.workspaceDir(), dir))
                utility.printMsg("Gathering status in %s..." % dir)
-               haveDiff = len(git.diff("--name-only %s %s" % (self.branchA, self.branchB)).split()) > 0
+               haveDiff = len(git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()) > 0
                utility.printMsg("Done.")
                os.chdir(utility.workspaceDir())
             pass
          elif type.endswith("Subtree"):
-            nestedFiles = git.diff("--name-only %s %s %s" % (self.branchA, self.branchB, dir)).split()
+            nestedFiles = git.diff("--name-only %s %s" % (self.diffBranchSpec(self.branchA, self.branchB), dir)).split()
             if len(nestedFiles) > 0:
                haveDiff = True
                for changedFile in changedFiles:
@@ -418,6 +435,11 @@ class DiffManager(ProjectManager):
       else:
          self.projpanelabel.set("No differences")
 
+   def diffBranchSpec(self, branchA, branchB):
+      if self.doMergeDiff:
+         return "%s...%s" % (branchA, branchB)
+      else:
+         return "%s %s" % (branchA, branchB)
    def getBranch(self, branch):
       if not branch.startswith("--"):
          try:
@@ -466,7 +488,7 @@ class DiffManager(ProjectManager):
          self.diffbranchA = self.getBranch(self.diffbranchA)
          self.diffbranchB = self.getBranch(self.diffbranchB)
          self.filenames = []
-         diffoutput = git.diff("--name-status --find-renames --find-copies %s %s %s ." % (self.diffargs, self.diffbranchA, self.diffbranchB)).splitlines()
+         diffoutput = git.diff("--name-status --find-renames --find-copies %s %s ." % (self.diffargs, self.diffBranchSpec(self.diffbranchA, self.diffbranchB))).splitlines()
          statusdict = { "A":"<Only in B>",
                         "C":"<File copied>",
                         "D":"<Only in A>", 
@@ -521,7 +543,7 @@ class DiffManager(ProjectManager):
 
    def execute(self, file):
       try:
-         cmd = "difftool --find-renames --find-copies  %s -y %s %s %s -- " % (self.difftoolarg, self.diffargs, self.diffbranchA, self.diffbranchB)
+         cmd = "difftool --find-renames --find-copies  %s -y %s %s -- " % (self.difftoolarg, self.diffargs, self.diffBranchSpec(self.diffbranchA, self.diffbranchB))
          if isinstance(file,list):
             cmd += "\"%s\" \"%s\"" % (file[0], file[1])
          else:
