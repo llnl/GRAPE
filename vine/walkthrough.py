@@ -408,7 +408,14 @@ class DiffManager(ProjectManager):
             else:
                os.chdir(os.path.join(utility.workspaceDir(), dir))
                utility.printMsg("Gathering status in %s..." % dir)
-               haveDiff = len(git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()) > 0
+               try:
+                  haveDiff = len(git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()) > 0
+               except git.GrapeGitError as e:
+                  if "unknown revision or path not in the working tree" in e.gitOutput:
+                     utility.printMsg("Could not diff %s.  Branch may not exist in %s." % (self.diffBranchSpec(self.branchA, self.branchB), dir))
+                  else:
+                     raise
+                  haveDiff = False
                utility.printMsg("Done.")
                os.chdir(utility.workspaceDir())
             pass
