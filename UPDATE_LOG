@@ -1,5 +1,14 @@
 
 
+Wed Aug 17 13:03:35 2016 Benjamin T. Liu
+v1.17.9
+Reviewers: Tim Dunn, Peter B. Robinson
+
+- Update grape w to diff against common ancestor by default
+- Allow grape w to handle branches that don't exist in nested subprojects
+- Add emailFooter option for publish
+
+
 Thu May 26 11:54:21 2016 Peter B. Robinson
 v1.17.8
 Reviewers: Ben Liu
