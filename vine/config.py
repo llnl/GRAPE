@@ -56,7 +56,7 @@ class Config(option.Option):
         utility.printMsg("Optimizing cross platform portability...")
         git.config("core.trustctime","false")
 
-        # stores login info for 12 hrs (max allowed by RZStash)
+        # stores login info for 12 hrs (max allowed by RZBitbucket)
 
         if not args["--nocredcache"]:
             cache = args["--credcache"]

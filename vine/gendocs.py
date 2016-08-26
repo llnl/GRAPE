@@ -186,7 +186,7 @@ SQA driven requirements, such as successful build(s), testing, etc. You'll want 
     postpublishcmds =
     postpublishdir = .
     tickversion = False
-    useStash = True
+    useBitbucket = True
     deletetopic = False
     updatelog = .grapepublishlog
     logskipfirstlines = 0
@@ -210,8 +210,8 @@ If you keep a running change log, you'll want to take a look at the grape publis
 updatelog, logskipfirstlines, and logentryheader. If you send email notifications, check out all the documentation
 for all the email-related options as well.
 
-If you manage your code reviews using Pull Requests on Stash, and you want to enforce the existence of approved pull
-requests for each branch being published, leave `useStash` as True. Otherwise, set it to False.
+If you manage your code reviews using Pull Requests on Bitbucket, and you want to enforce the existence of approved pull
+requests for each branch being published, leave `useBitbucket` as True. Otherwise, set it to False.
 
 What about that `tickversion` option? Set it to True if you want to auto-increment your project's version with grape.
 Check out `grape version --help` for more info on managing versioning your project with grape.

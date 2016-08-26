@@ -40,7 +40,7 @@ class Review(option.Option):
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
-        --user=<userName>           Your Stash user name.
+        --user=<userName>           Your Bitbucket user name.
         --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
@@ -63,7 +63,7 @@ class Review(option.Option):
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true. 
         --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket 
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
@@ -136,7 +136,7 @@ class Review(option.Option):
         target_branch = args["--target"]
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)        
-        # load pull request from Stash if it already exists
+        # load pull request from Bitbucket if it already exists
         wsRepo =  stash.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)  
 
