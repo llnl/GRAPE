@@ -50,14 +50,14 @@ class Publish(resumable.Resumable):
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
-                         [--user=<StashUserName>]
+                         [--user=<BitbucketUserName>]
                          [--stashURL=<httpsURL>]
                          [--verifySSL=<bool>]
-                         [--project=<StashProjectKey>]
-                         [--repo=<StashRepoName>]
+                         [--project=<BitbucketProjectKey>]
+                         [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
                          [--noReview]
-                         [--useStash=<bool>]
+                         [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
@@ -65,7 +65,7 @@ class Publish(resumable.Resumable):
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -130,19 +130,19 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.tickVersion]
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Stash username.
-    --stashURL=<url>        Your Stash URL, e.g. https://rzlc.llnl.gov/stash .
+    --user=<user>           Your Bitbucket username.
+    --stashURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/stash .
                             [default: .grapeconfig.project.stashURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
-    --project=<project>     Your Stash Project. See grape-review for more details.
+    --project=<project>     Your Bitbucket Project. See grape-review for more details.
                             [default: .grapeconfig.project.name]
-    --repo=<repo>           Your Stash repo. See grape-review for more details.
+    --repo=<repo>           Your Bitbucket repo. See grape-review for more details.
                             [default: .grapeconfig.repo.name]
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
-    --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useBitbucket]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                             if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -214,8 +214,8 @@ class Publish(resumable.Resumable):
         config.set('publish', 'postpublishDir', '.')
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
-        # use Stash for checking Pull Request status?
-        config.set('publish', 'useStash', 'True')
+        # use Bitbucket for checking Pull Request status?
+        config.set('publish', 'useBitbucket', 'True')
         # delete when done
         config.set('publish', 'deleteTopic', 'False')
         # log file
@@ -279,17 +279,17 @@ class Publish(resumable.Resumable):
             public = config.getPublicBranchFor(topic)
         args["--public"] = public
         self.branchPrefix = prefix
-        # whether or not to use Stash
-        if args["--useStash"].lower() == "false" and not args["--noReview"]:
+        # whether or not to use Bitbucket
+        if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
         if not args["--noReview"] and type(args["--verifySSL"]) != bool:
             verify = True if args["--verifySSL"].lower() == "true" else False
             args["--verifySSL"] = verify
-        # get the Stash Username
+        # get the Bitbucket Username
         user = args["--user"]
 
         if not user and not args["--noReview"] and not args["--printSteps"]:
-            args["--user"] = utility.getUserName(service="Stash")
+            args["--user"] = utility.getUserName(service="Bitbucket")
             
         
         if args["--tickVersion"] is not False and args["--tickVersion"] is not True:
