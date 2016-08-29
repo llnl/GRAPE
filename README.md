@@ -147,7 +147,7 @@ SQA driven requirements, such as successful build(s), testing, etc. You'll want 
     postpublishcmds =
     postpublishdir = .
     tickversion = False
-    useBitbucket = True
+    useStash = True
     deletetopic = False
     updatelog = .grapepublishlog
     logskipfirstlines = 0
@@ -173,8 +173,8 @@ If you keep a running change log, you'll want to take a look at the grape publis
 updatelog, logskipfirstlines, and logentryheader. If you send email notifications, check out all the documentation
 for all the email-related options as well.
 
-If you manage your code reviews using Pull Requests on Bitbucket, and you want to enforce the existence of approved pull
-requests for each branch being published, leave `useBitbucket` as True. Otherwise, set it to False.
+If you manage your code reviews using Pull Requests on Stash, and you want to enforce the existence of approved pull
+requests for each branch being published, leave `useStash` as True. Otherwise, set it to False.
 
 What about that `tickversion` option? Set it to True if you want to auto-increment your project's version with grape.
 Check out `grape version --help` for more info on managing versioning your project with grape.
@@ -598,14 +598,14 @@ options are at least listed below.
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
-                         [--user=<BitbucketUserName>]
+                         [--user=<StashUserName>]
                          [--stashURL=<httpsURL>]
                          [--verifySSL=<bool>]
-                         [--project=<BitbucketProjectKey>]
-                         [--repo=<BitbucketRepoName>]
+                         [--project=<StashProjectKey>]
+                         [--repo=<StashRepoName>]
                          [-R <arg>]...
                          [--noReview]
-                         [--useBitbucket=<bool>]
+                         [--useStash=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
@@ -613,7 +613,7 @@ options are at least listed below.
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -678,19 +678,19 @@ options are at least listed below.
                             [default: .grapeconfig.publish.tickVersion]
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Bitbucket username.
-    --stashURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/stash .
+    --user=<user>           Your Stash username.
+    --stashURL=<url>        Your Stash URL, e.g. https://rzlc.llnl.gov/stash .
                             [default: .grapeconfig.project.stashURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
-    --project=<project>     Your Bitbucket Project. See grape-review for more details.
+    --project=<project>     Your Stash Project. See grape-review for more details.
                             [default: .grapeconfig.project.name]
-    --repo=<repo>           Your Bitbucket repo. See grape-review for more details.
+    --repo=<repo>           Your Stash repo. See grape-review for more details.
                             [default: .grapeconfig.repo.name]
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useBitbucket]
+    --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
+    --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                             if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -943,7 +943,7 @@ options are at least listed below.
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
-        --user=<userName>           Your Bitbucket user name.
+        --user=<userName>           Your Stash user name.
         --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
@@ -966,7 +966,7 @@ options are at least listed below.
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true. 
         --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.

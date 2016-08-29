@@ -374,7 +374,7 @@ class TestProject(TestStashResponse):
 class TestStash(TestStashResponse):
 
     def __init__(self):
-        self.url = "https://testStash.grapeTesting.org/stash/"
+        self.url = "https://testBitbucket.grapeTesting.org/bitbucket/"
         self.projects = TestStashResponse(proj1=TestProject("proj1", self.url), proj2=TestProject("proj2", self.url))
         pass
 
