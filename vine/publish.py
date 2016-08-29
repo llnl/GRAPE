@@ -51,7 +51,7 @@ class Publish(resumable.Resumable):
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--user=<BitbucketUserName>]
-                         [--stashURL=<httpsURL>]
+                         [--bitbucketURL=<httpsURL>]
                          [--verifySSL=<bool>]
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
@@ -131,7 +131,7 @@ class Publish(resumable.Resumable):
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket username.
-    --stashURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/stash .
+    --bitbucketURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
                             [default: .grapeconfig.project.stashURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
@@ -474,7 +474,7 @@ class Publish(resumable.Resumable):
         if args["--noReview"]:
             utility.printMsg("Skipping In Progress Lock Check..")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullRequests()
         inProgressRequests = []
@@ -517,7 +517,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("Skipping In Progress Lock Release...")
             return True
 
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         state = "open"
@@ -540,7 +540,7 @@ class Publish(resumable.Resumable):
             utility.printMsg("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
@@ -739,7 +739,7 @@ class Publish(resumable.Resumable):
                           "<msg> defined.")
                     return False
             utility.printMsg("Retrieving pull request description for use as commit message...")
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
+            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             commitMsg = pullRequest.description().splitlines(True)+['\n']
@@ -805,7 +805,7 @@ class Publish(resumable.Resumable):
             return True
         menu = grapeMenu.menu()
         if not args["--noReview"]:
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
+            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()
