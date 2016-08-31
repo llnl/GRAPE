@@ -302,7 +302,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 url = request.link()
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
-                print("STASH: %s" % e.data["errors"][0]["message"])
+                print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
                     exit(1)
         else:
@@ -352,13 +352,13 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     url = request.link()
                     utility.printMsg("Pull request unchanged at %s ." % url)
             except stashy.errors.GenericException as e:
-                print("STASH: %s" % e.data["errors"][0]["message"])
-                print("STASH: %s" % e.data)
+                print("BITBUCKET: %s" % e.data["errors"][0]["message"])
+                print("BITBUCKET: %s" % e.data)
                 if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
                     exit(1)
 
         else:
-            print ("STASH: Pull request from %s to %s already exists, can't add a new one" %
+            print ("BITBUCKET: Pull request from %s to %s already exists, can't add a new one" %
                    (branch, target_branch))
             
     return request
