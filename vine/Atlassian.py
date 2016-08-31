@@ -286,7 +286,7 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print ("TESTSTASH: resource %s does not exist" %item)
+            print ("TESTBITBUCKET: resource %s does not exist" %item)
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 

@@ -37,7 +37,7 @@ import walkthrough
 
 #######################################################################
 #The Menu class - encapsulates menu options and sections.
-# Menu Options are the objects that perform git-related or stash-related tasks.
+# Menu Options are the objects that perform git-related or bitbucket-related tasks.
 # sections are groupings of menu options that are displayed together.
 ######################################################################
 __menuInstance = None
