@@ -19,7 +19,7 @@ class Review(option.Option):
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
-                        [--stashURL=<url>]
+                        [--bitbucketURL=<url>]
                         [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
@@ -48,15 +48,15 @@ class Review(option.Option):
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --stashURL=<url>            The stash url, e.g. https://rzlc.llnl.gov/stash. 
+        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket. 
                                     [default: .grapeconfig.project.stashURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
-        --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
-                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+        --project=<prj>             The project key part of the bitbucket url, e.g. the "GRP" in
+                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repo name part of the stash url, e.g. the "grape" in
-                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The repo name part of the bitbucket url, e.g. the "grape" in
+                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
@@ -111,12 +111,12 @@ class Review(option.Option):
         if not name:
             name = utility.getUserName()
             
-        utility.printMsg("Logging onto %s" % args["--stashURL"])
+        utility.printMsg("Logging onto %s" % args["--bitbucketURL"])
         if args["--test"]:
             stash = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            stash = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
+            stash = Atlassian.Atlassian(name, url=args["--bitbucketURL"], verify=verify)
 
         # default project (outer level project)
         project_name = args["--project"]
@@ -130,7 +130,7 @@ class Review(option.Option):
             branch = git.currentBranch()
 
         #ensure branch is pushed
-        utility.printMsg("Pushing %s to stash..." % branch)
+        utility.printMsg("Pushing %s to bitbucket..." % branch)
         git.push("origin %s" % branch)
         #target branch for outer level repo
         target_branch = args["--target"]
@@ -184,10 +184,10 @@ class Review(option.Option):
                     continue
                 # push branch
                 os.chdir(submodule)
-                utility.printMsg("Pushing %s to stash..." % branch)
+                utility.printMsg("Pushing %s to bitbucket..." % branch)
                 git.push("origin %s" % branch)
                 os.chdir(wsDir)
-                # url is typically  [type]://some.base/url/stash/.../PROJ/REPO.git
+                # url is typically  [type]://some.base/url/bitbucket/.../PROJ/REPO.git
                 url = git.config("--get submodule.%s.url" % submodule).split('/')
                 proj = url[-2]
                 repo_name = url[-1]
@@ -255,7 +255,7 @@ class Review(option.Option):
 
     def setDefaultConfig(self, config):
         config.ensureSection("project")
-        config.set("project", "stashURL", "https://rzlc.llnl.gov/stash")
+        config.set("project", "bitbucketURL", "https://rzlc.llnl.gov/bitbucket")
         config.set("project", "verifySSL", "True")
         config.set("project", "name", "My unnamed project")
         pass
