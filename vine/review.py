@@ -113,10 +113,10 @@ class Review(option.Option):
             
         utility.printMsg("Logging onto %s" % args["--bitbucketURL"])
         if args["--test"]:
-            stash = Atlassian.TestAtlassian(name)
+            bitbucket = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            stash = Atlassian.Atlassian(name, url=args["--bitbucketURL"], verify=verify)
+            bitbucket = Atlassian.Atlassian(name, url=args["--bitbucketURL"], verify=verify)
 
         # default project (outer level project)
         project_name = args["--project"]
@@ -137,7 +137,7 @@ class Review(option.Option):
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)        
         # load pull request from Bitbucket if it already exists
-        wsRepo =  stash.project(project_name).repo(repo_name)
+        wsRepo =  bitbucket.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)  
 
         # determine pull request title
@@ -194,7 +194,7 @@ class Review(option.Option):
 
                 # strip off the .git extension
                 repo_name = '.'.join(repo_name.split('.')[:-1])
-                repo = stash.project(proj).repo(repo_name)
+                repo = bitbucket.project(proj).repo(repo_name)
                 
                 # determine branch prefix
                 prefix = branch.split('/')[0]
@@ -226,7 +226,7 @@ class Review(option.Option):
             repo_name = urlTokens[-1]           
             # strip off the .git extension
             repo_name = '.'.join(repo_name.split('.')[:-1])
-            repo = stash.project(proj).repo(repo_name)
+            repo = bitbucket.project(proj).repo(repo_name)
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
             if newRequest:
@@ -237,7 +237,7 @@ class Review(option.Option):
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
             repo_name = args["--repo"]
-            repo = stash.project(project_name).repo(repo_name)
+            repo = bitbucket.project(project_name).repo(repo_name)
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
