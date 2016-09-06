@@ -59,8 +59,8 @@ class Publish(resumable.Resumable):
                          [--noReview]
                          [--useStash=<bool>]
                          [--deleteTopic=<bool>]
-                         [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
-                          --emailServer=<smtpserver> --emailMaxFiles=<int>]]
+                         [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
+                          --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
             grape-publish --continue
             grape-publish --abort
@@ -149,9 +149,10 @@ class Publish(resumable.Resumable):
     --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
                             as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
     --emailNotification=<b> Set to true to send a notification email after you've published. The email will consist of
-                            a header <header>, and a message, generally the contents of <CommitMessageFile> and/or
-                            the Pull Request description. The email is sent to <addr>, and will be CC'd to the user.
-                            For the email subject and header, the string literals
+                            a header <header> and a message, generally the contents of <CommitMessageFile> and/or
+                            the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
+                            and will be CC'd to the user.
+                            For the email subject, header and footer, the string literals
                             '<user>', '<date>', '<version>', and '<public>' with the following:
                             <user>: the result of git config --get user.name
                             <date>: the current timestamp.
@@ -160,6 +161,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailNotification]
     --emailHeader=<header>  The email header. See above.
                             [default: .grapeconfig.publish.emailHeader]
+    --emailFooter=<footer>  The email footer. See above.
+                            [default: .grapeconfig.publish.emailFooter]
     --emailSubject=<sbj>    The email subject. See above.
                             [default: .grapeconfig.publish.emailSubject]
     --emailSendTo=<addr>    The comma-delimited list of receivers of the email.
@@ -222,6 +225,7 @@ class Publish(resumable.Resumable):
         # email config
         config.set('publish', 'emailNotification', 'False')
         config.set('publish', 'emailHeader', '<public> updated to <version>')
+        config.set('publish', 'emailFooter', '')
         config.set('publish', 'emailServer', 'smtp.email.server')
         config.set('publish', 'emailSendTo', 'user.list@company.com')
         config.set('publish', 'emailSubject', '<public> updated to <version>')
@@ -237,6 +241,7 @@ class Publish(resumable.Resumable):
         self.st_remotes = {}
         self.st_branches = {}
         self.cascadeDict = {}
+        self.doDelete = None
 
     def description(self):
         try:
@@ -864,6 +869,15 @@ class Publish(resumable.Resumable):
             if len(updatelist) > 0:
                 mf.write("\nFILES UPDATED:\n")
                 mf.write("\n".join(updatelist))
+            mf.write('\n')
+            emailFooter = args["--emailFooter"]
+            emailFooter = emailFooter.replace("<user>", git.config("--get user.name"))
+            emailFooter = emailFooter.replace("<date>", date)
+            emailFooter = emailFooter.replace("<version>", self.progress["version"])
+            emailFooter = emailFooter.replace("<reviewers>", self.progress["reviewers"])
+            emailFooter = emailFooter.replace("<public>", args["--public"])
+            emailFooter = emailFooter.split("\\n")
+            mf.write('\n'.join(emailFooter))
  
         if not args["--emailNotification"].lower() == "true":
             utility.printMsg("Skipping E-mail notification..")
@@ -914,10 +928,16 @@ class Publish(resumable.Resumable):
 
         return True
 
-    @staticmethod
-    def deleteTopicBranch(args):
-        if args["--deleteTopic"].lower() == "true":
-            grapeMenu.menu().applyMenuChoice("db", [args["--topic"], "--verify"])
+    def askWhetherToDelete(self, args):
+        if self.doDelete is None:
+            if args["--deleteTopic"].lower() == "true":
+                self.doDelete = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+                
+                
+    def deleteTopicBranch(self, args):
+        self.askWhetherToDelete(args)
+        if self.doDelete:
+            grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
             # SHA will raise an exception if the branch has been deleted
@@ -1100,9 +1120,7 @@ class Publish(resumable.Resumable):
         if args["--noRecurse"]:
             recurse = False
 
-        # no need to recurse if there are no modified submodules
-        submodules = git.getModifiedSubmodules(public, topic)
-        args["--recurse"] = recurse and submodules
+        args["--recurse"] = recurse
         if args["--recurse"]:
             if not args["--submodulePublic"]:
                 submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
@@ -1171,6 +1189,9 @@ class Publish(resumable.Resumable):
         if not proceed:
             return False        
         self.progress["targetsVerified"] = True
+        # get the commit message here as well.
+        self.loadCommitMessage(args)
+        self.askWhetherToDelete(args)
         return True
 
 

@@ -37,84 +37,57 @@ class NewBranchOption(option.Option):
     def description(self):
         return "Create and switch to a %s branch off of %s" % (self._key, self._public)
 
-    @staticmethod
-    def createBranch(branchPoint, prefix, user, descr, noverify):
-        branch = descr if descr else utility.userInput("Enter one word description for branch:")
-        user = user if user else utility.getUserName()
-        fullBranch = prefix+"/"+user+"/"+branch
-        proceed = noverify or utility.userInput("About to create branch "+fullBranch+" off of "+branchPoint +
-                                                ".\nProceed? [y/n]", 'y')
-        if proceed:
-            utility.printMsg("switching to %s in %s" % (fullBranch, os.getcwd()))
-            git.checkout("-b %s %s " % (fullBranch, branchPoint))
-            utility.printMsg("pushing %s to origin" % fullBranch)
-            git.push("-u origin %s" % fullBranch)
-        else:
-            utility.printMsg("Branch not created")
 
-        return branchPoint, prefix, user, branch
 
     def execute(self, args):
-        upArgs = ["--noRecurse"] 
-        grapeMenu.menu().applyMenuChoice('up', upArgs)
         start = args["--start"]
+        if not start: 
+            start = self._public
+            
+        
+        # decide whether to recurse
         recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--noRecurse"]:
             recurse = False
-        if not start: 
-            start = self._public
-        
-        wsdir = utility.workspaceDir()
-        os.chdir(wsdir)
-        subArgs = self.createBranch(start, self._key, args['--user'], args['<descr>'], args['--noverify'])
-        branchName = "%s/%s/%s" % (subArgs[1], subArgs[2], subArgs[3])
-        # handle nested subprojects
 
-        subprojectPrefixes = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-        if subprojectPrefixes: 
-            proceed = args["--noverify"] or utility.userInput("About to create the branch %s off of %s "
-                                                                      "for all active nested subprojects.\n"
-                                                                      "Proceed? [y/n]" % (branchName, start) , 'y')        
-            if proceed:
-                for sub in subprojectPrefixes: 
-                    cwd = os.path.join(wsdir,sub)
-                    os.chdir(cwd)
-                    git.checkout(start)
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start, '--noRecurse', '--wd=%s' % cwd])
-                    self.createBranch(subArgs[0], subArgs[1], subArgs[2], subArgs[3], noverify=True)
         
-        
-        os.chdir(wsdir)
-        submodules = git.getActiveSubmodules()
-        recurse = recurse and submodules
-        if subArgs and recurse:
-            proceed = args["--noverify"]
-            submapping = grapeConfig.grapeConfig().getMapping('workspace', 'submoduleTopicPrefixMappings')
-            submodulePublic = None
-            try:
-                submodulePublic = submapping[self._key]
-            except KeyError:
-                utility.printMsg("ManageSubmodules is enabled but.grapeconfig.workspace.submodueTopicPrefixMappings "
-                                 "does not have a default value. Skipping branch creation for submodules.")
-                proceed = False
+        if not args["<descr>"]:
+            args["<descr>"] =  utility.userInput("Enter one word description for branch:")
+            
+        if not args["--user"]:
+            args["--user"] = utility.getUserName()
+            
+        branchName = self._key + "/" + args["--user"] + "/" + args["<descr>"]
 
-            proceed = proceed or utility.userInput("About to create the branch " + branchName + " off of "
-                                                   + submodulePublic +
-                                                   " for all active submodules.\nProceed? [y/n]", 'y')
-            if proceed:
-                for sub in submodules: 
-                    cwd = os.path.join(wsdir, sub)
-                    os.chdir(cwd)
-                    git.checkout(submodulePublic)
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % submodulePublic, '--wd=%s' % cwd, '--noRecurse'])
-                    self.createBranch(submodulePublic, self._key, subArgs[2], subArgs[3], True)
+            
+        launcher = utility.MultiRepoCommandLauncher(createBranch, 
+                                                   runInSubmodules=recurse, 
+                                                   runInSubprojects=recurse, 
+                                                   runInOuter=True, 
+                                                   branch=start, 
+                                                   globalArgs=branchName)
+        
+        launcher.initializeCommands()
+        utility.printMsg("About to create the following branches:")
+        for repo, branch in zip(launcher.repos, launcher.branches):
+            utility.printMsg("\t%s off of %s in %s" % (branchName, branch, repo))
+        proceed = utility.userInput("Proceed? [y/n]", default="y")
+        if proceed:
+            grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start])
+            launcher.launchFromWorkspaceDir()
+        else:
+            utility.printMsg("branches not created")
+
 
     def setDefaultConfig(self, config):
         config.ensureSection("workspace")
         config.set('workspace', 'manageSubmodules', 'True')
         config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
+
+
+
 
 
 class NewBranchOptionFactory():
@@ -130,6 +103,28 @@ class NewBranchOptionFactory():
             if topic != '?': 
                 options.append(NewBranchOption(topic, topicPublicMapping[topic]))
         return options
+
+
+
+
+def createBranch(repo="unknown", branch="master", args=[]):
+    branchPoint = branch
+    fullBranch = args
+    with utility.cd(repo):
+        utility.printMsg("creating and switching to %s in %s" % (fullBranch, repo))
+        try:
+            git.checkout("-b %s %s " % (fullBranch, branchPoint))
+        except git.GrapeGitError as e:
+            print "%s:%s" % (repo, e.gitOutput)
+            utility.printMsg("WARNING: %s in %s will not be pushed." % (fullBranch, repo))
+            return
+        utility.printMsg("pushing %s to origin in %s" % (fullBranch, repo))
+        try:
+            git.push("-u origin %s" % fullBranch)
+        except git.GrapeGitError as e:
+            print "%s:  %s" % (repo, e.gitOutput)
+            return
+            
 
 
 if __name__ is "__main__":

@@ -1,5 +1,49 @@
 
 
+Wed Aug 17 13:03:35 2016 Benjamin T. Liu
+v1.17.9
+Reviewers: Tim Dunn, Peter B. Robinson
+
+- Update grape w to diff against common ancestor by default
+- Allow grape w to handle branches that don't exist in nested subprojects
+- Add emailFooter option for publish
+
+
+Thu May 26 11:54:21 2016 Peter B. Robinson
+v1.17.8
+Reviewers: Ben Liu
+
+Fixes a GRP-166.
+
+
+Wed Apr 27 08:29:36 2016 Benjamin T. Liu
+v1.17.7
+Reviewers: Peter B. Robinson
+
+Handle submodules during publish even if there are no changes to ensure that everyone is on the public branch after the publish
+
+
+Mon Apr  4 14:04:11 2016 Peter B. Robinson
+v1.17.6
+Reviewers: Ben Liu
+
+Brings user interactivity to earlier in the publish process.
+
+
+Mon Apr  4 12:43:32 2016 Peter B. Robinson
+v1.17.5
+Reviewers: Ben Liu
+
+Grape status now is parallel across all projects in workspace.
+
+
+Fri Apr  1 09:46:03 2016 Peter B. Robinson
+v1.17.4
+Reviewers: Aaron C. Fisher
+
+Converts newFlowBranch to work in parallel.
+
+
 Wed Mar 30 09:24:42 2016 Peter B. Robinson
 v1.16.3
 Reviewers: David M. Dawson
@@ -8,17 +52,22 @@ fixed an issue that was causing nsquared git fetches when calling grape md
 
 
 Tue Mar 29 16:50:37 2016 Peter B. Robinson
-v1.16.2
+v1.16.2 (and v1.17.2)
 Reviewers: Aaron C. Fisher, Ben Liu
 
 Fixes performance issues in grape up, fixes multiprocess safety for grape up.
 
 
 Fri Mar 25 14:42:16 2016 Peter B. Robinson
-v1.16.1
+v1.16.1 (and v1.17.1)
 Reviewers: Ben Liu
 
 Fixes a critical issue that can hose your workspace if you run grape up in parallel while on a public branch with an https remote.
+
+
+Fri Mar  18 17:47:00 2016 Peter B. Robinson
+v1.17.0
+Same as v1.16.0 
 
 
 Fri Mar  18 17:47:00 2016 Peter B. Robinson

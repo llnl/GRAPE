@@ -607,8 +607,8 @@ options are at least listed below.
                          [--noReview]
                          [--useStash=<bool>]
                          [--deleteTopic=<bool>]
-                         [--emailNotification=<bool> [--emailHeader=<str> --emailSubject=<str> --emailSendTo=<addr>
-                          --emailServer=<smtpserver> --emailMaxFiles=<int>]]
+                         [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
+                          --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
             grape-publish --continue
             grape-publish --abort
@@ -697,9 +697,10 @@ options are at least listed below.
     --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
                             as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
     --emailNotification=<b> Set to true to send a notification email after you've published. The email will consist of
-                            a header <header>, and a message, generally the contents of <CommitMessageFile> and/or
-                            the Pull Request description. The email is sent to <addr>, and will be CC'd to the user.
-                            For the email subject and header, the string literals
+                            a header <header> and a message, generally the contents of <CommitMessageFile> and/or
+                            the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
+                            and will be CC'd to the user.
+                            For the email subject, header and footer, the string literals
                             '<user>', '<date>', '<version>', and '<public>' with the following:
                             <user>: the result of git config --get user.name
                             <date>: the current timestamp.
@@ -708,6 +709,8 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailNotification]
     --emailHeader=<header>  The email header. See above.
                             [default: .grapeconfig.publish.emailHeader]
+    --emailFooter=<footer>  The email footer. See above.
+                            [default: .grapeconfig.publish.emailFooter]
     --emailSubject=<sbj>    The email subject. See above.
                             [default: .grapeconfig.publish.emailSubject]
     --emailSendTo=<addr>    The comma-delimited list of receivers of the email.
@@ -854,7 +857,8 @@ options are at least listed below.
 
     grape mr (merge remote branch). If the remote branch is different from your current branch, this will update
     or add a local version of that branch, then merge it into your current branch. If you perform a grape mr on the
-    current branch, then this will do a merge assuming the remote branch has a different line of development than
+    current branch or if the remote branch can not be fastforward merged into your local version of that branch,
+    then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
     Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
@@ -1155,6 +1159,7 @@ options are at least listed below.
  
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
+                   [--mergeDiff | --rawDiff ]
                    [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
@@ -1170,6 +1175,8 @@ options are at least listed below.
                                     [default: .grapeconfig.walkthrough.width]
         --staged                    Compare staged changes with branch <b1>.
         --workspace                 Compare workspace files with branch <b1>.
+        --mergeDiff                 Perform diff of branches from common ancestor (diff <b1>...<b2>) (default).
+        --rawDiff                   Perform raw diff of branch files (diff <b1> <b2>).
         --showUnchanged             Show unchanged subprojects.
         --noFetch                   Do not fetch.
         --noInactive                Do not show inactive subprojects.
