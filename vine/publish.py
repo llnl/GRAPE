@@ -567,7 +567,7 @@ class Publish(resumable.Resumable):
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 if args["--user"] != pullRequest.author():
-                   reviewers.append(pullRequest.authorName())
+                   reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
