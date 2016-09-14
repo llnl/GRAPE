@@ -200,7 +200,9 @@ class MergeDevelop(resumable.Resumable):
             activeSubmodulesCheck1 = git.getActiveSubmodules()
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
                 utility.printMsg("Updating new submodules using grape uv --allSubmodules")
-                grapeMenu.menu().applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])        
+                grapeMenu.menu().applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
+        
+        return True
 
 
     def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):
