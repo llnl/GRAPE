@@ -584,7 +584,7 @@ class Publish(resumable.Resumable):
             ret = ret and grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"])
             if ret:
                 cb = git.currentBranch()
-                topic = arg["--topic"]
+                topic = args["--topic"]
                 ret = ret and cb == topic
                 if not ret:
                     utility.printMsg("Current branch %s is not topic branch %s. Please checkout %s before publishing. " % (cb, topic, topic))
