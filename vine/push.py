@@ -61,4 +61,9 @@ def handlePushMRE(mre):
             print e.cwd
             print e.gitOutput
             return False            
+
+if __name__ is "__main__":
+    import grapeMenu
+    menu = grapeMenu.menu()
+    menu.applyMenuChoice("push", [])
     

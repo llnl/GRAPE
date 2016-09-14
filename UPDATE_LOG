@@ -1,5 +1,12 @@
 
 
+Mon Sep 12 17:13:33 2016 Peter B. Robinson
+v1.19.1
+Reviewers: Peter B. Robinson, n
+
+Fix bug in reviewer list when author is not the publisher
+
+
 Wed Aug 17 13:03:35 2016 Benjamin T. Liu
 v1.17.9
 Reviewers: Tim Dunn, Peter B. Robinson
