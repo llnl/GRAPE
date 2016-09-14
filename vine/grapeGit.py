@@ -222,8 +222,14 @@ def getModifiedSubmodules(branch1="", branch2=""):
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
         return [] 
     submodulesString = ' '.join(submodules)
-    modifiedSubmodules = diff("--name-only %s %s -- %s" % 
-                              (branch1, branch2,  submodulesString)).split('\n')
+    try:
+        
+        modifiedSubmodules = diff("--name-only %s %s -- %s" % 
+                                  (branch1, branch2,  submodulesString)).split('\n')
+    except GrapeGitError as e:
+        if "bad revision" in e.gitOutput:
+            utility.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+            return []
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
 
