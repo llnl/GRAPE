@@ -1,5 +1,12 @@
 
 
+Wed Sep 14 16:18:32 2016 Benjamin T. Liu
+v1.19.2
+Reviewers: Emily Ruth Diana, Ben Liu, t
+
+Resolve GRP-150 (branch consistency check), GRP-161 (fix crashes when switching to fewer nested subprojects), and GRP-170 (noSubproject and noSubmodule options for grape foreach)
+
+
 Mon Sep 12 17:13:33 2016 Peter B. Robinson
 v1.19.1
 Reviewers: Peter B. Robinson, n
