@@ -89,6 +89,7 @@ class Review(option.Option):
             descrFile = args["--descr"]
             if descrFile:
                 with open(descrFile) as f:
+
                     descr = f.readlines()
                 descr = ''.join(descr)
         
