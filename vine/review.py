@@ -89,10 +89,13 @@ class Review(option.Option):
             descrFile = args["--descr"]
             if descrFile:
                 with open(descrFile) as f:
-
                     descr = f.readlines()
                 descr = ''.join(descr)
-        
+                for encoding in ['utf-8', 'windows-1252']:
+                    try:
+                        descr = descr.decode(encoding).encode('ascii','ignore')
+                    except:
+                        pass
         return descr
     
     def parseReviewerArgs(self, args):
