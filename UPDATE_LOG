@@ -1,5 +1,12 @@
 
 
+Fri Sep 23 14:40:33 2016 Benjamin T. Liu
+v1.19.3
+Reviewers: Peter B. Robinson
+
+Handle Windows and UTF-8 encoding for update description file.
+
+
 Wed Sep 14 16:18:32 2016 Benjamin T. Liu
 v1.19.2
 Reviewers: Emily Ruth Diana, Ben Liu, t
