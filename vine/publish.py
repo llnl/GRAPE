@@ -567,7 +567,7 @@ class Publish(resumable.Resumable):
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 if args["--user"] != pullRequest.author():
-                   reviewers.append(pullRequest.authorName())
+                   reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
@@ -579,11 +579,15 @@ class Publish(resumable.Resumable):
     @staticmethod
     def testForCleanWorkspace(args):
         utility.printMsg("Checking to make sure workspace has a clean status.")
-        cwd = os.getcwd()
-        os.chdir(utility.workspaceDir())
-        ret = utility.isWorkspaceClean()
-        ret = ret and grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"])
-        os.chdir(cwd)
+        with utility.cd(utility.workspaceDir()):
+            ret = utility.isWorkspaceClean()
+            ret = ret and grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"])
+            if ret:
+                cb = git.currentBranch()
+                topic = args["--topic"]
+                ret = ret and cb == topic
+                if not ret:
+                    utility.printMsg("Current branch %s is not topic branch %s. Please checkout %s before publishing. " % (cb, topic, topic))
         return ret
 
     def performCustomStep(self, prefix, args):

@@ -46,7 +46,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertTrue(git.branchUpToDateWith(toBranch, cascadeDest))
         self.assertFalse(git.branchUpToDateWith(toBranch, fromBranch))
 
-    def assertGrapePublishWorked(self, args=None):
+    def assertGrapePublishWorked(self, args=None, assertFail=False):
         self.queueUserInput(["1.1.1"])
         config = grapeConfig.grapeConfig()
         config.ensureSection("project")
@@ -60,11 +60,15 @@ class TestPublish(testGrape.TestGrape):
             else:
                 args = defaultArgs
             ret = grapeMenu.menu().applyMenuChoice("publish", args=args)
-            self.assertTrue(ret, "publish returned false")
+          
+            self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.message))
         #origin has not been set up for these repos yet
         #self.assertNotIn("fatal:", self.output.getvalue())
+    
+    def assertGrapePublishFailed(self, args=None):
+        self.assertGrapePublishWorked( args=args, assertFail=True)
 
     def testFFDefaultPublish(self):
         self.setUpBranchToFFMerge()
@@ -98,8 +102,7 @@ class TestPublish(testGrape.TestGrape):
         testGrape.writeFile1("someOtherfile")
         git.add("someOtherfile")
         git.commit("-a -m \"someOtherfile\"")
-        self.assertGrapePublishWorked(["--topic=testPublish"])
-        self.assertSuccessfulFastForwardMerge()
+        self.assertGrapePublishFailed(["--topic=testPublish"])
 
     def testCustomBuildStep(self):
         self.setUpBranchToFFMerge()

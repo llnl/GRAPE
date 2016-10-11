@@ -124,14 +124,18 @@ class Checkout(option.Option):
         return addedModules, removedModules
     
     @staticmethod
-    def parseGrapeConfigNestedProjectDiffOutput(output, addedModules, removedModules): 
+    def parseGrapeConfigNestedProjectDiffOutput(output, addedModules, removedModules, removedProjectPrefices):
         nestedSection = False
         oldProjects = []
         newProjects = []
+
         for line in output.split('\n'): 
             ll = line.lower()
-            if "[nestedprojects]" in ll:
+            if "[nested" in ll:
                 nestedSection = True
+                currentProject = None
+                if "-[nested-" in ll:
+                    currentProject = ll.split('-')[2].split(']')[0]
             elif "[" in ll and "]" in ll:
                 nestedSection = False
             if nestedSection:
@@ -139,15 +143,15 @@ class Checkout(option.Option):
                     oldProjects = ll.split('=')[1].strip().split()
                 if "+names" in ll:
                     newProjects = ll.split('=')[1].strip().split()
+                if "-prefix" in ll:
+                    removedProjectPrefices[currentProject] = ll.split('=')[1].strip()
         for np in newProjects: 
             if np not in oldProjects:
                 addedModules.append(np)
         for op in oldProjects:
             if op not in newProjects:
                 removedModules.append(op)
-                
-        return addedModules, removedModules
-            
+        return
 
     def execute(self, args):
         sync = args["--sync"].lower().strip()
@@ -203,17 +207,18 @@ class Checkout(option.Option):
         # check to see if nested project list changed
         addedProjects = []
         removedProjects = []
+        removedProjectPrefices = {}
         nestedProjectListDidChange = False
         os.chdir(workspaceDir)
         if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch)): 
             configDiff = git.diff("--no-ext-diff %s %s -- %s" % (previousSHA, branch, ".grapeconfig"))
             nestedProjectListDidChange = "[nestedprojects]" in configDiff.lower()
-            self.parseGrapeConfigNestedProjectDiffOutput(configDiff, addedProjects, removedProjects)
+            self.parseGrapeConfigNestedProjectDiffOutput(configDiff, addedProjects, removedProjects, removedProjectPrefices)
             
             if removedProjects: 
                 config = grapeConfig.grapeConfig()
                 for proj in removedProjects:
-                    projPrefix = config.get("nested-%s" % proj, "prefix")
+                    projPrefix = removedProjectPrefices[proj]
                     try:
                         os.chdir(os.path.join(workspaceDir, proj))
                     except OSError as e:
@@ -262,12 +267,14 @@ class Checkout(option.Option):
 
         os.chdir(workspaceDir)
         
-        utility.printMsg("Switched to %s. Updating from remote..." % branch)
         if sync:
+            utility.printMsg("Switched to %s. Updating from remote...\n\t (use --sync=False or .grapeconfig.post-checkout.syncWithOrigin to change behavior.)" % branch)            
             if args["-b"]:
                 grapeMenu.menu().applyMenuChoice("push")
             else:
                 grapeMenu.menu().applyMenuChoice("pull")
+        else:
+            utility.printMsg("Switched to %s.")
         return True
     
     def setDefaultConfig(self, config):
