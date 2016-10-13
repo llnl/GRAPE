@@ -52,12 +52,13 @@ class TestMD(testGrape.TestGrape):
             self.assertNotEqual(git.shortSHA(), git.shortSHA("master"))
             ret = grapeMenu.menu().applyMenuChoice("m", ["master", "--am"])
             self.assertFalse(ret, "grape m did not return false as expected for a conflict")
-            # resolve the conflict
-            git.checkout("--ours f2")
-            git.add("f2")
+
             self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of "
                                                             "merge\n %s" % self.output.getvalue())
-            git.status("--porcelain")
+            # resolve the conflict
+            git.checkout("--ours f2")
+            git.add("f2")            
+
             ret = grapeMenu.menu().applyMenuChoice("m", ["--continue"])
             self.assertTrue(ret, "grape m --continue did not return True\n%s" % self.output.getvalue())
             self.assertTrue(git.isWorkingDirectoryClean(), "grape m --continue did not finish merge\n%s" %
@@ -72,11 +73,12 @@ class TestMD(testGrape.TestGrape):
             ret = grapeMenu.menu().applyMenuChoice("md", ["--am"])
             self.assertFalse(ret, "grape m did not return false as expected for a conflict")
             # resolve the conflict
-            git.checkout("--ours f2")
-            git.add("f2")
+
             self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of "
                                                             "merge\n %s" % self.output.getvalue())
-            git.status("--porcelain")
+            git.checkout("--ours f2")
+            git.add("f2")            
+
             ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
             self.assertTrue(ret, "grape md --continue did not return True\n%s" % self.output.getvalue())
             self.assertTrue(git.isWorkingDirectoryClean(), "grape m --continue did not finish merge\n%s" %
