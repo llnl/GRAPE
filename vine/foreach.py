@@ -44,30 +44,13 @@ class ForEach(option.Option):
         # of the project the user is in if --currentCWD is set. 
         cwd = git.baseDir()
         os.chdir(cwd)
-        
-        # execute in submodules
-        if not args["--noSubmodules"]:
-            for sub in git.getActiveSubmodules():
-                if not quiet:
-                    utility.printMsg("Entering %s..." % sub) 
-                utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,sub), verbose=-1)
-        
-        # execute in nested subprojects
-        if not args["--noSubprojects"]:            
-            for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(cwd):
-                if not quiet:
-                    utility.printMsg("Entering %s..." % proj)
-                os.chdir(os.path.join(cwd, proj))
-                utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj), verbose=-1)
-                
-        # execute in top level project 
-        if not args["--noTopLevel"]:
-            if not quiet:
-                utility.printMsg("Entering %s..." % cwd)
-            utility.executeSubProcess(cmd,cwd, verbose = -1)
-        os.chdir(cwd)
-        return True
-    
+
+        retvals = utility.MultiRepoCommandLauncher(foreach).launchFromWorkspaceDir()
+        return retvals
+
     def setDefaultConfig(self,config): 
         pass
     
+    def foreach(self):
+        utility.executeSubProcess(cmd,cwd, verbose = -1)
+        return True            
