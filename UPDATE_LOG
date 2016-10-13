@@ -1,5 +1,12 @@
 
 
+Thu Oct 13 10:18:19 2016 Peter B. Robinson
+v1.19.4
+Reviewers: Ben Liu
+
+Fixes a bug in isWorkspaceClean checks that relied on old versions of git printing a particular message.
+
+
 Fri Sep 23 14:40:33 2016 Benjamin T. Liu
 v1.19.3
 Reviewers: Peter B. Robinson
