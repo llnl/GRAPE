@@ -142,7 +142,7 @@ class Publish(resumable.Resumable):
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
     --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useBitbucket]
+    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                             if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -215,7 +215,7 @@ class Publish(resumable.Resumable):
         # tick the version?
         config.set('publish', 'tickVersion', 'False')
         # use Bitbucket for checking Pull Request status?
-        config.set('publish', 'useBitbucket', 'True')
+        config.set('publish', 'useStash', 'True')
         # delete when done
         config.set('publish', 'deleteTopic', 'False')
         # log file
