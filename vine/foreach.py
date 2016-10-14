@@ -45,7 +45,10 @@ class ForEach(option.Option):
         cwd = git.baseDir()
         os.chdir(cwd)
 
-        retvals = utility.MultiRepoCommandLauncher(foreach).launchFromWorkspaceDir()
+        # put in arguments 
+        retvals = utility.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"], 
+                                                   skipSubmodules= args["--noSubmodules"], 
+                                                   runInSubprojects= not args["--noSubprojects"]).launchFromWorkspaceDir()
         return retvals
 
     def setDefaultConfig(self,config): 
