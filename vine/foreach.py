@@ -30,7 +30,7 @@ class ForEach(option.Option):
     def description(self):
         return "runs a command in all projects in this workspace"
 
-
+    
     def execute(self,args):
         quiet = args["--quiet"]
         quiet = "--quiet" if quiet else ""
@@ -53,7 +53,8 @@ class ForEach(option.Option):
 
     def setDefaultConfig(self,config): 
         pass
-    
-    def foreach(self):
-        utility.executeSubProcess(cmd,cwd, verbose = -1)
-        return True            
+
+def foreach():
+    utility.executeSubProcess(cmd,cwd, verbose = -1)
+    return True            
+
