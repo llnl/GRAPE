@@ -30,6 +30,7 @@ class Bundle(option.Option):
                     [--name=<config.repo.name>]
                     [--outfile=<fname>]
                     [--bundleTags=<branchToTagPatternMapping>]
+                    [--submoduleBranches=<config.patch.submodulebranches>]
 
 
     Options:
@@ -44,19 +45,24 @@ class Bundle(option.Option):
                                         [default: .grapeconfig.repo.name]
        --outfile=<fname>                Name of the output bundle file. Default behavior is to
                                         use branch names, the repo name, and output of git-describe
-                                        to construct a name. Note that the default file name carrys
+                                        to construct a name. Note that the default file name carries
                                         semantics for grape unbundle in determining which branches to
                                         update.
        --bundleTags=<mapping>           A list of branch:tagPattern tags to bundle. Note that a broadly defined tag
                                         pattern may yield larger bundle files than you might expect.
                                         [default: .grapeconfig.patch.branchToTagPatternMapping]
+       --submoduleBranches=<list>       space delimited list of submodule branches to bundle.
+                                        [default: .grapeconfig.patch.submodulebranches]
+
 
     .grapeConfig Defaults:
 
     [patch]
-    branches = master develop
+    branches = master
     tagprefix = patched
     describePattern = v*
+    submodulebranches = master
+    
 
     [repo]
     name = None
@@ -67,24 +73,13 @@ class Bundle(option.Option):
         super(Bundle, self).__init__()
         self._key = "bundle"
         self._section = "Patches"
-        try: 
-            self._config = git.baseDir()
-        except git.GrapeGitError as e: 
-            self._config = utility.getHomeDirectory()
-        finally: 
-            self._baseDir = self._config
             
     def config(self):
-        localConfig =  grapeConfig.grapeRepoConfig(self._baseDir)
-        if not localConfig: 
-            return grapeConfig.grapeConfig()
-        else:
-            return localConfig 
+        return grapeConfig.grapeConfig()
+         
     def description(self):
          # since bundle calls grape recursively, we give it configuration based on current repository semantics, 
         # whereas grape typically has full workspace semantics. 
-        # TODO: move bundle to a model where it's the outer level repo that governs all bundling. Should be 
-        # easier to maintain in the long run.
         name = self.config().get("patch", "tagprefix")
         return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
@@ -92,25 +87,78 @@ class Bundle(option.Option):
 
         tagprefix = args["--tagprefix"]
         branches = args["--branches"]
+        
         reponame = args["--name"]
         describePattern = args["--describePattern"]
+        
+        launchArgs = {}
+        
         tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
+        recurse = not args["--noRecurse"]
+          
 
-        if not args["--noRecurse"]: 
-            os.chdir(self._baseDir)
-            grapecmd = os.path.join(os.path.dirname(__file__), "..", "grape")
-            grapeMenu.menu().applyMenuChoice("foreach", ["--noTopLevel","--currentCWD", grapecmd + " bundle --noRecurse"])
-            os.chdir(self._baseDir)
-            #git.gitcmd("submodule foreach '%s bundle '" % grapecmd, "recursive submodule bundle failed")
         git.fetch()
         git.fetch("--tags")
         branchlist = branches.split()
+        
+        launchArgs["branchList"] = branchlist
+        launchArgs["tags"] = tagsToBundle
+        launchArgs["submodule"] = False
+        launchArgs["prefix"] = tagprefix
+        launchArgs["describePattern"] = describePattern
+        launchArgs["--outfile"] = args["--outfile"]
+        
+        
+        otherCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
+                                                                runInSubprojects=recurse, globalArgs=launchArgs)
+    
+        otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
+        
+        if (recurse):
+            launchArgs["submodule"] = True
+            launchArgs["branchList"] = args["--submoduleBranches"].split()
+            submoduleCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd,                                                                     
+                                                                       runInSubmodules=recurse, 
+                                                                       runInSubprojects=False,
+                                                                       skipSubmodules=not recurse, 
+                                                                       runInOuter=False, 
+                                                                       globalArgs=launchArgs
+                                                                       )
+            
+    
+            submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
+
+        return True
+        
+
+    def setDefaultConfig(self, config):
+        config.ensureSection("patch")
+        config.set('patch', 'tagprefix', 'patched')
+        config.set('patch', 'describePattern', 'v*')
+        config.set('patch', 'branches', 'master')
+        config.set('patch', 'branchmappings', '?:?')
+        config.set('patch', 'branchToTagPatternMapping', '?:v*')
+        config.set('patch', 'submodulebranches', 'master')
+        config.set('patch', 'submodulebranchmappings', '?:?')
+
+
+def bundlecmd(repo='', branch='', args={}):
+    branchlist = args["branchList"]
+    isSubmodule = args["submodule"]
+    tagsToBundle = args["tags"]
+    tagprefix = args["prefix"]
+    describePattern = args["describePattern"]
+    
+    
+    
+    with utility.cd(repo):
+        reponame = os.path.split(repo)[1]
         for branch in branchlist:
             # ensure branch can be fast forwardable to origin/branch and do so
             if not git.safeForceBranchToOriginRef(branch):
-                print("Branch %s has diverged from or is ahead of origin. Sync branches before bundling." % branch) 
-                return False
+                print("Branch %s in %s has diverged from or is ahead of origin, or does not exist. Sync branches before bundling." % (branch, repo)) 
+                continue
             tagname = "%s/%s" % (tagprefix, branch)
             previousLocation = git.describe("--match '%s' %s" % (describePattern, tagname))
             currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
@@ -120,16 +168,21 @@ class Bundle(option.Option):
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
+                utility.printMsg("creating bundle %s in %s" % (bundlename, reponame))
                 git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
-        return True
-
-    def setDefaultConfig(self, config):
-        config.ensureSection("patch")
-        config.set('patch', 'tagprefix', 'patched')
-        config.set('patch', 'describePattern', 'v*')
-        config.set('patch', 'branches', 'master')
-        config.set('patch', 'branchToTagPatternMapping', '?:v*')
-
+    return True
+    
+def bundlecmdMRE(mre):
+    print mre
+    try:
+        raise mre
+    except  utility.MultiRepoException as errors:
+        utility.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
+        for e, b in zip(errors.exceptions(), errors.branches()):
+            print b, e
+        
+            
+        
 
 class Unbundle(option.Option):
     """
