@@ -196,7 +196,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             os.chdir(os.path.join(workspaceDir,prefix))
             configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix), publicBranches)
 
-            if git.diff("--name-only %s %s" % (since, now)): 
+            if git.log("--oneline %s..%s" % (since, now)): 
                 modified.append(repo)
 
         os.chdir(cwd)

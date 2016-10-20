@@ -334,7 +334,7 @@ class Publish(resumable.Resumable):
                       "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                       "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
         if args["--quick"]:
-            self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview","markInProgress", "md2", "publish", 
+            self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish", 
                           "markAsDone", "deleteTopic", "done"]
         
         self.parseArgs(args)
@@ -417,7 +417,7 @@ class Publish(resumable.Resumable):
         return
 
     def ensureModifiedSubmodulesAreActive(self, args):
-        missing = utility.getModifiedInactiveSubmodules(arg["--public"], args["--topic"])
+        missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"])
         if missing:
             utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")
@@ -1144,7 +1144,8 @@ class Publish(resumable.Resumable):
         
         # deal with nested subprojects
         self.modifiedNestedProjects =  grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(public,topic)
-                                                                                                           
+        
+        self.modifiedOuter = True if git.log("--oneline %s..%s" % (public, topic)) else False                                                                                       
         
         return True
 
@@ -1164,15 +1165,17 @@ class Publish(resumable.Resumable):
         
         useAnd = False
         if recurse:
-            userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submodulePublic"], "\n\t\t".join(submodules))
-            useAnd = True
+            if (submodules):
+                userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submodulePublic"], "\n\t\t".join(submodules))
+                useAnd = True
             
-        if self.modifiedNestedProjects: 
-            prefixes = self.modifiedNestedProjects 
-            userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
-            useAnd = True
+            if self.modifiedNestedProjects: 
+                prefixes = self.modifiedNestedProjects 
+                userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
+                useAnd = True
         
-        userMsg += "%s%s for the outer level repo. \n" % ("and " if useAnd else "", public)
+        if self.modifiedOuter:    
+            userMsg += "%s%s for the outer level repo. \n" % ("and " if useAnd else "", public)
         
 
 
@@ -1262,14 +1265,14 @@ class Publish(resumable.Resumable):
                     git.commit("-m \"%s - submodules published\"" % args["-m"])
                 except git.GrapeGitError:
                     pass
-            # ensure submodules that aren't modified end up on the public branch
-            for sub in unmodifiedSubmodules:
-                with utility.cd(os.path.join(wsdir, sub)):
-                    git.checkout(submodulePublic)
-
-            # restore value for args["--cascade"]
-            args["<<publishedSubmodules>>"] = modifiedSubmodules
-            args["--cascade"] = outerCascadeOption
+                # ensure submodules that aren't modified end up on the public branch
+                for sub in unmodifiedSubmodules:
+                    with utility.cd(os.path.join(wsdir, sub)):
+                        git.checkout(submodulePublic)
+    
+                # restore value for args["--cascade"]
+                args["<<publishedSubmodules>>"] = modifiedSubmodules
+                args["--cascade"] = outerCascadeOption
             os.chdir(wsdir)
 
 
@@ -1305,7 +1308,10 @@ class Publish(resumable.Resumable):
                 os.chdir(os.path.join(wsdir,  nested))
                 self.publish(policy, public, topic, args)
             os.chdir(wsdir)
-            self.publish(policy, public, topic, args)
+            if self.modifiedOuter:
+                self.publish(policy, public, topic, args)
+            else:
+                git.checkout(public)
             return True
         else:
             return False
