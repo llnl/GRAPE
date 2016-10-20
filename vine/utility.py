@@ -605,7 +605,6 @@ def parseSubprojectRemoteURL(url):
             pass
         else:
             originURL.append(p)
-
     return '/'.join(originURL)
 
 

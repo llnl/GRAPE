@@ -9,7 +9,8 @@ import keyring.keyring as keyring
 import getpass
 import time
 import utility
-
+import grapeConfig
+import grapeGit as git
 
 class Atlassian:
     rzstashURL = "https://rzlc.llnl.gov/stash"
@@ -67,7 +68,39 @@ class Atlassian:
                 return Project(r, node)
             
         return None
-
+    
+    def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
+        config = grapeConfig.grapeConfig()
+        if isNested:
+            proj = os.path.split(path)[1]
+            nestedProjectURL = config.get("nested-%s" % proj , "url")
+            url = utility.parseSubprojectRemoteURL(nestedProjectURL)
+            urlTokens = url.split('/')
+            proj = urlTokens[-2]
+            repo_name = urlTokens[-1]       
+            # strip off the git extension
+            repo_name = '.'.join(repo_name.split('.')[:-1])
+        elif isSubmodule:
+            fullpath = os.path.abspath(path)
+            wsdir = utility.workspaceDir() + os.path.sep
+            proj = fullpath.split(wsdir)[1]
+            url =  git.config("--get submodule.%s.url" % proj).split('/')
+            proj = url[-2]
+            repo_name = url[-1]
+    
+            # strip off the .git extension
+            repo_name = '.'.join(repo_name.split('.')[:-1])   
+        else:
+            if topLevelRepo is None:
+                topLevelRepo = config.get("repo", "name")
+            if topLevelProject is None:
+                topLevelProject = config.get("project", "name")
+                
+            repo_name = topLevelRepo
+            proj = topLevelProject
+            
+        repo = self.project(proj).repo(repo_name)
+        return repo        
 
 class StashyNode:
     def __init__(self, node):
@@ -94,6 +127,15 @@ class StashyNode:
                 self._show(dd, level + 1)
             else:
                 print "  "*level, key, type(val), "???"
+                
+    def get(path):
+        return self.node._client.get(self.node.url(path))
+    
+    def put(path):
+        return self.node._client.put(self.node.url(path))
+    
+    def post(path):
+        return self.node._client.post(self.node.url(path))
 
 
 class Project(StashyNode):
@@ -149,6 +191,10 @@ class Repo(StashyNode):
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
         
         return PullRequest(stashyRequest,self.repo.pull_requests)
+    
+    
+        
+        
 
 class PullRequest(StashyNode):
     """
@@ -195,7 +241,7 @@ class PullRequest(StashyNode):
             approved = reviewer["approved"] 
             displayName = reviewer["user"]["displayName"] 
             if displayName == "":
-               displayName = name 
+                displayName = name 
             ret.append((name, approved, displayName))
         return ret
 
@@ -250,6 +296,19 @@ class PullRequest(StashyNode):
     def __str__(self):
         return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
             "Reviewers: %s\n" % ', '.join(r[0]+" (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers()) + "Description: %s\n" % self.description()
+    
+    def merge(self):
+        response = self.get("merge")
+        print response
+        canMerge = response["canMerge"]
+        print canMerge
+        return False
+        if canMerge is True:
+            response = self.post("merge")
+            print response
+            return response["state"] == "MERGED"
+        return False
+            
 
 
 if __name__ == "__main__":
@@ -263,21 +322,21 @@ if __name__ == "__main__":
         for reponame in reponames:
             print " REPONAME", reponame
             try:
-               repo = project.repo(reponame)
-               for pull in repo.pullRequests():
-
-                   print "  TITLE:     ", pull.title()
-                   print "  STATE:     ", pull.state()
-                   print "  AUTHOR:    ", pull.author()
-                   print "  DATE:      ", pull.date()
-                   print "  REVIEWERS: ", pull.reviewers()
-                   print "  FROM:      ", pull.fromRef()
-                   print "  TO:        ", pull.toRef()
-                   print "  DESC:      ", pull.description()
-
-                   print 
+                repo = project.repo(reponame)
+                for pull in repo.pullRequests():
+ 
+                    print "  TITLE:     ", pull.title()
+                    print "  STATE:     ", pull.state()
+                    print "  AUTHOR:    ", pull.author()
+                    print "  DATE:      ", pull.date()
+                    print "  REVIEWERS: ", pull.reviewers()
+                    print "  FROM:      ", pull.fromRef()
+                    print "  TO:        ", pull.toRef()
+                    print "  DESC:      ", pull.description()
+ 
+                    print 
             except stashy.errors.NotFoundException:
-               print "  repo not found"
+                print "  repo not found"
 
 
 class TestStashResponse(dict):

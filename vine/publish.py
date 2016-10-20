@@ -562,7 +562,7 @@ class Publish(resumable.Resumable):
             else:
                 utility.printMsg("All reviewers have approved your request.")
                 if args["--user"] != pullRequest.author():
-                   reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
+                    reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
             utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
@@ -964,31 +964,52 @@ class Publish(resumable.Resumable):
         return valid
 
     @staticmethod
-    def merge(public, topic, args):
-        print("merging %s into %s" % (topic, public))
-        git.checkout(public)
-        git.merge("%s -m \"%s\" " % (topic, args["-m"]))
-        print("%s merged successfully to %s" % (topic, public))
-        print("You are currently on %s" % public)
+    def remoteMerge(public, topic, repo, args, isSubmodule, isNested):
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=["--verifySSL"])
+        remoteRepo = atlassian.repoFromWorkspaceRepoPath(repo, 
+                                                        isSubmodule=isSubmodule, 
+                                                        isNested=isNested)
+        pr = remoteRepo.getOpenPullRequest(topic, public)
+        if pr is not None:
+            print("merging %s into %s" % (topic, public))            
+            if pr.merge():
+                git.checkout(public)
+                git.pull("")
+                #git.merge("%s -m \"%s\" " % (topic, args["-m"]))
+                print("%s merged successfully to %s" % (topic, public))
+                print("You are currently on %s" % public)
+                return True
+        return False
 
     @staticmethod
-    def squashMerge(public, topic, args):
-        print("squash merging %s into %s" % (topic, public))
-        git.checkout(public)
-        git.merge("--squash %s" % topic)
-        git.commit("-m \"%s\"" % args["-m"])
-        print("%s squash-merged successfully to %s" % (topic, public))
-        print("You are currently on %s" % public)
+    def merge(public, topic, repo, args):
+        with utility.cd(repo):
+            print("merging %s into %s" % (topic, public))
+            git.checkout(public)
+            git.merge("%s -m \"%s\" " % (topic, args["-m"]))
+            print("%s merged successfully to %s" % (topic, public))
+            print("You are currently on %s" % public)
+
+    @staticmethod
+    def squashMerge(public, topic, repo, args):
+        with utility.cd(repo):
+            print("squash merging %s into %s" % (topic, public))
+            git.checkout(public)
+            git.merge("--squash %s" % topic)
+            git.commit("-m \"%s\"" % args["-m"])
+            print("%s squash-merged successfully to %s" % (topic, public))
+            print("You are currently on %s" % public)
         
 
     @staticmethod
-    def rebase(public, topic):
-        print("rebasing %s onto %s" % (topic, public))
-        git.rebase(public)
-        print("%s successfully rebased onto %s" % (topic, public))
-        git.checkout(public)
-        git.merge(topic)
-        print("You are currently on %s" % public)
+    def rebase(public, topic, repo):
+        with utility.cd(repo):
+            print("rebasing %s onto %s" % (topic, public))
+            git.rebase(public)
+            print("%s successfully rebased onto %s" % (topic, public))
+            git.checkout(public)
+            git.merge(topic)
+            print("You are currently on %s" % public)
         
     def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination, repoType="outer"):
         # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
@@ -1085,18 +1106,21 @@ class Publish(resumable.Resumable):
                  
                 
 
-    def publish(self, policy, public, topic, args):
+    def publish(self, policy, public, topic, repo, args, isSubmodule=False, isNested=False):
         # don't bother publishing if public and topic are the same commit
         if git.shortSHA(public).strip() == git.shortSHA(topic).strip():
             git.checkout(public)
             return
         policy = policy.strip().lower()
         if policy == "merge":
-            self.merge(public, topic, args)
+            if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
+                return
+            else:
+                raise Exception
         elif policy == "squash":
-            self.squashMerge(public, topic, args)
+            self.squashMerge(public, topic, repo, args)
         elif policy == "rebase":
-            self.rebase(public, topic)
+            self.rebase(public, topic, repo)
 
         if not args["--nopush"]:
             try:
@@ -1253,10 +1277,9 @@ class Publish(resumable.Resumable):
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in modifiedSubmodules:
                     subpath = os.path.join(wsdir,sub)
-                    os.chdir(subpath)
-                    grapeMenu.menu().applyMenuChoice('up', ['up', '--noRecurse', '--wd=%s' % subpath, '--public=%s' % submodulePublic])
-                    self.publish(submodulePolicy, submodulePublic, topic, args)
-                    os.chdir(wsdir)
+                    with utility.cd(subpath):
+                        grapeMenu.menu().applyMenuChoice('up', ['up', '--noRecurse', '--wd=%s' % subpath, '--public=%s' % submodulePublic])
+                        self.publish(submodulePolicy, submodulePublic, topic, subpath, args, isSubmodule=True)
                     #add and commit any new merge commits in submodules as a result of the publish
                     git.add(sub)
                 try:
@@ -1305,11 +1328,9 @@ class Publish(resumable.Resumable):
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
             for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-                os.chdir(os.path.join(wsdir,  nested))
-                self.publish(policy, public, topic, args)
-            os.chdir(wsdir)
+                self.publish(policy, public, topic, os.path.join(wsdir, nested), args, isNested=True)
             if self.modifiedOuter:
-                self.publish(policy, public, topic, args)
+                self.publish(policy, public, topic, wsdir, args)
             else:
                 git.checkout(public)
             return True
