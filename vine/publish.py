@@ -417,12 +417,7 @@ class Publish(resumable.Resumable):
         return
 
     def ensureModifiedSubmodulesAreActive(self, args):
-        modifiedSubs = git.getModifiedSubmodules(branch1=args["--public"], branch2=args["--topic"])
-        activeSubs = git.getActiveSubmodules()
-        missing = []
-        for sub in modifiedSubs:
-            if sub not in activeSubs:
-                missing.append(sub)
+        missing = utility.getModifiedInactiveSubmodules(arg["--public"], args["--topic"])
         if missing:
             utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")

@@ -103,7 +103,6 @@ class Bundle(option.Option):
         
         launchArgs["branchList"] = branchlist
         launchArgs["tags"] = tagsToBundle
-        launchArgs["submodule"] = False
         launchArgs["prefix"] = tagprefix
         launchArgs["describePattern"] = describePattern
         launchArgs["--outfile"] = args["--outfile"]
@@ -116,7 +115,6 @@ class Bundle(option.Option):
 
         
         if (recurse):
-            launchArgs["submodule"] = True
             launchArgs["branchList"] = args["--submoduleBranches"].split()
             submoduleCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd,                                                                     
                                                                        runInSubmodules=recurse, 
@@ -145,7 +143,6 @@ class Bundle(option.Option):
 
 def bundlecmd(repo='', branch='', args={}):
     branchlist = args["branchList"]
-    isSubmodule = args["submodule"]
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
@@ -190,37 +187,60 @@ class Unbundle(option.Option):
 
 
     Usage:
-       grape-unbundle <grapebundlefile>... [--branchMappings=<config.patch.branchMappings>]
-
-    Arguments:
-        <grapebundlefile>             The name(s) of the grape bundle file(s) to unbundle.
+       grape-unbundle  [--branchMappings=<config.patch.branchMappings>]
+                       [--submoduleBranchMappings=<config.patch.submoduleBranchMappings>]
+                       [--noRecurse]
 
     Options:
         --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
                                       objects from the bundle file.
                                       [default: .grapeconfig.patch.branchMappings]
+        --submoduleBranchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
+                                      objects from the bundle file.
+                                      [default: .grapeconfig.patch.submodulebranchmappings]
+        --noRecurse                   do not recurse into submodules and nested subprojects
 
     """
     def __init__(self):
         super(Unbundle, self).__init__()
         self._key = "unbundle"
         self._section = "Patches"
-        try: 
-            self._config = git.baseDir()
-        except git.GrapeGitError as e: 
-            self._config = utility.getHomeDirectory()
-        finally: 
-            self._baseDir = self._config        
+      
 
     def description(self):
         return "Unbundle the given bundle into this repo, update all updated branches"
 
     def execute(self, args):
-        bundleNames = args["<grapebundlefile>"]
-        mappings = args["--branchMappings"]
+        recurse = not args["--noRecurse"]
+        launchArgs = {}
+        launchArgs["--branchMappings"] = args["--branchMappings"]
+        repoLauncher =  utility.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
+                                                        runInSubprojects=recurse, globalArgs=launchArgs)
+        repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
+        launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
+        submoduleCommandLauncher = utility.MultiRepoCommandLauncher(unbundlecmd,                                                                     
+                                                                    runInSubmodules=recurse, 
+                                                                    runInSubprojects=False,
+                                                                    skipSubmodules=not recurse, 
+                                                                    runInOuter=False, 
+                                                                    globalArgs=launchArgs
+                                                                    )
+            
+    
+        submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
         
-        mapTokens = mappings.split()
+        return True
+        
+    def setDefaultConfig(self, config):
+        config.ensureSection("patch")
+        config.set('patch', 'branchMappings', 'master:master')
 
+import glob
+def unbundlecmd(repo='', branch='', args={}):
+    mappings = args["--branchMappings"]
+    mapTokens = mappings.split()
+    with utility.cd(repo):
+        bundleNames = glob.glob("*.bundle")
         for bundleName in bundleNames:
             mappings = ""
             for token in mapTokens:
@@ -241,10 +261,9 @@ class Unbundle(option.Option):
                 print e.gitCommand
                 print e.cwd
                 print e.gitOutput
-                return False
+                raise e
             git.fetch("-u %s %s" % (bundleName, mappings))
-        return True
-        
-    def setDefaultConfig(self, config):
-        config.ensureSection("patch")
-        config.set('patch', 'branchMappings', 'master:master')
+    return True        
+
+    
+    
