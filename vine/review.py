@@ -176,13 +176,21 @@ class Review(option.Option):
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)
 
-        # submodules
+
+        ##  Submodule Repos
+        missing = utility.getModifiedInactiveSubmodules(target_branch, branch)
+        if missing:
+            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+                             "You should activate them using grape uv  and then call grape review again. If you haven't modified "
+                             "these submodules, you may need to do a grape md to proceed.")
+            utility.printMsg(','.join(missing))
+            return False        
         submoduleLinks = []
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
             
             modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
-
+                        
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
@@ -215,7 +223,7 @@ class Review(option.Option):
                 if newRequest:
                     submoduleLinks.append(newRequest.link())
         
-        #nested subprojects
+        ## NESTED SUBPROJECT REPOS 
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
         nestedProjectPrefixes = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(target_branch)
         nestedProjectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
@@ -240,6 +248,9 @@ class Review(option.Option):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
+            if git.branchUpToDateWith(target_branch, branch):
+                utility.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
+                return True
             repo_name = args["--repo"]
             repo = stash.project(project_name).repo(repo_name)
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
