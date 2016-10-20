@@ -14,13 +14,19 @@ def handledCheckout(repo = '', branch = 'master', args = []):
     with utility.cd(repo):
         if sync:
             git.fetch()
-        utility.printMsg("Checking out %s in %s" % (branch, repo))
         git.checkout(checkoutargs + ' ' + branch)
+        utility.printMsg("Checked out %s in %s" % (branch, repo))
+        
     return True
-    
+
+_skipBranchCreation = False
+_createNewBranch = False
 def handleCheckoutMRE(mre):
-    _skipBranchCreation = False
-    _createNewBranch = False
+    global _skipBranchCreation
+    global _createNewBranch
+    newBranchReposArgTuples = []
+    newBranches = []
+    
     for e1, branch, project, checkoutargs in zip(mre.exceptions(), mre.branches(), mre.repos(), mre.args()):
         try:
             raise e1
@@ -45,9 +51,7 @@ def handleCheckoutMRE(mre):
                         _skipBranchCreation = True
                         createNewBranch = False
                     if createNewBranch:
-                        utility.printMsg("Creating new branch %s in %s." % (branch, project))
-                        git.checkout(checkoutargs[0]+" -b "+branch)
-                        git.push("-u origin %s" % branch)
+                        newBranchReposArgTuples.append((project, branch, {"checkout": checkoutargs[0]}))                        
                     else:
                             continue
     
@@ -83,8 +87,23 @@ def handleCheckoutMRE(mre):
                 else:
                     raise e
             
+    if _createNewBranch:
+        utility.MultiRepoCommandLauncher(createNewBranches, listOfRepoBranchArgTuples=newBranchReposArgTuples).launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
+
+def createNewBranches(repo='', branch='', args={}):
+    project = repo
+    checkoutargs = args["checkout"]
+    with utility.cd(project):
+        utility.printMsg("Creating new branch %s in %s." % (branch, project))
+        git.checkout(checkoutargs+" -b "+branch)
+        git.push("-u origin %s" % branch)
+    return True
+
+def createNewBranchesMREHandler(mre):
+    for e, b in zip(mre.exceptions(), mre.branches()):
+        print b, e
+     
         
-    
 class Checkout(option.Option):
     """
     grape checkout
@@ -275,6 +294,11 @@ class Checkout(option.Option):
                 grapeMenu.menu().applyMenuChoice("pull")
         else:
             utility.printMsg("Switched to %s.")
+            
+        global _skipBranchCreation
+        global _createNewBranch
+        _skipBranchCreation = False
+        _createNewBranch = False        
         return True
     
     def setDefaultConfig(self, config):
