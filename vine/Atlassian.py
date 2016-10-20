@@ -103,8 +103,9 @@ class Atlassian:
         return repo        
 
 class StashyNode:
-    def __init__(self, node):
+    def __init__(self, node, stashynode):
         self.node = node
+        self.snode = stashynode
 
     def show(self):
         self._show(self.node)
@@ -128,19 +129,20 @@ class StashyNode:
             else:
                 print "  "*level, key, type(val), "???"
                 
-    def get(path):
-        return self.node._client.get(self.node.url(path))
+    def get(self, path):
+        response = self.snode._client.get(self.snode.url(path))
+        return response.json()
     
-    def put(path):
-        return self.node._client.put(self.node.url(path))
+    def put(self, path):
+        return self.snode._client.put(self.snode.url(path)).json()
     
-    def post(path):
-        return self.node._client.post(self.node.url(path))
+    def post(self, path):
+        return self.snode._client.post(self.snode.url(path)).json()
 
 
 class Project(StashyNode):
     def __init__(self, proj, node):
-        StashyNode.__init__(self, node)
+        StashyNode.__init__(self, node, proj)
         self.project = proj
 
     def name(self):
@@ -163,10 +165,11 @@ class Project(StashyNode):
 
 class Repo(StashyNode):
     def __init__(self, rpo, node):
-        StashyNode.__init__(self, node)
+        StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
     def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN"):
+        print self.repo.pull_requests
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):
@@ -202,8 +205,9 @@ class PullRequest(StashyNode):
     stashy_pull_requests is the stashy object needed to update the pull request.    
     """
     def __init__(self, node, stashy_pull_requests):
-        StashyNode.__init__(self, node)
+        StashyNode.__init__(self, node, stashy_pull_requests[str(node["id"])])
         self._stashy_pull_requests = stashy_pull_requests
+        self._stashy_pull_request = stashy_pull_requests[str(self.node["id"])]
 
     def author(self):
         return self.node["author"]["user"]["name"]
@@ -298,14 +302,9 @@ class PullRequest(StashyNode):
             "Reviewers: %s\n" % ', '.join(r[0]+" (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers()) + "Description: %s\n" % self.description()
     
     def merge(self):
-        response = self.get("merge")
-        print response
-        canMerge = response["canMerge"]
-        print canMerge
-        return False
+        canMerge = self._stashy_pull_request.can_merge()
         if canMerge is True:
-            response = self.post("merge")
-            print response
+            response = self._stashy_pull_request.merge(version=self.node["version"])
             return response["state"] == "MERGED"
         return False
             

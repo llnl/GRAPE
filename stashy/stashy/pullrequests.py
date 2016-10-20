@@ -87,6 +87,7 @@ class PullRequest(ResourceBase):
         """
         Merge the specified pull request.
         """
+        print self.url("/merge")
         return self._client.post(self.url("/merge"), params=dict(version=version))
 
     @response_or_error

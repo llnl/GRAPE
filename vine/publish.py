@@ -15,6 +15,7 @@ import grapeGit as git
 import grapeMenu
 import grapeConfig
 import resumable
+import stashy.stashy.errors as stashyErrors
 
 
 
@@ -965,7 +966,7 @@ class Publish(resumable.Resumable):
 
     @staticmethod
     def remoteMerge(public, topic, repo, args, isSubmodule, isNested):
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=["--verifySSL"])
+        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
         remoteRepo = atlassian.repoFromWorkspaceRepoPath(repo, 
                                                         isSubmodule=isSubmodule, 
                                                         isNested=isNested)
@@ -1113,10 +1114,16 @@ class Publish(resumable.Resumable):
             return
         policy = policy.strip().lower()
         if policy == "merge":
-            if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
-                return
-            else:
-                raise Exception
+            #if not args["--noReview"]:
+                #try:
+                    #if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
+                        #return
+                    #else:
+                        #raise Exception
+                #except stashyErrors.GenericException as e:
+                    #self.merge(public, topic, repo, args)
+            #else:
+                self.merge(public, topic, repo, args)
         elif policy == "squash":
             self.squashMerge(public, topic, repo, args)
         elif policy == "rebase":

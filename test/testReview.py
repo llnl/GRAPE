@@ -17,4 +17,3 @@ class TestReview(testGrape.TestGrape):
             self.fail("grape-review failed with output %s" % self.output.getvalue())
         contents = self.output.getvalue()
         self.assertTrue(ret)
-        self.assertIn("'id': '1'", contents)
