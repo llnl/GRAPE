@@ -974,7 +974,7 @@ class Publish(resumable.Resumable):
                                                         isNested=isNested)
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
-            print("merging %s into %s" % (topic, public))            
+            utility.printMsg("remotely merging %s into %s" % (topic, public))            
             if pr.merge():
                 git.checkout(public)
                 git.pull("")
@@ -982,6 +982,10 @@ class Publish(resumable.Resumable):
                 print("%s merged successfully to %s" % (topic, public))
                 print("You are currently on %s" % public)
                 return True
+            else:
+                utility.printMsg("Failed to do a remote merge.")
+        else:
+            utility.printMsg("Could not find open Pull Request for %s in %s" % (topic, repo))
         return False
 
     @staticmethod
@@ -1121,6 +1125,7 @@ class Publish(resumable.Resumable):
                     if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
                         return
                     else:
+                        utility.printMsg("Bitbucket seems to think %s in %s is not mergeable... aborting" % (topic, repo))                        
                         raise Exception
                 except stashyErrors.GenericException as e:
                     utility.printMsg("WARNING: Remote merge failed. Attempting local merge instead.")
