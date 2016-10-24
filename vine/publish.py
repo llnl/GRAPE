@@ -63,10 +63,11 @@ class Publish(resumable.Resumable):
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
+                         [--remoteMerge]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview] [--remoteMerge]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -174,6 +175,7 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.emailMaxFiles]
     --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
+    --remoteMerge           Perform the merge using the Bitbucket REST API. 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -1114,15 +1116,16 @@ class Publish(resumable.Resumable):
             return
         policy = policy.strip().lower()
         if policy == "merge":
-            #if not args["--noReview"]:
-                #try:
-                    #if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
-                        #return
-                    #else:
-                        #raise Exception
-                #except stashyErrors.GenericException as e:
-                    #self.merge(public, topic, repo, args)
-            #else:
+            if args["--remoteMerge"]:
+                try:
+                    if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
+                        return
+                    else:
+                        raise Exception
+                except stashyErrors.GenericException as e:
+                    utility.printMsg("WARNING: Remote merge failed. Attempting local merge instead.")
+                    self.merge(public, topic, repo, args)
+            else:
                 self.merge(public, topic, repo, args)
         elif policy == "squash":
             self.squashMerge(public, topic, repo, args)
