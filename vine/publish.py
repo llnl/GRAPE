@@ -978,7 +978,6 @@ class Publish(resumable.Resumable):
             if pr.merge():
                 git.checkout(public)
                 git.pull("")
-                #git.merge("%s -m \"%s\" " % (topic, args["-m"]))
                 print("%s merged successfully to %s" % (topic, public))
                 print("You are currently on %s" % public)
                 return True
