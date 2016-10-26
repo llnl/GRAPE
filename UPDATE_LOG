@@ -1,5 +1,12 @@
 
 
+Wed Oct 26 16:46:17 2016 Peter B. Robinson
+v1.19.6
+Reviewers: Ben Liu
+
+Fixes an issue where grape publish gets farther than it should when you give it a bad file path.
+
+
 Mon Oct 24 11:09:14 2016 Peter B. Robinson
 v1.19.5
 Reviewers: Aaron C. Fisher, Ben Liu
