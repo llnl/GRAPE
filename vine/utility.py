@@ -570,6 +570,15 @@ def getActiveSubprojects():
 def getModifiedSubprojects():
     return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
 
+def getModifiedInactiveSubmodules(branch1, branch2):
+    modifiedSubs = git.getModifiedSubmodules(branch1=branch1, branch2=branch2)
+    activeSubs = git.getActiveSubmodules()
+    missing = []
+    for sub in modifiedSubs:
+        if sub not in activeSubs:
+            missing.append(sub)
+    return missing
+
 
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec(): 
@@ -596,7 +605,6 @@ def parseSubprojectRemoteURL(url):
             pass
         else:
             originURL.append(p)
-
     return '/'.join(originURL)
 
 

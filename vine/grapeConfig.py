@@ -92,7 +92,7 @@ class ConfigPairDict(dict):
             return super(ConfigPairDict, self).__getitem__(key)
         except KeyError as e: 
             if '?' in self.keys():
-                return self['?']
+                return self['?'].replace('?', key)
             else:
                 e.message = "GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config." % key
                 raise e
@@ -196,7 +196,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             os.chdir(os.path.join(workspaceDir,prefix))
             configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix), publicBranches)
 
-            if git.diff("--name-only %s %s" % (since, now)): 
+            if git.log("--oneline %s..%s" % (since, now)): 
                 modified.append(repo)
 
         os.chdir(cwd)

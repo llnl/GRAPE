@@ -435,6 +435,7 @@ options are at least listed below.
                     [--name=<config.repo.name>]
                     [--outfile=<fname>]
                     [--bundleTags=<branchToTagPatternMapping>]
+                    [--submoduleBranches=<config.patch.submodulebranches>]
 
 
     Options:
@@ -449,19 +450,24 @@ options are at least listed below.
                                         [default: .grapeconfig.repo.name]
        --outfile=<fname>                Name of the output bundle file. Default behavior is to
                                         use branch names, the repo name, and output of git-describe
-                                        to construct a name. Note that the default file name carrys
+                                        to construct a name. Note that the default file name carries
                                         semantics for grape unbundle in determining which branches to
                                         update.
        --bundleTags=<mapping>           A list of branch:tagPattern tags to bundle. Note that a broadly defined tag
                                         pattern may yield larger bundle files than you might expect.
                                         [default: .grapeconfig.patch.branchToTagPatternMapping]
+       --submoduleBranches=<list>       space delimited list of submodule branches to bundle.
+                                        [default: .grapeconfig.patch.submodulebranches]
+
 
     .grapeConfig Defaults:
 
     [patch]
-    branches = master develop
+    branches = master
     tagprefix = patched
     describePattern = v*
+    submodulebranches = master
+    
 
     [repo]
     name = None
@@ -474,15 +480,18 @@ options are at least listed below.
 
 
     Usage:
-       grape-unbundle <grapebundlefile>... [--branchMappings=<config.patch.branchMappings>]
-
-    Arguments:
-        <grapebundlefile>             The name(s) of the grape bundle file(s) to unbundle.
+       grape-unbundle  [--branchMappings=<config.patch.branchMappings>]
+                       [--submoduleBranchMappings=<config.patch.submoduleBranchMappings>]
+                       [--noRecurse]
 
     Options:
         --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
                                       objects from the bundle file.
                                       [default: .grapeconfig.patch.branchMappings]
+        --submoduleBranchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
+                                      objects from the bundle file.
+                                      [default: .grapeconfig.patch.submodulebranchmappings]
+        --noRecurse                   do not recurse into submodules and nested subprojects
 
     
 ## status
@@ -610,10 +619,11 @@ options are at least listed below.
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
+                         [--remoteMerge]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview] [--remoteMerge]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -721,6 +731,7 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailMaxFiles]
     --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
+    --remoteMerge           Perform the merge using the Bitbucket REST API. 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape

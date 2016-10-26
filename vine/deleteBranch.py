@@ -65,7 +65,11 @@ def deleteBranch(repo='', branch='master', args = None):
         utility.printMsg("deleting %s in %s..." % (branch, repo))
         git.branch("%s %s" % (forceStr, branch))
         if "origin/%s" % branch in git.branch("-r"):
-            git.push("--delete origin %s" % branch, throwOnFail=True)    
+            try:    
+                git.push("--delete origin %s" % branch, throwOnFail=True)
+            except git.GrapeGitError as e:
+                if "remote ref does not exist" in e.gitOutput:
+                    pass
 
 def detachThenForceDeleteBranch(repo='', branch='master', args = None):
     with utility.cd(repo):

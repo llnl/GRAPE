@@ -1,5 +1,24 @@
 
 
+Mon Oct 24 11:09:14 2016 Peter B. Robinson
+v1.19.5
+Reviewers: Aaron C. Fisher, Ben Liu
+
+SUMMARY: Performance and robustness improvements, along with new grape bundle / grape unbundle implementations and server-side merges available during publish. 
+
+DETAILS: 
+Addresses an issue where grape review would crash if your branch modified a submodule that was not present in your workspaces. 
+During grape checkout of a branch that does not yet exist, selecting 'a' will create new branches in parallel. 
+Grape bundle and grape unbundle have been refactored to use parallel infrastructure, and not require submodule level .grapeconfigs. Grape unbundle can now be called once from the top level workspace, and does not need to be called from every repo in the workspace.
+
+
+Thu Oct 13 10:18:19 2016 Peter B. Robinson
+v1.19.4
+Reviewers: Ben Liu
+
+Fixes a bug in isWorkspaceClean checks that relied on old versions of git printing a particular message.
+
+
 Fri Sep 23 14:40:33 2016 Benjamin T. Liu
 v1.19.3
 Reviewers: Peter B. Robinson

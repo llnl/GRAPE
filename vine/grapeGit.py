@@ -269,9 +269,9 @@ def hasBranch(b):
 
 
 def isWorkingDirectoryClean():
-    statusOutput = status("-u")
-    return "nothing to commit" in statusOutput and "working directory clean" in statusOutput and\
-           "conflict" not in statusOutput
+    statusOutput = status("-u --porcelain")
+    toRet =  len(statusOutput.strip()) == 0
+    return toRet
 
 
 def log(args=""):

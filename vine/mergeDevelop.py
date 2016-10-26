@@ -309,8 +309,6 @@ class MergeDevelop(resumable.Resumable):
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["--public"])
             return True
-        elif git.isWorkingDirectoryClean():
-            return False
         else:
             return False
 

@@ -176,13 +176,21 @@ class Review(option.Option):
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)
 
-        # submodules
+
+        ##  Submodule Repos
+        missing = utility.getModifiedInactiveSubmodules(target_branch, branch)
+        if missing:
+            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+                             "You should activate them using grape uv  and then call grape review again. If you haven't modified "
+                             "these submodules, you may need to do a grape md to proceed.")
+            utility.printMsg(','.join(missing))
+            return False        
         submoduleLinks = []
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
             
             modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
-
+                        
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
@@ -191,15 +199,8 @@ class Review(option.Option):
                 utility.printMsg("Pushing %s to bitbucket..." % branch)
                 git.push("origin %s" % branch)
                 os.chdir(wsDir)
-                # url is typically  [type]://some.base/url/bitbucket/.../PROJ/REPO.git
-                url = git.config("--get submodule.%s.url" % submodule).split('/')
-                proj = url[-2]
-                repo_name = url[-1]
-
-                # strip off the .git extension
-                repo_name = '.'.join(repo_name.split('.')[:-1])
-                repo = bitbucket.project(proj).repo(repo_name)
-                
+                repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
+                                                         isSubmodule=True)
                 # determine branch prefix
                 prefix = branch.split('/')[0]
                 sub_target_branch = submoduleBranchMappings[prefix]
@@ -215,22 +216,14 @@ class Review(option.Option):
                 if newRequest:
                     submoduleLinks.append(newRequest.link())
         
-        #nested subprojects
+        ## NESTED SUBPROJECT REPOS 
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
         nestedProjectPrefixes = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(target_branch)
-        nestedProjectURLs = [config.get("nested-%s" % proj, "url") for proj in nestedProjects]
-        for proj, url in zip(nestedProjectPrefixes, nestedProjectURLs):
-            os.chdir(proj)
-            git.push("origin %s" % branch)
-            os.chdir(wsDir)
-            url = utility.parseSubprojectRemoteURL(url)
-
-            urlTokens = url.split('/')
-            proj = urlTokens[-2]
-            repo_name = urlTokens[-1]           
-            # strip off the .git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])
-            repo = bitbucket.project(proj).repo(repo_name)
+        
+        for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+            with utility.cd(prefix):
+                git.push("origin %s" % branch)
+            repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
             if newRequest:
@@ -240,8 +233,11 @@ class Review(option.Option):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
+            if git.branchUpToDateWith(target_branch, branch):
+                utility.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
+                return True
             repo_name = args["--repo"]
-            repo = bitbucket.project(project_name).repo(repo_name)
+            repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
