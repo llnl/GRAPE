@@ -54,7 +54,7 @@ class ForEach(option.Option):
     def setDefaultConfig(self,config): 
         pass
 
-def foreach():
+def foreach(cmd, cwd):
     utility.executeSubProcess(cmd,cwd, verbose = -1)
     return True            
 
