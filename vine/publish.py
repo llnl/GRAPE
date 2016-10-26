@@ -1230,7 +1230,8 @@ class Publish(resumable.Resumable):
             return False        
         self.progress["targetsVerified"] = True
         # get the commit message here as well.
-        self.loadCommitMessage(args)
+        if not self.loadCommitMessage(args):
+            return False
         self.askWhetherToDelete(args)
         return True
 

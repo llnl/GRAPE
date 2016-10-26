@@ -233,9 +233,14 @@ class Review(option.Option):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
+            if not git.hasBranch(branch):
+                utility.printMsg("Top level repositiory does not have a branch %s, not generating a Pull Request" % (branch))
+                return True
             if git.branchUpToDateWith(target_branch, branch):
                 utility.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
                 return True
+            
+                
             repo_name = args["--repo"]
             repo = stash.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
