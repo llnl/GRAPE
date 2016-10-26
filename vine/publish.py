@@ -65,7 +65,7 @@ class Publish(resumable.Resumable):
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
