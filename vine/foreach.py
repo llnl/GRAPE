@@ -46,7 +46,7 @@ class ForEach(option.Option):
         os.chdir(cwd)
 
         # put in arguments 
-        retvals = utility.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"], 
+        retvals = utility.MultiRepoCommandLauncher(foreach(cmd, cwd), runInOuter = not args["--noTopLevel"], 
                                                    skipSubmodules= args["--noSubmodules"], 
                                                    runInSubprojects= not args["--noSubprojects"]).launchFromWorkspaceDir()
         return retvals
@@ -55,6 +55,6 @@ class ForEach(option.Option):
         pass
 
 def foreach(cmd, cwd):
-    utility.executeSubProcess(cmd,cwd, verbose = -1)
+    utility.executeSubProcess(cmd, cwd, verbose = -1)
     return True            
 
