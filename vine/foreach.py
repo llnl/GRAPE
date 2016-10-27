@@ -32,29 +32,30 @@ class ForEach(option.Option):
 
     
     def execute(self,args):
-        quiet = args["--quiet"]
-        quiet = "--quiet" if quiet else ""
         cmd = args["<cmd>"]
-
-        foreachcmd = "%s %s" % (quiet,cmd)
-        cwd = os.getcwd() if args["--currentCWD"] else utility.workspaceDir()
-        os.chdir(cwd)
-        # ensure cwd is the top level of the current git repository.
-        # this will be the workspaceDir if --currentCWD was not set, or the root
-        # of the project the user is in if --currentCWD is set. 
-        cwd = git.baseDir()
-        os.chdir(cwd)
-
-        # put in arguments 
-        retvals = utility.MultiRepoCommandLauncher(foreach(cmd, cwd), runInOuter = not args["--noTopLevel"], 
+        retvals = utility.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"], 
                                                    skipSubmodules= args["--noSubmodules"], 
-                                                   runInSubprojects= not args["--noSubprojects"]).launchFromWorkspaceDir()
+                                                   runInSubprojects= not args["--noSubprojects"], globalArgs = args).launchFromWorkspaceDir(handleMRE=handleForeachMRE)
         return retvals
 
     def setDefaultConfig(self,config): 
         pass
 
-def foreach(cmd, cwd):
-    utility.executeSubProcess(cmd, cwd, verbose = -1)
+def foreach(repo='', branch='', args={}):
+    cmd = args["<cmd>"]
+    with utility.cd(repo): 
+        utility.executeSubProcess(cmd, repo, verbose = -1)
     return True            
 
+def handleForeachMRE(mre):
+    for e1 in mre.exceptions():
+        try:
+            raise e1
+        except git.GrapeGitError as e:
+            utility.printMsg("Foreach failed.")
+            print e.gitCommand
+            print e.cwd
+            print e.gitOutput
+            return False            
+
+    
