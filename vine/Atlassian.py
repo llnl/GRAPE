@@ -13,9 +13,9 @@ import grapeConfig
 import grapeGit as git
 
 class Atlassian:
-    rzstashURL = "https://rzlc.llnl.gov/stash"
+    rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
 
-    def __init__(self, username=None, url=rzstashURL, verify=True):
+    def __init__(self, username=None, url=rzbitbucketURL, verify=True):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -28,10 +28,10 @@ class Atlassian:
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
-            print("Connected to Stash.")
+            print("Connected to Bitbucket.")
         else:
             self._stash = None
-            print("Could not connect to Stash...")
+            print("Could not connect to Bitbucket...")
 
     def auth(self, service, username, password, verify=True):
         self._userName = username
@@ -229,7 +229,7 @@ class PullRequest(StashyNode):
         """
         Returns [(username,bool(approved),displayname)...]
         """
-        #Stash REST API for reviewer definition snippet:
+        #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
         #         "user": {
@@ -276,7 +276,7 @@ class PullRequest(StashyNode):
     
     # reviewers is a list of username-approved(bool) pairs
     def update(self, ver, title=None, description=None, reviewers=None): 
-        #Stash REST API for reviewer definition snippet:
+        #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
         #         "user": {
@@ -343,7 +343,7 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print ("TESTSTASH: resource %s does not exist" %item)
+            print ("TESTBITBUCKET: resource %s does not exist" %item)
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 
@@ -431,7 +431,7 @@ class TestProject(TestStashResponse):
 class TestStash(TestStashResponse):
 
     def __init__(self):
-        self.url = "https://testStash.grapeTesting.org/stash/"
+        self.url = "https://testBitbucket.grapeTesting.org/bitbucket/"
         self.projects = TestStashResponse(proj1=TestProject("proj1", self.url), proj2=TestProject("proj2", self.url))
         pass
 
@@ -442,7 +442,7 @@ class TestStash(TestStashResponse):
 
 class TestAtlassian:
     """
-    A version of an Atlassian Stash server that is meant to emulate the responses of Stash for testing purposes.
+    A version of an Atlassian Bitbucket server that is meant to emulate the responses of Bitbucket for testing purposes.
 
     """
     def __init__(self, username = None):
@@ -452,7 +452,7 @@ class TestAtlassian:
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to Stash")
+        print("Connected to Bitbucket")
         
     def project(self, name):
         return self.stash.project(name)
