@@ -1,5 +1,12 @@
 
 
+Tue Nov  8 14:17:30 2016 Peter B. Robinson
+v1.19.7
+Reviewers: Aaron C. Fisher
+
+Adds --noUpdateView and updateView options to grape checkout.
+
+
 Wed Oct 26 16:46:17 2016 Peter B. Robinson
 v1.19.6
 Reviewers: Ben Liu
