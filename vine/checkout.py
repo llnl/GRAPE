@@ -108,7 +108,7 @@ class Checkout(option.Option):
     """
     grape checkout
     
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch> 
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
 
     Options:
     -b                  Create the branch off of the current HEAD in each project.
@@ -117,7 +117,7 @@ class Checkout(option.Option):
                         [default: .grapeconfig.post-checkout.syncWithOrigin]
     --updateView        If your submodules / nested projects change, change your workspace to match the changes.
                         Warning - setting this may cause you to lose unpushed work in nested subprojects.
-    --noUpdateView      If yoru submodules / nested projects change, do not change your workspace to match the changes. 
+    --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
 
 
     Arguments:
@@ -220,7 +220,7 @@ class Checkout(option.Option):
                                 elif args["--noUpdateView"]:
                                     clean = False
                                 elif args["--updateView"]:
-                                    clean = True                                
+                                    clean = True
                                 if clean:
                                     utility.printMsg("Removing clean submodule %s." % sub)
                                     os.chdir(workspaceDir)
