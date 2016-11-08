@@ -260,7 +260,7 @@ class Review(option.Option):
 
     def setDefaultConfig(self, config):
         config.ensureSection("project")
-        config.set("project", "bitbucketURL", "https://rzlc.llnl.gov/bitbucket")
+        config.set("project", "stashURL", "https://rzlc.llnl.gov/bitbucket")
         config.set("project", "verifySSL", "True")
         config.set("project", "name", "My unnamed project")
         pass
