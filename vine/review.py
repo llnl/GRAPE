@@ -19,7 +19,7 @@ class Review(option.Option):
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
-                        [--stashURL=<url>]
+                        [--bitbucketURL=<url>]
                         [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
@@ -40,7 +40,7 @@ class Review(option.Option):
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
-        --user=<userName>           Your Stash user name.
+        --user=<userName>           Your Bitbucket user name.
         --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
@@ -48,22 +48,22 @@ class Review(option.Option):
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --stashURL=<url>            The stash url, e.g. https://rzlc.llnl.gov/stash. 
+        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket. 
                                     [default: .grapeconfig.project.stashURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
-        --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
-                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+        --project=<prj>             The project key part of the bitbucket url, e.g. the "GRP" in
+                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repo name part of the stash url, e.g. the "grape" in
-                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The repo name part of the bitbucket url, e.g. the "grape" in
+                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true. 
         --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket 
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
@@ -115,12 +115,12 @@ class Review(option.Option):
         if not name:
             name = utility.getUserName()
             
-        utility.printMsg("Logging onto %s" % args["--stashURL"])
+        utility.printMsg("Logging onto %s" % args["--bitbucketURL"])
         if args["--test"]:
-            stash = Atlassian.TestAtlassian(name)
+            bitbucket = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            stash = Atlassian.Atlassian(name, url=args["--stashURL"], verify=verify)
+            bitbucket = Atlassian.Atlassian(name, url=args["--bitbucketURL"], verify=verify)
 
         # default project (outer level project)
         project_name = args["--project"]
@@ -134,14 +134,14 @@ class Review(option.Option):
             branch = git.currentBranch()
 
         #ensure branch is pushed
-        utility.printMsg("Pushing %s to stash..." % branch)
+        utility.printMsg("Pushing %s to bitbucket..." % branch)
         git.push("origin %s" % branch)
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)        
-        # load pull request from Stash if it already exists
-        wsRepo =  stash.project(project_name).repo(repo_name)
+        # load pull request from Bitbucket if it already exists
+        wsRepo =  bitbucket.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)  
 
         # determine pull request title
@@ -196,12 +196,11 @@ class Review(option.Option):
                     continue
                 # push branch
                 os.chdir(submodule)
-                utility.printMsg("Pushing %s to stash..." % branch)
+                utility.printMsg("Pushing %s to bitbucket..." % branch)
                 git.push("origin %s" % branch)
                 os.chdir(wsDir)
-                repo = stash.repoFromWorkspaceRepoPath(submodule, 
+                repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
                                                          isSubmodule=True)
-                
                 # determine branch prefix
                 prefix = branch.split('/')[0]
                 sub_target_branch = submoduleBranchMappings[prefix]
@@ -220,10 +219,11 @@ class Review(option.Option):
         ## NESTED SUBPROJECT REPOS 
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
         nestedProjectPrefixes = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(target_branch)
+        
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
             with utility.cd(prefix):
                 git.push("origin %s" % branch)
-            repo = stash.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
+            repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
             if newRequest:
@@ -242,7 +242,7 @@ class Review(option.Option):
             
                 
             repo_name = args["--repo"]
-            repo = stash.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
+            repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
@@ -260,7 +260,7 @@ class Review(option.Option):
 
     def setDefaultConfig(self, config):
         config.ensureSection("project")
-        config.set("project", "stashURL", "https://rzlc.llnl.gov/stash")
+        config.set("project", "bitbucketURL", "https://rzlc.llnl.gov/bitbucket")
         config.set("project", "verifySSL", "True")
         config.set("project", "name", "My unnamed project")
         pass
@@ -307,7 +307,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 url = request.link()
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
-                print("STASH: %s" % e.data["errors"][0]["message"])
+                print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
                     exit(1)
         else:
@@ -357,13 +357,13 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     url = request.link()
                     utility.printMsg("Pull request unchanged at %s ." % url)
             except stashy.errors.GenericException as e:
-                print("STASH: %s" % e.data["errors"][0]["message"])
-                print("STASH: %s" % e.data)
+                print("BITBUCKET: %s" % e.data["errors"][0]["message"])
+                print("BITBUCKET: %s" % e.data)
                 if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
                     exit(1)
 
         else:
-            print ("STASH: Pull request from %s to %s already exists, can't add a new one" %
+            print ("BITBUCKET: Pull request from %s to %s already exists, can't add a new one" %
                    (branch, target_branch))
             
     return request
