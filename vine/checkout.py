@@ -108,13 +108,16 @@ class Checkout(option.Option):
     """
     grape checkout
     
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] <branch> 
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch> 
 
     Options:
-    -b             Create the branch off of the current HEAD in each project.
-    --sync=<bool>  Take extra steps to ensure the branch you check out is up to date with origin,
-                   either by pushing or pulling the remote tracking branch.
-                   [default: .grapeconfig.post-checkout.syncWithOrigin]
+    -b                  Create the branch off of the current HEAD in each project.
+    --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
+                        either by pushing or pulling the remote tracking branch.
+                        [default: .grapeconfig.post-checkout.syncWithOrigin]
+    --updateView        If your submodules / nested projects change, change your workspace to match the changes.
+                        Warning - setting this may cause you to lose unpushed work in nested subprojects.
+    --noUpdateView      If yoru submodules / nested projects change, do not change your workspace to match the changes. 
 
 
     Arguments:
@@ -211,7 +214,13 @@ class Checkout(option.Option):
                         try:
                             os.chdir(os.path.join(workspaceDir, sub))
                             if git.isWorkingDirectoryClean():
-                                clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
+                                cleanBehaviorSet = args["--noUpdateView"] or args["--updateView"]
+                                if not cleanBehaviorSet:
+                                    clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
+                                elif args["--noUpdateView"]:
+                                    clean = False
+                                elif args["--updateView"]:
+                                    clean = True                                
                                 if clean:
                                     utility.printMsg("Removing clean submodule %s." % sub)
                                     os.chdir(workspaceDir)
@@ -246,11 +255,17 @@ class Checkout(option.Option):
                             # anyways at this point...
                             continue
                     if git.isWorkingDirectoryClean():
-                        remove = utility.userInput("Would you like to remove the nested subproject %s? \n"
-                                                   "All work that has not been pushed will be lost. " % projPrefix, 'n'  )
+                        removeBehaviorSet = args["--noUpdateView"] or args["--updateView"]
+                        if not removeBehaviorSet:
+                            remove = utility.userInput("Would you like to remove the nested subproject %s? \n"
+                                                       "All work that has not been pushed will be lost. " % projPrefix, 'n'  )
+                        elif args["--noUpdateView"]:
+                            remove = False
+                        elif args["--updateView"]:
+                            remove = True
                         if remove:
-                            remove = utility.userInput("Are you sure? When you switch back to the previous branch, you will have to\n"
-                                                       "reclone %s." % projPrefix, '\n')
+                            remove = utility.userInput("Are you sure you want to remove %s? When you switch back to the previous branch, you will have to\n"
+                                                       "reclone %s." % (projPrefix, projPrefix), '\n')
                         if remove:
                             os.chdir(workspaceDir)
                             shutil.rmtree(os.path.join(workspaceDir,projPrefix))
@@ -262,12 +277,18 @@ class Checkout(option.Option):
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
         else:
-            updateView = utility.userInput("Submodules or subprojects were added/removed as a result of this checkout. \n" + 
-                                           "%s" % ("Added Projects: %s\n" % ','.join(addedProjects) if addedProjects else "") + 
-                                           "%s" % ("Added Submodules: %s\n"% ','.join(addedModules) if addedModules else "") +
-                                           "%s" % ("Removed Projects: %s\n" % ','.join(removedProjects) if removedProjects else "") +
-                                           "%s" % ("Removed Submodules: %s\n" % ','.join(removedModules) if removedModules else "") +
-                                           "Would you like to update your workspace view? [y/n]", 'n')
+            updateViewSet = args["--noUpdateView"] or args["--updateView"]
+            if not updateViewSet:
+                updateView = utility.userInput("Submodules or subprojects were added/removed as a result of this checkout. \n" + 
+                                               "%s" % ("Added Projects: %s\n" % ','.join(addedProjects) if addedProjects else "") + 
+                                               "%s" % ("Added Submodules: %s\n"% ','.join(addedModules) if addedModules else "") +
+                                               "%s" % ("Removed Projects: %s\n" % ','.join(removedProjects) if removedProjects else "") +
+                                               "%s" % ("Removed Submodules: %s\n" % ','.join(removedModules) if removedModules else "") +
+                                               "Would you like to update your workspace view? [y/n]", 'n')
+            elif args["--noUpdateView"]:
+                updateView = False
+            elif args["--updateView"]:
+                updateView = True
             if not updateView:
                 uvArgs.append("--checkSubprojects")
             
