@@ -262,8 +262,7 @@ def unbundlecmd(repo='', branch='', args={}):
                 print e.cwd
                 print e.gitOutput
                 raise e
-            git.fetch("-u %s %s" % (bundleName, mappings))
-            git.fetch("%s --tags" % bundleName)
+            git.fetch("--tags -u %s %s" % (bundleName, mappings))
     return True        
 
     
