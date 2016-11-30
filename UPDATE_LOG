@@ -1,5 +1,12 @@
 
 
+Tue Nov 29 16:11:25 2016 Benjamin T. Liu
+v1.19.8
+Reviewers: Peter Robinson
+
+Ensure that tags get unbundled.
+
+
 Tue Nov  8 14:17:30 2016 Peter B. Robinson
 v1.19.7
 Reviewers: Aaron C. Fisher
