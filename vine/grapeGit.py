@@ -79,7 +79,15 @@ def branchPrefix(branchName):
 
 
 def branchUpToDateWith(branchName, targetBranch):
-    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+    try:
+        allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+    except GrapeGitError as e:
+        # Don't fail if the only issue is a dangling reference for origin/HEAD.
+        allUpToDateBranches = e.gitOutput
+        allUpToDateBranches = allUpToDateBranches.replace("error: branch 'origin/HEAD' does not point at a commit\n","")
+        allUpToDateBranches = allUpToDateBranches.replace("error: some refs could not be read\n","")
+        if "error: " in allUpToDateBranches:
+            raise e
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
