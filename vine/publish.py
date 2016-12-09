@@ -1138,7 +1138,8 @@ class Publish(resumable.Resumable):
 
         if not args["--nopush"]:
             try:
-                git.push("-u origin HEAD", throwOnFail=True)
+                with os.chdir(repo):
+                    git.push("-u origin HEAD", throwOnFail=True)
             except git.GrapeGitError as e:
                 if e.commError:
                     utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
