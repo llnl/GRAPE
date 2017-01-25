@@ -276,9 +276,12 @@ def hasBranch(b):
     return b in branches
 
 
-def isWorkingDirectoryClean():
+def isWorkingDirectoryClean(printOutput=False):
     statusOutput = status("-u --porcelain")
     toRet =  len(statusOutput.strip()) == 0
+    if (printOutput and not toRet):
+        print os.getcwd()+":"
+        print statusOutput
     return toRet
 
 
