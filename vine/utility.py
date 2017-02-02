@@ -553,8 +553,8 @@ def workspaceDir(warnIfNotFound = True, throwIfNotFound=True):
     os.chdir(cwd)
     return basedir
 
-def isWorkspaceClean():
-    isClean = git.isWorkingDirectoryClean()
+def isWorkspaceClean(printOutput=False):
+    isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
     activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()
     cwd = os.getcwd()
@@ -562,7 +562,7 @@ def isWorkspaceClean():
         if not isClean:
             break
         os.chdir(os.path.join(base, sub))
-        isClean = isClean and git.isWorkingDirectoryClean()
+        isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
     os.chdir(cwd)
     return isClean
 
