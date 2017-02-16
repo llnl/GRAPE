@@ -96,6 +96,8 @@ class Review(option.Option):
                         descr = descr.decode(encoding).encode('ascii','ignore')
                     except:
                         pass
+        else:
+            desc = desc.replace("\\n", "\n")
         return descr
     
     def parseReviewerArgs(self, args):
