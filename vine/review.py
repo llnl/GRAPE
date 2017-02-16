@@ -1,5 +1,6 @@
 import os
 import option
+import re
 import Atlassian
 import utility
 import grapeConfig
@@ -97,7 +98,10 @@ class Review(option.Option):
                     except:
                         pass
         else:
-            descr = descr.replace("\\n", "\n")
+            # Convert \n to a newline, but only if it is not escaped
+            descr = re.sub('[^\\\\]\\\\n', "\n", descr)
+            # Remove one backslash from any escaped \n's.
+            descr = re.sub('\\\\\\\\n', "\\\\n", descr)
         return descr
     
     def parseReviewerArgs(self, args):
