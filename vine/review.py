@@ -97,7 +97,7 @@ class Review(option.Option):
                     except:
                         pass
         else:
-            desc = desc.replace("\\n", "\n")
+            descr = descr.replace("\\n", "\n")
         return descr
     
     def parseReviewerArgs(self, args):
