@@ -295,6 +295,15 @@ def getReposPullRequestDescription(repo, branch, target_branch, args):
         descr = request.description()
     return descr
 
+@staticmethod
+def pullRequestAlreadyMerged(errorMessage):
+   if "already up-to-date with branch" in errorMessage:
+      return True
+   elif "This pull request has already been merged" in errorMessage:
+      return True
+   else:
+      return False
+
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
     utility.printMsg("Gathering active pull requests on %s" % branch)
@@ -314,7 +323,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
-                if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
+                if not pullRequestAlreadyMergedError(e.data["errors"][0]["message"]):
                     exit(1)
         else:
             utility.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
@@ -365,7 +374,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 print("BITBUCKET: %s" % e.data)
-                if not "already up-to-date with branch" in e.data["errors"][0]["message"]:
+                if not pullRequestAlreadyMergedError(e.data["errors"][0]["message"]):
                     exit(1)
 
         else:
