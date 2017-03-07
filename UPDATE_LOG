@@ -1,5 +1,12 @@
 
 
+Tue Mar  7 13:16:35 2017 Benjamin T. Liu
+v1.19.12
+Reviewers: David M. Dawson, Peter Robinson
+
+Update publish/review to handle new atlassian message for merged pull requests
+
+
 Fri Mar  3 08:53:24 2017 Benjamin T. Liu
 v1.19.11
 Reviewers: Peter Robinson
