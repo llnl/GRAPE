@@ -578,8 +578,8 @@ class Publish(resumable.Resumable):
     def testForCleanWorkspace(args):
         utility.printMsg("Checking to make sure workspace has a clean status.")
         with utility.cd(utility.workspaceDir()):
-            ret = utility.isWorkspaceClean()
-            ret = ret and grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"])
+            ret = utility.isWorkspaceClean(printOutput=True)
+            ret = grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"]) and ret
             if ret:
                 cb = git.currentBranch()
                 topic = args["--topic"]
@@ -1138,7 +1138,8 @@ class Publish(resumable.Resumable):
 
         if not args["--nopush"]:
             try:
-                git.push("-u origin HEAD", throwOnFail=True)
+                with utility.cd(repo):
+                    git.push("-u origin HEAD", throwOnFail=True)
             except git.GrapeGitError as e:
                 if e.commError:
                     utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")

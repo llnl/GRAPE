@@ -157,7 +157,11 @@ def bundlecmd(repo='', branch='', args={}):
                 print("Branch %s in %s has diverged from or is ahead of origin, or does not exist. Sync branches before bundling." % (branch, repo)) 
                 continue
             tagname = "%s/%s" % (tagprefix, branch)
-            previousLocation = git.describe("--match '%s' %s" % (describePattern, tagname))
+            try:
+               previousLocation = git.describe("--match '%s' %s" % (describePattern, tagname))
+            except:
+               # If version tags do not exist at the tagname, we cannot determine the starting version.
+               previousLocation = "unknown"
             currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
             if previousLocation.strip() != currentLocation.strip():
                 revlists = " %s..%s" % (tagname, branch)
@@ -262,7 +266,7 @@ def unbundlecmd(repo='', branch='', args={}):
                 print e.cwd
                 print e.gitOutput
                 raise e
-            git.fetch("-u %s %s" % (bundleName, mappings))
+            git.fetch("--tags -u %s %s" % (bundleName, mappings))
     return True        
 
     
