@@ -1,5 +1,21 @@
 
 
+Tue Mar  7 13:16:35 2017 Benjamin T. Liu
+v1.19.12
+Reviewers: David M. Dawson, Peter Robinson
+
+Update publish/review to handle new atlassian message for merged pull requests
+
+
+Fri Mar  3 08:53:24 2017 Benjamin T. Liu
+v1.19.11
+Reviewers: Peter Robinson
+
+Allow newlines in command-line review message
+- \n is converted to a newline
+- \\\\n can be used if \n is actually desired
+
+
 Wed Jan 25 15:39:56 2017 Peter B. Robinson
 v1.19.10
 Reviewers: Ben Liu
