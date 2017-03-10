@@ -265,7 +265,7 @@ class Checkout(option.Option):
                             remove = True
                         if remove:
                             remove = utility.userInput("Are you sure you want to remove %s? When you switch back to the previous branch, you will have to\n"
-                                                       "reclone %s." % (projPrefix, projPrefix), '\n')
+                                                       "reclone %s." % (projPrefix, projPrefix), 'n')
                         if remove:
                             os.chdir(workspaceDir)
                             shutil.rmtree(os.path.join(workspaceDir,projPrefix))
@@ -314,7 +314,7 @@ class Checkout(option.Option):
             else:
                 grapeMenu.menu().applyMenuChoice("pull")
         else:
-            utility.printMsg("Switched to %s.")
+            utility.printMsg("Switched to %s." % branch)
             
         global _skipBranchCreation
         global _createNewBranch
