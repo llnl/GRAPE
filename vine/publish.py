@@ -244,7 +244,7 @@ class Publish(resumable.Resumable):
         self.st_remotes = {}
         self.st_branches = {}
         self.cascadeDict = {}
-        self.doDelete = None
+        self.doDelete = {}
 
     def description(self):
         try:
@@ -931,14 +931,18 @@ class Publish(resumable.Resumable):
         return True
 
     def askWhetherToDelete(self, args):
-        if self.doDelete is None:
-            if args["--deleteTopic"].lower() == "true":
-                self.doDelete = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
-                
+        if "<<doDelete>>" in self.progress:
+            self.doDelete = self.progress["<<doDelete>>"]
+        if args["--deleteTopic"].lower() == "true":
+            self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+        else:
+            self.doDelete[args["--topic"]] = False
+        self.progress["<<doDelete>>"] = self.doDelete
                 
     def deleteTopicBranch(self, args):
         self.askWhetherToDelete(args)
-        if self.doDelete:
+        if self.doDelete[args["--topic"]]:
+            utility.printMsg("Deleting %s" % args["--topic"])
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
@@ -1082,7 +1086,7 @@ class Publish(resumable.Resumable):
             args["<<cascadeMergeStatus>>"] = {}
         status = args["<<cascadeMergeStatus>>"]
         print status
-        wsdir = utility.workspaceDir()    
+        wsdir = utility.workspaceDir()
         if self.cascadeDict:
             # do outer level and nested project cascades
             cascade = self.cascadeDict["outer"]
@@ -1090,23 +1094,22 @@ class Publish(resumable.Resumable):
             repos = [os.path.join(wsdir,r) for r in repos]
             for repo in repos:
                 public = args["--public"]
-                os.chdir(repo)
-                for branch in cascade:
-                    mergeID = "%s_%s_%s" % ("outer", repo, branch)
-                    if not self.performCascade(status, args, mergeID, repo, branch, public): 
-                        return False
+                with utility.cd(repo):
+                    for branch in cascade:
+                        mergeID = "%s_%s_%s" % ("outer", repo, branch)
+                        if not self.performCascade(status, args, mergeID, repo, branch, public): 
+                            return False
                     
             if "submodules" in self.cascadeDict and "<<publishedSubmodules>>" in args:
                 cascade = self.cascadeDict["submodules"]
                 repos = [os.path.join(wsdir,r) for r in args["<<publishedSubmodules>>"]]
                 for repo in repos:
-                    os.chdir(repo)
-                    public = args["--submodulePublic"]
-                    for branch in cascade:
-                        mergeID = "%s_%s_%s" % ("submodules", repo, branch)
-                        if not self.performCascade(status, args, mergeID, repo, branch, public):
-                            return False
-            os.chdir(wsdir)
+                    with utility.cd(repo):
+                        public = args["--submodulePublic"]
+                        for branch in cascade:
+                            mergeID = "%s_%s_%s" % ("submodules", repo, branch)
+                            if not self.performCascade(status, args, mergeID, repo, branch, public):
+                                return False
             
         return True
                  
