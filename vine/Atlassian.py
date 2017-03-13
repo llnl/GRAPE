@@ -9,12 +9,13 @@ import keyring.keyring as keyring
 import getpass
 import time
 import utility
-
+import grapeConfig
+import grapeGit as git
 
 class Atlassian:
-    rzstashURL = "https://rzlc.llnl.gov/stash"
+    rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
 
-    def __init__(self, username=None, url=rzstashURL, verify=True):
+    def __init__(self, username=None, url=rzbitbucketURL, verify=True):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -27,10 +28,10 @@ class Atlassian:
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
-            print("Connected to Stash.")
+            print("Connected to Bitbucket.")
         else:
             self._stash = None
-            print("Could not connect to Stash...")
+            print("Could not connect to Bitbucket...")
 
     def auth(self, service, username, password, verify=True):
         self._userName = username
@@ -67,11 +68,44 @@ class Atlassian:
                 return Project(r, node)
             
         return None
-
+    
+    def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
+        config = grapeConfig.grapeConfig()
+        if isNested:
+            proj = os.path.split(path)[1]
+            nestedProjectURL = config.get("nested-%s" % proj , "url")
+            url = utility.parseSubprojectRemoteURL(nestedProjectURL)
+            urlTokens = url.split('/')
+            proj = urlTokens[-2]
+            repo_name = urlTokens[-1]       
+            # strip off the git extension
+            repo_name = '.'.join(repo_name.split('.')[:-1])
+        elif isSubmodule:
+            fullpath = os.path.abspath(path)
+            wsdir = utility.workspaceDir() + os.path.sep
+            proj = fullpath.split(wsdir)[1]
+            url =  git.config("--get submodule.%s.url" % proj).split('/')
+            proj = url[-2]
+            repo_name = url[-1]
+    
+            # strip off the .git extension
+            repo_name = '.'.join(repo_name.split('.')[:-1])   
+        else:
+            if topLevelRepo is None:
+                topLevelRepo = config.get("repo", "name")
+            if topLevelProject is None:
+                topLevelProject = config.get("project", "name")
+                
+            repo_name = topLevelRepo
+            proj = topLevelProject
+            
+        repo = self.project(proj).repo(repo_name)
+        return repo        
 
 class StashyNode:
-    def __init__(self, node):
+    def __init__(self, node, stashynode):
         self.node = node
+        self.snode = stashynode
 
     def show(self):
         self._show(self.node)
@@ -94,11 +128,21 @@ class StashyNode:
                 self._show(dd, level + 1)
             else:
                 print "  "*level, key, type(val), "???"
+                
+    def get(self, path):
+        response = self.snode._client.get(self.snode.url(path))
+        return response.json()
+    
+    def put(self, path):
+        return self.snode._client.put(self.snode.url(path)).json()
+    
+    def post(self, path):
+        return self.snode._client.post(self.snode.url(path)).json()
 
 
 class Project(StashyNode):
     def __init__(self, proj, node):
-        StashyNode.__init__(self, node)
+        StashyNode.__init__(self, node, proj)
         self.project = proj
 
     def name(self):
@@ -121,7 +165,7 @@ class Project(StashyNode):
 
 class Repo(StashyNode):
     def __init__(self, rpo, node):
-        StashyNode.__init__(self, node)
+        StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
     def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN"):
@@ -149,6 +193,10 @@ class Repo(StashyNode):
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
         
         return PullRequest(stashyRequest,self.repo.pull_requests)
+    
+    
+        
+        
 
 class PullRequest(StashyNode):
     """
@@ -156,8 +204,9 @@ class PullRequest(StashyNode):
     stashy_pull_requests is the stashy object needed to update the pull request.    
     """
     def __init__(self, node, stashy_pull_requests):
-        StashyNode.__init__(self, node)
+        StashyNode.__init__(self, node, stashy_pull_requests[str(node["id"])])
         self._stashy_pull_requests = stashy_pull_requests
+        self._stashy_pull_request = stashy_pull_requests[str(self.node["id"])]
 
     def author(self):
         return self.node["author"]["user"]["name"]
@@ -180,7 +229,7 @@ class PullRequest(StashyNode):
         """
         Returns [(username,bool(approved),displayname)...]
         """
-        #Stash REST API for reviewer definition snippet:
+        #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
         #         "user": {
@@ -195,7 +244,7 @@ class PullRequest(StashyNode):
             approved = reviewer["approved"] 
             displayName = reviewer["user"]["displayName"] 
             if displayName == "":
-               displayName = name 
+                displayName = name 
             ret.append((name, approved, displayName))
         return ret
 
@@ -227,7 +276,7 @@ class PullRequest(StashyNode):
     
     # reviewers is a list of username-approved(bool) pairs
     def update(self, ver, title=None, description=None, reviewers=None): 
-        #Stash REST API for reviewer definition snippet:
+        #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
         #         "user": {
@@ -250,6 +299,14 @@ class PullRequest(StashyNode):
     def __str__(self):
         return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
             "Reviewers: %s\n" % ', '.join(r[0]+" (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers()) + "Description: %s\n" % self.description()
+    
+    def merge(self):
+        canMerge = self._stashy_pull_request.can_merge()
+        if canMerge is True:
+            response = self._stashy_pull_request.merge(version=self.node["version"])
+            return response["state"] == "MERGED"
+        return False
+            
 
 
 if __name__ == "__main__":
@@ -263,21 +320,21 @@ if __name__ == "__main__":
         for reponame in reponames:
             print " REPONAME", reponame
             try:
-               repo = project.repo(reponame)
-               for pull in repo.pullRequests():
-
-                   print "  TITLE:     ", pull.title()
-                   print "  STATE:     ", pull.state()
-                   print "  AUTHOR:    ", pull.author()
-                   print "  DATE:      ", pull.date()
-                   print "  REVIEWERS: ", pull.reviewers()
-                   print "  FROM:      ", pull.fromRef()
-                   print "  TO:        ", pull.toRef()
-                   print "  DESC:      ", pull.description()
-
-                   print 
+                repo = project.repo(reponame)
+                for pull in repo.pullRequests():
+ 
+                    print "  TITLE:     ", pull.title()
+                    print "  STATE:     ", pull.state()
+                    print "  AUTHOR:    ", pull.author()
+                    print "  DATE:      ", pull.date()
+                    print "  REVIEWERS: ", pull.reviewers()
+                    print "  FROM:      ", pull.fromRef()
+                    print "  TO:        ", pull.toRef()
+                    print "  DESC:      ", pull.description()
+ 
+                    print 
             except stashy.errors.NotFoundException:
-               print "  repo not found"
+                print "  repo not found"
 
 
 class TestStashResponse(dict):
@@ -286,7 +343,7 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print ("TESTSTASH: resource %s does not exist" %item)
+            print ("TESTBITBUCKET: resource %s does not exist" %item)
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 
@@ -374,7 +431,7 @@ class TestProject(TestStashResponse):
 class TestStash(TestStashResponse):
 
     def __init__(self):
-        self.url = "https://testStash.grapeTesting.org/stash/"
+        self.url = "https://testBitbucket.grapeTesting.org/bitbucket/"
         self.projects = TestStashResponse(proj1=TestProject("proj1", self.url), proj2=TestProject("proj2", self.url))
         pass
 
@@ -385,7 +442,7 @@ class TestStash(TestStashResponse):
 
 class TestAtlassian:
     """
-    A version of an Atlassian Stash server that is meant to emulate the responses of Stash for testing purposes.
+    A version of an Atlassian Bitbucket server that is meant to emulate the responses of Bitbucket for testing purposes.
 
     """
     def __init__(self, username = None):
@@ -395,7 +452,7 @@ class TestAtlassian:
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to Stash")
+        print("Connected to Bitbucket")
         
     def project(self, name):
         return self.stash.project(name)

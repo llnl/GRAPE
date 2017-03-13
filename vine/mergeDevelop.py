@@ -121,6 +121,10 @@ class MergeDevelop(resumable.Resumable):
         else:
             conflictedFiles = []
 
+        # take note of whether all submodules are currently present, assume user wants to add any new submodules to WS if so
+        activeSubmodulesCheck0 = git.getActiveSubmodules()
+        self.progress["allActive"] = set(git.getAllSubmodules()) == set(git.getActiveSubmodules())
+
         # checking for a consistent workspace before doing a merge
         utility.printMsg("Checking for a consistent workspace before performing merge...")
         ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
@@ -179,6 +183,9 @@ class MergeDevelop(resumable.Resumable):
                     self.continueLocalMerge(args)
                     conflictedFiles = git.conflictedFiles()
 
+
+
+                
         if conflictedFiles:
             self.progress["stopPoint"] = "resolve conflicts"
             self.progress["cwd"] = cwd
@@ -187,7 +194,16 @@ class MergeDevelop(resumable.Resumable):
             return False
         else:
             grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+            
+        # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
+        if self.progress["allActive"]:
+            activeSubmodulesCheck1 = git.getActiveSubmodules()
+            if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
+                utility.printMsg("Updating new submodules using grape uv --allSubmodules")
+                grapeMenu.menu().applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
+        
         return True
+
 
     def mergeSubproject(self, args, subproject, subPublic, subprojects, cwd, isSubmodule=True):
         # if we did this merge in a previous run, don't do it again
@@ -293,8 +309,6 @@ class MergeDevelop(resumable.Resumable):
         if "All conflicts fixed but you are still merging." in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["--public"])
             return True
-        elif git.isWorkingDirectoryClean():
-            return False
         else:
             return False
 

@@ -1,4 +1,4 @@
-import os
+﻿import os
 import subprocess
 import sys
 import ConfigParser
@@ -446,6 +446,8 @@ class MultiRepoCommandLauncher(object):
                 # run the first entry first so that things like logging in to the project's server happen up front            
                 if len(self.repos) > 0:
                     retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
+                    if isinstance(retvals[0], Exception):
+                        retvals[0] = runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0]))
                 if len(self.repos) > 1:            
                     retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
                     
@@ -551,8 +553,8 @@ def workspaceDir(warnIfNotFound = True, throwIfNotFound=True):
     os.chdir(cwd)
     return basedir
 
-def isWorkspaceClean():
-    isClean = git.isWorkingDirectoryClean()
+def isWorkspaceClean(printOutput=False):
+    isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
     activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()
     cwd = os.getcwd()
@@ -560,7 +562,7 @@ def isWorkspaceClean():
         if not isClean:
             break
         os.chdir(os.path.join(base, sub))
-        isClean = isClean and git.isWorkingDirectoryClean()
+        isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
     os.chdir(cwd)
     return isClean
 
@@ -569,6 +571,15 @@ def getActiveSubprojects():
 
 def getModifiedSubprojects():
     return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
+
+def getModifiedInactiveSubmodules(branch1, branch2):
+    modifiedSubs = git.getModifiedSubmodules(branch1=branch1, branch2=branch2)
+    activeSubs = git.getActiveSubmodules()
+    missing = []
+    for sub in modifiedSubs:
+        if sub not in activeSubs:
+            missing.append(sub)
+    return missing
 
 
 # returns the absolute path to the grape executable this file is bundled with
@@ -596,7 +607,6 @@ def parseSubprojectRemoteURL(url):
             pass
         else:
             originURL.append(p)
-
     return '/'.join(originURL)
 
 

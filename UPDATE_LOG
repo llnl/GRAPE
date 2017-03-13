@@ -1,5 +1,110 @@
 
 
+Mon Mar 13 07:53:56 2017 Peter B. Robinson
+v1.20.0
+Reviewers: Ben Liu
+
+Updating master from 1.19.13
+
+
+Wed Mar  8 06:46:10 2017 Peter B. Robinson
+v1.19.13
+Reviewers: Aaron C. Fisher
+
+Fix a formatting issue in a message during checkout.
+
+
+Tue Mar  7 13:16:35 2017 Benjamin T. Liu
+v1.19.12
+Reviewers: David M. Dawson, Peter Robinson
+
+Update publish/review to handle new atlassian message for merged pull requests
+
+
+Fri Mar  3 08:53:24 2017 Benjamin T. Liu
+v1.19.11
+Reviewers: Peter Robinson
+
+Allow newlines in command-line review message
+- \n is converted to a newline
+- \\\\n can be used if \n is actually desired
+
+
+Wed Jan 25 15:39:56 2017 Peter B. Robinson
+v1.19.10
+Reviewers: Ben Liu
+
+Fixes GRP-185.
+
+
+Tue Dec  6 13:43:41 2016 Benjamin T. Liu
+v1.19.9
+Reviewers: Peter Robinson
+
+Bugfixes for bundle
+
+
+Tue Nov 29 16:11:25 2016 Benjamin T. Liu
+v1.19.8
+Reviewers: Peter Robinson
+
+Ensure that tags get unbundled.
+
+
+Tue Nov  8 14:17:30 2016 Peter B. Robinson
+v1.19.7
+Reviewers: Aaron C. Fisher
+
+Adds --noUpdateView and updateView options to grape checkout.
+
+
+Wed Oct 26 16:46:17 2016 Peter B. Robinson
+v1.19.6
+Reviewers: Ben Liu
+
+Fixes an issue where grape publish gets farther than it should when you give it a bad file path.
+
+
+Mon Oct 24 11:09:14 2016 Peter B. Robinson
+v1.19.5
+Reviewers: Aaron C. Fisher, Ben Liu
+
+SUMMARY: Performance and robustness improvements, along with new grape bundle / grape unbundle implementations and server-side merges available during publish. 
+
+DETAILS: 
+Addresses an issue where grape review would crash if your branch modified a submodule that was not present in your workspaces. 
+During grape checkout of a branch that does not yet exist, selecting 'a' will create new branches in parallel. 
+Grape bundle and grape unbundle have been refactored to use parallel infrastructure, and not require submodule level .grapeconfigs. Grape unbundle can now be called once from the top level workspace, and does not need to be called from every repo in the workspace.
+
+
+Thu Oct 13 10:18:19 2016 Peter B. Robinson
+v1.19.4
+Reviewers: Ben Liu
+
+Fixes a bug in isWorkspaceClean checks that relied on old versions of git printing a particular message.
+
+
+Fri Sep 23 14:40:33 2016 Benjamin T. Liu
+v1.19.3
+Reviewers: Peter B. Robinson
+
+Handle Windows and UTF-8 encoding for update description file.
+
+
+Wed Sep 14 16:18:32 2016 Benjamin T. Liu
+v1.19.2
+Reviewers: Emily Ruth Diana, Ben Liu, t
+
+Resolve GRP-150 (branch consistency check), GRP-161 (fix crashes when switching to fewer nested subprojects), and GRP-170 (noSubproject and noSubmodule options for grape foreach)
+
+
+Mon Sep 12 17:13:33 2016 Peter B. Robinson
+v1.19.1
+Reviewers: Peter B. Robinson, n
+
+Fix bug in reviewer list when author is not the publisher
+
+
 Wed Aug 17 13:03:35 2016 Benjamin T. Liu
 v1.17.9
 Reviewers: Tim Dunn, Peter B. Robinson

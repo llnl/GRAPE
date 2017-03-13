@@ -79,7 +79,15 @@ def branchPrefix(branchName):
 
 
 def branchUpToDateWith(branchName, targetBranch):
-    allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+    try:
+        allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+    except GrapeGitError as e:
+        # Don't fail if the only issue is a dangling reference for origin/HEAD.
+        allUpToDateBranches = e.gitOutput
+        allUpToDateBranches = allUpToDateBranches.replace("error: branch 'origin/HEAD' does not point at a commit\n","")
+        allUpToDateBranches = allUpToDateBranches.replace("error: some refs could not be read\n","")
+        if "error: " in allUpToDateBranches:
+            raise e
     allUpToDateBranches = allUpToDateBranches.split("\n")
     upToDate = False
     for b in allUpToDateBranches:
@@ -222,8 +230,14 @@ def getModifiedSubmodules(branch1="", branch2=""):
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
         return [] 
     submodulesString = ' '.join(submodules)
-    modifiedSubmodules = diff("--name-only %s %s -- %s" % 
-                              (branch1, branch2,  submodulesString)).split('\n')
+    try:
+        
+        modifiedSubmodules = diff("--name-only %s %s -- %s" % 
+                                  (branch1, branch2,  submodulesString)).split('\n')
+    except GrapeGitError as e:
+        if "bad revision" in e.gitOutput:
+            utility.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+            return []
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
 
@@ -262,10 +276,13 @@ def hasBranch(b):
     return b in branches
 
 
-def isWorkingDirectoryClean():
-    statusOutput = status("-u")
-    return "nothing to commit" in statusOutput and "working directory clean" in statusOutput and\
-           "conflict" not in statusOutput
+def isWorkingDirectoryClean(printOutput=False):
+    statusOutput = status("-u --porcelain")
+    toRet =  len(statusOutput.strip()) == 0
+    if (printOutput and not toRet):
+        print os.getcwd()+":"
+        print statusOutput
+    return toRet
 
 
 def log(args=""):

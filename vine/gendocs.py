@@ -96,8 +96,8 @@ This assumes you have a git repository set up, have at least a rudimentary knowl
 you have an idea of how you want to do your branching (single trunk, gitflow, or some other weird thing),
 and you are ready to distribute your well thought-out process using grape.
 Much of grape also assumes you're working in a clone of a repo, with a remote called `origin`.
-This tutorial assumes you're developing in a project called foo hosted at a stash instance
-at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk development model, with both a
+This tutorial assumes you're developing in a project called foo hosted at a bitbucket instance
+at https://bitbucket.grape.tutorial.org, and that you're planning to use a two-trunk development model, with both a
 `develop` branch and a `master` branch.
 
 ### Creating your .grapeconfig file
@@ -115,13 +115,13 @@ Let's open up that .grapeconfig and edit some config options so that they make s
     sshbase = ssh://git@not.yet.configured
 
 For repo.name, put in your project name. Fill out your default url, (either ssh or https), as well as
-the https base url and stash url:
+the https base url and bitbucket url:
 
     [repo]
     name = foo
-    url = https://stash.grape.tutorial.org/scm/foo/foo.git
-    httpsbase = https://stash.grape.tutorial.org/scm/
-    sshbase = ssh://git@stash.grape.tutorial.org:1111/foo
+    url = https://bitbucket.grape.tutorial.org/scm/foo/foo.git
+    httpsbase = https://bitbucket.grape.tutorial.org/scm/
+    sshbase = ssh://git@bitbucket.grape.tutorial.org:1111/foo
 
 Take a look at the `[flow]` section. This is probably one of the most important sections in your `.grapeconfig` file,
 as it defines your project's branching model.
@@ -210,7 +210,7 @@ If you keep a running change log, you'll want to take a look at the grape publis
 updatelog, logskipfirstlines, and logentryheader. If you send email notifications, check out all the documentation
 for all the email-related options as well.
 
-If you manage your code reviews using Pull Requests on Stash, and you want to enforce the existence of approved pull
+If you manage your code reviews using Pull Requests on Bitbucket (formerly known as Stash), and you want to enforce the existence of approved pull
 requests for each branch being published, leave `useStash` as True. Otherwise, set it to False.
 
 What about that `tickversion` option? Set it to True if you want to auto-increment your project's version with grape.

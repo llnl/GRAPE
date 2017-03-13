@@ -6,15 +6,17 @@ import grapeConfig
 
 class ForEach(option.Option):
     """
-    Executes a command in each project in this workspace (including the outer level project). 
+    Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] [--currentCWD] <cmd> 
+    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd> 
 
     Options:
-    --quiet        Quiets git's printout of "Entering submodule..."
-    --noTopLevel   Does not call <cmd> in the workspace directory, only in submodules and subprojects. 
-    --currentCWD   grape foreach normally starts work from the workspace top level directory. This flag 
-                   starts work from the current working directory. 
+    --quiet          Quiets git's printout of "Entering submodule..."
+    --noTopLevel     Does not call <cmd> in the workspace directory.
+    --noSubprojects  Does not call <cmd> in any grape nested subprojects.
+    --noSubmodules   Does not call <cmd> in any git submodules. 
+    --currentCWD     grape foreach normally starts work from the workspace top level directory. This flag 
+                     starts work from the current working directory.
 
     Arguments:
     <cmd>        The cmd to execute. 
@@ -28,36 +30,32 @@ class ForEach(option.Option):
     def description(self):
         return "runs a command in all projects in this workspace"
 
-
-    def execute(self,args):
-        quiet = args["--quiet"]
-        quiet = "--quiet" if quiet else ""
-        cmd = args["<cmd>"]
-
-        foreachcmd = "%s %s" % (quiet,cmd)
-        cwd = os.getcwd() if args["--currentCWD"] else utility.workspaceDir()
-        os.chdir(cwd)
-        # ensure cwd is the top level of the current git repository.
-        # this will be the workspaceDir if --currentCWD was not set, or the root
-        # of the project the user is in if --currentCWD is set. 
-        cwd = git.baseDir()
-        os.chdir(cwd)
-        for sub in git.getActiveSubmodules():
-            if not quiet:
-                utility.printMsg("Entering %s..." % sub) 
-            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,sub), verbose=-1)
-        
-        # execute in nested subprojects
-        for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(cwd):
-            if not quiet:
-                utility.printMsg("Entering %s..." % proj)
-            os.chdir(os.path.join(cwd, proj))
-            utility.executeSubProcess(cmd, workingDirectory=os.path.join(cwd,proj), verbose=-1)
-        if not args["--noTopLevel"]:
-            utility.executeSubProcess(cmd,cwd)
-        os.chdir(cwd)
-        return True
     
+    def execute(self,args):
+        cmd = args["<cmd>"]
+        retvals = utility.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"], 
+                                                   skipSubmodules= args["--noSubmodules"], 
+                                                   runInSubprojects= not args["--noSubprojects"], globalArgs = args).launchFromWorkspaceDir(handleMRE=handleForeachMRE)
+        return retvals
+
     def setDefaultConfig(self,config): 
         pass
+
+def foreach(repo='', branch='', args={}):
+    cmd = args["<cmd>"]
+    with utility.cd(repo): 
+        utility.executeSubProcess(cmd, repo, verbose = -1)
+    return True            
+
+def handleForeachMRE(mre):
+    for e1 in mre.exceptions():
+        try:
+            raise e1
+        except git.GrapeGitError as e:
+            utility.printMsg("Foreach failed.")
+            print e.gitCommand
+            print e.cwd
+            print e.gitOutput
+            return False            
+
     

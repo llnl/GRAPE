@@ -57,8 +57,8 @@ This assumes you have a git repository set up, have at least a rudimentary knowl
 you have an idea of how you want to do your branching (single trunk, gitflow, or some other weird thing),
 and you are ready to distribute your well thought-out process using grape.
 Much of grape also assumes you're working in a clone of a repo, with a remote called `origin`.
-This tutorial assumes you're developing in a project called foo hosted at a stash instance
-at https://stash.grape.tutorial.org, and that you're planning to use a two-trunk development model, with both a
+This tutorial assumes you're developing in a project called foo hosted at a bitbucket instance
+at https://bitbucket.grape.tutorial.org, and that you're planning to use a two-trunk development model, with both a
 `develop` branch and a `master` branch.
 
 ### Creating your .grapeconfig file
@@ -76,13 +76,13 @@ Let's open up that .grapeconfig and edit some config options so that they make s
     sshbase = ssh://git@not.yet.configured
 
 For repo.name, put in your project name. Fill out your default url, (either ssh or https), as well as
-the https base url and stash url:
+the https base url and bitbucket url:
 
     [repo]
     name = foo
-    url = https://stash.grape.tutorial.org/scm/foo/foo.git
-    httpsbase = https://stash.grape.tutorial.org/scm/
-    sshbase = ssh://git@stash.grape.tutorial.org:1111/foo
+    url = https://bitbucket.grape.tutorial.org/scm/foo/foo.git
+    httpsbase = https://bitbucket.grape.tutorial.org/scm/
+    sshbase = ssh://git@bitbucket.grape.tutorial.org:1111/foo
 
 Take a look at the `[flow]` section. This is probably one of the most important sections in your `.grapeconfig` file,
 as it defines your project's branching model.
@@ -173,7 +173,7 @@ If you keep a running change log, you'll want to take a look at the grape publis
 updatelog, logskipfirstlines, and logentryheader. If you send email notifications, check out all the documentation
 for all the email-related options as well.
 
-If you manage your code reviews using Pull Requests on Stash, and you want to enforce the existence of approved pull
+If you manage your code reviews using Pull Requests on Bitbucket (formerly known as Stash), and you want to enforce the existence of approved pull
 requests for each branch being published, leave `useStash` as True. Otherwise, set it to False.
 
 What about that `tickversion` option? Set it to True if you want to auto-increment your project's version with grape.
@@ -435,6 +435,7 @@ options are at least listed below.
                     [--name=<config.repo.name>]
                     [--outfile=<fname>]
                     [--bundleTags=<branchToTagPatternMapping>]
+                    [--submoduleBranches=<config.patch.submodulebranches>]
 
 
     Options:
@@ -449,19 +450,24 @@ options are at least listed below.
                                         [default: .grapeconfig.repo.name]
        --outfile=<fname>                Name of the output bundle file. Default behavior is to
                                         use branch names, the repo name, and output of git-describe
-                                        to construct a name. Note that the default file name carrys
+                                        to construct a name. Note that the default file name carries
                                         semantics for grape unbundle in determining which branches to
                                         update.
        --bundleTags=<mapping>           A list of branch:tagPattern tags to bundle. Note that a broadly defined tag
                                         pattern may yield larger bundle files than you might expect.
                                         [default: .grapeconfig.patch.branchToTagPatternMapping]
+       --submoduleBranches=<list>       space delimited list of submodule branches to bundle.
+                                        [default: .grapeconfig.patch.submodulebranches]
+
 
     .grapeConfig Defaults:
 
     [patch]
-    branches = master develop
+    branches = master
     tagprefix = patched
     describePattern = v*
+    submodulebranches = master
+    
 
     [repo]
     name = None
@@ -474,15 +480,18 @@ options are at least listed below.
 
 
     Usage:
-       grape-unbundle <grapebundlefile>... [--branchMappings=<config.patch.branchMappings>]
-
-    Arguments:
-        <grapebundlefile>             The name(s) of the grape bundle file(s) to unbundle.
+       grape-unbundle  [--branchMappings=<config.patch.branchMappings>]
+                       [--submoduleBranchMappings=<config.patch.submoduleBranchMappings>]
+                       [--noRecurse]
 
     Options:
         --branchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
                                       objects from the bundle file.
                                       [default: .grapeconfig.patch.branchMappings]
+        --submoduleBranchMappings=<pairlist>   the branch mappings to pass to git fetch to unpack
+                                      objects from the bundle file.
+                                      [default: .grapeconfig.patch.submodulebranchmappings]
+        --noRecurse                   do not recurse into submodules and nested subprojects
 
     
 ## status
@@ -522,13 +531,16 @@ options are at least listed below.
 
     grape checkout
     
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] <branch> 
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
 
     Options:
-    -b             Create the branch off of the current HEAD in each project.
-    --sync=<bool>  Take extra steps to ensure the branch you check out is up to date with origin,
-                   either by pushing or pulling the remote tracking branch.
-                   [default: .grapeconfig.post-checkout.syncWithOrigin]
+    -b                  Create the branch off of the current HEAD in each project.
+    --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
+                        either by pushing or pulling the remote tracking branch.
+                        [default: .grapeconfig.post-checkout.syncWithOrigin]
+    --updateView        If your submodules / nested projects change, change your workspace to match the changes.
+                        Warning - setting this may cause you to lose unpushed work in nested subprojects.
+    --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
 
 
     Arguments:
@@ -598,22 +610,23 @@ options are at least listed below.
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
-                         [--user=<StashUserName>]
-                         [--stashURL=<httpsURL>]
+                         [--user=<BitbucketUserName>]
+                         [--bitbucketURL=<httpsURL>]
                          [--verifySSL=<bool>]
-                         [--project=<StashProjectKey>]
-                         [--repo=<StashRepoName>]
+                         [--project=<BitbucketProjectKey>]
+                         [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
                          [--noReview]
-                         [--useStash=<bool>]
+                         [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
+                         [--remoteMerge]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<StashUserName>] [--public=<public>] [--noReview]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -678,19 +691,19 @@ options are at least listed below.
                             [default: .grapeconfig.publish.tickVersion]
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Stash username.
-    --stashURL=<url>        Your Stash URL, e.g. https://rzlc.llnl.gov/stash .
+    --user=<user>           Your Bitbucket username.
+    --bitbucketURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
                             [default: .grapeconfig.project.stashURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
-    --project=<project>     Your Stash Project. See grape-review for more details.
+    --project=<project>     Your Bitbucket Project. See grape-review for more details.
                             [default: .grapeconfig.project.name]
-    --repo=<repo>           Your Stash repo. See grape-review for more details.
+    --repo=<repo>           Your Bitbucket repo. See grape-review for more details.
                             [default: .grapeconfig.repo.name]
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests. Overrides --useStash.
-    --useStash=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                             if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -721,6 +734,7 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailMaxFiles]
     --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
+    --remoteMerge           Perform the merge using the Bitbucket REST API. 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -777,15 +791,17 @@ options are at least listed below.
     
 ## foreach
 
-    Executes a command in each project in this workspace (including the outer level project). 
+    Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] [--currentCWD] <cmd> 
+    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd> 
 
     Options:
-    --quiet        Quiets git's printout of "Entering submodule..."
-    --noTopLevel   Does not call <cmd> in the workspace directory, only in submodules and subprojects. 
-    --currentCWD   grape foreach normally starts work from the workspace top level directory. This flag 
-                   starts work from the current working directory. 
+    --quiet          Quiets git's printout of "Entering submodule..."
+    --noTopLevel     Does not call <cmd> in the workspace directory.
+    --noSubprojects  Does not call <cmd> in any grape nested subprojects.
+    --noSubmodules   Does not call <cmd> in any git submodules. 
+    --currentCWD     grape foreach normally starts work from the workspace top level directory. This flag 
+                     starts work from the current working directory.
 
     Arguments:
     <cmd>        The cmd to execute. 
@@ -922,7 +938,7 @@ options are at least listed below.
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
-                        [--stashURL=<url>]
+                        [--bitbucketURL=<url>]
                         [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
@@ -943,7 +959,7 @@ options are at least listed below.
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
-        --user=<userName>           Your Stash user name.
+        --user=<userName>           Your Bitbucket user name.
         --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
@@ -951,22 +967,22 @@ options are at least listed below.
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --stashURL=<url>            The stash url, e.g. https://rzlc.llnl.gov/stash. 
+        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket. 
                                     [default: .grapeconfig.project.stashURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
-        --project=<prj>             The project key part of the stash url, e.g. the "GRP" in
-                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+        --project=<prj>             The project key part of the bitbucket url, e.g. the "GRP" in
+                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repo name part of the stash url, e.g. the "grape" in
-                                    https://rzlc.llnl.gov/stash/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The repo name part of the bitbucket url, e.g. the "grape" in
+                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the 
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true. 
         --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Stash
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket 
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.

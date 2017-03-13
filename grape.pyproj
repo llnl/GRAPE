@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <SchemaVersion>2.0</SchemaVersion>
@@ -15,7 +15,7 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>pull</CommandLineArguments>
+    <CommandLineArguments>push</CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -77,17 +77,14 @@
     <Compile Include="vine\clone.py" />
     <Compile Include="vine\config.py" />
     <Compile Include="vine\deleteBranch.py" />
-    <Compile Include="vine\feature.py" />
     <Compile Include="vine\gitflowHelp.py" />
     <Compile Include="vine\grapeConfig.py" />
     <Compile Include="vine\grapeGit.py" />
     <Compile Include="vine\grapeMenu.py" />
-    <Compile Include="vine\hotfix.py" />
     <Compile Include="vine\merge.py" />
     <Compile Include="vine\mergeAbort.py" />
     <Compile Include="vine\mergeDevelop.py" />
     <Compile Include="vine\mergeRemote.py" />
-    <Compile Include="vine\minorRelease.py" />
     <Compile Include="vine\newWorkingTree.py" />
     <Compile Include="vine\option.py" />
     <Compile Include="vine\p4Export.py" />
