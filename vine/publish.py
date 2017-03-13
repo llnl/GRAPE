@@ -51,6 +51,7 @@ class Publish(resumable.Resumable):
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
+                         [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
                          [--bitbucketURL=<httpsURL>]
                          [--verifySSL=<bool>]
@@ -130,6 +131,8 @@ class Publish(resumable.Resumable):
                             [default: .grapeconfig.publish.logEntryHeader]
     --tickVersion=<bool>    Tick a version number as a part of this publish action.
                             [default: .grapeconfig.publish.tickVersion]
+    --tickOnCascade=<slot>  Tick the <slot> version number when performing a cascade.
+                            Default behavior governed by the flow.topicCascadeTick mapping. 
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket username.
@@ -233,6 +236,8 @@ class Publish(resumable.Resumable):
         config.set('publish', 'emailSendTo', 'user.list@company.com')
         config.set('publish', 'emailSubject', '<public> updated to <version>')
         config.set('publish', 'emailMaxFiles', '100')
+        # tick on cascade behavior
+        config.set("flow","topicCascadeTick","?:0")
 
     def __init__(self):
         super(Publish, self).__init__()
@@ -300,6 +305,8 @@ class Publish(resumable.Resumable):
                 args["--tickVersion"] = False
             else:
                 args["--tickVersion"] = True
+        if  args["--tickOnCascade"] is None:
+            args["--tickOnCascade"] = int(config.getMapping("flow","topicCascadeTick")[args["--topic"]])
 
     def abort(self, args):
         #undo any commits done since we first started
@@ -1049,10 +1056,12 @@ class Publish(resumable.Resumable):
             return True
         if status[mergeID] == "READY": 
             git.checkout(branch)
-        if not status[mergeID] == "MERGING":
+            status[mergeID] = "SWITCHED"
+        if status[mergeID] == "SWITCHED":
             status[mergeID] = "MERGING"
             try:
                 git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
+                status[mergeID] = "MERGED"
             except git.GrapeGitError as e: 
                 if "conflict" in e.gitOutput.lower():
                     utility.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
@@ -1060,21 +1069,24 @@ class Publish(resumable.Resumable):
                                      "Once done, please run grape publish --continue ."% (public, branch, repo))
                 return False
                     
-        elif status[mergeID] == "MERGING":
+        if status[mergeID] == "MERGING":
             clean = self.testForCleanWorkspace(args)
             if clean: 
                 utility.printMsg("Resuming with cascades...")
+                status[mergeID] = "MERGED"
             if not clean: 
                 utility.printMsg("Workspace not clean after resuming from a cascade.\n"
                                  "Please commit your merge resolution or otherwise clean up your workspace.")
                 return False
-        else:
-            # fall through
-            pass
-        status[mergeID] = "MERGED"
-        public = branch 
-        git.push("origin %s" % branch)
-        status[mergeID] = "DONE"
+        if status[mergeID] == "MERGED":
+            public = branch 
+            git.push("origin %s" % branch)
+            status[mergeID] = "PUSHED"
+        if status[mergeID] == "PUSHED":
+            if args["--tickOnCascade"] > 0:
+                grapeMenu.menu().applyMenuChoice("version",["tick", "--tag","--slot=%i"%args["--tickOnCascade"]])
+                git.push("--tags origin")
+            status[mergeID] = "DONE"
         return True
 
     def performCascades(self, args):
