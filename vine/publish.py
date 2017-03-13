@@ -1042,7 +1042,7 @@ class Publish(resumable.Resumable):
             self.cascadeDict["outer"] = args["--cascade"]
             args["<<cascadeDict>>"] = self.cascadeDict
 
-    def performCascade(self, args, status,mergeID,repo, branch, public):
+    def performCascade(self, status,args,mergeID,repo, branch, public):
         if not mergeID in status:
             status[mergeID] = "READY"
         if status[mergeID] == "DONE":
@@ -1085,7 +1085,6 @@ class Publish(resumable.Resumable):
         if "<<cascadeMergeStatus>>" not in args:
             args["<<cascadeMergeStatus>>"] = {}
         status = args["<<cascadeMergeStatus>>"]
-        print status
         wsdir = utility.workspaceDir()
         if self.cascadeDict:
             # do outer level and nested project cascades
@@ -1327,7 +1326,7 @@ class Publish(resumable.Resumable):
                 if proceed:
                     squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        print("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
+                        utility.printMsg("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
                                                                               self.st_remotes[st], self.st_branches[st]))
 
                         try:
