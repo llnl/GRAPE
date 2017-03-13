@@ -1083,7 +1083,7 @@ class Publish(resumable.Resumable):
             git.push("origin %s" % branch)
             status[mergeID] = "PUSHED"
         if status[mergeID] == "PUSHED":
-            if args["--tickOnCascade"] > 0:
+            if "outer" in mergeID and args["--tickOnCascade"] > 0:
                 grapeMenu.menu().applyMenuChoice("version",["tick", "--tag","--slot=%i"%args["--tickOnCascade"]])
                 git.push("--tags origin")
             status[mergeID] = "DONE"
