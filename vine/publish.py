@@ -118,7 +118,7 @@ class Publish(resumable.Resumable):
     --postpublishDir=<str>  The directory (relative to the workspace root directory) to execute the post-publish
                             cmds in.
                             [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
     --updateLog=<file>      The log file to update with the commit message for this branch.
                             [default: .grapeconfig.publish.updateLog]
@@ -534,9 +534,6 @@ class Publish(resumable.Resumable):
         return True
 
     def verifyCompletedReview(self, args):
-        # DEBUGGING
-        print self.progress
-        self.askWhetherToDelete(args)
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
