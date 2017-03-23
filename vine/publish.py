@@ -534,6 +534,7 @@ class Publish(resumable.Resumable):
         return True
 
     def verifyCompletedReview(self, args):
+        # DEBUGGING
         print self.progress
         self.askWhetherToDelete(args)
         if args["--noReview"]:
@@ -938,10 +939,9 @@ class Publish(resumable.Resumable):
     def askWhetherToDelete(self, args):
         if "<<doDelete>>" in self.progress:
             self.doDelete = self.progress["<<doDelete>>"]
-        if args["--deleteTopic"].lower() == "true":
-            self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
-        else:
-            self.doDelete[args["--topic"]] = False
+        if self.doDelete is None:
+            if args["--deleteTopic"].lower() == "true":
+               self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
         self.progress["<<doDelete>>"] = self.doDelete
                 
     def deleteTopicBranch(self, args):
