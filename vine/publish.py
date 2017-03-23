@@ -461,7 +461,6 @@ class Publish(resumable.Resumable):
                                                                               "version number")
 
     def ensureReview(self, args):
-        print self.progress
         return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
 
@@ -535,6 +534,7 @@ class Publish(resumable.Resumable):
         return True
 
     def verifyCompletedReview(self, args):
+        print self.progress
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
