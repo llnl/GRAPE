@@ -461,6 +461,7 @@ class Publish(resumable.Resumable):
                                                                               "version number")
 
     def ensureReview(self, args):
+        print self.progress
         return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
 
