@@ -535,6 +535,7 @@ class Publish(resumable.Resumable):
 
     def verifyCompletedReview(self, args):
         print self.progress
+        askWhetherToDelete(args)
         if args["--noReview"]:
             utility.printMsg("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
