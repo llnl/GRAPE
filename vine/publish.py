@@ -744,7 +744,10 @@ class Publish(resumable.Resumable):
             atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
-            commitMsg = pullRequest.description().splitlines(True)+['\n']
+            if pullRequest:
+               commitMsg = pullRequest.description().splitlines(True)+['\n']
+            else:
+               commitMsg = ""
 
         # this will be used for the actual merge commit message.
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
