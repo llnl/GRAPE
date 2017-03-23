@@ -939,7 +939,7 @@ class Publish(resumable.Resumable):
     def askWhetherToDelete(self, args):
         if "<<doDelete>>" in self.progress:
             self.doDelete = self.progress["<<doDelete>>"]
-        if self.doDelete is None:
+        if not self.doDelete:
             if args["--deleteTopic"].lower() == "true":
                self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
         self.progress["<<doDelete>>"] = self.doDelete
