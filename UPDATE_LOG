@@ -1,5 +1,14 @@
 
 
+Fri Mar 24 09:24:30 2017 Benjamin T. Liu
+v1.21.1
+Reviewers: David M. Dawson
+
+Remove extraneous query for branch deletion.
+Clarify meaning of --deleteTopic
+Branch deletion logic was changed during merge into master
+
+
 Mon Mar 13 07:53:56 2017 Peter B. Robinson
 v1.20.0
 Reviewers: Ben Liu
