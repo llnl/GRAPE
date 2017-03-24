@@ -939,6 +939,8 @@ class Publish(resumable.Resumable):
         if not self.doDelete:
             if args["--deleteTopic"].lower() == "true":
                self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+            else:
+               self.doDelete[args["--topic"]] = False
         self.progress["<<doDelete>>"] = self.doDelete
                 
     def deleteTopicBranch(self, args):
