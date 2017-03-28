@@ -87,7 +87,7 @@ def handleCheckoutMRE(mre):
                 else:
                     raise e
             
-    if _createNewBranch:
+    if len(newBranchReposArgTuples) > 0:
         utility.MultiRepoCommandLauncher(createNewBranches, listOfRepoBranchArgTuples=newBranchReposArgTuples).launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
 def createNewBranches(repo='', branch='', args={}):
