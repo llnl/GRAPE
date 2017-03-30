@@ -139,6 +139,10 @@ class Review(option.Option):
         if not branch:
             branch = git.currentBranch()
 
+        # make sure we are in the outer level repo before we push
+        wsDir = utility.workspaceDir()
+        os.chdir(wsDir)
+
         #ensure branch is pushed
         utility.printMsg("Pushing %s to bitbucket..." % branch)
         git.push("origin %s" % branch)
@@ -179,10 +183,6 @@ class Review(option.Option):
             descr = self.parseDescriptionArgs(args)
             reviewers = self.parseReviewerArgs(args)
             
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
-
-
         ##  Submodule Repos
         missing = utility.getModifiedInactiveSubmodules(target_branch, branch)
         if missing:
@@ -295,7 +295,6 @@ def getReposPullRequestDescription(repo, branch, target_branch, args):
         descr = request.description()
     return descr
 
-@staticmethod
 def pullRequestAlreadyMerged(errorMessage):
    if "already up-to-date with branch" in errorMessage:
       return True
@@ -323,7 +322,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
-                if not pullRequestAlreadyMergedError(e.data["errors"][0]["message"]):
+                if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
             utility.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
@@ -374,7 +373,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 print("BITBUCKET: %s" % e.data)
-                if not pullRequestAlreadyMergedError(e.data["errors"][0]["message"]):
+                if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
 
         else:
