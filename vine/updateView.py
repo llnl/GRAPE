@@ -280,7 +280,11 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
             return
 
         if git.hasBranch(branch):
-                git.fetch("origin", "%s:%s" % (branch, branch))
+            git.fetch("origin", "%s:%s" % (branch, branch))
+        else:
+            public = grapeConfig.grapeConfig().getPublicBranchFor(branch)
+            git.checkout(public)
+            utility.printMsg("Branch %s does not exist in %s, switching to %s" % (branch, repo, public))
 
 def cleanupPush(repo='', branch='', args='none'):
     with utility.cd(repo):
