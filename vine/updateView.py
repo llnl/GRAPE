@@ -274,17 +274,22 @@ class UpdateView(option.Option):
 def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
     utility.printMsg( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
     with utility.cd(repo):
-        git.fetch()
+        # attempt to fetch the requested branch
+        try:
+            git.fetch("origin", "%s:%s" % (branch, branch))
+        except:
+            # the branch may not exist, but this is ok
+            pass
         
         if git.currentBranch() == branch:
             return
 
-        if git.hasBranch(branch):
-            git.fetch("origin", "%s:%s" % (branch, branch))
-        else:
+        if not git.hasBranch(branch):
+            # switch to corresponding public branch if the branch does not exist
             public = grapeConfig.grapeConfig().getPublicBranchFor(branch)
-            git.checkout(public)
             utility.printMsg("Branch %s does not exist in %s, switching to %s" % (branch, repo, public))
+            git.fetch("origin", "%s:%s" % (public, public))
+            git.checkout(public)
 
 def cleanupPush(repo='', branch='', args='none'):
     with utility.cd(repo):
