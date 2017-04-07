@@ -1,3 +1,15 @@
+
+
+Fri Apr  7 15:38:20 2017 Benjamin T. Liu
+v1.21.4
+Reviewers: Albert L. Nichols III, David M. Dawson
+
+Bugfix for issue with checkout/uv of submodules that have never fetched the requested branch.
+This issue occurred when trying to get ale3d on a fresh clone if the default branch for the submodule was something else
+
+Also detach from the public branch before querying for creation.
+
+Fix fetches in updateView and checkout to handle new default fetch in git.
 Thu Mar 30 15:36:59 2017 -0700 Benjamin T. Liu
 v1.21.3
 - Switch to corresponding public branch if branch not found in subproject during uv
