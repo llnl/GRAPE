@@ -359,7 +359,8 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
         launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
-    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, sync])
+    # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
+    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, False])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
     return

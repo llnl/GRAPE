@@ -13,7 +13,13 @@ def handledCheckout(repo = '', branch = 'master', args = []):
     sync = args[1]
     with utility.cd(repo):
         if sync:
-            git.fetch()
+           # attempt to fetch the requested branch
+           try:
+               git.fetch("origin", "%s:%s" % (branch, branch))
+           except:
+               # the branch may not exist, but ignore the exception
+               # and allow the checkout to throw the exception.
+               pass
         git.checkout(checkoutargs + ' ' + branch)
         utility.printMsg("Checked out %s in %s" % (branch, repo))
         
