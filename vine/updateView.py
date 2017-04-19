@@ -28,6 +28,8 @@ class UpdateView(option.Option):
         --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
         --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
                                 either by pushing or pulling the remote tracking branch.
+                                This will also checkout the public branch in a headless state prior to offering to create
+                                a new branch (in repositories where the current branch does not exist).
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]          
 
     """
@@ -274,17 +276,23 @@ class UpdateView(option.Option):
 def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
     utility.printMsg( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
     with utility.cd(repo):
-        git.fetch()
+        # attempt to fetch the requested branch
+        try:
+            git.fetch("origin", "%s:%s" % (branch, branch))
+        except:
+            # the branch may not exist, but this is ok
+            pass
         
         if git.currentBranch() == branch:
             return
 
-        if git.hasBranch(branch):
-            git.fetch("origin", "%s:%s" % (branch, branch))
-        else:
+        if not git.hasBranch(branch):
+            # switch to corresponding public branch if the branch does not exist
             public = grapeConfig.grapeConfig().getPublicBranchFor(branch)
+            utility.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
+            git.fetch("origin", "%s:%s" % (public, public))
             git.checkout(public)
-            utility.printMsg("Branch %s does not exist in %s, switching to %s" % (branch, repo, public))
+            git.checkout("--detach HEAD")
 
 def cleanupPush(repo='', branch='', args='none'):
     with utility.cd(repo):
@@ -351,7 +359,8 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
         launcher = utility.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
-    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, sync])
+    # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
+    launcher = utility.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, False])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
     return
