@@ -1,5 +1,19 @@
 
 
+Tue May  9 11:21:43 2017 Benjamin T. Liu
+v1.20.4
+Reviewers: David M. Dawson
+
+Synchronize master with develop
+- Prepend grape to python path to ensure requests is imported correctly
+- Fix grape bundle for case where bundled tags are missing
+- Fix grape status to properly detect if a nested subproject is not on a user branch
+- Bugfix for issue with checkout/uv of submodules that have never fetched the requested branch
+- Detach from the public branch before querying for creation
+- Remove extraneous query for branch deletion.
+- Clarify meaning of --deleteTopic
+
+
 Wed Apr 19 09:22:26 2017 Benjamin T. Liu
 v1.20.3
 Reviewers: David M. Dawson
