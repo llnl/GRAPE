@@ -1,9 +1,9 @@
-import sys
+﻿import sys
 import os
 filedir = os.path.dirname(os.path.realpath(__file__))
 grapedir = os.path.join(filedir, "..")
 if not grapedir in sys.path:
-    sys.path.append(grapedir)
+    sys.path.insert(0, grapedir)
 import stashy.stashy as stashy
 import keyring.keyring as keyring
 import getpass
@@ -83,7 +83,7 @@ class Atlassian:
         elif isSubmodule:
             fullpath = os.path.abspath(path)
             wsdir = utility.workspaceDir() + os.path.sep
-            proj = fullpath.split(wsdir)[1]
+            proj = fullpath.split(wsdir)[1].replace("\\","/")
             url =  git.config("--get submodule.%s.url" % proj).split('/')
             proj = url[-2]
             repo_name = url[-1]

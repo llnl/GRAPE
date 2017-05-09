@@ -164,7 +164,12 @@ def bundlecmd(repo='', branch='', args={}):
                previousLocation = "unknown"
             currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
             if previousLocation.strip() != currentLocation.strip():
-                revlists = " %s..%s" % (tagname, branch)
+                try:
+                    git.shortSHA(tagname)
+                    revlists = " %s..%s" % (tagname, branch)
+                except:
+                    utility.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
+                    revlists = " %s" % (branch)
                 bundlename = args["--outfile"]
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,

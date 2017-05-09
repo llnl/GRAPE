@@ -6,7 +6,7 @@ import sys
 
 
 if not ".." in sys.path:
-    sys.path.append("..")
+    sys.path.insert(0, "..")
 import testGrape
 from vine import grapeGit as git
 from vine import grapeMenu

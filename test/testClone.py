@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import testGrape
 if not ".." in sys.path:
-    sys.path.append( ".." )
+    sys.path.insert(0, "..")
 from vine import grapeMenu, clone, grapeGit as git
 
 class TestClone(testGrape.TestGrape):

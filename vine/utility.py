@@ -12,7 +12,7 @@ import grapeConfig
 
 toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
 if toplevel not in sys.path:
-    sys.path.append(toplevel)
+    sys.path.insert(0, toplevel)
 from docopt.docopt import docopt
 from docopt.docopt import Dict as docoptDict
 
