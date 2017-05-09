@@ -29,7 +29,7 @@ class Test(option.Option):
     def execute(self, args):
         testDir = os.path.join(utility.grapeDir(), "test")
         if not testDir in sys.path:
-            sys.path.append(testDir)
+            sys.path.insert(0, testDir)
         import testGrape
         good = testGrape.main(args["<suite>"], debug = args["--debug"])
         if not good:
