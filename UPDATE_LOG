@@ -1,5 +1,13 @@
 
 
+Tue May  9 09:22:54 2017 Benjamin T. Liu
+v1.21.6
+Reviewers: David M. Dawson
+
+Prepend grape to python path to ensure requests is imported correctly
+- Affects atd and offsite build scripts
+
+
 Wed Apr 26 09:10:04 2017 Benjamin T. Liu
 v1.21.5
 Reviewers: David M. Dawson
