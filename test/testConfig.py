@@ -1,7 +1,7 @@
 import os, sys, StringIO, unittest
 import testGrape
 if not ".." in sys.path:
-    sys.path.append( ".." )
+    sys.path.insert(0, "..")
 from vine import grapeMenu, utility, grapeGit as git, grapeConfig
 
 class TestConfig(testGrape.TestGrape):

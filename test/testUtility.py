@@ -2,7 +2,7 @@ import unittest
 import testGrape
 import sys
 if not ".." in sys.path:
-    sys.path.append( ".." )
+    sys.path.insert(0, "..")
 from vine import utility
 from vine import grapeGit as git
 

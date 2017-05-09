@@ -2,7 +2,7 @@ import os
 import sys
 import testGrape
 if not ".." in sys.path:
-    sys.path.append( ".." )
+    sys.path.insert(0, "..")
 from vine import grapeMenu
 
 class TestBranches(testGrape.TestGrape):

@@ -3,7 +3,7 @@ import testGrape
 import os
 
 if not ".." in sys.path:
-    sys.path.append("..")
+    sys.path.insert(0, "..")
 from vine import grapeMenu
 
 
