@@ -1,5 +1,12 @@
 
 
+Thu May 11 13:19:44 2017 Benjamin T. Liu
+v1.20.5
+Reviewers: David M. Dawson
+
+Fix error in uv due to attempting to fetch a public branch when already on the branch
+
+
 Tue May  9 11:21:43 2017 Benjamin T. Liu
 v1.20.4
 Reviewers: David M. Dawson
