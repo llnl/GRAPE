@@ -292,6 +292,7 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
             utility.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
             git.fetch("origin", "%s:%s" % (public, public))
             git.checkout(public)
+            git.pull("origin %s" % (public))
             git.checkout("--detach HEAD")
 
 def cleanupPush(repo='', branch='', args='none'):
