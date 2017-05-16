@@ -1,5 +1,12 @@
 
 
+Tue May 16 15:18:56 2017 Benjamin T. Liu
+v1.20.6
+Reviewers: Peter Robinson, David M. Dawson
+
+Fix uv to switch and detach from correct public branch for submodules
+
+
 Thu May 11 13:19:44 2017 Benjamin T. Liu
 v1.20.5
 Reviewers: David M. Dawson
