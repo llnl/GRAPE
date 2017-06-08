@@ -309,6 +309,7 @@ class Checkout(option.Option):
         # are at the right commit before possibly creating new branches at the current HEAD. 
         git.submodule("update")
         utility.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
+        grapeConfig.read()
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(workspaceDir)
