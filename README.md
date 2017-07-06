@@ -610,6 +610,7 @@ options are at least listed below.
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
+                         [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
                          [--bitbucketURL=<httpsURL>]
                          [--verifySSL=<bool>]
@@ -689,6 +690,8 @@ options are at least listed below.
                             [default: .grapeconfig.publish.logEntryHeader]
     --tickVersion=<bool>    Tick a version number as a part of this publish action.
                             [default: .grapeconfig.publish.tickVersion]
+    --tickOnCascade=<slot>  Tick the <slot> version number when performing a cascade.
+                            Default behavior governed by the flow.topicCascadeTick mapping. 
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket username.
