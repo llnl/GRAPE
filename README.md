@@ -677,7 +677,7 @@ options are at least listed below.
     --postpublishDir=<str>  The directory (relative to the workspace root directory) to execute the post-publish
                             cmds in.
                             [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
     --updateLog=<file>      The log file to update with the commit message for this branch.
                             [default: .grapeconfig.publish.updateLog]
@@ -1106,6 +1106,8 @@ options are at least listed below.
         --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
         --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
                                 either by pushing or pulling the remote tracking branch.
+                                This will also checkout the public branch in a headless state prior to offering to create
+                                a new branch (in repositories where the current branch does not exist).
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]          
 
     

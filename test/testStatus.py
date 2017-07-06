@@ -9,10 +9,10 @@ import gridTesting
 
 curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 if not curPath in sys.path:
-    sys.path.append(curPath)
+    sys.path.insert(0, curPath)
 grapePath = os.path.join(curPath, "..")
 if grapePath not in sys.path:
-    sys.path.append(grapePath)
+    sys.path.insert(0, grapePath)
 
 from vine import grapeMenu  
 from vine import grapeGit as git

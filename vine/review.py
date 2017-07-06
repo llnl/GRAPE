@@ -2,6 +2,7 @@ import os
 import option
 import re
 import Atlassian
+import urllib
 import utility
 import grapeConfig
 import grapeGit as git
@@ -139,6 +140,10 @@ class Review(option.Option):
         if not branch:
             branch = git.currentBranch()
 
+        # make sure we are in the outer level repo before we push
+        wsDir = utility.workspaceDir()
+        os.chdir(wsDir)
+
         #ensure branch is pushed
         utility.printMsg("Pushing %s to bitbucket..." % branch)
         git.push("origin %s" % branch)
@@ -179,10 +184,6 @@ class Review(option.Option):
             descr = self.parseDescriptionArgs(args)
             reviewers = self.parseReviewerArgs(args)
             
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
-
-
         ##  Submodule Repos
         missing = utility.getModifiedInactiveSubmodules(target_branch, branch)
         if missing:
@@ -191,7 +192,7 @@ class Review(option.Option):
                              "these submodules, you may need to do a grape md to proceed.")
             utility.printMsg(','.join(missing))
             return False        
-        submoduleLinks = []
+        pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
             
             modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
@@ -215,12 +216,17 @@ class Review(option.Option):
                                                              sub_target_branch, 
                                                              args)
                 #amend the subproject pull request description with the link to the outer pull request
-                subDescr = addLinkToDescription(descr, outerLevelURL)
+                subDescr = addLinkToDescription(descr, outerLevelURL, True)
                 if args["--prepend"] or args["--append"]:
                     subDescr = descr
                 newRequest = postPullRequest(repo, title, branch, sub_target_branch, subDescr, reviewers, args)
                 if newRequest:
-                    submoduleLinks.append(newRequest.link())
+                    pullRequestLinks[newRequest.link()] = True
+                else:
+                    # if a pull request could not be generated, just add a link to browse the branch
+                    pullRequestLinks["%s%s/browse?at=%s" % (bitbucket.rzbitbucketURL,
+                                                            repo.repo.url(),
+                                                            urllib.quote_plus("refs/heads/%s" % branch))] = False
         
         ## NESTED SUBPROJECT REPOS 
         nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
@@ -233,7 +239,12 @@ class Review(option.Option):
             
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
             if newRequest:
-                submoduleLinks.append(newRequest.link())
+                pullRequestLinks[newRequest.link()] = True
+            else:
+                # if a pull request could not be generated, just add a link to browse the branch
+                pullRequestLinks["%s%s/browse?at=%s" % (bitbucket.rzbitbucketURL,
+                                                        repo.repo.url(),
+                                                        urllib.quote_plus("refs/heads/%s" % branch))] = False
             
 
         ## OUTER LEVEL REPO
@@ -252,8 +263,8 @@ class Review(option.Option):
             utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
-            for link in submoduleLinks:
-                updatedDescription = addLinkToDescription(updatedDescription, link)
+            for link in pullRequestLinks:
+                updatedDescription = addLinkToDescription(updatedDescription, link, pullRequestLinks[link])
 
             if updatedDescription != request.description(): 
                 request = postPullRequest(repo, title, branch, target_branch, 
@@ -271,10 +282,13 @@ class Review(option.Option):
         config.set("project", "name", "My unnamed project")
         pass
 
-def addLinkToDescription(descr, link):
+def addLinkToDescription(descr, link, isPullRequest):
     if descr is not None and link is not None:
         if link not in descr: 
-            descr +="\nThis pull request is related to the pull request at: %s" % link
+            if isPullRequest:
+               descr +="\nThis pull request is related to the pull request at: %s" % link
+            else:
+               descr +="\nThis pull request is related to the branch at: %s" % link
     return descr
 
 def getReposPullRequest(repo, branch, target_branch, args):
@@ -295,7 +309,6 @@ def getReposPullRequestDescription(repo, branch, target_branch, args):
         descr = request.description()
     return descr
 
-@staticmethod
 def pullRequestAlreadyMerged(errorMessage):
    if "already up-to-date with branch" in errorMessage:
       return True
@@ -323,7 +336,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
-                if not pullRequestAlreadyMergedError(e.data["errors"][0]["message"]):
+                if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
             utility.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
@@ -374,7 +387,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 print("BITBUCKET: %s" % e.data)
-                if not pullRequestAlreadyMergedError(e.data["errors"][0]["message"]):
+                if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
 
         else:

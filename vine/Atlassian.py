@@ -3,7 +3,7 @@ import os
 filedir = os.path.dirname(os.path.realpath(__file__))
 grapedir = os.path.join(filedir, "..")
 if not grapedir in sys.path:
-    sys.path.append(grapedir)
+    sys.path.insert(0, grapedir)
 import stashy.stashy as stashy
 import keyring.keyring as keyring
 import getpass

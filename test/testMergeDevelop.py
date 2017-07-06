@@ -3,7 +3,7 @@ import sys
 import testGrape
 import unittest.case
 if not ".." in sys.path:
-    sys.path.append("..")
+    sys.path.insert(0, "..")
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import grapeConfig

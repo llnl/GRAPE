@@ -119,7 +119,7 @@ class Publish(resumable.Resumable):
     --postpublishDir=<str>  The directory (relative to the workspace root directory) to execute the post-publish
                             cmds in.
                             [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>    Delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
     --updateLog=<file>      The log file to update with the commit message for this branch.
                             [default: .grapeconfig.publish.updateLog]
@@ -751,7 +751,10 @@ class Publish(resumable.Resumable):
             atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
-            commitMsg = pullRequest.description().splitlines(True)+['\n']
+            if pullRequest:
+               commitMsg = pullRequest.description().splitlines(True)+['\n']
+            else:
+               commitMsg = ""
 
         # this will be used for the actual merge commit message.
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
@@ -940,10 +943,11 @@ class Publish(resumable.Resumable):
     def askWhetherToDelete(self, args):
         if "<<doDelete>>" in self.progress:
             self.doDelete = self.progress["<<doDelete>>"]
-        if args["--deleteTopic"].lower() == "true":
-            self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
-        else:
-            self.doDelete[args["--topic"]] = False
+        if not self.doDelete:
+            if args["--deleteTopic"].lower() == "true":
+               self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+            else:
+               self.doDelete[args["--topic"]] = False
         self.progress["<<doDelete>>"] = self.doDelete
                 
     def deleteTopicBranch(self, args):

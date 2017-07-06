@@ -1,5 +1,82 @@
 
 
+Thu Jul  6 09:27:03 2017 Peter B. Robinson
+v1.21.8
+Reviewers: Benjamin T. Liu
+
+Mergeback of 4.20.7 (includes fix for erroneous checkout of \"develop\" on submodules.)
+
+
+
+Fri Jun 16 09:06:50 2017 Benjamin T. Liu
+v1.20.7
+Reviewers: Peter Robinson
+
+If grape review cannot create a pull request for a modified subproject, add a link to the branch itself
+
+
+Tue May 16 15:18:56 2017 Benjamin T. Liu
+v1.20.6
+Reviewers: Peter Robinson, David M. Dawson
+
+Fix uv to switch and detach from correct public branch for submodules
+Mon May 15 14:07:59 2017 Benjamin T. Liu
+v1.21.7
+Reviewers: David M. Dawson
+
+Mergeback of v1.20.5: Fix error in uv due to attempting to fetch a public branch when already on the branch
+
+
+
+Tue May  9 09:22:54 2017 Benjamin T. Liu
+v1.21.6
+Reviewers: David M. Dawson
+
+Prepend grape to python path to ensure requests is imported correctly
+- Affects atd and offsite build scripts
+
+
+Wed Apr 26 09:10:04 2017 Benjamin T. Liu
+v1.21.5
+Reviewers: David M. Dawson
+
+- Fix grape bundle for case where bundled tags are missing
+- Fix grape status to properly detect if a nested subproject is not on a user branch
+
+
+Fri Apr  7 15:38:20 2017 Benjamin T. Liu
+v1.21.4
+Reviewers: Albert L. Nichols III, David M. Dawson
+
+Bugfix for issue with checkout/uv of submodules that have never fetched the requested branch.
+This issue occurred when trying to get ale3d on a fresh clone if the default branch for the submodule was something else
+
+Also detach from the public branch before querying for creation.
+
+Fix fetches in updateView and checkout to handle new default fetch in git.
+Thu Mar 30 15:36:59 2017 -0700 Benjamin T. Liu
+v1.21.3
+- Switch to corresponding public branch if branch not found in subproject during uv
+- Fix typo in review that causes fatal error
+- Fix branch slot for master
+
+
+Tue Mar 28 12:58:43 2017 Benjamin T. Liu
+v1.21.2
+Reviewers: David M. Dawson
+
+Fix for bug that prevents new branch from being created if the user answers 'y' instead of 'a' at the prompt
+
+
+Fri Mar 24 09:24:30 2017 Benjamin T. Liu
+v1.21.1
+Reviewers: David M. Dawson
+
+Remove extraneous query for branch deletion.
+Clarify meaning of --deleteTopic
+Branch deletion logic was changed during merge into master
+
+
 Mon Mar 13 07:53:56 2017 Peter B. Robinson
 v1.20.0
 Reviewers: Ben Liu

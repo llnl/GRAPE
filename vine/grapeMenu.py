@@ -26,14 +26,13 @@ import resumable
 import review
 import stash
 import status
-import test
+import grapeTest as test
 import updateLocal
 import updateSubproject
 import updateView
 import utility
 import version
 import walkthrough
-
 
 #######################################################################
 #The Menu class - encapsulates menu options and sections.
