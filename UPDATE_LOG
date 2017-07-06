@@ -1,5 +1,12 @@
 
 
+Thu Jul  6 11:43:08 2017 Peter B. Robinson
+v1.21.10
+Reviewers: Benjamin T. Liu
+
+Refreshes the grape config read before calling grape uv in a grape checkout. This should ensure nested subprojects that have been added as a result of the checkout have their branches updated.
+
+
 Thu Jul  6 10:41:04 2017 Peter B. Robinson
 v1.21.9
 Reviewers: Benjamin T. Liu
