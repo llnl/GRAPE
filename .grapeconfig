@@ -27,6 +27,7 @@ publishpolicy = ?:merge
 publicbranches = master develop release 
 topicprefixmappings = hotfix:master feature:develop bugfix:develop internalRelease:develop publicRelease:develop ?:develop
 topicdestinationmappings = internalRelease:master publicRelease:master-cz
+topicCascadeTick = internalRelease:2 ?:1
 
 [publish]
 buildcmds = 
@@ -68,7 +69,7 @@ required = *
 [versioning]
 file = vine/VERSION
 updatetag = True
-branchslotmappings = ?:3 master:3 master-cz:1
+branchslotmappings = ?:3
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v

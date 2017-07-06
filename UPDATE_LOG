@@ -1,10 +1,38 @@
 
 
+Thu Jul  6 10:41:04 2017 Peter B. Robinson
+v1.21.9
+Reviewers: Benjamin T. Liu
+
+Adds some fixes to publishing with cascade policies.
+
+
+Thu Jul  6 09:27:03 2017 Peter B. Robinson
+v1.21.8
+Reviewers: Benjamin T. Liu
+
+Mergeback of 4.20.7 (includes fix for erroneous checkout of \"develop\" on submodules.)
+
+
+
+Fri Jun 16 09:06:50 2017 Benjamin T. Liu
+v1.20.7
+Reviewers: Peter Robinson
+
+If grape review cannot create a pull request for a modified subproject, add a link to the branch itself
+
+
+Tue May 16 15:18:56 2017 Benjamin T. Liu
+v1.20.6
+Reviewers: Peter Robinson, David M. Dawson
+
+Fix uv to switch and detach from correct public branch for submodules
 Mon May 15 14:07:59 2017 Benjamin T. Liu
 v1.21.7
 Reviewers: David M. Dawson
 
 Mergeback of v1.20.5: Fix error in uv due to attempting to fetch a public branch when already on the branch
+
 
 
 Tue May  9 09:22:54 2017 Benjamin T. Liu
