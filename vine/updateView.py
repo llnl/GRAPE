@@ -1,6 +1,7 @@
 import os
 import shutil
 
+
 import addSubproject
 import option
 import utility
@@ -16,6 +17,7 @@ class UpdateView(option.Option):
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f ] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
                     [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>]
+                    [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
 
     Options:
         -f                      Force removal of subprojects currently in your view that are taken out of the view as a
@@ -30,7 +32,9 @@ class UpdateView(option.Option):
                                 either by pushing or pulling the remote tracking branch.
                                 This will also checkout the public branch in a headless state prior to offering to create
                                 a new branch (in repositories where the current branch does not exist).
-                                [default: .grapeconfig.post-checkout.syncWithOrigin]          
+                                [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times. 
+        --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
 
     """
     def __init__(self):
@@ -134,12 +138,49 @@ class UpdateView(option.Option):
         hasSubmodules = len(git.getAllSubmodules()) > 0 and not args["--skipSubmodules"]
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
+
+        allSubmodules = git.getAllSubmodules()
+        allNestedSubprojects = config.getAllNestedSubprojects()
         
+        addedSubmodules = [] 
+        addedNestedSubprojects = [] 
+        addedProjects = args["--add"]
+        notFound = []
+       
+        for proj in addedProjects:
+            if proj in allSubmodules:
+                addedSubmodules.append(proj)
+            elif proj in allNestedSubprojects:
+                addedNestedSubprojects.append(proj)
+            else:
+                notFound.append(proj)
+        
+        rmSubmodules = []
+        rmNestedSubprojects = []
+        rmProjects = args["--rm"]
+        
+        for proj in rmProjects:
+            if proj in allSubmodules:
+                rmSubmodules.append(proj)
+            elif proj in allNestedSubprojects:
+                rmNestedSubprojects.append(proj)
+            else:
+                notFound.append(proj)
+
+        if notFound:
+            utility.printMsg("\"%s\" not found in submodules %s \nor\n nested subprojects %s" % (",".join(notFound),",".join(allSubmodules),",".join(allNestedSubprojects)))
+            return False
+                
+       
         if not args["--checkSubprojects"]:
             # get submodules to update
             if hasSubmodules:
                 if args["--allSubmodules"]: 
-                    includedSubmodules = {sub:True for sub in git.getAllSubmodules()}
+                    includedSubmodules = {sub:True for sub in allSubmodules}
+                elif args["--add"] or args["--rm"]:
+                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules()}
+                    includedSubmodules.update({sub:True for sub in addedSubmodules})
+                    includedSubmodules.update({sub:False for sub in rmSubmodules})
                 else:
                     includedSubmodules = self.defineActiveSubmodules()
 
@@ -147,18 +188,18 @@ class UpdateView(option.Option):
             if not args["--skipNestedSubprojects"]: 
                 
                 nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
-                allNestedSubprojects = config.getAllNestedSubprojects()
                 if args["--allNestedSubprojects"]: 
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
+                elif args["--add"] or args["--rm"]:
+                    includedNestedSubprojects = {sub:True for sub in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()}
+                    includedNestedSubprojects.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
+                    includedNestedSubprojects.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()                    
             
             if hasSubmodules:
                 initStr = ""
-                if args["-f"]:
-                    deinitStr = "-f"
-                else:
-                    deinitStr = ""
+                deinitStr = ""
                 rmCachedStr = ""
                 resetStr = ""
                 for submodule, nowActive in includedSubmodules.items():
@@ -168,6 +209,8 @@ class UpdateView(option.Option):
                         deinitStr += ' %s' % submodule
                         rmCachedStr += ' %s' % submodule
                         resetStr += ' %s' % submodule
+                if args["-f"] and deinitStr:
+                    deinitStr = "-f"+deinitStr
 
                 utility.printMsg("Configuring submodules...")
                 utility.printMsg("Initializing submodules...")
