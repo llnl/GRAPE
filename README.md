@@ -1097,6 +1097,7 @@ options are at least listed below.
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f ] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
                     [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>]
+                    [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
 
     Options:
         -f                      Force removal of subprojects currently in your view that are taken out of the view as a
@@ -1111,7 +1112,9 @@ options are at least listed below.
                                 either by pushing or pulling the remote tracking branch.
                                 This will also checkout the public branch in a headless state prior to offering to create
                                 a new branch (in repositories where the current branch does not exist).
-                                [default: .grapeconfig.post-checkout.syncWithOrigin]          
+                                [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times. 
+        --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
 
     
 ## version
