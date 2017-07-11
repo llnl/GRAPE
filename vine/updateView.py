@@ -191,9 +191,9 @@ class UpdateView(option.Option):
                 if args["--allNestedSubprojects"]: 
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"]:
-                    includedNestedSubprojects = {sub:True for sub in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()}
-                    includedNestedSubprojects.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
-                    includedNestedSubprojects.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
+                    includedNestedSubprojectPrefixes = {sub:True for sub in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()}
+                    includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
+                    includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()                    
             
