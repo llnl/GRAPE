@@ -1,4 +1,4 @@
-import os
+﻿import os
 import shutil
 
 
@@ -334,8 +334,9 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
             public = grapeConfig.workspaceConfig().getPublicBranchFor(branch)
             # figure out if this is a submodule
             relpath = os.path.relpath(repo, utility.workspaceDir())
+            relpath = relpath.replace('\\',"/")
             with utility.cd(utility.workspaceDir()):
-               # if this is a submodule, get the appropriate public mapping
+                # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
                     public = grapeConfig.workspaceConfig().getMapping("workspace", "submodulepublicmappings")[public]
             utility.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))

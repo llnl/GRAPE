@@ -7,7 +7,7 @@
     <ProjectHome />
     <StartupFile>grape.py</StartupFile>
     <SearchPath />
-    <WorkingDirectory>C:\ale3d_cheetah</WorkingDirectory>
+    <WorkingDirectory>C:\ale3d</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <InterpreterId>{2af0f10d-7135-4994-9156-5d01c9c11b7e}</InterpreterId>
     <InterpreterVersion>2.7</InterpreterVersion>
@@ -15,7 +15,7 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>review</CommandLineArguments>
+    <CommandLineArguments>--np=1 uv</CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -37,7 +37,6 @@
     <Compile Include="decorator\documentation3.py" />
     <Compile Include="decorator\setup.py" />
     <Compile Include="decorator\__init__.py" />
-    <Compile Include="GitPython\setup.py" />
     <Content Include="keyring\CONTRIBUTORS.txt" />
     <Compile Include="keyring\release.py" />
     <Compile Include="keyring\setup.py" />
