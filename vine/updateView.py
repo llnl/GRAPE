@@ -331,13 +331,13 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
 
         if not git.hasBranch(branch):
             # switch to corresponding public branch if the branch does not exist
-            public = grapeConfig.grapeConfig().getPublicBranchFor(branch)
+            public = grapeConfig.workspaceConfig().getPublicBranchFor(branch)
             # figure out if this is a submodule
             relpath = os.path.relpath(repo, utility.workspaceDir())
             with utility.cd(utility.workspaceDir()):
                # if this is a submodule, get the appropriate public mapping
-               if relpath in git.getAllSubmoduleURLMap().keys():
-                  public = grapeConfig.grapeConfig().getMapping("workspace", "submodulepublicmappings")[public]
+                if relpath in git.getAllSubmoduleURLMap().keys():
+                    public = grapeConfig.workspaceConfig().getMapping("workspace", "submodulepublicmappings")[public]
             utility.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
             git.checkout(public)
             git.pull("origin %s" % (public))
