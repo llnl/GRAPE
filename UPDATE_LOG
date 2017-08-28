@@ -1,5 +1,12 @@
 
 
+Mon Aug 28 09:13:05 2017 Peter B. Robinson
+v1.21.13
+Reviewers: Benjamin T. Liu
+
+Fixes a hang / windows compatibility issue in grape uv when you have new submodules as a result of amerge
+
+
 Tue Jul 11 10:46:33 2017 Peter B. Robinson
 v1.21.12
 Reviewers: Benjamin T. Liu
