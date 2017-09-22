@@ -162,7 +162,11 @@ def bundlecmd(repo='', branch='', args={}):
             except:
                # If version tags do not exist at the tagname, we cannot determine the starting version.
                previousLocation = "unknown"
-            currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
+            try:
+               currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
+            except:
+               # If version tags do not exist at the branch, we cannot determine the ending version.
+               currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
                     git.shortSHA(tagname)
