@@ -79,6 +79,7 @@ class TestClone(testGrape.TestGrape):
                                                            "--branch=master", "--url=%s" % self.repos[1],
                                                            "--nested", "--noverify"])
         grapeMenu.menu().applyMenuChoice("commit",["-m", "\"added subproject1\""])
+        print git.log("--decorate")
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
@@ -87,6 +88,14 @@ class TestClone(testGrape.TestGrape):
             args = [self.repo, tempDir, "--recursive", "--allNested"]
             ret = grapeMenu.menu().applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
+
+            # ensure we are on master with all nested subprojects
+            os.chdir(tempDir)
+            self.queueUserInput(["all\n"])
+            args = ["master", "--updateView"]
+            ret = grapeMenu.menu().applyMenuChoice("checkout", args)
+            self.assertTrue(ret, "vine.checkout master returned failure")
+            print git.log("--decorate")
 
             subprojectpath = os.path.join(tempDir, "subs/subproject1")
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")
