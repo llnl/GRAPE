@@ -1,5 +1,12 @@
 
 
+Tue Sep 26 09:19:46 2017 Benjamin T. Liu
+v1.21.15
+Reviewers: Peter Robinson
+
+Make test clone robust to user grapeconfigs
+
+
 Mon Sep 25 08:46:05 2017 Benjamin T. Liu
 v1.21.14
 Reviewers: Peter Robinson
