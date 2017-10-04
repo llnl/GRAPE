@@ -158,14 +158,14 @@ def bundlecmd(repo='', branch='', args={}):
                 continue
             tagname = "%s/%s" % (tagprefix, branch)
             try:
-               previousLocation = git.describe("--match '%s' %s" % (describePattern, tagname))
+               previousLocation = git.describe("--always --match '%s' %s" % (describePattern, tagname))
             except:
-               # If version tags do not exist at the tagname, we cannot determine the starting version.
+               # We should only get here if the tagname does not exist
                previousLocation = "unknown"
             try:
-               currentLocation = git.describe("--match '%s' %s" % (describePattern, branch))
+               currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
             except:
-               # If version tags do not exist at the branch, we cannot determine the ending version.
+               utility.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
                currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
