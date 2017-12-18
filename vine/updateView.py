@@ -236,11 +236,18 @@ class UpdateView(option.Option):
             if root:
                self.uvManager.finalize()
                root.mainloop()
-               # If --all/--add/--rm is used, the gui will be skipped and the active list will be None
-               if self.uvManager.includedSubmodules() != None:
-                  includedSubmodules = self.uvManager.includedSubmodules()
-               if self.uvManager.includedNestedSubprojects() != None:
-                  includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects()
+               # Only register changes if changes were saved in the gui.
+               # If the gui was cancelled (or closed) rather than saving, or
+               # --all/--add/--rm is used (skipping the gui), only consider the
+               # command line for the included subprojects.
+               if self.uvManager.includedSubmodules == None:
+                  utility.printMsg("Submodule changes from GUI ignored")
+               else:
+                  includedSubmodules = self.uvManager.includedSubmodules
+               if self.uvManager.includedNestedSubprojects == None:
+                  utility.printMsg("Nested subproject changes from GUI ignored")
+               else:
+                  includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects
                try:
                   root.destroy()
                except:
@@ -470,6 +477,10 @@ class UVManager:
       height = kwargs.get('height', 0)
       width  = kwargs.get('width', 0)
 
+      # Saved lists of active subprojects (None if not saved)
+      self.includedSubmodules = None
+      self.includedNestedSubprojects = None
+
       self.master = master
       self.currentProjectIndex = None
 
@@ -499,41 +510,25 @@ class UVManager:
       # Main resizable window
       self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
       controlpanel = Tk.Frame()
-      savebutton = Tk.Button(controlpanel, text="Save and Update", command = self.master.destroy)
+      savebutton = Tk.Button(controlpanel, text="Save and Update", command = self.saveChanges)
       savebutton.grid(row=0, column=0)
-      cancelbutton = Tk.Button(controlpanel, text="Cancel", command = self.cancel)
+      cancelbutton = Tk.Button(controlpanel, text="Cancel", command = self.master.destroy)
       cancelbutton.grid(row=0, column=1)
       controlpanel.grid(row=0, column=0)
 
-   # Cancel changes and exit
-   def cancel(self):
-      self.activeSets = [ None, None ]
-      self.inactiveSets = [ None, None ]
-      self.master.destroy()
-
-   # Get included submodules, None if submodules were not selected using GUI
-   # Returns dictionary of subproject names with True for included, False for others
-   def includedSubmodules(self):
-      if self.activeSets[0] == None:
-         return None
-      included = {}
+   # Save changes and exit
+   def saveChanges(self):
+      self.includedSubmodules = {}
       for sub in self.activeSets[0]:
-         included[sub] = True 
+         self.includedSubmodules[sub] = True 
       for sub in self.inactiveSets[0]:
-         included[sub] = False
-      return included
-
-   # Get included nested subprojects, None if nested subprojects were not selected using GUI
-   # Returns dictionary of subproject names with True for included, False for others
-   def includedNestedSubprojects(self):
-      if self.activeSets[1] == None:
-         return None
-      included = {}
+         self.includedSubmodules[sub] = False
+      self.includedNestedSubprojects = {}
       for sub in self.activeSets[1]:
-         included[sub] = True 
+         self.includedNestedSubprojects[sub] = True 
       for sub in self.inactiveSets[1]:
-         included[sub] = False
-      return included
+         self.includedNestedSubprojects[sub] = False
+      self.master.destroy()
 
    # Save the original set of active subprojects and sort the last section
    def finalize(self):
