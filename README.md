@@ -1095,7 +1095,7 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
+    Usage: grape-uv [-f] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules] [--gui]
                     [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
 
@@ -1115,7 +1115,7 @@ options are at least listed below.
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]
         --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times. 
         --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
-
+        --gui                   Use the graphical user interface to select your view.
     
 ## version
 
