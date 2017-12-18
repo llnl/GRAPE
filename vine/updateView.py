@@ -236,9 +236,10 @@ class UpdateView(option.Option):
             if root:
                self.uvManager.finalize()
                root.mainloop()
-               # Only register changes if changes were saved in the gui.
-               # If the gui was cancelled (or closed) rather than saving, or
-               # --all/--add/--rm is used (skipping the gui), only consider the
+               if self.uvManager.saved == False:
+                  utility.printMsg("Not changing working view.")
+                  return False
+               # If --all/--add/--rm is used, only consider the
                # command line for the included subprojects.
                if self.uvManager.includedSubmodules == None:
                   utility.printMsg("Submodule changes from GUI ignored")
@@ -480,6 +481,7 @@ class UVManager:
       # Saved lists of active subprojects (None if not saved)
       self.includedSubmodules = None
       self.includedNestedSubprojects = None
+      self.saved = False
 
       self.master = master
       self.currentProjectIndex = None
@@ -518,16 +520,20 @@ class UVManager:
 
    # Save changes and exit
    def saveChanges(self):
-      self.includedSubmodules = {}
-      for sub in self.activeSets[0]:
-         self.includedSubmodules[sub] = True 
-      for sub in self.inactiveSets[0]:
-         self.includedSubmodules[sub] = False
-      self.includedNestedSubprojects = {}
-      for sub in self.activeSets[1]:
-         self.includedNestedSubprojects[sub] = True 
-      for sub in self.inactiveSets[1]:
-         self.includedNestedSubprojects[sub] = False
+      if self.activeSets[0] != None:
+         self.saved = True
+         self.includedSubmodules = {}
+         for sub in self.activeSets[0]:
+            self.includedSubmodules[sub] = True 
+         for sub in self.inactiveSets[0]:
+            self.includedSubmodules[sub] = False
+      if self.activeSets[1] != None:
+         self.saved = True
+         self.includedNestedSubprojects = {}
+         for sub in self.activeSets[1]:
+            self.includedNestedSubprojects[sub] = True 
+         for sub in self.inactiveSets[1]:
+            self.includedNestedSubprojects[sub] = False
       self.master.destroy()
 
    # Save the original set of active subprojects and sort the last section
