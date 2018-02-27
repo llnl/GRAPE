@@ -192,6 +192,8 @@ def getActiveSubmodules():
         submoduleList = submodule("foreach --quiet \"echo \$path\"")
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]
+    # ignore any submodules that are not in .gitmodules
+    submoduleList = [x for x in submoduleList if not x.startswith("fatal: no submodule mapping found in .gitmodules for path")]
     os.chdir(cwd)
     return submoduleList
 
