@@ -1,4 +1,6 @@
 import os
+import re
+import shutil
 import subprocess
 import utility
 import ConfigParser
@@ -197,6 +199,34 @@ def getActiveSubmodules():
     os.chdir(cwd)
     return submoduleList
 
+# Remove any active submodules that are not found in gitmodules
+def fixActiveSubmodules():
+    cwd = os.getcwd()
+    wsDir = utility.workspaceDir()
+    os.chdir(wsDir)
+    if os.name == "nt":
+        submoduleList = submodule("foreach --quiet \"echo $path\"")
+    else:
+        submoduleList = submodule("foreach --quiet \"echo \$path\"")
+    submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    submoduleList = [x.strip() for x in submoduleList]
+    pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
+    submoduleFixed = False
+    for output in submoduleList:
+       match = pattern.match(output)
+       if match:
+          submoduleFixed = True
+          sub = match.group(1)
+          # remove from index, if staged
+          rm("--ignore-unmatch --cached %s" % sub)
+          # remove from repo, if present
+          rm("--ignore-unmatch %s" % sub)
+          if os.path.exists(os.path.join(wsDir, sub)): 
+             delete = utility.userInput("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
+             if delete:
+                shutil.rmtree(os.path.join(wsDir, sub))
+    os.chdir(cwd)
+    return submoduleFixed
 
 def getAllSubmodules():
     subconfig = ConfigParser.ConfigParser()
