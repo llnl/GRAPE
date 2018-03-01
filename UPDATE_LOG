@@ -1,5 +1,14 @@
 
 
+Wed Feb 28 17:18:33 2018 Benjamin T. Liu
+v1.23.2
+Reviewers: Chris White, Peter Robinson
+
+Fixes to handle removed submodules
+- Handle removed submodules after grape md
+- Make getActiveSubmodules robust to inconsistent submodule state
+
+
 Mon Dec 18 14:09:28 2017 Benjamin T. Liu
 v1.23.1
 Reviewers: Peter Robinson
