@@ -1,5 +1,14 @@
 
 
+Mon Mar 12 13:37:53 2018 Peter B. Robinson
+v1.23.3
+Reviewers: Ben Liu
+
+SUMMARY:
+Adds a grape uv --gui option. 
+More graceful behavior when submodules are removed during a merge.
+
+
 Wed Feb 28 17:18:33 2018 Benjamin T. Liu
 v1.23.2
 Reviewers: Chris White, Peter Robinson
