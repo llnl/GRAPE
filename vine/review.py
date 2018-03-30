@@ -100,7 +100,8 @@ class Review(option.Option):
                         pass
         else:
             # Convert \n to a newline, but only if it is not escaped
-            descr = re.sub('([^\\\\])\\\\n', r'\1\n', descr)
+            # (alternation allows newline on separate line)
+            descr = re.sub('([^\\\\]|)\\\\n', r'\1\n', descr)
             # Remove one backslash from any escaped \n's.
             descr = re.sub('\\\\\\\\n', "\\\\n", descr)
         return descr
