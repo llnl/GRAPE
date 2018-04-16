@@ -1,12 +1,5 @@
 
 
-Mon Apr 16 14:55:17 2018 Benjamin T. Liu
-v1.25.2
-Reviewers: Peter Robinson
-
-Fix issue in grape m <branch> if a submodule does not exist in the target branch
-
-
 Tue Apr  3 08:11:28 2018 Benjamin T. Liu
 v1.25.1
 Reviewers: Peter Robinson
