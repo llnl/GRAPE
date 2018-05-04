@@ -421,14 +421,18 @@ def safeForceBranchToOriginRef(branchToSync):
         branch("%s %s" % (branchToSync, remoteRef))
         return True
 
+def SHA(branchName="HEAD"):
+    return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName)
 
 def shortSHA(branchName="HEAD"):
     return gitcmd("rev-parse --short %s" % branchName, "rev-parse of %s failed!" % branchName)
 
-
-def SHA(branchName="HEAD"):
-    return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName)
-
+def show(argStr):
+    try:
+        return gitcmd("show %s" % argStr, "git show failed with argstr %s" % argStr)
+    except GrapeGitError as e:
+        if "Path" in e.gitOutput and "does not exist in" in e.gitOutput:
+            return ""
 
 def showRemote():
 

@@ -151,36 +151,6 @@ class Checkout(option.Option):
 
         return addedModules, removedModules
     
-    @staticmethod
-    def parseGrapeConfigNestedProjectDiffOutput(output, addedModules, removedModules, removedProjectPrefices):
-        nestedSection = False
-        oldProjects = []
-        newProjects = []
-
-        for line in output.split('\n'): 
-            ll = line.lower()
-            if "[nested" in ll:
-                nestedSection = True
-                currentProject = None
-                if "-[nested-" in ll:
-                    currentProject = ll.split('-')[2].split(']')[0]
-            elif "[" in ll and "]" in ll:
-                nestedSection = False
-            if nestedSection:
-                if "-names" in ll: 
-                    oldProjects = ll.split('=')[1].strip().split()
-                if "+names" in ll:
-                    newProjects = ll.split('=')[1].strip().split()
-                if "-prefix" in ll:
-                    removedProjectPrefices[currentProject] = ll.split('=')[1].strip()
-        for np in newProjects: 
-            if np not in oldProjects:
-                addedModules.append(np)
-        for op in oldProjects:
-            if op not in newProjects:
-                removedModules.append(op)
-        return
-
     def execute(self, args):
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
@@ -239,20 +209,24 @@ class Checkout(option.Option):
 
 
         # check to see if nested project list changed
-        addedProjects = []
-        removedProjects = []
-        removedProjectPrefices = {}
         nestedProjectListDidChange = False
         os.chdir(workspaceDir)
-        if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch)): 
-            configDiff = git.diff("--no-ext-diff %s %s -- %s" % (previousSHA, branch, ".grapeconfig"))
-            nestedProjectListDidChange = "[nestedprojects]" in configDiff.lower()
-            self.parseGrapeConfigNestedProjectDiffOutput(configDiff, addedProjects, removedProjects, removedProjectPrefices)
-            
+        addedProjects = []
+        removedProjects = []
+        if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch)):
+            previousConfig = grapeConfig.GrapeConfigParser(configString=git.show("%s:.grapeconfig" % previousSHA))
+            branchConfig = grapeConfig.GrapeConfigParser(configString=git.show("%s:.grapeconfig" % branch))
+            previousNestedProjects = set(previousConfig.getAllNestedSubprojects())
+            branchNestedProjects = set(branchConfig.getAllNestedSubprojects())
+            # use set subtraction to figure out the removed and added projects
+            removedProjects = previousNestedProjects - branchNestedProjects
+            addedProjects = branchNestedProjects - previousNestedProjects
+            nestedProjectListDidChange = bool(removedProjects or addedProjects)
+
             if removedProjects: 
                 config = grapeConfig.grapeConfig()
                 for proj in removedProjects:
-                    projPrefix = removedProjectPrefices[proj]
+                    projPrefix = previousConfig.get("nested-%s" % proj, "prefix")
                     try:
                         os.chdir(os.path.join(workspaceDir, proj))
                     except OSError as e:

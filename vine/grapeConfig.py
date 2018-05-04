@@ -97,12 +97,15 @@ class ConfigPairDict(dict):
                 e.message = "GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config." % key
                 raise e
 
+import cStringIO as StringIO
 
 class GrapeConfigParser(ConfigParser.ConfigParser):
-    def __init__(self, workspaceDir=None):
+    def __init__(self, workspaceDir=None, configString=None):
         ConfigParser.ConfigParser.__init__(self)
         if workspaceDir:
             self.read(os.path.join(workspaceDir,".grapeconfig"))
+        if configString:
+            self.readfp(StringIO.StringIO(configString))
 
     def readWorkspaceGrapeConfigFile(self):
         self.read(os.path.join(utility.workspaceDir(), ".grapeconfig"))
@@ -156,7 +159,7 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
     def getAllNestedSubprojects(self):
         list = []
         try:
-           list = self.getList("nestedProjects", "names")
+            list = self.getList("nestedProjects", "names")
         except: 
             pass
         finally:
