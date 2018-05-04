@@ -1,5 +1,16 @@
 
 
+Fri May  4 10:05:47 2018 Peter B. Robinson
+v1.25.3
+Reviewers: Ben Liu
+
+SUMMARY:
+Fixes KeyError failure when switching between branches that have renamed a nested subproject. 
+
+DETAILS:
+checkout now parses full contents of .grapeconfig on each branch into a separate GrapeConfigParser object, and then uses set subtraction to determine added and removed nested subprojects.
+
+
 Mon Apr 16 16:36:45 2018 Benjamin T. Liu
 v1.25.2
 Reviewers: Peter Robinson
