@@ -1,5 +1,12 @@
 
 
+Thu May 17 08:58:21 2018 Peter B. Robinson
+v1.26.0
+Reviewers: Ben Liu
+
+Brings master up to date with v1.25.3. Since 1.24, this addresses some bugs in grape m and grape checkout having to deal with moving to a branch that no longer has a submodule or nested suproject.
+
+
 Fri May  4 10:05:47 2018 Peter B. Robinson
 v1.25.3
 Reviewers: Ben Liu
