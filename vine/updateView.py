@@ -123,7 +123,7 @@ class UpdateView(option.Option):
                 for subproject in subprojects:
                     included[subproject] = False
             if opt.lower()[0] == "s":
-                for subproject in subprojects: 
+                for subproject in sorted(subprojects, key=lambda v: (v.upper(), v[0].islower())):
                     if self.uvManager:
                        # Set the default value for the gui
                        subIsActive = subproject in activeSubprojects
@@ -134,7 +134,7 @@ class UpdateView(option.Option):
                                                                 'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
             self.uvManager.createSection("top level")
-        for subproject in toplevelSubs:
+        for subproject in sorted(toplevelSubs, key=lambda v: (v.upper(), v[0].islower())):
             if self.uvManager:
                # Set the default value for the gui
                subIsActive = subproject in activeSubprojects
