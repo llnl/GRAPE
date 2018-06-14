@@ -406,7 +406,15 @@ class Publish(resumable.Resumable):
             if step != currentStep:
                 continue
             try:
+                # Save the progress before attempting a step (this ensures that the progress
+                # is saved even if the first step after a --continue fails).
+                self.dumpProgress(args)
+
                 ret = steps[step](args)
+
+                # Save the progress immediately after a successful step (in case there is an
+                # uncaught interruption in between steps).
+                self.dumpProgress(args)
             except BaseException as e:
                 self.bailOut(step, args)
                 print(traceback.format_exc())
