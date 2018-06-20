@@ -1,5 +1,12 @@
 
 
+Wed Jun 20 10:54:17 2018 Peter B. Robinson
+v1.27.2
+Reviewers: Ben Liu, Patrick Greene
+
+Allows users to use <public> as a placeholder for the target publish branch in custom publish cmds.
+
+
 Thu Jun 14 10:50:39 2018 Benjamin T. Liu
 v1.27.1
 Reviewers: Alan Loyd Dayton, Peter Robinson
