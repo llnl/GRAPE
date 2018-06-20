@@ -618,6 +618,9 @@ class Publish(resumable.Resumable):
                     self.loadVersion(args)
                     verStr = self.progress["version"]
                     cmd = cmd.replace("<version>", verStr)
+                if "<public>" in cmd:
+                    cmd = cmd.replace("<public>", args["--public"])
+
                 returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd(), 
                                                        stream=True).returncode
                 print(returnCode)
