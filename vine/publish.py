@@ -457,7 +457,7 @@ class Publish(resumable.Resumable):
         if updateOnly:
             finalArgs = ["--update"]
         finalArgs += ["--source=%s" % args["--topic"], "--target=%s" % args["--public"],
-                      "--user=%s" % args["--user"]]
+                      "--user=%s" % args["--user"], "--verifySSL=%s" % args["--verifySSL"]]
         if len(newArgs) > 0:
             finalArgs += newArgs
         for arg in reviewArgs:
