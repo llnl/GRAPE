@@ -69,7 +69,7 @@ required = *
 [versioning]
 file = vine/VERSION
 updatetag = True
-branchslotmappings = ?:3
+branchslotmappings = ?:3, master:2
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v
