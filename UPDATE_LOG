@@ -1,5 +1,12 @@
 
 
+Mon Dec 10 11:51:18 2018 Peter B. Robinson
+v1.28.0
+Reviewers: Ben Liu
+
+Updates requests to modernize SSL certificate verification.
+
+
 Mon Dec 10 11:25:56 2018 Peter B. Robinson
 v1.27.4
 Reviewers: Ben Liu
