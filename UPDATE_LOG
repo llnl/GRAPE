@@ -1,5 +1,12 @@
 
 
+Mon Dec 10 11:25:56 2018 Peter B. Robinson
+v1.27.4
+Reviewers: Ben Liu
+
+Updates requests.py to resolve SSL certificate verification issues.
+
+
 Mon Dec  3 13:53:01 2018 Benjamin T. Liu
 v1.27.3
 Reviewers: Al Nichols, Peter Robinson
