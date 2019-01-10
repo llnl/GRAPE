@@ -98,7 +98,7 @@ class Bundle(option.Option):
           
 
         git.fetch()
-        git.fetch("--tags")
+        git.fetch("--tags --force")
         branchlist = branches.split()
         
         launchArgs["branchList"] = branchlist

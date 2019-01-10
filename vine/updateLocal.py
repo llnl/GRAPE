@@ -82,7 +82,8 @@ def fetchLocal(repo='unknown', branch='master'):
         currentBranch = git.currentBranch()
 
         if len(branches) > 0:
-            git.fetch("--prune --tags")
+            git.fetch("--prune")
+            git.fetch("--tags --force")
             allRemoteBranches = git.remoteBranches()
             fetchArgs = "origin "
             toFetch = []
