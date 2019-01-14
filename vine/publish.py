@@ -686,7 +686,7 @@ class Publish(resumable.Resumable):
         # Get list of modified files in submodules
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
-            submodules = git.getModifiedSubmodules(public, topic, True)
+            submodules = git.getModifiedSubmodules(public, topic, includeAdded=True)
             for sub in submodules:
                 os.chdir(os.path.join(wsdir, sub))
                 self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic, args)]
@@ -1227,7 +1227,7 @@ class Publish(resumable.Resumable):
         recurse = args["--recurse"]
         public = args["--public"]
         topic = args["--topic"]
-        submodules = git.getModifiedSubmodules(public, topic, True)
+        submodules = git.getModifiedSubmodules(public, topic, includeAdded=True)
         
         userMsg = "GRAPE: When ready, grape will publish %s to:\n" % topic
         
