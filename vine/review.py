@@ -186,7 +186,7 @@ class Review(option.Option):
             reviewers = self.parseReviewerArgs(args)
             
         ##  Submodule Repos
-        missing = utility.getModifiedInactiveSubmodules(target_branch, branch)
+        missing = utility.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
         if missing:
             utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
@@ -196,7 +196,7 @@ class Review(option.Option):
         pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
             
-            modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch)
+            modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch, includeAdded=True)
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
                         
             for submodule in modifiedSubmodules:

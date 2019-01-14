@@ -569,11 +569,11 @@ def isWorkspaceClean(printOutput=False):
 def getActiveSubprojects():
     return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
 
-def getModifiedSubprojects():
-    return git.getModifiedSubmodules() + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
+def getModifiedSubprojects(includeAdded=False):
+    return git.getModifiedSubmodules(includeAdded) + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
 
-def getModifiedInactiveSubmodules(branch1, branch2):
-    modifiedSubs = git.getModifiedSubmodules(branch1=branch1, branch2=branch2)
+def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
+    modifiedSubs = git.getModifiedSubmodules(branch1=branch1, branch2=branch2, includeAdded=includeAdded)
     activeSubs = git.getActiveSubmodules()
     missing = []
     for sub in modifiedSubs:

@@ -435,7 +435,7 @@ class Publish(resumable.Resumable):
         return
 
     def ensureModifiedSubmodulesAreActive(self, args):
-        missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"])
+        missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"], includeAdded=True)
         if missing:
             utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")
@@ -686,7 +686,7 @@ class Publish(resumable.Resumable):
         # Get list of modified files in submodules
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
-            submodules = git.getModifiedSubmodules(public, topic)
+            submodules = git.getModifiedSubmodules(public, topic, True)
             for sub in submodules:
                 os.chdir(os.path.join(wsdir, sub))
                 self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic, args)]
@@ -1227,7 +1227,7 @@ class Publish(resumable.Resumable):
         recurse = args["--recurse"]
         public = args["--public"]
         topic = args["--topic"]
-        submodules = git.getModifiedSubmodules(public, topic)
+        submodules = git.getModifiedSubmodules(public, topic, True)
         
         userMsg = "GRAPE: When ready, grape will publish %s to:\n" % topic
         
@@ -1306,7 +1306,7 @@ class Publish(resumable.Resumable):
         if recurse:
             submodulePublic = args["--submodulePublic"]
             activeSubmodules = git.getActiveSubmodules()
-            modifiedSubmodules = git.getModifiedSubmodules(public, topic)
+            modifiedSubmodules = git.getModifiedSubmodules(public, topic, includeAdded=True)
             unmodifiedSubmodules = list(set(activeSubmodules) - set(modifiedSubmodules))
                                                               
             # submodule policy is Command Line requested policy, otherwise is based on 
