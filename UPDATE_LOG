@@ -1,5 +1,12 @@
 
 
+Mon Jan 14 09:33:31 2019 Benjamin T. Liu
+v1.28.1
+Reviewers: Peter Robinson
+
+Force fetch of tags for compatibility with newer versions of git
+
+
 Mon Dec 10 11:51:18 2018 Peter B. Robinson
 v1.28.0
 Reviewers: Ben Liu
