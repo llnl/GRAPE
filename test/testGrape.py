@@ -37,14 +37,25 @@ def writeFile3(path):
     with open(path, 'w') as f:
         f.write(str3)
 
+class multifile(object):
+    def __init__(self, files):
+        self._files = files
+    def __getattr__(self, attr, *args):
+        return self._wrap(attr, *args)
+    def _wrap(self, attr, *args):
+        def g(*a, **kw):
+            for f in self._files:
+                res = getattr(f, attr, *args)(*a, **kw)
+            return res
+        return g
 
 class TestGrape(unittest.TestCase):
     def printToScreen(self, str): 
         self.stdout.write(str)
         
     def switchToStdout(self):
-        sys.stdout = self.stdout
-        sys.stderr = self.stderr
+        sys.stdout = multifile([sys.stdout, self.stdout])
+        sys.stderr = multifile([sys.stderr, self.stderr])
         
     def switchToHiddenOutput(self):
         sys.stdout = self.output
