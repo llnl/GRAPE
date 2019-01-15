@@ -1007,7 +1007,7 @@ options are at least listed below.
     Arguments:
     <suite>  The name of the suite to test. The default is all.
              Enter listSuites as the suite name to list available suites. 
-
+             <suite> = <suite name>.<test> will run a particular test in a suite.
 
     
 ## up
