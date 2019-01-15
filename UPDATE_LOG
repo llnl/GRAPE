@@ -1,5 +1,19 @@
 
 
+Tue Jan 15 12:44:36 2019 Benjamin T. Liu
+v1.28.2
+Reviewers: Peter Robinson
+
+Include new submodules in grape review and grape publish
+
+Fixes for git 2.20 (still some issues remain)
+
+Test improvements
+- Add test for publish with new submodules
+- Fix --debug mode for testing
+- Allow running individual tests via <suite>.<test>
+
+
 Mon Jan 14 09:33:31 2019 Benjamin T. Liu
 v1.28.1
 Reviewers: Peter Robinson
