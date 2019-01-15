@@ -15,7 +15,7 @@ class Test(option.Option):
     Arguments:
     <suite>  The name of the suite to test. The default is all.
              Enter listSuites as the suite name to list available suites. 
-
+             <suite> = <suite name>.<test> will run a particular test in a suite.
 
     """
     def __init__(self):

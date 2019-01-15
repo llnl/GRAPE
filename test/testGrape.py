@@ -184,11 +184,14 @@ class TestGrape(unittest.TestCase):
         super(TestGrape, self).assertFalse(expr, msg=msg)
 
 
-def buildSuite(cls, appendTo=None):
+def buildSuite(cls, appendTo=None, sub=None):
     suite = appendTo
     if suite is None:
         suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(cls))
+    if sub:
+       suite.addTest(cls(sub))
+    else:
+       suite.addTest(unittest.makeSuite(cls))
     return suite
 
 
@@ -232,8 +235,14 @@ def main(argv, debug=False):
         if argv[0] == "listSuites":
             print testClasses.keys()
             exit(0)
-        for cls in  [testClasses[arg] for arg in argv]:
-            suite = buildSuite(cls, suite)
+        for arg in argv:
+            if '.' in arg:
+               (cls, sub) = arg.split('.')
+               cls = testClasses[cls]
+            else:
+               cls = testClasses[arg]
+               sub = None
+            suite = buildSuite(cls, suite, sub)
             
     if debug:
         for cls in suite:
