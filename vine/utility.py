@@ -16,6 +16,19 @@ if toplevel not in sys.path:
 from docopt.docopt import docopt
 from docopt.docopt import Dict as docoptDict
 
+# object to allow splitting of output to multiple file-like objects.
+# from user shx2: https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file
+class multifile(object):
+    def __init__(self, files):
+        self._files = files
+    def __getattr__(self, attr, *args):
+        return self._wrap(attr, *args)
+    def _wrap(self, attr, *args):
+        def g(*a, **kw):
+            for f in self._files:
+                res = getattr(f, attr, *args)(*a, **kw)
+            return res
+        return g
 
 def ensure_dir(f):
     d = os.path.dirname(f)
