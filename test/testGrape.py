@@ -246,9 +246,13 @@ def main(argv, debug=False):
             
     if debug:
         for cls in suite:
-            for case in cls:
-                print case
-                case._debug = True
+            try:
+               for case in cls:
+                   print case
+                   case._debug = True
+            except TypeError:
+               print cls
+               cls._debug = True
         suite._tests    
     
     result = unittest.TextTestRunner(verbosity=2).run(suite)
