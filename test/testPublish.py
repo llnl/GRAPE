@@ -174,3 +174,60 @@ class TestPublish(testGrape.TestGrape):
         os.chdir(self.subproject)
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
+
+    def testPublishNewSubmodule(self):
+        import testNestedSubproject
+        self.setUpBranchToFFMerge()
+        config = grapeConfig.grapeConfig()
+        config.set("publish", "buildCmds", "echo hello , echo world")
+        config.set("publish", "testCmds", "echo helloTest , echo worldTest")        
+
+        # create backend for repo2
+        repo2_origin = self.repo + "2-origin" ;
+        os.mkdir(repo2_origin)
+        os.chdir(repo2_origin)
+        git.gitcmd("init --bare", "Setup Failed")
+        os.chdir(os.path.join(repo2_origin,".."))
+        # clone repo2
+        git.gitcmd("clone %s %s" % (repo2_origin,self.repos[1]), "could not clone test bare repo")
+        os.chdir(self.repos[1])
+        # create an initial public branch in repo2
+        fname = os.path.join(self.repos[1], "testRepoFile")
+        testGrape.writeFile1(fname)
+        self.file1 = fname
+        git.gitcmd("add %s" % fname, "Add Failed")
+        git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
+        git.gitcmd("push origin master", "push to master failed")
+        git.branch("testPublish")
+        git.push("origin testPublish")
+        # add repo2 as a submodule to repo1
+        os.chdir(self.repo)
+        git.submodule("add %s %s" % (os.path.join(repo2_origin), "submodule1"))
+        git.commit("-m \"added submodule1\"")
+        os.chdir(os.path.join(self.repo,"submodule1"))
+        # add changes to feature branch
+        git.checkout("testPublish")
+        f3 = os.path.join(self.repo,"submodule1","f3")
+        testGrape.writeFile3(f3)
+        git.add(f3)
+        git.commit("-m \"added f3\"")
+        # save the log from the feature branch
+        branchlog = git.log()
+        os.chdir(self.repo)
+        git.add(os.path.join(self.repo,"submodule1"))
+        git.commit("-m \"updated gitlink\"")
+
+        self.assertTrue(git.currentBranch() == self.branch)
+        # merge feature branch into public branch
+        self.assertGrapePublishWorked(["--merge","--recurse","--submodulePublic=master"])
+        self.assertSuccessfulFastForwardMerge()
+
+        # check out a clean version of repo2
+        checkrepo = "repocheck"
+        git.gitcmd("clone %s %s" % (repo2_origin,checkrepo), "could not clone test bare repo")
+        os.chdir(checkrepo)
+        git.checkout("master")
+        # ensure that master has been updated with the new commits
+        mergelog = git.log()
+        self.assertTrue(branchlog == mergelog)
+        
