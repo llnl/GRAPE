@@ -28,7 +28,7 @@ class TestCheckout(testGrape.TestGrape):
 
         # put the remote for the submodule into a HEAD-less state so it can accept pushes
         os.chdir(self.repos[1])
-        git.checkout("--orphan HEAD")
+        git.checkout("--orphan dummy_branch_name")
 
         # go to the submodule and add a file to it.
         os.chdir(os.path.join(self.repo,"submodule"))
@@ -93,7 +93,7 @@ class TestCheckout(testGrape.TestGrape):
             self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except git.GrapeGitError as e:
-            self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand )
+            self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand + '\n' + e.gitOutput)
             pass
         finally:
             if debug:
