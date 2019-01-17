@@ -191,9 +191,7 @@ class Config(option.Option):
         allBranches = git.allBranches()
         missingBranches = []
         for branch in publicBranches:
-            if ("remotes/origin/%s" % branch) not in allBranches:
-               missingBranches.append(branch)
-            if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
+            if (branch not in allBranches):
                 missingBranches.append(branch)
         os.chdir(origcwd)
         return missingBranches

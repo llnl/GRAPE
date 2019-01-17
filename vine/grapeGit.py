@@ -16,10 +16,10 @@ class GrapeGitError(Exception):
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
         self.commError = True if \
-            (self.code == 128 and "fatal: Could not read from remote" in self.gitOutput )  or \
-            ("fatal: unable to access" in self.gitOutput) or \
-            ("fatal: The remote end hung up unexpectedly" in self.gitOutput) or \
-            ("fatal: the remote end hung up unexpectedly" in self.gitOutput) \
+            (self.code == 128 and "fatal: " in self.gitOutput and \
+             ("Could not read from remote" in self.gitOutput or \
+              "unable to access" in self.gitOutput or \
+              "remote end hung up unexpectedly" in self.gitOutput)) \
             else False
         self.cwd = cwd
         
