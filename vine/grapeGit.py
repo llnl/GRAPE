@@ -175,6 +175,10 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
     except GrapeGitError as e:
         if e.commError:
+            # fetch can sometimes hang up when it can't find the remote, resulting in
+            # a spurious comm error.  Catch that here.
+            if "fatal: Couldn't find remote ref" in e.gitOutput:
+                raise e
             if warnOnCommError:
                 utility.printMsg("WARNING: could not fetch due to communication error.")
             if raiseOnCommError:

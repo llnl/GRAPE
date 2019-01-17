@@ -42,7 +42,8 @@ class singleRepo(grapeProject):
             (git.commit, "-m \"added a single file\"")
         ])
         
-        self._publicBranchesValid = True
+        # public branches are not present on origin
+        self._publicBranchesValid = False
         self._branchModelConsistent = True
 
 
