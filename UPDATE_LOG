@@ -1,5 +1,15 @@
 
 
+Thu Jan 17 15:10:37 2019 Benjamin T. Liu
+v1.28.3
+Reviewers: Peter Robinson
+
+Fix missing public branches for grape status
+Fix error checking for git fetch
+Fix fatal error detection for updated capitalization for git 2.20
+Fix comment in testUpdateLocal
+
+
 Tue Jan 15 12:44:36 2019 Benjamin T. Liu
 v1.28.2
 Reviewers: Peter Robinson
