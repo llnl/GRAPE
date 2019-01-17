@@ -30,7 +30,7 @@ class GrapeUpTester(testGrape.TestGrape):
 
         ret = grapeMenu.menu().applyMenuChoice("up", args=None, option_args=None, globalArgs=['-v'])
         self.assertTrue(ret, "up failed to run")
-        # NOTE THAT THIS WILL FAIL IN DEBUG MODE (debugging set to True)
+        # NOTE The following counting of the number of fetches is incorrect
         #upoutput = "%s" % self.output.getvalue()
         #print upoutput.split('\n')
         #numberOfFetches = 0
