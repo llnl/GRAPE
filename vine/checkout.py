@@ -142,23 +142,25 @@ class Checkout(option.Option):
         return "Checks out a branch in all projects in this workspace."
 
     @staticmethod
-    def parseGitModulesDiffOutput(output, addedModules, removedModules, changedURLModules):
-
-        currentSubmodule = False
-        for line in output.split('\n'):
-            if "[submodule" in line:
-                currentSubmodule = line.split('"')[1]
-            # This relies on the diff context being sufficient to catch the submodule line.
-            # Only 2 lines of backwards context should be required, so this should be ok.
-            if re.match("-\s+url\s*=", line):
-                if currentSubmodule:
-                   changedURLModules.append(currentSubmodule)
-            if "+[submodule" in line:
-                addedModules.append(line.split('"')[1])
-                currentSubmodule = False
-            if "-[submodule" in line:
-                removedModules.append(line.split('"')[1])
-                currentSubmodule = False
+    def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules):
+        submoduleListWillChange = ".gitmodules" in git.diff("--name-only %s %s" % (currentSHA, branch))
+        if submoduleListWillChange:
+           output = git.diff("%s %s --no-ext-diff -- .gitmodules" % (currentSHA, branch))
+           currentSubmodule = False
+           for line in output.split('\n'):
+               if "[submodule" in line:
+                   currentSubmodule = line.split('"')[1]
+               # This relies on the diff context being sufficient to catch the submodule line.
+               # Only 2 lines of backwards context should be required, so this should be ok.
+               if re.match("-\s+url\s*=", line):
+                   if currentSubmodule:
+                      changedURLModules.append(currentSubmodule)
+               if "+[submodule" in line:
+                   addedModules.append(line.split('"')[1])
+                   currentSubmodule = False
+               if "-[submodule" in line:
+                   removedModules.append(line.split('"')[1])
+                   currentSubmodule = False
 
         return addedModules, removedModules, changedURLModules
     
@@ -216,17 +218,14 @@ class Checkout(option.Option):
             # otherwise fetch it
             git.fetch("origin", "%s:%s" % (branch, branch))
 
-        submoduleListWillChange = ".gitmodules" in git.diff("--name-only %s %s" % (currentSHA, branch))
-
         addedModules = []
         removedModules = []
         changedURLModules = []
         uvArgs = []
+        if grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
+            self.parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
+
         submodulesDidChange = False
-        if submoduleListWillChange and grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
-
-            self.parseGitModulesDiffOutput(git.diff("%s %s --no-ext-diff -- .gitmodules" % (currentSHA, branch)), addedModules, removedModules, changedURLModules)
-
         if addedModules or removedModules or changedURLModules:
             submodulesDidChange = True
              

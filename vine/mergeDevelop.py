@@ -1,6 +1,7 @@
 import os
 import ConfigParser
 import grapeGit as git
+import checkout
 import grapeMenu
 import grapeConfig
 import resumable
@@ -84,7 +85,6 @@ class MergeDevelop(resumable.Resumable):
             args["<<cmd>>"] = "md"
         branch = args["--public"]
         if not branch:
-            currentBranch = git.currentBranch()
             branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
                 utility.printMsg("ERROR: public branches must be configured for grape md to work.")
@@ -102,12 +102,23 @@ class MergeDevelop(resumable.Resumable):
         except KeyError:
             nested = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
                                                                                          
-                                                                                         
-        
         config = grapeConfig.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse
+
+        addedModules = []
+        removedModules = []
+        changedURLModules = []
+        if recurse:
+            checkout.Checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
+            # deinit and clean out any submodules that changed urls
+            for sub in changedURLModules:
+                utility.printMsg("url for %s changed, attempting to remove old submodule before merge." % sub)
+                cleaned = checkout.Checkout.cleanSubmodule(utility.workspaceDir(), sub, args, True)
+                if not cleaned:
+                    utility.printMsg("Failed to remove old submodule for %s." % sub)
+                    return False
 
         # if we stored cwd in self.progress, make sure we end up there
         if "cwd" in self.progress:
@@ -144,6 +155,10 @@ class MergeDevelop(resumable.Resumable):
             self.progress["outerLevelDone"] = False
         if not self.progress["outerLevelDone"]:
             conflictedFiles = self.outerLevelMerge(args, branch)
+
+        # reinit any submodules with changed URLs
+        for sub in changedURLModules:
+            git.submodule("init %s" % sub)
             
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
