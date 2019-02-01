@@ -170,7 +170,12 @@ class Checkout(option.Option):
             if git.isWorkingDirectoryClean():
                 # we must clean out any submodules that changed URLs
                 if changedURL:
-                   clean = True
+                   unpushed = git.log("--branches --not --remotes --oneline --decorate")
+                   if unpushed:
+                       utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
+                       clean = utility.userInput("Would you like to remove the submodule %s (this will discard your unpushed changes)?" % sub, 'n')
+                   else:
+                       clean = True
                 else:
                    cleanBehaviorSet = args["--noUpdateView"] or args["--updateView"]
                    if not cleanBehaviorSet:
