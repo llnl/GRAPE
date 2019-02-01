@@ -107,19 +107,6 @@ class MergeDevelop(resumable.Resumable):
         recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse
 
-        addedModules = []
-        removedModules = []
-        changedURLModules = []
-        if recurse:
-            checkout.Checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
-            # deinit and clean out any submodules that changed urls
-            for sub in changedURLModules:
-                utility.printMsg("url for %s changed, attempting to remove old submodule before merge." % sub)
-                cleaned = checkout.Checkout.cleanSubmodule(utility.workspaceDir(), sub, args, True)
-                if not cleaned:
-                    utility.printMsg("Failed to remove old submodule for %s." % sub)
-                    return False
-
         # if we stored cwd in self.progress, make sure we end up there
         if "cwd" in self.progress:
             cwd = self.progress["cwd"]
@@ -134,6 +121,20 @@ class MergeDevelop(resumable.Resumable):
 
         # take note of whether all submodules are currently present, assume user wants to add any new submodules to WS if so
         activeSubmodulesCheck0 = git.getActiveSubmodules()
+
+        addedModules = []
+        removedModules = []
+        changedURLModules = []
+        if recurse:
+            checkout.Checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules, activeSubmodulesCheck0)
+            # deinit and clean out any submodules that changed urls
+            for sub in changedURLModules:
+                utility.printMsg("url for %s changed, attempting to remove old submodule before merge." % sub)
+                cleaned = checkout.Checkout.cleanSubmodule(utility.workspaceDir(), sub, args, True)
+                if not cleaned:
+                    utility.printMsg("Failed to remove old submodule for %s." % sub)
+                    return False
+
         self.progress["allActive"] = set(git.getAllSubmodules()) == set(git.getActiveSubmodules())
 
         # checking for a consistent workspace before doing a merge
@@ -158,7 +159,8 @@ class MergeDevelop(resumable.Resumable):
 
         # reinit any submodules with changed URLs
         for sub in changedURLModules:
-            git.submodule("init %s" % sub)
+            if sub in activeSubmodulesCheck0:
+                git.submodule("init %s" % sub)
             
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:

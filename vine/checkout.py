@@ -165,17 +165,21 @@ class Checkout(option.Option):
         return addedModules, removedModules, changedURLModules
     
     @staticmethod
-    def cleanSubmodule(workspaceDir, sub, args, changedURL):
+    def cleanSubmodule(workspaceDir, sub, args, changedURL = False, activeSubmodules = []):
         cleaned = False
         try:
             os.chdir(os.path.join(workspaceDir, sub))
-            if git.isWorkingDirectoryClean():
+            workingDirClean = git.isWorkingDirectoryClean()
+            subactive = sub in activeSubmodules
+            if workingDirClean or (changedURL and not subactive):
                 # we must clean out any submodules that changed URLs
                 if changedURL:
-                   unpushed = git.log("--branches --not --remotes --oneline --decorate")
+                   unpushed = False
+                   if subactive:
+                      unpushed = git.log("--branches --not --remotes --oneline --decorate")
                    if unpushed:
-                       utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
-                       clean = utility.userInput("Would you like to remove the submodule %s (this will discard your unpushed changes)?" % sub, 'n')
+                      utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
+                      clean = utility.userInput("Would you like to remove the submodule %s (this will discard your unpushed changes)?" % sub, 'n')
                    else:
                        clean = True
                 else:
@@ -188,17 +192,22 @@ class Checkout(option.Option):
                        clean = True
                 if clean:
                     utility.printMsg("Removing clean submodule %s." % sub)
-                    os.chdir(workspaceDir)
-                    shutil.rmtree(os.path.join(workspaceDir, sub))
+                    if subactive:
+                       shutil.rmtree(os.path.join(workspaceDir, sub))
                     if changedURL:
-                       git.submodule("deinit -f %s" % sub)
-                    shutil.rmtree(os.path.join(workspaceDir, ".git", "modules", sub))
+                       if subactive:
+                          os.chdir(workspaceDir)
+                          git.submodule("deinit -f %s" % sub)
+                       # This must be removed even for inactive submodules
+                       if os.path.exists(os.path.join(workspaceDir, ".git", "modules", sub)):
+                          shutil.rmtree(os.path.join(workspaceDir, ".git", "modules", sub))
                     cleaned = True
             else:
                 utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
-                os.chdir(workspaceDir)
+
         except OSError:
             pass
+        os.chdir(workspaceDir)
         return cleaned
 
     def execute(self, args):
@@ -230,9 +239,10 @@ class Checkout(option.Option):
             submodulesDidChange = True
              
         # deinit and clean out any submodules that changed urls
+        initiallyActiveSubmodules = git.getActiveSubmodules()
         for sub in changedURLModules:
             utility.printMsg("url for %s changed, attempting to remove old submodule." % sub)
-            cleaned = self.cleanSubmodule(workspaceDir, sub, args, True)
+            cleaned = self.cleanSubmodule(workspaceDir, sub, args, True, initiallyActiveSubmodules)
             if not cleaned:
                 utility.printMsg("Failed to remove old submodule for %s." % sub)
                 return False
@@ -250,11 +260,12 @@ class Checkout(option.Option):
 
         # reinit any submodules with changed urls
         for sub in changedURLModules:
-            git.submodule("init %s" % sub)
+            if sub in initiallyActiveSubmodules:
+                git.submodule("init %s" % sub)
 
         # clean out and removed submodules
         for sub in removedModules:
-            cleaned = self.cleanSubmodule(workspaceDir, sub, args, False)
+            cleaned = self.cleanSubmodule(workspaceDir, sub, args)
 
         # check to see if nested project list changed
         nestedProjectListDidChange = False
