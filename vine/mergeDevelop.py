@@ -126,11 +126,11 @@ class MergeDevelop(resumable.Resumable):
         removedModules = []
         changedURLModules = []
         if recurse:
-            checkout.Checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules, activeSubmodulesCheck0)
+            checkout.Checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
                 utility.printMsg("url for %s changed, attempting to remove old submodule before merge." % sub)
-                cleaned = checkout.Checkout.cleanSubmodule(utility.workspaceDir(), sub, args, True)
+                cleaned = checkout.Checkout.cleanSubmodule(utility.workspaceDir(), sub, args, True, activeSubmodulesCheck0)
                 if not cleaned:
                     utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
@@ -158,9 +158,17 @@ class MergeDevelop(resumable.Resumable):
             conflictedFiles = self.outerLevelMerge(args, branch)
 
         # reinit any submodules with changed URLs
+        currentBranch = git.currentBranch()
         for sub in changedURLModules:
             if sub in activeSubmodulesCheck0:
-                git.submodule("init %s" % sub)
+                os.chdir(utility.workspaceDir())
+                git.submodule("update --init %s" % sub)
+                os.chdir(os.path.join(utility.workspaceDir(), sub))
+                # If there is already a branch by this name in the new repo,
+                # this will reset the branch.
+                git.checkout("-B %s" % currentBranch)
+
+        os.chdir(utility.workspaceDir())
             
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:

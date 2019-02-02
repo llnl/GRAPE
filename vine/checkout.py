@@ -170,12 +170,12 @@ class Checkout(option.Option):
         try:
             os.chdir(os.path.join(workspaceDir, sub))
             workingDirClean = git.isWorkingDirectoryClean()
-            subactive = sub in activeSubmodules
-            if workingDirClean or (changedURL and not subactive):
+            changedActive = sub in activeSubmodules
+            if workingDirClean or (changedURL and not changedActive):
                 # we must clean out any submodules that changed URLs
                 if changedURL:
                    unpushed = False
-                   if subactive:
+                   if changedActive:
                       unpushed = git.log("--branches --not --remotes --oneline --decorate")
                    if unpushed:
                       utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
@@ -192,10 +192,10 @@ class Checkout(option.Option):
                        clean = True
                 if clean:
                     utility.printMsg("Removing clean submodule %s." % sub)
-                    if subactive:
+                    if not changedURL or changedActive:
                        shutil.rmtree(os.path.join(workspaceDir, sub))
                     if changedURL:
-                       if subactive:
+                       if changedActive:
                           os.chdir(workspaceDir)
                           git.submodule("deinit -f %s" % sub)
                        # This must be removed even for inactive submodules
