@@ -110,6 +110,78 @@ def createNewBranchesMREHandler(mre):
     for e, b in zip(mre.exceptions(), mre.branches()):
         print b, e
      
+def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules):
+    cwd = os.getcwd() 
+    os.chdir(utility.workspaceDir())
+    submoduleListWillChange = ".gitmodules" in git.diff("--name-only %s %s" % (currentSHA, branch))
+    if submoduleListWillChange:
+       output = git.diff("%s %s --no-ext-diff -- .gitmodules" % (currentSHA, branch))
+       currentSubmodule = False
+       for line in output.split('\n'):
+           if "[submodule" in line:
+               currentSubmodule = line.split('"')[1]
+           # This relies on the diff context being sufficient to catch the submodule line.
+           # Only 2 lines of backwards context should be required, so this should be ok.
+           if re.match("-\s+url\s*=", line):
+               if currentSubmodule:
+                  changedURLModules.append(currentSubmodule)
+           if "+[submodule" in line:
+               addedModules.append(line.split('"')[1])
+               currentSubmodule = False
+           if "-[submodule" in line:
+               removedModules.append(line.split('"')[1])
+               currentSubmodule = False
+    os.chdir(cwd)
+
+    return addedModules, removedModules, changedURLModules
+
+def cleanSubmodule(sub, args, changedURL = False, activeSubmodules = []):
+    cwd = os.getcwd() 
+    workspaceDir = utility.workspaceDir()
+    cleaned = False
+    try:
+        os.chdir(os.path.join(workspaceDir, sub))
+        workingDirClean = git.isWorkingDirectoryClean()
+        changedActive = sub in activeSubmodules
+        if workingDirClean or (changedURL and not changedActive):
+            # we must clean out any submodules that changed URLs
+            if changedURL:
+               unpushed = False
+               if changedActive:
+                  unpushed = git.log("--branches --not --remotes --oneline --decorate")
+               if unpushed:
+                  utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
+                  clean = utility.userInput("Would you like to remove the submodule %s (this will discard your unpushed changes)?" % sub, 'n')
+               else:
+                   clean = True
+            else:
+               cleanBehaviorSet = args["--noUpdateView"] or args["--updateView"]
+               if not cleanBehaviorSet:
+                   clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
+               elif args["--noUpdateView"]:
+                   clean = False
+               elif args["--updateView"]:
+                   clean = True
+            if clean:
+                utility.printMsg("Removing clean submodule %s." % sub)
+                if not changedURL or changedActive:
+                   shutil.rmtree(os.path.join(workspaceDir, sub))
+                if changedURL:
+                   if changedActive:
+                      os.chdir(workspaceDir)
+                      git.submodule("deinit -f %s" % sub)
+                   # This must be removed even for inactive submodules
+                   if os.path.exists(os.path.join(workspaceDir, ".git", "modules", sub)):
+                      shutil.rmtree(os.path.join(workspaceDir, ".git", "modules", sub))
+                cleaned = True
+        else:
+            utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
+
+    except OSError:
+        pass
+    os.chdir(cwd)
+    return cleaned
+
         
 class Checkout(option.Option):
     """
@@ -141,75 +213,6 @@ class Checkout(option.Option):
     def description(self):
         return "Checks out a branch in all projects in this workspace."
 
-    @staticmethod
-    def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules):
-        submoduleListWillChange = ".gitmodules" in git.diff("--name-only %s %s" % (currentSHA, branch))
-        if submoduleListWillChange:
-           output = git.diff("%s %s --no-ext-diff -- .gitmodules" % (currentSHA, branch))
-           currentSubmodule = False
-           for line in output.split('\n'):
-               if "[submodule" in line:
-                   currentSubmodule = line.split('"')[1]
-               # This relies on the diff context being sufficient to catch the submodule line.
-               # Only 2 lines of backwards context should be required, so this should be ok.
-               if re.match("-\s+url\s*=", line):
-                   if currentSubmodule:
-                      changedURLModules.append(currentSubmodule)
-               if "+[submodule" in line:
-                   addedModules.append(line.split('"')[1])
-                   currentSubmodule = False
-               if "-[submodule" in line:
-                   removedModules.append(line.split('"')[1])
-                   currentSubmodule = False
-
-        return addedModules, removedModules, changedURLModules
-    
-    @staticmethod
-    def cleanSubmodule(workspaceDir, sub, args, changedURL = False, activeSubmodules = []):
-        cleaned = False
-        try:
-            os.chdir(os.path.join(workspaceDir, sub))
-            workingDirClean = git.isWorkingDirectoryClean()
-            changedActive = sub in activeSubmodules
-            if workingDirClean or (changedURL and not changedActive):
-                # we must clean out any submodules that changed URLs
-                if changedURL:
-                   unpushed = False
-                   if changedActive:
-                      unpushed = git.log("--branches --not --remotes --oneline --decorate")
-                   if unpushed:
-                      utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
-                      clean = utility.userInput("Would you like to remove the submodule %s (this will discard your unpushed changes)?" % sub, 'n')
-                   else:
-                       clean = True
-                else:
-                   cleanBehaviorSet = args["--noUpdateView"] or args["--updateView"]
-                   if not cleanBehaviorSet:
-                       clean = utility.userInput("Would you like to remove the submodule %s ?" % sub, 'n')
-                   elif args["--noUpdateView"]:
-                       clean = False
-                   elif args["--updateView"]:
-                       clean = True
-                if clean:
-                    utility.printMsg("Removing clean submodule %s." % sub)
-                    if not changedURL or changedActive:
-                       shutil.rmtree(os.path.join(workspaceDir, sub))
-                    if changedURL:
-                       if changedActive:
-                          os.chdir(workspaceDir)
-                          git.submodule("deinit -f %s" % sub)
-                       # This must be removed even for inactive submodules
-                       if os.path.exists(os.path.join(workspaceDir, ".git", "modules", sub)):
-                          shutil.rmtree(os.path.join(workspaceDir, ".git", "modules", sub))
-                    cleaned = True
-            else:
-                utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
-
-        except OSError:
-            pass
-        os.chdir(workspaceDir)
-        return cleaned
-
     def execute(self, args):
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
@@ -232,7 +235,7 @@ class Checkout(option.Option):
         changedURLModules = []
         uvArgs = []
         if grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
-            self.parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
+            parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
 
         submodulesDidChange = False
         if addedModules or removedModules or changedURLModules:
@@ -241,8 +244,8 @@ class Checkout(option.Option):
         # deinit and clean out any submodules that changed urls
         initiallyActiveSubmodules = git.getActiveSubmodules()
         for sub in changedURLModules:
-            utility.printMsg("url for %s changed, attempting to remove old submodule." % sub)
-            cleaned = self.cleanSubmodule(workspaceDir, sub, args, True, initiallyActiveSubmodules)
+            utility.printMsg("url for %s changed, attempting to remove references for %s submodule." % (sub, "active" if sub in initiallyActiveSubmodules else "inactive") )
+            cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules)
             if not cleaned:
                 utility.printMsg("Failed to remove old submodule for %s." % sub)
                 return False
@@ -265,7 +268,7 @@ class Checkout(option.Option):
 
         # clean out and removed submodules
         for sub in removedModules:
-            cleaned = self.cleanSubmodule(workspaceDir, sub, args)
+            cleaned = cleanSubmodule(sub, args)
 
         # check to see if nested project list changed
         nestedProjectListDidChange = False

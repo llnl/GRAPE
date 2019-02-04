@@ -126,11 +126,11 @@ class MergeDevelop(resumable.Resumable):
         removedModules = []
         changedURLModules = []
         if recurse:
-            checkout.Checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
+            checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
-                utility.printMsg("url for %s changed, attempting to remove old submodule before merge." % sub)
-                cleaned = checkout.Checkout.cleanSubmodule(utility.workspaceDir(), sub, args, True, activeSubmodulesCheck0)
+                utility.printMsg("url for %s changed, attempting to remove references for %s submodule before merge." % (sub, "active" if sub in activeSubmodulesCheck0 else "inactive"))
+                cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck0)
                 if not cleaned:
                     utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
@@ -158,17 +158,25 @@ class MergeDevelop(resumable.Resumable):
             conflictedFiles = self.outerLevelMerge(args, branch)
 
         # reinit any submodules with changed URLs
-        currentBranch = git.currentBranch()
-        for sub in changedURLModules:
-            if sub in activeSubmodulesCheck0:
-                os.chdir(utility.workspaceDir())
-                git.submodule("update --init %s" % sub)
-                os.chdir(os.path.join(utility.workspaceDir(), sub))
-                # If there is already a branch by this name in the new repo,
-                # this will reset the branch.
-                git.checkout("-B %s" % currentBranch)
+        if changedURLModules and activeSubmodulesCheck0:
+            currentBranch = git.currentBranch()
+            submapping = config.getMapping('workspace', 'submodulepublicmappings')
+            try:
+                submodulePubBranch = submapping[args["--public"]]
+            except:
+                submodulePubBranch = args["--public"]
+            for sub in changedURLModules:
+                if sub in activeSubmodulesCheck0:
+                    os.chdir(utility.workspaceDir())
+                    git.submodule("update --init %s" % sub)
+                    os.chdir(os.path.join(utility.workspaceDir(), sub))
+                    # If there is already a branch by this name in the new repo,
+                    # this will reset the branch.
+                    git.checkout("-B %s" % currentBranch)
+                    # fetch the public branch so there is a branch to merge from
+                    git.fetch("origin %s:%s" % (submodulePubBranch, submodulePubBranch))
 
-        os.chdir(utility.workspaceDir())
+            os.chdir(utility.workspaceDir())
             
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:

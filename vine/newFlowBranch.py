@@ -1,5 +1,6 @@
 import os
 import option
+import checkout
 import utility
 import grapeGit as git
 import grapeMenu
@@ -61,6 +62,20 @@ class NewBranchOption(option.Option):
             
         branchName = self._key + "/" + args["--user"] + "/" + args["<descr>"]
 
+        activeSubmodulesCheck = git.getActiveSubmodules()
+
+        addedModules = []
+        removedModules = []
+        changedURLModules = []
+        if recurse:
+            checkout.parseGitModulesDiffOutput(git.currentBranch(), start, addedModules, removedModules, changedURLModules)
+            # deinit and clean out any submodules that changed urls
+            for sub in changedURLModules:
+                utility.printMsg("url for %s changed, attempting to remove references for %s submodule before branch creation." % (sub, "active" if sub in activeSubmodulesCheck else "inactive"))
+                cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck)
+                if not cleaned:
+                    utility.printMsg("Failed to remove old submodule for %s." % sub)
+                    return False
             
         launcher = utility.MultiRepoCommandLauncher(createBranch, 
                                                    runInSubmodules=recurse, 
@@ -80,6 +95,15 @@ class NewBranchOption(option.Option):
         else:
             utility.printMsg("branches not created")
 
+        # reinit any submodules with changed URLs
+        for sub in changedURLModules:
+            if sub in activeSubmodulesCheck:
+                os.chdir(utility.workspaceDir())
+                git.submodule("update --init %s" % sub)
+                os.chdir(os.path.join(utility.workspaceDir(), sub))
+                # If there is already a branch by this name in the new repo,
+                # this will reset the branch.
+                git.checkout("-B %s" % branchName)
 
     def setDefaultConfig(self, config):
         config.ensureSection("workspace")
