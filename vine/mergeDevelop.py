@@ -340,7 +340,9 @@ class MergeDevelop(resumable.Resumable):
     def continueLocalMerge(self, args):
         git.fixActiveSubmodules()
         status = git.status()
-        if "All conflicts fixed but you are still merging." in status:
+        # Commit after conflict resolution.
+        # If there were no conflicts in the outer-level repo, we still need to commit the submodule gitlinks.
+        if "All conflicts fixed but you are still merging." in status or "Changes to be committed:" in status:
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["--public"])
             return True
         else:
