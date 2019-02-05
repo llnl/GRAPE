@@ -89,6 +89,14 @@ class MergeDevelop(resumable.Resumable):
             if not branch:
                 utility.printMsg("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
+
+        # check to see if we already have the branch
+        try:
+            git.shortSHA(branch)
+        except:
+            # otherwise fetch it
+            git.fetch("origin", "%s:%s" % (branch, branch))
+
         # determine whether to merge in subprojects that have changed
         try:
             submodules = self.progress["submodules"]
@@ -118,13 +126,6 @@ class MergeDevelop(resumable.Resumable):
             conflictedFiles = self.progress["conflictedFiles"]
         else:
             conflictedFiles = []
-
-        # check to see if we already have the branch
-        try:
-            git.shortSHA(branch)
-        except:
-            # otherwise fetch it
-            git.fetch("origin", "%s:%s" % (branch, branch))
 
         # take note of whether all submodules are currently present, assume user wants to add any new submodules to WS if so
         activeSubmodulesCheck0 = git.getActiveSubmodules()
