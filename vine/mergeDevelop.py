@@ -99,7 +99,10 @@ class MergeDevelop(resumable.Resumable):
                basebranch = branch[len("origin/"):]
             else:
                basebranch = branch
-            git.fetch("origin", "%s:%s" % (basebranch, basebranch))
+            try:
+                git.shortSHA(basebranch)
+            except:
+                git.fetch("origin", "%s:%s" % (basebranch, basebranch))
 
         # determine whether to merge in subprojects that have changed
         try:
