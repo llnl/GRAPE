@@ -171,13 +171,23 @@ def cleanSubmodule(sub, args, changedURL = False, activeSubmodules = []):
                       os.chdir(workspaceDir)
                       git.submodule("deinit -f %s" % sub)
                    # This must be removed even for inactive submodules
-                   if os.path.exists(os.path.join(workspaceDir, ".git", "modules", sub)):
-                      shutil.rmtree(os.path.join(workspaceDir, ".git", "modules", sub))
+                   modulepath = os.path.join(workspaceDir, ".git", "modules", sub)
+                   if os.path.exists(modulepath):
+                      
+                      try:
+                         shutil.rmtree(modulepath)
+                      except OSError:
+                         # windows needs to change the permissions first
+                         for root,dirs,files in os.walk(modulepath):
+                            for name in files:
+                               os.chmod(os.path.join(root, name), stat.S_IWRITE)
+                         shutil.rmtree(modulepath)
                 cleaned = True
         else:
             utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
 
-    except OSError:
+    except OSError as e:
+        print e
         pass
     os.chdir(cwd)
     return cleaned
