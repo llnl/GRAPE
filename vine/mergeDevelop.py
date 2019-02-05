@@ -119,6 +119,13 @@ class MergeDevelop(resumable.Resumable):
         else:
             conflictedFiles = []
 
+        # check to see if we already have the branch
+        try:
+            git.shortSHA(branch)
+        except:
+            # otherwise fetch it
+            git.fetch("origin", "%s:%s" % (branch, branch))
+
         # take note of whether all submodules are currently present, assume user wants to add any new submodules to WS if so
         activeSubmodulesCheck0 = git.getActiveSubmodules()
 

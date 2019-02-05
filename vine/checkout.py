@@ -225,7 +225,7 @@ class Checkout(option.Option):
 
         # check to see if we already have the branch
         try:
-            newSHA = git.shortSHA(branch)
+            git.shortSHA(branch)
         except:
             # otherwise fetch it
             git.fetch("origin", "%s:%s" % (branch, branch))
