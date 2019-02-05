@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+import stat
 
 import grapeConfig
 import grapeMenu
@@ -135,7 +136,7 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, 
 
     return addedModules, removedModules, changedURLModules
 
-def cleanSubmodule(sub, args, changedURL = False, activeSubmodules = []):
+def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
     cwd = os.getcwd() 
     workspaceDir = utility.workspaceDir()
     cleaned = False
@@ -143,9 +144,10 @@ def cleanSubmodule(sub, args, changedURL = False, activeSubmodules = []):
         os.chdir(os.path.join(workspaceDir, sub))
         workingDirClean = git.isWorkingDirectoryClean()
         changedActive = sub in activeSubmodules
-        if workingDirClean or (changedURL and not changedActive):
-            # we must clean out any submodules that changed URLs
-            if changedURL:
+        if workingDirClean or (veryclean and not changedActive):
+            # veryclean will always try to clean, fail if the clean fails
+            # and remove the back-end repo.
+            if veryclean:
                unpushed = False
                if changedActive:
                   unpushed = git.log("--branches --not --remotes --oneline --decorate")
@@ -164,9 +166,9 @@ def cleanSubmodule(sub, args, changedURL = False, activeSubmodules = []):
                    clean = True
             if clean:
                 utility.printMsg("Removing clean submodule %s." % sub)
-                if not changedURL or changedActive:
+                if not veryclean or changedActive:
                    shutil.rmtree(os.path.join(workspaceDir, sub))
-                if changedURL:
+                if veryclean:
                    if changedActive:
                       os.chdir(workspaceDir)
                       git.submodule("deinit -f %s" % sub)

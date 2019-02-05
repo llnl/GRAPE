@@ -69,12 +69,12 @@ class NewBranchOption(option.Option):
         changedURLModules = []
         if recurse:
             checkout.parseGitModulesDiffOutput(git.currentBranch(), start, addedModules, removedModules, changedURLModules)
-            # deinit and clean out any submodules that changed urls
-            for sub in changedURLModules:
-                utility.printMsg("url for %s changed, attempting to remove references for %s submodule before branch creation." % (sub, "active" if sub in activeSubmodulesCheck else "inactive"))
+            # deinit and clean out any submodules that changed urls or
+            # are not present in the public branch.
+            for sub in changedURLModules + removedModules:
+                utility.printMsg("%s %s, attempting to remove references for %s submodule before branch creation." % (sub, "has changed URL" if sub in changedURLModules else "is not present in %s" % start, "active" if sub in activeSubmodulesCheck else "inactive"))
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck)
                 if not cleaned:
-                    utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
             
         launcher = utility.MultiRepoCommandLauncher(createBranch, 
