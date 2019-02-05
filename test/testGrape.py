@@ -227,9 +227,19 @@ def main(argv, debug=False):
         for arg in argv:
             if '.' in arg:
                (cls, sub) = arg.split('.')
-               cls = testClasses[cls]
+               try:
+                  cls = testClasses[cls]
+               except:
+                  print "*** %s is not a valid test suite!\nValid values are:" % cls
+                  print testClasses.keys()
+                  exit(0)
             else:
-               cls = testClasses[arg]
+               try:
+                  cls = testClasses[arg]
+               except:
+                  print "*** %s is not a valid test suite!\nValid values are:" % arg
+                  print testClasses.keys()
+                  exit(0)
                sub = None
             suite = buildSuite(cls, suite, sub)
             
