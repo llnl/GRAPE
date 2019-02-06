@@ -174,16 +174,21 @@ class MergeDevelop(resumable.Resumable):
         if not self.progress["outerLevelDone"]:
             conflictedFiles = self.outerLevelMerge(args, branch)
 
-        # reinit any submodules with changed URLs
-        if changedURLModules and activeSubmodulesCheck0:
+        # get active submodules post-merge
+        activeSubmodulesCheck = git.getActiveSubmodules()
+
+        # reinit and create the current branch in any submodules with changed URLs
+        # or new submodules from the merge (usually these new submodules will be inactive,
+        # but they could be active if it was in the workspace already).
+        if (changedURLModules or addedModules) and activeSubmodulesCheck:
             currentBranch = git.currentBranch()
             submapping = config.getMapping('workspace', 'submodulepublicmappings')
             try:
                 submodulePubBranch = submapping[args["--public"]]
             except:
                 submodulePubBranch = args["--public"]
-            for sub in changedURLModules:
-                if sub in activeSubmodulesCheck0:
+            for sub in changedURLModules + addedModules:
+                if sub in activeSubmodulesCheck:
                     os.chdir(utility.workspaceDir())
                     git.submodule("update --init %s" % sub)
                     os.chdir(os.path.join(utility.workspaceDir(), sub))
