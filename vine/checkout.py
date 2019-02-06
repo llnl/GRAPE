@@ -189,7 +189,6 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
             utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
 
     except OSError as e:
-        print e
         pass
     os.chdir(cwd)
     return cleaned
