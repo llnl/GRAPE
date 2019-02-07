@@ -183,7 +183,7 @@ class MergeDevelop(resumable.Resumable):
         # reinit and create the current branch in any submodules with changed URLs
         # or new submodules from the merge (usually these new submodules will be inactive,
         # but they could be active if it was in the workspace already).
-        if reinitModules and reinitActiveSubmoduleCheck:
+        if reinitModules and reinitActiveSubmodulesCheck:
             currentBranch = git.currentBranch()
             submapping = config.getMapping('workspace', 'submodulepublicmappings')
             try:
