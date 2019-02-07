@@ -2,6 +2,7 @@ import os
 import re
 import shutil
 import stat
+import time
 
 import grapeConfig
 import grapeMenu
@@ -142,14 +143,15 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
     cleaned = False
     try:
         os.chdir(os.path.join(workspaceDir, sub))
-        workingDirClean = git.isWorkingDirectoryClean()
+        dirIsEmpty = len(os.listdir(".")) == 0
+        workingDirClean = dirIsEmpty or git.isWorkingDirectoryClean()
         changedActive = sub in activeSubmodules
         if workingDirClean or (veryclean and not changedActive):
             # veryclean will always try to clean, fail if the clean fails
             # and remove the back-end repo.
             if veryclean:
                unpushed = False
-               if changedActive:
+               if not dirIsEmpty and changedActive:
                   unpushed = git.log("--branches --not --remotes --oneline --decorate")
                if unpushed:
                   utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
@@ -165,12 +167,12 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                elif args["--updateView"]:
                    clean = True
             if clean:
+                os.chdir(workspaceDir)
                 utility.printMsg("Removing clean submodule %s." % sub)
                 if not veryclean or changedActive:
                    shutil.rmtree(os.path.join(workspaceDir, sub))
                 if veryclean:
                    if changedActive:
-                      os.chdir(workspaceDir)
                       git.submodule("deinit -f %s" % sub)
                    # This must be removed even for inactive submodules
                    modulepath = os.path.join(workspaceDir, ".git", "modules", sub)
@@ -183,12 +185,17 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                          for root,dirs,files in os.walk(modulepath):
                             for name in files:
                                os.chmod(os.path.join(root, name), stat.S_IWRITE)
-                         shutil.rmtree(modulepath)
+                         try:
+                            shutil.rmtree(modulepath)
+                         except OSError:
+                            time.sleep(1)
+                            shutil.rmtree(modulepath)
                 cleaned = True
         else:
             utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
 
-    except OSError:
+    except OSError as e:
+        utility.printMsg("Warning in {0}: {1}".format(sub,e))
         pass
     os.chdir(cwd)
     return cleaned

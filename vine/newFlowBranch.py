@@ -75,6 +75,7 @@ class NewBranchOption(option.Option):
                 utility.printMsg("%s %s, attempting to remove references for %s submodule before branch creation." % (sub, "has changed URL" if sub in changedURLModules else "is not present in %s" % start, "active" if sub in activeSubmodulesCheck else "inactive"))
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck)
                 if not cleaned:
+                    utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
             
         launcher = utility.MultiRepoCommandLauncher(createBranch, 
