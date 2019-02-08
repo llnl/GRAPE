@@ -284,7 +284,7 @@ class MergeDevelop(resumable.Resumable):
             git.fetch("origin %s:%s" % (subPublic, subPublic))
         ret = self.mergeIntoCurrent(subPublic, mergeArgs, subproject)
         # skip nested subprojects that fail to merge
-        if not ret and not isSubmodule:
+        if not ret and not isSubmodule and not git.conflictedFiles():
             utility.printMsg("Unable to merge subproject {0}, skipping...".format(subproject))
             ret = True
         conflict = not ret
@@ -371,7 +371,8 @@ class MergeDevelop(resumable.Resumable):
         status = git.status()
         # Commit after conflict resolution.
         # If there were no conflicts in the outer-level repo, we still need to commit the submodule gitlinks.
-        if "All conflicts fixed but you are still merging." in status or "Changes to be committed:" in status:
+        if "All conflicts fixed but you are still merging." in status or \
+           (not "You have unmerged paths." in status and "Changes to be committed:" in status):
             git.commit("-m \"GRAPE: merge from %s after conflict resolution.\"" % args["--public"])
             return True
         else:
