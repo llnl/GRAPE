@@ -1,4 +1,5 @@
 import os
+import sys
 import ConfigParser
 import grapeGit as git
 import checkout
@@ -139,6 +140,21 @@ class MergeDevelop(resumable.Resumable):
         # take note of whether all submodules are currently present, assume user wants to add any new submodules to WS if so
         activeSubmodulesCheck0 = git.getActiveSubmodules()
 
+        self.progress["allActive"] = set(git.getAllSubmodules()) == set(git.getActiveSubmodules())
+
+        # checking for a consistent workspace before doing a merge
+        utility.printMsg("Checking for a consistent workspace before performing merge...")
+        ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
+        if ret is False:
+            utility.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
+            return False
+            
+        if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
+            # make sure public branches are to date in outer level repo.
+            utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
+            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])  
+            self.progress["updateLocalDone"] = True
+
         addedModules = []
         removedModules = []
         changedURLModules = []
@@ -151,22 +167,6 @@ class MergeDevelop(resumable.Resumable):
                 if not cleaned:
                     utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
-
-        self.progress["allActive"] = set(git.getAllSubmodules()) == set(git.getActiveSubmodules())
-
-        # checking for a consistent workspace before doing a merge
-        utility.printMsg("Checking for a consistent workspace before performing merge...")
-        ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
-        if ret is False:
-            utility.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
-            return False
-            
-
-        if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
-            # make sure public branches are to date in outer level repo.
-            utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
-            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])  
-            self.progress["updateLocalDone"] = True
         
         # do an outer merge if we haven't done it yet        
         if not "outerLevelDone" in self.progress:
@@ -283,6 +283,10 @@ class MergeDevelop(resumable.Resumable):
         if  hasRemote and  (git.branchUpToDateWith(subPublic, "origin/%s" % subPublic) or not hasBranch):
             git.fetch("origin %s:%s" % (subPublic, subPublic))
         ret = self.mergeIntoCurrent(subPublic, mergeArgs, subproject)
+        # skip nested subprojects that fail to merge
+        if not ret and not isSubmodule:
+            utility.printMsg("Unable to merge subproject {0}, skipping...".format(subproject))
+            ret = True
         conflict = not ret
         if conflict:
             self.progress["stopPoint"] = "Subproject: %s" % subproject
