@@ -1,5 +1,13 @@
 
 
+Mon Feb 11 09:53:49 2019 Benjamin T. Liu
+v1.28.5
+Reviewers: Peter Robinson
+
+Fix bug in previous md update that caused issues when more than one subproject had a conflict
+Allow merge to proceed if public branch is not available in nested subproject
+
+
 Thu Feb  7 11:05:22 2019 Benjamin T. Liu
 v1.28.4
 Reviewers: Peter Robinson
