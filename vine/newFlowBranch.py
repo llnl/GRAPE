@@ -59,6 +59,11 @@ class NewBranchOption(option.Option):
             
         if not args["--user"]:
             args["--user"] = utility.getUserName()
+
+        if args["--user"] != args["--user"].lower():
+            utility.userInput("Converting username to lowercase.  Press any key to continue...")
+            args["--user"] = args["--user"].lower()
+
             
         branchName = self._key + "/" + args["--user"] + "/" + args["<descr>"]
 
