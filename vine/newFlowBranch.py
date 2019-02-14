@@ -70,6 +70,13 @@ class NewBranchOption(option.Option):
             
         branchName = self._key + "/" + args["--user"] + "/" + args["<descr>"]
 
+        branchStatus = checkout.branchAlreadyExists(branchName)
+        if branchStatus:
+           utility.printMsg("Not creating new branch.")
+           if branchStatus == 1:
+              utility.printMsg("Use `grape checkout %s' instead." % branchName)
+           return False
+
         activeSubmodulesCheck = git.getActiveSubmodules()
 
         addedModules = []

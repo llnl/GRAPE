@@ -112,6 +112,32 @@ def createNewBranchesMREHandler(mre):
     for e, b in zip(mre.exceptions(), mre.branches()):
         print b, e
      
+# check whether the branch exists already in the outer level repo
+# return value 0 : does not exist
+#              1 : already exists
+#              2 : exists as a case-insensitive match
+def branchAlreadyExists(branch, verbose = True):
+    retVal = 0
+    cwd = os.getcwd() 
+    os.chdir(utility.workspaceDir())
+    git.fetch("--prune")
+    # make sure branch does not already exist
+    allBranches = set([b[len("remotes/origin/"):] if b.startswith("remotes/origin/") else b for b in git.allBranches()])
+    if branch in allBranches:
+        if verbose:
+            utility.printMsg("Branch %s already exists!" % branch)
+        retVal = 1
+    else:
+        # make sure branch is not a case-insensitive match
+        # as this will cause problems on Windows and Mac filesystems.
+        for b in allBranches:
+            if branch.lower() == b.lower():
+                if verbose:
+                    utility.printMsg("Branch %s already exists!\n%s is a case insensitive match." % (b, branch))
+                retVal = 2
+    os.chdir(cwd)
+    return retVal
+
 def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules):
     cwd = os.getcwd() 
     os.chdir(utility.workspaceDir())
@@ -248,6 +274,11 @@ class Checkout(option.Option):
         checkoutargs = ''
         if args['-b']: 
             checkoutargs += " -b"
+
+            branchStatus = branchAlreadyExists(branch)
+            if branchStatus:
+                utility.printMsg("Not creating new branch.")
+                return False
         else:
             # check to see if we already have the branch
             try:
