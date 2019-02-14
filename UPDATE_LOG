@@ -1,5 +1,14 @@
 
 
+Thu Feb 14 14:43:48 2019 Benjamin T. Liu
+v1.28.6
+Reviewers: Peter Robinson, Al Nichols
+
+- Fix for grape checkout -b (broken 1.28.4)
+- Enforce lowercase username and topic prefix
+- Check for existing branch or case-insensitive match (in outer level repo) before creating branches through newFlow or checkout -b
+
+
 Mon Feb 11 09:53:49 2019 Benjamin T. Liu
 v1.28.5
 Reviewers: Peter Robinson
