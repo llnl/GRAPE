@@ -32,6 +32,9 @@ class NewBranchOption(option.Option):
     def __init__(self, topic, public):
         super(NewBranchOption, self).__init__()
         self._key = topic
+        if (topic != topic.lower()):
+            utility.printMsg("WARNING: %s in .grapeconfig.flow.topicPrefixMappings should be lowercase." % topic)
+            self._key = topic.lower()
         self._section = "Gitflow Tasks"
         self._public = public
 

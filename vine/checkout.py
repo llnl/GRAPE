@@ -241,36 +241,41 @@ class Checkout(option.Option):
         os.chdir(workspaceDir)
         currentSHA = git.shortSHA("HEAD")
 
-        # check to see if we already have the branch
-        try:
-            git.shortSHA(branch)
-        except:
-            # otherwise fetch it
-            git.fetch("origin", "%s:%s" % (branch, branch))
-
         addedModules = []
         removedModules = []
         changedURLModules = []
         uvArgs = []
-        if grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
-            parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
-
-        submodulesDidChange = False
-        if addedModules or removedModules or changedURLModules:
-            submodulesDidChange = True
-             
-        # deinit and clean out any submodules that changed urls
-        initiallyActiveSubmodules = git.getActiveSubmodules()
-        for sub in changedURLModules:
-            utility.printMsg("url for %s changed, attempting to remove references for %s submodule." % (sub, "active" if sub in initiallyActiveSubmodules else "inactive") )
-            cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules)
-            if not cleaned:
-                utility.printMsg("Failed to remove old submodule for %s." % sub)
-                return False
-
         checkoutargs = ''
         if args['-b']: 
             checkoutargs += " -b"
+        else:
+            # check to see if we already have the branch
+            try:
+                git.shortSHA(branch)
+            except:
+                try:
+                   # otherwise fetch it
+                   git.fetch("origin", "%s:%s" % (branch, branch))
+                except git.GrapeGitError as e:
+                   utility.printMsg("Branch {0} could not be fetched in outer level repo:\n{1}\nUse grape checkout -b if you really want to create a new branch off of HEAD.".format(branch, e))
+                return False
+
+            if grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
+                parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
+
+            submodulesDidChange = False
+            if addedModules or removedModules or changedURLModules:
+                submodulesDidChange = True
+                 
+            # deinit and clean out any submodules that changed urls
+            initiallyActiveSubmodules = git.getActiveSubmodules()
+            for sub in changedURLModules:
+                utility.printMsg("url for %s changed, attempting to remove references for %s submodule." % (sub, "active" if sub in initiallyActiveSubmodules else "inactive") )
+                cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules)
+                if not cleaned:
+                    utility.printMsg("Failed to remove old submodule for %s." % sub)
+                    return False
+
         utility.printMsg("Performing checkout of %s in outer level project." % branch)
         launcher = utility.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs, sync])])
        
