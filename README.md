@@ -515,8 +515,8 @@ options are at least listed below.
 ## stash
 
     grape stash can run simple git stash, git stash pop, or git stash list commands in all repositories
-    in your workspace. 
-    
+    in your workspace.
+
     Note that this is a bit scary - a simple git stash pop will attempt to apply the most recently stashed
     commit in each repo, grape makes no attempt of tracking of which commits were stashed on the most recent
     call to grape stash, so if you do a stash with active edits in one repo, then later do a stash with
@@ -561,13 +561,13 @@ options are at least listed below.
 ## pull
 
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
-    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
+    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
 
     Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
     --continue     Finish a pull that failed due to merge conflicts.
-    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.  
+    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.
 
 
     
@@ -632,9 +632,9 @@ options are at least listed below.
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
     --cascade=<branch>      For squash merges, can choose to cascade back to <branch> after the merge is
-                            completed. Define multiple times to setup a chain of cascades. Overrides outer repo and 
+                            completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
                             nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
-                            submodule publish policies. 
+                            submodule publish policies.
     --merge                 Perform a normal merge.
     -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
                             --rebase.
@@ -660,7 +660,7 @@ options are at least listed below.
                             perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
     --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
                             steps.
-    --abort                 Abort a previously failed call to grape publish.   
+    --abort                 Abort a previously failed call to grape publish.
     --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
@@ -691,7 +691,7 @@ options are at least listed below.
     --tickVersion=<bool>    Tick a version number as a part of this publish action.
                             [default: .grapeconfig.publish.tickVersion]
     --tickOnCascade=<slot>  Tick the <slot> version number when performing a cascade.
-                            Default behavior governed by the flow.topicCascadeTick mapping. 
+                            Default behavior governed by the flow.topicCascadeTick mapping.
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket username.
@@ -735,9 +735,9 @@ options are at least listed below.
                             [default: .grapeconfig.publish.emailServer]
     --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
                             [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
+    --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge           Perform the merge using the Bitbucket REST API. 
+    --remoteMerge           Perform the merge using the Bitbucket REST API.
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -817,48 +817,48 @@ options are at least listed below.
     Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
 
     Options:
-        --am            Use git's default merge. 
+        --am            Use git's default merge.
         --as            Do a safe merge - force git to issue conflicts for files that
-                        are touched by both branches. 
+                        are touched by both branches.
         --at            Git accept their changes in any file touched by both branches (the branch you're merging from)
         --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
         --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
         --askAll        Ask to determine the merge strategy before merging each subproject.
-        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
+        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch>
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
         --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
                         the merge.
-        --squash        Perform squash merges. 
+        --squash        Perform squash merges.
 
     Arguments:
-        <branch>        The branch you want to merge in. 
+        <branch>        The branch you want to merge in.
 
     
 ## md
 
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
-    If executed on a public branch, performs a pull --rebase to update your local public branch. 
+    If executed on a public branch, performs a pull --rebase to update your local public branch.
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
                     [--am | --as | --at | --aT | --ay | --aY | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
                     [--squash]
-                    
+
 
     Options:
-        --public=<branch>       Overrides the public branch to merge from. 
-                                Default behavior is to merge according to 
+        --public=<branch>       Overrides the public branch to merge from.
+                                Default behavior is to merge according to
                                 .grapeconfig.flow.topicPrefixMappings.
         --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
-                                according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
+                                according to .grapeconfig.flow.submoduleTopicPrefixMappings.
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
         --at                    Perform the merge using the public branch's version for any file modified by both branches.
-        --aT                    Perform the merge resolving conficts using the public branch's version. 
+        --aT                    Perform the merge resolving conficts using the public branch's version.
         --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
         --aY                    Perform the merge resolving conflicts using your topic branch's version.
         --askAll                Ask to determine the merge strategy before merging each subproject.
@@ -867,8 +867,8 @@ options are at least listed below.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
-        --squash                Perform squash merges. 
-        
+        --squash                Perform squash merges.
+
 
 
     
