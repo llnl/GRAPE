@@ -4,6 +4,7 @@ import grapeGit as git
 import grapeMenu
 import utility
 import grapeConfig
+import option
 import resumable
 
 
@@ -12,21 +13,21 @@ def pull(branch="develop", repo=".", rebase=False):
         argStr = "--rebase origin %s" % branch
     else:
         argStr = "origin %s " % branch
-    
+
     utility.printMsg("Pulling %s in %s..." % (branch, repo))
     git.pull(argStr, throwOnFail=True)
 
 
-class Pull(resumable.Resumable):
+class Pull(resumable.Resumable, option.Option):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
-    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
+    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
 
     Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
     --continue     Finish a pull that failed due to merge conflicts.
-    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.  
+    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.
 
 
     """
@@ -68,11 +69,11 @@ class Pull(resumable.Resumable):
             return val
 
     def _resume(self, args):
-        grapeMenu.menu().getOption("md")._resume(args)             
+        grapeMenu.menu().getOption("md")._resume(args)
         return True
 
     def _saveProgress(self, args):
         super(Merge, self)._saveProgress(args)
-    
+
     def setDefaultConfig(self, config):
         pass

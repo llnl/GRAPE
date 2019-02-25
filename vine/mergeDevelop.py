@@ -5,34 +5,35 @@ import grapeGit as git
 import checkout
 import grapeMenu
 import grapeConfig
+import option
 import resumable
 import utility
 
 
 # pull and merge in an up-to-date development branch
-class MergeDevelop(resumable.Resumable):
+class MergeDevelop(resumable.Resumable, option.Option):
     """
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
-    If executed on a public branch, performs a pull --rebase to update your local public branch. 
+    If executed on a public branch, performs a pull --rebase to update your local public branch.
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
                     [--am | --as | --at | --aT | --ay | --aY | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
                     [--squash]
-                    
+
 
     Options:
-        --public=<branch>       Overrides the public branch to merge from. 
-                                Default behavior is to merge according to 
+        --public=<branch>       Overrides the public branch to merge from.
+                                Default behavior is to merge according to
                                 .grapeconfig.flow.topicPrefixMappings.
         --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
-                                according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
+                                according to .grapeconfig.flow.submoduleTopicPrefixMappings.
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
         --at                    Perform the merge using the public branch's version for any file modified by both branches.
-        --aT                    Perform the merge resolving conficts using the public branch's version. 
+        --aT                    Perform the merge resolving conficts using the public branch's version.
         --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
         --aY                    Perform the merge resolving conflicts using your topic branch's version.
         --askAll                Ask to determine the merge strategy before merging each subproject.
@@ -41,8 +42,8 @@ class MergeDevelop(resumable.Resumable):
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
-        --squash                Perform squash merges. 
-        
+        --squash                Perform squash merges.
+
 
 
     """
@@ -72,7 +73,7 @@ class MergeDevelop(resumable.Resumable):
         return branch
 
     def description(self):
-        try: 
+        try:
             currentBranch = git.currentBranch()
         except git.GrapeGitError:
             currentBranch = 'unknown'
@@ -97,15 +98,15 @@ class MergeDevelop(resumable.Resumable):
         except:
             # stripping of origin/ from the branch specification
             if branch.startswith("origin/"):
-               basebranch = branch[len("origin/"):]
+                basebranch = branch[len("origin/"):]
             else:
-               basebranch = branch
+                basebranch = branch
             # see if the branch exists locally
             try:
-               git.shortSHA(basebranch)
+                git.shortSHA(basebranch)
             except:
-               # otherwise fetch it
-               git.fetch("origin", "%s:%s" % (basebranch, basebranch))
+                # otherwise fetch it
+                git.fetch("origin", "%s:%s" % (basebranch, basebranch))
 
         # determine whether to merge in subprojects that have changed
         try:
@@ -119,7 +120,7 @@ class MergeDevelop(resumable.Resumable):
             nested = self.progress["nested"]
         except KeyError:
             nested = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-                                                                                         
+
         config = grapeConfig.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
@@ -148,11 +149,11 @@ class MergeDevelop(resumable.Resumable):
         if ret is False:
             utility.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
             return False
-            
+
         if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
-            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])  
+            grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])
             self.progress["updateLocalDone"] = True
 
         addedModules = []
@@ -167,8 +168,8 @@ class MergeDevelop(resumable.Resumable):
                 if not cleaned:
                     utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
-        
-        # do an outer merge if we haven't done it yet        
+
+        # do an outer merge if we haven't done it yet
         if not "outerLevelDone" in self.progress:
             self.progress["outerLevelDone"] = False
         if not self.progress["outerLevelDone"]:
@@ -202,12 +203,12 @@ class MergeDevelop(resumable.Resumable):
                     git.fetch("origin %s:%s" % (submodulePubBranch, submodulePubBranch))
 
             os.chdir(utility.workspaceDir())
-            
+
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
             utility.printMsg("Initial merge failed. Resolve issue and try again. ")
             return False
-        
+
         # merge nested subprojects
         for subproject in nested:
             if not self.mergeSubproject(args, subproject, branch, nested, cwd, isSubmodule=False):
@@ -236,14 +237,14 @@ class MergeDevelop(resumable.Resumable):
                         return False
                 os.chdir(cwd)
                 conflictedFiles = git.conflictedFiles()
-                # now that we resolved the submodule conflicts, continue the outer level merge 
+                # now that we resolved the submodule conflicts, continue the outer level merge
                 if len(conflictedFiles) == 0:
                     self.continueLocalMerge(args)
                     conflictedFiles = git.conflictedFiles()
 
 
 
-                
+
         if conflictedFiles:
             self.progress["stopPoint"] = "resolve conflicts"
             self.progress["cwd"] = cwd
@@ -252,14 +253,14 @@ class MergeDevelop(resumable.Resumable):
             return False
         else:
             grapeMenu.menu().applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
-            
+
         # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
         if self.progress["allActive"]:
             activeSubmodulesCheck1 = git.getActiveSubmodules()
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
                 utility.printMsg("Updating new submodules using grape uv --allSubmodules")
                 grapeMenu.menu().applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
-        
+
         return True
 
 
@@ -274,7 +275,7 @@ class MergeDevelop(resumable.Resumable):
         mergeArgs = args.copy()
         mergeArgs["--public"] = subPublic
 
-        utility.printMsg("Merging %s into %s for %s %s" % 
+        utility.printMsg("Merging %s into %s for %s %s" %
                          (subPublic, git.currentBranch(), "submodule" if isSubmodule else "subproject", subproject))
         git.fetch("origin")
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -295,11 +296,11 @@ class MergeDevelop(resumable.Resumable):
             self.progress["cwd"] = cwd
             conflictedFiles = git.conflictedFiles()
             if conflictedFiles:
-                if isSubmodule: 
+                if isSubmodule:
                     typeStr = "submodule"
                 else:
                     typeStr = "nested subproject"
-                
+
                 utility.printMsg("Merge in %s %s from %s to %s issued conflicts. Resolve and commit those changes \n"
                                  "using git mergetool and git commit in the submodule, then continue using grape\n"
                                  "%s --continue" % (typeStr, subproject, subPublic, git.currentBranch(), args["<<cmd>>"]))
@@ -320,7 +321,7 @@ class MergeDevelop(resumable.Resumable):
 
     def outerLevelMerge(self, args, branch):
         utility.printMsg("Merging changes from %s into your current branch..." % branch)
-              
+
         conflict = not self.mergeIntoCurrent(branch, args, "outer level project")
 
         if conflict:
@@ -386,17 +387,17 @@ class MergeDevelop(resumable.Resumable):
                 return True
         if args['--am']:
             strategy = 'am'
-        elif args['--as']: 
-            strategy = 'as' 
-        elif args['--at']: 
+        elif args['--as']:
+            strategy = 'as'
+        elif args['--at']:
             strategy = 'at'
-        elif args['--aT']: 
+        elif args['--aT']:
             strategy = 'aT'
-        elif args['--ay']: 
+        elif args['--ay']:
             strategy = 'ay'
-        elif args['--aY']: 
+        elif args['--aY']:
             strategy = 'aY'
-    
+
         if not strategy or args['--askAll']:
             repoSpec = " in %s" % projectName if args['--askAll'] else ""
             strategy = utility.userInput("How do you want to resolve changes%s? [am / as / at / aT / ay / aY] \n" % repoSpec +
@@ -407,7 +408,7 @@ class MergeDevelop(resumable.Resumable):
                                          "ay: Accept Yours - accept changes in current branch if both branches touch same file\n" +
                                          "aY: Accept Yours (if conflicted) - resolves conflicts by using changes in current branch.",
                                          "am")
-    
+
         if strategy == 'am':
             args["--am"] = True
             utility.printMsg("Merging using git's default strategy...")
@@ -431,20 +432,20 @@ class MergeDevelop(resumable.Resumable):
                 return False
             attributes = os.path.join(base, ".gitattributes")
             tmpattributes = None
-            if os.path.exists(attributes): 
+            if os.path.exists(attributes):
                 tmpattributes = os.path.join(base, ".gitattributes.tmp")
                 # save original attributes file
                 shutil.copyfile(attributes, tmpattributes)
                 #append merge driver strategy to the attributes file
                 with open(attributes, 'a') as f:
                     f.write("* merge=verify")
-            else: 
+            else:
                 with open(attributes, 'w') as f:
                     f.write("* merge=verify")
-    
+
             # perform the merge
             choice = self.merge(branchName, "", args)
-    
+
             # restore original attributes file
             if tmpattributes:
                 shutil.copyfile(tmpattributes, attributes)
@@ -459,7 +460,7 @@ class MergeDevelop(resumable.Resumable):
             args["--aY"] = True
             utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
             choice = self.merge(branchName, "-Xours", args)
-    
+
         return choice
 
     def setDefaultConfig(self, config):

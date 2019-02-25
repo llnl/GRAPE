@@ -2,12 +2,11 @@ import pickle
 import abc
 import os
 import grapeGit as git
-import option
 import utility
 import grapeConfig
 
 
-class Resumable(option.Option):
+class Resumable(object):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self):
@@ -39,13 +38,13 @@ class Resumable(option.Option):
         with open(self.progressFile, 'r') as f:
             p = pickle.Unpickler(f)
             self.progress = p.load()
-    
+
     def _removeProgressFile(self):
         #remove the file
         try:
             os.remove(self.progressFile)
         except OSError as e:
-            if e.errno == 2: 
+            if e.errno == 2:
                 pass
             else:
                 raise e
