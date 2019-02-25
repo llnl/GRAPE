@@ -1,5 +1,16 @@
 
 
+Mon Feb 25 15:43:25 2019 David Bloss
+v1.31.1
+Reviewers: Ben Liu, Peter Robinson
+
+The first significant step toward upgrading GRAPE to python 3.x is updating GRAPE's import schema. This branch is the first step down that road, with python's 'reindent' tool also handling some spacing/indentation issues.
+
+In python 2.7 \"implicit importing\" is allowed, i.e. 'import grapeGit' (path implied). But python 3.x requires relative or absolute importing, i.e. 'import ..grapeGit' or 'import grape.vine.grapeGit' respectively.
+
+This revealed some circular dependencies that must be unraveled before python 3.x can begin to process GRAPE's demands. Separating 'option.py' and 'resumable.py' is a decent first step and can be visually seen by running 'pylint --disable=all --enable=imports,RP0401,RP0402 --import-graph=stuff.pdf **/*.py' on both this branch and develop. Results output to \"stuff.pdf\".
+
+
 Wed Feb 20 09:59:17 2019 Peter B. Robinson
 v1.30.0
 Reviewers: Ben Liu
