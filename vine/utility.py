@@ -8,7 +8,7 @@ import tempfile
 import grapeGit as git
 import grapeMenu
 import grapeConfig
- 
+
 
 toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
 if toplevel not in sys.path:
@@ -37,7 +37,7 @@ def ensure_dir(f):
 
 
 #ensures the path string is windows compatibile if necessary
-def makePathPortable(path): 
+def makePathPortable(path):
     if os.name == "nt":
         newPath = path.replace("/", "\\")
     else:
@@ -51,8 +51,8 @@ globalShowProgress = True
 
 
 CLI =  """
-*** GRAPE - Git Replacement for "Awesome" PARSEC Environment ********** 
-Calling grape by itself will pull up the grape menu. 
+*** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
+Calling grape by itself will pull up the grape menu.
 Usage: grape [-v | -q] [--version] [--noProgress] [--np=<numProcs>][<command> <args>...]
 
 Options:
@@ -61,7 +61,7 @@ Options:
 --noProgress Do not show progress for long-running git subprocesses. This will remove
              a fair amount of process-launch overhead in GRAPE, which can have a speedup of
              about a third.
---np=<int>   The number of processes grape should launch when doing parallel operations. 
+--np=<int>   The number of processes grape should launch when doing parallel operations.
 
 
 
@@ -71,12 +71,12 @@ Options:
 def setVerbosity(level):
     global globalVerbosity
     globalVerbosity = level
-    
+
 def setShowProgress(val):
     global globalShowProgress
     globalShowProgress = val
 
-def __apply__(args, CLI): 
+def __apply__(args, CLI):
     if type(args) is docoptDict:
         if args["-v"]:
             setVerbosity(2)
@@ -88,7 +88,7 @@ def __apply__(args, CLI):
             setShowProgress(False)
         if args["--np"]:
             MultiRepoCommandLauncher.numProcs = int(args["--np"])
-        else: 
+        else:
             setShowProgress(True)
     if type(args) is types.ListType:
         # assume the list has yet to be parsed by docopt into the dict __apply__ expects.
@@ -113,7 +113,7 @@ import tailer
 
 def runFollowableTarget(followableCmd):
     followableCmd.runTarget()
-    
+
 def followFollowableTarget(followableCmd):
     followableCmd.followTarget()
 
@@ -122,7 +122,7 @@ class FollowableProcess(object):
         self.output = ''
         self.returncode = process.returncode
         self.pid = process.pid
-    
+
 class FollowableCommand(object):
     def __init__(self, cmd, wd, outfile, stdin):
         self.cmd = cmd
@@ -135,32 +135,32 @@ class FollowableCommand(object):
         self.stopFollowing = 0
 
     def runTarget(self):
-        # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue. 
+        # runs a subprocess and produces a finished subprocess in the finishedProcesses Queue.
 
         process = subprocess.Popen(self.cmd, stdout=self.fileno, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
                                cwd=self.wd, stdin=sys.stdin, bufsize=1)
         process.wait()
         self.finishedProcesses.put(FollowableProcess(process), block=False)
-    
+
     def followTarget(self):
         # uses tailer to follow the output of the running process
         if os.name == "nt":
             flags = os.O_RDWR | os.O_TEMPORARY
         else:
             flags = os.O_RDWR
-        
+
         try:
             f = os.open(self.outfileName, flags)
-            fo = os.fdopen(f,'r'); 
+            fo = os.fdopen(f,'r');
             generator = tailer.follow(fo)
             for l in generator:
                 print l
         finally:
             os.close(fo)
             os.close(f)
-                
+
     def run(self, startStreaming=5):
-     
+
         # the cmd launch process
         thread = multiprocessing.Process(target=runFollowableTarget,args=[self])
         # the tailer.follow process
@@ -182,8 +182,8 @@ class FollowableCommand(object):
 
 
 
-        
-        
+
+
 
 def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                       stdin=sys.stdin, stream = False):
@@ -196,7 +196,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
     #***************************************************************************************************************
-    if stream: 
+    if stream:
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, shell=(os.name != "nt"),
                                    cwd=workingDirectory, stdin=stdin, bufsize=1)
         output = ''
@@ -205,17 +205,17 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             if verbose > 0:
                 sys.stdout.write(out)
                 sys.stdout.flush()
-            output += out 
+            output += out
         process.wait() # should be a noop
         out +=  process.communicate()[0] # also should be a noop
         if verbose > 0:
             sys.stdout.write(out)
             sys.stdout.flush()
-        output += out	
+        output += out
 
     # TODO: Followable commands aren't working in Windows right now - initially there were some pickling difficulties,
     # but now we are seeing behaviors that look like multiprocessing subprocesses are being launched in incorrect directories.
-    # To be troubleshooted later. 
+    # To be troubleshooted later.
     elif globalShowProgress and os.name == "posix":
         with tempfile.NamedTemporaryFile() as tmpFile:
             launcher = FollowableCommand(command, workingDirectory, tmpFile, stdin)
@@ -227,13 +227,13 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             process = launcher.finishedProcesses.get()
     else:
         with tempfile.TemporaryFile() as tmpFile:
-            process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(), 
-                                        stderr=subprocess.STDOUT ) 
+            process = subprocess.Popen( command, cwd=workingDirectory, shell=(os.name != "nt"), stdout=tmpFile.fileno(),
+                                        stderr=subprocess.STDOUT )
             process.wait()
             tmpFile.seek( 0 )
             output = tmpFile.read()
             if verbose > 1:
-                print(output.strip())        
+                print(output.strip())
 
     process.output = output
     if process.returncode != 0 and verbose > 1:
@@ -241,47 +241,47 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     return process
 
 # there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
-# this is a wrapper to allow exception capture in runCommandOnRepoBranch. 
+# this is a wrapper to allow exception capture in runCommandOnRepoBranch.
 class MultiRepoException(Exception):
     def __init__(self):
         self._exceptions = []
         self._repos = []
         self._branches = []
         self._args = []
-        
+
     def addException(self, e, repo, branch, args):
         self._exceptions.append(e)
         self._repos.append(repo)
         self._branches.append(branch)
         self._args.append(args)
-    
+
     def __getitem__(self, pos):
         return self._exceptions[pos]
-    
+
     def exceptions(self):
         return self._exceptions
 
     def repos(self):
         return self._repos
-    
+
     def branches(self):
         return self._branches
-    
+
     def args(self):
         return self._args
-        
+
     def hasException(self):
         return len(self._exceptions) > 0
-    
+
     def __repr__(self):
         return "MRE with \n exceptions: %s \repos: %s\n branches: %s\n args: %s" % (
                 self._exceptions, self._repos, self._branches, self._args)
-        
-        
+
+
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
 # a method in, and launches the method. Needs to be at the file scope for stricter implementations of
-# pickle, used by the multiprocess module. 
+# pickle, used by the multiprocess module.
 def runCommandOnRepoBranch(repoBranchCommandTuple):
     curDir = os.getcwd()
     repo = repoBranchCommandTuple[0]
@@ -298,17 +298,17 @@ def runCommandOnRepoBranch(repoBranchCommandTuple):
             try:
                 return f()
             except Exception as e:
-                return e            
+                return e
         except Exception as e:
             return e
     except Exception as e:
         return e
-        
+
     os.chdir(curDir)
 
-import multiprocessing.pool  
+import multiprocessing.pool
 # Thanks to Chris Arndt at http://stackoverflow.com/questions/6974695/python-process-pool-non-daemonic
-# for this lovely magic. 
+# for this lovely magic.
 class NoDaemonProcess(multiprocessing.Process):
     # make 'daemon' attribute always return False
     def _get_daemon(self):
@@ -322,7 +322,7 @@ class NoDaemonProcess(multiprocessing.Process):
 class MyPool(multiprocessing.pool.Pool):
     Process = NoDaemonProcess
 
-    
+
 
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
@@ -335,14 +335,14 @@ class MultiRepoCommandLauncher(object):
     def __init__(self, lmbda, nProcesses=-1, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
                  globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False, outer=""):
         self.lmbda = lmbda
-        
+
         config = grapeConfig.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules")
         if not recurseSubmodules:
             self.runSubmodules = runInSubmodules
         else:
             self.runSubmodules = recurseSubmodules
-        # apply the skipSubmodules override    
+        # apply the skipSubmodules override
         self.runSubmodules = self.runSubmodules and not skipSubmodules
         self.runSubprojects = runInSubprojects
         self.runOuter = runInOuter
@@ -353,15 +353,15 @@ class MultiRepoCommandLauncher(object):
         self.perRepoArgs = perRepoArgs
         self.globalArgs = globalArgs
         self.launchTuple = listOfRepoBranchArgTuples
-        
+
         self.repos = []
         self.branches = []
         if outer:
             self.outer = outer
         else:
             self.outer = workspaceDir()
-        
-        
+
+
 
     def MergeLaunchSet(self, otherMRCL):
         self.initializeCommands()
@@ -370,7 +370,7 @@ class MultiRepoCommandLauncher(object):
             if args:
                 print ("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
                 break
-        
+
         reducedSet = list(set(zip(self.branches+otherMRCL.branches,
                                                                      self.repos+otherMRCL.repos)))
         self.branches = []
@@ -380,7 +380,7 @@ class MultiRepoCommandLauncher(object):
             self.branches.append(t[0])
             self.repos.append(t[1])
             self.perRepoArgs.append([])
-        
+
         pass
 
     def collapseLaunchSetBranches(self):
@@ -390,11 +390,11 @@ class MultiRepoCommandLauncher(object):
         newBranches = []
         newRepos = []
         newArgs = []
-        # this is a terrible N^2 algorithm at the moment            
+        # this is a terrible N^2 algorithm at the moment
         for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
             try:
                 i = newRepos.index(r)
-                newBranches[i].append(b)                
+                newBranches[i].append(b)
             except ValueError:
                 newRepos.append(r)
                 newBranches.append([b])
@@ -402,18 +402,18 @@ class MultiRepoCommandLauncher(object):
         self.branches = newBranches
         self.repos = newRepos
         self.perRepoArgs = newArgs
-     
+
     def printLaunchSet(self):
         for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
             print "%s,%s,%s" % (b, r, a)
 
-    
+
     def initializeCommands(self):
         config = grapeConfig.grapeConfig()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         publicBranches = config.getPublicBranchList()
         wsDir = dir
-        
+
         # don't reinit
         if self.repos:
             return
@@ -437,33 +437,33 @@ class MultiRepoCommandLauncher(object):
                 self.branches.append(currentBranch)
             if not self.perRepoArgs:
                 if not self.globalArgs:
-                    
+
                     self.perRepoArgs = [[] for x in self.repos]
                 else:
-                    self.perRepoArgs = [self.globalArgs for x in self.repos]        
-       
+                    self.perRepoArgs = [self.globalArgs for x in self.repos]
+
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
         with cd(workspaceDir()):
             argLists = self.perRepoArgs
             config = grapeConfig.grapeConfig()
-            
+
             self.initializeCommands()
-            
+
             retvals = []
-            
+
             if noPause:
-                # for purely local operations, run them all at once. 
-                if len(self.repos) > 0:            
-                    retvals = self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)])            
+                # for purely local operations, run them all at once.
+                if len(self.repos) > 0:
+                    retvals = self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)])
             else:
-                # run the first entry first so that things like logging in to the project's server happen up front            
+                # run the first entry first so that things like logging in to the project's server happen up front
                 if len(self.repos) > 0:
                     retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
                     if isinstance(retvals[0], Exception):
                         retvals[0] = runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0]))
-                if len(self.repos) > 1:            
+                if len(self.repos) > 1:
                     retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
-                    
+
         self.pool.close()
         MRE = MultiRepoException()
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
@@ -474,9 +474,9 @@ class MultiRepoCommandLauncher(object):
                 handleMRE(MRE)
             else:
                 raise MRE
-        return retvals 
+        return retvals
 
-def grapeDir(): 
+def grapeDir():
     return os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
 
 
@@ -507,7 +507,7 @@ def parseArgs(docstr, arguments, config):
 
 def printMsg(msg):
     global globalVerbosity
-    if globalVerbosity > 0:    
+    if globalVerbosity > 0:
         print("GRAPE: %s" % msg)
 
 
@@ -547,24 +547,22 @@ class NoWorkspaceDirException(Exception):
             self.message = "No .git found in %s" % cwd
         else:
             self.message = "No .git found"
-    
+
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir(warnIfNotFound = True, throwIfNotFound=True): 
-    cwd = os.getcwd()
-    basedir = None
-
-    # go until you're at the root (you don't have a head after splitting)
-    while os.path.split(os.getcwd())[1]:
-        if os.path.exists(os.path.join(os.getcwd(), ".git")): 
-            basedir = os.getcwd()
-        os.chdir(os.path.join(os.getcwd(), ".."))
-    if not basedir and warnIfNotFound:
+def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
+    workspace_dir = None
+    base_dir = os.getcwd()
+    # Go until you're at the root (you don't have a head after splitting)
+    while os.path.split(base_dir)[1]:
+        if os.path.exists(os.path.join(base_dir, '.git')):
+            workspace_dir = base_dir
+        base_dir = os.path.dirname(base_dir)
+    if not workspace_dir and warn_if_not_found:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
-    if not basedir and throwIfNotFound:
-        raise NoWorkspaceDirException(cwd)
-    os.chdir(cwd)
-    return basedir
+    if not workspace_dir and throw_if_not_found:
+        raise NoWorkspaceDirException(os.getcwd())
+    return workspace_dir
 
 def isWorkspaceClean(printOutput=False):
     isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
@@ -596,7 +594,7 @@ def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
 
 
 # returns the absolute path to the grape executable this file is bundled with
-def getGrapeExec(): 
+def getGrapeExec():
     if os.name == "nt":
         winpath = os.path.join(os.path.dirname(__file__), "..", "grape.py")
         return "c:/Python27/python.exe " + winpath.replace("\\", "/")
@@ -604,7 +602,7 @@ def getGrapeExec():
         return os.path.join(os.path.dirname(__file__), "..", "grape")
 
 # Takes a URL and returns a hard path for it
-def parseSubprojectRemoteURL(url): 
+def parseSubprojectRemoteURL(url):
     path = url.strip().split('/')
     if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
         return url      #Already a hard path
@@ -623,8 +621,8 @@ def parseSubprojectRemoteURL(url):
     return '/'.join(originURL)
 
 
-# returns the user's home directory: 
-def getHomeDirectory(): 
+# returns the user's home directory:
+def getHomeDirectory():
     if os.name == "nt":
         home = os.environ["USERPROFILE"]
     else:
@@ -634,10 +632,10 @@ def getHomeDirectory():
 from contextlib import contextmanager
 
 @contextmanager
-def cd(path): 
-    old_dir   =   os.getcwd() 
-    os.chdir(path) 
-    try: 
-        yield 
+def cd(path):
+    old_dir   =   os.getcwd()
+    os.chdir(path)
+    try:
+        yield
     finally:
         os.chdir(old_dir)

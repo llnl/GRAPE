@@ -5,16 +5,17 @@ import shutil
 import addSubproject
 import option
 import utility
+import grape_errors
 import grapeGit as git
 import grapeConfig
 import grapeMenu
 import checkout
 
 try:
-   import Tkinter as Tk
-   TkinterImportError = None
+    import Tkinter as Tk
+    TkinterImportError = None
 except ImportError as e:
-   TkinterImportError = e
+    TkinterImportError = e
 
 
 # update your custom sparse checkout view
@@ -31,15 +32,15 @@ class UpdateView(option.Option):
         --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
                                 not go through the 'which submodules do you want' script.
         -b                      Automatically creates subproject branches that should be there according to your branching
-                                model. 
-        --allSubmodules         Automatically add all submodules to your workspace. 
+                                model.
+        --allSubmodules         Automatically add all submodules to your workspace.
         --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
         --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
                                 either by pushing or pulling the remote tracking branch.
                                 This will also checkout the public branch in a headless state prior to offering to create
                                 a new branch (in repositories where the current branch does not exist).
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]
-        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times. 
+        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times.
         --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
         --gui                   Use the graphical user interface to select your view.
     """
@@ -94,7 +95,7 @@ class UpdateView(option.Option):
                 toplevelActiveDirs[prefix].append(sub)
 
         included = {}
-        
+
         if self.uvManager:
             self.uvManager.createFrame(projectType)
 
@@ -118,31 +119,31 @@ class UpdateView(option.Option):
             if opt.lower()[0] == "a":
                 for subproject in subprojects:
                     included[subproject] = True
-                        
+
             if opt.lower()[0] == "n":
                 for subproject in subprojects:
                     included[subproject] = False
             if opt.lower()[0] == "s":
                 for subproject in sorted(subprojects, key=lambda v: (v.upper(), v[0].islower())):
                     if self.uvManager:
-                       # Set the default value for the gui
-                       subIsActive = subproject in activeSubprojects
-                       included[subproject] = subIsActive
-                       self.uvManager.createEntry(subproject, subIsActive)
+                        # Set the default value for the gui
+                        subIsActive = subproject in activeSubprojects
+                        included[subproject] = subIsActive
+                        self.uvManager.createEntry(subproject, subIsActive)
                     else:
-                       included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
-                                                                'y' if (subproject in activeSubprojects) else 'n')
+                        included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
+                                                                 'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
             self.uvManager.createSection("top level")
         for subproject in sorted(toplevelSubs, key=lambda v: (v.upper(), v[0].islower())):
             if self.uvManager:
-               # Set the default value for the gui
-               subIsActive = subproject in activeSubprojects
-               included[subproject] = subIsActive
-               self.uvManager.createEntry(subproject, subIsActive)
+                # Set the default value for the gui
+                subIsActive = subproject in activeSubprojects
+                included[subproject] = subIsActive
+                self.uvManager.createEntry(subproject, subIsActive)
             else:
-               included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
-                                                        'y' if (subproject in activeSubprojects) else 'n')
+                included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
+                                                         'y' if (subproject in activeSubprojects) else 'n')
         return included
 
     def defineActiveNestedSubprojects(self):
@@ -154,8 +155,8 @@ class UpdateView(option.Option):
 
     def execute(self, args):
         if args["--gui"] and TkinterImportError:
-           utility.printMsg("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
-           return True
+            utility.printMsg("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
+            return True
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
         args["--sync"] = sync
@@ -172,12 +173,12 @@ class UpdateView(option.Option):
 
         allSubmodules = git.getAllSubmodules()
         allNestedSubprojects = config.getAllNestedSubprojects()
-        
-        addedSubmodules = [] 
-        addedNestedSubprojects = [] 
+
+        addedSubmodules = []
+        addedNestedSubprojects = []
         addedProjects = args["--add"]
         notFound = []
-       
+
         for proj in addedProjects:
             if proj in allSubmodules:
                 addedSubmodules.append(proj)
@@ -185,11 +186,11 @@ class UpdateView(option.Option):
                 addedNestedSubprojects.append(proj)
             else:
                 notFound.append(proj)
-        
+
         rmSubmodules = []
         rmNestedSubprojects = []
         rmProjects = args["--rm"]
-        
+
         for proj in rmProjects:
             if proj in allSubmodules:
                 rmSubmodules.append(proj)
@@ -201,17 +202,17 @@ class UpdateView(option.Option):
         if notFound:
             utility.printMsg("\"%s\" not found in submodules %s \nor\n nested subprojects %s" % (",".join(notFound),",".join(allSubmodules),",".join(allNestedSubprojects)))
             return False
-                
+
         if not args["--checkSubprojects"]:
             root = None
             if args["--gui"]:
                 root = Tk.Tk()
                 root.title("GRAPE uv - select active subprojects")
                 self.uvManager = UVManager(master=root)
-                
+
             # get submodules to update
             if hasSubmodules:
-                if args["--allSubmodules"]: 
+                if args["--allSubmodules"]:
                     includedSubmodules = {sub:True for sub in allSubmodules}
                 elif args["--add"] or args["--rm"]:
                     includedSubmodules = {sub:True for sub in git.getActiveSubmodules()}
@@ -221,10 +222,10 @@ class UpdateView(option.Option):
                     includedSubmodules = self.defineActiveSubprojects()
 
             # get subprojects to update
-            if not args["--skipNestedSubprojects"]: 
-                
+            if not args["--skipNestedSubprojects"]:
+
                 nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
-                if args["--allNestedSubprojects"]: 
+                if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"]:
                     includedNestedSubprojectPrefixes = {sub:True for sub in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()}
@@ -232,27 +233,27 @@ class UpdateView(option.Option):
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()
-            
+
             if root:
-               self.uvManager.finalize()
-               root.mainloop()
-               if self.uvManager.saved == False:
-                  utility.printMsg("Not changing working view.")
-                  return False
-               # If --all/--add/--rm is used, only consider the
-               # command line for the included subprojects.
-               if self.uvManager.includedSubmodules == None:
-                  utility.printMsg("Submodule changes from GUI ignored")
-               else:
-                  includedSubmodules = self.uvManager.includedSubmodules
-               if self.uvManager.includedNestedSubprojects == None:
-                  utility.printMsg("Nested subproject changes from GUI ignored")
-               else:
-                  includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects
-               try:
-                  root.destroy()
-               except:
-                  pass
+                self.uvManager.finalize()
+                root.mainloop()
+                if self.uvManager.saved == False:
+                    utility.printMsg("Not changing working view.")
+                    return False
+                # If --all/--add/--rm is used, only consider the
+                # command line for the included subprojects.
+                if self.uvManager.includedSubmodules == None:
+                    utility.printMsg("Submodule changes from GUI ignored")
+                else:
+                    includedSubmodules = self.uvManager.includedSubmodules
+                if self.uvManager.includedNestedSubprojects == None:
+                    utility.printMsg("Nested subproject changes from GUI ignored")
+                else:
+                    includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects
+                try:
+                    root.destroy()
+                except:
+                    pass
 
             if hasSubmodules:
                 initStr = ""
@@ -279,13 +280,13 @@ class UpdateView(option.Option):
                         try:
                             git.submodule("deinit %s" % deinitStr.strip())
                             done = True
-                        except git.GrapeGitError as e:
+                        except grape_errors.GrapeGitError as e:
                             if "the following file has local modifications" in e.gitOutput:
                                 print e.gitOutput
                                 utility.printMsg("A submodule that you wanted to remove has local modifications. "
                                                  "Use grape uv -f to force removal.")
                                 return False
-                            
+
                             elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput:
                                 if not args["-f"]:
                                     raise e
@@ -312,8 +313,8 @@ class UpdateView(option.Option):
                     git.submodule("update")
 
             # handle nested subprojects
-            if not args["--skipNestedSubprojects"]: 
-                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects} 
+            if not args["--skipNestedSubprojects"]:
+                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
                 userConfig = grapeConfig.grapeUserConfig()
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
@@ -325,15 +326,15 @@ class UpdateView(option.Option):
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
                     if nowActive and previouslyActive:
                         updatedActiveList.append(subprojectName)
-    
+
                     if nowActive and not previouslyActive:
                         utility.printMsg("Activating Nested Subproject %s" % subproject)
                         if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig):
                             utility.printMsg("Can't activate %s. Exiting..." % subprojectName)
                             return False
-                        
+
                         updatedActiveList.append(subprojectName)
-    
+
                     if not nowActive and not previouslyActive:
                         pass
                     if not nowActive and previouslyActive:
@@ -370,7 +371,7 @@ class UpdateView(option.Option):
     def setDefaultConfig(self, config):
         config.ensureSection("workspace")
         config.set("workspace", "submodulepublicmappings", "?:master")
-       
+
 
 
 def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
@@ -382,7 +383,7 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
         except:
             # the branch may not exist, but this is ok
             pass
-        
+
         if git.currentBranch() == branch:
             return
 
@@ -404,26 +405,26 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
 def cleanupPush(repo='', branch='', args='none'):
     with utility.cd(repo):
         utility.printMsg("Attempting push of local %s in %s" % (branch, repo))
-        git.push("origin %s" % branch)                           
+        git.push("origin %s" % branch)
 
 
 def handleCleanupPushMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         try:
             raise e
-        except git.GrapeGitError as e2:
+        except grape_errors.GrapeGitError as e2:
             utility.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
             utility.printMsg("%s" % e2.gitOutput)
-            utility.printMsg("Use grape pull to merge the remote version into the local version.")    
+            utility.printMsg("Use grape pull to merge the remote version into the local version.")
 
 def handleEnsureLocalUpToDateMRE(mre):
     _pushBranch = False
     _skipPush = False
     cleanupPushArgs = []
     for e1, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
-        try: 
+        try:
             raise e1
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
                 if "Couldn't find remote ref" in e.gitOutput:
                     if not _pushBranch:
@@ -437,7 +438,7 @@ def handleEnsureLocalUpToDateMRE(mre):
                     pushBranch =  utility.userInput("Would you like to push your local branch? \n"
                                                     "(select 'a' to say yes for (a)ll subprojects, 's' to (s)kip push for all subprojects)"
                                                     "\n(y,n,a,s)", 'y')
-                    
+
                 if str(pushBranch).lower()[0] == 'a':
                     _pushBranch = True
                     pushBranch = True
@@ -445,18 +446,18 @@ def handleEnsureLocalUpToDateMRE(mre):
                     _skipPush = True
                     pushBranch = False
                 if pushBranch:
-                    
+
                     cleanupPushArgs.append((repo, branch, None))
                 else:
                     utility.printMsg("Skipping push of local %s in %s" % (branch, repo))
-                    
+
             elif e.commError:
                 utility.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
                                  "local version. " % branch)
-            else:    
+            else:
                 raise(e)
-   
-    # do another MRC launch to do any follow up pushes that were requested. 
+
+    # do another MRC launch to do any follow up pushes that were requested.
     utility.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
@@ -474,211 +475,211 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
 
 # Class for selecting subprojects in a workspace
 class UVManager:
-   def __init__(self, master, **kwargs):
-      height = kwargs.get('height', 0)
-      width  = kwargs.get('width', 0)
+    def __init__(self, master, **kwargs):
+        height = kwargs.get('height', 0)
+        width  = kwargs.get('width', 0)
 
-      # Saved lists of active subprojects (None if not saved)
-      self.includedSubmodules = None
-      self.includedNestedSubprojects = None
-      self.saved = False
+        # Saved lists of active subprojects (None if not saved)
+        self.includedSubmodules = None
+        self.includedNestedSubprojects = None
+        self.saved = False
 
-      self.master = master
-      self.currentProjectIndex = None
+        self.master = master
+        self.currentProjectIndex = None
 
-      # 0 is submodules
-      # 1 is nested subprojects
-      self.activeSets = [ None, None ]
-      self.inactiveSets = [ None, None ]
-      self.originalActiveSets = [ None, None ]
-      
-      self.currentFrame = None
-      self.currentActiveList = None
-      self.currentInactiveList = None
+        # 0 is submodules
+        # 1 is nested subprojects
+        self.activeSets = [ None, None ]
+        self.inactiveSets = [ None, None ]
+        self.originalActiveSets = [ None, None ]
 
-      # Colors
-      self.fginit     = kwargs.get('fginit', 'black')
-      self.bginit     = kwargs.get('bginit', 'gray')
-      self.fgselected = kwargs.get('fgselected', 'black')
-      self.bgselected = kwargs.get('bgselected', 'goldenrod')
-      self.fgchanged   = kwargs.get('fgchanged', 'blue')
+        self.currentFrame = None
+        self.currentActiveList = None
+        self.currentInactiveList = None
 
-      self.active = []
-      self.inactive = []
-      # offset so first call to createFrame starts at 0
-      self.currentColumn = -2
-      self.currentRow = 0
+        # Colors
+        self.fginit     = kwargs.get('fginit', 'black')
+        self.bginit     = kwargs.get('bginit', 'gray')
+        self.fgselected = kwargs.get('fgselected', 'black')
+        self.bgselected = kwargs.get('bgselected', 'goldenrod')
+        self.fgchanged   = kwargs.get('fgchanged', 'blue')
 
-      # Main resizable window
-      self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
-      controlpanel = Tk.Frame()
-      savebutton = Tk.Button(controlpanel, text="Save and Update", command = self.saveChanges)
-      savebutton.grid(row=0, column=0)
-      cancelbutton = Tk.Button(controlpanel, text="Cancel", command = self.master.destroy)
-      cancelbutton.grid(row=0, column=1)
-      controlpanel.grid(row=0, column=0)
+        self.active = []
+        self.inactive = []
+        # offset so first call to createFrame starts at 0
+        self.currentColumn = -2
+        self.currentRow = 0
 
-   # Save changes and exit
-   def saveChanges(self):
-      if self.activeSets[0] != None:
-         self.saved = True
-         self.includedSubmodules = {}
-         for sub in self.activeSets[0]:
-            self.includedSubmodules[sub] = True 
-         for sub in self.inactiveSets[0]:
-            self.includedSubmodules[sub] = False
-      if self.activeSets[1] != None:
-         self.saved = True
-         self.includedNestedSubprojects = {}
-         for sub in self.activeSets[1]:
-            self.includedNestedSubprojects[sub] = True 
-         for sub in self.inactiveSets[1]:
-            self.includedNestedSubprojects[sub] = False
-      self.master.destroy()
+        # Main resizable window
+        self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
+        controlpanel = Tk.Frame()
+        savebutton = Tk.Button(controlpanel, text="Save and Update", command = self.saveChanges)
+        savebutton.grid(row=0, column=0)
+        cancelbutton = Tk.Button(controlpanel, text="Cancel", command = self.master.destroy)
+        cancelbutton.grid(row=0, column=1)
+        controlpanel.grid(row=0, column=0)
 
-   # Save the original set of active subprojects and sort the last section
-   def finalize(self):
-      # sort the last section
-      self.resortList(self.currentActiveList)
-      self.resortList(self.currentInactiveList)
+    # Save changes and exit
+    def saveChanges(self):
+        if self.activeSets[0] != None:
+            self.saved = True
+            self.includedSubmodules = {}
+            for sub in self.activeSets[0]:
+                self.includedSubmodules[sub] = True
+            for sub in self.inactiveSets[0]:
+                self.includedSubmodules[sub] = False
+        if self.activeSets[1] != None:
+            self.saved = True
+            self.includedNestedSubprojects = {}
+            for sub in self.activeSets[1]:
+                self.includedNestedSubprojects[sub] = True
+            for sub in self.inactiveSets[1]:
+                self.includedNestedSubprojects[sub] = False
+        self.master.destroy()
 
-      # save the original state
-      for i in [0, 1]:
-         self.originalActiveSets[i] = set()
-         for sub in self.activeSets[i]:
-            self.originalActiveSets[i].add(sub)
+    # Save the original set of active subprojects and sort the last section
+    def finalize(self):
+        # sort the last section
+        self.resortList(self.currentActiveList)
+        self.resortList(self.currentInactiveList)
 
-
-   # Start a new frame for different project type
-   def createFrame(self, projectType):
-      self.currentRow = 2
-      self.currentColumn = self.currentColumn + 2
-      frame = Tk.Frame()
-      label = Tk.Label(frame, text="Select %ss" % (projectType))
-      label.grid()
-      frame.grid(row=1, column=self.currentColumn, columnspan=2)
-      if projectType == "submodule":
-         self.currentProjectIndex = 0
-      elif projectType == "nested subproject":
-         self.currentProjectIndex = 1
-
-   # Start a new section for a different directory
-   def createSection(self, directory):
-      # sort the previous section (if any)
-      if self.currentActiveList != None:
-         self.resortList(self.currentActiveList)
-         self.resortList(self.currentInactiveList)
-
-      activepanel = Tk.Frame()
-      activelabel = Tk.Label(activepanel, text="Active in %s" % (directory))
-      activescroll = Tk.Scrollbar(activepanel, width=10)
-      activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
-      activescroll.config(command=activelist.yview)
-      activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
-      activelabel.grid(row=0, column=0, columnspan=2)
-      activelist.grid(row=2, column=1)
-      activepanel.grid(row=self.currentRow, column=self.currentColumn)
-      self.currentActiveList = activelist
-
-      inactivepanel = Tk.Frame()
-      inactivelabel = Tk.Label(inactivepanel, text="Inactive in %s" % (directory))
-      inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
-      inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
-      inactivescroll.config(command=inactivelist.yview)
-      inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
-      inactivelabel.grid(row=0, column=0, columnspan=2)
-      inactivelist.grid(row=2, column=1)
-      inactivepanel.grid(row=self.currentRow, column=self.currentColumn+1)
-      self.currentInactiveList = inactivelist
-       
-      self.currentRow = self.currentRow + 2
-
-      index = self.currentProjectIndex
-      activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(activelist, inactivelist,
-                                                                            self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
-      inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(activelist, inactivelist,
-                                                                            self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
-
-      activeall = Tk.Button(activepanel, text="activate all", borderwidth=0, foreground="darkblue",
-                            command = lambda : self.activateAll(activelist, inactivelist,
-                                                                 self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
-      activeall.grid(row=1, column=0, columnspan=2)
-      inactiveall = Tk.Button(inactivepanel, text="deactivate all", borderwidth=0, foreground="darkblue",
-                              command = lambda : self.deactivateAll(activelist, inactivelist,
-                                                                     self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
-      inactiveall.grid(row=1, column=0, columnspan=2)
+        # save the original state
+        for i in [0, 1]:
+            self.originalActiveSets[i] = set()
+            for sub in self.activeSets[i]:
+                self.originalActiveSets[i].add(sub)
 
 
-   # Create an entry for a subproject
-   def createEntry(self, subproject, isActive):
-      if self.activeSets[self.currentProjectIndex] == None:
-         self.activeSets[self.currentProjectIndex] = set()
-      if self.inactiveSets[self.currentProjectIndex] == None:
-         self.inactiveSets[self.currentProjectIndex] = set()
-   
-      if isActive:
-         self.currentActiveList.insert(Tk.END, subproject)
-         self.activeSets[self.currentProjectIndex].add(subproject)
-      else:
-         self.currentInactiveList.insert(Tk.END, subproject)
-         self.inactiveSets[self.currentProjectIndex].add(subproject)
+    # Start a new frame for different project type
+    def createFrame(self, projectType):
+        self.currentRow = 2
+        self.currentColumn = self.currentColumn + 2
+        frame = Tk.Frame()
+        label = Tk.Label(frame, text="Select %ss" % (projectType))
+        label.grid()
+        frame.grid(row=1, column=self.currentColumn, columnspan=2)
+        if projectType == "submodule":
+            self.currentProjectIndex = 0
+        elif projectType == "nested subproject":
+            self.currentProjectIndex = 1
 
-   # Activate selected project
-   def activateProject(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
-      index = inactivelist.index(Tk.ACTIVE)
-      entry = inactivelist.get(index)
-      inactivelist.delete(index)
-      inactiveset.remove(entry)
-      activelist.insert(Tk.END, entry)
-      activeset.add(entry)
-      self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-      self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
-      self.master.update()
+    # Start a new section for a different directory
+    def createSection(self, directory):
+        # sort the previous section (if any)
+        if self.currentActiveList != None:
+            self.resortList(self.currentActiveList)
+            self.resortList(self.currentInactiveList)
 
-   # Deactivate selected project
-   def deactivateProject(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
-      index = activelist.index(Tk.ACTIVE)
-      entry = activelist.get(index)
-      activelist.delete(index)
-      activeset.remove(entry)
-      inactivelist.insert(Tk.END, entry)
-      inactiveset.add(entry)
-      self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-      self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
-      self.master.update()
+        activepanel = Tk.Frame()
+        activelabel = Tk.Label(activepanel, text="Active in %s" % (directory))
+        activescroll = Tk.Scrollbar(activepanel, width=10)
+        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
+        activescroll.config(command=activelist.yview)
+        activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
+        activelabel.grid(row=0, column=0, columnspan=2)
+        activelist.grid(row=2, column=1)
+        activepanel.grid(row=self.currentRow, column=self.currentColumn)
+        self.currentActiveList = activelist
 
-   # Activate all projects in the section
-   def activateAll(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
-      entries = inactivelist.get(0, Tk.END)
-      inactivelist.delete(0,Tk.END)
-      for entry in entries:
-         activelist.insert(Tk.END, entry)
-         activeset.add(entry)
-         inactiveset.remove(entry)
-      self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-      self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
-      self.master.update()
+        inactivepanel = Tk.Frame()
+        inactivelabel = Tk.Label(inactivepanel, text="Inactive in %s" % (directory))
+        inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
+        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
+        inactivescroll.config(command=inactivelist.yview)
+        inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
+        inactivelabel.grid(row=0, column=0, columnspan=2)
+        inactivelist.grid(row=2, column=1)
+        inactivepanel.grid(row=self.currentRow, column=self.currentColumn+1)
+        self.currentInactiveList = inactivelist
 
-   # Deactivate all projects in the section
-   def deactivateAll(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
-      entries = activelist.get(0, Tk.END)
-      activelist.delete(0,Tk.END)
-      for entry in entries:
-         inactivelist.insert(Tk.END, entry)
-         inactiveset.add(entry)
-         activeset.remove(entry)
-      self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-      self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
-      self.master.update()
+        self.currentRow = self.currentRow + 2
 
-   # Resort and format the list boxes
-   def resortList(self, listbox, originalset = None, inSetColor = None, notInSetColor = None):
-      entries = listbox.get(0, Tk.END)
-      listbox.delete(0, Tk.END)
-      for entry in sorted(entries):
-         listbox.insert(Tk.END, entry)
-         if originalset != None:
-            if entry in originalset:
-               listbox.itemconfig(Tk.END, fg=inSetColor)
-            else:
-               listbox.itemconfig(Tk.END, fg=notInSetColor)
+        index = self.currentProjectIndex
+        activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(activelist, inactivelist,
+                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+        inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(activelist, inactivelist,
+                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+
+        activeall = Tk.Button(activepanel, text="activate all", borderwidth=0, foreground="darkblue",
+                              command = lambda : self.activateAll(activelist, inactivelist,
+                                                                   self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+        activeall.grid(row=1, column=0, columnspan=2)
+        inactiveall = Tk.Button(inactivepanel, text="deactivate all", borderwidth=0, foreground="darkblue",
+                                command = lambda : self.deactivateAll(activelist, inactivelist,
+                                                                       self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+        inactiveall.grid(row=1, column=0, columnspan=2)
+
+
+    # Create an entry for a subproject
+    def createEntry(self, subproject, isActive):
+        if self.activeSets[self.currentProjectIndex] == None:
+            self.activeSets[self.currentProjectIndex] = set()
+        if self.inactiveSets[self.currentProjectIndex] == None:
+            self.inactiveSets[self.currentProjectIndex] = set()
+
+        if isActive:
+            self.currentActiveList.insert(Tk.END, subproject)
+            self.activeSets[self.currentProjectIndex].add(subproject)
+        else:
+            self.currentInactiveList.insert(Tk.END, subproject)
+            self.inactiveSets[self.currentProjectIndex].add(subproject)
+
+    # Activate selected project
+    def activateProject(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+        index = inactivelist.index(Tk.ACTIVE)
+        entry = inactivelist.get(index)
+        inactivelist.delete(index)
+        inactiveset.remove(entry)
+        activelist.insert(Tk.END, entry)
+        activeset.add(entry)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.master.update()
+
+    # Deactivate selected project
+    def deactivateProject(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+        index = activelist.index(Tk.ACTIVE)
+        entry = activelist.get(index)
+        activelist.delete(index)
+        activeset.remove(entry)
+        inactivelist.insert(Tk.END, entry)
+        inactiveset.add(entry)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.master.update()
+
+    # Activate all projects in the section
+    def activateAll(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+        entries = inactivelist.get(0, Tk.END)
+        inactivelist.delete(0,Tk.END)
+        for entry in entries:
+            activelist.insert(Tk.END, entry)
+            activeset.add(entry)
+            inactiveset.remove(entry)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.master.update()
+
+    # Deactivate all projects in the section
+    def deactivateAll(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+        entries = activelist.get(0, Tk.END)
+        activelist.delete(0,Tk.END)
+        for entry in entries:
+            inactivelist.insert(Tk.END, entry)
+            inactiveset.add(entry)
+            activeset.remove(entry)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.master.update()
+
+    # Resort and format the list boxes
+    def resortList(self, listbox, originalset = None, inSetColor = None, notInSetColor = None):
+        entries = listbox.get(0, Tk.END)
+        listbox.delete(0, Tk.END)
+        for entry in sorted(entries):
+            listbox.insert(Tk.END, entry)
+            if originalset != None:
+                if entry in originalset:
+                    listbox.itemconfig(Tk.END, fg=inSetColor)
+                else:
+                    listbox.itemconfig(Tk.END, fg=notInSetColor)

@@ -1,6 +1,7 @@
 import os
 import sys
 import ConfigParser
+import grape_errors
 import grapeGit as git
 import checkout
 import grapeMenu
@@ -57,7 +58,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         config = grapeConfig.grapeConfig()
         try:
             currentBranch = git.currentBranch()
-        except git.GrapeGitError:
+        except grape_errors.GrapeGitError:
             return 'unknown'
         if currentBranch in config.get('flow', 'publicBranches'):
             return currentBranch
@@ -75,7 +76,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
     def description(self):
         try:
             currentBranch = git.currentBranch()
-        except git.GrapeGitError:
+        except grape_errors.GrapeGitError:
             currentBranch = 'unknown'
         publicBranch = self.lookupPublicBranch()
 
@@ -340,7 +341,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         try:
             git.merge("%s %s %s" % (squashArg, branch, strategy))
             return True
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             print error.gitOutput
             if "conflict" in error.gitOutput.lower():
                 if args['--at'] or args['--ay']:
@@ -356,7 +357,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
                         git.add("%s" % path)
                         git.commit("-m 'Resolve conflicts using %s'" % checkoutArg)
                         return True
-                    except git.GrapeGitError as resolveError:
+                    except grape_errors.GrapeGitError as resolveError:
                         print resolveError.gitOutput
                         return False
                 else:

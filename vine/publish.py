@@ -11,6 +11,7 @@ except ImportError:
 
 import Atlassian
 import utility
+import grape_errors
 import grapeGit as git
 import grapeMenu
 import grapeConfig
@@ -256,7 +257,7 @@ class Publish(resumable.Resumable, option.Option):
         try:
             current = git.currentBranch()
             public = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
-        except git.GrapeGitError:
+        except grape_errors.GrapeGitError:
             public = "Unknown"
             current = "Unknown"
         except KeyError:
@@ -651,7 +652,7 @@ class Publish(resumable.Resumable, option.Option):
         # handled in the custom step.
         try:
             git.commit(" -m \"%s\"" % args["-m"])
-        except git.GrapeGitError:
+        except grape_errors.GrapeGitError:
             pass
 
         return self.checkInProgressLock(args)
@@ -1078,7 +1079,7 @@ class Publish(resumable.Resumable, option.Option):
             try:
                 git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
                 status[mergeID] = "MERGED"
-            except git.GrapeGitError as e:
+            except grape_errors.GrapeGitError as e:
                 if "conflict" in e.gitOutput.lower():
                     utility.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
                                      "Please use git mergetool to resolve, and then git commit to commit your changes.\n"
@@ -1170,7 +1171,7 @@ class Publish(resumable.Resumable, option.Option):
             try:
                 with utility.cd(repo):
                     git.push("-u origin HEAD", throwOnFail=True)
-            except git.GrapeGitError as e:
+            except grape_errors.GrapeGitError as e:
                 if e.commError:
                     utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
                 raise e
@@ -1332,7 +1333,7 @@ class Publish(resumable.Resumable, option.Option):
                     # we are cool with this not working - only will have something to commit if the
                     # submodules were published without fast forward merges
                     git.commit("-m \"%s - submodules published\"" % args["-m"])
-                except git.GrapeGitError:
+                except grape_errors.GrapeGitError:
                     pass
                 # ensure submodules that aren't modified end up on the public branch
                 for sub in unmodifiedSubmodules:
@@ -1360,7 +1361,7 @@ class Publish(resumable.Resumable, option.Option):
                         try:
                             git.subtree("push --prefix=%s %s %s " % (self.st_prefixes[st],
                                                                                  self.st_remotes[st],  self.st_branches[st]))
-                        except git.GrapeGitError:
+                        except grape_errors.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
                             git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],

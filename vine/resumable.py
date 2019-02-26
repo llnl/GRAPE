@@ -1,6 +1,7 @@
 import pickle
 import abc
 import os
+import grape_errors
 import grapeGit as git
 import utility
 import grapeConfig
@@ -15,7 +16,7 @@ class Resumable(object):
         try:
             gitDir = git.gitDir()
             self.progressFile = os.path.join(gitDir, "grapeProgress")
-        except git.GrapeGitError:
+        except grape_errors.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
             # in the user's $HOME directory
             self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")

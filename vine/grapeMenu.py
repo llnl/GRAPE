@@ -9,6 +9,7 @@ import commit
 import config
 import deleteBranch
 import foreach
+import grape_errors
 import grapeConfig
 import grapeGit as git
 import hooks
@@ -129,12 +130,12 @@ class _Menu(object):
                     return chosen_option._resume(option_args)
             return chosen_option.execute(option_args)
 
-        except git.GrapeGitError as e:
-            print traceback.print_exc()            
+        except grape_errors.GrapeGitError as e:
+            print traceback.print_exc()
             print ("GRAPE: Uncaught Error %s in grape-%s when executing '%s' in '%s'\n%s" %
                    (e.code, chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
             exit(e.code)
-            
+
         except utility.NoWorkspaceDirException as e:
             print ("GRAPE: grape %s must be run from a grape workspace." % chosen_option.key)
             print ("GRAPE: %s" % e.message)
@@ -142,7 +143,7 @@ class _Menu(object):
         finally:
             if globalArgs is not None:
                 utility.popGlobalArgs()
-                
+
     # Present the main menu
     def presentTextMenu(self):
         width = 60

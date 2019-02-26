@@ -2,6 +2,7 @@ import os
 import option
 import checkout
 import utility
+import grape_errors
 import grapeGit as git
 import grapeMenu
 import grapeConfig
@@ -10,20 +11,20 @@ import grapeConfig
 class NewBranchOption(option.Option):
     """
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
+                            This disables the verification.
+    --recurse               Create the branch in submodules.
                             [default: .grapeconfig.workspace.manageSubmodules]
     --noRecurse             Don't create the branch in submodules.
-    
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
@@ -45,10 +46,10 @@ class NewBranchOption(option.Option):
 
     def execute(self, args):
         start = args["--start"]
-        if not start: 
+        if not start:
             start = self._public
-            
-        
+
+
         # decide whether to recurse
         recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
         if args["--recurse"]:
@@ -56,10 +57,10 @@ class NewBranchOption(option.Option):
         if args["--noRecurse"]:
             recurse = False
 
-        
+
         if not args["<descr>"]:
             args["<descr>"] =  utility.userInput("Enter one word description for branch:")
-            
+
         if not args["--user"]:
             args["--user"] = utility.getUserName()
 
@@ -67,15 +68,15 @@ class NewBranchOption(option.Option):
             utility.userInput("Converting username to lowercase.  Press any key to continue...")
             args["--user"] = args["--user"].lower()
 
-            
+
         branchName = self._key + "/" + args["--user"] + "/" + args["<descr>"]
 
         branchStatus = checkout.branchAlreadyExists(branchName)
         if branchStatus:
-           utility.printMsg("Not creating new branch.")
-           if branchStatus == 1:
-              utility.printMsg("Use `grape checkout %s' instead." % branchName)
-           return False
+            utility.printMsg("Not creating new branch.")
+            if branchStatus == 1:
+                utility.printMsg("Use `grape checkout %s' instead." % branchName)
+            return False
 
         activeSubmodulesCheck = git.getActiveSubmodules()
 
@@ -92,14 +93,14 @@ class NewBranchOption(option.Option):
                 if not cleaned:
                     utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
-            
-        launcher = utility.MultiRepoCommandLauncher(createBranch, 
-                                                   runInSubmodules=recurse, 
-                                                   runInSubprojects=recurse, 
-                                                   runInOuter=True, 
-                                                   branch=start, 
+
+        launcher = utility.MultiRepoCommandLauncher(createBranch,
+                                                   runInSubmodules=recurse,
+                                                   runInSubprojects=recurse,
+                                                   runInOuter=True,
+                                                   branch=start,
                                                    globalArgs=branchName)
-        
+
         launcher.initializeCommands()
         utility.printMsg("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):
@@ -136,11 +137,11 @@ class NewBranchOptionFactory():
 
     @staticmethod
     def createNewBranchOptions(config):
-        
+
         topicPublicMapping = config.getMapping('flow', 'topicPrefixMappings')
         options = []
         for topic in topicPublicMapping.keys():
-            if topic != '?': 
+            if topic != '?':
                 options.append(NewBranchOption(topic, topicPublicMapping[topic]))
         return options
 
@@ -154,17 +155,17 @@ def createBranch(repo="unknown", branch="master", args=[]):
         utility.printMsg("creating and switching to %s in %s" % (fullBranch, repo))
         try:
             git.checkout("-b %s %s " % (fullBranch, branchPoint))
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             print "%s:%s" % (repo, e.gitOutput)
             utility.printMsg("WARNING: %s in %s will not be pushed." % (fullBranch, repo))
             return
         utility.printMsg("pushing %s to origin in %s" % (fullBranch, repo))
         try:
             git.push("-u origin %s" % fullBranch)
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             print "%s:  %s" % (repo, e.gitOutput)
             return
-            
+
 
 
 if __name__ is "__main__":

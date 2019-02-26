@@ -6,33 +6,7 @@ import utility
 import ConfigParser
 import grapeConfig
 import StringIO
-
-
-class GrapeGitError(Exception):
-    # arguments must be kept as keywords to allow pickling
-    def __init__(self, errmsg='', returnCode=-1, gitOutput='', gitCommand='', cwd=os.getcwd()):
-        self.msg = errmsg
-        self.code = returnCode
-        self.gitOutput = gitOutput
-        self.gitCommand = gitCommand
-        self.commError = True if \
-            (self.code == 128 and "fatal: " in self.gitOutput and \
-             ("Could not read from remote" in self.gitOutput or \
-              "unable to access" in self.gitOutput or \
-              "remote end hung up unexpectedly" in self.gitOutput)) \
-            else False
-        self.cwd = cwd
-        
-    def __getinitargs__(self):
-        return (self.msg, self.code, self.gitOutput, self.gitCommand, self.cwd)
-    
-    def __str__(self):
-        return "\nWORKING DIR: " + self.cwd +  "\nCODE: " + str(self.code) + '\nCMD: ' + self.gitCommand + '\nOUTPUT: ' + self.gitOutput 
-               
-        
-    def __repr__(self):
-        return self.__str__()
-        
+import grape_errors
 
 
 def gitcmd(cmd, errmsg):
@@ -54,7 +28,7 @@ def gitcmd(cmd, errmsg):
     cwd = os.getcwd()
     process = utility.executeSubProcess(_cmd, cwd, verbose=-1)
     if process.returncode != 0:
-        raise GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, cwd=cwd)
+        raise grape_errors.GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, cwd=cwd)
     return process.output.strip()
 
 
@@ -84,7 +58,7 @@ def branchPrefix(branchName):
 def branchUpToDateWith(branchName, targetBranch):
     try:
         allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         # Don't fail if the only issue is a dangling reference for origin/HEAD.
         allUpToDateBranches = e.gitOutput
         allUpToDateBranches = allUpToDateBranches.replace("error: branch 'origin/HEAD' does not point at a commit\n","")
@@ -115,7 +89,7 @@ def checkout(argstr):
 def clone(argstr):
     try:
         return gitcmd("clone %s" % argstr, "Clone failed")
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput:
             raise e
         if e.commError:
@@ -137,11 +111,11 @@ def commitDescription(committish):
         descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
                            "commitDescription failed")
     # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if "unknown revision" in e.gitOutput:
             try:
                 descr = gitcmd("log --oneline %s" % committish, "commitDescription failed")
-            except GrapeGitError as e:
+            except grape_errors.GrapeGitError as e:
                 raise e
     return descr
 
@@ -173,7 +147,7 @@ def diff(argstr):
 def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
     try:
         return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if e.commError:
             # fetch can sometimes hang up when it can't find the remote, resulting in
             # a spurious comm error.  Catch that here.
@@ -218,18 +192,18 @@ def fixActiveSubmodules():
     pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
     submoduleFixed = False
     for output in submoduleList:
-       match = pattern.match(output)
-       if match:
-          submoduleFixed = True
-          sub = match.group(1)
-          # remove from index, if staged
-          rm("--ignore-unmatch --cached %s" % sub)
-          # remove from repo, if present
-          rm("--ignore-unmatch %s" % sub)
-          if os.path.exists(os.path.join(wsDir, sub)): 
-             delete = utility.userInput("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
-             if delete:
-                shutil.rmtree(os.path.join(wsDir, sub))
+        match = pattern.match(output)
+        if match:
+            submoduleFixed = True
+            sub = match.group(1)
+            # remove from index, if staged
+            rm("--ignore-unmatch --cached %s" % sub)
+            # remove from repo, if present
+            rm("--ignore-unmatch %s" % sub)
+            if os.path.exists(os.path.join(wsDir, sub)):
+                delete = utility.userInput("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
+                if delete:
+                    shutil.rmtree(os.path.join(wsDir, sub))
     os.chdir(cwd)
     return submoduleFixed
 
@@ -265,17 +239,17 @@ def getModifiedSubmodules(branch1="", branch2="", includeAdded=False):
     submodules = getAllSubmodules()
     # if there are no submodules, then return the empty list
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
-        return [] 
+        return []
     submodulesString = ' '.join(submodules)
     try:
-        modifiedSubmodules = diff("--name-status %s %s -- %s" % 
+        modifiedSubmodules = diff("--name-status %s %s -- %s" %
                                   (branch1, branch2,  submodulesString)).split('\n')
         if includeAdded:
-           modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
+            modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
         else:
-           # only include submodules that are in both branches
-           modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
-    except GrapeGitError as e:
+            # only include submodules that are in both branches
+            modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
+    except grape_errors.GrapeGitError as e:
         if "bad revision" in e.gitOutput:
             utility.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
             return []
@@ -306,9 +280,9 @@ def gitDir():
             words = line.split()
             if words[0] == 'gitdir:':
                 relUnixPath = words[1]
-                toReturn = utility.makePathPortable(relUnixPath)   
+                toReturn = utility.makePathPortable(relUnixPath)
             else:
-                raise GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
+                raise grape_errors.GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
     return toReturn
 
 
@@ -351,14 +325,14 @@ def numberCommitsSinceRoot():
 def pull(args, throwOnFail=False):
     try:
         return gitcmd("pull %s" % args, "Pull failed")
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if e.commError:
             utility.printMsg("WARNING: Pull failed due to connectivity issues.")
-            if throwOnFail: 
+            if throwOnFail:
                 raise e
             else:
                 return e.gitOutput
-        
+
         else:
             raise e
 
@@ -366,10 +340,10 @@ def pull(args, throwOnFail=False):
 def push(args, throwOnFail = False):
     try:
         return gitcmd("push --porcelain %s" % args, "Push failed")
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if e.commError:
             utility.printMsg("WARNING: Push failed due to connectivity issues.")
-            if throwOnFail: 
+            if throwOnFail:
                 raise e
             else:
                 return e.gitOutput
@@ -381,7 +355,7 @@ def rebase(args):
     return gitcmd("rebase %s" % args, "Rebase failed")
 
 def reset(args):
-    return gitcmd("reset %s" % args, "Reset failed") 
+    return gitcmd("reset %s" % args, "Reset failed")
 
 def revert(args):
     return gitcmd("revert %s" % args, "Revert failed")
@@ -438,7 +412,7 @@ def shortSHA(branchName="HEAD"):
 def show(argStr):
     try:
         return gitcmd("show %s" % argStr, "git show failed with argstr %s" % argStr)
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if "Path" in e.gitOutput and "does not exist in" in e.gitOutput:
             return ""
 
@@ -446,13 +420,13 @@ def showRemote():
 
     try:
         return gitcmd("remote show origin", "unable to show remote")
-    except GrapeGitError as e:
+    except grape_errors.GrapeGitError as e:
         if e.code == 128:
             utility.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
             return e.gitOutput
         else:
             raise e
- 
+
 def stash(argstr=""):
     return gitcmd("stash %s" % argstr, "git stash failed for some reason")
 

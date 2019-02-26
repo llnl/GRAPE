@@ -36,7 +36,7 @@ def grapeUserConfig():
 
 
 # overwrite the global config with the given repo's .grapeconfig
-def grapeRepoConfig(repoPath): 
+def grapeRepoConfig(repoPath):
     repoConfig = grapeConfig()
     repoConfig.read(os.path.join(repoPath,".grapeconfig"))
     return repoConfig
@@ -71,11 +71,11 @@ def read(additionalFileNames=None):
         defaultFiles.append(os.path.join(os.environ["HOME"], ".grapeconfig"))
     globalconfigfile = defaultFiles[0]
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False, throwIfNotFound=False), ".grapeconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(warn_if_not_found=False, throw_if_not_found=False), ".grapeconfig"))
     except:
         pass
     try:
-        defaultFiles.append(os.path.join(utility.workspaceDir(warnIfNotFound=False, throwIfNotFound=False), ".git", ".grapeuserconfig"))
+        defaultFiles.append(os.path.join(utility.workspaceDir(warn_if_not_found=False, throw_if_not_found=False), ".git", ".grapeuserconfig"))
     except:
         pass
 
@@ -90,7 +90,7 @@ class ConfigPairDict(dict):
     def __getitem__(self, key):
         try:
             return super(ConfigPairDict, self).__getitem__(key)
-        except KeyError as e: 
+        except KeyError as e:
             if '?' in self.keys():
                 return self['?'].replace('?', key)
             else:
@@ -143,31 +143,31 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             return branch
         publicMapping = self.getMapping("flow", "topicPrefixMappings")
         return publicMapping[git.branchPrefix(branch)]
-    
+
     def getPublicBranchList(self):
         return self.get("flow", "publicbranches").split()
 
     def ensureSection(self, section):
         try:
             self.add_section(section)
-            if "nested-" in section: 
+            if "nested-" in section:
                 self.set(section,"active","False")
         except ConfigParser.DuplicateSectionError:
             pass
- 
+
 
     def getAllNestedSubprojects(self):
         list = []
         try:
             list = self.getList("nestedProjects", "names")
-        except: 
+        except:
             pass
         finally:
             return list
-        
+
     @staticmethod
     def getAllActiveNestedSubprojects(workspaceDir=None):
-        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir)
         allNested = config.getAllNestedSubprojects()
         userConfig = grapeUserConfig()
         active = []
@@ -181,13 +181,13 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
         return active
 
     @staticmethod
-    def getAllActiveNestedSubprojectPrefixes(workspaceDir = None): 
-        config = grapeConfig() if (workspaceDir is None or workspaceDir is utility.workspaceDir()) else GrapeConfigParser(workspaceDir) 
+    def getAllActiveNestedSubprojectPrefixes(workspaceDir = None):
+        config = grapeConfig() if (workspaceDir is None or workspaceDir is utility.workspaceDir()) else GrapeConfigParser(workspaceDir)
         return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllActiveNestedSubprojects(workspaceDir)]
 
     @staticmethod
-    def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None): 
-        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+    def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None):
+        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir)
         publicBranches = config.getPublicBranchList()
         if workspaceDir is None:
             workspaceDir = utility.workspaceDir()
@@ -199,17 +199,17 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
             os.chdir(os.path.join(workspaceDir,prefix))
             configOption.Config.ensurePublicBranchesExist(config,os.path.join(workspaceDir,prefix), publicBranches)
 
-            if git.log("--oneline %s..%s" % (since, now)): 
+            if git.log("--oneline %s..%s" % (since, now)):
                 modified.append(repo)
 
         os.chdir(cwd)
         return modified
-    
+
     @staticmethod
-    def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD", workspaceDir=None): 
-        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir) 
+    def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD", workspaceDir=None):
+        config = grapeConfig() if workspaceDir is None else GrapeConfigParser(workspaceDir)
         return [config.get("nested-%s" % name, "prefix") for name in GrapeConfigParser.getAllModifiedNestedSubprojects(since,workspaceDir=workspaceDir)]
-        
+
     def setActiveNestedSubprojects(self, listOfActiveSubprojects) :
         allNested = grapeConfig().getAllNestedSubprojects()
         active = {}
@@ -237,13 +237,13 @@ class GrapeConfigParser(ConfigParser.ConfigParser):
 class WriteConfig(option.Option):
     """
         grape writeConfig: Writes the current configuration to a file, using any configuration set
-        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
+        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig.
 
-        Usage: 
+        Usage:
         grape-writeConfig <file> [--gitflow]
 
     """
-    def __init__(self): 
+    def __init__(self):
         self._section = "Getting Started"
         self._key = "writeConfig"
         self._config = None
@@ -281,5 +281,3 @@ class WriteConfig(option.Option):
 def writeConfig(config, fname):
     with open(fname, 'w') as f:
         config.write(f)
-
-

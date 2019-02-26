@@ -3,23 +3,24 @@ import os
 import option
 import utility
 import grapeGit as git
+import grape_errors
 import grapeConfig
 
 
 class DeleteBranch(option.Option):
-    """ Deletes a topic branch both locally and on origin for all projects in this workspace. 
+    """ Deletes a topic branch both locally and on origin for all projects in this workspace.
     Usage: grape-db [-D] [<branch>] [--verify]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
-                    are trying to delete, this will detach you from the branch and then 
-                    delete it, issuing a warning that you are in a detached state.  
-     --verify       Verifies the delete before performing it. 
+                    are trying to delete, this will detach you from the branch and then
+                    delete it, issuing a warning that you are in a detached state.
+     --verify       Verifies the delete before performing it.
 
-    Arguments: 
-    <branch>        The branch to delete. Will ask for branch name if not included. 
-    
-    
+    Arguments:
+    <branch>        The branch to delete. Will ask for branch name if not included.
+
+
     """
     def __init__(self):
         super(DeleteBranch, self).__init__()
@@ -41,23 +42,23 @@ class DeleteBranch(option.Option):
         if args["--verify"]:
             proceed = utility.userInput("Would you like to delete the branch %s" % branch, 'y')
             if not proceed:
-                return True        
-        
-        launcher = utility.MultiRepoCommandLauncher(deleteBranch, 
-                                                    branch=branch, 
+                return True
+
+        launcher = utility.MultiRepoCommandLauncher(deleteBranch,
+                                                    branch=branch,
                                                     globalArgs=[force])
         try:
             launcher.launchFromWorkspaceDir()
         except utility.MultiRepoException as e:
             handleDeleteBranchMRE(e, force)
-            
+
         return True
 
     def setDefaultConfig(self, config):
         pass
 
 
-    
+
 def deleteBranch(repo='', branch='master', args = None):
     force = args[0]
     forceStr = "-D" if force is True else "-d"
@@ -65,9 +66,9 @@ def deleteBranch(repo='', branch='master', args = None):
         utility.printMsg("deleting %s in %s..." % (branch, repo))
         git.branch("%s %s" % (forceStr, branch))
         if "origin/%s" % branch in git.branch("-r"):
-            try:    
+            try:
                 git.push("--delete origin %s" % branch, throwOnFail=True)
-            except git.GrapeGitError as e:
+            except grape_errors.GrapeGitError as e:
                 if "remote ref does not exist" in e.gitOutput:
                     pass
 
@@ -78,7 +79,7 @@ def detachThenForceDeleteBranch(repo='', branch='master', args = None):
         git.branch("-D %s" % branch)
         if "origin/%s" % branch in git.remoteBranches():
             git.push("--delete origin %s" % branch, throwOnFail=False)
-            
+
 def handleDetachThenForceMRE(mre):
     # this shouldn't happen, but here is some verbosity for when it does...
     for e1, branch, repo in zip(mre.exceptions(), mre.branches(), mre.repos()):
@@ -90,7 +91,7 @@ def handleDeleteBranchMRE(mre, force=False):
     for e1, branch, repo in zip(mre.exceptions(), mre.branches(), mre.repos()):
         try:
             raise e1
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             with utility.cd(repo):
                 if "Cannot delete the branch" in e.gitOutput and \
                    "which you are currently on." in e.gitOutput:
@@ -117,5 +118,5 @@ def handleDeleteBranchMRE(mre, force=False):
                     print e.gitOutput
                     raise e
 
-    utility.MultiRepoCommandLauncher(detachThenForceDeleteBranch, 
+    utility.MultiRepoCommandLauncher(detachThenForceDeleteBranch,
                                     listOfRepoBranchArgTuples=detachTuples).launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)

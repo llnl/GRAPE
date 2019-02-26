@@ -5,12 +5,10 @@ from testGrape import *
 if not ".." in sys.path:
     sys.path.insert(0, "..")
 from vine import grapeGit as git
-
-
+from vine import grape_errors
 
 
 class TestGrapeGit(TestGrape):
-
 
     def testAdd(self):
         try:
@@ -19,11 +17,10 @@ class TestGrapeGit(TestGrape):
             writeFile1(f1name)
             git.add("f1")
             statusStr = git.status()
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
         self.assertTrue("new file:   f1" in statusStr)
-
 
     def testCommit(self):
         try:
@@ -35,9 +32,8 @@ class TestGrapeGit(TestGrape):
             git.commit("f1 -m \"%s\"" % commitStr)
             log = git.log()
             self.assertTrue(commitStr in log)
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
-
 
     def testCheckout(self):
         try:
@@ -47,7 +43,7 @@ class TestGrapeGit(TestGrape):
             git.checkout("master")
             self.assertTrue(git.currentBranch() == "master", "switching to master did not work")
 
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
     def testDir(self):
@@ -78,7 +74,7 @@ class TestGrapeGit(TestGrape):
             output = git.merge("master -m \"merged identical change from master\"")
             log = git.log()
             self.assertTrue("identical change from master" in log)
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
         # Second, test that a merge that should result in a conflict throws an appropriate GrapeGitError exception. 
@@ -94,7 +90,7 @@ class TestGrapeGit(TestGrape):
             git.commit("-m \"added f2 in tmp branch\"")
             git.merge("master -m \"merged master branch into testmerge/tmp1\"")
             self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             status = git.status()
             self.assertTrue("conflict" in status, "'conflict' not in status message %s" % status)
 
@@ -123,7 +119,6 @@ class TestGrapeGit(TestGrape):
             status = git.status()
             self.assertFalse("conflict" in status, "conflict not removed by aborting merge")
 
-
     def testFetch(self):
         try:
             git.clone("%s %s" %(self.repo,self.repos[1]))
@@ -140,7 +135,7 @@ class TestGrapeGit(TestGrape):
             log = git.log("--all")
             self.assertTrue(commitStr in log, "commit message not in log --all after fetch")
 
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
     def testPull(self):
@@ -159,7 +154,7 @@ class TestGrapeGit(TestGrape):
             log = git.log()
             self.assertTrue(commitStr in log, "commit message not in log after pull")
 
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
     def testPush(self):
@@ -187,7 +182,7 @@ class TestGrapeGit(TestGrape):
             log = git.log()
             self.assertTrue(commitStr in log, "commit message not in log after push")
 
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
     def testBranch(self):
@@ -197,9 +192,8 @@ class TestGrapeGit(TestGrape):
             git.branch("testBranch/newBranch HEAD")
             branches = git.branch()
             self.assertTrue("testBranch/newBranch" in branches, "new branch not in returned string %s " % branches)
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
-
 
 
     def testCloneAndShowRemote(self):
@@ -211,9 +205,8 @@ class TestGrapeGit(TestGrape):
             fetchLine = "Fetch URL: %s" % localSource
             showRemoteOutput = git.showRemote()
             self.assertTrue(fetchLine in showRemoteOutput,"coud not find %s in output" % fetchLine)
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
-
 
     def testRebase(self):
         try:
@@ -237,11 +230,10 @@ class TestGrapeGit(TestGrape):
             try:
                 git.rebase("master")
                 self.assertTrue(git.branchUpToDateWith("testRebase/branchToRebase","master"),"rebase did not bring current branch up to date with master")
-            except git.GrapeGitError as error:
+            except grape_errors.GrapeGitError as error:
                 self.assertTrue(False,"rebase that should not have generated a conflict failed")
-        except git.GrapeGitError as error:
+        except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
-
 
     def handleGitError(self,error):
         self.assertTrue(False,"When executing \n%s\nError %d caught: %s \n %s " % (error.gitCommand,error.code,error.msg,error.gitOutput))

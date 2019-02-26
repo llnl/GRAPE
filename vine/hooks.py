@@ -3,6 +3,7 @@ import ConfigParser
 
 import option
 import utility
+import grape_errors
 import grapeGit as git
 import grapeConfig
 
@@ -111,7 +112,7 @@ class RunHook(option.Option):
     def execute(self, args):
         for command in args.keys():
             if command in self.commands.keys():
-                if args[command]: 
+                if args[command]:
                     try:
                         self.commands[command](args)
                     except KeyError:
@@ -159,7 +160,7 @@ class RunHook(option.Option):
         if autoPush.lower().strip() != "false":
             try:
                 git.push("-u origin HEAD")
-            except git.GrapeGitError:
+            except grape_errors.GrapeGitError:
                 pass
             autoPush = True
         else:
@@ -188,7 +189,7 @@ class RunHook(option.Option):
                     currentBranch = target
                 else:
                     currentBranch = None
-        
+
 
     def preCommit(self, args):
         pass
