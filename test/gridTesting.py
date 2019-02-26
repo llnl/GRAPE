@@ -12,6 +12,7 @@ if not curPath in sys.path:
 grapePath = os.path.join(curPath, "..")
 if grapePath not in sys.path:
     sys.path.insert(0, grapePath)
+from vine import grape_errors
 from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
 import testGrape
@@ -70,7 +71,7 @@ class ResettableProject(object):
                     cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
                 else: 
                     cmd(param)
-            except git.GrapeGitError as e:
+            except grape_errors.GrapeGitError as e:
                 print e.gitCommand, e.gitOutput
                 raise e
 

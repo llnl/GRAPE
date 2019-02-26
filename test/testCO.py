@@ -9,6 +9,7 @@ if not ".." in sys.path:
 
 import testGrape
 
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import grapeConfig
@@ -92,7 +93,7 @@ class TestCheckout(testGrape.TestGrape):
             self.queueUserInput(["n", "\n", "\n"])
             self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand + '\n' + e.gitOutput)
             pass
         finally:

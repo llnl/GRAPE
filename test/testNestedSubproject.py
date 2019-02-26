@@ -2,12 +2,10 @@ __author__ = 'robinson96'
 import os
 import sys
 
-
-
-
 if not ".." in sys.path:
     sys.path.insert(0, "..")
 import testGrape
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 
@@ -69,7 +67,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.assertCanAddNewSubproject(self)
 
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand)
             pass
 
@@ -88,7 +86,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             os.chdir(self.subproject)
             self.assertTrue(git.currentBranch() == "newBranch", "subproject not on newBranch after checkout")
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass
 
@@ -109,7 +107,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.queueUserInput(["a\n"])
             grapeMenu.menu().applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject))
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass
 
@@ -123,7 +121,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.assertTrue(" ?? subs/subproject1/f1" in '\n'.join(self.output.buflist), "subproject1/f1 does not show up in grape "
                                                                          "status")
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass   
         
@@ -146,7 +144,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.assertTrue("f1" not in secondStatus,"commit didn't remove f1 from status")
             os.chdir(cwd)
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
             pass
 

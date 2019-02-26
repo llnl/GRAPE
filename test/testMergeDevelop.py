@@ -4,6 +4,7 @@ import testGrape
 import unittest.case
 if not ".." in sys.path:
     sys.path.insert(0, "..")
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import grapeConfig
@@ -43,7 +44,7 @@ class TestMD(testGrape.TestGrape):
                                                                      "forward")
         except SystemExit:
             self.fail("Unexpected SystemExit: %s" % self.output.getvalue())
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Unhandled GrapeGitError: %s\n%s" % (e.gitCommand, e.gitOutput))
 
     def testConflictingMerge(self):
@@ -166,7 +167,7 @@ class TestMD(testGrape.TestGrape):
             os.chdir(os.path.join(self.repo, "submodule1"))
             self.assertFalse(git.diff("testSubmoduleMerge"), "gitlink is not at testSubmoduleMerge tip after merge")
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
         except SystemExit:
             self.fail("Uncaught System Exit\n%s" % self.output.getvalue())
@@ -188,7 +189,7 @@ class TestMD(testGrape.TestGrape):
             os.chdir(os.path.join(self.repo, "submodule1"))
             self.assertFalse(git.diff("testSubmoduleMerge"), "gitlink is not at testSubmoduleMerge tip after merge")
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
         except SystemExit:
             self.fail("Uncaught System Exit\n%s" % self.output.getvalue())
@@ -232,7 +233,7 @@ class TestMD(testGrape.TestGrape):
             diff = git.diff("testSubmoduleMerge2")
             self.assertFalse(diff, "checked in gitlink is not at tip of testSubmoduleMerge2")
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
         except SystemExit:
             self.fail("Uncaught exit\n%s" % self.output.getvalue())
@@ -276,7 +277,7 @@ class TestMD(testGrape.TestGrape):
             diff = git.diff("testSubmoduleMerge2")
             self.assertFalse(diff, "checked in gitlink is not at tip of testSubmoduleMerge2")
 
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
         except SystemExit:
             self.fail("Uncaught exit\n%s" % self.output.getvalue())

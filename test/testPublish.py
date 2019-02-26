@@ -5,6 +5,7 @@ import testGrape
 
 if not ".." in sys.path:
     sys.path.insert(0, "..")
+from vine import grape_errors
 from vine import grapeMenu
 from vine import grapeGit as git
 from vine import grapeConfig
@@ -30,7 +31,7 @@ class TestPublish(testGrape.TestGrape):
         try:
             self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
             self.assertTrue(git.shortSHA(toBranch) == git.shortSHA(fromBranch))
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("%s\n%s" % (self.output.getvalue(), e.gitCommand+e.gitOutput))
 
     def assertSuccessfulSquashMerge(self, fromBranch="testPublish", toBranch="master"):

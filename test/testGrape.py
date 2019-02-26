@@ -14,6 +14,7 @@ if not curPath in sys.path:
 grapePath = os.path.join(curPath, "..")
 if grapePath not in sys.path:
     sys.path.insert(0, grapePath)
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeConfig
 from vine import grapeMenu
@@ -102,7 +103,7 @@ class TestGrape(unittest.TestCase):
             git.branch("develop")
             git.push("origin develop")
             os.chdir(os.path.join(self.repo, ".."))
-        except git.GrapeGitError:
+        except grape_errors.GrapeGitError:
             pass
         
         self.menu = grapeMenu.menu()

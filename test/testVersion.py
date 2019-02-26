@@ -3,6 +3,7 @@ import sys
 import testGrape
 if not ".." in sys.path:
     sys.path.insert(0, "..")
+from vine import grape_errors
 from vine import grapeMenu
 from vine import grapeGit as git
 from vine import grapeConfig
@@ -26,7 +27,7 @@ class TestVersion(testGrape.TestGrape):
             self.assertEqual(git.describe(), "v0.2.0")
         except SystemExit:
             self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Uncaught GrapeGit error: %s" % e.gitOutput)
 
     def testMajorTick(self):
@@ -69,5 +70,5 @@ class TestVersion(testGrape.TestGrape):
 
         except SystemExit:
             self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
-        except git.GrapeGitError as e:
+        except grape_errors.GrapeGitError as e:
             self.fail("Uncaught GrapeGitError: %s" % e.gitOutput)
