@@ -467,7 +467,7 @@ options are at least listed below.
     tagprefix = patched
     describePattern = v*
     submodulebranches = master
-    
+
 
     [repo]
     name = None
@@ -496,20 +496,20 @@ options are at least listed below.
     
 ## status
 
-    Usage: grape-status [-u | --uno] 
-              [--failIfInconsistent] 
+    Usage: grape-status [-u | --uno]
+              [--failIfInconsistent]
               [--failIfMissingPublicBranches]
               [--failIfBranchesInconsistent]
               [--checkWSOnly]
 
     Options:
     --uno                          Do not show untracked files
-    -u                             Show untracked files. 
-    --failIfInconsistent           Fail if any consistency checks fail. 
-    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
-    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    -u                             Show untracked files.
+    --failIfInconsistent           Fail if any consistency checks fail.
+    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches.
+    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace.
     --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
-    
+
 
     
 ## stash
@@ -530,7 +530,7 @@ options are at least listed below.
 ## checkout
 
     grape checkout
-    
+
     Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
 
     Options:
@@ -544,7 +544,7 @@ options are at least listed below.
 
 
     Arguments:
-    <branch>    The name of the branch to checkout. 
+    <branch>    The name of the branch to checkout.
 
     
 ## push
@@ -552,10 +552,10 @@ options are at least listed below.
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--noRecurse] 
+    Usage: grape-push [--noRecurse]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.  
+    --noRecurse     Don't perform pushes in submodules.
 
     
 ## pull
@@ -573,15 +573,15 @@ options are at least listed below.
     
 ## commit
 
-    Usage: grape-commit [-m <message>] [-a | <filetree>]  
+    Usage: grape-commit [-m <message>] [-a | <filetree>]
 
     Options:
     -m <message>    The commit message.
     -a              Commit modified files that have not been staged.
-    
+
 
     Arguments:
-    <filetree> The relative path of files to include in this commit. 
+    <filetree> The relative path of files to include in this commit.
 
     
 ## publish
@@ -786,9 +786,9 @@ options are at least listed below.
 ## writeConfig
 
         grape writeConfig: Writes the current configuration to a file, using any configuration set
-        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
+        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig.
 
-        Usage: 
+        Usage:
         grape-writeConfig <file> [--gitflow]
 
     
@@ -796,18 +796,18 @@ options are at least listed below.
 
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd> 
+    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd>
 
     Options:
     --quiet          Quiets git's printout of "Entering submodule..."
     --noTopLevel     Does not call <cmd> in the workspace directory.
     --noSubprojects  Does not call <cmd> in any grape nested subprojects.
-    --noSubmodules   Does not call <cmd> in any git submodules. 
-    --currentCWD     grape foreach normally starts work from the workspace top level directory. This flag 
+    --noSubmodules   Does not call <cmd> in any git submodules.
+    --currentCWD     grape foreach normally starts work from the workspace top level directory. This flag
                      starts work from the current working directory.
 
     Arguments:
-    <cmd>        The cmd to execute. 
+    <cmd>        The cmd to execute.
 
     
 ## m
@@ -901,34 +901,34 @@ options are at least listed below.
     
     
 ## db
- Deletes a topic branch both locally and on origin for all projects in this workspace. 
+ Deletes a topic branch both locally and on origin for all projects in this workspace.
     Usage: grape-db [-D] [<branch>] [--verify]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
-                    are trying to delete, this will detach you from the branch and then 
-                    delete it, issuing a warning that you are in a detached state.  
-     --verify       Verifies the delete before performing it. 
+                    are trying to delete, this will detach you from the branch and then
+                    delete it, issuing a warning that you are in a detached state.
+     --verify       Verifies the delete before performing it.
 
-    Arguments: 
-    <branch>        The branch to delete. Will ask for branch name if not included. 
-    
-    
+    Arguments:
+    <branch>        The branch to delete. Will ask for branch name if not included.
+
+
     
 ## cv
 
     grape cv: create a new custom view
-    Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]  
+    Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]
 
-    Options: 
-        --source=<repo>     Path to original clone. 
-        --dest=<name>       Name of new workspace. 
-        --destPath=<path>   Path (must exist) to place new workspace in. 
+    Options:
+        --source=<repo>     Path to original clone.
+        --dest=<name>       Name of new workspace.
+        --destPath=<path>   Path (must exist) to place new workspace in.
                             Full path to workspace will be <path>/<name>
-        --noSparse          Skips grape uv, does a vanilla checkout instead. 
-    Arguments: 
+        --noSparse          Skips grape uv, does a vanilla checkout instead.
+    Arguments:
         <uvargs>            Arguments to pass to grape uv. Note that if you are using the -f
-                            option, you should use an absolute path. 
+                            option, you should use an absolute path.
     
 ## review
 
@@ -1013,11 +1013,11 @@ options are at least listed below.
 ## up
 
     grape up
-    Updates the current branch and any public branches. 
+    Updates the current branch and any public branches.
     Usage: grape-up [--public=<branch> ]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
-                    
+
 
     Options:
     --public=<branch>       The public branches to update in addition to the current one,
@@ -1025,9 +1025,9 @@ options are at least listed below.
                             [default: .grapeconfig.flow.publicBranches ]
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
-    --wd=<working dir>      Working directory which should be updated. 
+    --wd=<working dir>      Working directory which should be updated.
                             Top level workspace will be updated if this is unspecified.
-    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules. 
+    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
 
 
     
@@ -1105,15 +1105,15 @@ options are at least listed below.
         --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
                                 not go through the 'which submodules do you want' script.
         -b                      Automatically creates subproject branches that should be there according to your branching
-                                model. 
-        --allSubmodules         Automatically add all submodules to your workspace. 
+                                model.
+        --allSubmodules         Automatically add all submodules to your workspace.
         --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
         --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
                                 either by pushing or pulling the remote tracking branch.
                                 This will also checkout the public branch in a headless state prior to offering to create
                                 a new branch (in repositories where the current branch does not exist).
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]
-        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times. 
+        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times.
         --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
         --gui                   Use the graphical user interface to select your view.
     
@@ -1180,7 +1180,7 @@ options are at least listed below.
 
     
 ## w
- 
+
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
                    [--mergeDiff | --rawDiff ]
@@ -1225,20 +1225,20 @@ options are at least listed below.
 ## internal_release
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
+                            This disables the verification.
+    --recurse               Create the branch in submodules.
                             [default: .grapeconfig.workspace.manageSubmodules]
     --noRecurse             Don't create the branch in submodules.
-    
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
@@ -1247,20 +1247,20 @@ options are at least listed below.
 ## public_release
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
+                            This disables the verification.
+    --recurse               Create the branch in submodules.
                             [default: .grapeconfig.workspace.manageSubmodules]
     --noRecurse             Don't create the branch in submodules.
-    
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
@@ -1269,20 +1269,20 @@ options are at least listed below.
 ## bugfix
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
+                            This disables the verification.
+    --recurse               Create the branch in submodules.
                             [default: .grapeconfig.workspace.manageSubmodules]
     --noRecurse             Don't create the branch in submodules.
-    
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
@@ -1291,20 +1291,20 @@ options are at least listed below.
 ## hotfix
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
+                            This disables the verification.
+    --recurse               Create the branch in submodules.
                             [default: .grapeconfig.workspace.manageSubmodules]
     --noRecurse             Don't create the branch in submodules.
-    
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
@@ -1313,20 +1313,20 @@ options are at least listed below.
 ## feature
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
+                            This disables the verification.
+    --recurse               Create the branch in submodules.
                             [default: .grapeconfig.workspace.manageSubmodules]
     --noRecurse             Don't create the branch in submodules.
-    
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
