@@ -1,5 +1,13 @@
 
 
+Tue Feb 26 08:58:53 2019 David Bloss
+v1.31.2
+Reviewers: Ben Liu, Peter Robinson
+
+* Custom errors given separate class, indentation fixes
+* updated custom errors in tests
+
+
 Mon Feb 25 15:43:25 2019 David Bloss
 v1.31.1
 Reviewers: Ben Liu, Peter Robinson
