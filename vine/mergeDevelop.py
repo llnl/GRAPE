@@ -18,7 +18,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch.
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --aT | --ay | --aY | --askAll]
+                    [--am | --as | --at | --aT | --ay | --aY | --askAll | --ask]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
@@ -31,12 +31,13 @@ class MergeDevelop(resumable.Resumable, option.Option):
                                 .grapeconfig.flow.topicPrefixMappings.
         --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings.
-        --am                    Perform the merge using git's default strategy.
+        --am                    Perform the merge using git's default strategy. (default)
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
         --at                    Perform the merge using the public branch's version for any file modified by both branches.
         --aT                    Perform the merge resolving conficts using the public branch's version.
         --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
         --aY                    Perform the merge resolving conflicts using your topic branch's version.
+        --ask                   Ask which strategy to perform the merge with.
         --askAll                Ask to determine the merge strategy before merging each subproject.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
@@ -382,7 +383,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
 
     def mergeIntoCurrent(self, branchName, args, projectName):
         choice = False
-        strategy = None
+        strategy = 'am' 
         if args["--continue"]:
             if self.continueLocalMerge(args):
                 return True
@@ -399,7 +400,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         elif args['--aY']:
             strategy = 'aY'
 
-        if not strategy or args['--askAll']:
+        if args['--ask'] or args['--askAll']:
             repoSpec = " in %s" % projectName if args['--askAll'] else ""
             strategy = utility.userInput("How do you want to resolve changes%s? [am / as / at / aT / ay / aY] \n" % repoSpec +
                                          "am: Auto Merge (default) \n" +
