@@ -18,7 +18,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
     merge changes from a public branch into your current topic branch
     If executed on a public branch, performs a pull --rebase to update your local public branch.
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --aT | --ay | --aY | --askAll | --ask]
+                    [--am | --as | --at | --aT | --ay | --aY | --ask | --askAll]
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
@@ -37,7 +37,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         --aT                    Perform the merge resolving conficts using the public branch's version.
         --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
         --aY                    Perform the merge resolving conflicts using your topic branch's version.
-        --ask                   Ask which strategy to perform the merge with.
+        --ask                   Ask to determine the merge strategy.
         --askAll                Ask to determine the merge strategy before merging each subproject.
         --recurse               Perform merges in submodules first, then merge in the outer level keeping the
                                 results of submodule merges.
