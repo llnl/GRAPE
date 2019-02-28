@@ -1,5 +1,12 @@
 
 
+Thu Feb 28 13:53:48 2019 David Bloss
+v1.31.3
+Reviewers: Peter Robinson, Ben Liu
+
+Missed a few custom exceptions in the last branch
+
+
 Tue Feb 26 08:58:53 2019 David Bloss
 v1.31.2
 Reviewers: Ben Liu, Peter Robinson
