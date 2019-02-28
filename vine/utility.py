@@ -5,6 +5,7 @@ import ConfigParser
 import types
 import tempfile
 
+import grape_errors
 import grapeGit as git
 import grapeMenu
 import grapeConfig
@@ -240,44 +241,6 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
         print("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
 
-# there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
-# this is a wrapper to allow exception capture in runCommandOnRepoBranch.
-class MultiRepoException(Exception):
-    def __init__(self):
-        self._exceptions = []
-        self._repos = []
-        self._branches = []
-        self._args = []
-
-    def addException(self, e, repo, branch, args):
-        self._exceptions.append(e)
-        self._repos.append(repo)
-        self._branches.append(branch)
-        self._args.append(args)
-
-    def __getitem__(self, pos):
-        return self._exceptions[pos]
-
-    def exceptions(self):
-        return self._exceptions
-
-    def repos(self):
-        return self._repos
-
-    def branches(self):
-        return self._branches
-
-    def args(self):
-        return self._args
-
-    def hasException(self):
-        return len(self._exceptions) > 0
-
-    def __repr__(self):
-        return "MRE with \n exceptions: %s \repos: %s\n branches: %s\n args: %s" % (
-                self._exceptions, self._repos, self._branches, self._args)
-
-
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
 # a method in, and launches the method. Needs to be at the file scope for stricter implementations of
@@ -465,7 +428,7 @@ class MultiRepoCommandLauncher(object):
                     retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
 
         self.pool.close()
-        MRE = MultiRepoException()
+        MRE = grape_errors.MultiRepoException()
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
             if isinstance(val[0], Exception):
                 MRE.addException(val[0], val[1], val[2], val[3])
@@ -540,14 +503,6 @@ def writeDefaultConfig(filename):
     with open(filename, 'w') as f:
         config.write(f)
 
-class NoWorkspaceDirException(Exception):
-    def __init__(self, cwd=''):
-        self.cwd = cwd
-        if cwd:
-            self.message = "No .git found in %s" % cwd
-        else:
-            self.message = "No .git found"
-
 
 # return the path to the base level of the current workspace. (outermost git repo)
 def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
@@ -561,7 +516,7 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
     if not workspace_dir and warn_if_not_found:
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
     if not workspace_dir and throw_if_not_found:
-        raise NoWorkspaceDirException(os.getcwd())
+        raise grape_errors.NoWorkspaceDirException(os.getcwd())
     return workspace_dir
 
 def isWorkspaceClean(printOutput=False):

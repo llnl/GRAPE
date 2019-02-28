@@ -27,3 +27,50 @@ class GrapeGitError(Exception):
 
     def __repr__(self):
         return self.__str__()
+
+
+# there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
+# this is a wrapper to allow exception capture in runCommandOnRepoBranch.
+class MultiRepoException(Exception):
+    def __init__(self):
+        self._exceptions = []
+        self._repos = []
+        self._branches = []
+        self._args = []
+
+    def addException(self, e, repo, branch, args):
+        self._exceptions.append(e)
+        self._repos.append(repo)
+        self._branches.append(branch)
+        self._args.append(args)
+
+    def __getitem__(self, pos):
+        return self._exceptions[pos]
+
+    def exceptions(self):
+        return self._exceptions
+
+    def repos(self):
+        return self._repos
+
+    def branches(self):
+        return self._branches
+
+    def args(self):
+        return self._args
+
+    def hasException(self):
+        return len(self._exceptions) > 0
+
+    def __repr__(self):
+        return "MRE with \n exceptions: %s \repos: %s\n branches: %s\n args: %s" % (
+                self._exceptions, self._repos, self._branches, self._args)
+
+
+class NoWorkspaceDirException(Exception):
+    def __init__(self, cwd=''):
+        self.cwd = cwd
+        if cwd:
+            self.message = "No .git found in %s" % cwd
+        else:
+            self.message = "No .git found"
