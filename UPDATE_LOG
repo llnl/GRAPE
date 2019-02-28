@@ -1,5 +1,13 @@
 
 
+Thu Feb 28 12:38:57 2019 Peter B. Robinson
+v1.31.3
+Reviewers: Ben Liu
+
+SUMMARY: 
+changes default behavior of grape md to be gits default, with no user prompt required.
+
+
 Tue Feb 26 08:58:53 2019 David Bloss
 v1.31.2
 Reviewers: Ben Liu, Peter Robinson
