@@ -136,7 +136,7 @@ class _Menu(object):
                    (e.code, chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
             exit(e.code)
 
-        except utility.NoWorkspaceDirException as e:
+        except grape_errors.NoWorkspaceDirException as e:
             print ("GRAPE: grape %s must be run from a grape workspace." % chosen_option.key)
             print ("GRAPE: %s" % e.message)
             exit(1)

@@ -180,7 +180,7 @@ def bundlecmdMRE(mre):
     print mre
     try:
         raise mre
-    except  utility.MultiRepoException as errors:
+    except  grape_errors.MultiRepoException as errors:
         utility.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
             print b, e

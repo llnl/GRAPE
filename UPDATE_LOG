@@ -1,11 +1,10 @@
 
 
-Thu Feb 28 12:38:57 2019 Peter B. Robinson
+Thu Feb 28 13:53:48 2019 David Bloss
 v1.31.3
-Reviewers: Ben Liu
+Reviewers: Peter Robinson, Ben Liu
 
-SUMMARY: 
-changes default behavior of grape md to be gits default, with no user prompt required.
+Missed a few custom exceptions in the last branch
 
 
 Tue Feb 26 08:58:53 2019 David Bloss

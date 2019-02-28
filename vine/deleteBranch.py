@@ -2,6 +2,7 @@ import os
 
 import option
 import utility
+import grape_errors
 import grapeGit as git
 import grape_errors
 import grapeConfig
@@ -49,7 +50,7 @@ class DeleteBranch(option.Option):
                                                     globalArgs=[force])
         try:
             launcher.launchFromWorkspaceDir()
-        except utility.MultiRepoException as e:
+        except grape_errors.MultiRepoException as e:
             handleDeleteBranchMRE(e, force)
 
         return True

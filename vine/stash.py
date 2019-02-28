@@ -1,5 +1,6 @@
 import os
 import option
+import grape_errors
 import grapeGit as git
 import grapeMenu
 import utility
@@ -50,7 +51,7 @@ class Stash(option.Option):
             for r in retvals:
                 if r[1]:
                     print "%s: %s" % (r[0], r[1])
-        except utility.MultiRepoException as mre:
+        except grape_errors.MultiRepoException as mre:
             for e, r in zip(mre, mre.repos):
                 print("%s:\n%s" % (r, e.gitOutput))
 
