@@ -198,11 +198,11 @@ class MergeDevelop(resumable.Resumable, option.Option):
                     os.chdir(utility.workspaceDir())
                     git.submodule("update --init %s" % sub)
                     os.chdir(os.path.join(utility.workspaceDir(), sub))
-                    # If there is already a branch by this name in the new repo,
-                    # this will reset the branch.
-                    git.checkout("-B %s" % currentBranch)
                     # fetch the public branch so there is a branch to merge from
                     git.fetch("origin %s:%s" % (submodulePubBranch, submodulePubBranch))
+                    # If there is already a branch by this name in the new repo,
+                    # this will reset the branch.
+                    git.checkout("-B %s %s" % (currentBranch, submodulePubBranch))
 
             os.chdir(utility.workspaceDir())
 
