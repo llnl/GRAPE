@@ -290,7 +290,7 @@ class Checkout(option.Option):
                     git.fetch("origin", "%s:%s" % (branch, branch))
                 except grape_errors.GrapeGitError as e:
                     utility.printMsg("Branch {0} could not be fetched in outer level repo:\n{1}\nUse grape checkout -b if you really want to create a new branch off of HEAD.".format(branch, e))
-                return False
+                    return False
 
             if grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
                 parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
