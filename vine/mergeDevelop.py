@@ -202,7 +202,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
                     git.fetch("origin %s:%s" % (submodulePubBranch, submodulePubBranch))
                     # If there is already a branch by this name in the new repo,
                     # this will reset the branch.
-                    git.checkout("-B %s %s" % (currentBranch, submodulePubBranch))
+                    git.checkout("-B %s HEAD" % currentBranch)
 
             os.chdir(utility.workspaceDir())
 
