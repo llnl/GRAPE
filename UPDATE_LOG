@@ -1,5 +1,14 @@
 
 
+Wed Mar  6 11:19:10 2019 Benjamin T. Liu
+v1.31.6
+Reviewers: Peter Robinson, Patrick Greene
+
+Fix bug introduced in v1.28.6
+- Previously grape checkout returned early after fetching a branch that was not available locally
+- Now correctly proceeds with the checkout
+
+
 Wed Mar  6 08:43:17 2019 Benjamin T. Liu
 v1.31.5
 Reviewers: Peter Robinson, Arlie Capps
