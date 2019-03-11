@@ -34,7 +34,7 @@ class NewBranchOption(option.Option):
         super(NewBranchOption, self).__init__()
         self._key = topic
         if (topic != topic.lower()):
-            utility.printMsg("WARNING: %s in .grapeconfig.flow.topicPrefixMappings should be lowercase." % topic)
+            grapeMenu.printMsg("WARNING: %s in .grapeconfig.flow.topicPrefixMappings should be lowercase." % topic)
             self._key = topic.lower()
         self._section = "Gitflow Tasks"
         self._public = public
@@ -73,9 +73,9 @@ class NewBranchOption(option.Option):
 
         branchStatus = checkout.branchAlreadyExists(branchName)
         if branchStatus:
-            utility.printMsg("Not creating new branch.")
+            grapeMenu.printMsg("Not creating new branch.")
             if branchStatus == 1:
-                utility.printMsg("Use `grape checkout %s' instead." % branchName)
+                grapeMenu.printMsg("Use `grape checkout %s' instead." % branchName)
             return False
 
         activeSubmodulesCheck = git.getActiveSubmodules()
@@ -88,13 +88,13 @@ class NewBranchOption(option.Option):
             # deinit and clean out any submodules that changed urls or
             # are not present in the public branch.
             for sub in changedURLModules + removedModules:
-                utility.printMsg("%s %s, attempting to remove references for %s submodule before branch creation." % (sub, "has changed URL" if sub in changedURLModules else "is not present in %s" % start, "active" if sub in activeSubmodulesCheck else "inactive"))
+                grapeMenu.printMsg("%s %s, attempting to remove references for %s submodule before branch creation." % (sub, "has changed URL" if sub in changedURLModules else "is not present in %s" % start, "active" if sub in activeSubmodulesCheck else "inactive"))
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck)
                 if not cleaned:
-                    utility.printMsg("Failed to remove old submodule for %s." % sub)
+                    grapeMenu.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
 
-        launcher = utility.MultiRepoCommandLauncher(createBranch,
+        launcher = grapeMenu.MultiRepoCommandLauncher(createBranch,
                                                    runInSubmodules=recurse,
                                                    runInSubprojects=recurse,
                                                    runInOuter=True,
@@ -102,15 +102,15 @@ class NewBranchOption(option.Option):
                                                    globalArgs=branchName)
 
         launcher.initializeCommands()
-        utility.printMsg("About to create the following branches:")
+        grapeMenu.printMsg("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):
-            utility.printMsg("\t%s off of %s in %s" % (branchName, branch, repo))
+            grapeMenu.printMsg("\t%s off of %s in %s" % (branchName, branch, repo))
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
             grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % start])
             launcher.launchFromWorkspaceDir()
         else:
-            utility.printMsg("branches not created")
+            grapeMenu.printMsg("branches not created")
 
         # reinit any submodules with changed URLs
         for sub in changedURLModules:
@@ -152,14 +152,14 @@ def createBranch(repo="unknown", branch="master", args=[]):
     branchPoint = branch
     fullBranch = args
     with utility.cd(repo):
-        utility.printMsg("creating and switching to %s in %s" % (fullBranch, repo))
+        grapeMenu.printMsg("creating and switching to %s in %s" % (fullBranch, repo))
         try:
             git.checkout("-b %s %s " % (fullBranch, branchPoint))
         except grape_errors.GrapeGitError as e:
             print "%s:%s" % (repo, e.gitOutput)
-            utility.printMsg("WARNING: %s in %s will not be pushed." % (fullBranch, repo))
+            grapeMenu.printMsg("WARNING: %s in %s will not be pushed." % (fullBranch, repo))
             return
-        utility.printMsg("pushing %s to origin in %s" % (fullBranch, repo))
+        grapeMenu.printMsg("pushing %s to origin in %s" % (fullBranch, repo))
         try:
             git.push("-u origin %s" % fullBranch)
         except grape_errors.GrapeGitError as e:

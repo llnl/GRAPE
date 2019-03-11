@@ -55,7 +55,7 @@ class NewWorkingTree(option.Option):
         newRepo = os.path.join(newTreePath, newTree)
         #TODO: When grape is installed to PUBLIC, the first argument here should be the
         # publically available git-new-workdir, instead of the version in the local repo.
-        p = utility.executeSubProcess(os.path.join(os.path.dirname(__file__), "..", "git-new-workdir")
+        p = grapeMenu.executeSubProcess(os.path.join(os.path.dirname(__file__), "..", "git-new-workdir")
                                       + " " + clonePath + " " + newRepo, workingDirectory=os.getcwd())
         p.wait()
         os.chdir(newRepo)

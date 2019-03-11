@@ -40,7 +40,7 @@ class UpdateSubproject(option.Option):
         clean = utility.isWorkspaceClean()
         os.chdir(utility.workspaceDir())
         if not clean:
-            utility.printMsg("git-subtree requires a clean working tree before attempting a subtree update")
+            grapeMenu.printMsg("git-subtree requires a clean working tree before attempting a subtree update")
             return False
         name = args["--name"]
         branch = args["--branch"]

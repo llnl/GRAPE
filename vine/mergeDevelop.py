@@ -91,7 +91,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         if not branch:
             branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
-                utility.printMsg("ERROR: public branches must be configured for grape md to work.")
+                grapeMenu.printMsg("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
 
         # check to see if we already have the branch
@@ -146,15 +146,15 @@ class MergeDevelop(resumable.Resumable, option.Option):
         self.progress["allActive"] = set(git.getAllSubmodules()) == set(git.getActiveSubmodules())
 
         # checking for a consistent workspace before doing a merge
-        utility.printMsg("Checking for a consistent workspace before performing merge...")
+        grapeMenu.printMsg("Checking for a consistent workspace before performing merge...")
         ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
         if ret is False:
-            utility.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
+            grapeMenu.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
             return False
 
         if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
-            utility.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
+            grapeMenu.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
             grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])
             self.progress["updateLocalDone"] = True
 
@@ -165,10 +165,10 @@ class MergeDevelop(resumable.Resumable, option.Option):
             checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
-                utility.printMsg("url for %s changed, attempting to remove references for %s submodule before merge." % (sub, "active" if sub in activeSubmodulesCheck0 else "inactive"))
+                grapeMenu.printMsg("url for %s changed, attempting to remove references for %s submodule before merge." % (sub, "active" if sub in activeSubmodulesCheck0 else "inactive"))
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck0)
                 if not cleaned:
-                    utility.printMsg("Failed to remove old submodule for %s." % sub)
+                    grapeMenu.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
 
         # do an outer merge if we haven't done it yet
@@ -208,7 +208,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
 
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
-            utility.printMsg("Initial merge failed. Resolve issue and try again. ")
+            grapeMenu.printMsg("Initial merge failed. Resolve issue and try again. ")
             return False
 
         # merge nested subprojects
@@ -260,7 +260,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         if self.progress["allActive"]:
             activeSubmodulesCheck1 = git.getActiveSubmodules()
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
-                utility.printMsg("Updating new submodules using grape uv --allSubmodules")
+                grapeMenu.printMsg("Updating new submodules using grape uv --allSubmodules")
                 grapeMenu.menu().applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
 
         return True
@@ -277,7 +277,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         mergeArgs = args.copy()
         mergeArgs["--public"] = subPublic
 
-        utility.printMsg("Merging %s into %s for %s %s" %
+        grapeMenu.printMsg("Merging %s into %s for %s %s" %
                          (subPublic, git.currentBranch(), "submodule" if isSubmodule else "subproject", subproject))
         git.fetch("origin")
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -288,7 +288,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         ret = self.mergeIntoCurrent(subPublic, mergeArgs, subproject)
         # skip nested subprojects that fail to merge
         if not ret and not isSubmodule and not git.conflictedFiles():
-            utility.printMsg("Unable to merge subproject {0}, skipping...".format(subproject))
+            grapeMenu.printMsg("Unable to merge subproject {0}, skipping...".format(subproject))
             ret = True
         conflict = not ret
         if conflict:
@@ -303,11 +303,11 @@ class MergeDevelop(resumable.Resumable, option.Option):
                 else:
                     typeStr = "nested subproject"
 
-                utility.printMsg("Merge in %s %s from %s to %s issued conflicts. Resolve and commit those changes \n"
+                grapeMenu.printMsg("Merge in %s %s from %s to %s issued conflicts. Resolve and commit those changes \n"
                                  "using git mergetool and git commit in the submodule, then continue using grape\n"
                                  "%s --continue" % (typeStr, subproject, subPublic, git.currentBranch(), args["<<cmd>>"]))
             else:
-                utility.printMsg("Merge in %s failed for an unhandled reason. You may need to stash / commit your current\n"
+                grapeMenu.printMsg("Merge in %s failed for an unhandled reason. You may need to stash / commit your current\n"
                                  "changes before doing the merge. Inspect git output above to troubleshoot. Continue using\n"
                                  "grape %s --continue." % (subproject, args["<<cmd>>"]))
             return False
@@ -322,7 +322,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         return True
 
     def outerLevelMerge(self, args, branch):
-        utility.printMsg("Merging changes from %s into your current branch..." % branch)
+        grapeMenu.printMsg("Merging changes from %s into your current branch..." % branch)
 
         conflict = not self.mergeIntoCurrent(branch, args, "outer level project")
 
@@ -331,7 +331,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
             if conflictedFiles:
                 return conflictedFiles
             else:
-                utility.printMsg("Merge issued error, but no conflicts. Aborting...")
+                grapeMenu.printMsg("Merge issued error, but no conflicts. Aborting...")
                 return False
         else:
             self.progress["outerLevelDone"] = True
@@ -347,10 +347,10 @@ class MergeDevelop(resumable.Resumable, option.Option):
             if "conflict" in error.gitOutput.lower():
                 if args['--at'] or args['--ay']:
                     if args['--at']:
-                        utility.printMsg("Resolving conflicted files by accepting changes from %s." % branch)
+                        grapeMenu.printMsg("Resolving conflicted files by accepting changes from %s." % branch)
                         checkoutArg = "--theirs"
                     else:
-                        utility.printMsg("Resolving conflicted files by accepting changes from your branch.")
+                        grapeMenu.printMsg("Resolving conflicted files by accepting changes from your branch.")
                         checkoutArg = "--ours"
                     try:
                         path = git.baseDir()
@@ -362,7 +362,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
                         print resolveError.gitOutput
                         return False
                 else:
-                    utility.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
+                    grapeMenu.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
                                      "with grape %s --continue. " % args["<<cmd>>"])
                     return False
             else:
@@ -413,7 +413,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
 
         if strategy == 'am':
             args["--am"] = True
-            utility.printMsg("Merging using git's default strategy...")
+            grapeMenu.printMsg("Merging using git's default strategy...")
             choice = self.merge(branchName, "", args)
         elif strategy == 'as' or strategy == 'at' or strategy == 'ay':
             if strategy == 'as':
@@ -424,7 +424,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
                 # see
                 # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
                 # for details.
-                utility.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
+                grapeMenu.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
             elif strategy == 'at':
                 args["--at"] = True
             elif strategy == 'ay':
@@ -456,11 +456,11 @@ class MergeDevelop(resumable.Resumable, option.Option):
                 os.remove(attributes)
         elif strategy == 'aT':
             args["--aT"] = True
-            utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
+            grapeMenu.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
             choice = self.merge(branchName, "-Xtheirs", args)
         elif strategy == 'aY':
             args["--aY"] = True
-            utility.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
+            grapeMenu.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
             choice = self.merge(branchName, "-Xours", args)
 
         return choice

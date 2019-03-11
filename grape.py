@@ -23,7 +23,7 @@ import vine
 vinePath = os.path.dirname(vine.__file__)
 
 
-CLI = utility.CLI 
+CLI = grapeMenu.CLI
 
 def startup():
     versionOutput = git.version().split()
@@ -45,7 +45,7 @@ def startup():
         grapeVersion = f.read().split()[2]   
     args = docopt(CLI,  version=grapeVersion, options_first=True )
     myMenu = grapeMenu.menu()
-    utility.applyGlobalArgs(args)
+    grapeMenu.applyGlobalArgs(args)
 
         
     retval = True

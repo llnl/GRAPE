@@ -56,7 +56,7 @@ class AddSubproject(option.Option):
             projectType = "nested"
         # can happen with invalid type in .grapeconfig and no type specified at command line
         if projectType != "subtree" and projectType != "submodule" and projectType != "nested":
-            utility.printMsg("Invalid subprojectType specified in .grapeconfig section [workspace].")
+            grapeMenu.printMsg("Invalid subprojectType specified in .grapeconfig section [workspace].")
         return projectType
 
     def execute(self, args):
@@ -98,7 +98,7 @@ class AddSubproject(option.Option):
                 config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
-                utility.printMsg("Successfully added subtree branch. \n"
+                grapeMenu.printMsg("Successfully added subtree branch. \n"
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:
@@ -159,7 +159,7 @@ class AddSubproject(option.Option):
             elif '.git' in os.listdir(destDir):
                 pass
             else:
-                utility.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
+                grapeMenu.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
                 return False
         userconfig.set(section, "active", "True")
         grapeConfig.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))

@@ -38,10 +38,10 @@ class Push(option.Option):
 
         submodules = git.getActiveSubmodules()
 
-        retvals = utility.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
+        retvals = grapeMenu.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         os.chdir(cwd)
-        utility.printMsg("Pushed current branch to origin")
+        grapeMenu.printMsg("Pushed current branch to origin")
         return False not in retvals
 
     def setDefaultConfig(self, config):
@@ -49,7 +49,7 @@ class Push(option.Option):
 
 def push(repo='', branch='master'):
     with utility.cd(repo):
-        utility.printMsg("Pushing %s in %s..." % (branch, repo))
+        grapeMenu.printMsg("Pushing %s in %s..." % (branch, repo))
         git.push("-u origin %s" % branch, throwOnFail=True)
 
 def handlePushMRE(mre):
@@ -57,7 +57,7 @@ def handlePushMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            utility.printMsg("Failed to push branch.")
+            grapeMenu.printMsg("Failed to push branch.")
             print e.gitCommand
             print e.cwd
             print e.gitOutput

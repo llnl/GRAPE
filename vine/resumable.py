@@ -65,7 +65,7 @@ class Resumable(object):
                     self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
                     self._readProgressFile()
                 except:
-                    utility.printMsg("No progress file found to continue from. Please enter a command without the "
+                    grapeMenu.printMsg("No progress file found to continue from. Please enter a command without the "
                                      "--continue option. ")
                     raise e
         newArgs = self.progress["args"]

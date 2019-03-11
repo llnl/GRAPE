@@ -3,6 +3,7 @@ import os
 import grape_errors
 import grapeGit as git
 import grapeConfig
+import grapeMenu
 import utility
 
 
@@ -51,7 +52,7 @@ class UpdateLocal(option.Option):
         publicBranches = [x.strip() for x in args["--public"].split()]
         launchers = []
         for branch in publicBranches:
-            launchers.append(utility.MultiRepoCommandLauncher(fetchLocal,
+            launchers.append(grapeMenu.MultiRepoCommandLauncher(fetchLocal,
                                             runInSubmodules=recurseSubmodules,
                                             runInSubprojects=recurseNestedSubprojects,
                                             branch=branch,
@@ -95,13 +96,13 @@ def fetchLocal(repo='unknown', branch='master'):
                         toFetch.append(b)
                 else:
                     try:
-                        utility.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
+                        grapeMenu.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
                         git.pull("origin %s" % currentBranch)
                     except grape_errors.GrapeGitError:
                         print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
             try:
                 if toFetch:
-                    utility.printMsg("updating %s in %s" % (','.join(toFetch), repo))
+                    grapeMenu.printMsg("updating %s in %s" % (','.join(toFetch), repo))
                     git.fetch(fetchArgs)
             except grape_errors.GrapeGitError as e:
                 # let non-fast-forward fetches slide

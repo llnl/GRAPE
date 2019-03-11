@@ -107,14 +107,14 @@ class Bundle(option.Option):
         launchArgs["describePattern"] = describePattern
         launchArgs["--outfile"] = args["--outfile"]
 
-        otherCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                                runInSubprojects=recurse, globalArgs=launchArgs)
+        otherCommandLauncher = grapeMenu.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
+                                                                  runInSubprojects=recurse, globalArgs=launchArgs)
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         if (recurse):
             launchArgs["branchList"] = args["--submoduleBranches"].split()
-            submoduleCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd,
+            submoduleCommandLauncher = grapeMenu.MultiRepoCommandLauncher(bundlecmd,
                                                                        runInSubmodules=recurse,
                                                                        runInSubprojects=False,
                                                                        skipSubmodules=not recurse,
@@ -159,20 +159,20 @@ def bundlecmd(repo='', branch='', args={}):
             try:
                 currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
             except:
-                utility.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
+                grapeMenu.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
                 currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
                     git.shortSHA(tagname)
                     revlists = " %s..%s" % (tagname, branch)
                 except:
-                    utility.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
+                    grapeMenu.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
                     revlists = " %s" % (branch)
                 bundlename = args["--outfile"]
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
-                utility.printMsg("creating bundle %s in %s" % (bundlename, reponame))
+                grapeMenu.printMsg("creating bundle %s in %s" % (bundlename, reponame))
                 git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
     return True
 
@@ -181,7 +181,7 @@ def bundlecmdMRE(mre):
     try:
         raise mre
     except  grape_errors.MultiRepoException as errors:
-        utility.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
+        grapeMenu.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
             print b, e
 
@@ -219,11 +219,11 @@ class Unbundle(option.Option):
         recurse = not args["--noRecurse"]
         launchArgs = {}
         launchArgs["--branchMappings"] = args["--branchMappings"]
-        repoLauncher =  utility.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
+        repoLauncher =  grapeMenu.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
                                                         runInSubprojects=recurse, globalArgs=launchArgs)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
         launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
-        submoduleCommandLauncher = utility.MultiRepoCommandLauncher(unbundlecmd,
+        submoduleCommandLauncher = grapeMenu.MultiRepoCommandLauncher(unbundlecmd,
                                                                     runInSubmodules=recurse,
                                                                     runInSubprojects=False,
                                                                     skipSubmodules=not recurse,

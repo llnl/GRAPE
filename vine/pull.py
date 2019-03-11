@@ -14,7 +14,7 @@ def pull(branch="develop", repo=".", rebase=False):
     else:
         argStr = "origin %s " % branch
 
-    utility.printMsg("Pulling %s in %s..." % (branch, repo))
+    grapeMenu.printMsg("Pulling %s in %s..." % (branch, repo))
     git.pull(argStr, throwOnFail=True)
 
 
@@ -61,12 +61,12 @@ class Pull(resumable.Resumable, option.Option):
 
         if args["--noRecurse"]:
             git.pull("origin %s" % currentBranch)
-            utility.printMsg("Pulled current branch from origin")
+            grapeMenu.printMsg("Pulled current branch from origin")
             return True
         else:
             val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
             if val:
-                utility.printMsg("Pulled current branch from origin")
+                grapeMenu.printMsg("Pulled current branch from origin")
             return val
 
     def _resume(self, args):

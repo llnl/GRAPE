@@ -41,11 +41,11 @@ class Stash(option.Option):
     def execute(self, args):
 
         if args["pop"]:
-            launcher = utility.MultiRepoCommandLauncher(popHelper)
+            launcher = grapeMenu.MultiRepoCommandLauncher(popHelper)
         elif args["list"]:
-            launcher = utility.MultiRepoCommandLauncher(listHelper)
+            launcher = grapeMenu.MultiRepoCommandLauncher(listHelper)
         else:
-            launcher = utility.MultiRepoCommandLauncher(stashHelper)
+            launcher = grapeMenu.MultiRepoCommandLauncher(stashHelper)
         try:
             retvals = launcher.launchFromWorkspaceDir()
             for r in retvals:
