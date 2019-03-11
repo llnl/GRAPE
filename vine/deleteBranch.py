@@ -6,6 +6,7 @@ import grape_errors
 import grapeGit as git
 import grape_errors
 import grapeConfig
+import grapeMenu
 
 
 class DeleteBranch(option.Option):
