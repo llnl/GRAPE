@@ -4,6 +4,7 @@ import grape_errors
 import grapeGit as git
 import utility
 import grapeConfig
+import grapeMenu
 
 
 class Push(option.Option):
