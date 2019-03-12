@@ -5,6 +5,7 @@ import grape_errors
 import grapeGit as git
 import utility
 import grapeConfig
+import grapeMenu
 
 
 class Resumable(object):

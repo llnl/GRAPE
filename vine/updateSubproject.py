@@ -4,6 +4,7 @@ import grapeConfig
 import option
 import utility
 import grapeGit as git
+import grapeMenu
 
 """        
                     
