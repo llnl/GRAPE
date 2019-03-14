@@ -2,10 +2,10 @@ import os
 import option
 import grape_errors
 import grapeGit as git
-import grapeMenu
 import utility
 import config_parser_global
 import multi_repo_cmd_launcher
+import grapeMenu
 
 
 class Push(option.Option):

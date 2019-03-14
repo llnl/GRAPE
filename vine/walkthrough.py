@@ -7,6 +7,7 @@ import grapeGit as git
 import utility
 import re
 import threading
+import grapeMenu
 
 try:
     import Tkinter as Tk
