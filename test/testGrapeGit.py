@@ -2,8 +2,8 @@ import os
 import shutil
 from testGrape import *
 
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 from vine import grapeGit as git
 from vine import grape_errors
 
@@ -234,6 +234,34 @@ class TestGrapeGit(TestGrape):
                 self.assertTrue(False,"rebase that should not have generated a conflict failed")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
+
+    def testParseSubprojectRemoteURL(self):
+        os.chdir(self.repo)
+        try:
+            os.makedirs("hardlinktest/b/c/d/e")
+            os.chdir("hardlinktest/b/c")
+
+            #Set the remote origin url to the cwd for testing purposes
+            git.config("--add remote.origin.url %s" % os.getcwd())
+
+            #Test existing hard paths
+            self.assertTrue(git.parseSubprojectRemoteURL("/usr/gapps/grape") == "/usr/gapps/grape")
+            self.assertTrue(git.parseSubprojectRemoteURL("ssh://www.grape.com") == "ssh://www.grape.com")
+            self.assertTrue(git.parseSubprojectRemoteURL("https://www.grape.com") == "https://www.grape.com")
+
+            #Test some relative paths
+            self.assertTrue(git.parseSubprojectRemoteURL(".").endswith("hardlinktest/b/c"))
+            self.assertTrue(git.parseSubprojectRemoteURL("..").endswith("hardlinktest/b"))
+            self.assertTrue(git.parseSubprojectRemoteURL("../..").endswith("hardlinktest"))
+            self.assertTrue(git.parseSubprojectRemoteURL("../../b").endswith("hardlinktest/b"))
+            self.assertTrue(git.parseSubprojectRemoteURL("../../b/..").endswith("hardlinktest"))
+            self.assertTrue(git.parseSubprojectRemoteURL("../../b/../b").endswith("hardlinktest/b"))
+            self.assertTrue(git.parseSubprojectRemoteURL("../../b/..").endswith("hardlinktest"))
+            self.assertTrue(git.parseSubprojectRemoteURL("d").endswith("hardlinktest/b/c/d"))
+            self.assertTrue(git.parseSubprojectRemoteURL("d/e").endswith("hardlinktest/b/c/d/e"))
+        finally:
+            os.chdir(self.repo)
+            shutil.rmtree("hardlinktest")
 
     def handleGitError(self,error):
         self.assertTrue(False,"When executing \n%s\nError %d caught: %s \n %s " % (error.gitCommand,error.code,error.msg,error.gitOutput))

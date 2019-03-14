@@ -2,8 +2,8 @@ __author__ = 'robinson96'
 import os
 import sys
 
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 import testGrape
 from vine import grape_errors
 from vine import grapeGit as git

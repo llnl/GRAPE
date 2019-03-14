@@ -4,9 +4,10 @@ import os
 import re
 import StringIO
 import ConfigParser
+import config_parser_global
+import config_parser_user
 
 import grapeGit as git
-import grapeConfig
 import utility
 
 class Version(option.Option):
@@ -82,7 +83,7 @@ class Version(option.Option):
         return "Update the version for your current project."
 
     def parseArgs(self, args): 
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         # parse tagSuffix for version mappings
         if args["--tagSuffix"] is None: 
             branch2suffix = config.getMapping("versioning", "branchtagsuffixmappings")
@@ -95,7 +96,7 @@ class Version(option.Option):
         if args["tick"]:
             self.tickVersion(args)
         if args["read"]:
-            config = grapeConfig.grapeConfig()
+            config = config_parser_global.grapeConfig()
             fileName = config.get("versioning","file")
             try:
                 with open(fileName) as f:
@@ -106,7 +107,7 @@ class Version(option.Option):
         return True
 
     def initializeVersioning(self, args):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         version = StringIO.StringIO()
         version.write("VERSION_ID = %s" % args["<version>"])
         version.seek(0)
@@ -118,14 +119,14 @@ class Version(option.Option):
             self.stageVersionFile(fname)
             config.set("versioning", "file", fname)
             configFile = os.path.join(git.baseDir(), ".grapeconfig")
-            grapeConfig.writeConfig(config, configFile)
+            config_parser_global.writeConfig(config, configFile)
             self.stageGrapeconfigFile(configFile)
             if not args["--nocommit"]:
                 git.commit("%s %s -m \"GRAPE: added initial version info file %s\"" % (fname, configFile, fname))
                 self.tagVersion(version, args)
 
     def tickVersion(self, args):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         fileName = config.get("versioning", "file")
         with open(fileName) as f:
             slots = self.readVersion(f, args)
@@ -165,7 +166,7 @@ class Version(option.Option):
             if args["--tagNested"]:
                 cwd = os.getcwd()
                 wsDir = utility.workspaceDir()
-                for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+                for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes():
                     os.chdir(os.path.join(wsDir, subproject))
                     self.tagVersion(self.ver, args)
                 os.chdir(cwd)
@@ -213,7 +214,7 @@ class Version(option.Option):
         return True
 
     def readVersion(self, fileName, args):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         prefix = args["--prefix"]
         if args["--suffix"]:
             suffix = args["--suffix"]

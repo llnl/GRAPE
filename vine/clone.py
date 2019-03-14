@@ -3,7 +3,7 @@ import option
 import utility
 import grapeMenu
 import grapeGit as git
-import grapeConfig
+import config_parser_global
 
 
 class Clone(option.Option):
@@ -39,10 +39,10 @@ class Clone(option.Option):
         git.clone(" %s %s %s" % (rstr, remotepath, destpath))
         grapeMenu.printMsg("Clone succeeded!")
         os.chdir(destpath)
-        grapeConfig.read()
+        config_parser_global.read()
         # ensure you start on a reasonable publish branch
         menu = grapeMenu.menu()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         if publicBranches:
             if "develop" in publicBranches:

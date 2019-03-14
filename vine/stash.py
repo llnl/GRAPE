@@ -2,9 +2,9 @@ import os
 import option
 import grape_errors
 import grapeGit as git
-import grapeMenu
 import utility
-import grapeConfig
+import multi_repo_cmd_launcher
+
 
 def stashHelper(repo=".", branch=""):
     return [repo, git.stash()]
@@ -41,11 +41,11 @@ class Stash(option.Option):
     def execute(self, args):
 
         if args["pop"]:
-            launcher = grapeMenu.MultiRepoCommandLauncher(popHelper)
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(popHelper)
         elif args["list"]:
-            launcher = grapeMenu.MultiRepoCommandLauncher(listHelper)
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(listHelper)
         else:
-            launcher = grapeMenu.MultiRepoCommandLauncher(stashHelper)
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(stashHelper)
         try:
             retvals = launcher.launchFromWorkspaceDir()
             for r in retvals:
@@ -56,7 +56,6 @@ class Stash(option.Option):
                 print("%s:\n%s" % (r, e.gitOutput))
 
         return True
-
 
     def setDefaultConfig(self, config):
         pass

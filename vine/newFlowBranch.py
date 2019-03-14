@@ -5,7 +5,8 @@ import utility
 import grape_errors
 import grapeGit as git
 import grapeMenu
-import grapeConfig
+import config_parser_global
+import multi_repo_cmd_launcher
 
 
 class NewBranchOption(option.Option):
@@ -51,7 +52,7 @@ class NewBranchOption(option.Option):
 
 
         # decide whether to recurse
-        recurse = grapeConfig.grapeConfig().get('workspace', 'manageSubmodules')
+        recurse = config_parser_global.grapeConfig().get('workspace', 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--noRecurse"]:
@@ -94,7 +95,7 @@ class NewBranchOption(option.Option):
                     grapeMenu.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
 
-        launcher = grapeMenu.MultiRepoCommandLauncher(createBranch,
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(createBranch,
                                                    runInSubmodules=recurse,
                                                    runInSubprojects=recurse,
                                                    runInOuter=True,

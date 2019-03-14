@@ -1,6 +1,9 @@
 import os
 import ConfigParser
-import grapeConfig
+import config_parser_global
+import config_parser_user
+import config_parser_workspace
+import grapeMenu
 import option
 import utility
 import grapeGit as git
@@ -63,9 +66,9 @@ class AddSubproject(option.Option):
         name = args["--name"]
         prefix = args["--prefix"]
         url = args["--url"]
-        fullurl = utility.parseSubprojectRemoteURL(url)
+        fullurl = git.parseSubprojectRemoteURL(url)
         branch = args["--branch"]
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         projectType = self.parseSubprojectType(config, args)
         proceed = args["--noverify"]
         if projectType == "subtree":
@@ -119,7 +122,7 @@ class AddSubproject(option.Option):
                 with open(ignorePath, 'a') as ignore:
                     ignore.writelines([prefix+'\n'])
                 git.add(ignorePath)
-                wsConfig = grapeConfig.workspaceConfig()
+                wsConfig = config_parser_workspace.GrapeConfigParserWorkspace()
                 currentSubprojects = wsConfig.getList("nestedProjects", "names")
                 currentSubprojects.append(name)
                 wsConfig.set("nestedProjects", "names", ' '.join(currentSubprojects))
@@ -133,22 +136,22 @@ class AddSubproject(option.Option):
                 git.add(configFileName)
                 git.commit("%s %s -m \"GRAPE: Added nested subproject %s\"" % (ignorePath, configFileName, prefix))
                 # update the runtime config with the new workspace .grapeconfig's settings.
-                grapeConfig.read()
+                config_parser_global.read()
 
-                userConfig = grapeConfig.grapeUserConfig()
+                userConfig = config_parser_user.GrapeConfigParserUser()
                 userConfig.ensureSection(newSection)
                 userConfig.set(newSection, "active", "True")
-                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
+                config_parser_global.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
         return True
 
     @staticmethod
     def activateNestedSubproject(subprojectName, userconfig):
         wsDir = utility.workspaceDir()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         prefix = config.get("nested-%s" % subprojectName, "prefix")
         url = config.get("nested-%s" % subprojectName, "url")
-        fullurl = utility.parseSubprojectRemoteURL(url)
+        fullurl = git.parseSubprojectRemoteURL(url)
         section = "nested-%s" % subprojectName
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
@@ -162,7 +165,7 @@ class AddSubproject(option.Option):
                 grapeMenu.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
                 return False
         userconfig.set(section, "active", "True")
-        grapeConfig.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))
+        config_parser_global.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))
         return True
 
     def setDefaultConfig(self, config):

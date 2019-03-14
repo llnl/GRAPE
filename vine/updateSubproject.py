@@ -1,6 +1,6 @@
 import os
 import ConfigParser
-import grapeConfig
+import config_parser_global
 import option
 import utility
 import grapeGit as git
@@ -37,17 +37,17 @@ class UpdateSubproject(option.Option):
             self.updateSubtree(args)
         
     def updateSubtree(self, args):
-        clean = utility.isWorkspaceClean()
+        clean = git.isWorkspaceClean()
         os.chdir(utility.workspaceDir())
         if not clean:
             grapeMenu.printMsg("git-subtree requires a clean working tree before attempting a subtree update")
             return False
         name = args["--name"]
         branch = args["--branch"]
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         subtreePrefix = config.get("subtree-%s" % name, "prefix")
         subtreeRemote = config.get("subtree-%s" % name, "remote")
-        fullURL = utility.parseSubprojectRemoteURL(subtreeRemote)
+        fullURL = git.parseSubprojectRemoteURL(subtreeRemote)
         doSquash = config.get("subtrees", "mergePolicy").strip().lower() == "squash"
         squashArg = "--squash" if doSquash else ""
         git.subtree("pull --prefix %s %s %s %s" %

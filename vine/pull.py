@@ -3,7 +3,6 @@ import option
 import grapeGit as git
 import grapeMenu
 import utility
-import grapeConfig
 import option
 import resumable
 
@@ -74,7 +73,7 @@ class Pull(resumable.Resumable, option.Option):
         return True
 
     def _saveProgress(self, args):
-        super(Merge, self)._saveProgress(args)
+        super(Pull, self)._saveProgress(args)
 
     def setDefaultConfig(self, config):
         pass

@@ -4,16 +4,17 @@ import shutil
 import subprocess
 import utility
 import ConfigParser
-import grapeConfig
 import StringIO
 import grape_errors
 import grapeMenu
+import config_parser_global
+import config_parser_user
 
 
 def gitcmd(cmd, errmsg):
     _cmd = None
     try:
-        cnfg = grapeConfig.grapeConfig()
+        cnfg = config_parser_global.grapeConfig()
         _cmd = cnfg.get("git", "executable")
     except ConfigParser.NoOptionError:
         pass
@@ -269,6 +270,36 @@ def getModifiedSubmodules(branch1="", branch2="", includeAdded=False):
     return verifiedSubmodules
 
 
+def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
+    modifiedSubs = getModifiedSubmodules(branch1=branch1, branch2=branch2, includeAdded=includeAdded)
+    activeSubs = getActiveSubmodules()
+    missing = []
+    for sub in modifiedSubs:
+        if sub not in activeSubs:
+            missing.append(sub)
+    return missing
+
+
+# Takes a URL and returns a hard path for it
+def parseSubprojectRemoteURL(url):
+    path = url.strip().split('/')
+    if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
+        return url      #Already a hard path
+
+    # We have a relative path so start the remote origin URL
+    originURL = config("--get remote.origin.url").strip().split('/')
+
+    #Now parse path and modify originURL to make a hard path
+    for p in path:
+        if p == ".." and len(originURL) > 0:
+            originURL.pop()
+        elif p == ".":
+            pass
+        else:
+            originURL.append(p)
+    return '/'.join(originURL)
+
+
 def gitDir():
     base = baseDir()
     gitPath = os.path.join(base, ".git")
@@ -299,6 +330,19 @@ def isWorkingDirectoryClean(printOutput=False):
         print os.getcwd()+":"
         print statusOutput
     return toRet
+
+def isWorkspaceClean(printOutput=False):
+    isClean = isWorkingDirectoryClean(printOutput=printOutput)
+    activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
+    base = utility.workspaceDir()
+    cwd = os.getcwd()
+    for sub in activeNestedSubprojects:
+        if not isClean:
+            break
+        os.chdir(os.path.join(base, sub))
+        isClean = isClean and isWorkingDirectoryClean(printOutput=printOutput)
+    os.chdir(cwd)
+    return isClean
 
 
 def log(args=""):

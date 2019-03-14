@@ -5,7 +5,8 @@ import grape_errors
 import grapeGit as git
 import checkout
 import grapeMenu
-import grapeConfig
+import config_parser_global
+import config_parser_user
 import option
 import resumable
 import utility
@@ -56,7 +57,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
 
     @staticmethod
     def lookupPublicBranch():
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         try:
             currentBranch = git.currentBranch()
         except grape_errors.GrapeGitError:
@@ -89,7 +90,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
             args["<<cmd>>"] = "md"
         branch = args["--public"]
         if not branch:
-            branch = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
+            branch = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
                 grapeMenu.printMsg("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
@@ -121,9 +122,9 @@ class MergeDevelop(resumable.Resumable, option.Option):
         try:
             nested = self.progress["nested"]
         except KeyError:
-            nested = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+            nested = config_parser_user.getAllActiveNestedSubprojectPrefixes()
 
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse

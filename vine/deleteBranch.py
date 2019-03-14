@@ -5,8 +5,8 @@ import utility
 import grape_errors
 import grapeGit as git
 import grape_errors
-import grapeConfig
 import grapeMenu
+import multi_repo_cmd_launcher
 
 
 class DeleteBranch(option.Option):
@@ -46,7 +46,7 @@ class DeleteBranch(option.Option):
             if not proceed:
                 return True
 
-        launcher = grapeMenu.MultiRepoCommandLauncher(deleteBranch,
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(deleteBranch,
                                                     branch=branch,
                                                     globalArgs=[force])
         try:
@@ -120,5 +120,5 @@ def handleDeleteBranchMRE(mre, force=False):
                     print e.gitOutput
                     raise e
 
-    grapeMenu.MultiRepoCommandLauncher(detachThenForceDeleteBranch,
+    multi_repo_cmd_launcher.MultiRepoCommandLauncher(detachThenForceDeleteBranch,
                                     listOfRepoBranchArgTuples=detachTuples).launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)

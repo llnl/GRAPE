@@ -1,16 +1,17 @@
 ﻿import sys
 import os
 filedir = os.path.dirname(os.path.realpath(__file__))
-grapedir = os.path.join(filedir, "..")
-if not grapedir in sys.path:
+grapedir = os.path.join(filedir, os.path.pardir)
+if grapedir not in sys.path:
     sys.path.insert(0, grapedir)
 import stashy.stashy as stashy
 import keyring.keyring as keyring
 import getpass
 import time
 import utility
-import grapeConfig
+import config_parser_global
 import grapeGit as git
+
 
 class Atlassian:
     rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
@@ -70,11 +71,11 @@ class Atlassian:
         return None
     
     def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         if isNested:
             proj = os.path.split(path)[1]
             nestedProjectURL = config.get("nested-%s" % proj , "url")
-            url = utility.parseSubprojectRemoteURL(nestedProjectURL)
+            url = git.parseSubprojectRemoteURL(nestedProjectURL)
             urlTokens = url.split('/')
             proj = urlTokens[-2]
             repo_name = urlTokens[-1]       

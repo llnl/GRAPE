@@ -2,8 +2,9 @@ import option
 import os
 import grape_errors
 import grapeGit as git
-import grapeConfig
+import config_parser_global
 import grapeMenu
+import multi_repo_cmd_launcher
 import utility
 
 
@@ -43,7 +44,7 @@ class UpdateLocal(option.Option):
         os.chdir(wsDir)
         cwd = os.getcwd()
 
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
         skipSubmodules = args["--noRecurse"]
 
@@ -52,7 +53,7 @@ class UpdateLocal(option.Option):
         publicBranches = [x.strip() for x in args["--public"].split()]
         launchers = []
         for branch in publicBranches:
-            launchers.append(grapeMenu.MultiRepoCommandLauncher(fetchLocal,
+            launchers.append(multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchLocal,
                                             runInSubmodules=recurseSubmodules,
                                             runInSubprojects=recurseNestedSubprojects,
                                             branch=branch,

@@ -4,8 +4,10 @@ import shutil
 import stat
 import time
 
-import grapeConfig
+import config_parser_global
+import config_parser_base
 import grapeMenu
+import multi_repo_cmd_launcher
 import option
 import grapeGit as git
 import grape_errors
@@ -98,7 +100,7 @@ def handleCheckoutMRE(mre):
                     raise e
 
     if len(newBranchReposArgTuples) > 0:
-        grapeMenu.MultiRepoCommandLauncher(createNewBranches, listOfRepoBranchArgTuples=newBranchReposArgTuples).launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
+        multi_repo_cmd_launcher.MultiRepoCommandLauncher(createNewBranches, listOfRepoBranchArgTuples=newBranchReposArgTuples).launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
 def createNewBranches(repo='', branch='', args={}):
     project = repo
@@ -292,7 +294,7 @@ class Checkout(option.Option):
                     grapeMenu.printMsg("Branch {0} could not be fetched in outer level repo:\n{1}\nUse grape checkout -b if you really want to create a new branch off of HEAD.".format(branch, e))
                     return False
 
-            if grapeConfig.grapeConfig().getboolean("workspace", "manageSubmodules"):
+            if config_parser_global.grapeConfig().getboolean("workspace", "manageSubmodules"):
                 parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
 
             submodulesDidChange = False
@@ -309,7 +311,7 @@ class Checkout(option.Option):
                     return False
 
         grapeMenu.printMsg("Performing checkout of %s in outer level project." % branch)
-        launcher = grapeMenu.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs, sync])])
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs, sync])])
 
         if not launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)[0]:
             return False
@@ -331,8 +333,8 @@ class Checkout(option.Option):
         addedProjects = []
         removedProjects = []
         if ".grapeconfig" in git.diff("--name-only %s %s" % (previousSHA, branch)):
-            previousConfig = grapeConfig.GrapeConfigParser(configString=git.show("%s:.grapeconfig" % previousSHA))
-            branchConfig = grapeConfig.GrapeConfigParser(configString=git.show("%s:.grapeconfig" % branch))
+            previousConfig = config_parser_base.GrapeConfigParserBase(configString=git.show("%s:.grapeconfig" % previousSHA))
+            branchConfig = config_parser_base.GrapeConfigParserBase(configString=git.show("%s:.grapeconfig" % branch))
             previousNestedProjects = set(previousConfig.getAllNestedSubprojects())
             branchNestedProjects = set(branchConfig.getAllNestedSubprojects())
             # use set subtraction to figure out the removed and added projects
@@ -341,7 +343,6 @@ class Checkout(option.Option):
             nestedProjectListDidChange = bool(removedProjects or addedProjects)
 
             if removedProjects:
-                config = grapeConfig.grapeConfig()
                 for proj in removedProjects:
                     projPrefix = previousConfig.get("nested-%s" % proj, "prefix")
                     try:
@@ -400,7 +401,7 @@ class Checkout(option.Option):
         # are at the right commit before possibly creating new branches at the current HEAD.
         git.submodule("update")
         grapeMenu.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
-        grapeConfig.read()
+        config_parser_global.read()
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(workspaceDir)

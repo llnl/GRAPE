@@ -1,17 +1,10 @@
 ﻿import os
-import subprocess
 import sys
-import ConfigParser
-import types
-import tempfile
-
+from contextlib import contextmanager
 import grape_errors
-import grapeGit as git
-import grapeMenu
-import grapeConfig
 
 
-toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
+toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), os.path.pardir)
 if toplevel not in sys.path:
     sys.path.insert(0, toplevel)
 from docopt.docopt import docopt
@@ -47,11 +40,6 @@ def makePathPortable(path):
 
 def grapeDir():
     return os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
-
-
-def GetCurrentBranch():
-    output = git.gitcmd("rev-parse --abbrev-ref HEAD", "Error: Could not determine current  branch.")
-    return output.strip()
 
 
 def getDefaultName():
@@ -96,14 +84,6 @@ def userInput(message, default=None):
         return value
 
 
-# writes a config file with default options
-def writeDefaultConfig(filename):
-    config = grapeConfig.GrapeConfigParser()
-    grapeMenu.menu().setDefaultConfig(config)
-    with open(filename, 'w') as f:
-        config.write(f)
-
-
 # return the path to the base level of the current workspace. (outermost git repo)
 def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
     workspace_dir = None
@@ -119,34 +99,6 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
         raise grape_errors.NoWorkspaceDirException(os.getcwd())
     return workspace_dir
 
-def isWorkspaceClean(printOutput=False):
-    isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
-    activeNestedSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-    base = workspaceDir()
-    cwd = os.getcwd()
-    for sub in activeNestedSubprojects:
-        if not isClean:
-            break
-        os.chdir(os.path.join(base, sub))
-        isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
-    os.chdir(cwd)
-    return isClean
-
-def getActiveSubprojects():
-    return git.getActiveSubmodules() + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-
-def getModifiedSubprojects(includeAdded=False):
-    return git.getModifiedSubmodules(includeAdded) + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
-
-def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
-    modifiedSubs = git.getModifiedSubmodules(branch1=branch1, branch2=branch2, includeAdded=includeAdded)
-    activeSubs = git.getActiveSubmodules()
-    missing = []
-    for sub in modifiedSubs:
-        if sub not in activeSubs:
-            missing.append(sub)
-    return missing
-
 
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec():
@@ -155,25 +107,6 @@ def getGrapeExec():
         return "c:/Python27/python.exe " + winpath.replace("\\", "/")
     else:
         return os.path.join(os.path.dirname(__file__), "..", "grape")
-
-# Takes a URL and returns a hard path for it
-def parseSubprojectRemoteURL(url):
-    path = url.strip().split('/')
-    if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
-        return url      #Already a hard path
-
-    # We have a relative path so start the remote origin URL
-    originURL = git.config("--get remote.origin.url").strip().split('/')
-
-    #Now parse path and modify originURL to make a hard path
-    for p in path:
-        if p == ".." and len(originURL) > 0:
-            originURL.pop()
-        elif p == ".":
-            pass
-        else:
-            originURL.append(p)
-    return '/'.join(originURL)
 
 
 # returns the user's home directory:
@@ -184,7 +117,6 @@ def getHomeDirectory():
         home = os.environ["HOME"]
     return home
 
-from contextlib import contextmanager
 
 @contextmanager
 def cd(path):

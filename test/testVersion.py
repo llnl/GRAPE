@@ -1,12 +1,12 @@
 import os
 import sys
 import testGrape
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 from vine import grape_errors
 from vine import grapeMenu
 from vine import grapeGit as git
-from vine import grapeConfig
+from vine import config_parser_global
 
 
 class TestVersion(testGrape.TestGrape):
@@ -56,7 +56,7 @@ class TestVersion(testGrape.TestGrape):
             self.assertEqual(git.describe(), "v2.0.0")
 
             #test overiding default tag behavior
-            config = grapeConfig.grapeConfig()
+            config = config_parser_global.grapeConfig()
             config.set("versioning", "updateTag", "False")
             ret = menu.applyMenuChoice("version", ["tick", "--slot=3"])
             self.assertEqual(git.describe("--abbrev=0"), "v2.0.0")

@@ -1,7 +1,8 @@
 import sys,os,tempfile
 import option
 import grape_errors
-import grapeConfig
+import config_parser_global
+import config_parser_user
 import grapeGit as git
 import utility
 import re
@@ -67,7 +68,7 @@ class Walkthrough(option.Option):
         if TkinterImportError:
             grapeMenu.printMsg("grape w requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
             return True
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         difftool = args["--difftool"]
         height = args["--height"]
         width = args["--width"]
@@ -136,7 +137,7 @@ class ProjectManager:
         width  = kwargs.get('width', 0)
 
         self.master = master
-        self.grapeconfig = grapeConfig.grapeConfig()
+        self.grapeconfig = config_parser_global.grapeConfig()
         self.oldprojindex = 0
         self.showInactive          = kwargs.get('showInactive', True)
         self.showToplevel          = kwargs.get('showToplevel', True)
@@ -207,7 +208,7 @@ class ProjectManager:
         # Nested subprojects
         self.subprojects = []
         if self.showNestedSubprojects:
-            activeNestedSubprojects = (grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes())
+            activeNestedSubprojects = (config_parser_user.getAllActiveNestedSubprojectPrefixes())
             self.projects.extend(activeNestedSubprojects)
             self.subprojects.extend(activeNestedSubprojects)
             for proj in activeNestedSubprojects:
@@ -216,7 +217,8 @@ class ProjectManager:
                 self.projstatus.append(status)
                 self.projtype.append("Active Nested")
             if self.showInactive:
-                inactiveNestedSubprojects = list(set(grapeConfig.grapeConfig().getAllNestedSubprojects()) - set(grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojects()))
+                inactiveNestedSubprojects = list(set(config_parser_global.grapeConfig().getAllNestedSubprojects())
+                    - set(config_parser_global.getAllActiveNestedSubprojects()))
                 self.projects.extend(inactiveNestedSubprojects)
                 self.subprojects.extend(inactiveNestedSubprojects)
                 for proj in inactiveNestedSubprojects:

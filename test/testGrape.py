@@ -9,14 +9,14 @@ import shutil
 import tempfile
 
 curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-if not curPath in sys.path:
+if curPath not in sys.path:
     sys.path.insert(0, curPath)
-grapePath = os.path.join(curPath, "..")
+grapePath = os.path.join(curPath, os.path.pardir)
 if grapePath not in sys.path:
     sys.path.insert(0, grapePath)
 from vine import grape_errors
 from vine import grapeGit as git
-from vine import grapeConfig
+from vine import config_parser_global
 from vine import grapeMenu
 from vine import utility
 
@@ -63,7 +63,7 @@ class TestGrape(unittest.TestCase):
     def setUpConfig(self):
         grapeMenu._resetMenu()
         grapeMenu.menu()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.set("flow", "publicBranches", "master")
         config.set("flow", "topicPrefixMappings", "?:master")
         config.set("workspace", "submoduleTopicPrefixMappings", "?:master")
@@ -143,7 +143,7 @@ class TestGrape(unittest.TestCase):
         self.output.close()
 
         # reset grapeConfig and grapeMenu
-        grapeConfig.resetGrapeConfig()
+        config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
 
     # print the captured standard out
@@ -199,7 +199,6 @@ def main(argv, debug=False):
     import testNestedSubproject
     import testStatus
     import testUpdateLocal
-    import testUtility
 
     testClasses = {"Branches":testBranches.TestBranches,
                    "Clone":testClone.TestClone,
@@ -212,9 +211,7 @@ def main(argv, debug=False):
                    "CO":testCO.TestCheckout,
                    "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
                    "Status":testStatus.createStatusTester(),
-                   "GrapeUp":testUpdateLocal.createUpTester(),
-                   "Utility":testUtility.TestUtility }
-
+                   "GrapeUp":testUpdateLocal.createUpTester()}
 
 
     suite = unittest.TestSuite()

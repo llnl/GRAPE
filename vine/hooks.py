@@ -5,8 +5,13 @@ import option
 import utility
 import grape_errors
 import grapeGit as git
-import grapeConfig
 import grapeMenu
+import config_parser_global
+import config_parser_user
+
+
+def getActiveSubprojects():
+    return git.getActiveSubmodules() + config_parser_user.getAllActiveNestedSubprojectPrefixes()
 
 
 #option that installs wrapper calls to grape as git hooks in this repo.
@@ -52,7 +57,7 @@ class InstallHooks(option.Option):
         grapeMenu.printMsg("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
         if not args["--noRecurse"]:
-            for sub in utility.getActiveSubprojects():
+            for sub in getActiveSubprojects():
                 grapeMenu.printMsg("Installing hooks in %s." % sub)
                 self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
         return True
@@ -168,7 +173,7 @@ class RunHook(option.Option):
             autoPush = False
         #applies the cascade hook
         print("GRAPE: checking for cascades...")
-        cascadeDict = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--cascade"])
+        cascadeDict = config_parser_global.GrapeConfigParserGlobal.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
             while currentBranch in cascadeDict:

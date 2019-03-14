@@ -2,8 +2,10 @@ import os
 import option
 import grape_errors
 import grapeGit as git
+import grapeMenu
 import utility
-import grapeConfig
+import config_parser_global
+import multi_repo_cmd_launcher
 
 
 class Push(option.Option):
@@ -31,14 +33,14 @@ class Push(option.Option):
         cwd = os.getcwd()
         os.chdir(baseDir)
         currentBranch = git.currentBranch()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
 
 
         submodules = git.getActiveSubmodules()
 
-        retvals = grapeMenu.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
+        retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         os.chdir(cwd)
         grapeMenu.printMsg("Pushed current branch to origin")

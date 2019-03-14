@@ -3,12 +3,12 @@ import sys
 
 import testGrape
 
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 from vine import grape_errors
 from vine import grapeMenu
 from vine import grapeGit as git
-from vine import grapeConfig
+from vine import config_parser_global
 
 
 class TestPublish(testGrape.TestGrape):
@@ -49,7 +49,7 @@ class TestPublish(testGrape.TestGrape):
 
     def assertGrapePublishWorked(self, args=None, assertFail=False):
         self.queueUserInput(["1.1.1"])
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.ensureSection("project")
         config.set("project", "name", "proj1")
 
@@ -107,7 +107,7 @@ class TestPublish(testGrape.TestGrape):
 
     def testCustomBuildStep(self):
         self.setUpBranchToFFMerge()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.set("publish", "buildCmds", "echo hello ,  echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
@@ -117,7 +117,7 @@ class TestPublish(testGrape.TestGrape):
 
     def testCustomTestStep(self):
         self.setUpBranchToFFMerge()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.set("publish", "testCmds", "echo helloTest , echo worldTest")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
@@ -133,7 +133,7 @@ class TestPublish(testGrape.TestGrape):
 
     def testStartStepStopStep(self):
         self.setUpBranchToFFMerge()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.set("publish", "buildCmds", "echo hello , echo world")
         config.set("publish", "testCmds", "echo helloTest , echo worldTest")
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
@@ -151,7 +151,7 @@ class TestPublish(testGrape.TestGrape):
     def testPublishNestedSubprojects(self):
         import testNestedSubproject
         self.setUpBranchToFFMerge()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.set("publish", "buildCmds", "echo hello , echo world")
         config.set("publish", "testCmds", "echo helloTest , echo worldTest")        
         grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])        
@@ -179,7 +179,7 @@ class TestPublish(testGrape.TestGrape):
     def testPublishNewSubmodule(self):
         import testNestedSubproject
         self.setUpBranchToFFMerge()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         config.set("publish", "buildCmds", "echo hello , echo world")
         config.set("publish", "testCmds", "echo helloTest , echo worldTest")        
 
@@ -231,4 +231,3 @@ class TestPublish(testGrape.TestGrape):
         # ensure that master has been updated with the new commits
         mergelog = git.log()
         self.assertTrue(branchlog == mergelog)
-        

@@ -4,6 +4,8 @@ import grape_errors
 import grapeMenu
 import grapeGit as git
 import merge
+import multi_repo_cmd_launcher
+
 #merge a remote branch into this branch
 class MergeRemote(option.Option):
     """
@@ -53,7 +55,7 @@ class MergeRemote(option.Option):
         # make sure remote references are up to date
         grapeMenu.printMsg("Fetching remote references in all projects...")
         try:
-            grapeMenu.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
+            multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as mre:
             commError = False
             commErrorRepos = []
@@ -77,7 +79,7 @@ class MergeRemote(option.Option):
         updateLocal =  hasRemote and  (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
         if  updateLocal:
             grapeMenu.printMsg("updating local branch %s from %s" % (otherBranch, "origin/%s" % otherBranch))
-            grapeMenu.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
+            multi_repo_cmd_launcher.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
 
         args["<branch>"] = otherBranch if updateLocal else "origin/%s" % otherBranch
         # we've handled the update, we don't want m or md to update the local branch.

@@ -5,6 +5,9 @@ import grapeGit as git
 import grapeMenu
 import utility
 import config
+import config_parser_global
+import config_parser_user
+import multi_repo_cmd_launcher
 
 
 class Status(option.Option):
@@ -42,7 +45,7 @@ class Status(option.Option):
         if args["--uno"]:
             statusArgs += "-uno "
 
-        launcher = grapeMenu.MultiRepoCommandLauncher(getStatus,
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(getStatus,
                                         runInSubmodules=True,
                                         runInSubprojects=True,
                                         runInOuter=True,
@@ -70,9 +73,9 @@ class Status(option.Option):
     def checkForLocalPublicBranches(self, args):
         publicBranchesExist = True
         # Check that all public branches exist locally.
-        cfg = config.grapeConfig.grapeConfig()
+        cfg = config_parser_global.grapeConfig()
         publicBranches = cfg.getPublicBranchList()
-        missingBranches = config.Config.checkIfPublicBranchesExist(cfg, utility.workspaceDir(),
+        missingBranches = config.Config.checkIfPublicBranchesExist(utility.workspaceDir(),
                                                                    publicBranches)
 
         if (len(missingBranches) > 0 ):
@@ -88,7 +91,7 @@ class Status(option.Option):
 
     def checkForConsistentWorkspaceBranches(self, args):
         consistentBranchState = True
-        cfg = config.grapeConfig.grapeConfig()
+        cfg = config_parser_global.grapeConfig()
         publicBranches = cfg.getPublicBranchList()
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)
@@ -112,7 +115,7 @@ class Status(option.Option):
                                      (sub, subbranch, wsBranch))
 
         # check that nested subproject branching is consistent
-        for nested in config.grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
             os.chdir(os.path.join(wsDir,nested))
             nestedbranch = git.currentBranch()
             if nestedbranch != wsBranch:

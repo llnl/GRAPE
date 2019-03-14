@@ -4,7 +4,7 @@ import shutil
 import utility
 import grapeMenu
 import grapeGit as git
-import grapeConfig
+import config_parser_global
 import option
 import resumable
 
@@ -55,7 +55,7 @@ class Merge(resumable.Resumable, option.Option):
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
                                                                                   " to merge into this branch")
         args["<branch>"] = otherBranch
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         toks = otherBranch.split("origin/")
         if toks[-1] in publicBranches:

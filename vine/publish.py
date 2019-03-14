@@ -14,7 +14,8 @@ import utility
 import grape_errors
 import grapeGit as git
 import grapeMenu
-import grapeConfig
+import config_parser_global
+import config_parser_user
 import option
 import resumable
 import stashy.stashy.errors as stashyErrors
@@ -256,7 +257,7 @@ class Publish(resumable.Resumable, option.Option):
     def description(self):
         try:
             current = git.currentBranch()
-            public = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
+            public = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch())
         except grape_errors.GrapeGitError:
             public = "Unknown"
             current = "Unknown"
@@ -282,7 +283,7 @@ class Publish(resumable.Resumable, option.Option):
         args["--topic"] = topic
 
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         prefix = git.branchPrefix(topic)
         public = args["--public"]
         if not public:
@@ -437,7 +438,7 @@ class Publish(resumable.Resumable, option.Option):
         return
 
     def ensureModifiedSubmodulesAreActive(self, args):
-        missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"], includeAdded=True)
+        missing = git.getModifiedInactiveSubmodules(args["--public"], args["--topic"], includeAdded=True)
         if missing:
             grapeMenu.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")
@@ -595,7 +596,7 @@ class Publish(resumable.Resumable, option.Option):
     def testForCleanWorkspace(args):
         grapeMenu.printMsg("Checking to make sure workspace has a clean status.")
         with utility.cd(utility.workspaceDir()):
-            ret = utility.isWorkspaceClean(printOutput=True)
+            ret = git.isWorkspaceClean(printOutput=True)
             ret = grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"]) and ret
             if ret:
                 cb = git.currentBranch()
@@ -695,7 +696,7 @@ class Publish(resumable.Resumable, option.Option):
             os.chdir(wsdir)
 
         # Get list of modified files in nested subprojects
-        for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
             os.chdir(os.path.join(wsdir, nested))
             modified = self.getModifiedFileList(public, topic, args)
             if len(modified) > 0:
@@ -862,7 +863,7 @@ class Publish(resumable.Resumable, option.Option):
             wsdir = utility.workspaceDir()
             os.chdir(wsdir)
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
                 os.chdir(os.path.join(wsdir, nested))
                 git.push("--tags origin")
             os.chdir(wsdir)
@@ -1118,7 +1119,7 @@ class Publish(resumable.Resumable, option.Option):
         if self.cascadeDict:
             # do outer level and nested project cascades
             cascade = self.cascadeDict["outer"]
-            repos= [""]+grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+            repos= [""]+config_parser_user.getAllActiveNestedSubprojectPrefixes()
             repos = [os.path.join(wsdir,r) for r in repos]
             for repo in repos:
                 public = args["--public"]
@@ -1178,7 +1179,7 @@ class Publish(resumable.Resumable, option.Option):
 
 
     def loadPublishTargets(self, args):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         public = args["--public"]
         topic = args["--topic"]
 
@@ -1209,11 +1210,11 @@ class Publish(resumable.Resumable, option.Option):
                     self.modifiedSubtrees.add(st)
             for st in self.modifiedSubtrees:
                 self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')
-                self.st_remotes[st] = utility.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
+                self.st_remotes[st] = git.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
                 self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
 
         # deal with nested subprojects
-        self.modifiedNestedProjects =  grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(public,topic)
+        self.modifiedNestedProjects =  config_parser_user.getAllModifiedNestedSubprojectPrefixes(public,topic)
 
         self.modifiedOuter = True if git.log("--oneline %s..%s" % (public, topic)) else False
 
@@ -1278,7 +1279,7 @@ class Publish(resumable.Resumable, option.Option):
         public = args["--public"]
         topic = args["--topic"]
         recurse = args["--recurse"]
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
 
         # make sure public branch is up to date.
         grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % public])
@@ -1374,7 +1375,7 @@ class Publish(resumable.Resumable, option.Option):
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
                 self.publish(policy, public, topic, os.path.join(wsdir, nested), args, isNested=True)
             if self.modifiedOuter:
                 self.publish(policy, public, topic, wsdir, args)

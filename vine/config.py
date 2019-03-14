@@ -1,7 +1,8 @@
 
 import os
 
-import grapeConfig
+import config_parser_global
+import config_parser_user
 import grapeGit as git
 import grapeMenu
 import option
@@ -149,19 +150,22 @@ class Config(option.Option):
         
         #  ensure all public branches are available in all repos
         submodules = git.getActiveSubmodules()
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         submodulePublicBranches = set(config.getMapping('workspace', 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
-            self.ensurePublicBranchesExist(grapeConfig.grapeRepoConfig(sub),sub, submodulePublicBranches)
+            repo_config = config_parser_global.grapeConfig()
+            repo_config.read(os.path.join(sub, repo_config.GRAPE_CONFIG))
+            self.ensurePublicBranchesExist(sub, submodulePublicBranches)
         
         # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
         wsDir = utility.workspaceDir()
-        config = grapeConfig.grapeRepoConfig(wsDir)    
-        for proj in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            self.ensurePublicBranchesExist(config, os.path.join(wsDir,proj), publicBranches)
+        repo_config = config_parser_global.grapeConfig()
+        repo_config.read(os.path.join(wsDir, repo_config.GRAPE_CONFIG))
+        for proj in config_parser_user.getAllActiveNestedSubprojectPrefixes():
+            self.ensurePublicBranchesExist(os.path.join(wsDir,proj), publicBranches)
         
-        self.ensurePublicBranchesExist(config, wsDir, publicBranches)
+        self.ensurePublicBranchesExist(wsDir, publicBranches)
             
         return True
 
@@ -169,7 +173,7 @@ class Config(option.Option):
         pass
     
     @staticmethod
-    def ensurePublicBranchesExist(config,repo, publicBranches):
+    def ensurePublicBranchesExist(repo, publicBranches):
         cwd =  os.getcwd()
         os.chdir(repo)
         allBranches = git.allBranches()
@@ -185,7 +189,7 @@ class Config(option.Option):
         os.chdir(cwd)
         
     @staticmethod
-    def checkIfPublicBranchesExist(config, repo, publicBranches):
+    def checkIfPublicBranchesExist(repo, publicBranches):
         origcwd =  os.getcwd()
         os.chdir(repo)
         allBranches = git.allBranches()

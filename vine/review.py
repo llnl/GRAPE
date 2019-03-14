@@ -4,7 +4,8 @@ import re
 import Atlassian
 import urllib
 import utility
-import grapeConfig
+import config_parser_global
+import config_parser_user
 import grapeGit as git
 import stashy.stashy as stashy
 import grapeMenu
@@ -119,7 +120,7 @@ class Review(option.Option):
         A fair chunk of this stuff relies on stashy's wrapping of the STASH REST API, which is posted at
         https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
         """
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         name = args["--user"]
         if not name:
             name = utility.getUserName()
@@ -187,7 +188,7 @@ class Review(option.Option):
             reviewers = self.parseReviewerArgs(args)
             
         ##  Submodule Repos
-        missing = utility.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
+        missing = git.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
         if missing:
             grapeMenu.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
@@ -211,7 +212,7 @@ class Review(option.Option):
                 repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
                                                          isSubmodule=True)
                 # determine branch prefix
-                prefix = branch.split('/')[0]
+                prefix = git.branchPrefix(branch)
                 sub_target_branch = submoduleBranchMappings[prefix]
                 
                 prevSubDescr = getReposPullRequestDescription(repo, branch, 
@@ -231,8 +232,8 @@ class Review(option.Option):
                                                             urllib.quote_plus("refs/heads/%s" % branch))] = False
         
         ## NESTED SUBPROJECT REPOS 
-        nestedProjects = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojects(target_branch)
-        nestedProjectPrefixes = grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(target_branch)
+        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(target_branch)
+        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(target_branch)
         
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
             with utility.cd(prefix):

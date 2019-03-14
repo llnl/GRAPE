@@ -1,12 +1,12 @@
 import os
 import ConfigParser
-# vine imports
 import option
 import grapeGit as git
 import grape_errors
 import utility
-import grapeConfig
+import config_parser_global
 import grapeMenu
+import multi_repo_cmd_launcher
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
@@ -76,7 +76,7 @@ class Bundle(option.Option):
         self._section = "Patches"
 
     def config(self):
-        return grapeConfig.grapeConfig()
+        return config_parser_global.grapeConfig()
 
     def description(self):
         # since bundle calls grape recursively, we give it configuration based on current repository semantics,
@@ -94,7 +94,7 @@ class Bundle(option.Option):
 
         launchArgs = {}
 
-        tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
+        tagsToBundle = config_parser_global.GrapeConfigParserGlobal.parseConfigPairList(args["--bundleTags"])
         recurse = not args["--noRecurse"]
 
         git.fetch()
@@ -107,14 +107,14 @@ class Bundle(option.Option):
         launchArgs["describePattern"] = describePattern
         launchArgs["--outfile"] = args["--outfile"]
 
-        otherCommandLauncher = grapeMenu.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
+        otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
                                                                   runInSubprojects=recurse, globalArgs=launchArgs)
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         if (recurse):
             launchArgs["branchList"] = args["--submoduleBranches"].split()
-            submoduleCommandLauncher = grapeMenu.MultiRepoCommandLauncher(bundlecmd,
+            submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(bundlecmd,
                                                                        runInSubmodules=recurse,
                                                                        runInSubprojects=False,
                                                                        skipSubmodules=not recurse,
@@ -219,11 +219,11 @@ class Unbundle(option.Option):
         recurse = not args["--noRecurse"]
         launchArgs = {}
         launchArgs["--branchMappings"] = args["--branchMappings"]
-        repoLauncher =  grapeMenu.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
+        repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
                                                         runInSubprojects=recurse, globalArgs=launchArgs)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
         launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
-        submoduleCommandLauncher = grapeMenu.MultiRepoCommandLauncher(unbundlecmd,
+        submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(unbundlecmd,
                                                                     runInSubmodules=recurse,
                                                                     runInSubprojects=False,
                                                                     skipSubmodules=not recurse,

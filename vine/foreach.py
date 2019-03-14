@@ -2,8 +2,8 @@ import os
 import option
 import grape_errors
 import utility
-import grapeConfig
 import grapeMenu
+import multi_repo_cmd_launcher
 
 class ForEach(option.Option):
     """
@@ -34,7 +34,7 @@ class ForEach(option.Option):
 
     def execute(self,args):
         cmd = args["<cmd>"]
-        retvals = grapeMenu.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"],
+        retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"],
                                                    skipSubmodules= args["--noSubmodules"],
                                                    runInSubprojects= not args["--noSubprojects"], globalArgs = args).launchFromWorkspaceDir(handleMRE=handleForeachMRE)
         return retvals

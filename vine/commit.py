@@ -2,7 +2,7 @@ import os
 import option
 import grapeGit as git
 import grape_errors
-import grapeConfig
+import config_parser_user
 import grapeMenu
 import utility
 
@@ -49,7 +49,7 @@ class Commit(option.Option):
         os.chdir(wsDir)
 
         submodules = [(True, x ) for x in git.getModifiedSubmodules()]
-        subprojects = [(False, x) for x in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()]
+        subprojects = [(False, x) for x in config_parser_user.getAllActiveNestedSubprojectPrefixes()]
         for stage,sub in submodules +  subprojects:
             os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain -uno")

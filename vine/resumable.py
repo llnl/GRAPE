@@ -4,7 +4,7 @@ import os
 import grape_errors
 import grapeGit as git
 import utility
-import grapeConfig
+import config_parser_global
 
 
 class Resumable(object):
@@ -26,7 +26,7 @@ class Resumable(object):
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
-        self.progress["config"] = grapeConfig.grapeConfig()
+        self.progress["config"] = config_parser_global.grapeConfig()
         with open(self.progressFile,'w') as f:
             p = pickle.Pickler(f)
             p.dump(self.progress)
@@ -73,6 +73,6 @@ class Resumable(object):
         for key in newArgs.keys():
             args[key] = newArgs[key]
         #load the config
-        grapeConfig.resetGrapeConfig(self.progress["config"])
+        config_parser_global.resetGrapeConfig(self.progress["config"])
         if deleteProgressFile:
             self._removeProgressFile()

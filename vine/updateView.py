@@ -7,9 +7,12 @@ import option
 import utility
 import grape_errors
 import grapeGit as git
-import grapeConfig
+import config_parser_global
+import config_parser_user
+import config_parser_workspace
 import grapeMenu
 import checkout
+import multi_repo_cmd_launcher
 
 try:
     import Tkinter as Tk
@@ -66,12 +69,12 @@ class UpdateView(option.Option):
             activeSubprojects = git.getActiveSubmodules()
 
         if projectType == "nested subproject":
-            config = grapeConfig.grapeConfig()
+            config = config_parser_global.grapeConfig()
             allSubprojectNames = config.getAllNestedSubprojects()
             allSubprojects = []
             for project in allSubprojectNames:
                 allSubprojects.append(config.get("nested-%s" % project, "prefix"))
-            activeSubprojects = grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+            activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
 
         toplevelDirs = {}
         toplevelActiveDirs = {}
@@ -160,7 +163,7 @@ class UpdateView(option.Option):
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
         args["--sync"] = sync
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         origwd = os.getcwd()
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)
@@ -228,7 +231,7 @@ class UpdateView(option.Option):
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"]:
-                    includedNestedSubprojectPrefixes = {sub:True for sub in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()}
+                    includedNestedSubprojectPrefixes = {sub:True for sub in config_parser_user.getAllActiveNestedSubprojectPrefixes()}
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
@@ -315,7 +318,7 @@ class UpdateView(option.Option):
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
                 reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
-                userConfig = grapeConfig.grapeUserConfig()
+                userConfig = config_parser_user.GrapeConfigParserUser()
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
@@ -347,7 +350,7 @@ class UpdateView(option.Option):
                         if proceed:
                             shutil.rmtree(subprojectdir)
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
-                grapeConfig.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
+                config_parser_global.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
         checkoutArgs = "-b" if args["-b"] else ""
 
@@ -389,14 +392,14 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
 
         if not git.hasBranch(branch):
             # switch to corresponding public branch if the branch does not exist
-            public = grapeConfig.workspaceConfig().getPublicBranchFor(branch)
+            public = config_parser_workspace.GrapeConfigParserWorkspace().getPublicBranchFor(branch)
             # figure out if this is a submodule
             relpath = os.path.relpath(repo, utility.workspaceDir())
             relpath = relpath.replace('\\',"/")
             with utility.cd(utility.workspaceDir()):
                 # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
-                    public = grapeConfig.workspaceConfig().getMapping("workspace", "submodulepublicmappings")[public]
+                    public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping("workspace", "submodulepublicmappings")[public]
             grapeMenu.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
             git.checkout(public)
             git.pull("origin %s" % (public))
@@ -458,17 +461,17 @@ def handleEnsureLocalUpToDateMRE(mre):
                 raise(e)
 
     # do another MRC launch to do any follow up pushes that were requested.
-    grapeMenu.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
+    multi_repo_cmd_launcher.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
 def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
-        launcher = grapeMenu.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
-    launcher = grapeMenu.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, False])
+    launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, False])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
     return
