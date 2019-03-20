@@ -4,7 +4,7 @@ import os
 import config_parser_global
 import config_parser_user
 import grapeGit as git
-import grapeMenu
+import global_state
 import option
 import utility
 
@@ -38,23 +38,25 @@ class Config(option.Option):
         return "Initialize a repo you've already cloned without using GRAPE"
 
     def execute(self,args):
+        import grapeMenu
+
         base = git.baseDir()
         if base == "":
             return False
         dotGit = git.gitDir()
          
-        grapeMenu.printMsg("Optimizing git performance on slow file systems...")
+        global_state.printMsg("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
         #have git automatically do some garbage collection / optimization
-        grapeMenu.printMsg("Setting up automatic git garbage collection...")
+        global_state.printMsg("Setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
         #prevents false conflict detection due to differences in filesystem
         # time stamps
-        grapeMenu.printMsg("Optimizing cross platform portability...")
+        global_state.printMsg("Optimizing cross platform portability...")
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZBitbucket)
@@ -64,7 +66,7 @@ class Config(option.Option):
             if not cache:
                 cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
-                grapeMenu.printMsg("Enabling 12 hr caching of https credentials...")
+                global_state.printMsg("Enabling 12 hr caching of https credentials...")
                 if os.name == "nt":
                     git.config("--global credential.helper", "wincred")
                 else :
@@ -75,14 +77,14 @@ class Config(option.Option):
         mergeVerifyPath = os.path.join(os.path.dirname(__file__),"..","merge-and-verify-driver")
         
         if os.path.exists(mergeVerifyPath): 
-            grapeMenu.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
+            global_state.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
             git.config("merge.verify.name","merge and verify driver")
             git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
         else:
-            grapeMenu.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
+            global_state.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
-        grapeMenu.printMsg("Setting lg as an alias for a pretty log call...")
+        global_state.printMsg("Setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
         # perform an update of the active subprojects if asked.
@@ -105,7 +107,7 @@ class Config(option.Option):
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
-            grapeMenu.printMsg("Configured repo to use p4merge for conflict resolution")
+            global_state.printMsg("Configured repo to use p4merge for conflict resolution")
         else:
             git.config("merge.tool","tkdiff")
 
@@ -116,9 +118,9 @@ class Config(option.Option):
             p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
             if os.path.exists(p4diffScript): 
                 git.config("diff.external",p4diffScript)
-                grapeMenu.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
+                global_state.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
-                grapeMenu.printMsg("Could not find p4diff script at %s" % p4diffScript)
+                global_state.printMsg("Could not find p4diff script at %s" % p4diffScript)
         useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
@@ -144,24 +146,20 @@ class Config(option.Option):
                     return False
 
         # install hooks here and in all submodules
-        grapeMenu.printMsg("Installing hooks in all repos...")
+        global_state.printMsg("Installing hooks in all repos...")
         cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks")
         
         #  ensure all public branches are available in all repos
-        submodules = git.getActiveSubmodules()
+        submodules = git.getActiveSubmodules(utility.workspaceDir())
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         submodulePublicBranches = set(config.getMapping('workspace', 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
-            repo_config = config_parser_global.grapeConfig()
-            repo_config.read(os.path.join(sub, repo_config.GRAPE_CONFIG))
             self.ensurePublicBranchesExist(sub, submodulePublicBranches)
         
         # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
         wsDir = utility.workspaceDir()
-        repo_config = config_parser_global.grapeConfig()
-        repo_config.read(os.path.join(wsDir, repo_config.GRAPE_CONFIG))
         for proj in config_parser_user.getAllActiveNestedSubprojectPrefixes():
             self.ensurePublicBranchesExist(os.path.join(wsDir,proj), publicBranches)
         
@@ -182,10 +180,10 @@ class Config(option.Option):
             if ("remotes/origin/%s" % branch) not in allBranches:
                missingBranches.append(branch)
             if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
-                grapeMenu.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
+                global_state.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
                 git.branch("%s origin/%s" % (branch, branch))
         if len(missingBranches) > 0:
-            grapeMenu.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
+            global_state.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
         os.chdir(cwd)
         
     @staticmethod

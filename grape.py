@@ -9,8 +9,9 @@ if not (pythonMajorVersion == 2 and pythonMinorVersion > 6):
     print('Grape requires python 2.x, where x is greater than or equal to 7.')
     exit(1)
 
-from vine import grapeConfig, grapeMenu, utility
+from vine import grapeMenu, utility
 from vine import grapeGit as git
+from vine import global_state
 
 from docopt.docopt import docopt
 import StringIO
@@ -23,7 +24,7 @@ import vine
 vinePath = os.path.dirname(vine.__file__)
 
 
-CLI = grapeMenu.CLI
+CLI = global_state.CLI
 
 def startup():
     versionOutput = git.version().split()
@@ -45,7 +46,7 @@ def startup():
         grapeVersion = f.read().split()[2]   
     args = docopt(CLI,  version=grapeVersion, options_first=True )
     myMenu = grapeMenu.menu()
-    grapeMenu.applyGlobalArgs(args)
+    global_state.applyGlobalArgs(args)
 
         
     retval = True

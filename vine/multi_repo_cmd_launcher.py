@@ -1,9 +1,7 @@
 import os
 import multiprocessing.pool
 import config_parser_global
-import config_parser_user
 import grape_errors
-import grapeGit as git
 import utility
 
 
@@ -130,6 +128,10 @@ class MultiRepoCommandLauncher(object):
 
 
     def initializeCommands(self):
+        # Imported here to delay grapeGit importing.
+        import config_parser_user
+        import grapeGit as git
+
         config = config_parser_global.grapeConfig()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         publicBranches = config.getPublicBranchList()
@@ -147,8 +149,9 @@ class MultiRepoCommandLauncher(object):
                 self.repos = self.repos + [os.path.join(utility.workspaceDir(), sub) for sub in activeSubprojects]
                 self.branches = self.branches + [currentBranch for x in activeSubprojects]
             if self.runSubmodules:
-                activeSubmodules = git.getActiveSubmodules()
-                self.repos = self.repos + [os.path.join(utility.workspaceDir(), r) for r in activeSubmodules]
+                ws_dir = utility.workspaceDir()
+                activeSubmodules = git.getActiveSubmodules(ws_dir)
+                self.repos = self.repos + [os.path.join(ws_dir, r) for r in activeSubmodules]
                 subPubMap = config.getMapping("workspace", "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]

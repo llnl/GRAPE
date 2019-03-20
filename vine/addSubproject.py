@@ -3,11 +3,10 @@ import ConfigParser
 import config_parser_global
 import config_parser_user
 import config_parser_workspace
-import grapeMenu
+import global_state
 import option
 import utility
 import grapeGit as git
-import grapeMenu
 
 
 class AddSubproject(option.Option):
@@ -60,7 +59,7 @@ class AddSubproject(option.Option):
             projectType = "nested"
         # can happen with invalid type in .grapeconfig and no type specified at command line
         if projectType != "subtree" and projectType != "submodule" and projectType != "nested":
-            grapeMenu.printMsg("Invalid subprojectType specified in .grapeconfig section [workspace].")
+            global_state.printMsg("Invalid subprojectType specified in .grapeconfig section [workspace].")
         return projectType
 
     def execute(self, args):
@@ -102,7 +101,7 @@ class AddSubproject(option.Option):
                 config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
-                grapeMenu.printMsg("Successfully added subtree branch. \n"
+                global_state.printMsg("Successfully added subtree branch. \n"
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:
@@ -163,7 +162,7 @@ class AddSubproject(option.Option):
             elif '.git' in os.listdir(destDir):
                 pass
             else:
-                grapeMenu.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
+                global_state.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
                 return False
         userconfig.set(section, "active", "True")
         config_parser_global.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))

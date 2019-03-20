@@ -1,7 +1,10 @@
-﻿import os
+﻿"""GRAPE's git utility logic across a single repository."""
+import os
 import sys
 from contextlib import contextmanager
 import grape_errors
+import config_parser_user
+import grapeGit as git
 
 
 toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), os.path.pardir)
@@ -27,15 +30,6 @@ def ensure_dir(f):
     d = os.path.dirname(f)
     if not os.path.exists(d):
         os.makedirs(d)
-
-
-#ensures the path string is windows compatibile if necessary
-def makePathPortable(path):
-    if os.name == "nt":
-        newPath = path.replace("/", "\\")
-    else:
-        newPath = path
-    return newPath
 
 
 def grapeDir():
@@ -98,6 +92,38 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
     if not workspace_dir and throw_if_not_found:
         raise grape_errors.NoWorkspaceDirException(os.getcwd())
     return workspace_dir
+
+
+def isWorkspaceClean(printOutput=False):
+    isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
+    activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
+    base = workspaceDir()
+    cwd = os.getcwd()
+    for sub in activeNestedSubprojects:
+        if not isClean:
+            break
+        os.chdir(os.path.join(base, sub))
+        isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
+    os.chdir(cwd)
+    return isClean
+
+
+def getActiveSubprojects():
+        return git.getActiveSubmodules(workspaceDir()) + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+
+
+def getModifiedSubprojects(includeAdded=False):
+        return git.getModifiedSubmodules(workspaceDir(), includeAdded) + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
+
+
+def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
+    modifiedSubs = git.getModifiedSubmodules(workspaceDir(), branch1=branch1, branch2=branch2, includeAdded=includeAdded)
+    activeSubs = git.getActiveSubmodules(workspaceDir())
+    missing = []
+    for sub in modifiedSubs:
+        if sub not in activeSubs:
+            missing.append(sub)
+    return missing
 
 
 # returns the absolute path to the grape executable this file is bundled with

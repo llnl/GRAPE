@@ -4,8 +4,9 @@ import option
 import grapeGit as git
 import grape_errors
 import utility
+import config_parser_base
 import config_parser_global
-import grapeMenu
+import global_state
 import multi_repo_cmd_launcher
 
 # pull and merge in an up-to-date development branch
@@ -94,7 +95,7 @@ class Bundle(option.Option):
 
         launchArgs = {}
 
-        tagsToBundle = config_parser_global.GrapeConfigParserGlobal.parseConfigPairList(args["--bundleTags"])
+        tagsToBundle = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--bundleTags"])
         recurse = not args["--noRecurse"]
 
         git.fetch()
@@ -108,7 +109,7 @@ class Bundle(option.Option):
         launchArgs["--outfile"] = args["--outfile"]
 
         otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                                  runInSubprojects=recurse, globalArgs=launchArgs)
+                                                        runInSubprojects=recurse, globalArgs=launchArgs)
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
@@ -159,20 +160,20 @@ def bundlecmd(repo='', branch='', args={}):
             try:
                 currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
             except:
-                grapeMenu.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
+                global_state.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
                 currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
                     git.shortSHA(tagname)
                     revlists = " %s..%s" % (tagname, branch)
                 except:
-                    grapeMenu.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
+                    global_state.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
                     revlists = " %s" % (branch)
                 bundlename = args["--outfile"]
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
-                grapeMenu.printMsg("creating bundle %s in %s" % (bundlename, reponame))
+                global_state.printMsg("creating bundle %s in %s" % (bundlename, reponame))
                 git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
     return True
 
@@ -181,7 +182,7 @@ def bundlecmdMRE(mre):
     try:
         raise mre
     except  grape_errors.MultiRepoException as errors:
-        grapeMenu.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
+        global_state.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
             print b, e
 
@@ -220,16 +221,16 @@ class Unbundle(option.Option):
         launchArgs = {}
         launchArgs["--branchMappings"] = args["--branchMappings"]
         repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                        runInSubprojects=recurse, globalArgs=launchArgs)
+                                                 runInSubprojects=recurse, globalArgs=launchArgs)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
         launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
         submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(unbundlecmd,
-                                                                    runInSubmodules=recurse,
-                                                                    runInSubprojects=False,
-                                                                    skipSubmodules=not recurse,
-                                                                    runInOuter=False,
-                                                                    globalArgs=launchArgs
-                                                                    )
+                                                                                    runInSubmodules=recurse,
+                                                                                    runInSubprojects=False,
+                                                                                    skipSubmodules=not recurse,
+                                                                                    runInOuter=False,
+                                                                                    globalArgs=launchArgs
+                                                                                    )
         submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
 
         return True

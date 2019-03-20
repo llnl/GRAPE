@@ -2,7 +2,7 @@ import os
 import option
 import grape_errors
 import grapeGit as git
-import grapeMenu
+import global_state
 import utility
 import config
 import config_parser_global
@@ -46,10 +46,10 @@ class Status(option.Option):
             statusArgs += "-uno "
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(getStatus,
-                                        runInSubmodules=True,
-                                        runInSubprojects=True,
-                                        runInOuter=True,
-                                        globalArgs=[statusArgs, wsDir])
+                                            runInSubmodules=True,
+                                            runInSubprojects=True,
+                                            runInOuter=True,
+                                            globalArgs=[statusArgs, wsDir])
 
         stati = launcher.launchFromWorkspaceDir(noPause=True)
         status = {}
@@ -80,10 +80,10 @@ class Status(option.Option):
 
         if (len(missingBranches) > 0 ):
             for mb in missingBranches:
-                grapeMenu.printMsg("Repository is missing public branch %s, attempting to fetch it now..." % mb)
+                global_state.printMsg("Repository is missing public branch %s, attempting to fetch it now..." % mb)
                 try:
                     git.fetch("origin %s:%s" % (mb, mb))
-                    grapeMenu.printMsg("%s added as a local branch" % mb)
+                    global_state.printMsg("%s added as a local branch" % mb)
                 except grape_errors.GrapeGitError as e:
                     print e.gitOutput
                     publicBranchesExist = False
@@ -98,20 +98,20 @@ class Status(option.Option):
         wsBranch = git.currentBranch()
         subPubMap = cfg.getMapping("workspace", "submodulepublicmappings")
         if wsBranch in publicBranches:
-            for sub in git.getActiveSubmodules():
+            for sub in git.getActiveSubmodules(wsDir):
                 os.chdir(os.path.join(wsDir,sub))
                 subbranch = git.currentBranch()
                 if subbranch != subPubMap[wsBranch]:
                     consistentBranchState=False
-                    grapeMenu.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
+                    global_state.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
                                      (sub, subbranch, subPubMap[wsBranch]))
         else:
-            for sub in git.getActiveSubmodules():
+            for sub in git.getActiveSubmodules(wsDir):
                 os.chdir(os.path.join(wsDir,sub))
                 subbranch = git.currentBranch()
                 if subbranch != wsBranch:
                     consistentBranchState = False
-                    grapeMenu.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
+                    global_state.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
                                      (sub, subbranch, wsBranch))
 
         # check that nested subproject branching is consistent
@@ -120,7 +120,7 @@ class Status(option.Option):
             nestedbranch = git.currentBranch()
             if nestedbranch != wsBranch:
                 consistentBranchState = False
-                grapeMenu.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" %
+                global_state.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" %
                                  (nested,nestedbranch, wsBranch))
 
         return consistentBranchState

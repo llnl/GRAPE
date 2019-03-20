@@ -88,7 +88,6 @@ class TestGrape(unittest.TestCase):
                 pass
 
             os.chdir(self.repo + "-origin")
-            cwd = os.getcwd()
             git.gitcmd("init --bare", "Setup Failed")
             os.chdir(os.path.join(self.repo+"-origin",".."))
             git.gitcmd("clone %s %s" % (self.repo +"-origin",self.repo), "could not clone test bare repo")

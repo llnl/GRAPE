@@ -4,8 +4,8 @@ import sys
 import tempfile
 import unittest
 import testGrape
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 from vine import grapeMenu, clone, grapeGit as git
 
 class TestClone(testGrape.TestGrape):
@@ -13,7 +13,7 @@ class TestClone(testGrape.TestGrape):
         self.setUpConfig()
         self.queueUserInput(['\n', '\n', '\n', '\n'])
         args = [self.repo, self.repos[1], "--recursive"]
-        ret =grapeMenu.menu().applyMenuChoice("clone", args)
+        ret = self.menu.applyMenuChoice("clone", args)
         self.assertTrue(ret)
         
         # check to make sure we didn't get a usage string dump
@@ -32,7 +32,7 @@ class TestClone(testGrape.TestGrape):
     def testHelpMessage(self):
         args = ["--help"]
         with self.assertRaises(SystemExit):
-            ret = grapeMenu.menu().applyMenuChoice("clone", args)
+            ret = self.menu.applyMenuChoice("clone", args)
         self.assertIn(clone.Clone.__doc__, self.output.getvalue())
 
     def testClone02(self):
@@ -40,7 +40,7 @@ class TestClone(testGrape.TestGrape):
         args = [self.repo, tempDir]
         try:
             self.queueUserInput(["\n", "\n", "\n", "\n"])
-            ret = grapeMenu.menu().applyMenuChoice("clone", args)
+            ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             #ToDo: Finish checking contents
@@ -62,7 +62,7 @@ class TestClone(testGrape.TestGrape):
             tempDir = tempfile.mkdtemp()
             args = [self.repo, tempDir, "--recursive"]
             self.queueUserInput(["\n", "\n", "\n", "\n","\n","\n"])
-            ret = grapeMenu.menu().applyMenuChoice("clone", args)
+            ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             submodulepath = os.path.join(tempDir, "submodule1")
@@ -75,10 +75,10 @@ class TestClone(testGrape.TestGrape):
         # make a repo to turn into a submodule
         git.clone("--mirror %s %s " % (self.repo, self.repos[1]))
         os.chdir(self.repo)
-        grapeMenu.menu().applyMenuChoice("addSubproject", ["--name=subproject1", "--prefix=subs/subproject1",
+        self.menu.applyMenuChoice("addSubproject", ["--name=subproject1", "--prefix=subs/subproject1",
                                                            "--branch=master", "--url=%s" % self.repos[1],
                                                            "--nested", "--noverify"])
-        grapeMenu.menu().applyMenuChoice("commit",["-m", "\"added subproject1\""])
+        self.menu.applyMenuChoice("commit",["-m", "\"added subproject1\""])
         print git.log("--decorate")
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
@@ -86,14 +86,14 @@ class TestClone(testGrape.TestGrape):
             tempDir = tempfile.mkdtemp()
             self.queueUserInput(["\n", "\n", "\n", "\n"])
             args = [self.repo, tempDir, "--recursive", "--allNested"]
-            ret = grapeMenu.menu().applyMenuChoice("clone", args)
+            ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             # ensure we are on master with all nested subprojects
             os.chdir(tempDir)
             self.queueUserInput(["all\n"])
             args = ["master", "--updateView"]
-            ret = grapeMenu.menu().applyMenuChoice("checkout", args)
+            ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
             print git.log("--decorate")
 

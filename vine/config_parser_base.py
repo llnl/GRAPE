@@ -1,7 +1,6 @@
 import ConfigParser
 import os
 import cStringIO
-#import cStringIO as StringIO
 
 
 class GrapeConfigParserBase(ConfigParser.ConfigParser, object):

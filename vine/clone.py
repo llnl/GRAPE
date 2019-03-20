@@ -2,6 +2,7 @@ import os
 import option
 import utility
 import grapeMenu
+import global_state
 import grapeGit as git
 import config_parser_global
 
@@ -35,9 +36,9 @@ class Clone(option.Option):
         remotepath = args["<url>"]
         destpath = args["<path>"]
         rstr = "--recursive" if args["--recursive"] else ""
-        grapeMenu.printMsg("Cloning %s into %s %s" % (remotepath, destpath, "recursively" if args["--recursive"] else ""))
+        global_state.printMsg("Cloning %s into %s %s" % (remotepath, destpath, "recursively" if args["--recursive"] else ""))
         git.clone(" %s %s %s" % (rstr, remotepath, destpath))
-        grapeMenu.printMsg("Clone succeeded!")
+        global_state.printMsg("Clone succeeded!")
         os.chdir(destpath)
         config_parser_global.read()
         # ensure you start on a reasonable publish branch

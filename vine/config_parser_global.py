@@ -1,6 +1,5 @@
 import os
 import config_parser_base
-import grapeMenu
 import utility
 
 
@@ -64,6 +63,8 @@ def read(additionalFileNames=None):
 
 # writes a config file with default options
 def writeDefaultConfig(filename):
+    import grapeMenu
+
     config = config_parser_base.GrapeConfigParserBase()
     grapeMenu.menu().setDefaultConfig(config)
     with open(filename, 'w') as f:

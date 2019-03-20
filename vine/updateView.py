@@ -10,7 +10,7 @@ import grapeGit as git
 import config_parser_global
 import config_parser_user
 import config_parser_workspace
-import grapeMenu
+import global_state
 import checkout
 import multi_repo_cmd_launcher
 
@@ -66,7 +66,7 @@ class UpdateView(option.Option):
         """
         if projectType == "submodule":
             allSubprojects = git.getAllSubmodules()
-            activeSubprojects = git.getActiveSubmodules()
+            activeSubprojects = git.getActiveSubmodules(utility.workspaceDir())
 
         if projectType == "nested subproject":
             config = config_parser_global.grapeConfig()
@@ -158,7 +158,7 @@ class UpdateView(option.Option):
 
     def execute(self, args):
         if args["--gui"] and TkinterImportError:
-            grapeMenu.printMsg("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
+            global_state.printMsg("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
             return True
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
@@ -203,7 +203,7 @@ class UpdateView(option.Option):
                 notFound.append(proj)
 
         if notFound:
-            grapeMenu.printMsg("\"%s\" not found in submodules %s \nor\n nested subprojects %s" % (",".join(notFound),",".join(allSubmodules),",".join(allNestedSubprojects)))
+            global_state.printMsg("\"%s\" not found in submodules %s \nor\n nested subprojects %s" % (",".join(notFound),",".join(allSubmodules),",".join(allNestedSubprojects)))
             return False
 
         if not args["--checkSubprojects"]:
@@ -218,7 +218,7 @@ class UpdateView(option.Option):
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:True for sub in allSubmodules}
                 elif args["--add"] or args["--rm"]:
-                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules()}
+                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules(utility.workspaceDir())}
                     includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
                 else:
@@ -241,16 +241,16 @@ class UpdateView(option.Option):
                 self.uvManager.finalize()
                 root.mainloop()
                 if self.uvManager.saved == False:
-                    grapeMenu.printMsg("Not changing working view.")
+                    global_state.printMsg("Not changing working view.")
                     return False
                 # If --all/--add/--rm is used, only consider the
                 # command line for the included subprojects.
                 if self.uvManager.includedSubmodules == None:
-                    grapeMenu.printMsg("Submodule changes from GUI ignored")
+                    global_state.printMsg("Submodule changes from GUI ignored")
                 else:
                     includedSubmodules = self.uvManager.includedSubmodules
                 if self.uvManager.includedNestedSubprojects == None:
-                    grapeMenu.printMsg("Nested subproject changes from GUI ignored")
+                    global_state.printMsg("Nested subproject changes from GUI ignored")
                 else:
                     includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects
                 try:
@@ -273,11 +273,11 @@ class UpdateView(option.Option):
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
-                grapeMenu.printMsg("Configuring submodules...")
-                grapeMenu.printMsg("Initializing submodules...")
+                global_state.printMsg("Configuring submodules...")
+                global_state.printMsg("Initializing submodules...")
                 git.submodule("init %s" % initStr.strip())
                 if deinitStr:
-                    grapeMenu.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
+                    global_state.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
                     done = False
                     while not done:
                         try:
@@ -286,7 +286,7 @@ class UpdateView(option.Option):
                         except grape_errors.GrapeGitError as e:
                             if "the following file has local modifications" in e.gitOutput:
                                 print e.gitOutput
-                                grapeMenu.printMsg("A submodule that you wanted to remove has local modifications. "
+                                global_state.printMsg("A submodule that you wanted to remove has local modifications. "
                                                  "Use grape uv -f to force removal.")
                                 return False
 
@@ -302,7 +302,7 @@ class UpdateView(option.Option):
                                 if module:
                                     src = os.path.join(module, ".git")
                                     dest =  os.path.join(wsDir, ".git", "modules", module)
-                                    grapeMenu.printMsg("Moving %s to %s"%(src, dest))
+                                    global_state.printMsg("Moving %s to %s"%(src, dest))
                                     shutil.move(src, dest )
                                 else:
                                     raise e
@@ -312,7 +312,7 @@ class UpdateView(option.Option):
                     git.reset(" %s" % resetStr)
 
                 if initStr:
-                    grapeMenu.printMsg("Updating active submodules...(%s)" % initStr)
+                    global_state.printMsg("Updating active submodules...(%s)" % initStr)
                     git.submodule("update")
 
             # handle nested subprojects
@@ -331,9 +331,9 @@ class UpdateView(option.Option):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        grapeMenu.printMsg("Activating Nested Subproject %s" % subproject)
+                        global_state.printMsg("Activating Nested Subproject %s" % subproject)
                         if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig):
-                            grapeMenu.printMsg("Can't activate %s. Exiting..." % subprojectName)
+                            global_state.printMsg("Can't activate %s. Exiting..." % subprojectName)
                             return False
 
                         updatedActiveList.append(subprojectName)
@@ -342,7 +342,7 @@ class UpdateView(option.Option):
                         pass
                     if not nowActive and previouslyActive:
                         #remove the subproject
-                        subprojectdir = os.path.join(base, utility.makePathPortable(subproject))
+                        subprojectdir = os.path.join(base, git.makePathPortable(subproject))
                         proceed = args["-f"] or \
                                   utility.userInput("About to delete all contents in %s. Any uncommitted changes, committed changes "
                                                     "that have not been pushed, or ignored files will be lost.  Proceed?" %
@@ -378,7 +378,7 @@ class UpdateView(option.Option):
 
 
 def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
-    grapeMenu.printMsg( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
+    global_state.printMsg( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
     with utility.cd(repo):
         # attempt to fetch the requested branch
         try:
@@ -400,14 +400,14 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
                 # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
                     public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping("workspace", "submodulepublicmappings")[public]
-            grapeMenu.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
+            global_state.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
             git.checkout(public)
             git.pull("origin %s" % (public))
             git.checkout("--detach HEAD")
 
 def cleanupPush(repo='', branch='', args='none'):
     with utility.cd(repo):
-        grapeMenu.printMsg("Attempting push of local %s in %s" % (branch, repo))
+        global_state.printMsg("Attempting push of local %s in %s" % (branch, repo))
         git.push("origin %s" % branch)
 
 
@@ -416,9 +416,9 @@ def handleCleanupPushMRE(mre):
         try:
             raise e
         except grape_errors.GrapeGitError as e2:
-            grapeMenu.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
-            grapeMenu.printMsg("%s" % e2.gitOutput)
-            grapeMenu.printMsg("Use grape pull to merge the remote version into the local version.")
+            global_state.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
+            global_state.printMsg("%s" % e2.gitOutput)
+            global_state.printMsg("Use grape pull to merge the remote version into the local version.")
 
 def handleEnsureLocalUpToDateMRE(mre):
     _pushBranch = False
@@ -431,9 +431,9 @@ def handleEnsureLocalUpToDateMRE(mre):
             if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
                 if "Couldn't find remote ref" in e.gitOutput:
                     if not _pushBranch:
-                        grapeMenu.printMsg("No remote reference to %s in %s's origin. You may want to push this branch." % (branch, repo))
+                        global_state.printMsg("No remote reference to %s in %s's origin. You may want to push this branch." % (branch, repo))
                 else:
-                    grapeMenu.printMsg("Fetch of %s rejected as non-fast-forward in repo %s" % (branch, repo))
+                    global_state.printMsg("Fetch of %s rejected as non-fast-forward in repo %s" % (branch, repo))
                 pushBranch = _pushBranch
                 if _skipPush:
                     pushBranch = False
@@ -452,10 +452,10 @@ def handleEnsureLocalUpToDateMRE(mre):
 
                     cleanupPushArgs.append((repo, branch, None))
                 else:
-                    grapeMenu.printMsg("Skipping push of local %s in %s" % (branch, repo))
+                    global_state.printMsg("Skipping push of local %s in %s" % (branch, repo))
 
             elif e.commError:
-                grapeMenu.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
+                global_state.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
                                  "local version. " % branch)
             else:
                 raise(e)

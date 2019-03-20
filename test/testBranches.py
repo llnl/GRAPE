@@ -1,14 +1,13 @@
 import os
 import sys
 import testGrape
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
-from vine import grapeMenu
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 
 class TestBranches(testGrape.TestGrape):
     def testBranches(self):
         os.chdir(self.repo)
-        ret = grapeMenu.menu().applyMenuChoice("b", [])
+        ret = self.menu.applyMenuChoice("b", [])
         self.assertTrue(ret, "vine.branches returned failure.")
 
         contents = self.output.getvalue()

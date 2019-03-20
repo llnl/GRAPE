@@ -1,17 +1,16 @@
+"""GRAPE's git utility logic across multiple repositories."""
 import os
 import re
 import shutil
-import subprocess
-import utility
 import ConfigParser
 import StringIO
 import grape_errors
-import grapeMenu
-import config_parser_global
-import config_parser_user
+import global_state
 
 
 def gitcmd(cmd, errmsg):
+    import config_parser_global
+
     _cmd = None
     try:
         cnfg = config_parser_global.grapeConfig()
@@ -28,7 +27,7 @@ def gitcmd(cmd, errmsg):
         _cmd = "git %s" % cmd
 
     cwd = os.getcwd()
-    process = grapeMenu.executeSubProcess(_cmd, cwd, verbose=-1)
+    process = global_state.executeSubProcess(_cmd, cwd, verbose=-1)
     if process.returncode != 0:
         raise grape_errors.GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, cwd=cwd)
     return process.output.strip()
@@ -40,7 +39,7 @@ def add(filedescription):
 
 def baseDir():
     unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
-    path = utility.makePathPortable(unixStylePath)
+    path = makePathPortable(unixStylePath)
     return path
 
 def allBranches():
@@ -156,7 +155,7 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
             if "fatal: Couldn't find remote ref" in e.gitOutput:
                 raise e
             if warnOnCommError:
-                grapeMenu.printMsg("WARNING: could not fetch due to communication error.")
+                global_state.printMsg("WARNING: could not fetch due to communication error.")
             if raiseOnCommError:
                 raise e
             else:
@@ -165,10 +164,9 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
             raise e
 
 
-def getActiveSubmodules():
+def getActiveSubmodules(ws_dir):
     cwd = os.getcwd()
-    wsDir = utility.workspaceDir()
-    os.chdir(wsDir)
+    os.chdir(ws_dir)
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"")
     else:
@@ -180,11 +178,11 @@ def getActiveSubmodules():
     os.chdir(cwd)
     return submoduleList
 
+
 # Remove any active submodules that are not found in gitmodules
-def fixActiveSubmodules():
+def fixActiveSubmodules(ws_dir, user_input_func):
     cwd = os.getcwd()
-    wsDir = utility.workspaceDir()
-    os.chdir(wsDir)
+    os.chdir(ws_dir)
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"")
     else:
@@ -202,10 +200,11 @@ def fixActiveSubmodules():
             rm("--ignore-unmatch --cached %s" % sub)
             # remove from repo, if present
             rm("--ignore-unmatch %s" % sub)
-            if os.path.exists(os.path.join(wsDir, sub)):
-                delete = utility.userInput("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
+            if os.path.exists(os.path.join(ws_dir, sub)):
+                delete = user_input_func("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
+#                delete = utility.userInput("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
                 if delete:
-                    shutil.rmtree(os.path.join(wsDir, sub))
+                    shutil.rmtree(os.path.join(ws_dir, sub))
     os.chdir(cwd)
     return submoduleFixed
 
@@ -234,10 +233,9 @@ def getAllSubmoduleURLMap():
     return submodules
 
 
-def getModifiedSubmodules(branch1="", branch2="", includeAdded=False):
+def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
     cwd = os.getcwd()
-    wsDir = utility.workspaceDir()
-    os.chdir(wsDir)
+    os.chdir(ws_dir)
     submodules = getAllSubmodules()
     # if there are no submodules, then return the empty list
     if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
@@ -253,7 +251,7 @@ def getModifiedSubmodules(branch1="", branch2="", includeAdded=False):
             modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
     except grape_errors.GrapeGitError as e:
         if "bad revision" in e.gitOutput:
-            grapeMenu.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+            global_state.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
             return []
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
@@ -268,16 +266,6 @@ def getModifiedSubmodules(branch1="", branch2="", includeAdded=False):
 
     os.chdir(cwd)
     return verifiedSubmodules
-
-
-def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
-    modifiedSubs = getModifiedSubmodules(branch1=branch1, branch2=branch2, includeAdded=includeAdded)
-    activeSubs = getActiveSubmodules()
-    missing = []
-    for sub in modifiedSubs:
-        if sub not in activeSubs:
-            missing.append(sub)
-    return missing
 
 
 # Takes a URL and returns a hard path for it
@@ -312,7 +300,7 @@ def gitDir():
             words = line.split()
             if words[0] == 'gitdir:':
                 relUnixPath = words[1]
-                toReturn = utility.makePathPortable(relUnixPath)
+                toReturn = makePathPortable(relUnixPath)
             else:
                 raise grape_errors.GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
     return toReturn
@@ -331,22 +319,19 @@ def isWorkingDirectoryClean(printOutput=False):
         print statusOutput
     return toRet
 
-def isWorkspaceClean(printOutput=False):
-    isClean = isWorkingDirectoryClean(printOutput=printOutput)
-    activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
-    base = utility.workspaceDir()
-    cwd = os.getcwd()
-    for sub in activeNestedSubprojects:
-        if not isClean:
-            break
-        os.chdir(os.path.join(base, sub))
-        isClean = isClean and isWorkingDirectoryClean(printOutput=printOutput)
-    os.chdir(cwd)
-    return isClean
 
 
 def log(args=""):
     return gitcmd("log %s" % args, "git log failed")
+
+
+#ensures the path string is windows compatibile if necessary
+def makePathPortable(path):
+    if os.name == "nt":
+        newPath = path.replace("/", "\\")
+    else:
+        newPath = path
+    return newPath
 
 
 def merge(args):
@@ -372,7 +357,7 @@ def pull(args, throwOnFail=False):
         return gitcmd("pull %s" % args, "Pull failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            grapeMenu.printMsg("WARNING: Pull failed due to connectivity issues.")
+            global_state.printMsg("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -387,7 +372,7 @@ def push(args, throwOnFail = False):
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            grapeMenu.printMsg("WARNING: Push failed due to connectivity issues.")
+            global_state.printMsg("WARNING: Push failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -423,18 +408,18 @@ def safeForceBranchToOriginRef(branchToSync):
             continue
 
     if branchExists and not remoteRefExists:
-        grapeMenu.printMsg("origin does not have branch %s" % branchToSync)
+        global_state.printMsg("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch():
-                grapeMenu.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
+                global_state.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 try:
                     pull("origin %s" % branchToSync, throwOnFail=True)
                 except:
-                    grapeMenu.printMsg("Can't pull %s. Aborting...")
+                    global_state.printMsg("Can't pull %s. Aborting...")
                     return False
             else:
                 branch("-f %s %s" % (branchToSync, remoteRef))
@@ -444,7 +429,7 @@ def safeForceBranchToOriginRef(branchToSync):
         else:
             return False
     if not branchExists and remoteRefExists:
-        grapeMenu.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
+        global_state.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
         branch("%s %s" % (branchToSync, remoteRef))
         return True
 
@@ -467,7 +452,7 @@ def showRemote():
         return gitcmd("remote show origin", "unable to show remote")
     except grape_errors.GrapeGitError as e:
         if e.code == 128:
-            grapeMenu.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
+            global_state.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
             return e.gitOutput
         else:
             raise e

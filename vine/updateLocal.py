@@ -3,7 +3,7 @@ import os
 import grape_errors
 import grapeGit as git
 import config_parser_global
-import grapeMenu
+import global_state
 import multi_repo_cmd_launcher
 import utility
 
@@ -54,11 +54,11 @@ class UpdateLocal(option.Option):
         launchers = []
         for branch in publicBranches:
             launchers.append(multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchLocal,
-                                            runInSubmodules=recurseSubmodules,
-                                            runInSubprojects=recurseNestedSubprojects,
-                                            branch=branch,
-                                            listOfRepoBranchArgTuples=None,
-                                            skipSubmodules=skipSubmodules, outer=wsDir))
+                                                      runInSubmodules=recurseSubmodules,
+                                                      runInSubprojects=recurseNestedSubprojects,
+                                                      branch=branch,
+                                                      listOfRepoBranchArgTuples=None,
+                                                      skipSubmodules=skipSubmodules, outer=wsDir))
 
         if len(launchers):
             launcher = launchers[0]
@@ -97,13 +97,13 @@ def fetchLocal(repo='unknown', branch='master'):
                         toFetch.append(b)
                 else:
                     try:
-                        grapeMenu.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
+                        global_state.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
                         git.pull("origin %s" % currentBranch)
                     except grape_errors.GrapeGitError:
                         print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
             try:
                 if toFetch:
-                    grapeMenu.printMsg("updating %s in %s" % (','.join(toFetch), repo))
+                    global_state.printMsg("updating %s in %s" % (','.join(toFetch), repo))
                     git.fetch(fetchArgs)
             except grape_errors.GrapeGitError as e:
                 # let non-fast-forward fetches slide

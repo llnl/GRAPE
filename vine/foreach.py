@@ -2,7 +2,7 @@ import os
 import option
 import grape_errors
 import utility
-import grapeMenu
+import global_state
 import multi_repo_cmd_launcher
 
 class ForEach(option.Option):
@@ -35,8 +35,8 @@ class ForEach(option.Option):
     def execute(self,args):
         cmd = args["<cmd>"]
         retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"],
-                                                   skipSubmodules= args["--noSubmodules"],
-                                                   runInSubprojects= not args["--noSubprojects"], globalArgs = args).launchFromWorkspaceDir(handleMRE=handleForeachMRE)
+                                           skipSubmodules= args["--noSubmodules"],
+                                           runInSubprojects= not args["--noSubprojects"], globalArgs = args).launchFromWorkspaceDir(handleMRE=handleForeachMRE)
         return retvals
 
     def setDefaultConfig(self,config):
@@ -45,7 +45,7 @@ class ForEach(option.Option):
 def foreach(repo='', branch='', args={}):
     cmd = args["<cmd>"]
     with utility.cd(repo):
-        grapeMenu.executeSubProcess(cmd, repo, verbose = -1)
+        global_state.executeSubProcess(cmd, repo, verbose = -1)
     return True
 
 def handleForeachMRE(mre):
@@ -53,7 +53,7 @@ def handleForeachMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            grapeMenu.printMsg("Foreach failed.")
+            global_state.printMsg("Foreach failed.")
             print e.gitCommand
             print e.cwd
             print e.gitOutput

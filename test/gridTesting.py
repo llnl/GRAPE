@@ -9,14 +9,11 @@ import types
 curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 if not curPath in sys.path:
     sys.path.insert(0, curPath)
-grapePath = os.path.join(curPath, "..")
+grapePath = os.path.join(curPath, os.path.pardir)
 if grapePath not in sys.path:
     sys.path.insert(0, grapePath)
 from vine import grape_errors
-from vine import grapeConfig, grapeMenu, utility
 from vine import grapeGit as git
-import testGrape
-import unittest
 
 
 #A grape project in a command list form that has reset capability.

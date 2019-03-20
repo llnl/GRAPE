@@ -3,15 +3,13 @@ import os
 import sys
 
 
-
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 
 import testGrape
 
 from vine import grape_errors
 from vine import grapeGit as git
-from vine import grapeMenu
 from vine import grapeConfig
 
 class TestCheckout(testGrape.TestGrape):
@@ -55,10 +53,11 @@ class TestCheckout(testGrape.TestGrape):
         git.checkout("master")
 
     def switchToMaster(self):
-        grapeMenu.menu().applyMenuChoice("checkout", ["master"])
+        self.menu.applyMenuChoice("checkout", ["master"])
+        self.menu.applyMenuChoice("checkout", ["master"])
 
     def switchToAddSubmodule(self):
-        grapeMenu.menu().applyMenuChoice("checkout", ["addSubmodule"])
+        self.menu.applyMenuChoice("checkout", ["addSubmodule"])
 
     def assertFile1ExistsInSubmodule(self):
         self.assertTrue(os.path.exists(os.path.join(self.repo, "submodule", self.file1)),

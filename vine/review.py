@@ -8,7 +8,7 @@ import config_parser_global
 import config_parser_user
 import grapeGit as git
 import stashy.stashy as stashy
-import grapeMenu
+import global_state
 
 
 # Prepare Feature Branch for review
@@ -125,7 +125,7 @@ class Review(option.Option):
         if not name:
             name = utility.getUserName()
             
-        grapeMenu.printMsg("Logging onto %s" % args["--bitbucketURL"])
+        global_state.printMsg("Logging onto %s" % args["--bitbucketURL"])
         if args["--test"]:
             bitbucket = Atlassian.TestAtlassian(name)
         else:
@@ -148,7 +148,7 @@ class Review(option.Option):
         os.chdir(wsDir)
 
         #ensure branch is pushed
-        grapeMenu.printMsg("Pushing %s to bitbucket..." % branch)
+        global_state.printMsg("Pushing %s to bitbucket..." % branch)
         git.push("origin %s" % branch)
         #target branch for outer level repo
         target_branch = args["--target"]
@@ -188,17 +188,17 @@ class Review(option.Option):
             reviewers = self.parseReviewerArgs(args)
             
         ##  Submodule Repos
-        missing = git.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
+        missing = utility.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
         if missing:
-            grapeMenu.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+            global_state.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
                              "these submodules, you may need to do a grape md to proceed.")
-            grapeMenu.printMsg(','.join(missing))
+            global_state.printMsg(','.join(missing))
             return False        
         pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
             
-            modifiedSubmodules = git.getModifiedSubmodules(target_branch, branch, includeAdded=True)
+            modifiedSubmodules = git.getModifiedSubmodules(utility.workspaceDir(), target_branch, branch, includeAdded=True)
             submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
                         
             for submodule in modifiedSubmodules:
@@ -206,7 +206,7 @@ class Review(option.Option):
                     continue
                 # push branch
                 os.chdir(submodule)
-                grapeMenu.printMsg("Pushing %s to bitbucket..." % branch)
+                global_state.printMsg("Pushing %s to bitbucket..." % branch)
                 git.push("origin %s" % branch)
                 os.chdir(wsDir)
                 repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
@@ -254,16 +254,16 @@ class Review(option.Option):
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
             if not git.hasBranch(branch):
-                grapeMenu.printMsg("Top level repository does not have a branch %s, not generating a Pull Request" % (branch))
+                global_state.printMsg("Top level repository does not have a branch %s, not generating a Pull Request" % (branch))
                 return True
             if git.branchUpToDateWith(target_branch, branch):
-                grapeMenu.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
+                global_state.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
                 return True
             
                 
             repo_name = args["--repo"]
             repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
-            grapeMenu.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
+            global_state.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
             for link in pullRequestLinks:
@@ -275,7 +275,7 @@ class Review(option.Option):
                                          reviewers, 
                                          args)
                        
-            grapeMenu.printMsg("Request generated/updated:\n\n%s" % request)
+            global_state.printMsg("Request generated/updated:\n\n%s" % request)
         return True
 
     def setDefaultConfig(self, config):
@@ -322,7 +322,7 @@ def pullRequestAlreadyMerged(errorMessage):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
-    grapeMenu.printMsg("Gathering active pull requests on %s" % branch)
+    global_state.printMsg("Gathering active pull requests on %s" % branch)
     request = getReposPullRequest(repo, branch, target_branch, args)
 
     if not request:
@@ -331,23 +331,23 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             if not title:
                 title = branch
             try:
-                grapeMenu.printMsg("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
+                global_state.printMsg("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
                       (title, branch, target_branch))
-                grapeMenu.printMsg("reviewers: %s" % reviewers)
+                global_state.printMsg("reviewers: %s" % reviewers)
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
                 url = request.link()
-                grapeMenu.printMsg("Pull request created at %s ." % url)
+                global_state.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
-            grapeMenu.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
+            global_state.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
 
     else:
         if not args["--add"]:
             # update the pull request
-            grapeMenu.printMsg("Updating pull request...")
+            global_state.printMsg("Updating pull request...")
             try:
 
                 if reviewers:
@@ -359,7 +359,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     reviewers += revList
                 if not reviewers: 
                     reviewers = [r[0] for r in request.reviewers()]
-                grapeMenu.printMsg("reviewer list is: %s" % reviewers)
+                global_state.printMsg("reviewer list is: %s" % reviewers)
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
@@ -377,16 +377,16 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
 
                 subReviewers = reviewers
                 if request.author() in subReviewers:
-                    grapeMenu.printMsg("%s is the author of the pull request and cannot be a reviewer" % request.author())
+                    global_state.printMsg("%s is the author of the pull request and cannot be a reviewer" % request.author())
                     subReviewers.remove(request.author())
                 if title is not None or descr is not None or subReviewers:
-                    grapeMenu.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
+                    global_state.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
                     request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
-                    grapeMenu.printMsg("Pull request updated at %s ." % url)
+                    global_state.printMsg("Pull request updated at %s ." % url)
                 else:
                     url = request.link()
-                    grapeMenu.printMsg("Pull request unchanged at %s ." % url)
+                    global_state.printMsg("Pull request unchanged at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 print("BITBUCKET: %s" % e.data)
