@@ -2,7 +2,6 @@ import os
 import option
 import grapeGit as git
 import global_state
-import grapeMenu
 import utility
 import option
 import resumable
@@ -64,12 +63,17 @@ class Pull(resumable.Resumable, option.Option):
             global_state.printMsg("Pulled current branch from origin")
             return True
         else:
+        # Imported here to avoid circular dependencies
+            import grapeMenu
+
             val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
             if val:
                 global_state.printMsg("Pulled current branch from origin")
             return val
 
     def _resume(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
         grapeMenu.menu().getOption("md")._resume(args)
         return True
 

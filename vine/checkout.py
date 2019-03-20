@@ -7,7 +7,6 @@ import time
 import config_parser_global
 import config_parser_base
 import global_state
-import grapeMenu
 import multi_repo_cmd_launcher
 import option
 import grapeGit as git
@@ -262,6 +261,9 @@ class Checkout(option.Option):
         return "Checks out a branch in all projects in this workspace."
 
     def execute(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
         args["--sync"] = sync

@@ -2,7 +2,6 @@ import os
 import shutil
 
 import utility
-import grapeMenu
 import grapeGit as git
 import config_parser_global
 import option
@@ -49,6 +48,9 @@ class Merge(resumable.Resumable, option.Option):
         return "Merge another local branch into your current branch."
 
     def execute(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         # this is necessary due to the unholy relationships between mr, m, and md.
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = 'm'
@@ -91,6 +93,9 @@ class Merge(resumable.Resumable, option.Option):
         return grapeMenu.menu().getOption("md").execute(mdArgs)
 
     def _resume(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         grapeMenu.menu().getOption("md")._resume(args)
         return True
 

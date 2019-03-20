@@ -1,12 +1,14 @@
 import os
 import config_parser_base
-import grapeMenu
 import utility
 
 
 class GrapeConfigParserWorkspace(config_parser_base.GrapeConfigParserBase):
 
     def __init__(self, workspaceDir=None, configString=None):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         super(GrapeConfigParserWorkspace, self).__init__(
             workspaceDir=workspaceDir, configString=configString)
         grapeMenu.menu().setDefaultConfig(self)

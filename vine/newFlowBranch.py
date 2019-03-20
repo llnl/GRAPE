@@ -5,7 +5,6 @@ import utility
 import grape_errors
 import grapeGit as git
 import global_state
-import grapeMenu
 import config_parser_global
 import multi_repo_cmd_launcher
 
@@ -47,6 +46,9 @@ class NewBranchOption(option.Option):
 
 
     def execute(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         start = args["--start"]
         if not start:
             start = self._public

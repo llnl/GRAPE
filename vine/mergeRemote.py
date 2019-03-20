@@ -1,7 +1,6 @@
 import option
 import utility
 import grape_errors
-import grapeMenu
 import global_state
 import grapeGit as git
 import merge
@@ -45,6 +44,9 @@ class MergeRemote(option.Option):
         return "Merge a remote branch into your current branch."
 
     def execute(self,args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = "mr"
         otherBranch = args['<branch>']

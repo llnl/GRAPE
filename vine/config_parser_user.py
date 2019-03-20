@@ -2,8 +2,6 @@ import ConfigParser
 import os
 import config_parser_base
 import config_parser_global
-import config as configOption
-import grapeGit as git
 import utility
 
 
@@ -58,6 +56,10 @@ def getAllActiveNestedSubprojectPrefixes(workspaceDir=None):
 
 
 def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None):
+    # Imported here to avoid circular dependencies
+    import config as configOption
+    import grapeGit as git
+
     config = __get_global_grape_config(workspaceDir)
     publicBranches = config.getPublicBranchList()
     if workspaceDir is None:

@@ -5,7 +5,6 @@ import grape_errors
 import grapeGit as git
 import checkout
 import global_state
-import grapeMenu
 import config_parser_global
 import config_parser_user
 import option
@@ -87,6 +86,9 @@ class MergeDevelop(resumable.Resumable, option.Option):
 
 
     def execute(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = "md"
         branch = args["--public"]

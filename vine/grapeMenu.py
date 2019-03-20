@@ -20,7 +20,6 @@ import merge
 import mergeDevelop
 import mergeRemote
 import newFlowBranch
-import publish
 import pull
 import push
 import quit
@@ -69,6 +68,9 @@ def _resetMenu():
 
 class _Menu(object):
     def __init__(self):
+        # Imported here to avoid circular dependencies
+        import publish
+
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here

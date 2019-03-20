@@ -3,7 +3,6 @@ import os
 import sys
 from contextlib import contextmanager
 import grape_errors
-import config_parser_user
 import grapeGit as git
 
 
@@ -95,6 +94,8 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
 
 
 def isWorkspaceClean(printOutput=False):
+    # Imported here to avoid circular dependencies
+    import config_parser_user
     isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
     activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()

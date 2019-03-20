@@ -1,7 +1,6 @@
 import os
 import option
 import utility
-import grapeMenu
 import global_state
 import grapeGit as git
 import config_parser_global
@@ -33,6 +32,9 @@ class Clone(option.Option):
         return "Clone a repo and configure it for grape"
 
     def execute(self, args):
+        # Imported here to avoid circular dependencies
+        import grapeMenu
+
         remotepath = args["<url>"]
         destpath = args["<path>"]
         rstr = "--recursive" if args["--recursive"] else ""
