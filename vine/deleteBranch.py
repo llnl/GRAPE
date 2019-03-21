@@ -46,7 +46,7 @@ class DeleteBranch(option.Option):
             if not proceed:
                 return True
 
-        launcher = MultiRepoCommandLauncher(deleteBranch,
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(deleteBranch,
                                             branch=branch,
                                             globalArgs=[force])
         try:
@@ -120,5 +120,5 @@ def handleDeleteBranchMRE(mre, force=False):
                     print e.gitOutput
                     raise e
 
-    MultiRepoCommandLauncher(detachThenForceDeleteBranch,
+    multi_repo_cmd_launcher.MultiRepoCommandLauncher(detachThenForceDeleteBranch,
                              listOfRepoBranchArgTuples=detachTuples).launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)

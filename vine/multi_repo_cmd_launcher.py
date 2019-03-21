@@ -1,6 +1,7 @@
 import os
 import multiprocessing.pool
 import config_parser_global
+from option import Option
 import grape_errors
 import utility
 
@@ -61,7 +62,7 @@ class MultiRepoCommandLauncher(object):
         self.lmbda = lmbda
 
         config = config_parser_global.grapeConfig()
-        recurseSubmodules = config.getboolean("workspace", "manageSubmodules")
+        recurseSubmodules = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules")
         if not recurseSubmodules:
             self.runSubmodules = runInSubmodules
         else:
@@ -152,7 +153,7 @@ class MultiRepoCommandLauncher(object):
                 ws_dir = utility.workspaceDir()
                 activeSubmodules = git.getActiveSubmodules(ws_dir)
                 self.repos = self.repos + [os.path.join(ws_dir, r) for r in activeSubmodules]
-                subPubMap = config.getMapping("workspace", "submodulepublicmappings")
+                subPubMap = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
             if self.runOuter:

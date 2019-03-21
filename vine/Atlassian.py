@@ -11,9 +11,10 @@ import time
 import utility
 import config_parser_global
 import grapeGit as git
+from option import Option
 
 
-class Atlassian:
+class Atlassian(object):
     rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
 
     def __init__(self, username=None, url=rzbitbucketURL, verify=True):
@@ -93,9 +94,9 @@ class Atlassian:
             repo_name = '.'.join(repo_name.split('.')[:-1])   
         else:
             if topLevelRepo is None:
-                topLevelRepo = config.get("repo", "name")
+                topLevelRepo = config.get(Option.SECTION_REPO, "name")
             if topLevelProject is None:
-                topLevelProject = config.get("project", "name")
+                topLevelProject = config.get(Option.SECTION_PROJECT, "name")
                 
             repo_name = topLevelRepo
             proj = topLevelProject
@@ -103,7 +104,7 @@ class Atlassian:
         repo = self.project(proj).repo(repo_name)
         return repo        
 
-class StashyNode:
+class StashyNode(object):
     def __init__(self, node, stashynode):
         self.node = node
         self.snode = stashynode
@@ -441,7 +442,7 @@ class TestStash(TestStashResponse):
 
 
 
-class TestAtlassian:
+class TestAtlassian(object):
     """
     A version of an Atlassian Bitbucket server that is meant to emulate the responses of Bitbucket for testing purposes.
 

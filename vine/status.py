@@ -96,7 +96,7 @@ class Status(option.Option):
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)
         wsBranch = git.currentBranch()
-        subPubMap = cfg.getMapping("workspace", "submodulepublicmappings")
+        subPubMap = cfg.getMapping(self.SECTION_WORKSPACE, "submodulepublicmappings")
         if wsBranch in publicBranches:
             for sub in git.getActiveSubmodules(wsDir):
                 os.chdir(os.path.join(wsDir,sub))

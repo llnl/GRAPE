@@ -62,7 +62,7 @@ class Merge(resumable.Resumable, option.Option):
         toks = otherBranch.split("origin/")
         if toks[-1] in publicBranches:
             public = toks[-1]
-            publicMapping = config.getMapping("workspace", "submodulePublicMappings")
+            publicMapping = config.getMapping(self.SECTION_WORKSPACE, "submodulePublicMappings")
             subpublic = publicMapping[public]
             toks[-1] = subpublic
             subpublic = 'origin/'.join(toks)

@@ -9,6 +9,7 @@ import utility
 import re
 import threading
 import global_state
+from option import Option
 
 try:
     import Tkinter as Tk
@@ -17,7 +18,7 @@ except ImportError as e:
     TkinterImportError = e
 
 
-class Walkthrough(option.Option):
+class Walkthrough(Option):
     """
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
@@ -53,10 +54,10 @@ class Walkthrough(option.Option):
 
     """
     def setDefaultConfig(self, config):
-        config.ensureSection("walkthrough")
-        config.set('walkthrough', 'height', '400')
-        config.set('walkthrough', 'width', '800')
-        config.set('walkthrough', 'difftool', 'xxdiff')
+        config.ensureSection(self.SECTION_WALKTHROUGH)
+        config.set(self.SECTION_WALKTHROUGH, 'height', '400')
+        config.set(self.SECTION_WALKTHROUGH, 'width', '800')
+        config.set(self.SECTION_WALKTHROUGH, 'difftool', 'xxdiff')
 
     def __init__(self):
         super(Walkthrough, self).__init__()
@@ -133,7 +134,7 @@ class Walkthrough(option.Option):
         return True
 
 # Base class for navigating files in a workspace
-class ProjectManager:
+class ProjectManager(object):
     def __init__(self, master, **kwargs):
         height = kwargs.get('height', 0)
         width  = kwargs.get('width', 0)
@@ -253,7 +254,7 @@ class ProjectManager:
         # Subtrees
         self.subtrees = []
         if self.showSubtrees:
-            self.subtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get('subtrees', 'names').strip().split() ]
+            self.subtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get(Option.SECTION_SUBTREES, 'names').strip().split() ]
             self.projects.extend(self.subtrees)
             for proj in self.subtrees:
                 status = "?"
@@ -467,7 +468,7 @@ class DiffManager(ProjectManager):
         return branch
 
     def getSubBranch(self, branch):
-        submapping = self.grapeconfig.getMapping('workspace', 'submodulepublicmappings')
+        submapping = self.grapeconfig.getMapping(Option.SECTION_WORKSPACE, 'submodulepublicmappings')
         if not branch.startswith("--"):
             branchParts = branch.split("/",1)
             if len(branchParts) == 1 or branchParts[0] == "origin":

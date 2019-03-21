@@ -86,7 +86,7 @@ class Version(option.Option):
         config = config_parser_global.grapeConfig()
         # parse tagSuffix for version mappings
         if args["--tagSuffix"] is None: 
-            branch2suffix = config.getMapping("versioning", "branchtagsuffixmappings")
+            branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
             args["--tagSuffix"] = branch2suffix[git.currentBranch()]
 
     def execute(self, args):
@@ -97,7 +97,7 @@ class Version(option.Option):
             self.tickVersion(args)
         if args["read"]:
             config = config_parser_global.grapeConfig()
-            fileName = config.get("versioning","file")
+            fileName = config.get(self.SECTION_VERSIONING, "file")
             try:
                 with open(fileName) as f:
                     slots = self.readVersion(f, args)
@@ -127,7 +127,7 @@ class Version(option.Option):
 
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
-        fileName = config.get("versioning", "file")
+        fileName = config.get(self.SECTION_VERSIONING, "file")
         with open(fileName) as f:
             slots = self.readVersion(f, args)
             self.ver = self.slotsToString(args, slots)
@@ -135,7 +135,7 @@ class Version(option.Option):
         if not args["--notick"]:
             slot = args["--slot"]
             if not slot:
-                slotMappings = config.getMapping("versioning", "branchSlotMappings")
+                slotMappings = config.getMapping(self.SECTION_VERSIONING, "branchSlotMappings")
                 if args["--public"]:
                     publicBranch = args["--public"]
                 else:
@@ -220,14 +220,14 @@ class Version(option.Option):
             suffix = args["--suffix"]
         else:
             try:
-                suffixMapping = config.getMapping("versioning", "branchSuffixMappings")
+                suffixMapping = config.getMapping(self.SECTION_VERSIONING, "branchSuffixMappings")
                 suffix = suffixMapping[config.getPublicBranchFor(git.currentBranch())]
             except KeyError:
                 suffix = ""
         args["--suffix"] = suffix
         regex = args["--matchTo"]
         try:
-            regexMappings = config.getMapping("versioning", "branchVersionRegexMappings")
+            regexMappings = config.getMapping(self.SECTION_VERSIONING, "branchVersionRegexMappings")
             public = config.getPublicBranchFor(git.currentBranch())
             regex = regexMappings[public]
         except ConfigParser.NoOptionError:
@@ -284,14 +284,15 @@ class Version(option.Option):
 
         :type config: GrapeConfigParser
         """
-        config.ensureSection("versioning")
-        config.set("versioning", "file", ".grapeversion")
-        config.set("versioning", "updateTag", "True")
-        config.set("versioning", "branchSlotMappings", "?:2")
-        config.set("versioning", "branchSuffixMappings", "?:")
-        config.set("versioning", "branchTagSuffixMappings", "?:")
-        config.set("versioning", "prefix", "v")
-        
+        config.ensureSection(self.SECTION_VERSIONING)
+        config.set(self.SECTION_VERSIONING, "file", ".grapeversion")
+        config.set(self.SECTION_VERSIONING, "updateTag", "True")
+        config.set(self.SECTION_VERSIONING, "branchSlotMappings", "?:2")
+        config.set(self.SECTION_VERSIONING, "branchSuffixMappings", "?:")
+        config.set(self.SECTION_VERSIONING, "branchTagSuffixMappings", "?:")
+        config.set(self.SECTION_VERSIONING, "prefix", "v")
+
+
 if __name__ is "__main__": 
     import grapeMenu
     import sys

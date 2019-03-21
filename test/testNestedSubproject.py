@@ -10,24 +10,7 @@ from vine import grapeGit as git
 from vine import grapeMenu
 
 
-configStr = "[workspace]\n" \
-            "subprojectType = subtree\n" \
-            ""
-
-nestedConfigStr = "[workspace]\n" \
-                  "subprojectType = nested\n"
-
 class TestNestedSubproject(testGrape.TestGrape):
-
-    @staticmethod
-    def writeDefaultConfig(self, filename):
-        with open(filename, 'w') as f:
-            f.writelines(configStr.split('\n'))
-
-    @staticmethod
-    def writeNestedConfig(self, filename):
-        with open(filename, 'w') as f:
-            f.writelines(nestedConfigStr.split('\n'))
 
     # Sets up a new nested subproject
     @staticmethod

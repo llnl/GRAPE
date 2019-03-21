@@ -3,7 +3,7 @@ import shutil
 
 
 import addSubproject
-import option
+from option import Option
 import utility
 import grape_errors
 import grapeGit as git
@@ -22,7 +22,7 @@ except ImportError as e:
 
 
 # update your custom sparse checkout view
-class UpdateView(option.Option):
+class UpdateView(Option):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules] [--gui]
@@ -365,15 +365,15 @@ class UpdateView(option.Option):
         publicBranches = config.getPublicBranchList()
         currentBranch = git.currentBranch()
         if currentBranch in publicBranches:
-            desiredSubmoduleBranch = config.getMapping("workspace", "submodulepublicmappings")[currentBranch]
+            desiredSubmoduleBranch = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[currentBranch]
         else:
             desiredSubmoduleBranch = currentBranch
         return desiredSubmoduleBranch
 
 
     def setDefaultConfig(self, config):
-        config.ensureSection("workspace")
-        config.set("workspace", "submodulepublicmappings", "?:master")
+        config.ensureSection(self.SECTION_WORKSPACE)
+        config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
 
 
 
@@ -399,7 +399,7 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
             with utility.cd(utility.workspaceDir()):
                 # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
-                    public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping("workspace", "submodulepublicmappings")[public]
+                    public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
             global_state.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
             git.checkout(public)
             git.pull("origin %s" % (public))
@@ -477,7 +477,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
     return
 
 # Class for selecting subprojects in a workspace
-class UVManager:
+class UVManager(object):
     def __init__(self, master, **kwargs):
         height = kwargs.get('height', 0)
         width  = kwargs.get('width', 0)

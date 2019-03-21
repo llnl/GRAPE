@@ -1,6 +1,7 @@
 import ConfigParser
 import os
 import cStringIO
+from option import Option
 
 
 class GrapeConfigParserBase(ConfigParser.ConfigParser, object):
@@ -27,7 +28,7 @@ class GrapeConfigParserBase(ConfigParser.ConfigParser, object):
     def getAllNestedSubprojects(self):
         list_ = []
         try:
-            list_ = self.getList("nestedProjects", "names")
+            list_ = self.getList(Option.SECTION_NESTED_PROJECTS, "names")
         except:
             pass
         finally:
@@ -41,7 +42,7 @@ class GrapeConfigParserBase(ConfigParser.ConfigParser, object):
 
     def getPublicBranchFor(self, branch, getDestinationBranch=True):
         if getDestinationBranch:
-            destinationBranches = self.getMapping("flow", "topicDestinationMappings")
+            destinationBranches = self.getMapping(Option.SECTION_FLOW, "topicDestinationMappings")
             try:
                 destinationBranch = destinationBranches[self.branchPrefix(branch)]
                 return destinationBranch
@@ -51,14 +52,14 @@ class GrapeConfigParserBase(ConfigParser.ConfigParser, object):
         publicBranches = self.getPublicBranchList()
         if branch in publicBranches:
             return branch
-        publicMapping = self.getMapping("flow", "topicPrefixMappings")
+        publicMapping = self.getMapping(Option.SECTION_FLOW, "topicPrefixMappings")
         return publicMapping[self.branchPrefix(branch)]
 
     def getMapping(self, section, cfgOption, raw=False, cfgVars=None):
         return self.parseConfigPairList(self.get(section, cfgOption, raw=raw, vars=cfgVars))
 
     def getPublicBranchList(self):
-        return self.get("flow", "publicbranches").split()
+        return self.get(Option.SECTION_FLOW, "publicbranches").split()
 
     @staticmethod
     def parseConfigPairList(toParse):

@@ -4,12 +4,12 @@ import config_parser_global
 import config_parser_user
 import config_parser_workspace
 import global_state
-import option
+from option import Option
 import utility
 import grapeGit as git
 
 
-class AddSubproject(option.Option):
+class AddSubproject(Option):
     """
         grape addSubproject
         Adds a new project to this workspace (such as a new library or a new test suite)
@@ -50,7 +50,7 @@ class AddSubproject(option.Option):
 
     @staticmethod
     def parseSubprojectType(config, args):
-        projectType = config.get("workspace", "subprojectType").strip().lower()
+        projectType = config.get(Option.SECTION_WORKSPACE, "subprojectType").strip().lower()
         if args["--subtree"]:
             projectType = "subtree"
         if args["--submodule"]:
@@ -73,7 +73,7 @@ class AddSubproject(option.Option):
         proceed = args["--noverify"]
         if projectType == "subtree":
             #  whether or not to squash
-            squash = args["--squash"] or config.get("subtrees", "mergePolicy").strip().lower() == "squash"
+            squash = args["--squash"] or config.get(Option.SECTION_SUBTREES, "mergePolicy").strip().lower() == "squash"
             squash = squash and not args["--nosquash"]
             squash_arg = "--squash" if squash else ""
             # expand the URL
@@ -87,7 +87,7 @@ class AddSubproject(option.Option):
                 git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch))
 
                 #update the configuration file
-                current_cfg_names = config.get("subtrees", "names").split()
+                current_cfg_names = config.get(Option.SECTION_SUBTREES, "names").split()
                 if not current_cfg_names or current_cfg_names[0].lower() == "none":
                     config.set("subtrees", "names", name)
                 else:
@@ -169,9 +169,9 @@ class AddSubproject(option.Option):
         return True
 
     def setDefaultConfig(self, config):
-        config.ensureSection("subtrees")
-        config.ensureSection("workspace")
-        config.ensureSection("nestedProjects")
-        config.set("subtrees", "mergePolicy", "squash")
-        config.set("workspace", "subprojectType", "subtree")
-        config.set("nestedProjects", "names", "")
+        config.ensureSection(self.SECTION_SUBTREES)
+        config.ensureSection(self.SECTION_WORKSPACE)
+        config.ensureSection(self.SECTION_NESTED_PROJECTS)
+        config.set(self.SECTION_SUBTREES, "mergePolicy", "squash")
+        config.set(self.SECTION_WORKSPACE, "subprojectType", "subtree")
+        config.set(self.SECTION_NESTED_PROJECTS, "names", "")

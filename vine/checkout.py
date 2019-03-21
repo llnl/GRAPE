@@ -297,7 +297,7 @@ class Checkout(option.Option):
                     global_state.printMsg("Branch {0} could not be fetched in outer level repo:\n{1}\nUse grape checkout -b if you really want to create a new branch off of HEAD.".format(branch, e))
                     return False
 
-            if config_parser_global.grapeConfig().getboolean("workspace", "manageSubmodules"):
+            if config_parser_global.grapeConfig().getboolean(self.SECTION_WORKSPACE, "manageSubmodules"):
                 parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
 
             submodulesDidChange = False
@@ -425,6 +425,5 @@ class Checkout(option.Option):
         return True
 
     def setDefaultConfig(self, config):
-        config.ensureSection("post-checkout")
-        config.set("post-checkout", "syncWithOrigin", "True")
-        pass
+        config.ensureSection(self.SECTION_POST_CHECKOUT)
+        config.set(self.SECTION_POST_CHECKOUT, "syncWithOrigin", "True")

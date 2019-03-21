@@ -9,6 +9,7 @@ from vine import grape_errors
 from vine import grapeMenu
 from vine import grapeGit as git
 from vine import config_parser_global
+from vine.option import Option
 
 
 class TestPublish(testGrape.TestGrape):
@@ -51,7 +52,7 @@ class TestPublish(testGrape.TestGrape):
         self.queueUserInput(["1.1.1"])
         config = config_parser_global.grapeConfig()
         config.ensureSection("project")
-        config.set("project", "name", "proj1")
+        config.set(Option.SECTION_PROJECT, "name", "proj1")
 
         defaultArgs = ["-m", "publishing testPublish to master", "--noverify", '-R', '--test', '-R', '--repo=repo1',
                        '-R', '--user=user', "--noReview", "--noUpdateLog", "--noPushSubtrees"]
@@ -60,7 +61,7 @@ class TestPublish(testGrape.TestGrape):
                 args += defaultArgs
             else:
                 args = defaultArgs
-            ret = grapeMenu.menu().applyMenuChoice("publish", args=args)
+            ret = self.menu.applyMenuChoice("publish", args=args)
           
             self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
@@ -108,7 +109,7 @@ class TestPublish(testGrape.TestGrape):
     def testCustomBuildStep(self):
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
-        config.set("publish", "buildCmds", "echo hello ,  echo world")
+        config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello ,  echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
         self.assertIn("echo hello", self.output.getvalue())
@@ -118,7 +119,7 @@ class TestPublish(testGrape.TestGrape):
     def testCustomTestStep(self):
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
-        config.set("publish", "testCmds", "echo helloTest , echo worldTest")
+        config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
         self.assertIn("echo helloTest", self.output.getvalue())
@@ -127,16 +128,16 @@ class TestPublish(testGrape.TestGrape):
 
     def testVersionTickArgumentPassing(self):
         self.setUpBranchToFFMerge()
-        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
+        self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--tickVersion=True", "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         self.assertIn("v1.0.1", git.describe())
 
     def testStartStepStopStep(self):
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
-        config.set("publish", "buildCmds", "echo hello , echo world")
-        config.set("publish", "testCmds", "echo helloTest , echo worldTest")
-        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
+        config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
+        config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
+        self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--startAt=tickVersion", "--stopAt=updateLog", "--tickVersion=True",
                                        "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         self.assertGrapePublishWorked(["--startAt=test", "--stopAt=deleteTopic", "--tickVersion=True",
@@ -152,9 +153,9 @@ class TestPublish(testGrape.TestGrape):
         import testNestedSubproject
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
-        config.set("publish", "buildCmds", "echo hello , echo world")
-        config.set("publish", "testCmds", "echo helloTest , echo worldTest")        
-        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])        
+        config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
+        config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
+        self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
         os.chdir(self.subproject)
         self.assertTrue(git.currentBranch() == self.branch)
@@ -169,7 +170,7 @@ class TestPublish(testGrape.TestGrape):
     def testPublishFromWithinNestedSubproject(self):
         import testNestedSubproject
         self.setUpBranchToFFMerge()
-        grapeMenu.menu().applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])        
+        self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
  
         os.chdir(self.subproject)
@@ -180,8 +181,8 @@ class TestPublish(testGrape.TestGrape):
         import testNestedSubproject
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
-        config.set("publish", "buildCmds", "echo hello , echo world")
-        config.set("publish", "testCmds", "echo helloTest , echo worldTest")        
+        config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
+        config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
 
         # create backend for repo2
         repo2_origin = self.repo + "2-origin" ;

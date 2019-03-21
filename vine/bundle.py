@@ -82,7 +82,7 @@ class Bundle(option.Option):
     def description(self):
         # since bundle calls grape recursively, we give it configuration based on current repository semantics,
         # whereas grape typically has full workspace semantics.
-        name = self.config().get("patch", "tagprefix")
+        name = self.config().get(self.SECTION_PATCH, "tagprefix")
         return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
     def execute(self, args):
@@ -113,7 +113,7 @@ class Bundle(option.Option):
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
-        if (recurse):
+        if recurse:
             launchArgs["branchList"] = args["--submoduleBranches"].split()
             submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(bundlecmd,
                                                                        runInSubmodules=recurse,
@@ -128,14 +128,14 @@ class Bundle(option.Option):
 
 
     def setDefaultConfig(self, config):
-        config.ensureSection("patch")
-        config.set('patch', 'tagprefix', 'patched')
-        config.set('patch', 'describePattern', 'v*')
-        config.set('patch', 'branches', 'master')
-        config.set('patch', 'branchmappings', '?:?')
-        config.set('patch', 'branchToTagPatternMapping', '?:v*')
-        config.set('patch', 'submodulebranches', 'master')
-        config.set('patch', 'submodulebranchmappings', '?:?')
+        config.ensureSection(self.SECTION_PATCH)
+        config.set(self.SECTION_PATCH, 'tagprefix', 'patched')
+        config.set(self.SECTION_PATCH, 'describePattern', 'v*')
+        config.set(self.SECTION_PATCH, 'branches', 'master')
+        config.set(self.SECTION_PATCH, 'branchmappings', '?:?')
+        config.set(self.SECTION_PATCH, 'branchToTagPatternMapping', '?:v*')
+        config.set(self.SECTION_PATCH, 'submodulebranches', 'master')
+        config.set(self.SECTION_PATCH, 'submodulebranchmappings', '?:?')
 
 
 def bundlecmd(repo='', branch='', args={}):
@@ -236,8 +236,8 @@ class Unbundle(option.Option):
         return True
 
     def setDefaultConfig(self, config):
-        config.ensureSection("patch")
-        config.set('patch', 'branchMappings', 'master:master')
+        config.ensureSection(self.SECTION_PATCH)
+        config.set(self.SECTION_PATCH, 'branchMappings', 'master:master')
 
 import glob
 def unbundlecmd(repo='', branch='', args={}):

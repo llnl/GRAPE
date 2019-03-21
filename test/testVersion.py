@@ -7,6 +7,7 @@ from vine import grape_errors
 from vine import grapeMenu
 from vine import grapeGit as git
 from vine import config_parser_global
+from vine.option import Option
 
 
 class TestVersion(testGrape.TestGrape):
@@ -57,7 +58,7 @@ class TestVersion(testGrape.TestGrape):
 
             #test overiding default tag behavior
             config = config_parser_global.grapeConfig()
-            config.set("versioning", "updateTag", "False")
+            config.set(Option.SECTION_VERSIONING, "updateTag", "False")
             ret = menu.applyMenuChoice("version", ["tick", "--slot=3"])
             self.assertEqual(git.describe("--abbrev=0"), "v2.0.0")
             ret = menu.applyMenuChoice("version", ["tick", "--slot=3", "--tag"])

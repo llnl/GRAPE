@@ -196,10 +196,10 @@ class Review(option.Option):
             global_state.printMsg(','.join(missing))
             return False        
         pullRequestLinks = {}
-        if not args["--norecurse"] and (args["--recurse"] or config.getboolean("workspace", "manageSubmodules")):
+        if not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules")):
             
             modifiedSubmodules = git.getModifiedSubmodules(utility.workspaceDir(), target_branch, branch, includeAdded=True)
-            submoduleBranchMappings = config.getMapping("workspace", "submoduleTopicPrefixMappings")
+            submoduleBranchMappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
                         
             for submodule in modifiedSubmodules:
                 if not submodule:
@@ -279,11 +279,11 @@ class Review(option.Option):
         return True
 
     def setDefaultConfig(self, config):
-        config.ensureSection("project")
-        config.set("project", "stashURL", "https://rzlc.llnl.gov/bitbucket")
-        config.set("project", "verifySSL", "True")
-        config.set("project", "name", "My unnamed project")
-        pass
+        config.ensureSection(self.SECTION_PROJECT)
+        config.set(self.SECTION_PROJECT, "stashURL", "https://rzlc.llnl.gov/bitbucket")
+        config.set(self.SECTION_PROJECT, "verifySSL", "True")
+        config.set(self.SECTION_PROJECT, "name", "My unnamed project")
+
 
 def addLinkToDescription(descr, link, isPullRequest):
     if descr is not None and link is not None:

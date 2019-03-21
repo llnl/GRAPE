@@ -7,9 +7,10 @@ import grapeGit as git
 import global_state
 import config_parser_global
 import multi_repo_cmd_launcher
+from option import Option
 
 
-class NewBranchOption(option.Option):
+class NewBranchOption(Option):
     """
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
@@ -55,7 +56,7 @@ class NewBranchOption(option.Option):
 
 
         # decide whether to recurse
-        recurse = config_parser_global.grapeConfig().get('workspace', 'manageSubmodules')
+        recurse = config_parser_global.grapeConfig().get(self.SECTION_WORKSPACE, 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--noRecurse"]:
@@ -127,29 +128,21 @@ class NewBranchOption(option.Option):
                 git.checkout("-B %s" % branchName)
 
     def setDefaultConfig(self, config):
-        config.ensureSection("workspace")
-        config.set('workspace', 'manageSubmodules', 'True')
-        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
+        config.ensureSection(self.SECTION_WORKSPACE)
+        config.set(self.SECTION_WORKSPACE, 'manageSubmodules', 'True')
+        config.set(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings', '?:develop')
 
 
-
-
-
-class NewBranchOptionFactory():
-    def __init__(self):
-        pass
+class NewBranchOptionFactory(object):
 
     @staticmethod
     def createNewBranchOptions(config):
-
-        topicPublicMapping = config.getMapping('flow', 'topicPrefixMappings')
+        topicPublicMapping = config.getMapping(Option.SECTION_FLOW, 'topicPrefixMappings')
         options = []
         for topic in topicPublicMapping.keys():
             if topic != '?':
                 options.append(NewBranchOption(topic, topicPublicMapping[topic]))
         return options
-
-
 
 
 def createBranch(repo="unknown", branch="master", args=[]):

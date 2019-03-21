@@ -19,6 +19,7 @@ from vine import grapeGit as git
 from vine import config_parser_global
 from vine import grapeMenu
 from vine import utility
+from vine.option import Option
 
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
@@ -40,6 +41,15 @@ def writeFile3(path):
         f.write(str3)
 
 class TestGrape(unittest.TestCase):
+    """
+    TODO: output from multiple tests seem to be overlapping.
+    Tests inheriting from "TestGrape" are not 100% separated. A simple test
+    ran by itself can produce zero output to stdout and asserting stdout is
+    empty would succeed. This same test combined with the entire GRAPE suite
+    of tests will encounter a non-empty stdout, and fail.
+    """
+
+
     def printToScreen(self, str): 
         self.stdout.write(str)
         
@@ -64,9 +74,9 @@ class TestGrape(unittest.TestCase):
         grapeMenu._resetMenu()
         grapeMenu.menu()
         config = config_parser_global.grapeConfig()
-        config.set("flow", "publicBranches", "master")
-        config.set("flow", "topicPrefixMappings", "?:master")
-        config.set("workspace", "submoduleTopicPrefixMappings", "?:master")
+        config.set(Option.SECTION_FLOW, "publicBranches", "master")
+        config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
+        config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
 
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
@@ -187,11 +197,16 @@ def buildSuite(cls, appendTo=None, sub=None):
 def main(argv, debug=False):
    
     import testBranches
+    import testBundle
     import testClone
     import testConfig
+    import testDeleteBranch
     import testMergeDevelop
     import testGrapeGit
+    import testResolveConflicts
     import testReview
+    import testStash
+    import testUnbundle
     import testVersion
     import testPublish
     import testCO
@@ -200,15 +215,20 @@ def main(argv, debug=False):
     import testUpdateLocal
 
     testClasses = {"Branches":testBranches.TestBranches,
+                   "Bundle":testBundle.TestBundle,
                    "Clone":testClone.TestClone,
                    "Config":testConfig.TestConfig,
+                   "DeleteBranch":testDeleteBranch.TestDeleteBranch,
                    "GrapeGit":testGrapeGit.TestGrapeGit,
                    "MergeDevelop":testMergeDevelop.TestMD,
+                   "ResolveConflicts":testResolveConflicts.TestResolveConflicts,
                    "Review":testReview.TestReview,
+                   "Stash":testStash.TestStash,
+                   "Unbundle":testUnbundle.TestUnbundle,
                    "Version":testVersion.TestVersion,
                    "Publish":testPublish.TestPublish,
                    "CO":testCO.TestCheckout,
-                   "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
+                   "NestedSubproject":testNestedSubproject.TestNestedSubproject,
                    "Status":testStatus.createStatusTester(),
                    "GrapeUp":testUpdateLocal.createUpTester()}
 

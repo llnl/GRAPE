@@ -154,7 +154,7 @@ class Config(option.Option):
         submodules = git.getActiveSubmodules(utility.workspaceDir())
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
-        submodulePublicBranches = set(config.getMapping('workspace', 'submoduleTopicPrefixMappings').values())
+        submodulePublicBranches = set(config.getMapping(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
             self.ensurePublicBranchesExist(sub, submodulePublicBranches)
         

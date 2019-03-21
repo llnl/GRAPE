@@ -1,7 +1,7 @@
 import os
 import ConfigParser
 import config_parser_global
-import option
+from option import Option
 import utility
 import grapeGit as git
 import global_state
@@ -9,7 +9,7 @@ import global_state
 """        
                     
         --branch=<committish>  """
-class UpdateSubproject(option.Option):
+class UpdateSubproject(Option):
     """
         grape updateSubproject
         Updates an existing subproject from its host repository.  
@@ -49,7 +49,7 @@ class UpdateSubproject(option.Option):
         subtreePrefix = config.get("subtree-%s" % name, "prefix")
         subtreeRemote = config.get("subtree-%s" % name, "remote")
         fullURL = git.parseSubprojectRemoteURL(subtreeRemote)
-        doSquash = config.get("subtrees", "mergePolicy").strip().lower() == "squash"
+        doSquash = config.get(Option.SECTION_SUBTREES, "mergePolicy").strip().lower() == "squash"
         squashArg = "--squash" if doSquash else ""
         git.subtree("pull --prefix %s %s %s %s" %
                     (subtreePrefix, fullURL, branch, squashArg))

@@ -196,52 +196,52 @@ class Publish(resumable.Resumable, option.Option):
     """
 
     def setDefaultConfig(self, config):
-        config.ensureSection("workspace")
-        config.ensureSection("flow")
-        config.ensureSection("subtrees")
-        config.ensureSection("publish")
+        config.ensureSection(self.SECTION_WORKSPACE)
+        config.ensureSection(self.SECTION_FLOW)
+        config.ensureSection(self.SECTION_SUBTREES)
+        config.ensureSection(self.SECTION_PUBLISH)
 
         # workspace defaults
-        config.set('workspace', 'manageSubmodules', 'True')
-        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
-        config.set('workspace', 'submodulePublishPolicy', '?:merge')
+        config.set(self.SECTION_WORKSPACE, 'manageSubmodules', 'True')
+        config.set(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings', '?:develop')
+        config.set(self.SECTION_WORKSPACE, 'submodulePublishPolicy', '?:merge')
         # publish policy defaults
-        config.set('flow', 'publishPolicy', '?:merge')
+        config.set(self.SECTION_FLOW, 'publishPolicy', '?:merge')
         # subtree publish actions
-        config.set('subtrees', 'names', '')
-        config.set('subtrees', 'pushOnPublish', "False")
+        config.set(self.SECTION_SUBTREES, 'names', '')
+        config.set(self.SECTION_SUBTREES, 'pushOnPublish', "False")
         # build steps
-        config.set('publish', 'buildCmds', '')
-        config.set('publish', 'buildDir', '.')
+        config.set(self.SECTION_PUBLISH, 'buildCmds', '')
+        config.set(self.SECTION_PUBLISH, 'buildDir', '.')
         # test steps
-        config.set('publish', 'testCmds', '')
-        config.set('publish', 'testDir', '.')
+        config.set(self.SECTION_PUBLISH, 'testCmds', '')
+        config.set(self.SECTION_PUBLISH, 'testDir', '.')
         # prepublish steps
-        config.set('publish', 'prepublishCmds', '')
-        config.set('publish', 'prepublishDir', '.')
+        config.set(self.SECTION_PUBLISH, 'prepublishCmds', '')
+        config.set(self.SECTION_PUBLISH, 'prepublishDir', '.')
         # postpublish steps
-        config.set('publish', 'postpublishCmds', '')
-        config.set('publish', 'postpublishDir', '.')
+        config.set(self.SECTION_PUBLISH, 'postpublishCmds', '')
+        config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
         # tick the version?
-        config.set('publish', 'tickVersion', 'False')
+        config.set(self.SECTION_PUBLISH, 'tickVersion', 'False')
         # use Bitbucket for checking Pull Request status?
-        config.set('publish', 'useStash', 'True')
+        config.set(self.SECTION_PUBLISH, 'useStash', 'True')
         # delete when done
-        config.set('publish', 'deleteTopic', 'False')
+        config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
         # log file
-        config.set('publish', 'updateLog', '.grapepublishlog')
-        config.set('publish', 'logSkipFirstLines', '0')
-        config.set('publish', 'logEntryHeader', "<date> <user>\\n<version>\\n")
+        config.set(self.SECTION_PUBLISH, 'updateLog', '.grapepublishlog')
+        config.set(self.SECTION_PUBLISH, 'logSkipFirstLines', '0')
+        config.set(self.SECTION_PUBLISH, 'logEntryHeader', "<date> <user>\\n<version>\\n")
         # email config
-        config.set('publish', 'emailNotification', 'False')
-        config.set('publish', 'emailHeader', '<public> updated to <version>')
-        config.set('publish', 'emailFooter', '')
-        config.set('publish', 'emailServer', 'smtp.email.server')
-        config.set('publish', 'emailSendTo', 'user.list@company.com')
-        config.set('publish', 'emailSubject', '<public> updated to <version>')
-        config.set('publish', 'emailMaxFiles', '100')
+        config.set(self.SECTION_PUBLISH, 'emailNotification', 'False')
+        config.set(self.SECTION_PUBLISH, 'emailHeader', '<public> updated to <version>')
+        config.set(self.SECTION_PUBLISH, 'emailFooter', '')
+        config.set(self.SECTION_PUBLISH, 'emailServer', 'smtp.email.server')
+        config.set(self.SECTION_PUBLISH, 'emailSendTo', 'user.list@company.com')
+        config.set(self.SECTION_PUBLISH, 'emailSubject', '<public> updated to <version>')
+        config.set(self.SECTION_PUBLISH, 'emailMaxFiles', '100')
         # tick on cascade behavior
-        config.set("flow","topicCascadeTick","?:0")
+        config.set(self.SECTION_FLOW, "topicCascadeTick","?:0")
 
     def __init__(self):
         super(Publish, self).__init__()
@@ -310,7 +310,7 @@ class Publish(resumable.Resumable, option.Option):
             else:
                 args["--tickVersion"] = True
         if  args["--tickOnCascade"] is None:
-            args["--tickOnCascade"] = int(config.getMapping("flow","topicCascadeTick")[args["--topic"]])
+            args["--tickOnCascade"] = int(config.getMapping(self.SECTION_FLOW, "topicCascadeTick")[args["--topic"]])
 
     def abort(self, args):
         #undo any commits done since we first started
@@ -1185,7 +1185,7 @@ class Publish(resumable.Resumable, option.Option):
         topic = args["--topic"]
 
         # decide whether to recurse into submodules
-        recurse = config.get('workspace', 'manageSubmodules')
+        recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--noRecurse"]:
@@ -1194,16 +1194,16 @@ class Publish(resumable.Resumable, option.Option):
         args["--recurse"] = recurse
         if args["--recurse"]:
             if not args["--submodulePublic"]:
-                submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
+                submapping = config.getMapping(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings')
                 submodulePublic = submapping[self.branchPrefix]
                 args["--submodulePublic"] = submodulePublic
 
         # deal with subtrees
-        push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
+        push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
         push_subtrees = push_subtrees and not args["--noPushSubtrees"]
         args["--pushSubtrees"] = push_subtrees
         if push_subtrees:
-            allsubtrees = config.get('subtrees', 'names').strip().split()
+            allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
             self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
             for st in allsubtrees:
                 prefix = config.get('subtree-%s' % st, 'prefix')
@@ -1300,7 +1300,7 @@ class Publish(resumable.Resumable, option.Option):
 
         # update policy from config if not set on CL
         if not policy:
-            policy = self.parseConfigPublishPolicy(args, config.getMapping('flow', 'publishPolicy')[public], topic)
+            policy = self.parseConfigPublishPolicy(args, config.getMapping(self.SECTION_FLOW, 'publishPolicy')[public], topic)
 
         self.parseCascadeArgs(args)
 
@@ -1319,7 +1319,7 @@ class Publish(resumable.Resumable, option.Option):
             # store current value for args["--cascade"]
             outerCascadeOption = args["--cascade"]
             if not submodulePolicy:
-                submodulePolicy = config.getMapping('workspace', 'submodulePublishPolicy')[submodulePublic]
+                submodulePolicy = config.getMapping(self.SECTION_WORKSPACE, 'submodulePublishPolicy')[submodulePublic]
                 submodulePolicy = self.parseConfigPublishPolicy(args, submodulePolicy, topic, repoType="submodule")
 
             valid = self.validateInput(submodulePolicy, args)
@@ -1355,7 +1355,7 @@ class Publish(resumable.Resumable, option.Option):
             if modifiedSubtrees:
                 proceed = self.verifyPublishTargetsWithUser(args)
                 if proceed:
-                    squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
+                    squash = "--squash" if config.get(self.SECTION_SUBTREES, "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
                         global_state.printMsg("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
                                                                               self.st_remotes[st], self.st_branches[st]))

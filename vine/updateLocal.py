@@ -45,7 +45,7 @@ class UpdateLocal(option.Option):
         cwd = os.getcwd()
 
         config = config_parser_global.grapeConfig()
-        recurseSubmodules = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
+        recurseSubmodules = config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
         skipSubmodules = args["--noRecurse"]
 
 

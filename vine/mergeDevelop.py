@@ -7,13 +7,13 @@ import checkout
 import global_state
 import config_parser_global
 import config_parser_user
-import option
+from option import Option
 import resumable
 import utility
 
 
 # pull and merge in an up-to-date development branch
-class MergeDevelop(resumable.Resumable, option.Option):
+class MergeDevelop(resumable.Resumable, Option):
     """
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
@@ -62,7 +62,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
             currentBranch = git.currentBranch()
         except grape_errors.GrapeGitError:
             return 'unknown'
-        if currentBranch in config.get('flow', 'publicBranches'):
+        if currentBranch in config.get(Option.SECTION_FLOW, 'publicBranches'):
             return currentBranch
         try:
             branch = config.getPublicBranchFor(currentBranch)
@@ -128,7 +128,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
             nested = config_parser_user.getAllActiveNestedSubprojectPrefixes()
 
         config = config_parser_global.grapeConfig()
-        recurse = config.getboolean("workspace", "manageSubmodules") or args["--recurse"]
+        recurse = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
         recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse
 
@@ -192,7 +192,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
         # but they could be active if it was in the workspace already).
         if reinitModules and reinitActiveSubmodulesCheck:
             currentBranch = git.currentBranch()
-            submapping = config.getMapping('workspace', 'submodulepublicmappings')
+            submapping = config.getMapping(Option.SECTION_WORKSPACE, 'submodulepublicmappings')
             try:
                 submodulePubBranch = submapping[args["--public"]]
             except:
@@ -233,7 +233,7 @@ class MergeDevelop(resumable.Resumable, option.Option):
                     subPublic = args["--subpublic"]
                 else:
                     # default is to merge the submodule branch that is mapped to the public branch
-                    subBranchMappings = config.getMapping("workspace", "submodulePublicMappings")
+                    subBranchMappings = config.getMapping(Option.SECTION_WORKSPACE, "submodulePublicMappings")
                     subPublic = subBranchMappings[config.getPublicBranchFor(branch)]
                 for submodule in submodules:
                     if not self.mergeSubproject(args, submodule, subPublic, submodules, cwd, isSubmodule=True):
@@ -472,12 +472,12 @@ class MergeDevelop(resumable.Resumable, option.Option):
 
     def setDefaultConfig(self, config):
         try:
-            config.add_section("flow")
+            config.add_section(self.SECTION_FLOW)
         except ConfigParser.DuplicateSectionError:
             pass
-        config.set("flow", "publicBranches", "develop master")
-        config.set("flow", "topicPrefixMappings", "?:develop")
-        config.set("flow", "topicDestinationMappings", "none")
+        config.set(self.SECTION_FLOW, "publicBranches", "develop master")
+        config.set(self.SECTION_FLOW, "topicPrefixMappings", "?:develop")
+        config.set(self.SECTION_FLOW, "topicDestinationMappings", "none")
 
     def _resume(self, args):
         super(MergeDevelop, self)._resume(args)
