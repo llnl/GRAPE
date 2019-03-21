@@ -1,13 +1,10 @@
 import os
 import sys
 import testGrape
-import unittest.case
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 from vine import grape_errors
 from vine import grapeGit as git
-from vine import grapeMenu
-from vine import grapeConfig
 import testNestedSubproject
 
 class TestMD(testGrape.TestGrape):
@@ -38,7 +35,7 @@ class TestMD(testGrape.TestGrape):
         # now run grape md, should be a fast forward merge
         try:
             self.assertNotEqual(git.shortSHA(), git.shortSHA("master"))
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--am"])
+            ret = self.menu.applyMenuChoice("md", ["--am"])
             self.assertTrue(ret, "grape md did not return True")
             self.assertEqual(git.shortSHA(), git.shortSHA("master"), "merging master into test branch did not fast"
                                                                      "forward")
@@ -51,7 +48,7 @@ class TestMD(testGrape.TestGrape):
         self.setUpConflictingMerge()
         try:
             self.assertNotEqual(git.shortSHA(), git.shortSHA("master"))
-            ret = grapeMenu.menu().applyMenuChoice("m", ["master", "--am"])
+            ret = self.menu.applyMenuChoice("m", ["master", "--am"])
             self.assertFalse(ret, "grape m did not return false as expected for a conflict")
 
             self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of "
@@ -60,7 +57,7 @@ class TestMD(testGrape.TestGrape):
             git.checkout("--ours f2")
             git.add("f2")            
 
-            ret = grapeMenu.menu().applyMenuChoice("m", ["--continue"])
+            ret = self.menu.applyMenuChoice("m", ["--continue"])
             self.assertTrue(ret, "grape m --continue did not return True\n%s" % self.output.getvalue())
             self.assertTrue(git.isWorkingDirectoryClean(), "grape m --continue did not finish merge\n%s" %
                                                            self.output.getvalue())
@@ -71,7 +68,7 @@ class TestMD(testGrape.TestGrape):
         self.setUpConflictingMerge()
         try:
             self.assertNotEqual(git.shortSHA(), git.shortSHA("master"))
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--am"])
+            ret = self.menu.applyMenuChoice("md", ["--am"])
             self.assertFalse(ret, "grape m did not return false as expected for a conflict")
             # resolve the conflict
 
@@ -80,7 +77,7 @@ class TestMD(testGrape.TestGrape):
             git.checkout("--ours f2")
             git.add("f2")            
 
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
+            ret = self.menu.applyMenuChoice("md", ["--continue"])
             self.assertTrue(ret, "grape md --continue did not return True\n%s" % self.output.getvalue())
             self.assertTrue(git.isWorkingDirectoryClean(), "grape m --continue did not finish merge\n%s" %
                                                            self.output.getvalue())
@@ -153,7 +150,7 @@ class TestMD(testGrape.TestGrape):
     def testNonConflictingSubmoduleMerge_MD(self):
         try:
             self.setUpNonConflictingSubmoduleMerge()
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--am"])
+            ret = self.menu.applyMenuChoice("md", ["--am"])
             self.assertTrue(ret, "grape md did not return true for submodule merge.")
 
             # the submodule should not be modified
@@ -175,7 +172,7 @@ class TestMD(testGrape.TestGrape):
     def testNonConflictingSubmoduleMerge(self):
         try:
             self.setUpNonConflictingSubmoduleMerge()
-            ret = grapeMenu.menu().applyMenuChoice("m", ["master", "--am"])
+            ret = self.menu.applyMenuChoice("m", ["master", "--am"])
             self.assertTrue(ret, "grape m did not return true for submodule merge.")
 
             # the submodule should not be modified
@@ -198,7 +195,7 @@ class TestMD(testGrape.TestGrape):
         try:
             self.setUpConflictingSubmoduleMerge()
             subPath = os.path.join(self.repo, "submodule1")
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--am"])
+            ret = self.menu.applyMenuChoice("md", ["--am"])
             self.assertFalse(ret, "grape md did not return False for conflicting merge.")
             # should only have modifications in submodule1, not conflicts
             status = git.status("--porcelain")
@@ -212,7 +209,7 @@ class TestMD(testGrape.TestGrape):
             git.add("f1")
             git.commit("-m \"resolved conflict with our f1\"")
             self.setUpConfig()
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
+            ret = self.menu.applyMenuChoice("md", ["--continue"])
 
             # test that we returned successfully
             self.assertTrue(ret, "grape md --continue did not complete successfully after resolving submodule conflict"
@@ -242,7 +239,7 @@ class TestMD(testGrape.TestGrape):
         try:
             self.setUpConflictingSubmoduleMerge()
             subPath = os.path.join(self.repo, "submodule1")
-            ret = grapeMenu.menu().applyMenuChoice("m", ["master", "--am"])
+            ret = self.menu.applyMenuChoice("m", ["master", "--am"])
             self.assertFalse(ret, "grape m did not return False for conflicting merge.")
             # should only have modifications in submodule1, not conflicts
             status = git.status("--porcelain")
@@ -256,7 +253,7 @@ class TestMD(testGrape.TestGrape):
             git.add("f1")
             git.commit("-m \"resolved conflict with our f1\"")
             self.setUpConfig()
-            ret = grapeMenu.menu().applyMenuChoice("m", ["--continue"])
+            ret = self.menu.applyMenuChoice("m", ["--continue"])
 
             # test that we returned successfully
             self.assertTrue(ret, "grape m --continue did not complete successfully after resolving submodule conflict"
@@ -311,7 +308,7 @@ class TestMD(testGrape.TestGrape):
         os.chdir(self.repo)
         # run grape m --am - this helps ensure m is following same code path as md. 
         try:
-            ret = grapeMenu.menu().applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
+            ret = self.menu.applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
         except SystemExit as e: 
             self.assertTrue(False, "grape m raised exception %s" % e)
         self.assertFalse(ret, "grape m did not return False for conflicting merge.")
@@ -330,7 +327,7 @@ class TestMD(testGrape.TestGrape):
         self.assertNotIn("AA", status, "conflict not resolved after staging f1")
         
         # continue the merge
-        ret = grapeMenu.menu().applyMenuChoice("m", ["--continue"])
+        ret = self.menu.applyMenuChoice("m", ["--continue"])
         self.assertTrue(ret, "m didn't return successfully after conflict resolution")
         os.chdir(self.subproject)
 
@@ -349,7 +346,7 @@ class TestMD(testGrape.TestGrape):
         os.chdir(self.repo)
         # run grape md --am
         try:
-            ret = grapeMenu.menu().applyMenuChoice("md", ["--am", "--public=master"], globalArgs=["-v"])
+            ret = self.menu.applyMenuChoice("md", ["--am", "--public=master"], globalArgs=["-v"])
         except SystemExit as e: 
             self.assertTrue(False, "grape md raised exception %s" % e)
         self.assertFalse(ret, "grape md did not return False for conflicting merge.")
@@ -368,7 +365,7 @@ class TestMD(testGrape.TestGrape):
         self.assertNotIn("AA", status, "conflict not resolved after staging f1")
         
         # continue the merge
-        ret = grapeMenu.menu().applyMenuChoice("md", ["--continue"])
+        ret = self.menu.applyMenuChoice("md", ["--continue"])
         self.assertTrue(ret, "md didn't return successfully after conflict resolution")
         os.chdir(self.subproject)
 

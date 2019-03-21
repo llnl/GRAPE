@@ -2,11 +2,11 @@ import os
 import shutil
 import sys
 import tempfile
-import unittest
 import testGrape
 if os.path.pardir not in sys.path:
     sys.path.insert(0, os.path.pardir)
-from vine import grapeMenu, clone, grapeGit as git
+from vine import clone, grapeGit as git
+
 
 class TestClone(testGrape.TestGrape):
     def testClone(self):
@@ -101,5 +101,3 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")
         finally:
             shutil.rmtree(tempDir)
-
-

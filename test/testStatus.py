@@ -1,4 +1,3 @@
-
 import os
 import inspect
 import sys
@@ -7,15 +6,6 @@ import testGrape
 import testProjectScenarios
 import gridTesting
 
-curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-if not curPath in sys.path:
-    sys.path.insert(0, curPath)
-grapePath = os.path.join(curPath, "..")
-if grapePath not in sys.path:
-    sys.path.insert(0, grapePath)
-
-from vine import grapeMenu  
-from vine import grapeGit as git
 
 class GrapeStatusTester(testGrape.TestGrape): 
 
@@ -49,7 +39,6 @@ class GrapeStatusTester(testGrape.TestGrape):
             ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])
             self.assertTrue(ret, "status not consistent after a grape checkout of master")
 
-        
         if testProjectScenario.debugging() or debugging:
             self.switchToHiddenOutput()
 
@@ -60,4 +49,3 @@ def createStatusTester():
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
     gridTesting.gridifyTestClass(scenarios, GrapeStatusTester, names)
     return GrapeStatusTester
-    

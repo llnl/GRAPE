@@ -1,14 +1,14 @@
-import os, sys, StringIO, unittest
+import os
+import sys
 import testGrape
-if not ".." in sys.path:
-    sys.path.insert(0, "..")
-from vine import grapeMenu, utility, grapeGit as git, grapeConfig
+if os.path.pardir not in sys.path:
+    sys.path.insert(0, os.path.pardir)
 
 class TestConfig(testGrape.TestGrape):
     def testConfig(self):
         os.chdir(self.repo)
 
         self.queueUserInput(["\n", "\n", "\n", "\n"])
-        ret = grapeMenu.menu().applyMenuChoice("config")
+        ret = self.menu.applyMenuChoice("config")
         contents = self.output.getvalue()
         self.assertTrue(contents)

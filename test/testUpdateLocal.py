@@ -7,15 +7,6 @@ import testGrape
 import testProjectScenarios
 import gridTesting
 
-curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-if not curPath in sys.path:
-    sys.path.insert(0, curPath)
-grapePath = os.path.join(curPath, "..")
-if grapePath not in sys.path:
-    sys.path.insert(0, grapePath)
-
-from vine import grapeMenu  
-from vine import grapeGit as git
 
 class GrapeUpTester(testGrape.TestGrape): 
 
@@ -28,7 +19,7 @@ class GrapeUpTester(testGrape.TestGrape):
         os.chdir(testProjectScenario.getProjectDir())
         # make sure the output is captured so we can check the number of fetches that occur
 
-        ret = grapeMenu.menu().applyMenuChoice("up", args=None, option_args=None, globalArgs=['-v'])
+        ret = self.menu.applyMenuChoice("up", args=None, option_args=None, globalArgs=['-v'])
         self.assertTrue(ret, "up failed to run")
         # NOTE The following counting of the number of fetches is incorrect
         #upoutput = "%s" % self.output.getvalue()

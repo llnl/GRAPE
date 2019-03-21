@@ -6,7 +6,6 @@ import testGrape
 if os.path.pardir not in sys.path:
     sys.path.insert(0, os.path.pardir)
 from vine import grape_errors
-from vine import grapeMenu
 from vine import grapeGit as git
 from vine import config_parser_global
 from vine.option import Option
