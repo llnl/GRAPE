@@ -2,7 +2,7 @@ import os
 import option
 import grape_errors
 import utility
-import global_state
+import vine_subprocess
 import multi_repo_cmd_launcher
 
 class ForEach(option.Option):
@@ -45,7 +45,7 @@ class ForEach(option.Option):
 def foreach(repo='', branch='', args={}):
     cmd = args["<cmd>"]
     with utility.cd(repo):
-        global_state.executeSubProcess(cmd, repo, verbose = -1)
+        vine_subprocess.executeSubProcess(cmd, repo, verbose = -1)
     return True
 
 def handleForeachMRE(mre):
@@ -53,7 +53,7 @@ def handleForeachMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            global_state.printMsg("Foreach failed.")
+            utility.printMsg("Foreach failed.")
             print e.gitCommand
             print e.cwd
             print e.gitOutput

@@ -6,7 +6,6 @@ import time
 
 import config_parser_global
 import config_parser_base
-import global_state
 import multi_repo_cmd_launcher
 import option
 import grapeGit as git
@@ -27,7 +26,7 @@ def handledCheckout(repo = '', branch = 'master', args = []):
                 # and allow the checkout to throw the exception.
                 pass
         git.checkout(checkoutargs + ' ' + branch)
-        global_state.printMsg("Checked out %s in %s" % (branch, repo))
+        utility.printMsg("Checked out %s in %s" % (branch, repo))
 
     return True
 
@@ -47,7 +46,7 @@ def handleCheckoutMRE(mre):
                 if "pathspec" in e.gitOutput:
                     createNewBranch = _createNewBranch
                     if _skipBranchCreation:
-                        global_state.printMsg("Skipping checkout of %s in %s" % (branch, project))
+                        utility.printMsg("Skipping checkout of %s in %s" % (branch, project))
                         createNewBranch = False
 
                     elif not createNewBranch:
@@ -68,14 +67,14 @@ def handleCheckoutMRE(mre):
                         continue
 
                 elif "already exists" in e.gitOutput:
-                    global_state.printMsg("Branch %s already exists in %s." % (branch, project))
+                    utility.printMsg("Branch %s already exists in %s." % (branch, project))
                     branchDescription = git.commitDescription(branch)
                     headDescription = git.commitDescription("HEAD")
                     if branchDescription == headDescription:
-                        global_state.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
+                        utility.printMsg("Branch %s and HEAD are the same. Switching to %s." % (branch, branch))
                         action = "k"
                     else:
-                        global_state.printMsg("Branch %s and HEAD are not the same." % branch)
+                        utility.printMsg("Branch %s and HEAD are not the same." % branch)
                         action = ''
                         valid = False
                         while not valid:
@@ -84,18 +83,18 @@ def handleCheckoutMRE(mre):
                                                        (branchDescription, headDescription), 'k')
                             valid = (action == 'k') or (action == 'f')
                             if not valid:
-                                global_state.printMsg("Invalid input. Enter k or f. ")
+                                utility.printMsg("Invalid input. Enter k or f. ")
                     if action == 'k':
                         git.checkout(branch)
                     elif action == 'f':
                         git.checkout("-B %s" % branch)
                 elif "conflict" in e.gitOutput.lower():
-                    global_state.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
+                    utility.printMsg("CONFLICT occurred when pulling %s from origin." % branch)
                 elif "does not appear to be a git repository" in e.gitOutput.lower():
-                    global_state.printMsg("Remote 'origin' does not exist. "
+                    utility.printMsg("Remote 'origin' does not exist. "
                                      "This branch was not updated from a remote repository.")
                 elif "Couldn't find remote ref" in e.gitOutput:
-                    global_state.printMsg("Remote of %s does not have reference to %s. You may want to push this branch. " %(project, branch))
+                    utility.printMsg("Remote of %s does not have reference to %s. You may want to push this branch. " %(project, branch))
                 else:
                     raise e
 
@@ -106,7 +105,7 @@ def createNewBranches(repo='', branch='', args={}):
     project = repo
     checkoutargs = args["checkout"]
     with utility.cd(project):
-        global_state.printMsg("Creating new branch %s in %s." % (branch, project))
+        utility.printMsg("Creating new branch %s in %s." % (branch, project))
         git.checkout(checkoutargs+" -b "+branch)
         git.push("-u origin %s" % branch)
     return True
@@ -128,7 +127,7 @@ def branchAlreadyExists(branch, verbose = True):
     allBranches = set([b[len("remotes/origin/"):] if b.startswith("remotes/origin/") else b for b in git.allBranches()])
     if branch in allBranches:
         if verbose:
-            global_state.printMsg("Branch %s already exists!" % branch)
+            utility.printMsg("Branch %s already exists!" % branch)
         retVal = 1
     else:
         # make sure branch is not a case-insensitive match
@@ -136,7 +135,7 @@ def branchAlreadyExists(branch, verbose = True):
         for b in allBranches:
             if branch.lower() == b.lower():
                 if verbose:
-                    global_state.printMsg("Branch %s already exists!\n%s is a case insensitive match." % (b, branch))
+                    utility.printMsg("Branch %s already exists!\n%s is a case insensitive match." % (b, branch))
                 retVal = 2
     os.chdir(cwd)
     return retVal
@@ -183,7 +182,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                 if not dirIsEmpty and changedActive:
                     unpushed = git.log("--branches --not --remotes --oneline --decorate")
                 if unpushed:
-                    global_state.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
+                    utility.printMsg("You have unpushed changed in %s:\n%s" % (sub, unpushed))
                     clean = utility.userInput("Would you like to remove the submodule %s (this will discard your unpushed changes)?" % sub, 'n')
                 else:
                     clean = True
@@ -197,7 +196,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                     clean = True
             if clean:
                 os.chdir(workspaceDir)
-                global_state.printMsg("Removing clean submodule %s." % sub)
+                utility.printMsg("Removing clean submodule %s." % sub)
                 if not veryclean or changedActive:
                     shutil.rmtree(os.path.join(workspaceDir, sub))
                 if veryclean:
@@ -221,10 +220,10 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                                 shutil.rmtree(modulepath)
                 cleaned = True
         else:
-            global_state.printMsg("Unstaged / committed changes in %s, not removing." % sub)
+            utility.printMsg("Unstaged / committed changes in %s, not removing." % sub)
 
     except OSError as e:
-        global_state.printMsg("Warning in {0}: {1}".format(sub,e))
+        utility.printMsg("Warning in {0}: {1}".format(sub,e))
         pass
     os.chdir(cwd)
     return cleaned
@@ -283,7 +282,7 @@ class Checkout(option.Option):
 
             branchStatus = branchAlreadyExists(branch)
             if branchStatus:
-                global_state.printMsg("Not creating new branch.")
+                utility.printMsg("Not creating new branch.")
                 return False
         else:
             # check to see if we already have the branch
@@ -294,7 +293,7 @@ class Checkout(option.Option):
                     # otherwise fetch it
                     git.fetch("origin", "%s:%s" % (branch, branch))
                 except grape_errors.GrapeGitError as e:
-                    global_state.printMsg("Branch {0} could not be fetched in outer level repo:\n{1}\nUse grape checkout -b if you really want to create a new branch off of HEAD.".format(branch, e))
+                    utility.printMsg("Branch {0} could not be fetched in outer level repo:\n{1}\nUse grape checkout -b if you really want to create a new branch off of HEAD.".format(branch, e))
                     return False
 
             if config_parser_global.grapeConfig().getboolean(self.SECTION_WORKSPACE, "manageSubmodules"):
@@ -307,13 +306,13 @@ class Checkout(option.Option):
             # deinit and clean out any submodules that changed urls
             initiallyActiveSubmodules = git.getActiveSubmodules(workspaceDir)
             for sub in changedURLModules:
-                global_state.printMsg("url for %s changed, attempting to remove references for %s submodule." % (sub, "active" if sub in initiallyActiveSubmodules else "inactive") )
+                utility.printMsg("url for %s changed, attempting to remove references for %s submodule." % (sub, "active" if sub in initiallyActiveSubmodules else "inactive") )
                 cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules)
                 if not cleaned:
-                    global_state.printMsg("Failed to remove old submodule for %s." % sub)
+                    utility.printMsg("Failed to remove old submodule for %s." % sub)
                     return False
 
-        global_state.printMsg("Performing checkout of %s in outer level project." % branch)
+        utility.printMsg("Performing checkout of %s in outer level project." % branch)
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, [checkoutargs, sync])])
 
         if not launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)[0]:
@@ -371,7 +370,7 @@ class Checkout(option.Option):
                             os.chdir(workspaceDir)
                             shutil.rmtree(os.path.join(workspaceDir,projPrefix))
                     else:
-                        global_state.printMsg("Unstaged / committed changes in %s, not removing. \n"
+                        utility.printMsg("Unstaged / committed changes in %s, not removing. \n"
                                          "Note this project is NOT active in %s. " % (projPrefix, branch))
                         os.chdir(workspaceDir)
 
@@ -403,20 +402,20 @@ class Checkout(option.Option):
         # in case the user switches to a branch without corresponding branches in the submodules, make sure active submodules
         # are at the right commit before possibly creating new branches at the current HEAD.
         git.submodule("update")
-        global_state.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
+        utility.printMsg("Calling grape uv %s to ensure branches are consistent across all active subprojects and submodules." % ' '.join(uvArgs))
         config_parser_global.read()
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(workspaceDir)
 
         if sync:
-            global_state.printMsg("Switched to %s. Updating from remote...\n\t (use --sync=False or .grapeconfig.post-checkout.syncWithOrigin to change behavior.)" % branch)
+            utility.printMsg("Switched to %s. Updating from remote...\n\t (use --sync=False or .grapeconfig.post-checkout.syncWithOrigin to change behavior.)" % branch)
             if args["-b"]:
                 grapeMenu.menu().applyMenuChoice("push")
             else:
                 grapeMenu.menu().applyMenuChoice("pull")
         else:
-            global_state.printMsg("Switched to %s." % branch)
+            utility.printMsg("Switched to %s." % branch)
 
         global _skipBranchCreation
         global _createNewBranch

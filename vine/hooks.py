@@ -5,7 +5,6 @@ import option
 import utility
 import grape_errors
 import grapeGit as git
-import global_state
 import config_parser_base
 import config_parser_user
 
@@ -54,11 +53,11 @@ class InstallHooks(option.Option):
 
     def execute(self, args):
         workspaceDir = utility.workspaceDir()
-        global_state.printMsg("Installing hooks in %s." % workspaceDir)
+        utility.printMsg("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
         if not args["--noRecurse"]:
             for sub in getActiveSubprojects():
-                global_state.printMsg("Installing hooks in %s." % sub)
+                utility.printMsg("Installing hooks in %s." % sub)
                 self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
         return True
 
@@ -217,16 +216,16 @@ class RunHook(option.Option):
     def postMerge(args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            global_state.printMsg("Post-Merge Hook: Syncing submodule URLs...")
+            utility.printMsg("Post-Merge Hook: Syncing submodule URLs...")
             git.submodule("--quiet sync")
-            global_state.printMsg("Post-Merge Hook: Updating submodules...")
+            utility.printMsg("Post-Merge Hook: Updating submodules...")
             git.submodule("--quiet update --merge")
 
     @staticmethod
     def postCheckout(args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            global_state.printMsg("Post-Checkout Hook: Syncing submodule URLs...")
+            utility.printMsg("Post-Checkout Hook: Syncing submodule URLs...")
             git.submodule("--quiet sync")
-            global_state.printMsg("Post-Checkout Hook: Updating submodules...")
+            utility.printMsg("Post-Checkout Hook: Updating submodules...")
             git.submodule("--quiet update")

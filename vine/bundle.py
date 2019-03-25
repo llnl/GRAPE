@@ -160,20 +160,20 @@ def bundlecmd(repo='', branch='', args={}):
             try:
                 currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
             except:
-                global_state.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
+                utility.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
                 currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
                     git.shortSHA(tagname)
                     revlists = " %s..%s" % (tagname, branch)
                 except:
-                    global_state.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
+                    utility.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
                     revlists = " %s" % (branch)
                 bundlename = args["--outfile"]
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
-                global_state.printMsg("creating bundle %s in %s" % (bundlename, reponame))
+                utility.printMsg("creating bundle %s in %s" % (bundlename, reponame))
                 git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
     return True
 
@@ -182,7 +182,7 @@ def bundlecmdMRE(mre):
     try:
         raise mre
     except  grape_errors.MultiRepoException as errors:
-        global_state.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
+        utility.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
             print b, e
 

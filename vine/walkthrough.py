@@ -8,7 +8,6 @@ import grapeGit as git
 import utility
 import re
 import threading
-import global_state
 from option import Option
 
 try:
@@ -69,7 +68,7 @@ class Walkthrough(Option):
 
     def execute(self,args):
         if TkinterImportError:
-            global_state.printMsg("grape w requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
+            utility.printMsg("grape w requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
             return True
         config = config_parser_global.grapeConfig()
         difftool = args["--difftool"]
@@ -194,7 +193,7 @@ class ProjectManager(object):
         self.projpanel.pack(fill=Tk.BOTH, expand=1)
 
         # Populate subproject navigation list
-        global_state.printMsg("Populating projects list...")
+        utility.printMsg("Populating projects list...")
 
         self.projects = []
         self.projstatus = []
@@ -262,7 +261,7 @@ class ProjectManager(object):
                 self.projstatus.append(status)
                 self.projtype.append("Subtree")
 
-        global_state.printMsg("Done.")
+        utility.printMsg("Done.")
 
         # Resize the project pane based on its contents
         self.projlistwidth = 0
@@ -338,11 +337,11 @@ class DiffManager(ProjectManager):
                 pass
 
             if difftool == "vimdiff":
-                global_state.printMsg("Using gvimdiff instead of vimdiff.")
+                utility.printMsg("Using gvimdiff instead of vimdiff.")
                 difftool = "gvimdiff"
 
         if difftool not in validDiffTools:
-            global_state.printMsg("Using default difftool.")
+            utility.printMsg("Using default difftool.")
             self.difftool = "default difftool"
             self.difftoolarg = ""
         else:
@@ -381,15 +380,15 @@ class DiffManager(ProjectManager):
         changedFiles = None
 
         if self.showToplevel or len(self.submodules) > 0:
-            global_state.printMsg("Gathering status in outer level project...")
+            utility.printMsg("Gathering status in outer level project...")
             changedFiles = git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()
-            global_state.printMsg("Done.")
+            utility.printMsg("Done.")
 
         # Get the url mapping for all submodules
         if len(self.submodules) > 0:
             submoduleURLMap = git.getAllSubmoduleURLMap()
 
-        global_state.printMsg("Examining projects...")
+        utility.printMsg("Examining projects...")
 
         os.chdir(utility.workspaceDir())
         # Loop over list backwards so we can delete entries
@@ -413,16 +412,16 @@ class DiffManager(ProjectManager):
                     pass
                 else:
                     os.chdir(os.path.join(utility.workspaceDir(), dir))
-                    global_state.printMsg("Gathering status in %s..." % dir)
+                    utility.printMsg("Gathering status in %s..." % dir)
                     try:
                         haveDiff = len(git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()) > 0
                     except grape_errors.GrapeGitError as e:
                         if "unknown revision or path not in the working tree" in e.gitOutput:
-                            global_state.printMsg("Could not diff %s.  Branch may not exist in %s." % (self.diffBranchSpec(self.branchA, self.branchB), dir))
+                            utility.printMsg("Could not diff %s.  Branch may not exist in %s." % (self.diffBranchSpec(self.branchA, self.branchB), dir))
                         else:
                             raise
                         haveDiff = False
-                    global_state.printMsg("Done.")
+                    utility.printMsg("Done.")
                     os.chdir(utility.workspaceDir())
                 pass
             elif type.endswith("Subtree"):
@@ -440,7 +439,7 @@ class DiffManager(ProjectManager):
             else:
                 self.removeProjectEntry(index)
 
-        global_state.printMsg("Done.")
+        utility.printMsg("Done.")
 
         self.filepanelabel.set("Double click to launch %s" % self.difftool)
         if len(self.projects) > 0:
@@ -563,4 +562,4 @@ class DiffManager(ProjectManager):
                 cmd += "\"%s\"" % file
             difftooloutput = git.gitcmd(cmd, "Failed to launch difftool")
         except grape_errors.GrapeGitError as e:
-            global_state.printMsg("%s (return code %d)\n%s" % (e.msg, e.returnCode, e.gitOutput))
+            utility.printMsg("%s (return code %d)\n%s" % (e.msg, e.returnCode, e.gitOutput))

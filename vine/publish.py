@@ -14,7 +14,7 @@ import utility
 import grape_errors
 import grapeGit as git
 import grapeMenu
-import global_state
+import vine_subprocess
 import config_parser_global
 import config_parser_user
 import option
@@ -317,13 +317,13 @@ class Publish(resumable.Resumable, option.Option):
         super(Publish, self)._resume(args)
         branch = git.currentBranch()
         if self.progress["startingSHA"] != git.SHA(branch):
-            global_state.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
+            utility.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
                                                                               git.SHA(branch)))
             revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
             if revert:
                 git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
         # release IN PROGRESS LOCK
-        global_state.printMsg("Releasing In Progress Lock")
+        utility.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
 
     @staticmethod
@@ -361,7 +361,7 @@ class Publish(resumable.Resumable, option.Option):
 
         if startPoint:
             if startPoint not in self.order:
-                global_state.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, self.order))
+                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, self.order))
                 return False
         else:
             startPoint = self.order[0]
@@ -370,7 +370,7 @@ class Publish(resumable.Resumable, option.Option):
 
         if stopPoint:
             if stopPoint not in self.order:
-                global_state.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (stopPoint, self.order))
+                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (stopPoint, self.order))
                 return False
 
         steps = {"build": self.performCustomBuildStep,
@@ -403,7 +403,7 @@ class Publish(resumable.Resumable, option.Option):
             if step == "done":
                 break
             if step == stopPoint:
-                global_state.printMsg("Stopping at %s step as requested." % stopPoint)
+                utility.printMsg("Stopping at %s step as requested." % stopPoint)
                 args["--startAt"] = step
                 self.dumpProgress(args)
                 return True
@@ -432,7 +432,7 @@ class Publish(resumable.Resumable, option.Option):
         return True
 
     def bailOut(self, step, args):
-        global_state.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
+        utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
                          "grape publish --continue" % step.upper())
         args["--startAt"] = step
         self.dumpProgress(args)
@@ -441,9 +441,9 @@ class Publish(resumable.Resumable, option.Option):
     def ensureModifiedSubmodulesAreActive(self, args):
         missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"], includeAdded=True)
         if missing:
-            global_state.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")
-            global_state.printMsg(','.join(missing))
+            utility.printMsg(','.join(missing))
             return False
         return True
 
@@ -454,7 +454,7 @@ class Publish(resumable.Resumable, option.Option):
     @staticmethod
     def markReview(args, newArgs, skipStr, updateOnly=True):
         if args["--noReview"]:
-            global_state.printMsg(skipStr)
+            utility.printMsg(skipStr)
             return True
         reviewArgs = args["-R"]
         finalArgs = []
@@ -469,13 +469,13 @@ class Publish(resumable.Resumable, option.Option):
         return grapeMenu.menu().applyMenuChoice("review", finalArgs)
 
     def markReviewAsInProgress(self, args):
-        global_state.printMsg("Prepending pull request title with **IN PROGRESS**...")
+        utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
         return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend"], "Skipping marking pull request "
                                                                                 "as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
         version = self.progress["version"]
-        global_state.printMsg("Prepending pull request title with %s" % version)
+        utility.printMsg("Prepending pull request title with %s" % version)
         return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
                                                                               "version number")
 
@@ -489,7 +489,7 @@ class Publish(resumable.Resumable, option.Option):
     @staticmethod
     def checkInProgressLock(args):
         if args["--noReview"]:
-            global_state.printMsg("Skipping In Progress Lock Check..")
+            utility.printMsg("Skipping In Progress Lock Check..")
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
@@ -502,25 +502,25 @@ class Publish(resumable.Resumable, option.Option):
                 if doesConflict:
                     inProgressRequests.append(request)
         if len(inProgressRequests) == 0:
-            global_state.printMsg("No other pull requests are IN PROGRESS...")
+            utility.printMsg("No other pull requests are IN PROGRESS...")
             return True
         elif len(inProgressRequests) == 1:
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if thisRequest == inProgressRequests[0]:
-                global_state.printMsg("The pull request for this branch is already in progress. Continuing...")
+                utility.printMsg("The pull request for this branch is already in progress. Continuing...")
                 return 2
             else:
-                global_state.printMsg("The following pull request is already in progress:")
+                utility.printMsg("The following pull request is already in progress:")
                 print(inProgressRequests[0])
                 return False
         else:
-            global_state.printMsg("ERROR: There are multiple pull requests in progress!")
+            utility.printMsg("ERROR: There are multiple pull requests in progress!")
             for request in inProgressRequests:
                 print request
             return False
     def acquireInProgressLock(self, args):
         if args["--noReview"]:
-            global_state.printMsg("Skipping In Progress Lock Check..")
+            utility.printMsg("Skipping In Progress Lock Check..")
             return True
         retcode = self.checkInProgressLock(args)
         if retcode:
@@ -531,7 +531,7 @@ class Publish(resumable.Resumable, option.Option):
 
     def releaseInProgressLock(self, args):
         if args["--noReview"]:
-            global_state.printMsg("Skipping In Progress Lock Release...")
+            utility.printMsg("Skipping In Progress Lock Release...")
             return True
 
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
@@ -549,12 +549,12 @@ class Publish(resumable.Resumable, option.Option):
             title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
             return self.markReview(args, ["--title=%s" % title, "--state=%s" % state], "")
         else:
-            global_state.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
+            utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
-            global_state.printMsg("Skipping verification of code review...")
+            utility.printMsg("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
             return True
         atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
@@ -566,11 +566,11 @@ class Publish(resumable.Resumable, option.Option):
             reviewers = pullRequest.reviewers()
             if not verified:
                 if not reviewers:
-                    global_state.printMsg("There are no reviewers for your pull request for %s targeting %s." %
+                    utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
                                      (args["--topic"], args["--public"]))
                     self.progress["reviewers"] = "No reviewers"
                 else:
-                    global_state.printMsg("The following reviewers have not approved your request:\n")
+                    utility.printMsg("The following reviewers have not approved your request:\n")
                     approvedReviewerNames = []
                     for reviewer in reviewers:
                         if reviewer[1] is False:
@@ -582,12 +582,12 @@ class Publish(resumable.Resumable, option.Option):
                     else:
                         self.progress["reviewers"] = "No reviewers"
             else:
-                global_state.printMsg("All reviewers have approved your request.")
+                utility.printMsg("All reviewers have approved your request.")
                 if args["--user"] != pullRequest.author():
                     reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
-            global_state.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
+            utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
                              "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
                                                         args["--repo"], "pull-requests"])))
             self.progress["reviewers"] = "No reviewers"
@@ -595,7 +595,7 @@ class Publish(resumable.Resumable, option.Option):
 
     @staticmethod
     def testForCleanWorkspace(args):
-        global_state.printMsg("Checking to make sure workspace has a clean status.")
+        utility.printMsg("Checking to make sure workspace has a clean status.")
         with utility.cd(utility.workspaceDir()):
             ret = utility.isWorkspaceClean(printOutput=True)
             ret = grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"]) and ret
@@ -604,7 +604,7 @@ class Publish(resumable.Resumable, option.Option):
                 topic = args["--topic"]
                 ret = ret and cb == topic
                 if not ret:
-                    global_state.printMsg("Current branch %s is not topic branch %s. Please checkout %s before publishing. " % (cb, topic, topic))
+                    utility.printMsg("Current branch %s is not topic branch %s. Please checkout %s before publishing. " % (cb, topic, topic))
         return ret
 
     def performCustomStep(self, prefix, args):
@@ -615,7 +615,7 @@ class Publish(resumable.Resumable, option.Option):
             os.chdir(os.path.join(utility.workspaceDir(), args["--%sDir" % prefix]))
         cmds = args["--%sCmds" % prefix].split(',')
         ret = True
-        global_state.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
+        utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
         for cmd in cmds:
             if ret:
                 if "<version>" in cmd:
@@ -625,8 +625,8 @@ class Publish(resumable.Resumable, option.Option):
                 if "<public>" in cmd:
                     cmd = cmd.replace("<public>", args["--public"])
 
-                returnCode = global_state.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd(),
-                                                            stream=True).returncode
+                returnCode = vine_subprocess.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd(),
+                                                               stream=True).returncode
                 print(returnCode)
                 ret = ret and (returnCode == 0)
                 if not ret:
@@ -744,25 +744,25 @@ class Publish(resumable.Resumable, option.Option):
 
             except IOError as e:
                 print(e.message)
-                global_state.printMsg("Could not read contents of %s" % commitMsgFile)
+                utility.printMsg("Could not read contents of %s" % commitMsgFile)
                 args["<CommitMessageFile>"] = False
                 return False
 
             if not args["--noReview"]:
-                global_state.printMsg("Updating Pull Request with commit msg...")
+                utility.printMsg("Updating Pull Request with commit msg...")
                 self.markReview(args, ["--descr", commitMsgFile], "")
             else:
-                global_state.printMsg("Skipping update of pull request description from commit message")
+                utility.printMsg("Skipping update of pull request description from commit message")
         elif args["-m"]:
             commitMsg = [args["-m"]+"\n"]
         else:
             if args["--noReview"]:
-                global_state.printMsg("Skipping retrieval of commit message from Pull Request description..")
+                utility.printMsg("Skipping retrieval of commit message from Pull Request description..")
                 if not args["-m"]:
                     print("File with commit message is required argument when publishing with --noReview and no -m "
                           "<msg> defined.")
                     return False
-            global_state.printMsg("Retrieving pull request description for use as commit message...")
+            utility.printMsg("Retrieving pull request description for use as commit message...")
             atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
@@ -778,16 +778,16 @@ class Publish(resumable.Resumable, option.Option):
         if escapedCommitMsg:
             args["-m"] = escapedCommitMsg
         else:
-            global_state.printMsg("WARNING: Commit message is empty. ")
+            utility.printMsg("WARNING: Commit message is empty. ")
 
-        global_state.printMsg("The following commit message will be used for email notification, merge commits, etc.\n"
+        utility.printMsg("The following commit message will be used for email notification, merge commits, etc.\n"
                          "======================================================================")
         print ''.join(commitMsg[:10])
         print "======================================================================"
         proceed = utility.userInput("Is the above message what you want for email notifications and merge commits? "
                                     "['y','n']", 'y')
         if not proceed:
-            global_state.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
+            utility.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
             e = Exception()
             e.message = "Invalid commit message."
@@ -840,7 +840,7 @@ class Publish(resumable.Resumable, option.Option):
             menu.applyMenuChoice("version", versionArgs)
             currentVer = grapeMenu.menu().getOption("version").ver
             if currentVer in requestTitle:
-                global_state.printMsg("Current Version string already in pull request title. Assuming this is from "
+                utility.printMsg("Current Version string already in pull request title. Assuming this is from "
                 "a previous call to grape publish. Not ticking version again.")
                 return True
         ret = True
@@ -907,11 +907,11 @@ class Publish(resumable.Resumable, option.Option):
             mf.write('\n'.join(emailFooter))
 
         if not args["--emailNotification"].lower() == "true":
-            global_state.printMsg("Skipping E-mail notification..")
+            utility.printMsg("Skipping E-mail notification..")
             with open(mailfile, 'r') as mf:
-                global_state.printMsg("-- Begin update message --")
-                global_state.printMsg(mf.read())
-                global_state.printMsg("-- End update message --")
+                utility.printMsg("-- Begin update message --")
+                utility.printMsg(mf.read())
+                utility.printMsg("-- End update message --")
             return True
 
         # Open the file back up and attach it to a MIME message
@@ -939,7 +939,7 @@ class Publish(resumable.Resumable, option.Option):
         try:
             s = smtplib.SMTP("nospam.llnl.gov", timeout=10)
         except socket.error, e:
-            global_state.printMsg("Failed to email: %s" % str(e))
+            utility.printMsg("Failed to email: %s" % str(e))
             return False
 
         # Don't need to connect if we specified the
@@ -968,7 +968,7 @@ class Publish(resumable.Resumable, option.Option):
     def deleteTopicBranch(self, args):
         self.askWhetherToDelete(args)
         if self.doDelete[args["--topic"]]:
-            global_state.printMsg("Deleting %s" % args["--topic"])
+            utility.printMsg("Deleting %s" % args["--topic"])
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
@@ -1004,7 +1004,7 @@ class Publish(resumable.Resumable, option.Option):
                                                         isNested=isNested)
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
-            global_state.printMsg("remotely merging %s into %s" % (topic, public))
+            utility.printMsg("remotely merging %s into %s" % (topic, public))
             if pr.merge():
                 git.checkout(public)
                 git.pull("")
@@ -1012,9 +1012,9 @@ class Publish(resumable.Resumable, option.Option):
                 print("You are currently on %s" % public)
                 return True
             else:
-                global_state.printMsg("Failed to do a remote merge.")
+                utility.printMsg("Failed to do a remote merge.")
         else:
-            global_state.printMsg("Could not find open Pull Request for %s in %s" % (topic, repo))
+            utility.printMsg("Could not find open Pull Request for %s in %s" % (topic, repo))
         return False
 
     @staticmethod
@@ -1083,7 +1083,7 @@ class Publish(resumable.Resumable, option.Option):
                 status[mergeID] = "MERGED"
             except grape_errors.GrapeGitError as e:
                 if "conflict" in e.gitOutput.lower():
-                    global_state.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
+                    utility.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
                                      "Please use git mergetool to resolve, and then git commit to commit your changes.\n"
                                      "Once done, please run grape publish --continue ."% (public, branch, repo))
                 return False
@@ -1091,10 +1091,10 @@ class Publish(resumable.Resumable, option.Option):
         if status[mergeID] == "MERGING":
             clean = self.testForCleanWorkspace(args)
             if clean:
-                global_state.printMsg("Resuming with cascades...")
+                utility.printMsg("Resuming with cascades...")
                 status[mergeID] = "MERGED"
             if not clean:
-                global_state.printMsg("Workspace not clean after resuming from a cascade.\n"
+                utility.printMsg("Workspace not clean after resuming from a cascade.\n"
                                  "Please commit your merge resolution or otherwise clean up your workspace.")
                 return False
         if status[mergeID] == "MERGED":
@@ -1157,10 +1157,10 @@ class Publish(resumable.Resumable, option.Option):
                     if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
                         return
                     else:
-                        global_state.printMsg("Bitbucket seems to think %s in %s is not mergeable... aborting" % (topic, repo))
+                        utility.printMsg("Bitbucket seems to think %s in %s is not mergeable... aborting" % (topic, repo))
                         raise Exception
                 except stashyErrors.GenericException as e:
-                    global_state.printMsg("WARNING: Remote merge failed. Attempting local merge instead.")
+                    utility.printMsg("WARNING: Remote merge failed. Attempting local merge instead.")
                     self.merge(public, topic, repo, args)
             else:
                 self.merge(public, topic, repo, args)
@@ -1175,7 +1175,7 @@ class Publish(resumable.Resumable, option.Option):
                     git.push("-u origin HEAD", throwOnFail=True)
             except grape_errors.GrapeGitError as e:
                 if e.commError:
-                    global_state.printMsg("Unable to push result of publish to origin due to connectivity issue.")
+                    utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
                 raise e
 
 
@@ -1357,7 +1357,7 @@ class Publish(resumable.Resumable, option.Option):
                 if proceed:
                     squash = "--squash" if config.get(self.SECTION_SUBTREES, "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        global_state.printMsg("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
+                        utility.printMsg("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
                                                                               self.st_remotes[st], self.st_branches[st]))
 
                         try:
@@ -1365,12 +1365,12 @@ class Publish(resumable.Resumable, option.Option):
                                                                                  self.st_remotes[st],  self.st_branches[st]))
                         except grape_errors.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
-                            global_state.printMsg("First attempt failed. Attempting a subtree pull then push...")
+                            utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
                             git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st]))
                             git.subtree("push --prefix=%s %s %s " % ( self.st_prefixes[st],
                                                                                  self.st_remotes[st], self.st_branches[st]))
-                            global_state.printMsg("Succeeded!")
+                            utility.printMsg("Succeeded!")
 
 
 

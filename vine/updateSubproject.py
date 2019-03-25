@@ -4,7 +4,6 @@ import config_parser_global
 from option import Option
 import utility
 import grapeGit as git
-import global_state
 
 """        
                     
@@ -41,7 +40,7 @@ class UpdateSubproject(Option):
         clean = git.isWorkspaceClean()
         os.chdir(utility.workspaceDir())
         if not clean:
-            global_state.printMsg("git-subtree requires a clean working tree before attempting a subtree update")
+            utility.printMsg("git-subtree requires a clean working tree before attempting a subtree update")
             return False
         name = args["--name"]
         branch = args["--branch"]

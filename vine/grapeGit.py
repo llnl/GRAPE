@@ -5,7 +5,7 @@ import shutil
 import ConfigParser
 import StringIO
 import grape_errors
-import global_state
+import vine_subprocess
 
 
 def gitcmd(cmd, errmsg):
@@ -27,7 +27,7 @@ def gitcmd(cmd, errmsg):
         _cmd = "git %s" % cmd
 
     cwd = os.getcwd()
-    process = global_state.executeSubProcess(_cmd, cwd, verbose=-1)
+    process = vine_subprocess.executeSubProcess(_cmd, cwd, verbose=-1)
     if process.returncode != 0:
         raise grape_errors.GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, cwd=cwd)
     return process.output.strip()
@@ -155,7 +155,7 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
             if "fatal: Couldn't find remote ref" in e.gitOutput:
                 raise e
             if warnOnCommError:
-                global_state.printMsg("WARNING: could not fetch due to communication error.")
+                utility.printMsg("WARNING: could not fetch due to communication error.")
             if raiseOnCommError:
                 raise e
             else:
@@ -251,7 +251,7 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
             modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
     except grape_errors.GrapeGitError as e:
         if "bad revision" in e.gitOutput:
-            global_state.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+            utility.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
             return []
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
@@ -357,7 +357,7 @@ def pull(args, throwOnFail=False):
         return gitcmd("pull %s" % args, "Pull failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            global_state.printMsg("WARNING: Pull failed due to connectivity issues.")
+            utility.printMsg("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -372,7 +372,7 @@ def push(args, throwOnFail = False):
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            global_state.printMsg("WARNING: Push failed due to connectivity issues.")
+            utility.printMsg("WARNING: Push failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -408,18 +408,18 @@ def safeForceBranchToOriginRef(branchToSync):
             continue
 
     if branchExists and not remoteRefExists:
-        global_state.printMsg("origin does not have branch %s" % branchToSync)
+        utility.printMsg("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch():
-                global_state.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
+                utility.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 try:
                     pull("origin %s" % branchToSync, throwOnFail=True)
                 except:
-                    global_state.printMsg("Can't pull %s. Aborting...")
+                    utility.printMsg("Can't pull %s. Aborting...")
                     return False
             else:
                 branch("-f %s %s" % (branchToSync, remoteRef))
@@ -429,7 +429,7 @@ def safeForceBranchToOriginRef(branchToSync):
         else:
             return False
     if not branchExists and remoteRefExists:
-        global_state.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
+        utility.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
         branch("%s %s" % (branchToSync, remoteRef))
         return True
 
@@ -452,7 +452,7 @@ def showRemote():
         return gitcmd("remote show origin", "unable to show remote")
     except grape_errors.GrapeGitError as e:
         if e.code == 128:
-            global_state.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
+            utility.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
             return e.gitOutput
         else:
             raise e

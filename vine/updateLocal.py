@@ -3,7 +3,6 @@ import os
 import grape_errors
 import grapeGit as git
 import config_parser_global
-import global_state
 import multi_repo_cmd_launcher
 import utility
 
@@ -97,13 +96,13 @@ def fetchLocal(repo='unknown', branch='master'):
                         toFetch.append(b)
                 else:
                     try:
-                        global_state.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
+                        utility.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
                         git.pull("origin %s" % currentBranch)
                     except grape_errors.GrapeGitError:
                         print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
             try:
                 if toFetch:
-                    global_state.printMsg("updating %s in %s" % (','.join(toFetch), repo))
+                    utility.printMsg("updating %s in %s" % (','.join(toFetch), repo))
                     git.fetch(fetchArgs)
             except grape_errors.GrapeGitError as e:
                 # let non-fast-forward fetches slide

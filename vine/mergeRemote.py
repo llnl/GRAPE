@@ -1,7 +1,6 @@
 import option
 import utility
 import grape_errors
-import global_state
 import grapeGit as git
 import merge
 import multi_repo_cmd_launcher
@@ -56,7 +55,7 @@ class MergeRemote(option.Option):
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
 
         # make sure remote references are up to date
-        global_state.printMsg("Fetching remote references in all projects...")
+        utility.printMsg("Fetching remote references in all projects...")
         try:
             multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as mre:
@@ -68,7 +67,7 @@ class MergeRemote(option.Option):
                     commError = True
 
             if commError:
-                global_state.printMsg("ERROR: can't communicate with remotes for %s. Halting remote merge." % commErrorRepos)
+                utility.printMsg("ERROR: can't communicate with remotes for %s. Halting remote merge." % commErrorRepos)
                 return False
 
 
@@ -81,7 +80,7 @@ class MergeRemote(option.Option):
         remoteUpToDateWithLocal = git.branchUpToDateWith("remotes/origin/%s" % otherBranch, otherBranch)
         updateLocal =  hasRemote and  (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
         if  updateLocal:
-            global_state.printMsg("updating local branch %s from %s" % (otherBranch, "origin/%s" % otherBranch))
+            utility.printMsg("updating local branch %s from %s" % (otherBranch, "origin/%s" % otherBranch))
             multi_repo_cmd_launcher.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
 
         args["<branch>"] = otherBranch if updateLocal else "origin/%s" % otherBranch
@@ -101,12 +100,12 @@ def fetchHelper():
     return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True)
 
 def updateBranchHelper(repo="unknown", branch="master"):
-    global_state.printMsg("Updating local reference to %s in %s" % (branch, repo))
+    utility.printMsg("Updating local reference to %s in %s" % (branch, repo))
     return git.fetch("origin %s:%s" % (branch, branch))
 
 def updateBranchHandleMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         if "Couldn't find remote ref" in e.gitOutput:
-            global_state.printMsg("Remote reference to %s not present in %s. Remote ref must be present in all active submodules to merge.\n\t"
+            utility.printMsg("Remote reference to %s not present in %s. Remote ref must be present in all active submodules to merge.\n\t"
                              "Either create placeholder branches or deactivate submodules to resolve. " % (branch, repo))
     raise mre

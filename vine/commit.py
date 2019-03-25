@@ -3,7 +3,6 @@ import option
 import grapeGit as git
 import grape_errors
 import config_parser_user
-import global_state
 import utility
 
 class Commit(option.Option):
@@ -32,7 +31,7 @@ class Commit(option.Option):
             git.commit(commitargs)
             return True
         except grape_errors.GrapeGitError as e:
-            global_state.printMsg("Commit in %s failed. Perhaps there were no staged changes? Use -a to commit all modified files." % repo)
+            utility.printMsg("Commit in %s failed. Perhaps there were no staged changes? Use -a to commit all modified files." % repo)
             return False
 
     def execute(self, args):
@@ -54,15 +53,15 @@ class Commit(option.Option):
             os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain -uno")
             if subStatus:
-                global_state.printMsg("Committing in %s..." % sub)
+                utility.printMsg("Committing in %s..." % sub)
                 if self.commit(commitargs, sub) and stage:
                     os.chdir(wsDir)
-                    global_state.printMsg("Staging committed change in %s..." % sub)
+                    utility.printMsg("Staging committed change in %s..." % sub)
                     git.add(sub)
 
         os.chdir(wsDir)
         if submodules or git.status("--porcelain"):
-            global_state.printMsg("Performing commit in outer level project...")
+            utility.printMsg("Performing commit in outer level project...")
             self.commit(commitargs, wsDir)
         return True
 

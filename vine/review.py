@@ -8,7 +8,6 @@ import config_parser_global
 import config_parser_user
 import grapeGit as git
 import stashy.stashy as stashy
-import global_state
 
 
 # Prepare Feature Branch for review
@@ -125,7 +124,7 @@ class Review(option.Option):
         if not name:
             name = utility.getUserName()
             
-        global_state.printMsg("Logging onto %s" % args["--bitbucketURL"])
+        utility.printMsg("Logging onto %s" % args["--bitbucketURL"])
         if args["--test"]:
             bitbucket = Atlassian.TestAtlassian(name)
         else:
@@ -148,7 +147,7 @@ class Review(option.Option):
         os.chdir(wsDir)
 
         #ensure branch is pushed
-        global_state.printMsg("Pushing %s to bitbucket..." % branch)
+        utility.printMsg("Pushing %s to bitbucket..." % branch)
         git.push("origin %s" % branch)
         #target branch for outer level repo
         target_branch = args["--target"]
@@ -190,10 +189,10 @@ class Review(option.Option):
         ##  Submodule Repos
         missing = utility.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
         if missing:
-            global_state.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
                              "these submodules, you may need to do a grape md to proceed.")
-            global_state.printMsg(','.join(missing))
+            utility.printMsg(','.join(missing))
             return False        
         pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules")):
@@ -206,7 +205,7 @@ class Review(option.Option):
                     continue
                 # push branch
                 os.chdir(submodule)
-                global_state.printMsg("Pushing %s to bitbucket..." % branch)
+                utility.printMsg("Pushing %s to bitbucket..." % branch)
                 git.push("origin %s" % branch)
                 os.chdir(wsDir)
                 repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
@@ -254,16 +253,16 @@ class Review(option.Option):
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
             if not git.hasBranch(branch):
-                global_state.printMsg("Top level repository does not have a branch %s, not generating a Pull Request" % (branch))
+                utility.printMsg("Top level repository does not have a branch %s, not generating a Pull Request" % (branch))
                 return True
             if git.branchUpToDateWith(target_branch, branch):
-                global_state.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
+                utility.printMsg("%s up to date with %s, not generating a Pull Request in Top Level repo" % (target_branch, branch))
                 return True
             
                 
             repo_name = args["--repo"]
             repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
-            global_state.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
+            utility.printMsg("Posting pull request to %s,%s" % (project_name, repo_name))
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
             for link in pullRequestLinks:
@@ -275,7 +274,7 @@ class Review(option.Option):
                                          reviewers, 
                                          args)
                        
-            global_state.printMsg("Request generated/updated:\n\n%s" % request)
+            utility.printMsg("Request generated/updated:\n\n%s" % request)
         return True
 
     def setDefaultConfig(self, config):
@@ -322,7 +321,7 @@ def pullRequestAlreadyMerged(errorMessage):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
-    global_state.printMsg("Gathering active pull requests on %s" % branch)
+    utility.printMsg("Gathering active pull requests on %s" % branch)
     request = getReposPullRequest(repo, branch, target_branch, args)
 
     if not request:
@@ -331,23 +330,23 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             if not title:
                 title = branch
             try:
-                global_state.printMsg("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
+                utility.printMsg("Creating new pull request titled '%s' \n for branch %s targeting %s. " %
                       (title, branch, target_branch))
-                global_state.printMsg("reviewers: %s" % reviewers)
+                utility.printMsg("reviewers: %s" % reviewers)
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
                 url = request.link()
-                global_state.printMsg("Pull request created at %s ." % url)
+                utility.printMsg("Pull request created at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
-            global_state.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
+            utility.printMsg("No pull request from %s to %s to update" % (branch, target_branch))
 
     else:
         if not args["--add"]:
             # update the pull request
-            global_state.printMsg("Updating pull request...")
+            utility.printMsg("Updating pull request...")
             try:
 
                 if reviewers:
@@ -359,7 +358,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     reviewers += revList
                 if not reviewers: 
                     reviewers = [r[0] for r in request.reviewers()]
-                global_state.printMsg("reviewer list is: %s" % reviewers)
+                utility.printMsg("reviewer list is: %s" % reviewers)
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
@@ -377,16 +376,16 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
 
                 subReviewers = reviewers
                 if request.author() in subReviewers:
-                    global_state.printMsg("%s is the author of the pull request and cannot be a reviewer" % request.author())
+                    utility.printMsg("%s is the author of the pull request and cannot be a reviewer" % request.author())
                     subReviewers.remove(request.author())
                 if title is not None or descr is not None or subReviewers:
-                    global_state.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
+                    utility.printMsg("updating request with title=%s, description=%s, reviewers=%s" % (title, descr, subReviewers))
                     request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
-                    global_state.printMsg("Pull request updated at %s ." % url)
+                    utility.printMsg("Pull request updated at %s ." % url)
                 else:
                     url = request.link()
-                    global_state.printMsg("Pull request unchanged at %s ." % url)
+                    utility.printMsg("Pull request unchanged at %s ." % url)
             except stashy.errors.GenericException as e:
                 print("BITBUCKET: %s" % e.data["errors"][0]["message"])
                 print("BITBUCKET: %s" % e.data)
