@@ -1,5 +1,17 @@
 
 
+Mon Mar 25 13:29:56 2019 David Bloss
+v1.31.9
+Reviewers: Ben Liu, Peter Robinson
+
+Python 2.7 --> python 3.x upgrade blocked by cyclic dependencies that are uncovered while updating python's import system.
+The changes in this PR are a step toward unraveling those cyclic dependencies.
+
+The majority of changes here are motivated by increased cohesion (tighter grouping of responsibilities) and decoupling (Fewer dependencies. Dependencies that flow in one direction).
+
+@benliu and @probinso I am leaving notes in this PR explaining where code was moved and the underlying motivation where it may not be obvious. Once those are done I will email you both.
+
+
 Mon Mar 11 14:38:01 2019 David Bloss
 v1.31.8
 Reviewers: Ben Liu, Peter Robinson
