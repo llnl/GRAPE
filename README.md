@@ -917,21 +917,6 @@ options are at least listed below.
 
 
     
-## cv
-
-    grape cv: create a new custom view
-    Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]
-
-    Options:
-        --source=<repo>     Path to original clone.
-        --dest=<name>       Name of new workspace.
-        --destPath=<path>   Path (must exist) to place new workspace in.
-                            Full path to workspace will be <path>/<name>
-        --noSparse          Skips grape uv, does a vanilla checkout instead.
-    Arguments:
-        <uvargs>            Arguments to pass to grape uv. Note that if you are using the -f
-                            option, you should use an absolute path.
-    
 ## review
 
     grape review
