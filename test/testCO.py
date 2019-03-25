@@ -54,7 +54,6 @@ class TestCheckout(testGrape.TestGrape):
 
     def switchToMaster(self):
         self.menu.applyMenuChoice("checkout", ["master"])
-        self.menu.applyMenuChoice("checkout", ["master"])
 
     def switchToAddSubmodule(self):
         self.menu.applyMenuChoice("checkout", ["addSubmodule"])
