@@ -5,6 +5,7 @@ import shutil
 import ConfigParser
 import StringIO
 import grape_errors
+import vine_logging
 import vine_subprocess
 
 
@@ -155,7 +156,7 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
             if "fatal: Couldn't find remote ref" in e.gitOutput:
                 raise e
             if warnOnCommError:
-                utility.printMsg("WARNING: could not fetch due to communication error.")
+                vine_logging.printMsg("WARNING: could not fetch due to communication error.")
             if raiseOnCommError:
                 raise e
             else:
@@ -251,7 +252,7 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
             modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
     except grape_errors.GrapeGitError as e:
         if "bad revision" in e.gitOutput:
-            utility.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+            vine_logging.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
             return []
     if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
         return []
@@ -357,7 +358,7 @@ def pull(args, throwOnFail=False):
         return gitcmd("pull %s" % args, "Pull failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            utility.printMsg("WARNING: Pull failed due to connectivity issues.")
+            vine_logging.printMsg("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -372,7 +373,7 @@ def push(args, throwOnFail = False):
         return gitcmd("push --porcelain %s" % args, "Push failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            utility.printMsg("WARNING: Push failed due to connectivity issues.")
+            vine_logging.printMsg("WARNING: Push failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -408,18 +409,18 @@ def safeForceBranchToOriginRef(branchToSync):
             continue
 
     if branchExists and not remoteRefExists:
-        utility.printMsg("origin does not have branch %s" % branchToSync)
+        vine_logging.printMsg("origin does not have branch %s" % branchToSync)
         return False
     if branchExists and remoteRefExists:
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch():
-                utility.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
+                vine_logging.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
                 try:
                     pull("origin %s" % branchToSync, throwOnFail=True)
                 except:
-                    utility.printMsg("Can't pull %s. Aborting...")
+                    vine_logging.printMsg("Can't pull %s. Aborting...")
                     return False
             else:
                 branch("-f %s %s" % (branchToSync, remoteRef))
@@ -429,7 +430,7 @@ def safeForceBranchToOriginRef(branchToSync):
         else:
             return False
     if not branchExists and remoteRefExists:
-        utility.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
+        vine_logging.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
         branch("%s %s" % (branchToSync, remoteRef))
         return True
 
@@ -452,7 +453,7 @@ def showRemote():
         return gitcmd("remote show origin", "unable to show remote")
     except grape_errors.GrapeGitError as e:
         if e.code == 128:
-            utility.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
+            vine_logging.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
             return e.gitOutput
         else:
             raise e

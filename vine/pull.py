@@ -1,7 +1,7 @@
 import os
 import option
 import grapeGit as git
-import utility
+import vine_logging
 import option
 import resumable
 
@@ -12,7 +12,7 @@ def pull(branch="develop", repo=".", rebase=False):
     else:
         argStr = "origin %s " % branch
 
-    utility.printMsg("Pulling %s in %s..." % (branch, repo))
+    vine_logging.printMsg("Pulling %s in %s..." % (branch, repo))
     git.pull(argStr, throwOnFail=True)
 
 
@@ -59,7 +59,7 @@ class Pull(resumable.Resumable, option.Option):
 
         if args["--noRecurse"]:
             git.pull("origin %s" % currentBranch)
-            utility.printMsg("Pulled current branch from origin")
+            vine_logging.printMsg("Pulled current branch from origin")
             return True
         else:
         # Imported here to avoid circular dependencies
@@ -67,7 +67,7 @@ class Pull(resumable.Resumable, option.Option):
 
             val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
             if val:
-                utility.printMsg("Pulled current branch from origin")
+                vine_logging.printMsg("Pulled current branch from origin")
             return val
 
     def _resume(self, args):

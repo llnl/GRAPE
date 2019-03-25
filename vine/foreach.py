@@ -2,6 +2,7 @@ import os
 import option
 import grape_errors
 import utility
+import vine_logging
 import vine_subprocess
 import multi_repo_cmd_launcher
 
@@ -53,7 +54,7 @@ def handleForeachMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            utility.printMsg("Foreach failed.")
+            vine_logging.printMsg("Foreach failed.")
             print e.gitCommand
             print e.cwd
             print e.gitOutput

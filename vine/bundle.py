@@ -4,6 +4,7 @@ import option
 import grapeGit as git
 import grape_errors
 import utility
+import vine_logging
 import config_parser_base
 import config_parser_global
 import global_state
@@ -160,20 +161,20 @@ def bundlecmd(repo='', branch='', args={}):
             try:
                 currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
             except:
-                utility.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
+                vine_logging.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
                 currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
                     git.shortSHA(tagname)
                     revlists = " %s..%s" % (tagname, branch)
                 except:
-                    utility.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
+                    vine_logging.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
                     revlists = " %s" % (branch)
                 bundlename = args["--outfile"]
                 if not bundlename:
                     bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
                                                          currentLocation)
-                utility.printMsg("creating bundle %s in %s" % (bundlename, reponame))
+                vine_logging.printMsg("creating bundle %s in %s" % (bundlename, reponame))
                 git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
     return True
 
@@ -182,7 +183,7 @@ def bundlecmdMRE(mre):
     try:
         raise mre
     except  grape_errors.MultiRepoException as errors:
-        utility.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
+        vine_logging.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
             print b, e
 

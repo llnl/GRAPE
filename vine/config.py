@@ -5,6 +5,7 @@ import config_parser_global
 import config_parser_user
 import grapeGit as git
 import option
+import vine_logging
 import utility
 
 # Configure current repo
@@ -44,18 +45,18 @@ class Config(option.Option):
             return False
         dotGit = git.gitDir()
          
-        utility.printMsg("Optimizing git performance on slow file systems...")
+        vine_logging.printMsg("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
         #have git automatically do some garbage collection / optimization
-        utility.printMsg("Setting up automatic git garbage collection...")
+        vine_logging.printMsg("Setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
         #prevents false conflict detection due to differences in filesystem
         # time stamps
-        utility.printMsg("Optimizing cross platform portability...")
+        vine_logging.printMsg("Optimizing cross platform portability...")
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZBitbucket)
@@ -65,7 +66,7 @@ class Config(option.Option):
             if not cache:
                 cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
-                utility.printMsg("Enabling 12 hr caching of https credentials...")
+                vine_logging.printMsg("Enabling 12 hr caching of https credentials...")
                 if os.name == "nt":
                     git.config("--global credential.helper", "wincred")
                 else :
@@ -76,14 +77,14 @@ class Config(option.Option):
         mergeVerifyPath = os.path.join(os.path.dirname(__file__),"..","merge-and-verify-driver")
         
         if os.path.exists(mergeVerifyPath): 
-            utility.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
+            vine_logging.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
             git.config("merge.verify.name","merge and verify driver")
             git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
         else:
-            utility.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
+            vine_logging.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
-        utility.printMsg("Setting lg as an alias for a pretty log call...")
+        vine_logging.printMsg("Setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
         # perform an update of the active subprojects if asked.
@@ -106,7 +107,7 @@ class Config(option.Option):
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
-            utility.printMsg("Configured repo to use p4merge for conflict resolution")
+            vine_logging.printMsg("Configured repo to use p4merge for conflict resolution")
         else:
             git.config("merge.tool","tkdiff")
 
@@ -117,9 +118,9 @@ class Config(option.Option):
             p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
             if os.path.exists(p4diffScript): 
                 git.config("diff.external",p4diffScript)
-                utility.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
+                vine_logging.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
-                utility.printMsg("Could not find p4diff script at %s" % p4diffScript)
+                vine_logging.printMsg("Could not find p4diff script at %s" % p4diffScript)
         useGitP4 = args["--git-p4"]
         if (useGitP4 ):
             git.config("git-p4.useclientspec","true")
@@ -145,7 +146,7 @@ class Config(option.Option):
                     return False
 
         # install hooks here and in all submodules
-        utility.printMsg("Installing hooks in all repos...")
+        vine_logging.printMsg("Installing hooks in all repos...")
         cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks")
         
@@ -179,10 +180,10 @@ class Config(option.Option):
             if ("remotes/origin/%s" % branch) not in allBranches:
                missingBranches.append(branch)
             if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
-                utility.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
+                vine_logging.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
                 git.branch("%s origin/%s" % (branch, branch))
         if len(missingBranches) > 0:
-            utility.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
+            vine_logging.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
         os.chdir(cwd)
         
     @staticmethod

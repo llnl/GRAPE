@@ -5,6 +5,7 @@ import grapeGit as git
 import config_parser_global
 import multi_repo_cmd_launcher
 import utility
+import vine_logging
 
 
 # update the repo from the remote using the PyGitUp module
@@ -96,13 +97,13 @@ def fetchLocal(repo='unknown', branch='master'):
                         toFetch.append(b)
                 else:
                     try:
-                        utility.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
+                        vine_logging.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
                         git.pull("origin %s" % currentBranch)
                     except grape_errors.GrapeGitError:
                         print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
             try:
                 if toFetch:
-                    utility.printMsg("updating %s in %s" % (','.join(toFetch), repo))
+                    vine_logging.printMsg("updating %s in %s" % (','.join(toFetch), repo))
                     git.fetch(fetchArgs)
             except grape_errors.GrapeGitError as e:
                 # let non-fast-forward fetches slide

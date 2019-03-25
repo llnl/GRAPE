@@ -4,7 +4,6 @@ import sys
 from contextlib import contextmanager
 import grape_errors
 import grapeGit as git
-import global_state
 
 
 toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), os.path.pardir)
@@ -154,8 +153,3 @@ def cd(path):
         yield
     finally:
         os.chdir(old_dir)
-
-
-def printMsg(msg):
-    if global_state.globalVerbosity > 0:
-        print("GRAPE: %s" % msg)

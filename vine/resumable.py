@@ -4,6 +4,7 @@ import os
 import grape_errors
 import grapeGit as git
 import utility
+import vine_logging
 import config_parser_global
 
 
@@ -65,7 +66,7 @@ class Resumable(object):
                     self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
                     self._readProgressFile()
                 except:
-                    utility.printMsg("No progress file found to continue from. Please enter a command without the "
+                    vine_logging.printMsg("No progress file found to continue from. Please enter a command without the "
                                      "--continue option. ")
                     raise e
         newArgs = self.progress["args"]
