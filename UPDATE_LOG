@@ -1,5 +1,12 @@
 
 
+Mon Apr  1 15:07:38 2019 David Bloss
+v1.31.10
+Reviewers: Peter Robinson, Ben Liu
+
+Import to deprecated module removed. Not sure how the tests didn't catch this last commit.
+
+
 Mon Mar 25 13:29:56 2019 David Bloss
 v1.31.9
 Reviewers: Ben Liu, Peter Robinson
