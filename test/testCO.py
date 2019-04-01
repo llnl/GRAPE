@@ -10,7 +10,7 @@ import testGrape
 
 from vine import grape_errors
 from vine import grapeGit as git
-from vine import grapeConfig
+
 
 class TestCheckout(testGrape.TestGrape):
     # sets up an outer repo with two branches. master has file1.
