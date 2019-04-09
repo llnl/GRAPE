@@ -11,10 +11,10 @@ from vine import clone, grapeGit as git
 class TestClone(testGrape.TestGrape):
     def testClone(self):
         self.setUpConfig()
+        args = [self.repo, self.repos[1], "--recursive"]
         with self.queue_user_input(["\n", "\n", "\n", "\n"]):
-            args = [self.repo, self.repos[1], "--recursive"]
             ret = self.menu.applyMenuChoice("clone", args)
-            self.assertTrue(ret)
+        self.assertTrue(ret)
         
         # check to make sure we didn't get a usage string dump
         contents = self.output.getvalue()
@@ -41,7 +41,7 @@ class TestClone(testGrape.TestGrape):
         try:
             with self.queue_user_input(["\n", "\n", "\n", "\n"]):
                 ret = self.menu.applyMenuChoice("clone", args)
-                self.assertTrue(ret, "vine.clone returned failure")
+            self.assertTrue(ret, "vine.clone returned failure")
 
             #ToDo: Finish checking contents
             #contents = self.output.getvalue()
@@ -63,7 +63,7 @@ class TestClone(testGrape.TestGrape):
             args = [self.repo, tempDir, "--recursive"]
             with self.queue_user_input(["\n", "\n", "\n", "\n", "\n", "\n"]):
                 ret = self.menu.applyMenuChoice("clone", args)
-                self.assertTrue(ret, "vine.clone returned failure")
+            self.assertTrue(ret, "vine.clone returned failure")
 
             submodulepath = os.path.join(tempDir, "submodule1")
             self.assertTrue(os.path.exists(submodulepath), "submodule1 does not exist in clone")
@@ -84,15 +84,15 @@ class TestClone(testGrape.TestGrape):
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
             tempDir = tempfile.mkdtemp()
+            args = [self.repo, tempDir, "--recursive", "--allNested"]
             with self.queue_user_input(["\n", "\n", "\n", "\n"]):
-                args = [self.repo, tempDir, "--recursive", "--allNested"]
                 ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             # ensure we are on master with all nested subprojects
             os.chdir(tempDir)
+            args = ["master", "--updateView"]
             with self.queue_user_input(["all\n"]):
-                args = ["master", "--updateView"]
                 ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
             print git.log("--decorate")
