@@ -1,5 +1,12 @@
 
 
+Tue Apr  9 11:10:16 2019 David Bloss
+v1.31.11
+Reviewers: Ben Liu, Peter Robinson
+
+Overriding \"sys.stdin\" was previously applied to all Grape tests when this need is much more narrow in scope. \"sys.stdin\" now replaced with an IOStream only when user input is actually needed for testing, then reset to its normal operations immediately after.
+
+
 Mon Apr  1 15:07:38 2019 David Bloss
 v1.31.10
 Reviewers: Peter Robinson, Ben Liu
