@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-
+from contextlib import contextmanager
 import sys
 import os
 import inspect
@@ -85,7 +85,6 @@ class TestGrape(unittest.TestCase):
         self.error = StringIO.StringIO()
         self.stdout = sys.stdout
         self.stderr = sys.stderr
-        self.stdin = sys.stdin
         self.cwd = os.getcwd()
         sys.stdout = self.output
         sys.stderr = self.error
@@ -144,10 +143,9 @@ class TestGrape(unittest.TestCase):
         os.chdir(os.path.abspath(os.path.join(self.defaultWorkingDirectory,"..")))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
-        # restore stdout, stdin, and stderr to their original streams
+        # restore stdout and stderr to their original streams
         sys.stdout = self.stdout
         sys.stderr = self.stderr
-        sys.stdin = self.stdin
         os.chdir(self.cwd)
         self.output.close()
 
@@ -165,12 +163,21 @@ class TestGrape(unittest.TestCase):
         for l in self.error:
             self.stderr.write(l)
 
-    # stage user input for methods that expect it
-    def queueUserInput(self, inputList):
-        self.input = StringIO.StringIO()
-        sys.stdin = self.input
-        self.input.writelines(inputList)
-        self.input.seek(0)
+    @contextmanager
+    def queue_user_input(self, user_input_list):
+        """
+        Temporarily replaces sys.stdin with a text stream holding user input.
+        """
+        original_stdin = sys.stdin
+        input_stream = StringIO.StringIO()
+        sys.stdin = input_stream
+        input_stream.writelines(user_input_list)
+        input_stream.seek(0)
+        try:
+            yield
+        finally:
+            input_stream.close()
+            sys.stdin = original_stdin
 
     def assertTrue(self, expr, msg=None):
         if msg is not None:

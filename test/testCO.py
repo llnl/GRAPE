@@ -73,23 +73,23 @@ class TestCheckout(testGrape.TestGrape):
         try:
             self.setUpSubmoduleBranch()
             
-            self.queueUserInput(["y", "\n", "\n","\n"])
-            self.switchToAddSubmodule()
+            with self.queue_user_input(["y", "\n", "\n", "\n"]):
+                self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()
 
             # switch to master, saying 'y' to delete request
-            self.queueUserInput(["y", "\n","\n","\n", "\n"])
-            self.switchToMaster()
+            with self.queue_user_input(["y", "\n", "\n", "\n", "\n"]):
+                self.switchToMaster()
             self.assertSubmoduleDirectoryDoesNotExist()
 
             # switch to addSubmodule, saying yes to request to have submodule
-            self.queueUserInput(["y", "\n","\n", "\n"])
-            self.switchToAddSubmodule()
+            with self.queue_user_input(["y", "\n", "\n", "\n"]):
+                self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()
 
             # switch back to master, this time saying don't delete request
-            self.queueUserInput(["n", "\n", "\n"])
-            self.switchToMaster()
+            with self.queue_user_input(["y", "\n", "\n"]):
+                self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except grape_errors.GrapeGitError as e:
             self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand + '\n' + e.gitOutput)

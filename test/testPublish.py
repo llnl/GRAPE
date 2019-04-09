@@ -48,7 +48,6 @@ class TestPublish(testGrape.TestGrape):
         self.assertFalse(git.branchUpToDateWith(toBranch, fromBranch))
 
     def assertGrapePublishWorked(self, args=None, assertFail=False):
-        self.queueUserInput(["1.1.1"])
         config = config_parser_global.grapeConfig()
         config.ensureSection("project")
         config.set(Option.SECTION_PROJECT, "name", "proj1")
@@ -60,7 +59,8 @@ class TestPublish(testGrape.TestGrape):
                 args += defaultArgs
             else:
                 args = defaultArgs
-            ret = self.menu.applyMenuChoice("publish", args=args)
+            with self.queue_user_input(["1.1.1"]):
+                ret = self.menu.applyMenuChoice("publish", args=args)
           
             self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:

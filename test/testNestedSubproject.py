@@ -78,17 +78,16 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.assertCanAddNewSubproject(self)
             self.assertTrue(os.path.isdir(self.subproject))
             # answer none to whether we want all subprojects, y to deleting it
-            self.queueUserInput(["n\n", "y\n"])
-            self.menu.applyMenuChoice("uv")
+            with self.queue_user_input(["n\n", "y\n"]):
+                self.menu.applyMenuChoice("uv")
             self.assertFalse(os.path.isdir(self.subproject))
             # answer a to whether we want all subprojects
-            self.queueUserInput(["a\n"])
-            print self.input.buf
-            self.menu.applyMenuChoice("uv")
+            with self.queue_user_input(["a\n"]):
+                self.menu.applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject), '\n'.join(self.output)+'\n'.join(self.error))
             # run grape uv again to make sure it just keeps things the same
-            self.queueUserInput(["a\n"])
-            self.menu.applyMenuChoice("uv")
+            with self.queue_user_input(["a\n"]):
+                self.menu.applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject))
         except grape_errors.GrapeGitError as e:
             self.assertTrue(False, ('\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
