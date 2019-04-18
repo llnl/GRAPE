@@ -13,13 +13,19 @@ class Config(option.Option):
     """
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache | --credcache]
+                        [--nocredcache | --credcache] [--p4merge] 
+                        [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
         --credcache     enables https 12 hr credential cacheing. 
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
+        --p4merge       will set up p4merge as your merge tool. 
+        --nop4merge     will skip p4merge questions.
+        --p4diff        will set up p4merge as your diff tool. 
+        --nop4diff      will skip p4diff questions.
+        --git-p4        will configure your repo for use with git-p4 (deprecated)
 
     """
 
@@ -88,7 +94,56 @@ class Config(option.Option):
         if updateView:
             grapeMenu.menu().applyMenuChoice("uv", args["--uvArg"])
 
-        git.config("merge.tool","tkdiff")
+        # configure git to use p4merge for conflict resolution
+        # and diffing
+
+        useP4Merge = not args["--nop4merge"] and (args["--p4merge"] or utility.userInput("Would you like to use p4merge as your merge tool? [y/n]","y"))
+        # note that this relies on p4merge being in your path somewhere
+        if (useP4Merge):
+            git.config("merge.keepBackup","false")
+            git.config("merge.tool","p4merge")
+            git.config("mergetool.keepBackup","false")
+            git.config("mergetool.p4merge.cmd",'p4merge \"\$BASE\" \"\$LOCAL\" \"\$REMOTE\" \"\$MERGED\"')
+            git.config("mergetool.p4merge.keepTemporaries","false")
+            git.config("mergetool.p4merge.trustExitCode","false")
+            git.config("mergetool.p4merge.keepBackup","false")
+            vine_logging.printMsg("Configured repo to use p4merge for conflict resolution")
+        else:
+            git.config("merge.tool","tkdiff")
+
+        useP4Diff = not args["--nop4diff"] and (args["--p4diff"] or utility.userInput("Would you like to use p4merge as your diff tool? [y/n]","y"))
+        # this relies on p4diff being defined as a custom bash script, with the following one-liner:
+        # [ $# -eq 7 ] && p4merge "$2" "$5"
+        if (useP4Diff):
+            p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
+            if os.path.exists(p4diffScript): 
+                git.config("diff.external",p4diffScript)
+                vine_logging.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
+            else: 
+                vine_logging.printMsg("Could not find p4diff script at %s" % p4diffScript)
+        useGitP4 = args["--git-p4"]
+        if (useGitP4 ):
+            git.config("git-p4.useclientspec","true")
+            # create p4 references to enable imports from p4
+            p4remotes = os.path.join(dotGit,"refs","remotes","p4","")
+            utility.ensure_dir(p4remotes)
+            commit = utility.userInput("Please enter a descriptor (e.g. SHA, branch if tip, tag name) of the current git commit that mirrors the p4 repo","master")
+            sha = git.SHA(commit)
+            with open(os.path.join(p4remotes,"HEAD"),'w') as f:
+                f.write(sha)
+            with open(os.path.join(p4remotes,"master"),'w') as f:
+                f.write(sha)
+
+            # to enable exports to p4, a maindev client needs to be set up
+            haveCopied = False
+            while (not haveCopied):
+                p4settings = utility.userInput("Enter a path to a .p4settings file describing the maindev client you'd like to use for p4 updates",".p4settings")
+                try:
+                    shutil.copyfile(p4settings,os.path.join(base,".p4settings"))
+                    haveCopied = True
+                except:
+                    print("could not find p4settings file, please check your path and try again")
+                    return False
 
         # install hooks here and in all submodules
         vine_logging.printMsg("Installing hooks in all repos...")
