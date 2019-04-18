@@ -30,7 +30,7 @@ class Walkthrough(Option):
         --difftool=<tool>           Command to use for diff.
                                     Valid choices are: kdiff3, kompare, tkdiff,
                                        meld, xxdiff, emerge, gvimdiff,
-                                       ecmerge, diffuse, opendiff, p4merge, and araxis.
+                                       ecmerge, diffuse, opendiff, and araxis.
                                     If unspecified, default git difftool will be used.
         --height=<height>           Height of window in pixels.
                                     [default: .grapeconfig.walkthrough.height]
@@ -327,7 +327,7 @@ class ProjectManager(object):
 
 class DiffManager(ProjectManager):
     def __init__(self, master, **kwargs):
-        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
+        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'araxis' ]
 
         # Configurable parameters
         difftool = kwargs.get('difftool', None)
