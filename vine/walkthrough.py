@@ -221,7 +221,7 @@ class ProjectManager(object):
                 self.projtype.append("Active Nested")
             if self.showInactive:
                 inactiveNestedSubprojects = list(set(config_parser_global.grapeConfig().getAllNestedSubprojects())
-                    - set(config_parser_global.getAllActiveNestedSubprojects()))
+                    - set(config_parser_user.getAllActiveNestedSubprojects()))
                 self.projects.extend(inactiveNestedSubprojects)
                 self.subprojects.extend(inactiveNestedSubprojects)
                 for proj in inactiveNestedSubprojects:
