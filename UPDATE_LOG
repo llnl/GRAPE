@@ -1,5 +1,13 @@
 
 
+Thu Apr 18 10:57:33 2019 David Bloss
+v1.31.12
+Reviewers: Ben Liu, Peter Robinson
+
+* deprecated p4 merge logic removed
+* walkthrough bug fixed
+
+
 Tue Apr  9 11:10:16 2019 David Bloss
 v1.31.11
 Reviewers: Ben Liu, Peter Robinson
