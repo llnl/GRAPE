@@ -1,13 +1,11 @@
 import os
 import sys
-import testGrape
-if os.path.pardir not in sys.path:
-    sys.path.insert(0, os.path.pardir)
-from vine import grape_errors
-from vine import grapeMenu
-from vine import grapeGit as git
-from vine import config_parser_global
-from vine.option import Option
+from grape.test import testGrape
+from grape.vine import grape_errors
+from grape.vine import grapeMenu
+from grape.vine import grapeGit as git
+from grape.vine import config_parser_global
+from grape.vine.option import Option
 
 
 class TestVersion(testGrape.TestGrape):
@@ -18,8 +16,8 @@ class TestVersion(testGrape.TestGrape):
         try:
 #            self.assertEqual(grapeConfig.grapeConfig().get("versioning", "updateTag").lower(), "true")
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])
-            self.assertTrue(ret, "grape version init v0.1.0 returned False\n%s" %
-                            self.output.getvalue())
+            self.assertTrue(ret, "grape version init v0.1.0 returned False" +
+                                 "\n" + f"{self.get_output()}")
             self.assertEqual(git.describe("--abbrev=0"), "v0.1.0")
 
             # test to make sure ticking the version works
@@ -27,9 +25,9 @@ class TestVersion(testGrape.TestGrape):
             self.assertTrue(ret, "grape version tick returned False")
             self.assertEqual(git.describe(), "v0.2.0")
         except SystemExit:
-            self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
+            self.fail("Unexpected SystemExit\n" + f"{self.get_output()}")
         except grape_errors.GrapeGitError as e:
-            self.fail("Uncaught GrapeGit error: %s" % e.gitOutput)
+            self.fail(f"Uncaught GrapeGit error: {e.gitOutput}")
 
     def testMajorTick(self):
         os.chdir(self.repo)
@@ -37,8 +35,8 @@ class TestVersion(testGrape.TestGrape):
         try:
 
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])
-            self.assertTrue(ret, "grape version init v0.1.0 returned False\n%s" %
-                            self.output.getvalue())
+            self.assertTrue(ret, "grape version init v0.1.0 returned False" +
+                                 "\n" + f"{self.get_output()}")
             self.assertEqual(git.describe("--abbrev=0"), "v0.1.0")
 
             # test to make sure ticking the version works
@@ -70,6 +68,6 @@ class TestVersion(testGrape.TestGrape):
 
 
         except SystemExit:
-            self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
+            self.fail("Unexpected SystemExit\n" + f"{self.get_output()}")
         except grape_errors.GrapeGitError as e:
-            self.fail("Uncaught GrapeGitError: %s" % e.gitOutput)
+            self.fail("Uncaught GrapeGitError: " + f"{e.gitOutput}")

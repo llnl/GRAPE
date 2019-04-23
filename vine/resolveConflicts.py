@@ -1,9 +1,9 @@
-import option
-import grapeGit as git
+from grape.vine import grapeGit as git
+from grape.vine.option import Option
 
 
 # resolve conflicts using git mergetool
-class ResolveConflicts(option.Option):
+class ResolveConflicts(Option):
     def __init__(self):
         super(ResolveConflicts, self).__init__()
         self._key = "resolve"

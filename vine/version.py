@@ -1,16 +1,16 @@
-import option
-
+import configparser
+import io
 import os
 import re
-import StringIO
-import ConfigParser
-import config_parser_global
-import config_parser_user
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
-import grapeGit as git
-import utility
 
-class Version(option.Option):
+class Version(Option):
     """
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
@@ -99,7 +99,7 @@ class Version(option.Option):
             config = config_parser_global.grapeConfig()
             fileName = config.get(self.SECTION_VERSIONING, "file")
             try:
-                with open(fileName) as f:
+                with io.open(fileName) as f:
                     slots = self.readVersion(f, args)
                     self.ver = self.slotsToString(args, slots)
             except IOError:
@@ -108,13 +108,13 @@ class Version(option.Option):
 
     def initializeVersioning(self, args):
         config = config_parser_global.grapeConfig()
-        version = StringIO.StringIO()
-        version.write("VERSION_ID = %s" % args["<version>"])
+        version = io.StringIO()
+        version.write(f"VERSION_ID = {args['<version>']}")
         version.seek(0)
         version = self.readVersion(version, args)
         if args["--file"]:
             fname = args["--file"]
-            with open(fname, 'w+') as f:
+            with io.open(fname, 'w+') as f:
                 version = self.writeVersion(f, version, args)
             self.stageVersionFile(fname)
             config.set("versioning", "file", fname)
@@ -122,13 +122,13 @@ class Version(option.Option):
             config_parser_global.writeConfig(config, configFile)
             self.stageGrapeconfigFile(configFile)
             if not args["--nocommit"]:
-                git.commit("%s %s -m \"GRAPE: added initial version info file %s\"" % (fname, configFile, fname))
+                git.commit(f"{fname} {configFile} -m \"GRAPE: added initial version info file {fname}\"")
                 self.tagVersion(version, args)
 
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
         fileName = config.get(self.SECTION_VERSIONING, "file")
-        with open(fileName) as f:
+        with io.open(fileName) as f:
             slots = self.readVersion(f, args)
             self.ver = self.slotsToString(args, slots)
             
@@ -155,11 +155,11 @@ class Version(option.Option):
                 slots[slot] = 0
                 slot += 1
             # write the new version number to the version file. 
-            with open(fileName, 'r+') as f:
+            with io.open(fileName, 'r+') as f:
                 self.ver = self.writeVersion(f, slots, args)
             self.stageVersionFile(fileName)
             if not args["--nocommit"]:
-                git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
+                git.commit(f"-m \"GRAPE: ticked version to {self.ver}\"")
                 
         if (not args["--nocommit"]) or args["--tag"]:
             self.tagVersion(self.ver, args)
@@ -174,7 +174,7 @@ class Version(option.Option):
 
     @staticmethod
     def stageVersionFile(fname):
-        print ( "STAGING %s" % fname)
+        print(f"STAGING {fname}")
         git.add(fname)
         return True
 
@@ -210,7 +210,7 @@ class Version(option.Option):
                     version = version + tagSuffix
                     
                 
-            git.tag("-a %s -m \"Tagged by grape\"" % version)
+            git.tag(f"-a {version} -m \"Tagged by grape\"")
         return True
 
     def readVersion(self, fileName, args):
@@ -230,7 +230,7 @@ class Version(option.Option):
             regexMappings = config.getMapping(self.SECTION_VERSIONING, "branchVersionRegexMappings")
             public = config.getPublicBranchFor(git.currentBranch())
             regex = regexMappings[public]
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
 
         #tweaked from http://stackoverflow.com/questions/2020180/increment-a-version-id-by-one-and-write-to-mk-file
@@ -242,7 +242,7 @@ class Version(option.Option):
         for l in fileName:
             m1 = self.r.match(l)
             if m1:
-                VERSION_ID = map(int, m1.group(3).split("."))
+                VERSION_ID = list(map(int, m1.group(3).split(".")))
                 self.matchedLine = l
         if VERSION_ID is None:
             print("GRAPE: .")
@@ -250,10 +250,10 @@ class Version(option.Option):
         return VERSION_ID
 
     def versionLine(self, version):
-        return self.r.sub(r'\g<1>\g<2>' + '.'.join(['%s' % v for v in version]) + r'\g<4>', self.matchedLine)
+        return self.r.sub(r'\g<1>\g<2>' + '.'.join([f'{v}' for v in version]) + r'\g<4>', self.matchedLine)
 
     def slotsToString(self, args, slots): 
-        return args["--prefix"] + '.'.join(['%s' % v for v in slots])+args["--suffix"]
+        return args["--prefix"] + '.'.join([f'{v}' for v in slots]) + args["--suffix"]
     
     def stringToSlots(self, args, string):
         prefix = args["--prefix"]
@@ -294,7 +294,7 @@ class Version(option.Option):
 
 
 if __name__ is "__main__": 
-    import grapeMenu
     import sys
+    from grape.vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("version", sys.argv[1:])

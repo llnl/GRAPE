@@ -1,22 +1,40 @@
 import sys
 
-class PasswordSetError(Exception):
+
+__metaclass__ = type
+
+
+class KeyringError(Exception):
+    """Base class for exceptions in keyring
+    """
+
+
+class PasswordSetError(KeyringError):
     """Raised when the password can't be set.
     """
 
-class PasswordDeleteError(Exception):
+
+class PasswordDeleteError(KeyringError):
     """Raised when the password can't be deleted.
     """
 
-class InitError(Exception):
+
+class InitError(KeyringError):
     """Raised when the keyring could not be initialised
     """
 
-class ExceptionRaisedContext(object):
+
+class KeyringLocked(KeyringError):
+    """Raised when the keyring could not be initialised
+    """
+
+
+class ExceptionRaisedContext:
     """
     An exception-trapping context that indicates whether an exception was
     raised.
     """
+
     def __init__(self, ExpectedException=Exception):
         self.ExpectedException = ExpectedException
         self.exc_info = None
@@ -30,14 +48,17 @@ class ExceptionRaisedContext(object):
         return self.exc_info.type and issubclass(
             self.exc_info.type, self.ExpectedException)
 
-class ExceptionInfo(object):
+
+class ExceptionInfo:
     def __init__(self, *info):
         if not info:
             info = sys.exc_info()
-        self.type, self.value, self.traceback = info
+        self.type, self.value, _ = info
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Return True if an exception occurred
         """
         return bool(self.type)
+
+    __nonzero__ = __bool__

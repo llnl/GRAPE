@@ -1,5 +1,5 @@
 import os
-import testGrape
+from grape.test import testGrape
 
 
 class TestUnbundle(testGrape.TestGrape):

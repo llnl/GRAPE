@@ -1,12 +1,13 @@
 import os
-import option
-import grape_errors
-import utility
-import vine_logging
-import vine_subprocess
-import multi_repo_cmd_launcher
+from grape.vine import grape_errors
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine import vine_subprocess
+from grape.vine.option import Option
 
-class ForEach(option.Option):
+
+class ForEach(Option):
     """
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
@@ -55,7 +56,7 @@ def handleForeachMRE(mre):
             raise e1
         except grape_errors.GrapeGitError as e:
             vine_logging.printMsg("Foreach failed.")
-            print e.gitCommand
-            print e.cwd
-            print e.gitOutput
+            print(e.gitCommand)
+            print(e.cwd)
+            print(e.gitOutput)
             return False

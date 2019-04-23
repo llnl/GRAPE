@@ -1,17 +1,13 @@
-﻿import sys
+﻿import getpass
 import os
-filedir = os.path.dirname(os.path.realpath(__file__))
-grapedir = os.path.join(filedir, os.path.pardir)
-if grapedir not in sys.path:
-    sys.path.insert(0, grapedir)
-import stashy.stashy as stashy
-import keyring.keyring as keyring
-import getpass
+import sys
 import time
-import utility
-import config_parser_global
-import grapeGit as git
-from option import Option
+from grape.keyring import keyring
+from grape.stashy import stashy
+from grape.vine import config_parser_global
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine.option import Option
 
 
 class Atlassian(object):
@@ -51,7 +47,9 @@ class Atlassian(object):
                 else:
                     print("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                keyring.set_password(service, self._userName, getpass.getpass("Enter password for %s: " % service))
+                keyring.set_password(service, self._userName,
+                                     getpass.getpass("Enter password for " +
+                                                     f"{service}: "))
                 self._stash = stashy.connect(service, self._userName, keyring.get_password(service, self._userName),
                                             verify=verify)
                 numAttempts += 1
@@ -75,7 +73,7 @@ class Atlassian(object):
         config = config_parser_global.grapeConfig()
         if isNested:
             proj = os.path.split(path)[1]
-            nestedProjectURL = config.get("nested-%s" % proj , "url")
+            nestedProjectURL = config.get(f"nested-{proj}", "url")
             url = git.parseSubprojectRemoteURL(nestedProjectURL)
             urlTokens = url.split('/')
             proj = urlTokens[-2]
@@ -86,7 +84,7 @@ class Atlassian(object):
             fullpath = os.path.abspath(path)
             wsdir = utility.workspaceDir() + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config("--get submodule.%s.url" % proj).split('/')
+            url =  git.config(f"--get submodule.{proj}.url").split('/')
             proj = url[-2]
             repo_name = url[-1]
     
@@ -118,18 +116,18 @@ class StashyNode(object):
         for key in keys:
             val = d[key]
             if type(val) in (str, unicode, bool, int):
-                print "  "*level, key, "  :  ", val
+                print("  "*level, key, "  :  ", val)
             elif type(val) == dict:
-                print "  "*level, key
+                print("  "*level, key)
                 self._show(val, level + 1)
             elif type(val) == list:
                 dd = {}
                 for i in range(len(val)):
-                    dd["%s[%d]" % (key, i)] = val[i]
-                print "  "*level, key
+                    dd[f"{key}[{i}]"] = val[i]
+                print("  "*level, key)
                 self._show(dd, level + 1)
             else:
-                print "  "*level, key, type(val), "???"
+                print("  "*level, key, type(val), "???")
                 
     def get(self, path):
         response = self.snode._client.get(self.snode.url(path))
@@ -299,8 +297,13 @@ class PullRequest(StashyNode):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
 
     def __str__(self):
-        return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
-            "Reviewers: %s\n" % ', '.join(r[0]+" (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers()) + "Description: %s\n" % self.description()
+        all_reviewers = ', '.join(r[0] + " (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers())
+        nl = "\n"
+        return f"Title: {self.title()}{nl}" + \
+               f"From: {self.fromRef()}{nl}" + \
+               f"To: {self.toRef()}{nl}" + \
+               f"Reviewers: {all_reviewers}{nl}" + \
+               f"Description: {self.description()}{nl}"
     
     def merge(self):
         canMerge = self._stashy_pull_request.can_merge()
@@ -310,33 +313,29 @@ class PullRequest(StashyNode):
         return False
             
 
-
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()
-    print plist
+    print(plist)
     for p in plist:
-        print "\nPROJECT:", p
+        print("\n" + f"PROJECT:{p}")
         project = atlassian.project(p)
         reponames = project.repolist()
         for reponame in reponames:
-            print " REPONAME", reponame
+            print(f" REPONAME{reponame}")
             try:
                 repo = project.repo(reponame)
                 for pull in repo.pullRequests():
- 
-                    print "  TITLE:     ", pull.title()
-                    print "  STATE:     ", pull.state()
-                    print "  AUTHOR:    ", pull.author()
-                    print "  DATE:      ", pull.date()
-                    print "  REVIEWERS: ", pull.reviewers()
-                    print "  FROM:      ", pull.fromRef()
-                    print "  TO:        ", pull.toRef()
-                    print "  DESC:      ", pull.description()
- 
-                    print 
+                    print(f"  TITLE:     {pull.title()}")
+                    print(f"  STATE:     {pull.state()}")
+                    print(f"  AUTHOR:    {pull.author()}")
+                    print(f"  DATE:      {pull.date()}")
+                    print(f"  REVIEWERS: {pull.reviewers()}")
+                    print(f"  FROM:      {pull.fromRef()}")
+                    print(f"  TO:        {pull.toRef()}")
+                    print(f"  DESC:      {pull.description()}" + "\n")
             except stashy.errors.NotFoundException:
-                print "  repo not found"
+                print("  repo not found")
 
 
 class TestStashResponse(dict):
@@ -345,7 +344,7 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print ("TESTBITBUCKET: resource %s does not exist" %item)
+            print(f"TESTBITBUCKET: resource {item} does not exist")
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 

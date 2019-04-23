@@ -1,6 +1,6 @@
 import os
 import sys
-import testGrape
+from grape.test import testGrape
 
 
 class TestReview(testGrape.TestGrape):
@@ -10,6 +10,5 @@ class TestReview(testGrape.TestGrape):
         try:
             ret = self.menu.applyMenuChoice("review", args, globalArgs=["-v"])
         except SystemExit:
-            self.fail("grape-review failed with output %s" % self.output.getvalue())
-        contents = self.output.getvalue()
+            self.fail(f"grape-review failed with output {self.get_output()}")
         self.assertTrue(ret)

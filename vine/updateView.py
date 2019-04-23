@@ -1,18 +1,16 @@
 ﻿import os
 import shutil
-
-
-import addSubproject
-from option import Option
-import utility
-import vine_logging
-import grape_errors
-import grapeGit as git
-import config_parser_global
-import config_parser_user
-import config_parser_workspace
-import checkout
-import multi_repo_cmd_launcher
+from grape.vine import addSubproject
+from grape.vine import checkout
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import config_parser_workspace
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 try:
     import Tkinter as Tk
@@ -73,7 +71,7 @@ class UpdateView(Option):
             allSubprojectNames = config.getAllNestedSubprojects()
             allSubprojects = []
             for project in allSubprojectNames:
-                allSubprojects.append(config.get("nested-%s" % project, "prefix"))
+                allSubprojects.append(config.get(f"nested-{project}", "prefix"))
             activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
 
         toplevelDirs = {}
@@ -116,7 +114,7 @@ class UpdateView(Option):
                 opt = "s"
                 self.uvManager.createSection(directory)
             else:
-                opt = utility.userInput("Would you like all, some, or none of the %ss in %s?" % (projectType,directory),
+                opt = utility.userInput(f"Would you like all, some, or none of the {projectType}s in {directory}?",
                                         default=defaultValue)
 
             if opt.lower()[0] == "a":
@@ -134,7 +132,7 @@ class UpdateView(Option):
                         included[subproject] = subIsActive
                         self.uvManager.createEntry(subproject, subIsActive)
                     else:
-                        included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
+                        included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                                  'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
             self.uvManager.createSection("top level")
@@ -145,7 +143,7 @@ class UpdateView(Option):
                 included[subproject] = subIsActive
                 self.uvManager.createEntry(subproject, subIsActive)
             else:
-                included[subproject] = utility.userInput("Would you like %s %s? [y/n]" % (projectType, subproject),
+                included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                          'y' if (subproject in activeSubprojects) else 'n')
         return included
 
@@ -203,7 +201,7 @@ class UpdateView(Option):
                 notFound.append(proj)
 
         if notFound:
-            vine_logging.printMsg("\"%s\" not found in submodules %s \nor\n nested subprojects %s" % (",".join(notFound),",".join(allSubmodules),",".join(allNestedSubprojects)))
+            vine_logging.printMsg(f"\"{','.join(notFound)}\" not found in submodules {','.join(allSubmodules)} \nor\n nested subprojects {','.join(allNestedSubprojects)}")
             return False
 
         if not args["--checkSubprojects"]:
@@ -227,7 +225,7 @@ class UpdateView(Option):
             # get subprojects to update
             if not args["--skipNestedSubprojects"]:
 
-                nestedPrefixLookup = lambda x : config.get("nested-%s" % x, "prefix")
+                nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"]:
@@ -265,27 +263,27 @@ class UpdateView(Option):
                 resetStr = ""
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
-                        initStr += ' %s' % submodule
+                        initStr += f' {submodule}'
                     else:
-                        deinitStr += ' %s' % submodule
-                        rmCachedStr += ' %s' % submodule
-                        resetStr += ' %s' % submodule
+                        deinitStr += f' {submodule}'
+                        rmCachedStr += f' {submodule}'
+                        resetStr += f' {submodule}'
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
                 vine_logging.printMsg("Configuring submodules...")
                 vine_logging.printMsg("Initializing submodules...")
-                git.submodule("init %s" % initStr.strip())
+                git.submodule(f"init {initStr.strip()}")
                 if deinitStr:
-                    vine_logging.printMsg("Deiniting submodules that were not requested... (%s)" % deinitStr)
+                    vine_logging.printMsg(f"Deiniting submodules that were not requested... ({deinitStr})")
                     done = False
                     while not done:
                         try:
-                            git.submodule("deinit %s" % deinitStr.strip())
+                            git.submodule(f"deinit {deinitStr.strip()}")
                             done = True
                         except grape_errors.GrapeGitError as e:
                             if "the following file has local modifications" in e.gitOutput:
-                                print e.gitOutput
+                                print(e.gitOutput)
                                 vine_logging.printMsg("A submodule that you wanted to remove has local modifications. "
                                                  "Use grape uv -f to force removal.")
                                 return False
@@ -302,17 +300,17 @@ class UpdateView(Option):
                                 if module:
                                     src = os.path.join(module, ".git")
                                     dest =  os.path.join(wsDir, ".git", "modules", module)
-                                    vine_logging.printMsg("Moving %s to %s"%(src, dest))
+                                    vine_logging.printMsg(f"Moving {src} to {dest}")
                                     shutil.move(src, dest )
                                 else:
                                     raise e
                             else:
                                 raise e
-                    git.rm("--cached %s" % rmCachedStr)
-                    git.reset(" %s" % resetStr)
+                    git.rm(f"--cached {rmCachedStr}")
+                    git.reset(f" {resetStr}")
 
                 if initStr:
-                    vine_logging.printMsg("Updating active submodules...(%s)" % initStr)
+                    vine_logging.printMsg(f"Updating active submodules...({initStr})")
                     git.submodule("update")
 
             # handle nested subprojects
@@ -322,7 +320,7 @@ class UpdateView(Option):
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
-                    section = "nested-%s" % reverseLookupByPrefix[subproject]
+                    section = f"nested-{reverseLookupByPrefix[subproject]}"
                     userConfig.ensureSection(section)
                     previouslyActive = userConfig.getboolean(section, "active")
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject, ".git"))
@@ -331,9 +329,9 @@ class UpdateView(Option):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        vine_logging.printMsg("Activating Nested Subproject %s" % subproject)
+                        vine_logging.printMsg(f"Activating Nested Subproject {subproject}")
                         if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig):
-                            vine_logging.printMsg("Can't activate %s. Exiting..." % subprojectName)
+                            vine_logging.printMsg(f"Can't activate {subprojectName}. Exiting...")
                             return False
 
                         updatedActiveList.append(subprojectName)
@@ -344,9 +342,9 @@ class UpdateView(Option):
                         #remove the subproject
                         subprojectdir = os.path.join(base, git.makePathPortable(subproject))
                         proceed = args["-f"] or \
-                                  utility.userInput("About to delete all contents in %s. Any uncommitted changes, committed changes "
-                                                    "that have not been pushed, or ignored files will be lost.  Proceed?" %
-                                                    subproject, 'n')
+                                  utility.userInput(f"About to delete all contents in {subproject}. " +
+                                                    "Any uncommitted changes, committed changes that have " +
+                                                    "not been pushed, or ignored files will be lost.  Proceed?", 'n')
                         if proceed:
                             shutil.rmtree(subprojectdir)
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
@@ -378,11 +376,11 @@ class UpdateView(Option):
 
 
 def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
-    vine_logging.printMsg( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
+    vine_logging.printMsg(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     with utility.cd(repo):
         # attempt to fetch the requested branch
         try:
-            git.fetch("origin", "%s:%s" % (branch, branch))
+            git.fetch("origin", f"{branch}:{branch}")
         except:
             # the branch may not exist, but this is ok
             pass
@@ -400,15 +398,15 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
                 # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
                     public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
-            vine_logging.printMsg("Branch %s does not exist in %s, switching to %s and detaching" % (branch, repo, public))
+            vine_logging.printMsg(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
             git.checkout(public)
-            git.pull("origin %s" % (public))
+            git.pull(f"origin {public}")
             git.checkout("--detach HEAD")
 
 def cleanupPush(repo='', branch='', args='none'):
     with utility.cd(repo):
-        vine_logging.printMsg("Attempting push of local %s in %s" % (branch, repo))
-        git.push("origin %s" % branch)
+        vine_logging.printMsg(f"Attempting push of local {branch} in {repo}")
+        git.push(f"origin {branch}")
 
 
 def handleCleanupPushMRE(mre):
@@ -416,8 +414,8 @@ def handleCleanupPushMRE(mre):
         try:
             raise e
         except grape_errors.GrapeGitError as e2:
-            vine_logging.printMsg("Local and remote versions of %s may have diverged in %s" % (branch, repo))
-            vine_logging.printMsg("%s" % e2.gitOutput)
+            vine_logging.printMsg(f"Local and remote versions of {branch} may have diverged in {repo}")
+            vine_logging.printMsg(f"{e2.gitOutput}")
             vine_logging.printMsg("Use grape pull to merge the remote version into the local version.")
 
 def handleEnsureLocalUpToDateMRE(mre):
@@ -431,9 +429,9 @@ def handleEnsureLocalUpToDateMRE(mre):
             if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
                 if "Couldn't find remote ref" in e.gitOutput:
                     if not _pushBranch:
-                        vine_logging.printMsg("No remote reference to %s in %s's origin. You may want to push this branch." % (branch, repo))
+                        vine_logging.printMsg(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
                 else:
-                    vine_logging.printMsg("Fetch of %s rejected as non-fast-forward in repo %s" % (branch, repo))
+                    vine_logging.printMsg(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
                 pushBranch = _pushBranch
                 if _skipPush:
                     pushBranch = False
@@ -452,11 +450,11 @@ def handleEnsureLocalUpToDateMRE(mre):
 
                     cleanupPushArgs.append((repo, branch, None))
                 else:
-                    vine_logging.printMsg("Skipping push of local %s in %s" % (branch, repo))
+                    vine_logging.printMsg(f"Skipping push of local {branch} in {repo}")
 
             elif e.commError:
-                vine_logging.printMsg("Could not update %s from origin due to a connectivity issue. Checking out most recent\n"
-                                 "local version. " % branch)
+                vine_logging.printMsg(f"Could not update {branch} from origin due to a connectivity issue. Checking out most recent\n"
+                                      "local version. ")
             else:
                 raise(e)
 
@@ -471,10 +469,9 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
-    launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs = [checkoutArgs, False])
+    launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs=[checkoutArgs, False])
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
-    return
 
 # Class for selecting subprojects in a workspace
 class UVManager(object):
@@ -558,7 +555,7 @@ class UVManager(object):
         self.currentRow = 2
         self.currentColumn = self.currentColumn + 2
         frame = Tk.Frame()
-        label = Tk.Label(frame, text="Select %ss" % (projectType))
+        label = Tk.Label(frame, text=f"Select {projectType}s")
         label.grid()
         frame.grid(row=1, column=self.currentColumn, columnspan=2)
         if projectType == "submodule":
@@ -574,7 +571,7 @@ class UVManager(object):
             self.resortList(self.currentInactiveList)
 
         activepanel = Tk.Frame()
-        activelabel = Tk.Label(activepanel, text="Active in %s" % (directory))
+        activelabel = Tk.Label(activepanel, text=f"Active in {directory}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
         activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
         activescroll.config(command=activelist.yview)
@@ -585,7 +582,7 @@ class UVManager(object):
         self.currentActiveList = activelist
 
         inactivepanel = Tk.Frame()
-        inactivelabel = Tk.Label(inactivepanel, text="Inactive in %s" % (directory))
+        inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
         inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
         inactivescroll.config(command=inactivelist.yview)

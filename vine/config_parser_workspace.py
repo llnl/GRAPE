@@ -1,13 +1,13 @@
 import os
-import config_parser_base
-import utility
+from grape.vine import config_parser_base
+from grape.vine import utility
 
 
 class GrapeConfigParserWorkspace(config_parser_base.GrapeConfigParserBase):
 
     def __init__(self, workspaceDir=None, configString=None):
         # Imported here to avoid circular dependencies
-        import grapeMenu
+        from grape.vine import grapeMenu
 
         super(GrapeConfigParserWorkspace, self).__init__(
             workspaceDir=workspaceDir, configString=configString)

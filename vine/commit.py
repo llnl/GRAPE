@@ -1,12 +1,13 @@
 import os
-import option
-import grapeGit as git
-import grape_errors
-import config_parser_user
-import utility
-import vine_logging
+from grape.vine import config_parser_user
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
-class Commit(option.Option):
+
+class Commit(Option):
     """
     Usage: grape-commit [-m <message>] [-a | <filetree>]
 
@@ -32,7 +33,9 @@ class Commit(option.Option):
             git.commit(commitargs)
             return True
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg("Commit in %s failed. Perhaps there were no staged changes? Use -a to commit all modified files." % repo)
+            vine_logging.printMsg(f"Commit in {repo} failed. Perhaps there " +
+                                  "were no staged changes? Use -a to commit" +
+                                  " all modified files.")
             return False
 
     def execute(self, args):
@@ -40,10 +43,10 @@ class Commit(option.Option):
         if args['-a']:
             commitargs = commitargs +  " -a"
         elif args["<filetree>"]:
-            commitargs = commitargs + " %s"% args["<filetree>"]
+            commitargs = commitargs + f" {args['<filetree>']}"
         if not args['-m']:
             args["-m"] = utility.userInput("Please enter commit message:")
-        commitargs += " -m \"%s\"" % args["-m"]
+        commitargs += f" -m \"{args['-m']}\""
 
         wsDir = utility.workspaceDir()
         os.chdir(wsDir)
@@ -54,10 +57,10 @@ class Commit(option.Option):
             os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain -uno")
             if subStatus:
-                vine_logging.printMsg("Committing in %s..." % sub)
+                vine_logging.printMsg(f"Committing in {sub}...")
                 if self.commit(commitargs, sub) and stage:
                     os.chdir(wsDir)
-                    vine_logging.printMsg("Staging committed change in %s..." % sub)
+                    vine_logging.printMsg(f"Staging committed change in {sub}...")
                     git.add(sub)
 
         os.chdir(wsDir)

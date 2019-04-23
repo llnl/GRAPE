@@ -1,18 +1,17 @@
 import os
 import shutil
-
-import utility
-import grapeGit as git
-import config_parser_global
-import option
-import resumable
+from grape.vine import config_parser_global
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine.option import Option
+from grape.vine.resumable import Resumable
 
 
 # merge in a local branch into this branch
 #
 # NOTE: any updates to merge's arguments should be reflected in Merge Remote's arguments, or at least given values
 # by mergeRemote before the call to merge.
-class Merge(resumable.Resumable, option.Option):
+class Merge(Resumable, Option):
     """
     grape m
     merge a local branch into your current branch
@@ -49,7 +48,7 @@ class Merge(resumable.Resumable, option.Option):
 
     def execute(self, args):
         # Imported here to avoid circular dependencies
-        import grapeMenu
+        from grape.vine import grapeMenu
 
         # this is necessary due to the unholy relationships between mr, m, and md.
         if not "<<cmd>>" in args:
@@ -94,7 +93,7 @@ class Merge(resumable.Resumable, option.Option):
 
     def _resume(self, args):
         # Imported here to avoid circular dependencies
-        import grapeMenu
+        from grape.vine import grapeMenu
 
         grapeMenu.menu().getOption("md")._resume(args)
         return True

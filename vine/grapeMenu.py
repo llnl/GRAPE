@@ -2,39 +2,40 @@ import os
 import sys
 import traceback
 
-import addSubproject
-import bundle
-import branches
-import checkout
-import clone
-import commit
-import config
-import config_parser_global
-import deleteBranch
-import foreach
-import global_state
-import grape_errors
-import writeConfig
-import hooks
-import merge
-import mergeDevelop
-import mergeRemote
-import newFlowBranch
-import pull
-import push
-import quit
-import resolveConflicts
-import resumable
-import review
-import stash
-import status
-import grapeTest as test
-import updateLocal
-import updateSubproject
-import updateView
-import utility
-import version
-import walkthrough
+from grape.vine import addSubproject
+from grape.vine import bundle
+from grape.vine import branches
+from grape.vine import checkout
+from grape.vine import clone
+from grape.vine import commit
+from grape.vine import config
+from grape.vine import config_parser_global
+from grape.vine import deleteBranch
+from grape.vine import foreach
+from grape.vine import global_state
+from grape.vine import grape_errors
+from grape.vine import writeConfig
+from grape.vine import hooks
+from grape.vine import merge
+from grape.vine import mergeDevelop
+from grape.vine import mergeRemote
+from grape.vine import newFlowBranch
+from grape.vine import pull
+from grape.vine import push
+from grape.vine import quit
+from grape.vine import resolveConflicts
+from grape.vine import resumable
+from grape.vine import review
+from grape.vine import stash
+from grape.vine import status
+from grape.vine import grapeTest as test
+from grape.vine import updateLocal
+from grape.vine import updateSubproject
+from grape.vine import updateView
+from grape.vine import utility
+from grape.vine import version
+from grape.vine import vine_logging
+from grape.vine import walkthrough
 
 
 #######################################################################
@@ -67,26 +68,33 @@ def _resetMenu():
 
 
 class _Menu(object):
+
     def __init__(self):
         # Imported here to avoid circular dependencies
-        import publish
+        from grape.vine import publish
 
         #Add menu classes
         self._optionLookup = {}
         #Add/order your menu option here
-        self._options = [addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(), branches.Branches(),
-                         status.Status(), stash.Stash(), checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(), publish.Publish(),
-                         clone.Clone(), config.Config(), writeConfig.WriteConfig(),
-                         foreach.ForEach(), merge.Merge(), mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
-                         deleteBranch.DeleteBranch(),
-                         resolveConflicts.ResolveConflicts(),
-                         review.Review(), test.Test(), updateLocal.UpdateLocal(), updateSubproject.UpdateSubproject(),
-                         hooks.InstallHooks(), hooks.RunHook(),
-                         updateView.UpdateView(), version.Version(), walkthrough.Walkthrough(), quit.Quit()]
+        self._options = [
+            addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(),
+            branches.Branches(), status.Status(), stash.Stash(),
+            checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
+            publish.Publish(), clone.Clone(), config.Config(),
+            writeConfig.WriteConfig(), foreach.ForEach(), merge.Merge(),
+            mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
+            deleteBranch.DeleteBranch(), resolveConflicts.ResolveConflicts(),
+            review.Review(), test.Test(), updateLocal.UpdateLocal(),
+            updateSubproject.UpdateSubproject(), hooks.InstallHooks(),
+            hooks.RunHook(), updateView.UpdateView(), version.Version(),
+            walkthrough.Walkthrough(), quit.Quit()
+            ]
 
         #Add/order the menu sections here
-        self._sections = ['Getting Started', 'Code Reviews', 'Workspace',
-                          'Merge', 'Gitflow Tasks', 'Hooks', 'Patches', 'Project Management', 'Other']
+        self._sections = [
+            'Getting Started', 'Code Reviews', 'Workspace', 'Merge',
+            'Gitflow Tasks', 'Hooks', 'Patches', 'Project Management', 'Other'
+            ]
 
     def postInit(self):
         # add dynamically generated (dependent on grapeConfig) options here
@@ -99,7 +107,7 @@ class _Menu(object):
         try:
             return self._optionLookup[choice]
         except KeyError:
-            print("Unknown option '%s'" % choice)
+            print(f"Unknown option '{choice}'")
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None, globalArgs=None):
@@ -125,7 +133,8 @@ class _Menu(object):
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:], config)
             except SystemExit as e:
                 if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
-                    print("GRAPE PARSING ERROR: could not parse %s\n" % (args[1:]))
+                    print(f"GRAPE PARSING ERROR: could not parse {args[1:]}" +
+                          "\n")
                 raise e
         if globalArgs is not None:
             global_state.applyGlobalArgs(globalArgs)
@@ -136,14 +145,16 @@ class _Menu(object):
             return chosen_option.execute(option_args)
 
         except grape_errors.GrapeGitError as e:
-            print traceback.print_exc()
-            print ("GRAPE: Uncaught Error %s in grape-%s when executing '%s' in '%s'\n%s" %
-                   (e.code, chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
+            print(traceback.print_exc())
+            print(f"GRAPE: Uncaught Error {e.code} in " +
+                  f"grape-{chosen_option._key} when executing " +
+                  f"'{e.gitCommand}' in '{e.cwd}'" + "\n" +
+                  f"{e.gitOutput}")
             exit(e.code)
 
         except grape_errors.NoWorkspaceDirException as e:
-            print ("GRAPE: grape %s must be run from a grape workspace." % chosen_option.key)
-            print ("GRAPE: %s" % e.message)
+            print(f"GRAPE: grape {chosen_option.key} must be run from a grape workspace.")
+            print(f"GRAPE: {e.message}")
             exit(1)
         finally:
             if globalArgs is not None:
@@ -165,7 +176,7 @@ class _Menu(object):
             for currOption in self._options:
                 if currOption.section.strip().lower() != lowered_section:
                     continue
-                print("%s: %s" % (currOption.key.ljust(longest_key), currOption.description()))
+                print(f"{currOption.key.ljust(longest_key)}: {currOption.description()}")
 
     # configures a ConfigParser object with all default values and sections needed by our Option objects
     def setDefaultConfig(self, cfg):

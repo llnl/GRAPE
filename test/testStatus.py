@@ -1,10 +1,8 @@
 import os
-import inspect
 import sys
-
-import testGrape
-import testProjectScenarios
-import gridTesting
+from grape.test import gridTesting
+from grape.test import testGrape
+from grape.test import testProjectScenarios
 
 
 class GrapeStatusTester(testGrape.TestGrape): 

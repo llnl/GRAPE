@@ -1,9 +1,11 @@
-import sys, os
-import grapeGit as git
-import option
+import os
+import sys
+from grape.vine import grapeGit as git
+from grape.vine import vine_logging as vine_logging
+from grape.vine.option import Option
 
 # list local branches (git branch)
-class Branches(option.Option):
+class Branches(Option):
     def __init__(self):
         super(Branches,self).__init__()
         self._key = "b"

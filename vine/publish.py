@@ -1,27 +1,30 @@
+import io
 import os
 import re
-import time
-import tempfile
-import traceback
 import smtplib
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+import traceback
 try:
     from email.mime.text import MIMEText
 except ImportError:
     from email.MIMEText import MIMEText
-
-import Atlassian
-import utility
-import vine_logging
-import grape_errors
-import grapeGit as git
-import grapeMenu
-import vine_subprocess
-import config_parser_global
-import config_parser_user
-import option
-import resumable
-import stashy.stashy.errors as stashyErrors
-
+from grape.stashy.stashy import errors as stashyErrors
+from grape.vine import Atlassian
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import grapeMenu
+from grape.vine import resumable
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine import vine_subprocess
+from grape.vine.option import Option
+from grape.vine.resumable import Resumable
 
 
 class PublishStepFailed(Exception):
@@ -30,7 +33,7 @@ class PublishStepFailed(Exception):
         self.stepName = stepName
 
 
-class Publish(resumable.Resumable, option.Option):
+class Publish(Resumable, Option):
     """
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
@@ -266,7 +269,8 @@ class Publish(resumable.Resumable, option.Option):
         except KeyError:
             public = "Unknown"
             current = "Unknown"
-        return "Publish the current %s branch to %s" % (git.branchPrefix(current), public)
+        return f"Publish the current {git.branchPrefix(current)} " + \
+               f"branch to {public}"
 
     def _resume(self, args):
         super(Publish, self)._resume(args)
@@ -318,11 +322,14 @@ class Publish(resumable.Resumable, option.Option):
         super(Publish, self)._resume(args)
         branch = git.currentBranch()
         if self.progress["startingSHA"] != git.SHA(branch):
-            vine_logging.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
-                                                                              git.SHA(branch)))
-            revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
+            vine_logging.printMsg(f"Reverting all commits from {branch} " +
+                                  f"from {self.progress['startingSHA']} to " +
+                                  f"{git.SHA(branch)}")
+            revert = utility.userInput("This will apply to " +
+                                       f"{git.currentBranch()}. continue? " +
+                                       "[y,n]", "y")
             if revert:
-                git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
+                git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD")
         # release IN PROGRESS LOCK
         vine_logging.printMsg("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
@@ -357,12 +364,14 @@ class Publish(resumable.Resumable, option.Option):
         startPoint = args["--startAt"]
 
         if args["--printSteps"]:
-            print self.order
+            print(self.order)
             return True
 
         if startPoint:
             if startPoint not in self.order:
-                vine_logging.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, self.order))
+                vine_logging.printMsg(
+                    f"{startPoint} not a valid publish step." +
+                    "step. Choose 1 of :\n " + f"{self.order}")
                 return False
         else:
             startPoint = self.order[0]
@@ -371,7 +380,9 @@ class Publish(resumable.Resumable, option.Option):
 
         if stopPoint:
             if stopPoint not in self.order:
-                vine_logging.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (stopPoint, self.order))
+                vine_logging.printMsg(
+                    f"{stopPoint} not a valid publish step." +
+                    "Choose 1 of :\n " + f"{self.order}")
                 return False
 
         steps = {"build": self.performCustomBuildStep,
@@ -404,7 +415,7 @@ class Publish(resumable.Resumable, option.Option):
             if step == "done":
                 break
             if step == stopPoint:
-                vine_logging.printMsg("Stopping at %s step as requested." % stopPoint)
+                vine_logging.printMsg(f"Stopping at {stopPoint} step as requested.")
                 args["--startAt"] = step
                 self.dumpProgress(args)
                 return True
@@ -433,8 +444,9 @@ class Publish(resumable.Resumable, option.Option):
         return True
 
     def bailOut(self, step, args):
-        vine_logging.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
-                         "grape publish --continue" % step.upper())
+        vine_logging.printMsg(
+            f"Publish step {step.upper()} failed. Please resolve the issue" +
+            " and then continue using\ngrape publish --continue")
         args["--startAt"] = step
         self.dumpProgress(args)
         return
@@ -450,7 +462,8 @@ class Publish(resumable.Resumable, option.Option):
 
     def mergePublic(self, args):
         menu = grapeMenu.menu()
-        return menu.applyMenuChoice("md", ["--am", "--public=%s" % args["--public"]])
+        return menu.applyMenuChoice("md", ["--am",
+                                           f"--public={args['--public']}"])
 
     @staticmethod
     def markReview(args, newArgs, skipStr, updateOnly=True):
@@ -461,8 +474,10 @@ class Publish(resumable.Resumable, option.Option):
         finalArgs = []
         if updateOnly:
             finalArgs = ["--update"]
-        finalArgs += ["--source=%s" % args["--topic"], "--target=%s" % args["--public"],
-                      "--user=%s" % args["--user"], "--verifySSL=%s" % args["--verifySSL"]]
+        finalArgs += [f"--source={args['--topic']}",
+                      f"--target={args['--public']}",
+                      f"--user={args['--user']}",
+                      f"--verifySSL={args['--verifySSL']}"]
         if len(newArgs) > 0:
             finalArgs += newArgs
         for arg in reviewArgs:
@@ -476,8 +491,8 @@ class Publish(resumable.Resumable, option.Option):
 
     def markReviewWithVersionNumber(self, args):
         version = self.progress["version"]
-        vine_logging.printMsg("Prepending pull request title with %s" % version)
-        return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
+        vine_logging.printMsg(f"Prepending pull request title with {version}")
+        return self.markReview(args, [f"--title={version} :", "--prepend"], "Skipping marking pull request with "
                                                                               "version number")
 
     def ensureReview(self, args):
@@ -517,7 +532,7 @@ class Publish(resumable.Resumable, option.Option):
         else:
             vine_logging.printMsg("ERROR: There are multiple pull requests in progress!")
             for request in inProgressRequests:
-                print request
+                print(request)
             return False
     def acquireInProgressLock(self, args):
         if args["--noReview"]:
@@ -548,7 +563,7 @@ class Publish(resumable.Resumable, option.Option):
                     break
         if request:
             title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
-            return self.markReview(args, ["--title=%s" % title, "--state=%s" % state], "")
+            return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
             vine_logging.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
@@ -567,15 +582,16 @@ class Publish(resumable.Resumable, option.Option):
             reviewers = pullRequest.reviewers()
             if not verified:
                 if not reviewers:
-                    vine_logging.printMsg("There are no reviewers for your pull request for %s targeting %s." %
-                                     (args["--topic"], args["--public"]))
+                    vine_logging.printMsg(
+                        "There are no reviewers for your pull request for " +
+                        f"{args['--topic']} targeting {args['--public']}.")
                     self.progress["reviewers"] = "No reviewers"
                 else:
                     vine_logging.printMsg("The following reviewers have not approved your request:\n")
                     approvedReviewerNames = []
                     for reviewer in reviewers:
                         if reviewer[1] is False:
-                            print "%s (%s)" % (reviewer[0], reviewer[2])
+                            print(f"{reviewer[0]} ({reviewer[2]})")
                         else:
                             approvedReviewerNames.append(reviewer[2])
                     if len(approvedReviewerNames) > 0:
@@ -588,9 +604,11 @@ class Publish(resumable.Resumable, option.Option):
                     reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
-            vine_logging.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
-                             "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
-                                                        args["--repo"], "pull-requests"])))
+            url = '/'.join([atlassian.url, "projects", args["--project"],
+                            "repos", args["--repo"], "pull-requests"])
+            vine_logging.printMsg(
+                "There is no pull request for your current branch.\n" +
+                f"Start one using grape review or by visiting {url}")
             self.progress["reviewers"] = "No reviewers"
         return verified
 
@@ -605,18 +623,21 @@ class Publish(resumable.Resumable, option.Option):
                 topic = args["--topic"]
                 ret = ret and cb == topic
                 if not ret:
-                    vine_logging.printMsg("Current branch %s is not topic branch %s. Please checkout %s before publishing. " % (cb, topic, topic))
+                    vine_logging.printMsg(
+                        f"Current branch {cb} is not topic branch {topic}. " +
+                        f"Please checkout {topic} before publishing. ")
         return ret
 
     def performCustomStep(self, prefix, args):
-        if not args["--%sCmds" % prefix]:
+        if not args[f"--{prefix}Cmds"]:
             return True
         cwd = os.getcwd()
-        if args["--%sDir" % prefix]:
-            os.chdir(os.path.join(utility.workspaceDir(), args["--%sDir" % prefix]))
-        cmds = args["--%sCmds" % prefix].split(',')
+        if args[f"--{prefix}Dir"]:
+            os.chdir(os.path.join(utility.workspaceDir(), args[f"--{prefix}Dir"]))
+        cmds = args[f"--{prefix}Cmds"].split(',')
         ret = True
-        vine_logging.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
+        vine_logging.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM " +
+                              f"{prefix.upper()} STEP")
         for cmd in cmds:
             if ret:
                 if "<version>" in cmd:
@@ -626,10 +647,10 @@ class Publish(resumable.Resumable, option.Option):
                 if "<public>" in cmd:
                     cmd = cmd.replace("<public>", args["--public"])
 
-                returnCode = vine_subprocess.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd(),
-                                                               stream=True).returncode
-                print(returnCode)
-                ret = ret and (returnCode == 0)
+                process_result = vine_subprocess.executeSubProcess(cmd.strip(),
+                                                                   stream=True)
+                print(process_result.returncode)
+                ret = ret and (process_result.returncode == 0)
                 if not ret:
                     break
         os.chdir(cwd)
@@ -654,7 +675,7 @@ class Publish(resumable.Resumable, option.Option):
         # modified during the prepublish step, the git add *and* the git commit must be
         # handled in the custom step.
         try:
-            git.commit(" -m \"%s\"" % args["-m"])
+            git.commit(f" -m \"{args['-m']}\"")
         except grape_errors.GrapeGitError:
             pass
 
@@ -667,8 +688,8 @@ class Publish(resumable.Resumable, option.Option):
     def getModifiedFileList(public, topic, args):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
-        updatelist = git.diff("--name-only %s %s" % (public, topic)).split('\n')
-        if len(updatelist) > emailMaxFiles:
+        updatelist = git.diff(f"--name-only {public} {topic}").split('\n')
+        if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
 
@@ -680,8 +701,9 @@ class Publish(resumable.Resumable, option.Option):
         public = args["--public"]
         topic = args["--topic"]
         if git.SHA(public) == git.SHA(topic):
-            public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
-                                       "modified file list." % topic)
+            public = utility.userInput(
+                "Please enter the branch name or SHA of the commit to diff " +
+                f"against {topic} for the modified file list.")
 
         self.progress["modifiedFiles"] = []
 
@@ -740,12 +762,12 @@ class Publish(resumable.Resumable, option.Option):
             # commit message should come from the file
             commitMsgFile = args["<CommitMessageFile>"]
             try:
-                with open(commitMsgFile, 'r') as f:
+                with io.open(commitMsgFile, 'r') as f:
                     commitMsg = f.readlines()+["\n"]
 
             except IOError as e:
                 print(e.message)
-                vine_logging.printMsg("Could not read contents of %s" % commitMsgFile)
+                vine_logging.printMsg(f"Could not read contents of {commitMsgFile}")
                 args["<CommitMessageFile>"] = False
                 return False
 
@@ -760,8 +782,10 @@ class Publish(resumable.Resumable, option.Option):
             if args["--noReview"]:
                 vine_logging.printMsg("Skipping retrieval of commit message from Pull Request description..")
                 if not args["-m"]:
-                    print("File with commit message is required argument when publishing with --noReview and no -m "
-                          "<msg> defined.")
+                    long_message = "File with commit message is required " \
+                                   "argument when publishing with --noReview "\
+                                   "and no -m <msg> defined."
+                    print(long_message)
                     return False
             vine_logging.printMsg("Retrieving pull request description for use as commit message...")
             atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
@@ -783,8 +807,8 @@ class Publish(resumable.Resumable, option.Option):
 
         vine_logging.printMsg("The following commit message will be used for email notification, merge commits, etc.\n"
                          "======================================================================")
-        print ''.join(commitMsg[:10])
-        print "======================================================================"
+        print(''.join(commitMsg[:10]))
+        print("======================================================================")
         proceed = utility.userInput("Is the above message what you want for email notifications and merge commits? "
                                     "['y','n']", 'y')
         if not proceed:
@@ -819,12 +843,13 @@ class Publish(resumable.Resumable, option.Option):
             header = ["\n"]+header.split("\\n")
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
-            with open(logFile, 'r') as f:
+            with io.open(logFile, 'r') as f:
                 loglines = f.readlines()
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
-            with open(logFile, 'w') as f:
+            with io.open(logFile, 'w') as f:
                 f.writelines(loglines)
-            git.commit("%s -m \"GRAPE publish: updated log file %s\"" % (logFile, logFile))
+            git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
+                       f"{logFile}\"")
         os.chdir(cwd)
         return self.checkInProgressLock(args)
 
@@ -846,7 +871,7 @@ class Publish(resumable.Resumable, option.Option):
                 return True
         ret = True
         if args["--tickVersion"]:
-            versionArgs = ["tick", "--notag", "--public=%s" % args["--public"]]
+            versionArgs = ["tick", "--notag", f"--public={args['--public']}"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
@@ -880,7 +905,7 @@ class Publish(resumable.Resumable, option.Option):
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
 
-        with open(mailfile, 'w') as mf:
+        with io.open(mailfile, 'w') as mf:
             date = time.asctime()
             emailHeader = args["--emailHeader"]
             emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
@@ -909,16 +934,15 @@ class Publish(resumable.Resumable, option.Option):
 
         if not args["--emailNotification"].lower() == "true":
             vine_logging.printMsg("Skipping E-mail notification..")
-            with open(mailfile, 'r') as mf:
+            with io.open(mailfile, 'r') as mf:
                 vine_logging.printMsg("-- Begin update message --")
                 vine_logging.printMsg(mf.read())
                 vine_logging.printMsg("-- End update message --")
             return True
 
         # Open the file back up and attach it to a MIME message
-        t = open(mailfile, 'rb')
-        message = t.read()
-        t.close()
+        with io.open(mailfile, 'rb') as t:
+            message = t.read()
         msg = MIMEText(message)
 
         # Use their email address from their git user profile.
@@ -936,11 +960,10 @@ class Publish(resumable.Resumable, option.Option):
 
         # Send the message via the configured SMTP server (don't know if this
         # is necessary - localhost might work just as well)
-        import socket
         try:
             s = smtplib.SMTP("nospam.llnl.gov", timeout=10)
-        except socket.error, e:
-            vine_logging.printMsg("Failed to email: %s" % str(e))
+        except socket.error as e:
+            vine_logging.printMsg(f"Failed to email: {e}")
             return False
 
         # Don't need to connect if we specified the
@@ -961,7 +984,10 @@ class Publish(resumable.Resumable, option.Option):
             self.doDelete = self.progress["<<doDelete>>"]
         if not self.doDelete:
             if args["--deleteTopic"].lower() == "true":
-                self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+                self.doDelete[args["--topic"]] = utility.userInput(
+                    "Once the publish is done, would you like to delete " +
+                    f"the branch {args['--topic']} ? " + "\n[y/n]",
+                    default='y')
             else:
                 self.doDelete[args["--topic"]] = False
         self.progress["<<doDelete>>"] = self.doDelete
@@ -969,13 +995,16 @@ class Publish(resumable.Resumable, option.Option):
     def deleteTopicBranch(self, args):
         self.askWhetherToDelete(args)
         if self.doDelete[args["--topic"]]:
-            vine_logging.printMsg("Deleting %s" % args["--topic"])
+            vine_logging.printMsg(f"Deleting {args['--topic']}")
             grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
             # SHA will raise an exception if the branch has been deleted
             if git.SHA(args["--topic"]):
-                checkout = utility.userInput("You are currently on %s. Would you like to checkout %s? [y,n]" % (git.currentBranch(), args["--topic"]), "n")
+                checkout = utility.userInput(
+                    f"You are currently on {git.currentBranch()}. " +
+                    f"Would you like to checkout {args['--topic']}? [y,n]",
+                    "n")
                 if checkout:
                     grapeMenu.menu().applyMenuChoice("checkout", [args["--topic"]])
         except:
@@ -988,7 +1017,7 @@ class Publish(resumable.Resumable, option.Option):
         valid = False
         if policy == "merge" or policy == "squash":
             valid = bool(args["-m"])
-            print args["-m"]
+            print(args["-m"])
             if not valid:
                 print("Commit message required for merge or squash merge publish policies.")
         if policy == "rebase":
@@ -1005,48 +1034,49 @@ class Publish(resumable.Resumable, option.Option):
                                                         isNested=isNested)
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
-            vine_logging.printMsg("remotely merging %s into %s" % (topic, public))
+            vine_logging.printMsg(f"remotely merging {topic} into {public}")
             if pr.merge():
                 git.checkout(public)
                 git.pull("")
-                print("%s merged successfully to %s" % (topic, public))
-                print("You are currently on %s" % public)
+                print(f"{topic} merged successfully to {public}")
+                print(f"You are currently on {public}")
                 return True
             else:
                 vine_logging.printMsg("Failed to do a remote merge.")
         else:
-            vine_logging.printMsg("Could not find open Pull Request for %s in %s" % (topic, repo))
+            vine_logging.printMsg(
+                f"Could not find open Pull Request for {topic} in {repo}")
         return False
 
     @staticmethod
     def merge(public, topic, repo, args):
         with utility.cd(repo):
-            print("merging %s into %s" % (topic, public))
+            print(f"merging {topic} into {public}")
             git.checkout(public)
-            git.merge("%s -m \"%s\" " % (topic, args["-m"]))
-            print("%s merged successfully to %s" % (topic, public))
-            print("You are currently on %s" % public)
+            git.merge(f"{topic} -m \"{args['-m']}\" ")
+            print(f"{topic} merged successfully to {public}")
+            print(f"You are currently on {public}")
 
     @staticmethod
     def squashMerge(public, topic, repo, args):
         with utility.cd(repo):
-            print("squash merging %s into %s" % (topic, public))
+            print(f"squash merging {topic} into {public}")
             git.checkout(public)
-            git.merge("--squash %s" % topic)
-            git.commit("-m \"%s\"" % args["-m"])
-            print("%s squash-merged successfully to %s" % (topic, public))
-            print("You are currently on %s" % public)
+            git.merge(f"--squash {topic}")
+            git.commit(f"-m \"{args['-m']}\"")
+            print(f"{topic} squash-merged successfully to {public}")
+            print(f"You are currently on {public}")
 
 
     @staticmethod
     def rebase(public, topic, repo):
         with utility.cd(repo):
-            print("rebasing %s onto %s" % (topic, public))
+            print(f"rebasing {topic} onto {public}")
             git.rebase(public)
-            print("%s successfully rebased onto %s" % (topic, public))
+            print(f"{topic} successfully rebased onto {public}")
             git.checkout(public)
             git.merge(topic)
-            print("You are currently on %s" % public)
+            print(f"You are currently on {public}")
 
     def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination, repoType="outer"):
         # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
@@ -1080,13 +1110,17 @@ class Publish(resumable.Resumable, option.Option):
         if status[mergeID] == "SWITCHED":
             status[mergeID] = "MERGING"
             try:
-                git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
+                git.merge(f"{public} -m \"GRAPE PUBLISH: cascade merge of " +
+                          f"{public} to {branch} after publish.\"")
                 status[mergeID] = "MERGED"
             except grape_errors.GrapeGitError as e:
                 if "conflict" in e.gitOutput.lower():
-                    vine_logging.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
-                                     "Please use git mergetool to resolve, and then git commit to commit your changes.\n"
-                                     "Once done, please run grape publish --continue ."% (public, branch, repo))
+                    vine_logging.printMsg(
+                        f"Conflicts generated in cascade merge from {public}" +
+                        f" to {branch} in {repo}." + "\nPlease use git " +
+                        "mergetool to resolve, and then git commit to commit" +
+                        " your changes.\nOnce done, please run grape publish " +
+                        "--continue .")
                 return False
 
         if status[mergeID] == "MERGING":
@@ -1100,11 +1134,12 @@ class Publish(resumable.Resumable, option.Option):
                 return False
         if status[mergeID] == "MERGED":
             public = branch
-            git.push("origin %s" % branch)
+            git.push(f"origin {branch}")
             status[mergeID] = "PUSHED"
         if status[mergeID] == "PUSHED":
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
-                grapeMenu.menu().applyMenuChoice("version",["tick", "--tag","--slot=%i"%args["--tickOnCascade"]])
+                grapeMenu.menu().applyMenuChoice(
+                    "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
                 git.push("--tags origin")
             status[mergeID] = "DONE"
         return True
@@ -1127,7 +1162,7 @@ class Publish(resumable.Resumable, option.Option):
                 public = args["--public"]
                 with utility.cd(repo):
                     for branch in cascade:
-                        mergeID = "%s_%s_%s" % ("outer", repo, branch)
+                        mergeID = f"outer_{repo}_{branch}"
                         if not self.performCascade(status, args, mergeID, repo, branch, public):
                             return False
 
@@ -1138,7 +1173,7 @@ class Publish(resumable.Resumable, option.Option):
                     with utility.cd(repo):
                         public = args["--submodulePublic"]
                         for branch in cascade:
-                            mergeID = "%s_%s_%s" % ("submodules", repo, branch)
+                            mergeID = f"submodules_{repo}_{branch}"
                             if not self.performCascade(status, args, mergeID, repo, branch, public):
                                 return False
 
@@ -1158,7 +1193,9 @@ class Publish(resumable.Resumable, option.Option):
                     if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
                         return
                     else:
-                        vine_logging.printMsg("Bitbucket seems to think %s in %s is not mergeable... aborting" % (topic, repo))
+                        vine_logging.printMsg(
+                            f"Bitbucket seems to think {topic} in {repo} " +
+                            "is not mergeable... aborting")
                         raise Exception
                 except stashyErrors.GenericException as e:
                     vine_logging.printMsg("WARNING: Remote merge failed. Attempting local merge instead.")
@@ -1207,18 +1244,19 @@ class Publish(resumable.Resumable, option.Option):
             allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
             self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
             for st in allsubtrees:
-                prefix = config.get('subtree-%s' % st, 'prefix')
-                if git.diff("--name-only %s %s -- %s" % (public, topic, os.path.join(utility.workspaceDir(),prefix))):
+                prefix = config.get(f'subtree-{st}', 'prefix')
+                if git.diff(f"--name-only {public} {topic} -- " +
+                            f"{os.path.join(utility.workspaceDir(), prefix)}"):
                     self.modifiedSubtrees.add(st)
             for st in self.modifiedSubtrees:
-                self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')
-                self.st_remotes[st] = git.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
-                self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
+                self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
+                self.st_remotes[st] = git.parseSubprojectRemoteURL(config.get(f'subtree-{st}', 'remote'))
+                self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
 
         # deal with nested subprojects
         self.modifiedNestedProjects =  config_parser_user.getAllModifiedNestedSubprojectPrefixes(public,topic)
 
-        self.modifiedOuter = True if git.log("--oneline %s..%s" % (public, topic)) else False
+        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}") else False
 
         return True
 
@@ -1234,33 +1272,39 @@ class Publish(resumable.Resumable, option.Option):
         topic = args["--topic"]
         submodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
 
-        userMsg = "GRAPE: When ready, grape will publish %s to:\n" % topic
+        userMsg = f"GRAPE: When ready, grape will publish {topic} to:" + "\n"
 
         useAnd = False
         if recurse:
-            if (submodules):
-                userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submodulePublic"], "\n\t\t".join(submodules))
+            newline_and_tabs = '\n\t\t'
+            if submodules:
+                spaced_submodules = newline_and_tabs.join(submodules)
+                userMsg += f"{args['--submodulePublic']} for the "
+                userMsg += f"following submodules:{newline_and_tabs}{spaced_submodules}" 
+                userMsg += "\n"
                 useAnd = True
 
             if self.modifiedNestedProjects:
-                prefixes = self.modifiedNestedProjects
-                userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
+                spaced_prefixes = newline_and_tabs.join(self.modifiedNestedProjects)
+                userMsg += f"{public} for the following nested "
+                userMsg += f"subprojects:{newline_and_tabs}{spaced_prefixes}"
+                userMsg += "\n"
                 useAnd = True
 
         if self.modifiedOuter:
-            userMsg += "%s%s for the outer level repo. \n" % ("and " if useAnd else "", public)
-
-
+            maybe_and = "and " if useAnd else ""
+            userMsg += f"{maybe_and}{public} for the outer level repo." + "\n" 
 
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
             if self.modifiedSubtrees:
                 userMsg += "Additionally, grape will publish the following subtrees to the following destinations:\n"
                 for st in self.modifiedSubtrees:
-                    userMsg += "subtree: %s\trepo: %s\tbranch:%s\n" % (self.st_prefixes[st], self.st_remotes[st],
-                                                                     self.st_branches[st])
+                    userMsg += f"subtree: {self.st_prefixes[st]}" + "\t"
+                    userMsg += f"repo: {self.st_remotes[st]}" + "\t"
+                    userMsg += f"branch:{self.st_branches[st]}" + "\n"
 
-        proceed = utility.userInput(userMsg + "\nProceed? [y/n]", 'y')
+        proceed = utility.userInput(f"{userMsg}" + "\nProceed? [y/n]", 'y')
         if not proceed:
             return False
         self.progress["targetsVerified"] = True
@@ -1284,7 +1328,7 @@ class Publish(resumable.Resumable, option.Option):
         config = config_parser_global.grapeConfig()
 
         # make sure public branch is up to date.
-        grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % public])
+        grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={public}'])
 
         # set any CL defined publish policy
         policy = None
@@ -1328,14 +1372,16 @@ class Publish(resumable.Resumable, option.Option):
                 for sub in modifiedSubmodules:
                     subpath = os.path.join(wsdir,sub)
                     with utility.cd(subpath):
-                        grapeMenu.menu().applyMenuChoice('up', ['up', '--noRecurse', '--wd=%s' % subpath, '--public=%s' % submodulePublic])
+                        grapeMenu.menu().applyMenuChoice(
+                            'up', ['up', '--noRecurse', f'--wd={subpath}',
+                                   f'--public={submodulePublic}'])
                         self.publish(submodulePolicy, submodulePublic, topic, subpath, args, isSubmodule=True)
                     #add and commit any new merge commits in submodules as a result of the publish
                     git.add(sub)
                 try:
                     # we are cool with this not working - only will have something to commit if the
                     # submodules were published without fast forward merges
-                    git.commit("-m \"%s - submodules published\"" % args["-m"])
+                    git.commit(f"-m \"{args['-m']} - submodules published\"")
                 except grape_errors.GrapeGitError:
                     pass
                 # ensure submodules that aren't modified end up on the public branch
@@ -1358,19 +1404,28 @@ class Publish(resumable.Resumable, option.Option):
                 if proceed:
                     squash = "--squash" if config.get(self.SECTION_SUBTREES, "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        vine_logging.printMsg("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
-                                                                              self.st_remotes[st], self.st_branches[st]))
+                        vine_logging.printMsg(
+                            f"pushing subtree {self.st_prefixes[st]} " +
+                            f"to {self.st_remotes[st]} " +
+                            f"(branch {self.st_branches[st]})...")
 
                         try:
-                            git.subtree("push --prefix=%s %s %s " % (self.st_prefixes[st],
-                                                                                 self.st_remotes[st],  self.st_branches[st]))
+                            git.subtree(
+                                f"push --prefix={self.st_prefixes[st]} " +
+                                f"{self.st_remotes[st]} " +
+                                f"{self.st_branches[st]} ")
                         except grape_errors.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             vine_logging.printMsg("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st]))
-                            git.subtree("push --prefix=%s %s %s " % ( self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st]))
+                            git.subtree(
+                                f"pull {squash} " +
+                                f"--prefix={self.st_prefixes[st]} " +
+                                f"{self.st_remotes[st]} " +
+                                f"{self.st_branches[st]} ")
+                            git.subtree(
+                                f"push --prefix={self.st_prefixes[st]} " +
+                                f"{self.st_remotes[st]} " +
+                                f"{self.st_branches[st]} ")
                             vine_logging.printMsg("Succeeded!")
 
 

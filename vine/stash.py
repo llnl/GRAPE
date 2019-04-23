@@ -1,9 +1,10 @@
 import os
-import option
-import grape_errors
-import grapeGit as git
-import utility
-import multi_repo_cmd_launcher
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 
 def stashHelper(repo=".", branch=""):
@@ -15,7 +16,7 @@ def popHelper(repo=".", branch=""):
 def listHelper(repo=".", branch=""):
     return [repo, git.stash("list")]
 
-class Stash(option.Option):
+class Stash(Option):
     """
     grape stash can run simple git stash, git stash pop, or git stash list commands in all repositories
     in your workspace.
@@ -50,10 +51,10 @@ class Stash(option.Option):
             retvals = launcher.launchFromWorkspaceDir()
             for r in retvals:
                 if r[1]:
-                    print "%s: %s" % (r[0], r[1])
+                    print(f"{r[0]}: {r[1]}")
         except grape_errors.MultiRepoException as mre:
             for e, r in zip(mre, mre.repos):
-                print("%s:\n%s" % (r, e.gitOutput))
+                print(f"{r}:" + "\n" + f"{e.gitOutput}")
 
         return True
 

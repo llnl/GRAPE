@@ -1,14 +1,10 @@
 import os
 import sys
-
-import testGrape
-
-if os.path.pardir not in sys.path:
-    sys.path.insert(0, os.path.pardir)
-from vine import grape_errors
-from vine import grapeGit as git
-from vine import config_parser_global
-from vine.option import Option
+from grape.test import testGrape
+from grape.vine import config_parser_global
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine.option import Option
 
 
 class TestPublish(testGrape.TestGrape):
@@ -16,13 +12,12 @@ class TestPublish(testGrape.TestGrape):
     def setUpBranchToFFMerge(self):
         os.chdir(self.repo)
         self.branch = "testPublish"
-        git.checkout("-b %s" % self.branch)
+        git.checkout(f"-b {self.branch}")
         testGrape.writeFile2("f2")
         git.add("f2")
         git.commit("-m \"added f2\"")
         self.setUpConfig()
         
-
     def setUpDevelopBranch(self):
         os.chdir(self.repo)
         git.branch("-f develop master")
@@ -32,18 +27,19 @@ class TestPublish(testGrape.TestGrape):
             self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
             self.assertTrue(git.shortSHA(toBranch) == git.shortSHA(fromBranch))
         except grape_errors.GrapeGitError as e:
-            self.fail("%s\n%s" % (self.output.getvalue(), e.gitCommand+e.gitOutput))
+            self.fail(f"{self.get_output()}" + "\n" +
+                      f"{e.gitCommand + e.gitOutput}")
 
     def assertSuccessfulSquashMerge(self, fromBranch="testPublish", toBranch="master"):
         self.assertTrue(git.currentBranch() == toBranch)
         self.assertTrue(git.shortSHA(toBranch) != git.shortSHA(fromBranch))
-        self.assertFalse(git.diff("--name-only %s %s" % (toBranch, fromBranch)))
+        self.assertFalse(git.diff(f"--name-only {toBranch} {fromBranch}"))
 
     def assertSuccessfulSquashCascadeMerge(self, fromBranch="testPublish", toBranch="master", cascadeDest="develop"):
         currentBranch = git.currentBranch()
         self.assertTrue(currentBranch == cascadeDest)
-        self.assertFalse(git.diff("--name-only %s %s" % (toBranch, fromBranch)))
-        self.assertFalse(git.diff("--name-only %s %s" % (toBranch, cascadeDest)))
+        self.assertFalse(git.diff(f"--name-only {toBranch} {fromBranch}"))
+        self.assertFalse(git.diff(f"--name-only {toBranch} {cascadeDest}"))
         self.assertTrue(git.branchUpToDateWith(toBranch, cascadeDest))
         self.assertFalse(git.branchUpToDateWith(toBranch, fromBranch))
 
@@ -64,12 +60,12 @@ class TestPublish(testGrape.TestGrape):
           
             self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
-            self.fail("%s\n%s" % (self.output.getvalue(), e.message))
+            self.fail(f"{self.get_output()}" + "\n" + f"{e.message}")
         #origin has not been set up for these repos yet
         #self.assertNotIn("fatal:", self.output.getvalue())
     
     def assertGrapePublishFailed(self, args=None):
-        self.assertGrapePublishWorked( args=args, assertFail=True)
+        self.assertGrapePublishWorked(args=args, assertFail=True)
 
     def testFFDefaultPublish(self):
         self.setUpBranchToFFMerge()
@@ -111,9 +107,9 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello ,  echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
-        self.assertIn("echo hello", self.output.getvalue())
-        self.assertIn("echo world", self.output.getvalue())
-        self.assertIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
+        self.assertIn("hello", self.get_output())
+        self.assertIn("world", self.get_output())
+        self.assertIn("PERFORMING CUSTOM BUILD STEP", self.get_output())
 
     def testCustomTestStep(self):
         self.setUpBranchToFFMerge()
@@ -121,9 +117,9 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
-        self.assertIn("echo helloTest", self.output.getvalue())
-        self.assertIn("echo worldTest", self.output.getvalue())
-        self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
+        self.assertIn("helloTest", self.get_output())
+        self.assertIn("worldTest", self.get_output())
+        self.assertIn("PERFORMING CUSTOM TEST STEP", self.get_output())
 
     def testVersionTickArgumentPassing(self):
         self.setUpBranchToFFMerge()
@@ -142,14 +138,14 @@ class TestPublish(testGrape.TestGrape):
         self.assertGrapePublishWorked(["--startAt=test", "--stopAt=deleteTopic", "--tickVersion=True",
                                        "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         # check test occurred
-        self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
+        self.assertIn("PERFORMING CUSTOM TEST STEP", self.get_output())
         # check that build never occurred
-        self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
+        self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.get_output())
         # check that we tagged a new version
         self.assertIn("v1.0.1", git.describe())
         
     def testPublishNestedSubprojects(self):
-        import testNestedSubproject
+        from grape.test import testNestedSubproject
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
@@ -164,10 +160,11 @@ class TestPublish(testGrape.TestGrape):
         self.assertSuccessfulFastForwardMerge()
         
         os.chdir(self.subproject)
-        self.assertTrue(git.currentBranch() == "master", "on %s, expected to be on master" % git.currentBranch())
-        
+        self.assertTrue(git.currentBranch() == "master",
+                        f"on {git.currentBranch()}, expected to be on master")
+
     def testPublishFromWithinNestedSubproject(self):
-        import testNestedSubproject
+        from grape.test import testNestedSubproject
         self.setUpBranchToFFMerge()
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
@@ -177,7 +174,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertSuccessfulFastForwardMerge()
 
     def testPublishNewSubmodule(self):
-        import testNestedSubproject
+        from grape.test import testNestedSubproject
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
@@ -190,20 +187,21 @@ class TestPublish(testGrape.TestGrape):
         git.gitcmd("init --bare", "Setup Failed")
         os.chdir(os.path.join(repo2_origin,".."))
         # clone repo2
-        git.gitcmd("clone %s %s" % (repo2_origin,self.repos[1]), "could not clone test bare repo")
+        git.gitcmd(f"clone {repo2_origin} {self.repos[1]}",
+                   "could not clone test bare repo")
         os.chdir(self.repos[1])
         # create an initial public branch in repo2
         fname = os.path.join(self.repos[1], "testRepoFile")
         testGrape.writeFile1(fname)
         self.file1 = fname
-        git.gitcmd("add %s" % fname, "Add Failed")
+        git.gitcmd(f"add {fname}", "Add Failed")
         git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
         git.gitcmd("push origin master", "push to master failed")
         git.branch("testPublish")
         git.push("origin testPublish")
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
-        git.submodule("add %s %s" % (os.path.join(repo2_origin), "submodule1"))
+        git.submodule(f"add {os.path.join(repo2_origin)} submodule1")
         git.commit("-m \"added submodule1\"")
         os.chdir(os.path.join(self.repo,"submodule1"))
         # add changes to feature branch
@@ -225,7 +223,8 @@ class TestPublish(testGrape.TestGrape):
 
         # check out a clean version of repo2
         checkrepo = "repocheck"
-        git.gitcmd("clone %s %s" % (repo2_origin,checkrepo), "could not clone test bare repo")
+        git.gitcmd(f"clone {repo2_origin} {checkrepo}",
+                   "could not clone test bare repo")
         os.chdir(checkrepo)
         git.checkout("master")
         # ensure that master has been updated with the new commits

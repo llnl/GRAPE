@@ -1,8 +1,9 @@
-import config_parser_global
-import option
+import io
+from grape.vine import config_parser_global
+from grape.vine.option import Option
 
 
-class WriteConfig(option.Option):
+class WriteConfig(Option):
     """
         grape writeConfig: Writes the current configuration to a file, using any configuration set
         by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig.
@@ -23,7 +24,7 @@ class WriteConfig(option.Option):
         config = config_parser_global.grapeConfig()
 
         self.setFlowModelConfig(config, args)
-        with open(args["<file>"], 'w') as f:
+        with io.open(args["<file>"], 'w') as f:
             config.write(f)
 
     @staticmethod

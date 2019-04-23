@@ -1,11 +1,9 @@
 import os
 import shutil
-from testGrape import *
-
-if os.path.pardir not in sys.path:
-    sys.path.insert(0, os.path.pardir)
-from vine import grapeGit as git
-from vine import grape_errors
+import sys
+from grape.test.testGrape import *
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
 
 
 class TestGrapeGit(TestGrape):
@@ -29,7 +27,7 @@ class TestGrapeGit(TestGrape):
             writeFile1(f1name)
             commitStr = "testCommit: added f1"
             git.add("f1")
-            git.commit("f1 -m \"%s\"" % commitStr)
+            git.commit(f"f1 -m \"{commitStr}\"")
             log = git.log()
             self.assertTrue(commitStr in log)
         except grape_errors.GrapeGitError as error:
@@ -60,7 +58,7 @@ class TestGrapeGit(TestGrape):
             writeFile1(f1name)
             git.add("f1")
             commitStr = "testMerge: added f1"
-            git.commit(" -m \"%s\"" % commitStr)
+            git.commit(f" -m \"{commitStr}\"")
             # edit it on branch testMerge/tmp1
             git.checkout("-b testMerge/tmp1")
             writeFile2(f1name)
@@ -92,7 +90,8 @@ class TestGrapeGit(TestGrape):
             self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
         except grape_errors.GrapeGitError as error:
             status = git.status()
-            self.assertTrue("conflict" in status, "'conflict' not in status message %s" % status)
+            self.assertTrue("conflict" in status,
+                            f"'conflict' not in status message {status}")
 
     def testMergeAbort(self):
         try:
@@ -103,7 +102,7 @@ class TestGrapeGit(TestGrape):
             writeFile1(f1name)
             git.add("f1")
             commitStr = "testMergeAbort: added f1"
-            git.commit(" -m \"%s\"" % commitStr)
+            git.commit(f" -m \"{commitStr}\"")
             # also add it on the tmp branch
             git.checkout("testMergeAbort/tmp1")
             writeFile2(f1name)
@@ -111,26 +110,27 @@ class TestGrapeGit(TestGrape):
             git.commit(" -m \"testMergeAbort/tmp1 : added f1\"")
             # a merge should generate a conflict
             git.merge("master -m \"merging from master\"")
-            self.assertTrue(False,"conflict did not throw exception")
+            self.assertTrue(False, "conflict did not throw exception")
         except:
             status = git.status()
-            self.assertTrue("conflict" in status, "'conflict' not in status message %s " % status)
+            self.assertTrue("conflict" in status,
+                            f"'conflict' not in status message {status} ")
             git.mergeAbort()
             status = git.status()
             self.assertFalse("conflict" in status, "conflict not removed by aborting merge")
 
     def testFetch(self):
         try:
-            git.clone("%s %s" %(self.repo,self.repos[1]))
+            git.clone(f"{self.repo} {self.repos[1]}")
             os.chdir(self.repo)
-            f1name = os.path.join(self.repo,"f1")
+            f1name = os.path.join(self.repo, "f1")
             writeFile1(f1name)
             git.add("f1")
             commitStr = "testFetch: added f1"
-            git.commit(" -m \"%s\"" % commitStr)
+            git.commit(f" -m \"{commitStr}\"")
             os.chdir(self.repos[1])
             log = git.log("--all")
-            self.assertFalse(commitStr in log,"commit message in log before it should be")
+            self.assertFalse(commitStr in log, "commit message in log before it should be")
             git.fetch("origin")
             log = git.log("--all")
             self.assertTrue(commitStr in log, "commit message not in log --all after fetch")
@@ -140,16 +140,16 @@ class TestGrapeGit(TestGrape):
 
     def testPull(self):
         try:
-            git.clone("%s %s" %(self.repo,self.repos[1]))
+            git.clone(f"{self.repo} {self.repos[1]}")
             os.chdir(self.repo)
-            f1name = os.path.join(self.repo,"f1")
+            f1name = os.path.join(self.repo, "f1")
             writeFile1(f1name)
             git.add("f1")
             commitStr = "testPull: added f1"
-            git.commit(" -m \"%s\"" % commitStr)
+            git.commit(f" -m \"{commitStr}\"")
             os.chdir(self.repos[1])
             log = git.log("--all")
-            self.assertFalse(commitStr in log,"commit message in log before it should be")
+            self.assertFalse(commitStr in log, "commit message in log before it should be")
             git.pull("origin master")
             log = git.log()
             self.assertTrue(commitStr in log, "commit message not in log after pull")
@@ -164,14 +164,14 @@ class TestGrapeGit(TestGrape):
             writeFile2(f2name)
             git.add(f2name)
             git.commit(" -m \"initial commit for testPush\"")
-            git.clone("%s %s" %(self.repo,self.repos[1]))
+            git.clone(f"{self.repo} {self.repos[1]}")
             git.checkout("-b testPush/tmpBranchToAllowPushesToMaster")
             os.chdir(self.repos[1])
-            f1name = os.path.join(self.repos[1],"f1")
+            f1name = os.path.join(self.repos[1], "f1")
             writeFile1(f1name)
             git.add("f1")
             commitStr = "testPush: added f1"
-            git.commit(" -m \"%s\"" % commitStr)
+            git.commit(f" -m \"{commitStr}\"")
             os.chdir(self.repo)
             log = git.log("--all")
             self.assertFalse(commitStr in log,"commit message in log before it should be")
@@ -191,7 +191,8 @@ class TestGrapeGit(TestGrape):
             os.chdir(local)
             git.branch("testBranch/newBranch HEAD")
             branches = git.branch()
-            self.assertTrue("testBranch/newBranch" in branches, "new branch not in returned string %s " % branches)
+            self.assertTrue("testBranch/newBranch" in branches,
+                            f"new branch not in returned string {branches} ")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
@@ -200,11 +201,12 @@ class TestGrapeGit(TestGrape):
         localSource = self.repo
         localClone = self.repos[1]
         try:
-            self.assertTrue(git.clone("%s %s" % (localSource,localClone) ))
+            self.assertTrue(git.clone(f"{localSource} {localClone}"))
             os.chdir(localClone)
-            fetchLine = "Fetch URL: %s" % localSource
+            fetchLine = f"Fetch URL: {localSource}"
             showRemoteOutput = git.showRemote()
-            self.assertTrue(fetchLine in showRemoteOutput,"coud not find %s in output" % fetchLine)
+            self.assertTrue(fetchLine in showRemoteOutput,
+                            f"could not find {fetchLine} in output")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
@@ -242,7 +244,7 @@ class TestGrapeGit(TestGrape):
             os.chdir("hardlinktest/b/c")
 
             #Set the remote origin url to the cwd for testing purposes
-            git.config("--add remote.origin.url %s" % os.getcwd())
+            git.config(f"--add remote.origin.url {os.getcwd()}")
 
             #Test existing hard paths
             self.assertTrue(git.parseSubprojectRemoteURL("/usr/gapps/grape") == "/usr/gapps/grape")
@@ -264,4 +266,7 @@ class TestGrapeGit(TestGrape):
             shutil.rmtree("hardlinktest")
 
     def handleGitError(self,error):
-        self.assertTrue(False,"When executing \n%s\nError %d caught: %s \n %s " % (error.gitCommand,error.code,error.msg,error.gitOutput))
+        nl = "\n"
+        self.fail(f"When executing{nl}{error.gitCommand}{nl}" +
+                  f"Error {error.code} caught: {error.msg}{nl}" +
+                  f"{error.gitOutput} ")

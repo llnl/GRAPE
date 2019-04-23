@@ -1,22 +1,21 @@
 import os
-import option
-import grapeGit as git
-import vine_logging
-import option
-import resumable
+from grape.vine import grapeGit as git
+from grape.vine import vine_logging
+from grape.vine.option import Option
+from grape.vine.resumable import Resumable
 
 
 def pull(branch="develop", repo=".", rebase=False):
     if rebase:
-        argStr = "--rebase origin %s" % branch
+        argStr = f"--rebase origin {branch}"
     else:
-        argStr = "origin %s " % branch
+        argStr = f"origin {branch} "
 
-    vine_logging.printMsg("Pulling %s in %s..." % (branch, repo))
+    vine_logging.printMsg(f"Pulling {branch} in {repo}...")
     git.pull(argStr, throwOnFail=True)
 
 
-class Pull(resumable.Resumable, option.Option):
+class Pull(Resumable, Option):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
     Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
@@ -58,12 +57,12 @@ class Pull(resumable.Resumable, option.Option):
         mrArgs["--squash"] = False
 
         if args["--noRecurse"]:
-            git.pull("origin %s" % currentBranch)
+            git.pull(f"origin {currentBranch}")
             vine_logging.printMsg("Pulled current branch from origin")
             return True
         else:
-        # Imported here to avoid circular dependencies
-            import grapeMenu
+            # Imported here to avoid circular dependencies
+            from grape.vine import grapeMenu
 
             val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
             if val:
@@ -72,7 +71,7 @@ class Pull(resumable.Resumable, option.Option):
 
     def _resume(self, args):
         # Imported here to avoid circular dependencies
-        import grapeMenu
+        from grape.vine import grapeMenu
         grapeMenu.menu().getOption("md")._resume(args)
         return True
 

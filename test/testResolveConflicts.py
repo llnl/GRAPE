@@ -1,5 +1,5 @@
 import os
-import testGrape
+from grape.test import testGrape
 
 
 class TestResolveConflicts(testGrape.TestGrape):
@@ -14,4 +14,3 @@ class TestResolveConflicts(testGrape.TestGrape):
 if __name__ == "__main__":
     import unittest
     unittest.main() 
-

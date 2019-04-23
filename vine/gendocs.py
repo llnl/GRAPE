@@ -1,10 +1,15 @@
-#!/bin/sh
-"exec" "python" "-B" "$0" "$@"
-
+#!/usr/bin/env python3
+import io
 import sys
 
-import grapeMenu
-from docopt.docopt import docopt
+python_major_version = sys.version_info[0]
+python_minor_version = sys.version_info[1]
+if not python_major_version == 3 and python_minor_version >=6:
+    print('Grape requires Python 3.6 or greater.')
+    exit(1)
+
+from grape.docopt.docopt import docopt
+from grape.vine import grapeMenu
 
 
 class Documentation(object):
@@ -30,11 +35,11 @@ class Section(object):
         self._name = option._key
         self._text = option.__doc__
 
-    def write(self, f):
+    def write(self, file_):
         if self._text:
-            f.write("## %s\n" % self._name)
-            f.write(self._text)
-            f.write("\n")
+            file_.write(f"## {self._name}" + "\n")
+            file_.write(self._text)
+            file_.write("\n")
 
 
 class Tutorial(Section):
@@ -437,7 +442,7 @@ def main(fname):
 
     """
     doc = Documentation(grapeMenu.menu())
-    with open(fname, 'w') as f:
+    with io.open(fname, 'w') as f:
         doc.write(f)
 
 if __name__ == "__main__":

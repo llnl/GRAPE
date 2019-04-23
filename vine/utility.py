@@ -1,29 +1,11 @@
 ﻿"""GRAPE's git utility logic across a single repository."""
+from contextlib import contextmanager
 import os
 import sys
-from contextlib import contextmanager
-import grape_errors
-import grapeGit as git
+from grape.docopt.docopt import docopt
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
 
-
-toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), os.path.pardir)
-if toplevel not in sys.path:
-    sys.path.insert(0, toplevel)
-from docopt.docopt import docopt
-
-# object to allow splitting of output to multiple file-like objects.
-# from user shx2: https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file
-class multifile(object):
-    def __init__(self, files):
-        self._files = files
-    def __getattr__(self, attr, *args):
-        return self._wrap(attr, *args)
-    def _wrap(self, attr, *args):
-        def g(*a, **kw):
-            for f in self._files:
-                res = getattr(f, attr, *args)(*a, **kw)
-            return res
-        return g
 
 def ensure_dir(f):
     d = os.path.dirname(f)
@@ -32,7 +14,7 @@ def ensure_dir(f):
 
 
 def grapeDir():
-    return os.path.join(os.path.realpath(os.path.dirname(__file__)), "..")
+    return os.path.dirname(os.path.join(os.path.realpath(os.path.dirname(__file__))))
 
 
 def getDefaultName():
@@ -43,7 +25,7 @@ def getDefaultName():
 
 
 def getUserName(defaultName=getDefaultName(), service="LC"):
-    return userInput("Enter %s User Name:" % service, defaultName)
+    return userInput(f"Enter {service} User Name:", defaultName)
 
 
 def parseArgs(docstr, arguments, config):
@@ -62,11 +44,11 @@ def parseArgs(docstr, arguments, config):
 # and will evaluate to False if the user inputs anything that starts
 # with a 'N' or 'n'.
 def userInput(message, default=None):
-    print("\n" + message)
+    print("\n" + f"{message}")
     if default is "" or default is None:
-        return raw_input('==> ').strip()
+        return input('==> ').strip()
     else:
-        value = raw_input("(def: %s) ==> " % default).strip()
+        value = input(f"(def: {default}) ==> ").strip()
         if value == "":
             value = default
         if default.lower() == "y" or default.lower() == "n":
@@ -87,6 +69,7 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
             workspace_dir = base_dir
         base_dir = os.path.dirname(base_dir)
     if not workspace_dir and warn_if_not_found:
+        vine_logging.warning("GRAPE WARNING: expected to be in your workspace, no .git found")
         print("GRAPE WARNING: expected to be in your workspace, no .git found")
     if not workspace_dir and throw_if_not_found:
         raise grape_errors.NoWorkspaceDirException(os.getcwd())
@@ -95,7 +78,7 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
 
 def isWorkspaceClean(printOutput=False):
     # Imported here to avoid circular dependencies
-    import config_parser_user
+    from grape.vine import config_parser_user
     isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
     activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()

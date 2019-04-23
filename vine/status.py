@@ -1,16 +1,16 @@
 import os
-import option
-import grape_errors
-import grapeGit as git
-import utility
-import vine_logging
-import config
-import config_parser_global
-import config_parser_user
-import multi_repo_cmd_launcher
+from grape.vine import config
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 
-class Status(option.Option):
+class Status(Option):
     """
     Usage: grape-status [-u | --uno]
               [--failIfInconsistent]
@@ -65,10 +65,11 @@ class Status(option.Option):
                     # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [behind 29]
                     if lstripped[0:2] == "##":
                         if "[ahead" in lstripped or "[behind" in lstripped:
-                            print os.path.abspath(os.path.join(wsDir, sub))+': ' + lstripped
+                            abs_path = os.path.abspath(os.path.join(wsDir, sub))+': ' + lstripped
+                            print(abs_path)
                         continue
                     # print other statuses
-                    print ' ' + lstripped
+                    print(f' {lstripped}')
 
     def checkForLocalPublicBranches(self, args):
         publicBranchesExist = True
@@ -78,14 +79,14 @@ class Status(option.Option):
         missingBranches = config.Config.checkIfPublicBranchesExist(utility.workspaceDir(),
                                                                    publicBranches)
 
-        if (len(missingBranches) > 0 ):
+        if len(missingBranches) > 0:
             for mb in missingBranches:
-                vine_logging.printMsg("Repository is missing public branch %s, attempting to fetch it now..." % mb)
+                vine_logging.printMsg(f"Repository is missing public branch {mb}, attempting to fetch it now...")
                 try:
-                    git.fetch("origin %s:%s" % (mb, mb))
-                    vine_logging.printMsg("%s added as a local branch" % mb)
+                    git.fetch(f"origin {mb}:{mb}")
+                    vine_logging.printMsg(f"{mb} added as a local branch")
                 except grape_errors.GrapeGitError as e:
-                    print e.gitOutput
+                    print(e.gitOutput)
                     publicBranchesExist = False
         return publicBranchesExist
 
@@ -102,17 +103,15 @@ class Status(option.Option):
                 os.chdir(os.path.join(wsDir,sub))
                 subbranch = git.currentBranch()
                 if subbranch != subPubMap[wsBranch]:
-                    consistentBranchState=False
-                    vine_logging.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
-                                     (sub, subbranch, subPubMap[wsBranch]))
+                    consistentBranchState = False
+                    vine_logging.printMsg(f"Submodule {sub} on branch {subbranch} when grape expects it to be on {subPubMap[wsBranch]}")
         else:
             for sub in git.getActiveSubmodules(wsDir):
                 os.chdir(os.path.join(wsDir,sub))
                 subbranch = git.currentBranch()
                 if subbranch != wsBranch:
                     consistentBranchState = False
-                    vine_logging.printMsg("Submodule %s on branch %s when grape expects it to be on %s" %
-                                     (sub, subbranch, wsBranch))
+                    vine_logging.printMsg(f"Submodule {sub} on branch {subbranch} when grape expects it to be on {wsBranch}")
 
         # check that nested subproject branching is consistent
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
@@ -120,8 +119,7 @@ class Status(option.Option):
             nestedbranch = git.currentBranch()
             if nestedbranch != wsBranch:
                 consistentBranchState = False
-                vine_logging.printMsg("Nested Project %s on branch %s when grape expects it to be on %s" %
-                                 (nested,nestedbranch, wsBranch))
+                vine_logging.printMsg(f"Nested Project {nested} on branch {nestedbranch} when grape expects it to be on {wsBranch}")
 
         return consistentBranchState
 
@@ -164,14 +162,14 @@ def getStatus(branch='', repo='', args=''):
     try:
 
         with utility.cd(sub):
-            subStatus = git.status("--porcelain -b %s" % statusArgs).split('\n')
+            subStatus = git.status(f"--porcelain -b {statusArgs}").split('\n')
             for line in subStatus:
                 strippedL = line.strip()
                 if strippedL:
                     tokens = strippedL.split()
                     tokens[0] = tokens[0].strip()
                     if len(tokens[0]) == 1:
-                        tokens[0] = " %s " % tokens[0]
+                        tokens[0] = f" {tokens[0]} "
                     if wsDir == sub:
                         relPath = ""
                         toReturn.append(' '.join([tokens[0], tokens[1]]))
@@ -180,4 +178,4 @@ def getStatus(branch='', repo='', args=''):
                         toReturn.append(' '.join([tokens[0], '/'.join([relPath, tokens[1]])]))
         return toReturn
     except Exception as e:
-        print e
+        print(e)

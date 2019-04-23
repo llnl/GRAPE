@@ -1,4 +1,4 @@
-__version__ = "0.1"
+__version__ = "0.6"
 
 from .client import Stash
 
@@ -9,6 +9,6 @@ def connect(url, username, password, verify=True):
     self-signed certificates, you can use verify=False to ignore SSL
     verifcation.
     """
-    return Stash(url, username, password, verify)
+    return Stash(url, username, password, verify=verify)
 
 __all__ = ['connect']

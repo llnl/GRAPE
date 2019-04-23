@@ -1,10 +1,9 @@
 import os
-import ConfigParser
-import config_parser_global
-from option import Option
-import utility
-import vine_logging
-import grapeGit as git
+from grape.vine import config_parser_global
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 """        
                     
@@ -46,13 +45,13 @@ class UpdateSubproject(Option):
         name = args["--name"]
         branch = args["--branch"]
         config = config_parser_global.grapeConfig()
-        subtreePrefix = config.get("subtree-%s" % name, "prefix")
-        subtreeRemote = config.get("subtree-%s" % name, "remote")
+        subtreePrefix = config.get(f"subtree-{name}", "prefix")
+        subtreeRemote = config.get(f"subtree-{name}", "remote")
         fullURL = git.parseSubprojectRemoteURL(subtreeRemote)
         doSquash = config.get(Option.SECTION_SUBTREES, "mergePolicy").strip().lower() == "squash"
         squashArg = "--squash" if doSquash else ""
-        git.subtree("pull --prefix %s %s %s %s" %
-                    (subtreePrefix, fullURL, branch, squashArg))
+        git.subtree(f"pull --prefix {subtreePrefix} {fullURL} {branch} " +
+                    f"{squashArg}")
         
         return True
         

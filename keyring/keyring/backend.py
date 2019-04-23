@@ -2,15 +2,23 @@
 Keyring implementation support
 """
 
-from __future__ import absolute_import
-
 import abc
-import itertools
+import logging
+import operator
 
-from keyring.keyring import errors
-from keyring.keyring.util import properties
+import entrypoints
 
-from keyring.keyring import util
+from . import credentials, errors, util
+from .util import properties
+
+__metaclass__ = type
+
+log = logging.getLogger(__name__)
+
+
+by_priority = operator.attrgetter('priority')
+_limit = None
+
 
 class KeyringBackendMeta(abc.ABCMeta):
     """
@@ -18,7 +26,7 @@ class KeyringBackendMeta(abc.ABCMeta):
     all (non-abstract) types.
     """
     def __init__(cls, name, bases, dict):
-        super(KeyringBackendMeta, cls).__init__(name, bases, dict)
+        super().__init__(name, bases, dict)
         if not hasattr(cls, '_classes'):
             cls._classes = set()
         classes = cls._classes
@@ -26,13 +34,12 @@ class KeyringBackendMeta(abc.ABCMeta):
             classes.add(cls)
 
 
-class KeyringBackend(object):
+class KeyringBackend(metaclass=KeyringBackendMeta):
     """The abstract base class of the keyring, every backend must implement
     this interface.
     """
-    __metaclass__ = KeyringBackendMeta
 
-    #@abc.abstractproperty
+    # @abc.abstractproperty
     def priority(cls):
         """
         Each backend class must supply a priority, a number (float or integer)
@@ -56,6 +63,31 @@ class KeyringBackend(object):
             cls.priority
         return not bool(exc)
 
+    @classmethod
+    def get_viable_backends(cls):
+        """
+        Return all subclasses deemed viable.
+        """
+        return filter(operator.attrgetter('viable'), cls._classes)
+
+    @properties.ClassProperty
+    @classmethod
+    def name(cls):
+        """
+        The keyring name, suitable for display.
+
+        The name is derived from module and class name.
+        """
+        parent, sep, mod_name = cls.__module__.rpartition('.')
+        mod_name = mod_name.replace('_', ' ')
+        return ' '.join([mod_name, cls.__name__])
+
+    def __str__(self):
+        keyring_class = type(self)
+        return ("{}.{} (priority: {:g})".format(keyring_class.__module__,
+                                                keyring_class.__name__,
+                                                keyring_class.priority))
+
     @abc.abstractmethod
     def get_password(self, service, username):
         """Get password of the username for the service
@@ -64,19 +96,47 @@ class KeyringBackend(object):
 
     @abc.abstractmethod
     def set_password(self, service, username, password):
-        """Set password for the username of the service
+        """Set password for the username of the service.
+
+        If the backend cannot store passwords, raise
+        NotImplementedError.
         """
         raise errors.PasswordSetError("reason")
 
     # for backward-compatibility, don't require a backend to implement
     #  delete_password
-    #@abc.abstractmethod
+    # @abc.abstractmethod
     def delete_password(self, service, username):
         """Delete the password for the username of the service.
+
+        If the backend cannot store passwords, raise
+        NotImplementedError.
         """
         raise errors.PasswordDeleteError("reason")
 
-class Crypter(object):
+    # for backward-compatibility, don't require a backend to implement
+    #  get_credential
+    # @abc.abstractmethod
+    def get_credential(self, service, username):
+        """Gets the username and password for the service.
+        Returns a Credential instance.
+
+        The *username* argument is optional and may be omitted by
+        the caller or ignored by the backend. Callers must use the
+        returned username.
+        """
+        # The default implementation requires a username here.
+        if username is not None:
+            password = self.get_password(service, username)
+            if password is not None:
+                return credentials.SimpleCredential(
+                    username,
+                    password,
+                )
+        return None
+
+
+class Crypter:
     """Base class providing encryption and decryption
     """
 
@@ -92,6 +152,7 @@ class Crypter(object):
         """
         pass
 
+
 class NullCrypter(Crypter):
     """A crypter that does nothing
     """
@@ -102,26 +163,44 @@ class NullCrypter(Crypter):
     def decrypt(self, value):
         return value
 
+
+def _load_plugins():
+    """
+    Locate all setuptools entry points by the name 'keyring backends'
+    and initialize them.
+    Any third-party library may register an entry point by adding the
+    following to their setup.py::
+
+        entry_points = {
+            'keyring.backends': [
+                'plugin_name = mylib.mymodule:initialize_func',
+            ],
+        },
+
+    `plugin_name` can be anything, and is only used to display the name
+    of the plugin at initialization time.
+
+    `initialize_func` is optional, but will be invoked if callable.
+    """
+    group = 'keyring.backends'
+    entry_points = entrypoints.get_group_all(group=group)
+    for ep in entry_points:
+        try:
+            log.info('Loading %s', ep.name)
+            init_func = ep.load()
+            if callable(init_func):
+                init_func()
+        except Exception:
+            log.exception("Error initializing plugin %s." % ep)
+
+
 @util.once
 def get_all_keyring():
     """
     Return a list of all implemented keyrings that can be constructed without
     parameters.
     """
-    # ensure that all keyring backends are loaded
-    for mod_name in ('file', 'Gnome', 'Google', 'keyczar', 'kwallet', 'multi',
-            'OS_X', 'pyfs', 'SecretService', 'Windows'):
-        # use fromlist to cause the module to resolve under Demand Import
-        __import__('keyring.keyring.backends.'+mod_name, fromlist=('__name__',))
-
-    def is_class_viable(keyring_cls):
-        try:
-            keyring_cls.priority
-        except RuntimeError:
-            return False
-        return True
-
-    all_classes = KeyringBackend._classes
-    viable_classes = itertools.ifilter(is_class_viable, all_classes)
-    return list(util.suppress_exceptions(viable_classes,
-        exceptions=TypeError))
+    _load_plugins()
+    viable_classes = KeyringBackend.get_viable_backends()
+    rings = util.suppress_exceptions(viable_classes, exceptions=TypeError)
+    return list(rings)

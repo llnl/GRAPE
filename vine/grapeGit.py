@@ -1,41 +1,41 @@
 """GRAPE's git utility logic across multiple repositories."""
+import configparser
+import io
 import os
 import re
 import shutil
-import ConfigParser
-import StringIO
-import grape_errors
-import vine_logging
-import vine_subprocess
+from grape.vine import grape_errors
+from grape.vine import vine_logging
+from grape.vine import vine_subprocess
 
 
 def gitcmd(cmd, errmsg):
-    import config_parser_global
+    from grape.vine import config_parser_global
 
     _cmd = None
     try:
         cnfg = config_parser_global.grapeConfig()
         _cmd = cnfg.get("git", "executable")
-    except ConfigParser.NoOptionError:
+    except configparser.NoOptionError:
         pass
-    except ConfigParser.NoSectionError:
+    except configparser.NoSectionError:
         pass
     if _cmd:
-        _cmd += " %s" % cmd
+        _cmd += f" {cmd}"
     elif os.name == "nt":
-        _cmd = "\"C:\\Program Files\\Git\\bin\\git.exe\" %s" % cmd
+        _cmd = f"\"C:\\Program Files\\Git\\bin\\git.exe\" {cmd}"
     else:
-        _cmd = "git %s" % cmd
+        _cmd = f"git {cmd}"
 
     cwd = os.getcwd()
     process = vine_subprocess.executeSubProcess(_cmd, cwd, verbose=-1)
     if process.returncode != 0:
-        raise grape_errors.GrapeGitError("Error: %s " % errmsg, process.returncode, process.output, _cmd, cwd=cwd)
+        raise grape_errors.GrapeGitError(f"Error: {errmsg} ", process.returncode, process.output, _cmd, cwd=cwd)
     return process.output.strip()
 
 
 def add(filedescription):
-    return gitcmd("add %s" % filedescription, "Could not add %s" % filedescription)
+    return gitcmd(f"add {filedescription}", f"Could not add {filedescription}")
 
 
 def baseDir():
@@ -50,7 +50,7 @@ def remoteBranches():
     return branch("-r").replace(" ", '').split()
 
 def branch(argstr=""):
-    return gitcmd("branch %s" % argstr, "Could not execute git branch command")
+    return gitcmd(f"branch {argstr}", "Could not execute git branch command")
 
 
 def branchPrefix(branchName):
@@ -59,7 +59,8 @@ def branchPrefix(branchName):
 
 def branchUpToDateWith(branchName, targetBranch):
     try:
-        allUpToDateBranches = gitcmd("branch -a --contains %s" % targetBranch, "branch contains failed")
+        allUpToDateBranches = gitcmd(f"branch -a --contains {targetBranch}",
+                                     "branch contains failed")
     except grape_errors.GrapeGitError as e:
         # Don't fail if the only issue is a dangling reference for origin/HEAD.
         allUpToDateBranches = e.gitOutput
@@ -81,51 +82,52 @@ def branchUpToDateWith(branchName, targetBranch):
 
 
 def bundle(argstr):
-    return gitcmd("bundle %s" % argstr, "Bundle failed")
+    return gitcmd(f"bundle {argstr}", "Bundle failed")
 
 
 def checkout(argstr):
-    return gitcmd("checkout %s" % argstr, "Checkout failed")
+    return gitcmd(f"checkout {argstr}", "Checkout failed")
 
 
 def clone(argstr):
     try:
-        return gitcmd("clone %s" % argstr, "Clone failed")
+        return gitcmd(f"clone {argstr}", "Clone failed")
     except grape_errors.GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput:
             raise e
         if e.commError:
-            print ("GRAPE: WARNING: clone failed due to connectivity issues.")
+            print("GRAPE: WARNING: clone failed due to connectivity issues.")
             return e.gitOutput
         else:
-            print ("GRAPE: Clone failed. Maybe you ran out of disk space?")
-            print e.gitOutput
+            print("GRAPE: Clone failed. Maybe you ran out of disk space?")
+            print(e.gitOutput)
             raise e
 
 
 def commit(argstr):
-    return gitcmd("commit %s" % argstr, "Commit failed")
+    return gitcmd(f"commit {argstr}", "Commit failed")
 
 
 def commitDescription(committish):
 
     try:
-        descr = gitcmd("log --oneline %s^1..%s" % (committish, committish),
-                           "commitDescription failed")
+        descr = gitcmd(f"log --oneline {committish}^1..{committish}",
+                       "commitDescription failed")
     # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
     except grape_errors.GrapeGitError as e:
         if "unknown revision" in e.gitOutput:
             try:
-                descr = gitcmd("log --oneline %s" % committish, "commitDescription failed")
+                descr = gitcmd(f"log --oneline {committish}",
+                               "commitDescription failed")
             except grape_errors.GrapeGitError as e:
                 raise e
     return descr
 
 def config(argstr, arg2=None):
     if arg2 is not None:
-        return gitcmd('config %s "%s"' % (argstr, arg2), "Config failed")
+        return gitcmd(f'config {argstr} "{arg2}"', "Config failed")
     else:
-        return gitcmd('config %s ' % argstr, "Config failed")
+        return gitcmd(f'config {argstr} ', "Config failed")
 
 
 def conflictedFiles():
@@ -139,16 +141,16 @@ def currentBranch():
 
 
 def describe(argstr=""):
-    return gitcmd("describe %s" % argstr, "could not describe commit")
+    return gitcmd(f"describe {argstr}", "could not describe commit")
 
 
 def diff(argstr):
-    return gitcmd("diff %s" % argstr, "could not perform diff")
+    return gitcmd(f"diff {argstr}", "could not perform diff")
 
 
 def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
     try:
-        return gitcmd("fetch %s %s" % (repo, branchArg), "Fetch failed")
+        return gitcmd(f"fetch {repo} {branchArg}", "Fetch failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
             # fetch can sometimes hang up when it can't find the remote, resulting in
@@ -198,22 +200,23 @@ def fixActiveSubmodules(ws_dir, user_input_func):
             submoduleFixed = True
             sub = match.group(1)
             # remove from index, if staged
-            rm("--ignore-unmatch --cached %s" % sub)
+            rm(f"--ignore-unmatch --cached {sub}")
             # remove from repo, if present
-            rm("--ignore-unmatch %s" % sub)
+            rm(f"--ignore-unmatch {sub}")
             if os.path.exists(os.path.join(ws_dir, sub)):
-                delete = user_input_func("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
-#                delete = utility.userInput("%s is no longer part of the workspace.  Would you like to delete it?" % sub , 'y')
+                delete = user_input_func(f"{sub} is no longer part of the " +
+                                         "workspace.  Would you like to " +
+                                         "delete it?", 'y')
                 if delete:
                     shutil.rmtree(os.path.join(ws_dir, sub))
     os.chdir(cwd)
     return submoduleFixed
 
 def getAllSubmodules():
-    subconfig = ConfigParser.ConfigParser()
+    subconfig = configparser.ConfigParser()
     try:
         subconfig.read(os.path.join(baseDir(), ".gitmodules"))
-    except ConfigParser.ParsingError:
+    except configparser.ParsingError:
         # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
         # read section names in successfully, which is all we need
         pass
@@ -224,9 +227,9 @@ def getAllSubmodules():
     return submodules
 
 def getAllSubmoduleURLMap():
-    subconfig = ConfigParser.ConfigParser()
-    fp = StringIO.StringIO('\n'.join(line.strip() for line in open(os.path.join(baseDir(), ".gitmodules"))))
-    subconfig.readfp(fp)
+    subconfig = configparser.ConfigParser()
+    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(baseDir(), ".gitmodules"))))
+    subconfig.read_file(fp)
     sections = subconfig.sections()
     submodules = {}
     for s in sections:
@@ -243,8 +246,8 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
         return []
     submodulesString = ' '.join(submodules)
     try:
-        modifiedSubmodules = diff("--name-status %s %s -- %s" %
-                                  (branch1, branch2,  submodulesString)).split('\n')
+        modifiedSubmodules = diff(f"--name-status {branch1} {branch2} -- " +
+                                  f"{submodulesString}").split('\n')
         if includeAdded:
             modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
         else:
@@ -290,13 +293,13 @@ def parseSubprojectRemoteURL(url):
 
 
 def gitDir():
-    base = baseDir()
+    base = str(baseDir())
     gitPath = os.path.join(base, ".git")
     toReturn = None
     if os.path.isdir(gitPath):
         toReturn = gitPath
     elif os.path.isfile(gitPath):
-        with open(gitPath) as f:
+        with io.open(gitPath) as f:
             line = f.read()
             words = line.split()
             if words[0] == 'gitdir:':
@@ -315,15 +318,15 @@ def hasBranch(b):
 def isWorkingDirectoryClean(printOutput=False):
     statusOutput = status("-u --porcelain")
     toRet =  len(statusOutput.strip()) == 0
-    if (printOutput and not toRet):
-        print os.getcwd()+":"
-        print statusOutput
+    if printOutput and not toRet:
+        print(os.getcwd()+":")
+        print(statusOutput)
     return toRet
 
 
 
 def log(args=""):
-    return gitcmd("log %s" % args, "git log failed")
+    return gitcmd(f"log {args}", "git log failed")
 
 
 #ensures the path string is windows compatibile if necessary
@@ -336,7 +339,7 @@ def makePathPortable(path):
 
 
 def merge(args):
-    return gitcmd("merge %s" % args, "merge failed")
+    return gitcmd(f"merge {args}", "merge failed")
 
 
 def mergeAbort():
@@ -344,7 +347,7 @@ def mergeAbort():
 
 
 def numberCommitsSince(commitStr):
-    strCount = gitcmd("rev-list --count %s..HEAD" % commitStr, "Rev-list failed")
+    strCount = gitcmd(f"rev-list --count {commitStr}..HEAD", "Rev-list failed")
     return int(strCount)
 
 
@@ -355,7 +358,7 @@ def numberCommitsSinceRoot():
 
 def pull(args, throwOnFail=False):
     try:
-        return gitcmd("pull %s" % args, "Pull failed")
+        return gitcmd(f"pull {args}", "Pull failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
             vine_logging.printMsg("WARNING: Pull failed due to connectivity issues.")
@@ -370,7 +373,7 @@ def pull(args, throwOnFail=False):
 
 def push(args, throwOnFail = False):
     try:
-        return gitcmd("push --porcelain %s" % args, "Push failed")
+        return gitcmd(f"push --porcelain {args}", "Push failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
             vine_logging.printMsg("WARNING: Push failed due to connectivity issues.")
@@ -383,16 +386,16 @@ def push(args, throwOnFail = False):
 
 
 def rebase(args):
-    return gitcmd("rebase %s" % args, "Rebase failed")
+    return gitcmd(f"rebase {args}", "Rebase failed")
 
 def reset(args):
-    return gitcmd("reset %s" % args, "Reset failed")
+    return gitcmd(f"reset {args}", "Reset failed")
 
 def revert(args):
-    return gitcmd("revert %s" % args, "Revert failed")
+    return gitcmd(f"revert {args}", "Revert failed")
 
 def rm(args):
-    return gitcmd("rm %s" % args, "Remove failed")
+    return gitcmd(f"rm {args}", "Remove failed")
 
 
 def safeForceBranchToOriginRef(branchToSync):
@@ -400,7 +403,7 @@ def safeForceBranchToOriginRef(branchToSync):
     branchExists = False
     remoteRefExists = False
     branches = branch("-a").split("\n")
-    remoteRef = "remotes/origin/%s" % branchToSync
+    remoteRef = f"remotes/origin/{branchToSync}"
     for b in branches:
         b = b.replace('*', '')
         branchExists = branchExists or b.strip() == branchToSync.strip()
@@ -409,40 +412,47 @@ def safeForceBranchToOriginRef(branchToSync):
             continue
 
     if branchExists and not remoteRefExists:
-        vine_logging.printMsg("origin does not have branch %s" % branchToSync)
+        vine_logging.printMsg(f"origin does not have branch {branchToSync}")
         return False
     if branchExists and remoteRefExists:
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch():
-                vine_logging.printMsg("Current branch %s is out of date with origin. Pulling new changes." % branchToSync)
+                vine_logging.printMsg(f"Current branch {branchToSync} is " +
+                                      "out of date with origin. Pulling " +
+                                      "new changes.")
                 try:
-                    pull("origin %s" % branchToSync, throwOnFail=True)
+                    pull(f"origin {branchToSync}", throwOnFail=True)
                 except:
-                    vine_logging.printMsg("Can't pull %s. Aborting...")
+                    vine_logging.printMsg(f"Can't pull {branchToSync}." +
+                                          " Aborting...")
                     return False
             else:
-                branch("-f %s %s" % (branchToSync, remoteRef))
+                branch(f"-f {branchToSync} {remoteRef}")
             return True
         elif remoteUpToDateWithLocal and localUpToDateWithRemote:
             return True
         else:
             return False
     if not branchExists and remoteRefExists:
-        vine_logging.printMsg("local branch did not exist. Creating %s off of %s now. " % (branchToSync, remoteRef))
-        branch("%s %s" % (branchToSync, remoteRef))
+        vine_logging.printMsg("local branch did not exist. Creating " +
+                              f"{branchToSync} off of {remoteRef} now. ")
+        branch(f"{branchToSync} {remoteRef}")
         return True
 
 def SHA(branchName="HEAD"):
-    return gitcmd("rev-parse %s" % branchName, "rev-parse of %s failed!" % branchName)
+    return gitcmd(f"rev-parse {branchName}",
+                  f"rev-parse of {branchName} failed!")
 
 def shortSHA(branchName="HEAD"):
-    return gitcmd("rev-parse --short %s" % branchName, "rev-parse of %s failed!" % branchName)
+    return gitcmd(f"rev-parse --short {branchName}",
+                  f"rev-parse of {branchName} failed!")
 
 def show(argStr):
     try:
-        return gitcmd("show %s" % argStr, "git show failed with argstr %s" % argStr)
+        return gitcmd(f"show {argStr}",
+                      f"git show failed with argstr {argStr}")
     except grape_errors.GrapeGitError as e:
         if "Path" in e.gitOutput and "does not exist in" in e.gitOutput:
             return ""
@@ -453,28 +463,31 @@ def showRemote():
         return gitcmd("remote show origin", "unable to show remote")
     except grape_errors.GrapeGitError as e:
         if e.code == 128:
-            vine_logging.printMsg("WARNING: %s failed. Ignoring..." % e.gitCommand)
+            vine_logging.printMsg(f"WARNING: {e.gitCommand} failed." +
+                                  " Ignoring...")
             return e.gitOutput
         else:
             raise e
 
 def stash(argstr=""):
-    return gitcmd("stash %s" % argstr, "git stash failed for some reason")
+    return gitcmd(f"stash {argstr}", "git stash failed for some reason")
 
 def status(argstr=""):
-    return gitcmd("status %s" % argstr, "git status failed for some reason")
+    return gitcmd(f"status {argstr}", "git status failed for some reason")
 
 
 def submodule(argstr):
-    return gitcmd("submodule %s" % argstr, "git submodule %s failed" % argstr)
+    return gitcmd(f"submodule {argstr}", f"git submodule {argstr} failed")
 
 
 def subtree(argstr):
-    return gitcmd("subtree %s" % argstr, "git subtree %s failed - maybe subtree isn't installed on your system?")
+    return gitcmd(f"subtree {argstr}",
+                  f"git subtree {argstr} failed - maybe subtree" +
+                  " isn't installed on your system?")
 
 
 def tag(argstr):
-    return gitcmd("tag %s" % argstr, "git tag %s failed" % argstr)
+    return gitcmd(f"tag {argstr}", f"git tag {argstr} failed")
 
 
 def version():

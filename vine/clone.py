@@ -1,11 +1,11 @@
 import os
-import option
-import vine_logging
-import grapeGit as git
-import config_parser_global
+from grape.vine import config_parser_global
+from grape.vine import grapeGit as git
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 
-class Clone(option.Option):
+class Clone(Option):
     """ grape-clone
     Clones a git repo and configures it for use with git.
 
@@ -32,13 +32,15 @@ class Clone(option.Option):
 
     def execute(self, args):
         # Imported here to avoid circular dependencies
-        import grapeMenu
+        from grape.vine import grapeMenu
 
         remotepath = args["<url>"]
         destpath = args["<path>"]
         rstr = "--recursive" if args["--recursive"] else ""
-        vine_logging.printMsg("Cloning %s into %s %s" % (remotepath, destpath, "recursively" if args["--recursive"] else ""))
-        git.clone(" %s %s %s" % (rstr, remotepath, destpath))
+        recursively = "recursively" if args["--recursive"] else ""
+        vine_logging.printMsg(
+            f"Cloning {remotepath} into {destpath} {recursively}")
+        git.clone(f" {rstr} {remotepath} {destpath}")
         vine_logging.printMsg("Clone succeeded!")
         os.chdir(destpath)
         config_parser_global.read()
@@ -53,10 +55,8 @@ class Clone(option.Option):
                 initialBranch = "master"
             else:
                 initialBranch = publicBranches[0]
-                
-        menu.applyMenuChoice("checkout", args=[initialBranch])
-            
 
+        menu.applyMenuChoice("checkout", args=[initialBranch])
 
         if args["--allNested"]:
             configArgs = ["--uv","--uvArg=--allNestedSubprojects"]

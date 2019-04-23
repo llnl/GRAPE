@@ -2,13 +2,13 @@ import os
 import shutil
 import sys
 import tempfile
-import testGrape
-if os.path.pardir not in sys.path:
-    sys.path.insert(0, os.path.pardir)
-from vine import clone, grapeGit as git
+from grape.test import testGrape
+from grape.vine import clone
+from grape.vine import grapeGit as git
 
 
 class TestClone(testGrape.TestGrape):
+
     def testClone(self):
         self.setUpConfig()
         args = [self.repo, self.repos[1], "--recursive"]
@@ -17,11 +17,12 @@ class TestClone(testGrape.TestGrape):
         self.assertTrue(ret)
         
         # check to make sure we didn't get a usage string dump
-        contents = self.output.getvalue()
+        contents = self.get_output()
         self.assertNotIn(contents, "Usage: grape-clone")
         
         # check to make sure we didn't see a GRAPE WARNING
-        self.assertNotIn("WARNING", contents, "GRAPE ISSUED A WARNING DURING A CLONE\n%s" % contents)
+        self.assertNotIn("WARNING", contents,
+                         "GRAPE ISSUED A WARNING DURING A CLONE\n" + f"{contents}")
 
         # check to make sure the new repo has the old repo as a remote
         os.chdir(self.repos[1])
@@ -33,7 +34,7 @@ class TestClone(testGrape.TestGrape):
         args = ["--help"]
         with self.assertRaises(SystemExit):
             ret = self.menu.applyMenuChoice("clone", args)
-        self.assertIn(clone.Clone.__doc__, self.output.getvalue())
+        self.assertIn(clone.Clone.__doc__, self.get_output())
 
     def testClone02(self):
         tempDir = tempfile.mkdtemp()
@@ -51,10 +52,10 @@ class TestClone(testGrape.TestGrape):
 
     def testRecursiveCloneWithSubmodule(self):
         # make a repo to turn into a submodule
-        git.clone("--mirror %s %s " % (self.repo, self.repos[1]))
+        git.clone(f"--mirror {self.repo} {self.repos[1]} ")
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
-        git.submodule("add %s %s" % (os.path.join(self.repos[1]), "submodule1"))
+        git.submodule(f"add {os.path.join(self.repos[1])} submodule1")
         git.commit("-m \"added submodule1\"")
 
         #Now clone the repo into a temp dir and make sure the submodule is in the clone
@@ -73,13 +74,18 @@ class TestClone(testGrape.TestGrape):
 
     def testRecursiveCloneNestedSubproject(self):
         # make a repo to turn into a submodule
-        git.clone("--mirror %s %s " % (self.repo, self.repos[1]))
+        git.clone(f"--mirror {self.repo} {self.repos[1]} ")
         os.chdir(self.repo)
-        self.menu.applyMenuChoice("addSubproject", ["--name=subproject1", "--prefix=subs/subproject1",
-                                                           "--branch=master", "--url=%s" % self.repos[1],
-                                                           "--nested", "--noverify"])
-        self.menu.applyMenuChoice("commit",["-m", "\"added subproject1\""])
-        print git.log("--decorate")
+        self.menu.applyMenuChoice("addSubproject",
+                                  ["--name=subproject1",
+                                   "--prefix=subs/subproject1",
+                                   "--branch=master",
+                                   f"--url={self.repos[1]}",
+                                   "--nested",
+                                   "--noverify"])
+        self.menu.applyMenuChoice("commit", ["-m", "\"added subproject1\""])
+        git_log = git.log("--decorate")
+        print(git_log)
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
@@ -95,7 +101,8 @@ class TestClone(testGrape.TestGrape):
             with self.queue_user_input(["all\n"]):
                 ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
-            print git.log("--decorate")
+            git_log = git.log("--decorate")
+            print(git_log)
 
             subprojectpath = os.path.join(tempDir, "subs/subproject1")
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")

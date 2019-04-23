@@ -1,5 +1,6 @@
-import gridTesting
-from testGrape import *
+from grape.test import gridTesting
+from grape.test.testGrape import *
+
 
 class QuickGridTests(unittest.TestCase):
     def gridtestAddCommitFile(self, project):

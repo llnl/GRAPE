@@ -1,5 +1,8 @@
-from .helpers import Nested, ResourceBase, IterableResource
+from .helpers import ResourceBase, IterableResource
 from .errors import ok_or_error, response_or_error
+from .compat import basestring
+from .pullrequestdiffs import PullRequestDiff
+import json
 
 
 class PullRequestRef(object):
@@ -28,12 +31,26 @@ class PullRequest(ResourceBase):
         return self._client.get(self.url())
 
 
+    def _make_ref(self, ref, refName):
+        if isinstance(ref, basestring):
+            repo = self.get()[refName]['repository']
+            return PullRequestRef(repo['project']['key'], repo['slug'], ref).to_dict()
+        elif isinstance(ref, PullRequestRef):
+            return ref.to_dict()
+        elif isinstance(ref, dict):
+            return ref
+        else:
+            raise ValueError(refName + " should be either a string, a dict, or a PullRequestRef")
+
+
     @response_or_error
-    def update(self, version, title=None, description=None, reviewers=None):
+    def update(self, version, title=None, description=None, reviewers=None, toRef=None, fromRef=None):
         """
-        Update the title, description or reviewers of an existing pull request.
+        Update the title, description, references or reviewers of an existing pull request.
 
         Note: the reviewers list may be updated using this resource. However the author and participants list may not.
+        toRef and fromRef might be either strings (e.g. refs/heads/master) or PullRequestRef objects.
+        If you want to change the repository of the ref, you need to use a PullRequestRef object.
         """
         data = dict(id=self._id, version=version)
         if title is not None:
@@ -41,10 +58,15 @@ class PullRequest(ResourceBase):
         if description is not None:
             data['description'] = description
         if reviewers is not None:
-            data['reviewers'] = reviewers
+            data['reviewers'] = []
+            for reviewer in reviewers:
+                data['reviewers'].append({"user": dict(name=reviewer)})
+        if toRef is not None:
+            data['toRef'] = self._make_ref(toRef, "toRef")
+        if fromRef is not None:
+            data['fromRef'] = self._make_ref(fromRef, "fromRef")
         return self._client.put(self.url(), data=data)
 
-    @response_or_error
     def activities(self, fromId=None, fromType=None):
         """
         Retrieve a page of activity associated with a pull request.
@@ -63,17 +85,29 @@ class PullRequest(ResourceBase):
                 raise ValueError("fromType is required when fromId is supplied")
             params['fromId'] = fromId
             params['fromType'] = fromType
-        return self._client.get(self.url("/activities"), params=params)
+        return self.paginate("/activities", params=params)
 
     @ok_or_error
     def decline(self, version=-1):
         """Decline a pull request."""
-        return self._client.post(self.url("/decline"), params=dict(version=version))
+        return self._client.post(self.url("/decline"), data=dict(version=version))
 
-    @ok_or_error
     def can_merge(self):
         """
         Test whether a pull request can be merged.
+
+        A pull request may not be merged if:
+
+            * there are conflicts that need to be manually resolved before merging; and/or
+            * one or more merge checks have vetoed the merge.
+        """
+        res = self.merge_info()
+        return res['canMerge'] and not res['conflicted']
+
+    @response_or_error
+    def merge_info(self):
+        """
+        Show conflicts and vetoes of pull request.
 
         A pull request may not be merged if:
 
@@ -87,28 +121,44 @@ class PullRequest(ResourceBase):
         """
         Merge the specified pull request.
         """
-        return self._client.post(self.url("/merge"), params=dict(version=version))
+        return self._client.post(self.url("/merge"), data=dict(version=version))
 
     @response_or_error
     def reopen(self, version=-1):
         """
         Re-open a declined pull request.
         """
-        return self._client.post(self.url("/reopen"), params=dict(version=version))
+        return self._client.post(self.url("/reopen"), data=dict(version=version))
 
     @response_or_error
     def approve(self):
         """
         Approve a pull request as the current user. Implicitly adds the user as a participant if they are not already.
         """
-        return self._client.post(self.url("/approve"))
+        data = dict(approved=True, status="approved")
+        return self._client.put(self.url("/participants/%s/" % self._client._session.auth[0]), data=data)
 
     @response_or_error
     def unapprove(self):
         """
         Remove approval from a pull request as the current user. This does not remove the user as a participant.
         """
-        return self._client.delete(self.url("/approve"))
+        data = dict(approved=False, status="unapproved")
+        return self._client.put(self.url("/participants/%s/" % self._client._session.auth[0]), data=data)
+
+    @response_or_error
+    def watch(self):
+        """
+        Add the current user as a watcher for the pull request.
+        """
+        return self._client.post(self.url("/watch"))
+
+    @response_or_error
+    def unwatch(self):
+        """
+        Remove the current user as a watcher for the pull request.
+        """
+        return self._client.delete(self.url("/watch"))
 
     def changes(self):
         """
@@ -119,16 +169,53 @@ class PullRequest(ResourceBase):
         """
         return self.paginate("/changes")
 
-    @response_or_error
     def commits(self):
         """
         Retrieve changesets for the specified pull request.
         """
         return self.paginate('/commits')
 
+    def comments(self, srcPath='/'):
+        """
+        Retrieve comments for the specified file in a  pull request.
+        """
+        return self.paginate('/comments?path=%s' % srcPath)
+
+    @ok_or_error
+    def comment(self, commentText, parentCommentId=-1, srcPath=None, fileLine=-1, lineType="CONTEXT", fileType="FROM"):
+        """
+        Comment on a pull request. If parentCommentId is supplied, it the comment will be
+        a child comment of the comment with the id parentCommentId.
+
+        Note: see https://developer.atlassian.com/static/rest/stash/3.11.3/stash-rest.html#idp1448560
+        srcPath: (optional) The path of the file to comment on.
+        fileLine: (optional) The line of the file to comment on.
+        lineType: (optional, defaults to CONTEXT) the type of chunk that is getting commented on.
+            Either ADDED, REMOVED, or CONTEXT
+        fileType: (optional, defaults to FROM) the version of the file to comment on.
+            Either FROM, or TO
+        """
+        data = dict(text=commentText)
+        if parentCommentId is not -1:
+            data['parent'] = dict(id=parentCommentId)
+        elif srcPath is not None:
+            data['anchor'] = dict(path=srcPath, srcPath=srcPath)
+            if fileLine is not -1:
+                data['anchor'].update(dict(line=fileLine, lineType=lineType, fileType=fileType))
+        return self._client.post(self.url("/comments"), data=data)
+
+    def diff(self):
+        """
+        Retrieve the diff for the specified pull request.
+        """
+        return PullRequestDiff(self.url('/diff'), self._client, self)
+
 
 class PullRequests(ResourceBase, IterableResource):
-    def all(self, direction='INCOMING', at=None, state='OPEN', order=None):
+    def __init__(self, url, client, parent):
+        super(PullRequests, self).__init__(url, client, parent)
+
+    def all(self, direction='INCOMING', at=None, state='OPEN', order=None, author=None):
         """
         Retrieve pull requests to or from the specified repository.
 
@@ -150,6 +237,9 @@ class PullRequests(ResourceBase, IterableResource):
             params['state'] = state
         if order is not None:
             params['order'] = order
+        if author is not None:
+            params['role.1'] = 'AUTHOR'
+            params['username.1'] = author
 
         return self.paginate("", params=params)
 
@@ -186,6 +276,20 @@ class PullRequests(ResourceBase, IterableResource):
         """
         Return a specific pull requests
         """
-        return PullRequest(item, self.url(item), self._client, self)
+        return PullRequest(item, self.url(str(item)), self._client, self)
+
+    @response_or_error
+    def get(self):
+        """
+        Retrieve the settings for a pull requests workflow
+        """
+        return self._client.get(self.url())
+
+    @response_or_error
+    def configure(self, configuration=None):
+        """
+        Modify the settings for a pull requests workflow
+        """
+        return self._client.post(self.url(), data=configuration)
 
 

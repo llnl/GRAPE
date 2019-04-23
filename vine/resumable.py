@@ -1,43 +1,44 @@
-import pickle
-import abc
+from abc import ABC, abstractmethod
+import io
 import os
-import grape_errors
-import grapeGit as git
-import utility
-import vine_logging
-import config_parser_global
+import pickle
+from grape.vine import config_parser_global
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
 
 
-class Resumable(object):
-    __metaclass__ = abc.ABCMeta
+class Resumable(ABC):
 
     def __init__(self):
         super(Resumable, self).__init__()
         self.progress = {}
         try:
-            gitDir = git.gitDir()
+            gitDir = str(git.gitDir())
             self.progressFile = os.path.join(gitDir, "grapeProgress")
         except grape_errors.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
             # in the user's $HOME directory
             self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
 
-    def dumpProgress(self, args,msg=""):
-        print(msg)
+    def dumpProgress(self, args, msg=""):
+        if msg:
+            print(msg)
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
         self.progress["config"] = config_parser_global.grapeConfig()
-        with open(self.progressFile,'w') as f:
+        with io.open(self.progressFile, 'wb') as f:
             p = pickle.Pickler(f)
             p.dump(self.progress)
 
-    @abc.abstractmethod
+    @abstractmethod
     def _saveProgress(self, args):
         pass
 
     def _readProgressFile(self):
-        with open(self.progressFile, 'r') as f:
+        with io.open(self.progressFile, 'rb') as f:
             p = pickle.Unpickler(f)
             self.progress = p.load()
 
@@ -51,7 +52,7 @@ class Resumable(object):
             else:
                 raise e
 
-    @abc.abstractmethod
+    @abstractmethod
     def _resume(self, args, deleteProgressFile=True):
         try:
             self._readProgressFile()

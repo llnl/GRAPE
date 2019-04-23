@@ -1,8 +1,7 @@
-import abc
+from abc import ABC, abstractmethod
 
 
-class Option(object):
-    __metaclass__ = abc.ABCMeta
+class Option(ABC):
 
     SECTION_FLOW = 'flow'
     SECTION_NESTED_PROJECTS = 'nestedProjects'
@@ -21,15 +20,15 @@ class Option(object):
         self._section = "UNSET SECTION"
         self._config = None
 
-    @abc.abstractmethod
+    @abstractmethod
     def description(self):
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def execute(self, args):
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def setDefaultConfig(self, config):
         pass
     

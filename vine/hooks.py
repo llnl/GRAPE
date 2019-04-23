@@ -1,13 +1,13 @@
+import configparser
+import io
 import os
-import ConfigParser
-
-import option
-import utility
-import vine_logging
-import grape_errors
-import grapeGit as git
-import config_parser_base
-import config_parser_user
+from grape.vine import config_parser_base
+from grape.vine import config_parser_user
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 
 def getActiveSubprojects():
@@ -15,7 +15,7 @@ def getActiveSubprojects():
 
 
 #option that installs wrapper calls to grape as git hooks in this repo.
-class InstallHooks(option.Option):
+class InstallHooks(Option):
     """ grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
     in this repo.
@@ -45,20 +45,20 @@ class InstallHooks(option.Option):
         os.chdir(os.path.join(git.gitDir(), "hooks"))
         hooks = args["--toInstall"]
         for h in hooks:
-            with open(h, 'w') as f:
-                f.write("#!/bin/sh\n")
+            with io.open(h, 'w') as file_:
+                file_.write("#!/bin/sh\n")
                 grapeCmd = utility.getGrapeExec()
-                f.write("%s runHook %s \"$@\" \n\n" % (grapeCmd, h))
-            os.chmod(h, 0755)
+                file_.write(f"{grapeCmd} runHook {h}" + " \"$@\" \n\n")
+            os.chmod(h, 0o755)
         os.chdir(cwd)
 
     def execute(self, args):
         workspaceDir = utility.workspaceDir()
-        vine_logging.printMsg("Installing hooks in %s." % workspaceDir)
+        vine_logging.printMsg(f"Installing hooks in {workspaceDir}.")
         self.installHooksInRepo(workspaceDir, args)
         if not args["--noRecurse"]:
             for sub in getActiveSubprojects():
-                vine_logging.printMsg("Installing hooks in %s." % sub)
+                vine_logging.printMsg(f"Installing hooks in {sub}.")
                 self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
         return True
 
@@ -66,7 +66,7 @@ class InstallHooks(option.Option):
         pass
 
 
-class RunHook(option.Option):
+class RunHook(Option):
     """ grape runHook
 
     Usage: grape-runHook
@@ -133,7 +133,7 @@ class RunHook(option.Option):
         # post-commit
         try:
             config.add_section('post-commit')
-        except ConfigParser.DuplicateSectionError:
+        except configparser.DuplicateSectionError:
             pass
         config.set('post-commit', 'autopush', 'False')
         config.set('post-commit', 'cascade', 'None')
@@ -141,21 +141,21 @@ class RunHook(option.Option):
         # post-rebase
         try:
             config.add_section('post-rebase')
-        except ConfigParser.DuplicateSectionError:
+        except configparser.DuplicateSectionError:
             pass
         config.set('post-rebase', 'submoduleUpdate', 'False')
 
         # post-merge
         try:
             config.add_section('post-merge')
-        except ConfigParser.DuplicateSectionError:
+        except configparser.DuplicateSectionError:
             pass
         config.set('post-merge', 'submoduleUpdate', 'False')
 
         #post-checkout
         try:
             config.add_section('post-checkout')
-        except ConfigParser.DuplicateSectionError:
+        except configparser.DuplicateSectionError:
             pass
         config.set('post-checkout', 'submoduleUpdate', 'False')
 
@@ -180,17 +180,17 @@ class RunHook(option.Option):
                 source = currentBranch
                 target = cascadeDict[source]
                 fastForward = False
-                print("GRAPE: Cascading commit from %s to %s..." % (source, target))
+                print(f"GRAPE: Cascading commit from {source} to {target}...")
                 if git.branchUpToDateWith(source, target):
                     fastForward = True
                     print("GRAPE: should be a fastforward cascade...")
-                git.checkout("%s" % target)
-                git.merge("%s -m 'Cascade from %s to %s'" % (source, source, target))
+                git.checkout(f"{target}")
+                git.merge(f"{source} -m 'Cascade from {source} to {target}'")
                 # we need to kick off the next one if it was a fast forward merge.
                 # otherwise, another post-commit hook should be called from the merge commit.
                 if fastForward:
                     if autoPush:
-                        git.push("origin %s" % target)
+                        git.push(f"origin {target}")
                         print("GRAPE: auto push done")
                     currentBranch = target
                 else:

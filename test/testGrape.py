@@ -1,25 +1,33 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from contextlib import contextmanager
-import sys
-import os
 import inspect
-import unittest
-import StringIO
+import io
+import logging
+import os
 import shutil
+import stat
+import sys
 import tempfile
+import unittest
 
-curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-if curPath not in sys.path:
-    sys.path.insert(0, curPath)
-grapePath = os.path.join(curPath, os.path.pardir)
-if grapePath not in sys.path:
-    sys.path.insert(0, grapePath)
-from vine import grape_errors
-from vine import grapeGit as git
-from vine import config_parser_global
-from vine import grapeMenu
-from vine import utility
-from vine.option import Option
+# Assert tests are ran with Python 3.6 or greater.
+pythonMajorVersion = sys.version_info[0]
+pythonMinorVersion = sys.version_info[1]
+if not pythonMajorVersion == 3 and pythonMinorVersion >= 6:
+    print('Grape requires Python 3.6 or greater.')
+    exit(1)
+# Needed if testing GRAPE directly through CLI. (Not through GRAPE's menu).
+grape_path = os.path.dirname(os.path.realpath(os.path.dirname(__file__)))
+grape_par_dir = os.path.dirname(grape_path)
+if grape_par_dir not in sys.path:
+    sys.path.insert(0, grape_par_dir)
+
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import config_parser_global
+from grape.vine import grapeMenu
+from grape.vine import utility
+from grape.vine.option import Option
 
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
@@ -40,6 +48,20 @@ def writeFile3(path):
     with open(path, 'w') as f:
         f.write(str3)
 
+# object to allow splitting of output to multiple file-like objects.
+# from user shx2: https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file
+class Multifile(object):
+    def __init__(self, files):
+        self._files = files
+    def __getattr__(self, attr, *args):
+        return self._wrap(attr, *args)
+    def _wrap(self, attr, *args):
+        def g(*a, **kw):
+            for f in self._files:
+                res = getattr(f, attr, *args)(*a, **kw)
+            return res
+        return g
+
 class TestGrape(unittest.TestCase):
     """
     TODO: output from multiple tests seem to be overlapping.
@@ -49,18 +71,14 @@ class TestGrape(unittest.TestCase):
     of tests will encounter a non-empty stdout, and fail.
     """
 
-
-    def printToScreen(self, str): 
-        self.stdout.write(str)
-        
     def switchToStdout(self):
-        sys.stdout = utility.multifile([sys.stdout, self.stdout])
-        sys.stderr = utility.multifile([sys.stderr, self.stderr])
-        
+        sys.stdout = Multifile([sys.stdout, self.stdout])
+        sys.stderr = Multifile([sys.stderr, self.stderr])
+
     def switchToHiddenOutput(self):
         sys.stdout = self.output
         sys.stderr = self.error
-        
+
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
         self.defaultWorkingDirectory = tempfile.mkdtemp()
@@ -81,8 +99,8 @@ class TestGrape(unittest.TestCase):
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
-        self.output = StringIO.StringIO()
-        self.error = StringIO.StringIO()
+        self.output = io.StringIO()
+        self.error = io.StringIO()
         self.stdout = sys.stdout
         self.stderr = sys.stderr
         self.cwd = os.getcwd()
@@ -131,7 +149,6 @@ class TestGrape(unittest.TestCase):
 
             Usage : ``shutil.rmtree(path, onerror=onerror)``
             """
-            import stat
             if not os.access(path, os.W_OK):
                 # Is the error an access error ?
                 os.chmod(path, stat.S_IWUSR)
@@ -148,20 +165,24 @@ class TestGrape(unittest.TestCase):
         sys.stderr = self.stderr
         os.chdir(self.cwd)
         self.output.close()
+        self.error.close()
 
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
 
-    # print the captured standard out
-    def printOutput(self):
-        for l in self.output:
-            self.stdout.write(l)
+#    # print the captured standard out
+#    def printOutput(self):
+#        for l in self.output:
+#            self.stdout.write(l)
+#
+#    # print the captured standard error
+#    def printError(self):
+#        for l in self.error:
+#            self.stderr.write(l)
 
-    # print the captured standard error
-    def printError(self):
-        for l in self.error:
-            self.stderr.write(l)
+    def get_output(self):
+        return self.output.getvalue()
 
     @contextmanager
     def queue_user_input(self, user_input_list):
@@ -169,7 +190,7 @@ class TestGrape(unittest.TestCase):
         Temporarily replaces sys.stdin with a text stream holding user input.
         """
         original_stdin = sys.stdin
-        input_stream = StringIO.StringIO()
+        input_stream = io.StringIO()
         sys.stdin = input_stream
         input_stream.writelines(user_input_list)
         input_stream.seek(0)
@@ -181,12 +202,12 @@ class TestGrape(unittest.TestCase):
 
     def assertTrue(self, expr, msg=None):
         if msg is not None:
-            msg += "\n%s" % self.output.getvalue()
+            msg += "\n" + f"{self.get_output()}"
         super(TestGrape, self).assertTrue(expr, msg=msg)
 
     def assertFalse(self, expr, msg=None):
         if msg is not None:
-            msg += "\n%s" % self.output.getvalue()
+            msg += "\n" + f"{self.get_output()}"
         super(TestGrape, self).assertFalse(expr, msg=msg)
 
 
@@ -202,24 +223,24 @@ def buildSuite(cls, appendTo=None, sub=None):
 
 
 def main(argv, debug=False):
-   
-    import testBranches
-    import testBundle
-    import testClone
-    import testConfig
-    import testDeleteBranch
-    import testMergeDevelop
-    import testGrapeGit
-    import testResolveConflicts
-    import testReview
-    import testStash
-    import testUnbundle
-    import testVersion
-    import testPublish
-    import testCO
-    import testNestedSubproject
-    import testStatus
-    import testUpdateLocal
+
+    from grape.test import testBranches
+    from grape.test import testBundle
+    from grape.test import testClone
+    from grape.test import testConfig
+    from grape.test import testDeleteBranch
+    from grape.test import testMergeDevelop
+    from grape.test import testGrapeGit
+    from grape.test import testResolveConflicts
+    from grape.test import testReview
+    from grape.test import testStash
+    from grape.test import testUnbundle
+    from grape.test import testVersion
+    from grape.test import testPublish
+    from grape.test import testCO
+    from grape.test import testNestedSubproject
+    from grape.test import testStatus
+    from grape.test import testUpdateLocal
 
     testClasses = {"Branches":testBranches.TestBranches,
                    "Bundle":testBundle.TestBundle,
@@ -246,35 +267,36 @@ def main(argv, debug=False):
             suite = buildSuite(cls, suite)
     else:
         if argv[0] == "listSuites":
-            print testClasses.keys()
+            print(testClasses.keys())
             exit(0)
+        nl = "\n"
         for arg in argv:
             if '.' in arg:
                (cls, sub) = arg.split('.')
                try:
                   cls = testClasses[cls]
                except:
-                  print "*** %s is not a valid test suite!\nValid values are:" % cls
-                  print testClasses.keys()
+                  print(f"*** {cls} is not a valid test suite!{nl}" + \
+                        f"Valid values are:{nl}{testClasses.keys()}")
                   exit(0)
             else:
                try:
                   cls = testClasses[arg]
                except:
-                  print "*** %s is not a valid test suite!\nValid values are:" % arg
-                  print testClasses.keys()
+                  print(f"*** {arg} is not a valid test suite!{nl}" + \
+                        f"Valid values are:{nl}{testClasses.keys()}")
                   exit(0)
                sub = None
             suite = buildSuite(cls, suite, sub)
-            
+
     if debug:
         for cls in suite:
             try:
                for case in cls:
-                   print case
+                   print(case)
                    case._debug = True
             except TypeError:
-               print cls
+               print(cls)
                cls._debug = True
         suite._tests    
     

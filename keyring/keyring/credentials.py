@@ -1,11 +1,12 @@
 import os
 import abc
 
-class Credential(object):
+__metaclass__ = type
+
+
+class Credential(metaclass=abc.ABCMeta):
     """Abstract class to manage credentials
     """
-
-    __metaclass__ = abc.ABCMeta
 
     @abc.abstractproperty
     def username(self):
@@ -14,6 +15,7 @@ class Credential(object):
     @abc.abstractproperty
     def password(self):
         return None
+
 
 class SimpleCredential(Credential):
     """Simple credentials implementation
@@ -31,6 +33,7 @@ class SimpleCredential(Credential):
     def password(self):
         return self._password
 
+
 class EnvironCredential(Credential):
     """Source credentials from environment variables.
        Actual sourcing is deferred until requested.
@@ -45,7 +48,7 @@ class EnvironCredential(Credential):
         """
         value = os.environ.get(env_var)
         if not value:
-            raise ValueError('Missing environment variable:%s' %env_var)
+            raise ValueError('Missing environment variable:%s' % env_var)
         return value
 
     @property

@@ -1,14 +1,14 @@
 import os
-import option
-import grape_errors
-import grapeGit as git
-import utility
-import vine_logging
-import config_parser_global
-import multi_repo_cmd_launcher
+from grape.vine import config_parser_global
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 
-class Push(option.Option):
+class Push(Option):
     """
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
@@ -36,8 +36,6 @@ class Push(option.Option):
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
-
-
         submodules = git.getActiveSubmodules(baseDir)
 
         retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
@@ -51,8 +49,8 @@ class Push(option.Option):
 
 def push(repo='', branch='master'):
     with utility.cd(repo):
-        vine_logging.printMsg("Pushing %s in %s..." % (branch, repo))
-        git.push("-u origin %s" % branch, throwOnFail=True)
+        vine_logging.printMsg(f"Pushing {branch} in {repo}...")
+        git.push(f"-u origin {branch}", throwOnFail=True)
 
 def handlePushMRE(mre):
     for e1 in mre.exceptions():
@@ -60,12 +58,12 @@ def handlePushMRE(mre):
             raise e1
         except grape_errors.GrapeGitError as e:
             vine_logging.printMsg("Failed to push branch.")
-            print e.gitCommand
-            print e.cwd
-            print e.gitOutput
+            print(e.gitCommand)
+            print(e.cwd)
+            print(e.gitOutput)
             return False
 
 if __name__ is "__main__":
-    import grapeMenu
+    from grape.vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("push", [])

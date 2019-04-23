@@ -1,53 +1,45 @@
+import multiprocessing
 import os
-import multiprocessing.pool
-import config_parser_global
-from option import Option
-import grape_errors
-import utility
+from grape.vine import config_parser_global
+from grape.vine import grape_errors
+from grape.vine import utility
+from grape.vine.option import Option
 
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
 # a method in, and launches the method. Needs to be at the file scope for stricter implementations of
 # pickle, used by the multiprocess module.
-def runCommandOnRepoBranch(repoBranchCommandTuple):
-    curDir = os.getcwd()
-    repo = repoBranchCommandTuple[0]
-    branch = repoBranchCommandTuple[1]
-    f = repoBranchCommandTuple[2]
-    args = repoBranchCommandTuple[3]
-    os.chdir(repo)
-    try:
-        return f(repo=repo, branch=branch, args=args)
-    except TypeError:
+def runCommandOnRepoBranch(task_queue, results_queue):
+    while not task_queue.empty():
+        repoBranchCommandTuple = task_queue.get()
+        curDir = os.getcwd()
+        repo = repoBranchCommandTuple[0]
+        branch = repoBranchCommandTuple[1]
+        f = repoBranchCommandTuple[2]
+        args = repoBranchCommandTuple[3]
+        os.chdir(repo)
         try:
-            return f(repo=repo, branch=branch)
+            result = f(repo=repo, branch=branch, args=args)
+            results_queue.put(result)
+            return
         except TypeError:
             try:
-                return f()
+                result = f(repo=repo, branch=branch)
+                results_queue.put(result)
+                return
+            except TypeError:
+                try:
+                    result = f()
+                    results_queue.put(result)
+                    return
+                except Exception as e:
+                    return e
             except Exception as e:
                 return e
         except Exception as e:
             return e
-    except Exception as e:
-        return e
 
-    os.chdir(curDir)
-
-# Thanks to Chris Arndt at http://stackoverflow.com/questions/6974695/python-process-pool-non-daemonic
-# for this lovely magic.
-class NoDaemonProcess(multiprocessing.Process):
-    # make 'daemon' attribute always return False
-    def _get_daemon(self):
-        return False
-    def _set_daemon(self, value):
-        pass
-    daemon = property(_get_daemon, _set_daemon)
-
-# We sub-class multiprocessing.pool.Pool instead of multiprocessing.Pool
-# because the latter is only a wrapper function, not a proper class.
-class MyPool(multiprocessing.pool.Pool):
-    Process = NoDaemonProcess
-
+        os.chdir(curDir)
 
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
@@ -55,29 +47,23 @@ class MyPool(multiprocessing.pool.Pool):
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 
 class MultiRepoCommandLauncher(object):
-    numProcs = 8
-    # lmbda needs to match the signature of f(repo=...) as called in runCommandOnRepoBranch (above)
-    def __init__(self, lmbda, nProcesses=-1, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
-                 globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False, outer=""):
-        self.lmbda = lmbda
 
-        config = config_parser_global.grapeConfig()
-        recurseSubmodules = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules")
-        if not recurseSubmodules:
-            self.runSubmodules = runInSubmodules
-        else:
-            self.runSubmodules = recurseSubmodules
-        # apply the skipSubmodules override
-        self.runSubmodules = self.runSubmodules and not skipSubmodules
-        self.runSubprojects = runInSubprojects
+    def __init__(self, lambda_, runInSubmodules=False, runInSubprojects=True,
+                 runInOuter=True, branch="", globalArgs=None, perRepoArgs=[],
+                 listOfRepoBranchArgTuples=None, skipSubmodules=False,
+                 outer=""):
+        multiprocessing.log_to_stderr()
+
+        self.lambda_ = lambda_
+        self.run_submodules = self.should_run_submodules(skipSubmodules,
+                                                         runInSubmodules)
+        self.run_subprojects = runInSubprojects
         self.runOuter = runInOuter
-        if nProcesses < 0:
-            nProcesses = MultiRepoCommandLauncher.numProcs
-        self.pool = MyPool(nProcesses)
         self.branchArg = branch
         self.perRepoArgs = perRepoArgs
         self.globalArgs = globalArgs
         self.launchTuple = listOfRepoBranchArgTuples
+        self.results_queue = multiprocessing.Queue()
 
         self.repos = []
         self.branches = []
@@ -86,12 +72,18 @@ class MultiRepoCommandLauncher(object):
         else:
             self.outer = utility.workspaceDir()
 
+    def should_run_submodules(self, skip_sub_modules, run_in_submodules):
+        config = config_parser_global.grapeConfig()
+        if config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules"):
+            return not skip_sub_modules
+        return run_in_submodules
+
     def MergeLaunchSet(self, otherMRCL):
         self.initializeCommands()
         otherMRCL.initializeCommands()
         for args in self.perRepoArgs + otherMRCL.perRepoArgs:
             if args:
-                print ("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
+                print("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
                 break
 
         reducedSet = list(set(zip(self.branches+otherMRCL.branches, self.repos+otherMRCL.repos)))
@@ -123,33 +115,30 @@ class MultiRepoCommandLauncher(object):
         self.repos = newRepos
         self.perRepoArgs = newArgs
 
-    def printLaunchSet(self):
-        for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
-            print "%s,%s,%s" % (b, r, a)
-
 
     def initializeCommands(self):
+        # don't reinit
+        if self.repos:
+            return
+
         # Imported here to delay grapeGit importing.
-        import config_parser_user
-        import grapeGit as git
+        from grape.vine import config_parser_user
+        from grape.vine import grapeGit as git
 
         config = config_parser_global.grapeConfig()
         currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         publicBranches = config.getPublicBranchList()
 
-        # don't reinit
-        if self.repos:
-            return
         if self.launchTuple is not None:
             self.repos = [os.path.abspath(x[0]) for x in self.launchTuple]
             self.branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
         else:
-            if self.runSubprojects:
+            if self.run_subprojects:
                 activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
                 self.repos = self.repos + [os.path.join(utility.workspaceDir(), sub) for sub in activeSubprojects]
                 self.branches = self.branches + [currentBranch for x in activeSubprojects]
-            if self.runSubmodules:
+            if self.run_submodules:
                 ws_dir = utility.workspaceDir()
                 activeSubmodules = git.getActiveSubmodules(ws_dir)
                 self.repos = self.repos + [os.path.join(ws_dir, r) for r in activeSubmodules]
@@ -161,33 +150,41 @@ class MultiRepoCommandLauncher(object):
                 self.branches.append(currentBranch)
             if not self.perRepoArgs:
                 if not self.globalArgs:
-
                     self.perRepoArgs = [[] for x in self.repos]
                 else:
                     self.perRepoArgs = [self.globalArgs for x in self.repos]
 
+    def add_tasks(self):
+        task_queue = multiprocessing.SimpleQueue()
+        for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs):
+            task_queue.put((repo, branch, self.lambda_, arg))
+        while task_queue.empty():
+            pass
+        return task_queue
+
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
         with utility.cd(utility.workspaceDir()):
-            argLists = self.perRepoArgs
-
             self.initializeCommands()
 
+            if not self.repos:
+                return
+
             retvals = []
+            processes = []
 
-            if noPause:
-                # for purely local operations, run them all at once.
-                if len(self.repos) > 0:
-                    retvals = self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)])
-            else:
-                # run the first entry first so that things like logging in to the project's server happen up front
-                if len(self.repos) > 0:
-                    retvals.append(runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])))
-                    if isinstance(retvals[0], Exception):
-                        retvals[0] = runCommandOnRepoBranch((self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0]))
-                if len(self.repos) > 1:
-                    retvals = retvals + self.pool.map(runCommandOnRepoBranch, [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])])
+            results_queue = multiprocessing.SimpleQueue()
+            task_queue = self.add_tasks()
 
-        self.pool.close()
+            for _ in range(len(self.repos)):
+                process = multiprocessing.Process(target=runCommandOnRepoBranch,
+                                                  args=(task_queue, results_queue))
+                processes.append(process)
+            for process in processes:
+                process.run()
+
+            while not results_queue.empty():
+                retvals.append(results_queue.get())
+
         MRE = grape_errors.MultiRepoException()
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
             if isinstance(val[0], Exception):

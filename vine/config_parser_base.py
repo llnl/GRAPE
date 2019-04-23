@@ -1,28 +1,28 @@
-import ConfigParser
+from configparser import ConfigParser, DuplicateSectionError
+import io
 import os
-import cStringIO
-from option import Option
+from grape.vine.option import Option
 
 
-class GrapeConfigParserBase(ConfigParser.ConfigParser, object):
+class GrapeConfigParserBase(ConfigParser, object):
 
     GIT_DIR = '.git'
     GRAPE_CONFIG = '.grapeconfig'
 
     def __init__(self, workspaceDir=None, configString=None):
-        ConfigParser.ConfigParser.__init__(self)
+        ConfigParser.__init__(self)
 
         if workspaceDir:
             self.read(os.path.join(workspaceDir, self.GRAPE_CONFIG))
         if configString:
-            self.readfp(cStringIO.StringIO(configString))
+            self.read_file(io.StringIO(configString))
 
     def ensureSection(self, section):
         try:
             self.add_section(section)
             if "nested-" in section:
                 self.set(section,"active", "False")
-        except ConfigParser.DuplicateSectionError:
+        except DuplicateSectionError:
             pass
 
     def getAllNestedSubprojects(self):
@@ -81,5 +81,6 @@ class ConfigPairDict(dict):
             if '?' in self.keys():
                 return self['?'].replace('?', key)
             else:
-                e.message = "GRAPE CONFIG ERROR: No value found for %s, no default '?':<value> in config." % key
+                e.message = f"GRAPE CONFIG ERROR: No value found for {key}," +\
+                            " no default '?':<value> in config."
                 raise e

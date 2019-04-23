@@ -1,15 +1,14 @@
-
 import os
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
-import config_parser_global
-import config_parser_user
-import grapeGit as git
-import option
-import vine_logging
-import utility
 
 # Configure current repo
-class Config(option.Option):
+class Config(Option):
     """
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
@@ -38,7 +37,7 @@ class Config(option.Option):
         return "Initialize a repo you've already cloned without using GRAPE"
 
     def execute(self,args):
-        import grapeMenu
+        from grape.vine import grapeMenu
 
         base = git.baseDir()
         if base == "":
@@ -177,13 +176,18 @@ class Config(option.Option):
         allBranches = git.allBranches()
         missingBranches = []
         for branch in publicBranches:
-            if ("remotes/origin/%s" % branch) not in allBranches:
+            if f"remotes/origin/{branch}" not in allBranches:
                missingBranches.append(branch)
-            if ("remotes/origin/%s" % branch in allBranches) and (branch not in allBranches):
-                vine_logging.printMsg("Public branch %s does not have local version in %s. Creating it now." % (branch, repo))
-                git.branch("%s origin/%s" % (branch, branch))
+            if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
+                vine_logging.printMsg(
+                    f"Public branch {branch} does not have local version " +
+                    f"in {repo}. Creating it now.")
+                git.branch(f"{branch} origin/{branch}")
         if len(missingBranches) > 0:
-            vine_logging.printMsg("WARNING: the following public branches do not appear to exist on the remote origin of %s:\n%s" % (repo, " ".join(missingBranches)))
+            vine_logging.printMsg(
+                "WARNING: the following public branches do not appear " +
+                f"to exist on the remote origin of {repo}:" + "\n" +
+                f"{' '.join(missingBranches)}")
         os.chdir(cwd)
         
     @staticmethod

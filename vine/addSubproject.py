@@ -1,12 +1,12 @@
+import io
 import os
-import ConfigParser
-import config_parser_global
-import config_parser_user
-import config_parser_workspace
-from option import Option
-import vine_logging
-import utility
-import grapeGit as git
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import config_parser_workspace
+from grape.vine import vine_logging
+from grape.vine import utility
+from grape.vine import grapeGit as git
+from grape.vine.option import Option
 
 
 class AddSubproject(Option):
@@ -78,13 +78,16 @@ class AddSubproject(Option):
             squash_arg = "--squash" if squash else ""
             # expand the URL
             if not proceed:
-                proceed = utility.userInput("About to create a subtree called %s at path %s,\n"
-                                            "cloned from %s at %s " % (name, prefix, fullurl, branch) +
-                                            ("using a squash merge." if squash else "") + "\nProceed? [y/n]", "y")
+                use_squash = "using a squash merge." if squash else ""
+                nl = "\n"
+                proceed = utility.userInput(
+                    f"About to create a subtree called {name} at path " +
+                    f"{prefix},{nl}cloned from {fullurl} at " +
+                    f"{branch} {use_squash}{nl}Proceed? [y/n]", "y")
 
             if proceed:
                 os.chdir(utility.workspaceDir())
-                git.subtree("add %s --prefix=%s %s %s" % (squash_arg, prefix, fullurl, branch))
+                git.subtree(f"add {squash_arg} --prefix={prefix} {fullurl} {branch}")
 
                 #update the configuration file
                 current_cfg_names = config.get(Option.SECTION_SUBTREES, "names").split()
@@ -94,47 +97,53 @@ class AddSubproject(Option):
                     current_cfg_names.append(name)
                     config.set("subtrees", "names", ' '.join(current_cfg_names))
 
-                section = "subtree-%s" % name
+                section = f"subtree-{name}"
                 config.add_section(section)
                 config.set(section, "prefix", prefix)
                 config.set(section, "remote", url)
-                config.set(section, "topicPrefixMappings", "?:%s" % branch)
-                with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
+                config.set(section, "topicPrefixMappings", f"?:{branch}")
+                with io.open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
                 vine_logging.printMsg("Successfully added subtree branch. \n"
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:
-                proceed = utility.userInput("about to add %s as a submodule at path %s,\n"
-                                            "cloned from %s at branch %s.\nproceed? [y/n]" %
-                                            (name, prefix, url, branch), "y")
+                nl = "\n"
+                proceed = utility.userInput(
+                    f"about to add {name} as a submodule at path {prefix}," +
+                    f"{nl}cloned from {url} at branch {branch}.{nl}proceed?" +
+                    " [y/n]", "y")
             if proceed:
-                git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix))
-                print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
+                git.submodule(f"add --name {name} --branch {branch} {url} {prefix}")
+                print(f"Successfully added submodule {name} at {prefix}." +
+                      " Please review changes and commit.")
         elif projectType == "nested":
             if not proceed:
-                proceed = utility.userInput(" about to clone %s as a nested git repo at path %s,\n"
-                                            "cloned from %s at branch %s.\nProceed? [y/n]" %
-                                            (name, prefix, url, branch), 'y')
+                nl = "\n"
+                proceed = utility.userInput(
+                    f" about to clone {name} as a nested git repo at path" +
+                    f" {prefix},{nl}cloned from {url} at branch" +
+                    f" {branch}.{nl}Proceed? [y/n]", 'y')
             if proceed:
-                git.clone("%s %s" % (fullurl, prefix))
+                git.clone(f"{fullurl} {prefix}")
                 ignorePath = os.path.join(git.baseDir(), ".gitignore")
-                with open(ignorePath, 'a') as ignore:
+                with io.open(ignorePath, 'a') as ignore:
                     ignore.writelines([prefix+'\n'])
                 git.add(ignorePath)
                 wsConfig = config_parser_workspace.GrapeConfigParserWorkspace()
                 currentSubprojects = wsConfig.getList("nestedProjects", "names")
                 currentSubprojects.append(name)
                 wsConfig.set("nestedProjects", "names", ' '.join(currentSubprojects))
-                newSection = "nested-%s" % name
+                newSection = f"nested-{name}"
                 wsConfig.ensureSection(newSection)
                 wsConfig.set(newSection, "prefix", prefix)
                 wsConfig.set(newSection, "url", url)
                 configFileName = os.path.join(utility.workspaceDir(), ".grapeconfig")
-                with open(os.path.join(configFileName), 'w') as f:
+                with io.open(os.path.join(configFileName), 'w') as f:
                     wsConfig.write(f)
                 git.add(configFileName)
-                git.commit("%s %s -m \"GRAPE: Added nested subproject %s\"" % (ignorePath, configFileName, prefix))
+                git.commit(f"{ignorePath} {configFileName} -m " +
+                           f"\"GRAPE: Added nested subproject {prefix}\"")
                 # update the runtime config with the new workspace .grapeconfig's settings.
                 config_parser_global.read()
 
@@ -149,20 +158,21 @@ class AddSubproject(Option):
     def activateNestedSubproject(subprojectName, userconfig):
         wsDir = utility.workspaceDir()
         config = config_parser_global.grapeConfig()
-        prefix = config.get("nested-%s" % subprojectName, "prefix")
-        url = config.get("nested-%s" % subprojectName, "url")
+        prefix = config.get(f"nested-{subprojectName}", "prefix")
+        url = config.get(f"nested-{subprojectName}", "url")
         fullurl = git.parseSubprojectRemoteURL(url)
-        section = "nested-%s" % subprojectName
+        section = f"nested-{subprojectName}"
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
         if not currentlyActive:
             destDir = os.path.join(wsDir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
-                git.clone("%s %s" % (fullurl, prefix))
+                git.clone(f"{fullurl} {prefix}")
             elif '.git' in os.listdir(destDir):
                 pass
             else:
-                vine_logging.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
+                vine_logging.printMsg("WARNING: inactive nested subproject " +
+                                      f"{prefix} has files but is not a git repo")
                 return False
         userconfig.set(section, "active", "True")
         config_parser_global.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))

@@ -1,5 +1,9 @@
-import gridTesting
-from testGrape import *
+import inspect
+import os
+from grape.test import gridTesting
+from grape.test import testGrape
+from grape.vine import grapeGit as git
+from grape.vine import grapeMenu
 
 
 def find_subclasses(module, clazz):
@@ -33,11 +37,12 @@ class grapeProject(gridTesting.ResettableProject):
         return self._debugging
 
 class singleRepo(grapeProject): 
+
     def __init__(self, path): 
         super(singleRepo, self).__init__(path)
         
         self.addCommands([
-            (writeFile1, "f1"),
+            (testGrape.writeFile1, "f1"),
             (git.add,"f1"),
             (git.commit, "-m \"added a single file\"")
         ])
@@ -89,7 +94,7 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
         self.addCommands([(grapeMenu.menu().applyMenuChoice,
                          lambda: ("addSubproject", ["--name=submodule1",
                                             "--prefix=submodule1",
-                                            "--url=%s" % self.getOriginDir(),
+                                            f"--url={self.getOriginDir()}",
                                             "--branch=master", 
                                             "--submodule", 
                                             "--noverify"],
@@ -145,14 +150,17 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
         self.secondProjectDir = self.projectDir + "2"
         if os.path.exists(self.secondProjectDir):
-            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % self.secondProjectDir
+            print(f"Path ({self.secondProjectDir}) already exists, so it " + \
+                    "cannot be used by a new ResettableProject.")
             sys.exit(1)
 
-        self.addCommands([(git.clone, lambda : "--recursive %s %s" % (self.getOriginDir(), self.getSecondProjectDir())), 
+        self.addCommands([(git.clone, lambda: "--recursive " + \
+                                              f"{self.getOriginDir()} " + \
+                                              f"{self.getSecondProjectDir()}"), 
                           (os.chdir, lambda : self.getSecondProjectDir()),
                           (os.chdir,"submodule1"),
                           (git.checkout, "master"),
-                          (writeFile1, "f2"),
+                          (testGrape.writeFile1, "f2"),
                           (git.add,"f2"),
                           (git.commit, "-m \"added a second file to submodule\""),
                           (git.push, "origin master"),
@@ -194,7 +202,7 @@ class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
         self.addCommands([(grapeMenu.menu().applyMenuChoice,
                          lambda: ("addSubproject", ["--name=subproject1",
                                             "--prefix=subproject1",
-                                            "--url=%s" % self.getOriginDir(),
+                                            f"--url={self.getOriginDir()}",
                                             "--branch=master", 
                                             "--nested", 
                                             "--noverify"], None, 
@@ -215,5 +223,3 @@ class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
         # outer on public branch means expect submodule on master
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
-        

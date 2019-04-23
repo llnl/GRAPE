@@ -1,7 +1,7 @@
-import option
+from grape.vine.option import Option
 
 
-class Quit(option.Option):
+class Quit(Option):
     """
     grape q
     Quits grape. 

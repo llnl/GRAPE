@@ -1,11 +1,10 @@
 import os
 import sys
-import testGrape
-if os.path.pardir not in sys.path:
-    sys.path.insert(0, os.path.pardir)
-from vine import grape_errors
-from vine import grapeGit as git
-import testNestedSubproject
+from grape.test import testGrape
+from grape.test import testNestedSubproject
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+
 
 class TestMD(testGrape.TestGrape):
 
@@ -40,9 +39,10 @@ class TestMD(testGrape.TestGrape):
             self.assertEqual(git.shortSHA(), git.shortSHA("master"), "merging master into test branch did not fast"
                                                                      "forward")
         except SystemExit:
-            self.fail("Unexpected SystemExit: %s" % self.output.getvalue())
+            self.fail(f"Unexpected SystemExit: {self.get_output()}")
         except grape_errors.GrapeGitError as e:
-            self.fail("Unhandled GrapeGitError: %s\n%s" % (e.gitCommand, e.gitOutput))
+            self.fail(f"Unhandled GrapeGitError: {e.gitCommand}" + "\n" +
+                      f"{e.gitOutput}")
 
     def testConflictingMerge(self):
         self.setUpConflictingMerge()
@@ -51,18 +51,21 @@ class TestMD(testGrape.TestGrape):
             ret = self.menu.applyMenuChoice("m", ["master", "--am"])
             self.assertFalse(ret, "grape m did not return false as expected for a conflict")
 
-            self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of "
-                                                            "merge\n %s" % self.output.getvalue())
+            self.assertFalse(git.isWorkingDirectoryClean(),
+                             "working directory clean before attempted " + \
+                             "continution of merge\n " + f"{self.get_output()}")
             # resolve the conflict
             git.checkout("--ours f2")
             git.add("f2")            
 
             ret = self.menu.applyMenuChoice("m", ["--continue"])
-            self.assertTrue(ret, "grape m --continue did not return True\n%s" % self.output.getvalue())
-            self.assertTrue(git.isWorkingDirectoryClean(), "grape m --continue did not finish merge\n%s" %
-                                                           self.output.getvalue())
+            self.assertTrue(ret, "grape m --continue did not return True\n" + \
+                                 f"{self.get_output()}")
+            self.assertTrue(git.isWorkingDirectoryClean(),
+                            "grape m --continue did not finish merge\n" + \
+                            f"{self.get_output()}")
         except SystemExit:
-            self.fail("Unexpected SystemExit: %s" % self.output.getvalue())
+            self.fail(f"Unexpected SystemExit: {self.get_output()}")
 
     def testConflictingMerge_MD(self):
         self.setUpConflictingMerge()
@@ -72,24 +75,27 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(ret, "grape m did not return false as expected for a conflict")
             # resolve the conflict
 
-            self.assertFalse(git.isWorkingDirectoryClean(), "working directory clean before attempted continution of "
-                                                            "merge\n %s" % self.output.getvalue())
+            self.assertFalse(git.isWorkingDirectoryClean(),
+                             "working directory clean before attempted " + \
+                             "continution of merge\n " + f"{self.get_output()}")
             git.checkout("--ours f2")
             git.add("f2")            
 
             ret = self.menu.applyMenuChoice("md", ["--continue"])
-            self.assertTrue(ret, "grape md --continue did not return True\n%s" % self.output.getvalue())
-            self.assertTrue(git.isWorkingDirectoryClean(), "grape m --continue did not finish merge\n%s" %
-                                                           self.output.getvalue())
+            self.assertTrue(ret, "grape md --continue did not return True\n" +\
+                                 f"{self.get_output()}")
+            self.assertTrue(git.isWorkingDirectoryClean(),
+                            "grape m --continue did not finish merge\n" + \
+                            f"{self.get_output()}")
         except SystemExit:
-            self.fail("Unexpected SystemExit: %s" % self.output.getvalue())
+            self.fail(f"Unexpected SystemExit: {self.get_output()}")
 
     def createTestSubmodule(self):
         # make a repo to turn into a submodule
-        git.clone("--mirror %s %s " % (self.repo, self.repos[1]))
+        git.clone(f"--mirror {self.repo} {self.repos[1]} ")
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
-        git.submodule("add %s %s" % (os.path.join(self.repos[1]), "submodule1"))
+        git.submodule(f"add {os.path.join(self.repos[1])} submodule1")
         git.commit("-m \"added submodule1\"")
         
 
@@ -165,9 +171,10 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(git.diff("testSubmoduleMerge"), "gitlink is not at testSubmoduleMerge tip after merge")
 
         except grape_errors.GrapeGitError as e:
-            self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
+            self.fail(f"Uncaught git error executing {e.gitCommand}:" + "\n" +
+                      f"{e.gitOutput}")
         except SystemExit:
-            self.fail("Uncaught System Exit\n%s" % self.output.getvalue())
+            self.fail("Uncaught System Exit\n" + f"{self.get_output()}")
 
     def testNonConflictingSubmoduleMerge(self):
         try:
@@ -187,9 +194,10 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(git.diff("testSubmoduleMerge"), "gitlink is not at testSubmoduleMerge tip after merge")
 
         except grape_errors.GrapeGitError as e:
-            self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
+            self.fail(f"Uncaught git error executing {e.gitCommand}:" + "\n" +
+                      f"{e.gitOutput}")
         except SystemExit:
-            self.fail("Uncaught System Exit\n%s" % self.output.getvalue())
+            self.fail("Uncaught System Exit\n" + f"{self.get_output()}")
             
     def testConflictingSubmoduleMerge_MD(self):
         try:
@@ -199,10 +207,12 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(ret, "grape md did not return False for conflicting merge.")
             # should only have modifications in submodule1, not conflicts
             status = git.status("--porcelain")
-            self.assertTrue("UU" not in status and "AA" in status, "unexpected status %s at toplevel" % status)
+            self.assertTrue("UU" not in status and "AA" in status,
+                            f"unexpected status {status} at toplevel")
             os.chdir(subPath)
             status = git.status("--porcelain")
-            self.assertTrue("AA" in status, "unexpected status %s in submodule1" % status)
+            self.assertTrue("AA" in status,
+                            f"unexpected status {status} in submodule1")
 
             # resolve the conflict and continue from the submodule's directory
             git.checkout("--ours f1")
@@ -212,8 +222,9 @@ class TestMD(testGrape.TestGrape):
             ret = self.menu.applyMenuChoice("md", ["--continue"])
 
             # test that we returned successfully
-            self.assertTrue(ret, "grape md --continue did not complete successfully after resolving submodule conflict"
-                                 "\n %s" % self.output.getvalue())
+            self.assertTrue(ret, "grape md --continue did not complete " +
+                                 "successfully after resolving submodule " +
+                                 "conflict\n " + f"{self.get_output()}")
 
             # test that the submodule master was merged in
             self.assertTrue(git.branchUpToDateWith("testSubmoduleMerge2", "master"),
@@ -231,9 +242,10 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(diff, "checked in gitlink is not at tip of testSubmoduleMerge2")
 
         except grape_errors.GrapeGitError as e:
-            self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
+            self.fail(f"Uncaught git error executing {e.gitCommand}:" + "\n" +
+                      f"{e.gitOutput}")
         except SystemExit:
-            self.fail("Uncaught exit\n%s" % self.output.getvalue())
+            self.fail("Uncaught exit\n" + f"{self.get_output()}")
 
     def testConflictingSubmoduleMerge(self):
         try:
@@ -243,10 +255,12 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(ret, "grape m did not return False for conflicting merge.")
             # should only have modifications in submodule1, not conflicts
             status = git.status("--porcelain")
-            self.assertTrue("UU" not in status and "AA" in status, "unexpected status %s at toplevel" % status)
+            self.assertTrue("UU" not in status and "AA" in status,
+                            f"unexpected status {status} at toplevel")
             os.chdir(subPath)
             status = git.status("--porcelain")
-            self.assertTrue("AA" in status, "unexpected status %s in submodule1" % status)
+            self.assertTrue("AA" in status,
+                            f"unexpected status {status} in submodule1")
 
             # resolve the conflict and continue from the submodule's directory
             git.checkout("--ours f1")
@@ -256,8 +270,9 @@ class TestMD(testGrape.TestGrape):
             ret = self.menu.applyMenuChoice("m", ["--continue"])
 
             # test that we returned successfully
-            self.assertTrue(ret, "grape m --continue did not complete successfully after resolving submodule conflict"
-                                 "\n %s" % self.output.getvalue())
+            self.assertTrue(ret, "grape m --continue did not complete " +
+                                 "successfully after resolving submodule " +
+                                 "conflict\n " + f"{self.get_output()}")
 
             # test that the submodule master was merged in
             self.assertTrue(git.branchUpToDateWith("testSubmoduleMerge2", "master"),
@@ -275,9 +290,10 @@ class TestMD(testGrape.TestGrape):
             self.assertFalse(diff, "checked in gitlink is not at tip of testSubmoduleMerge2")
 
         except grape_errors.GrapeGitError as e:
-            self.fail("Uncaught git error executing %s: \n%s" % (e.gitCommand, e.gitOutput))
+            self.fail(f"Uncaught git error executing {e.gitCommand}:" + "\n" +
+                      f"{e.gitOutput}")
         except SystemExit:
-            self.fail("Uncaught exit\n%s" % self.output.getvalue())
+            self.fail("Uncaught exit\n" + f"{self.get_output()}")
 
     def setUpConflictingNestedSubprojectMerge(self):
         os.chdir(self.defaultWorkingDirectory)
@@ -310,7 +326,7 @@ class TestMD(testGrape.TestGrape):
         try:
             ret = self.menu.applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
         except SystemExit as e: 
-            self.assertTrue(False, "grape m raised exception %s" % e)
+            self.assertTrue(False, f"grape m raised exception {e}")
         self.assertFalse(ret, "grape m did not return False for conflicting merge.")
         # git status in outer repo should be clean
         status = git.status("--porcelain")
@@ -318,7 +334,8 @@ class TestMD(testGrape.TestGrape):
         # git status in subproject should not be clean
         os.chdir(self.subproject)
         status = git.status("--porcelain")
-        self.assertIn("AA", status, "no conflicts in subproject status \n%s " % status)
+        self.assertIn("AA", status, "no conflicts in subproject status \n" + \
+                                    f"{status} ")
         
         # resolve the conflict
         git.checkout("--ours f1")
@@ -348,7 +365,7 @@ class TestMD(testGrape.TestGrape):
         try:
             ret = self.menu.applyMenuChoice("md", ["--am", "--public=master"], globalArgs=["-v"])
         except SystemExit as e: 
-            self.assertTrue(False, "grape md raised exception %s" % e)
+            self.assertTrue(False, f"grape md raised exception {e}")
         self.assertFalse(ret, "grape md did not return False for conflicting merge.")
         # git status in outer repo should be clean
         status = git.status("--porcelain")

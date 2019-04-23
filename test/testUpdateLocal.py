@@ -1,11 +1,8 @@
 import os
-import inspect
 import sys
-import StringIO
-
-import testGrape
-import testProjectScenarios
-import gridTesting
+from grape.test import gridTesting
+from grape.test import testGrape
+from grape.test import testProjectScenarios
 
 
 class GrapeUpTester(testGrape.TestGrape): 
@@ -41,4 +38,3 @@ def createUpTester():
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
     gridTesting.gridifyTestClass(scenarios, GrapeUpTester, names)
     return GrapeUpTester
-

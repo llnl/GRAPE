@@ -1,15 +1,15 @@
-import option
 import os
-import grape_errors
-import grapeGit as git
-import config_parser_global
-import multi_repo_cmd_launcher
-import utility
-import vine_logging
+from grape.vine import config_parser_global
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 
 # update the repo from the remote using the PyGitUp module
-class UpdateLocal(option.Option):
+class UpdateLocal(Option):
     """
     grape up
     Updates the current branch and any public branches.
@@ -75,45 +75,49 @@ class UpdateLocal(option.Option):
 
 def fetchLocalHandler(mre):
     for e in mre.exceptions():
-        print e.gitOutput
+        print(e.gitOutput)
     raise mre
 
 def fetchLocal(repo='unknown', branch='master'):
     # branch is actually the list of branches
     branches = branch
+    if not branches:
+        return
+
     with utility.cd(repo):
         currentBranch = git.currentBranch()
 
-        if len(branches) > 0:
-            git.fetch("--prune")
-            git.fetch("--tags --force")
-            allRemoteBranches = git.remoteBranches()
-            fetchArgs = "origin "
-            toFetch = []
-            for b in branches:
-                if b != currentBranch:
-                    if "origin/%s" % b in allRemoteBranches:
-                        fetchArgs += "%s:%s " % (b, b)
-                        toFetch.append(b)
-                else:
-                    try:
-                        vine_logging.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
-                        git.pull("origin %s" % currentBranch)
-                    except grape_errors.GrapeGitError:
-                        print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
-            try:
-                if toFetch:
-                    vine_logging.printMsg("updating %s in %s" % (','.join(toFetch), repo))
-                    git.fetch(fetchArgs)
-            except grape_errors.GrapeGitError as e:
-                # let non-fast-forward fetches slide
-                if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
-                    print e.gitCommand
-                    print e.gitOutput
-                    print("GRAPE: WARNING:  one of your public branches %s in %s has local commits! "
-                          "Did you forget to create a topic branch?" % (",".join(branches), repo))
-                    pass
-                elif "Refusing to fetch into current branch" in e.gitOutput:
-                    print e.gitOutput
-                else:
-                    raise e
+        git.fetch("--prune")
+        git.fetch("--tags --force")
+        allRemoteBranches = git.remoteBranches()
+        fetchArgs = "origin "
+        toFetch = []
+        for b in branches:
+            if b != currentBranch:
+                if f"origin/{b}" in allRemoteBranches:
+                    fetchArgs += f"{b}:{b} "
+                    toFetch.append(b)
+            else:
+                try:
+                    vine_logging.printMsg(
+                        f"Pulling current branch {currentBranch} in {repo}")
+                    git.pull(f"origin {currentBranch}")
+                except grape_errors.GrapeGitError:
+                    print(f"GRAPE: Could not pull {currentBranch} from" + 
+                          " origin. Maybe you haven't pushed it yet?")
+        try:
+            if toFetch:
+                vine_logging.printMsg(f"updating {','.join(toFetch)} in {repo}")
+                git.fetch(fetchArgs)
+        except grape_errors.GrapeGitError as e:
+            # let non-fast-forward fetches slide
+            if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
+                print(e.gitCommand)
+                print(e.gitOutput)
+                print("GRAPE: WARNING: one of your public branches " +
+                      f"{','.join(branches)} in {repo} has local commits! " +
+                      "Did you forget to create a topic branch?")
+            elif "Refusing to fetch into current branch" in e.gitOutput:
+                print(e.gitOutput)
+            else:
+                raise e

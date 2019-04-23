@@ -1,14 +1,16 @@
+import glob
 import os
-import ConfigParser
-import option
-import grapeGit as git
-import grape_errors
-import utility
-import vine_logging
-import config_parser_base
-import config_parser_global
-import global_state
-import multi_repo_cmd_launcher
+import sys
+from grape.vine import config_parser_base
+from grape.vine import config_parser_global
+from grape.vine import global_state
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
+from grape.vine import multi_repo_cmd_launcher
+from grape.vine import option
+from grape.vine import utility
+from grape.vine import vine_logging
+
 
 # pull and merge in an up-to-date development branch
 class Bundle(option.Option):
@@ -84,7 +86,9 @@ class Bundle(option.Option):
         # since bundle calls grape recursively, we give it configuration based on current repository semantics,
         # whereas grape typically has full workspace semantics.
         name = self.config().get(self.SECTION_PATCH, "tagprefix")
-        return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
+        description = "Create a bundle of branches listed in " + \
+                      f"patch.branches since the '{name}/<branch>' tags"
+        return description
 
     def execute(self, args):
 
@@ -150,42 +154,51 @@ def bundlecmd(repo='', branch='', args={}):
         for branch in branchlist:
             # ensure branch can be fast forwardable to origin/branch and do so
             if not git.safeForceBranchToOriginRef(branch):
-                print("Branch %s in %s has diverged from or is ahead of origin, or does not exist. Sync branches before bundling." % (branch, repo))
+                print(f"Branch {branch} in {repo} has diverged from or is " +
+                      "ahead of origin, or does not exist. Sync branches " +
+                      "before bundling.")
                 continue
-            tagname = "%s/%s" % (tagprefix, branch)
+            tagname = f"{tagprefix}/{branch}"
             try:
-                previousLocation = git.describe("--always --match '%s' %s" % (describePattern, tagname))
+                previousLocation = git.describe(
+                    f"--always --match '{describePattern}' {tagname}")
             except:
                 # We should only get here if the tagname does not exist
                 previousLocation = "unknown"
             try:
-                currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
+                currentLocation = git.describe(
+                    f"--always --match '{describePattern}' {branch}")
             except:
-                vine_logging.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
+                vine_logging.printMsg(f"Unable to locate {branch} in " +
+                                      f"{reponame}! Something may be wrong...")
                 currentLocation = branch
             if previousLocation.strip() != currentLocation.strip():
                 try:
                     git.shortSHA(tagname)
-                    revlists = " %s..%s" % (tagname, branch)
+                    revlists = f" {tagname}..{branch}"
                 except:
-                    vine_logging.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
-                    revlists = " %s" % (branch)
+                    vine_logging.printMsg(f"{tagname} does not exist in " +
+                                          f"{reponame}, bundling entire " +
+                                          f"branch {branch}")
+                    revlists = f" {branch}"
                 bundlename = args["--outfile"]
                 if not bundlename:
-                    bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
-                                                         currentLocation)
-                vine_logging.printMsg("creating bundle %s in %s" % (bundlename, reponame))
-                git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
+                    bundlename = f"{reponame}.{branch.replace('/', '.')}-" + \
+                                 f"{previousLocation}-{currentLocation}.bundle"
+                vine_logging.printMsg(f"creating bundle {bundlename} in " + \
+                                      f"{reponame}")
+                git.bundle(f"create {bundlename} {revlists} " +
+                           f"--tags={tagsToBundle[branch]} ")
     return True
 
 def bundlecmdMRE(mre):
-    print mre
+    print(mre)
     try:
         raise mre
     except  grape_errors.MultiRepoException as errors:
         vine_logging.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
-            print b, e
+            print(f"{b} {e}", file=sys.stderr)
 
 
 class Unbundle(option.Option):
@@ -240,7 +253,6 @@ class Unbundle(option.Option):
         config.ensureSection(self.SECTION_PATCH)
         config.set(self.SECTION_PATCH, 'branchMappings', 'master:master')
 
-import glob
 def unbundlecmd(repo='', branch='', args={}):
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()
@@ -252,20 +264,20 @@ def unbundlecmd(repo='', branch='', args={}):
                 sourceDestPair = token.split(":")
                 source = sourceDestPair[0]
                 dest = sourceDestPair[1]
-                bundleHeads = git.bundle("list-heads %s" % bundleName).split("\n")
+                bundleHeads = git.bundle(f"list-heads {bundleName}").split("\n")
                 bundleBranches = []
                 for line in bundleHeads:
                     if "refs/heads" in line:
                         bundleBranches.append(line.split()[1].split("refs/heads/")[1])
                 if source.replace('/', '.') in bundleBranches:
-                    mappings += "%s:%s " % (source, dest)
+                    mappings += f"{source}:{dest} "
 
             try:
-                git.bundle("verify %s" % bundleName)
+                git.bundle(f"verify {bundleName}")
             except grape_errors.GrapeGitError as e:
-                print e.gitCommand
-                print e.cwd
-                print e.gitOutput
+                print(e.gitCommand, file=sys.stderr)
+                print(e.cwd, file=sys.stderr)
+                print(e.gitOutput, file=sys.stderr)
                 raise e
-            git.fetch("--tags -u %s %s" % (bundleName, mappings))
+            git.fetch(f"--tags -u {bundleName} {mappings}")
     return True

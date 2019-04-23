@@ -1,15 +1,15 @@
 import os
-import sys
-import option
-import grape_errors
-import config_parser_global
-import config_parser_user
-import grapeGit as git
-import utility
-import vine_logging
 import re
+import sys
 import threading
-from option import Option
+from grape.vine import option
+from grape.vine import grape_errors
+from grape.vine import config_parser_global
+from grape.vine import config_parser_user
+from grape.vine import grapeGit as git
+from grape.vine import utility
+from grape.vine import vine_logging
+from grape.vine.option import Option
 
 try:
     import Tkinter as Tk
@@ -204,7 +204,7 @@ class ProjectManager(object):
         if self.showToplevel:
             status = "?"
             self.projects.append("")
-            self.projlist.insert(Tk.END, "%s <Outer Level Project>" % status)
+            self.projlist.insert(Tk.END, f"{status} <Outer Level Project>")
             self.projstatus.append(status)
             self.projtype.append("Outer")
 
@@ -216,7 +216,7 @@ class ProjectManager(object):
             self.subprojects.extend(activeNestedSubprojects)
             for proj in activeNestedSubprojects:
                 status = "?"
-                self.projlist.insert(Tk.END, "%s %s <Nested Subproject>" % (status, proj))
+                self.projlist.insert(Tk.END, f"{status} {proj} <Nested Subproject>")
                 self.projstatus.append(status)
                 self.projtype.append("Active Nested")
             if self.showInactive:
@@ -226,7 +226,7 @@ class ProjectManager(object):
                 self.subprojects.extend(inactiveNestedSubprojects)
                 for proj in inactiveNestedSubprojects:
                     status = "?"
-                    self.projlist.insert(Tk.END, "%s %s <Inactive Nested Subproject>" % (status, proj))
+                    self.projlist.insert(Tk.END, f"{status} {proj} <Inactive Nested Subproject>")
                     self.projstatus.append(status)
                     self.projtype.append("Inactive Nested")
 
@@ -238,7 +238,7 @@ class ProjectManager(object):
             self.submodules.extend(activeSubmodules)
             for proj in activeSubmodules:
                 status = "?"
-                self.projlist.insert(Tk.END, "%s %s <Submodule>" % (status, proj))
+                self.projlist.insert(Tk.END, f"{status} {proj} <Submodule>")
                 self.projstatus.append(status)
                 self.projtype.append("Submodule")
             if self.showInactive:
@@ -247,18 +247,18 @@ class ProjectManager(object):
                 self.submodules.extend(inactiveSubmodules)
                 for proj in inactiveSubmodules:
                     status = "?"
-                    self.projlist.insert(Tk.END, "%s %s <Inactive Submodule>" % (status, proj))
+                    self.projlist.insert(Tk.END, f"{status} {proj} <Inactive Submodule>")
                     self.projstatus.append(status)
                     self.projtype.append("Inactive Submodule")
 
         # Subtrees
         self.subtrees = []
         if self.showSubtrees:
-            self.subtrees = [ self.grapeconfig.get('subtree-%s' % proj, 'prefix') for proj in self.grapeconfig.get(Option.SECTION_SUBTREES, 'names').strip().split() ]
+            self.subtrees = [self.grapeconfig.get(f'subtree-{proj}', 'prefix') for proj in self.grapeconfig.get(Option.SECTION_SUBTREES, 'names').strip().split()]
             self.projects.extend(self.subtrees)
             for proj in self.subtrees:
                 status = "?"
-                self.projlist.insert(Tk.END, "%s %s <Subtree>" % (status, proj))
+                self.projlist.insert(Tk.END, f"{status} {proj} <Subtree>")
                 self.projstatus.append(status)
                 self.projtype.append("Subtree")
 
@@ -327,7 +327,8 @@ class ProjectManager(object):
 
 class DiffManager(ProjectManager):
     def __init__(self, master, **kwargs):
-        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
+#        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
+        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'araxis' ]
 
         # Configurable parameters
         difftool = kwargs.get('difftool', None)
@@ -347,7 +348,7 @@ class DiffManager(ProjectManager):
             self.difftoolarg = ""
         else:
             self.difftool = difftool
-            self.difftoolarg = "-t %s" % difftool
+            self.difftoolarg = f"-t {difftool}"
 
         self.diffargs = kwargs.get('diffargs', "")
         self.noFetch = kwargs.get('noFetch', False)
@@ -382,7 +383,7 @@ class DiffManager(ProjectManager):
 
         if self.showToplevel or len(self.submodules) > 0:
             vine_logging.printMsg("Gathering status in outer level project...")
-            changedFiles = git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()
+            changedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}").split()
             vine_logging.printMsg("Done.")
 
         # Get the url mapping for all submodules
@@ -413,12 +414,12 @@ class DiffManager(ProjectManager):
                     pass
                 else:
                     os.chdir(os.path.join(utility.workspaceDir(), dir))
-                    vine_logging.printMsg("Gathering status in %s..." % dir)
+                    vine_logging.printMsg(f"Gathering status in {dir}...")
                     try:
-                        haveDiff = len(git.diff("--name-only %s" % self.diffBranchSpec(self.branchA, self.branchB)).split()) > 0
+                        haveDiff = len(git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}").split()) > 0
                     except grape_errors.GrapeGitError as e:
                         if "unknown revision or path not in the working tree" in e.gitOutput:
-                            vine_logging.printMsg("Could not diff %s.  Branch may not exist in %s." % (self.diffBranchSpec(self.branchA, self.branchB), dir))
+                            vine_logging.printMsg(f"Could not diff {self.diffBranchSpec(self.branchA, self.branchB)}.  Branch may not exist in {dir}.")
                         else:
                             raise
                         haveDiff = False
@@ -426,7 +427,7 @@ class DiffManager(ProjectManager):
                     os.chdir(utility.workspaceDir())
                 pass
             elif type.endswith("Subtree"):
-                nestedFiles = git.diff("--name-only %s %s" % (self.diffBranchSpec(self.branchA, self.branchB), dir)).split()
+                nestedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)} {dir}").split()
                 if len(nestedFiles) > 0:
                     haveDiff = True
                     for changedFile in changedFiles:
@@ -442,7 +443,7 @@ class DiffManager(ProjectManager):
 
         vine_logging.printMsg("Done.")
 
-        self.filepanelabel.set("Double click to launch %s" % self.difftool)
+        self.filepanelabel.set(f"Double click to launch {self.difftool}")
         if len(self.projects) > 0:
             self.projpanelabel.set("Double click to choose a project")
         else:
@@ -450,9 +451,9 @@ class DiffManager(ProjectManager):
 
     def diffBranchSpec(self, branchA, branchB):
         if self.doMergeDiff:
-            return "%s...%s" % (branchA, branchB)
+            return f"{branchA}...{branchB}"
         else:
-            return "%s %s" % (branchA, branchB)
+            return f"{branchA} {branchB}"
     def getBranch(self, branch):
         if not branch.startswith("--"):
             try:
@@ -501,7 +502,7 @@ class DiffManager(ProjectManager):
             self.diffbranchA = self.getBranch(self.diffbranchA)
             self.diffbranchB = self.getBranch(self.diffbranchB)
             self.filenames = []
-            diffoutput = git.diff("--name-status --find-renames --find-copies %s %s ." % (self.diffargs, self.diffBranchSpec(self.diffbranchA, self.diffbranchB))).splitlines()
+            diffoutput = git.diff(f"--name-status --find-renames --find-copies {self.diffargs} {self.diffBranchSpec(self.diffbranchA, self.diffbranchB)} .").splitlines()
             statusdict = { "A":"<Only in B>",
                            "C":"<File copied>",
                            "D":"<Only in A>",
@@ -537,14 +538,14 @@ class DiffManager(ProjectManager):
                         if inSubtree:
                             continue
 
-                    self.filelist.insert(Tk.END, "%s %s" % (filedisplay, statusstring))
+                    self.filelist.insert(Tk.END, f"{filedisplay} {statusstring}")
                     self.filenames.append(filename)
             if len(self.filelist) == 0:
                 self.filelist.insert(Tk.END, "<No differences>")
                 self.filenames.append("")
 
         if self.branchA == "--cached":
-            self.diffAnnotationA.set("%s <cached>" % self.diffbranchB)
+            self.diffAnnotationA.set(f"{self.diffbranchB} <cached>")
             self.diffAnnotationB.set("<staged>")
         elif self.branchB == "--":
             self.diffAnnotationA.set(self.diffbranchA)
@@ -556,11 +557,12 @@ class DiffManager(ProjectManager):
 
     def execute(self, file):
         try:
-            cmd = "difftool --find-renames --find-copies  %s -y %s %s -- " % (self.difftoolarg, self.diffargs, self.diffBranchSpec(self.diffbranchA, self.diffbranchB))
+            cmd = f"difftool --find-renames --find-copies  {self.difftoolarg} -y {self.diffargs} {self.diffBranchSpec(self.diffbranchA, self.diffbranchB)} -- "
             if isinstance(file,list):
-                cmd += "\"%s\" \"%s\"" % (file[0], file[1])
+                cmd += f"\"{file[0]}\" \"{file[1]}\""
             else:
-                cmd += "\"%s\"" % file
+                cmd += f"\"{file}\""
             difftooloutput = git.gitcmd(cmd, "Failed to launch difftool")
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg("%s (return code %d)\n%s" % (e.msg, e.returnCode, e.gitOutput))
+            vine_logging.printMsg(f"{e.msg} (return code {e.returnCode})" +
+                                  "\n" + f"{e.gitOutput}")

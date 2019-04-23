@@ -1,15 +1,8 @@
 __author__ = 'robinson96'
 import os
-import sys
-
-
-if os.path.pardir not in sys.path:
-    sys.path.insert(0, os.path.pardir)
-
-import testGrape
-
-from vine import grape_errors
-from vine import grapeGit as git
+from grape.test import testGrape
+from grape.vine import grape_errors
+from grape.vine import grapeGit as git
 
 
 class TestCheckout(testGrape.TestGrape):
@@ -92,8 +85,7 @@ class TestCheckout(testGrape.TestGrape):
                 self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except grape_errors.GrapeGitError as e:
-            self.assertTrue(False, '\n'.join(self.output)+'\n'.join(self.error) + e.gitCommand + '\n' + e.gitOutput)
-            pass
+            self.fail('\n'.join(self.get_output())+'\n'.join(self.get_error()) + e.gitCommand + '\n' + e.gitOutput)
         finally:
             if debug:
                 self.switchToHiddenOutput()

@@ -1,3 +1,8 @@
+from collections import abc
+
+__metaclass__ = type
+
+
 class ClassProperty(property):
     """
     An implementation of a property callable on a class. Used to decorate a
@@ -16,18 +21,21 @@ class ClassProperty(property):
     >>> YourClass.skillz
     False
     """
+
     def __get__(self, cls, owner):
         return self.fget.__get__(None, owner)()
 
 # borrowed from jaraco.util.dictlib
-class NonDataProperty(object):
+
+
+class NonDataProperty:
     """Much like the property builtin, but only implements __get__,
     making it a non-data property, and can be subsequently reset.
 
     See http://users.rcn.com/python/download/Descriptor.htm for more
     information.
 
-    >>> class X(object):
+    >>> class X:
     ...   @NonDataProperty
     ...   def foo(self):
     ...     return 3
@@ -41,7 +49,7 @@ class NonDataProperty(object):
 
     def __init__(self, fget):
         assert fget is not None, "fget cannot be none"
-        assert callable(fget), "fget must be callable"
+        assert isinstance(fget, abc.Callable), "fget must be callable"
         self.fget = fget
 
     def __get__(self, obj, objtype=None):
