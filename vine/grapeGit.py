@@ -329,6 +329,8 @@ def isWorkingDirectoryClean(printOutput=False):
 def log(args=""):
     return gitcmd("log %s" % args, "git log failed")
 
+def mv(args):
+    return gitcmd("mv %s" % args, "mv failed")
 
 def merge(args):
     return gitcmd("merge %s" % args, "merge failed")
