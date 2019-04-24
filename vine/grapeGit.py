@@ -325,6 +325,8 @@ def isWorkingDirectoryClean(printOutput=False):
 def log(args=""):
     return gitcmd("log %s" % args, "git log failed")
 
+def mv(args):
+    return gitcmd("mv %s" % args, "mv failed")
 
 #ensures the path string is windows compatibile if necessary
 def makePathPortable(path):
