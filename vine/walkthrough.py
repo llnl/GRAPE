@@ -12,7 +12,7 @@ from grape.vine import vine_logging
 from grape.vine.option import Option
 
 try:
-    import Tkinter as Tk
+    import tkinter as Tk
     TkinterImportError = None
 except ImportError as e:
     TkinterImportError = e
@@ -327,8 +327,7 @@ class ProjectManager(object):
 
 class DiffManager(ProjectManager):
     def __init__(self, master, **kwargs):
-#        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
-        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'araxis' ]
+        validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
 
         # Configurable parameters
         difftool = kwargs.get('difftool', None)
@@ -565,4 +564,4 @@ class DiffManager(ProjectManager):
             difftooloutput = git.gitcmd(cmd, "Failed to launch difftool")
         except grape_errors.GrapeGitError as e:
             vine_logging.printMsg(f"{e.msg} (return code {e.returnCode})" +
-                                  "\n" + f"{e.gitOutput}")
+                                  f"\n{e.gitOutput}")

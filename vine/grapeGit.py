@@ -283,7 +283,7 @@ def parseSubprojectRemoteURL(url):
 
     #Now parse path and modify originURL to make a hard path
     for p in path:
-        if p == ".." and len(originURL) > 0:
+        if p == os.path.pardir and len(originURL) > 0:
             originURL.pop()
         elif p == ".":
             pass
@@ -328,6 +328,8 @@ def isWorkingDirectoryClean(printOutput=False):
 def log(args=""):
     return gitcmd(f"log {args}", "git log failed")
 
+def mv(args):
+    return gitcmd(f"mv {args}", "mv failed")
 
 #ensures the path string is windows compatibile if necessary
 def makePathPortable(path):

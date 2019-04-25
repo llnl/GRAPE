@@ -44,7 +44,7 @@ def parseArgs(docstr, arguments, config):
 # and will evaluate to False if the user inputs anything that starts
 # with a 'N' or 'n'.
 def userInput(message, default=None):
-    print("\n" + f"{message}")
+    print(f"\n{message}")
     if default is "" or default is None:
         return input('==> ').strip()
     else:
@@ -112,11 +112,12 @@ def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
 
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec():
+    par_dir_name = os.path.dirname(os.path.dirname(__file__))
     if os.name == "nt":
-        winpath = os.path.join(os.path.dirname(__file__), "..", "grape.py")
+        winpath = os.path.join(par_dir_name, "grape.py")
         return "c:/Python27/python.exe " + winpath.replace("\\", "/")
     else:
-        return os.path.join(os.path.dirname(__file__), "..", "grape")
+        return os.path.join(par_dir_name, "grape")
 
 
 # returns the user's home directory:

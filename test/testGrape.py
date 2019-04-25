@@ -116,19 +116,20 @@ class TestGrape(unittest.TestCase):
 
             os.chdir(self.repo + "-origin")
             git.gitcmd("init --bare", "Setup Failed")
-            os.chdir(os.path.join(self.repo+"-origin",".."))
-            git.gitcmd("clone %s %s" % (self.repo +"-origin",self.repo), "could not clone test bare repo")
+            os.chdir(os.path.dirname(f"{self.repo}-origin"))
+            git.gitcmd(f"clone {self.repo}-origin {self.repo}",
+                       "could not clone test bare repo")
             os.chdir(self.repo)
             fname = os.path.join(self.repo, "testRepoFile")
             writeFile1(fname)
             self.file1 = fname
-            git.gitcmd("add %s" % fname, "Add Failed")
+            git.gitcmd(f"add {fname}", "Add Failed")
             git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
             git.gitcmd("push origin master", "push to master failed")
             # create a develop branch in addition to master by default
             git.branch("develop")
             git.push("origin develop")
-            os.chdir(os.path.join(self.repo, ".."))
+            os.chdir(os.path.dirname(self.repo))
         except grape_errors.GrapeGitError:
             pass
         
@@ -157,7 +158,7 @@ class TestGrape(unittest.TestCase):
                 raise Exception
         if self._debug:
             self.switchToHiddenOutput()
-        os.chdir(os.path.abspath(os.path.join(self.defaultWorkingDirectory,"..")))
+        os.chdir(os.path.abspath(os.path.dirname(self.defaultWorkingDirectory)))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
         # restore stdout and stderr to their original streams
@@ -170,16 +171,6 @@ class TestGrape(unittest.TestCase):
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
-
-#    # print the captured standard out
-#    def printOutput(self):
-#        for l in self.output:
-#            self.stdout.write(l)
-#
-#    # print the captured standard error
-#    def printError(self):
-#        for l in self.error:
-#            self.stderr.write(l)
 
     def get_output(self):
         return self.output.getvalue()
@@ -202,12 +193,12 @@ class TestGrape(unittest.TestCase):
 
     def assertTrue(self, expr, msg=None):
         if msg is not None:
-            msg += "\n" + f"{self.get_output()}"
+            msg += f"\n{self.get_output()}"
         super(TestGrape, self).assertTrue(expr, msg=msg)
 
     def assertFalse(self, expr, msg=None):
         if msg is not None:
-            msg += "\n" + f"{self.get_output()}"
+            msg += f"\n{self.get_output()}"
         super(TestGrape, self).assertFalse(expr, msg=msg)
 
 
@@ -269,22 +260,21 @@ def main(argv, debug=False):
         if argv[0] == "listSuites":
             print(testClasses.keys())
             exit(0)
-        nl = "\n"
         for arg in argv:
             if '.' in arg:
                (cls, sub) = arg.split('.')
                try:
                   cls = testClasses[cls]
                except:
-                  print(f"*** {cls} is not a valid test suite!{nl}" + \
-                        f"Valid values are:{nl}{testClasses.keys()}")
+                  print(f"*** {cls} is not a valid test suite!\n" + \
+                        f"Valid values are:\n{testClasses.keys()}")
                   exit(0)
             else:
                try:
                   cls = testClasses[arg]
                except:
-                  print(f"*** {arg} is not a valid test suite!{nl}" + \
-                        f"Valid values are:{nl}{testClasses.keys()}")
+                  print(f"*** {arg} is not a valid test suite!\n" + \
+                        f"Valid values are:\n{testClasses.keys()}")
                   exit(0)
                sub = None
             suite = buildSuite(cls, suite, sub)

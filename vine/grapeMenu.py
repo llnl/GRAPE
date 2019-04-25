@@ -133,8 +133,7 @@ class _Menu(object):
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:], config)
             except SystemExit as e:
                 if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
-                    print(f"GRAPE PARSING ERROR: could not parse {args[1:]}" +
-                          "\n")
+                    print(f"GRAPE PARSING ERROR: could not parse {args[1:]}\n")
                 raise e
         if globalArgs is not None:
             global_state.applyGlobalArgs(globalArgs)
@@ -148,8 +147,7 @@ class _Menu(object):
             print(traceback.print_exc())
             print(f"GRAPE: Uncaught Error {e.code} in " +
                   f"grape-{chosen_option._key} when executing " +
-                  f"'{e.gitCommand}' in '{e.cwd}'" + "\n" +
-                  f"{e.gitOutput}")
+                  f"'{e.gitCommand}' in '{e.cwd}'\n{e.gitOutput}")
             exit(e.code)
 
         except grape_errors.NoWorkspaceDirException as e:

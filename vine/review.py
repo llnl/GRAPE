@@ -278,7 +278,7 @@ class Review(Option):
                                          reviewers, 
                                          args)
                        
-            vine_logging.printMsg("Request generated/updated:\n\n" + f"{request}")
+            vine_logging.printMsg(f"Request generated/updated:\n\n{request}")
         return True
 
     def setDefaultConfig(self, config):

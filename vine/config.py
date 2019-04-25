@@ -73,7 +73,8 @@ class Config(Option):
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
-        mergeVerifyPath = os.path.join(os.path.dirname(__file__),"..","merge-and-verify-driver")
+        mergeVerifyPath = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                       "merge-and-verify-driver")
         
         if os.path.exists(mergeVerifyPath): 
             vine_logging.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
@@ -113,16 +114,17 @@ class Config(Option):
         useP4Diff = not args["--nop4diff"] and (args["--p4diff"] or utility.userInput("Would you like to use p4merge as your diff tool? [y/n]","y"))
         # this relies on p4diff being defined as a custom bash script, with the following one-liner:
         # [ $# -eq 7 ] && p4merge "$2" "$5"
-        if (useP4Diff):
-            p4diffScript = os.path.join(os.path.dirname(__file__),"..","p4diff")
+        if useP4Diff:
+            p4diffScript = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                        "p4diff")
             if os.path.exists(p4diffScript): 
-                git.config("diff.external",p4diffScript)
+                git.config("diff.external", p4diffScript)
                 vine_logging.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
-                vine_logging.printMsg("Could not find p4diff script at %s" % p4diffScript)
+                vine_logging.printMsg(f"Could not find p4diff script at {p4diffScript}")
         useGitP4 = args["--git-p4"]
-        if (useGitP4 ):
-            git.config("git-p4.useclientspec","true")
+        if useGitP4:
+            git.config("git-p4.useclientspec", "true")
             # create p4 references to enable imports from p4
             p4remotes = os.path.join(dotGit,"refs","remotes","p4","")
             utility.ensure_dir(p4remotes)
@@ -186,7 +188,7 @@ class Config(Option):
         if len(missingBranches) > 0:
             vine_logging.printMsg(
                 "WARNING: the following public branches do not appear " +
-                f"to exist on the remote origin of {repo}:" + "\n" +
+                f"to exist on the remote origin of {repo}:\n" +
                 f"{' '.join(missingBranches)}")
         os.chdir(cwd)
         

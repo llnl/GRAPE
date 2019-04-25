@@ -13,7 +13,7 @@ from grape.vine import vine_logging
 from grape.vine.option import Option
 
 try:
-    import Tkinter as Tk
+    import tkinter as Tk
     TkinterImportError = None
 except ImportError as e:
     TkinterImportError = e

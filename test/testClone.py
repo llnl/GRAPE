@@ -22,7 +22,7 @@ class TestClone(testGrape.TestGrape):
         
         # check to make sure we didn't see a GRAPE WARNING
         self.assertNotIn("WARNING", contents,
-                         "GRAPE ISSUED A WARNING DURING A CLONE\n" + f"{contents}")
+                         f"GRAPE ISSUED A WARNING DURING A CLONE\n{contents}")
 
         # check to make sure the new repo has the old repo as a remote
         os.chdir(self.repos[1])
@@ -48,7 +48,7 @@ class TestClone(testGrape.TestGrape):
             #contents = self.output.getvalue()
             #self.stdout(contents)
         finally:
-            shutil.rmtree(tempDir)
+            self._temp_dir_cleanup(tempDir)
 
     def testRecursiveCloneWithSubmodule(self):
         # make a repo to turn into a submodule
@@ -69,23 +69,23 @@ class TestClone(testGrape.TestGrape):
             submodulepath = os.path.join(tempDir, "submodule1")
             self.assertTrue(os.path.exists(submodulepath), "submodule1 does not exist in clone")
         finally:
-            shutil.rmtree(tempDir)
+            self._temp_dir_cleanup(tempDir)
 
 
     def testRecursiveCloneNestedSubproject(self):
         # make a repo to turn into a submodule
         git.clone(f"--mirror {self.repo} {self.repos[1]} ")
         os.chdir(self.repo)
+        subproject_path = os.path.join('subs', 'subproject1')
         self.menu.applyMenuChoice("addSubproject",
                                   ["--name=subproject1",
-                                   "--prefix=subs/subproject1",
+                                   f"--prefix={subproject_path}",
                                    "--branch=master",
                                    f"--url={self.repos[1]}",
                                    "--nested",
                                    "--noverify"])
         self.menu.applyMenuChoice("commit", ["-m", "\"added subproject1\""])
-        git_log = git.log("--decorate")
-        print(git_log)
+        print(git.log("--decorate"))
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
@@ -101,10 +101,15 @@ class TestClone(testGrape.TestGrape):
             with self.queue_user_input(["all\n"]):
                 ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
-            git_log = git.log("--decorate")
-            print(git_log)
+            print(git.log("--decorate"))
 
-            subprojectpath = os.path.join(tempDir, "subs/subproject1")
+            subprojectpath = os.path.join(tempDir, subproject_path)
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")
         finally:
-            shutil.rmtree(tempDir)
+            self._temp_dir_cleanup(tempDir)
+
+    def _temp_dir_cleanup(self, tempDir):
+            # Skips Windows permissions errors when testing as non-admin user.
+            def skip_error(*args):
+                pass
+            shutil.rmtree(tempDir, onerror=skip_error)

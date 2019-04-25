@@ -150,12 +150,12 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
         self.secondProjectDir = self.projectDir + "2"
         if os.path.exists(self.secondProjectDir):
-            print(f"Path ({self.secondProjectDir}) already exists, so it " + \
-                    "cannot be used by a new ResettableProject.")
+            print(f"Path ({self.secondProjectDir}) already exists, so it" +
+                  " cannot be used by a new ResettableProject.")
             sys.exit(1)
 
-        self.addCommands([(git.clone, lambda: "--recursive " + \
-                                              f"{self.getOriginDir()} " + \
+        self.addCommands([(git.clone, lambda: "--recursive " +
+                                              f"{self.getOriginDir()} " +
                                               f"{self.getSecondProjectDir()}"), 
                           (os.chdir, lambda : self.getSecondProjectDir()),
                           (os.chdir,"submodule1"),
@@ -183,7 +183,7 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).tearDown()
         secondProjectDir = self.getSecondProjectDir()
         if os.path.exists(secondProjectDir) and os.path.isdir(secondProjectDir):
-            os.chdir(os.path.abspath(os.path.join(secondProjectDir,"..")))
+            os.chdir(os.path.abspath(os.path.dirname(secondProjectDir)))
             shutil.rmtree(secondProjectDir, ignore_errors=True)
         
 class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):

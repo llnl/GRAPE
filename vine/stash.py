@@ -54,7 +54,7 @@ class Stash(Option):
                     print(f"{r[0]}: {r[1]}")
         except grape_errors.MultiRepoException as mre:
             for e, r in zip(mre, mre.repos):
-                print(f"{r}:" + "\n" + f"{e.gitOutput}")
+                print(f"{r}:\n{e.gitOutput}")
 
         return True
 

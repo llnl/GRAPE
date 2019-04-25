@@ -16,7 +16,7 @@ class ResettableProject(object):
         self.projectPrefix = tempfile.mkdtemp()
         self.projectDir = projectDir
         if os.path.exists(projectDir):
-            print(f"Path ({projectDir}) already exists, so it cannot be " + \
+            print(f"Path ({projectDir}) already exists, so it cannot be " +
                   "used by a new ResettableProject.")
             sys.exit(1)
 
@@ -27,7 +27,7 @@ class ResettableProject(object):
         self.cmdList =  [(os.mkdir, lambda : self.getOriginDir()) ,
                          (os.chdir, lambda : self.getOriginDir()) , 
                          (git.gitcmd, ("init --bare", "Setup Failed")),
-                         (git.clone, lambda : f"{self.getOriginDir()} " + \
+                         (git.clone, lambda : f"{self.getOriginDir()} " +
                                               f"{self.getProjectDir()}"),
                          (os.chdir, lambda : self.getProjectDir() )]
 
@@ -67,11 +67,11 @@ class ResettableProject(object):
 
     def tearDown(self):
         if os.path.exists(self.getProjectDir()) and os.path.isdir(self.getProjectDir()):
-            os.chdir(os.path.abspath(os.path.join(self.getProjectDir(),"..")))
+            os.chdir(os.path.abspath(os.path.dirname(self.getProjectDir())))
             shutil.rmtree(self.getProjectDir(), ignore_errors=True)
         originDir = self.getOriginDir()
         if os.path.exists(originDir) and os.path.isdir(originDir):
-            os.chdir(os.path.abspath(os.path.join(originDir,"..")))
+            os.chdir(os.path.abspath(os.path.dirname(originDir)))
             shutil.rmtree(originDir, ignore_errors=True)
 
 # This takes a project and various test methods and generates a test method using

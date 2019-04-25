@@ -87,7 +87,8 @@ class TestGrapeGit(TestGrape):
             git.add(f2name)
             git.commit("-m \"added f2 in tmp branch\"")
             git.merge("master -m \"merged master branch into testmerge/tmp1\"")
-            self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
+            self.fail("Merge did not throw grapeGitError for conflict")
+#            self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
         except grape_errors.GrapeGitError as error:
             status = git.status()
             self.assertTrue("conflict" in status,
@@ -110,7 +111,8 @@ class TestGrapeGit(TestGrape):
             git.commit(" -m \"testMergeAbort/tmp1 : added f1\"")
             # a merge should generate a conflict
             git.merge("master -m \"merging from master\"")
-            self.assertTrue(False, "conflict did not throw exception")
+            self.fail("conflict did not throw exception")
+#            self.assertTrue(False, "conflict did not throw exception")
         except:
             status = git.status()
             self.assertTrue("conflict" in status,
@@ -233,15 +235,21 @@ class TestGrapeGit(TestGrape):
                 git.rebase("master")
                 self.assertTrue(git.branchUpToDateWith("testRebase/branchToRebase","master"),"rebase did not bring current branch up to date with master")
             except grape_errors.GrapeGitError as error:
-                self.assertTrue(False,"rebase that should not have generated a conflict failed")
+                self.fail("rebase that should not have generated a conflict failed")
+#                self.assertTrue(False,"rebase that should not have generated a conflict failed")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
     def testParseSubprojectRemoteURL(self):
         os.chdir(self.repo)
         try:
-            os.makedirs("hardlinktest/b/c/d/e")
-            os.chdir("hardlinktest/b/c")
+            hardlink_root = 'hardlinktest'
+            root_b = os.path.join(hardlink_root, 'b')
+            root_b_c = os.path.join(root_b, 'c')
+            root_b_c_d = os.path.join(root_b_c, 'd')
+            root_b_c_d_e = os.path.join(root_b_c, 'd', 'e')
+            os.makedirs(root_b_c_d_e)
+            os.chdir(root_b_c)
 
             #Set the remote origin url to the cwd for testing purposes
             git.config(f"--add remote.origin.url {os.getcwd()}")
@@ -252,21 +260,21 @@ class TestGrapeGit(TestGrape):
             self.assertTrue(git.parseSubprojectRemoteURL("https://www.grape.com") == "https://www.grape.com")
 
             #Test some relative paths
-            self.assertTrue(git.parseSubprojectRemoteURL(".").endswith("hardlinktest/b/c"))
-            self.assertTrue(git.parseSubprojectRemoteURL("..").endswith("hardlinktest/b"))
-            self.assertTrue(git.parseSubprojectRemoteURL("../..").endswith("hardlinktest"))
-            self.assertTrue(git.parseSubprojectRemoteURL("../../b").endswith("hardlinktest/b"))
-            self.assertTrue(git.parseSubprojectRemoteURL("../../b/..").endswith("hardlinktest"))
-            self.assertTrue(git.parseSubprojectRemoteURL("../../b/../b").endswith("hardlinktest/b"))
-            self.assertTrue(git.parseSubprojectRemoteURL("../../b/..").endswith("hardlinktest"))
-            self.assertTrue(git.parseSubprojectRemoteURL("d").endswith("hardlinktest/b/c/d"))
-            self.assertTrue(git.parseSubprojectRemoteURL("d/e").endswith("hardlinktest/b/c/d/e"))
+            two_dirs_up = os.path.join(os.path.pardir, os.path.pardir)
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.curdir).endswith(root_b_c))
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.pardir).endswith(root_b))
+            self.assertTrue(git.parseSubprojectRemoteURL(two_dirs_up).endswith(hardlink_root))
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.join(two_dirs_up, 'b')).endswith(root_b))
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.join(two_dirs_up, 'b', os.path.pardir)).endswith(hardlink_root))
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.join(two_dirs_up, 'b', os.path.pardir, 'b')).endswith(root_b))
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.join(two_dirs_up, 'b', os.path.pardir)).endswith(hardlink_root))
+            self.assertTrue(git.parseSubprojectRemoteURL("d").endswith(root_b_c_d))
+            self.assertTrue(git.parseSubprojectRemoteURL(os.path.join('d', 'e')).endswith(root_b_c_d_e))
         finally:
             os.chdir(self.repo)
-            shutil.rmtree("hardlinktest")
+            shutil.rmtree(hardlink_root)
 
     def handleGitError(self,error):
-        nl = "\n"
-        self.fail(f"When executing{nl}{error.gitCommand}{nl}" +
-                  f"Error {error.code} caught: {error.msg}{nl}" +
+        self.fail(f"When executing\n{error.gitCommand}\n" +
+                  f"Error {error.code} caught: {error.msg}\n" +
                   f"{error.gitOutput} ")

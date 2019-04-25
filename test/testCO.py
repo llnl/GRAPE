@@ -85,7 +85,7 @@ class TestCheckout(testGrape.TestGrape):
                 self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except grape_errors.GrapeGitError as e:
-            self.fail('\n'.join(self.get_output())+'\n'.join(self.get_error()) + e.gitCommand + '\n' + e.gitOutput)
+            self.fail('\n'.join(self.get_output())+'\n'.join(self.error) + e.gitCommand + '\n' + e.gitOutput)
         finally:
             if debug:
                 self.switchToHiddenOutput()

@@ -27,8 +27,7 @@ class TestPublish(testGrape.TestGrape):
             self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
             self.assertTrue(git.shortSHA(toBranch) == git.shortSHA(fromBranch))
         except grape_errors.GrapeGitError as e:
-            self.fail(f"{self.get_output()}" + "\n" +
-                      f"{e.gitCommand + e.gitOutput}")
+            self.fail(f"{self.get_output()}\n{e.gitCommand + e.gitOutput}")
 
     def assertSuccessfulSquashMerge(self, fromBranch="testPublish", toBranch="master"):
         self.assertTrue(git.currentBranch() == toBranch)
@@ -60,7 +59,7 @@ class TestPublish(testGrape.TestGrape):
           
             self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
-            self.fail(f"{self.get_output()}" + "\n" + f"{e.message}")
+            self.fail(f"{self.get_output()}\n{e.message}")
         #origin has not been set up for these repos yet
         #self.assertNotIn("fatal:", self.output.getvalue())
     
@@ -181,11 +180,11 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
 
         # create backend for repo2
-        repo2_origin = self.repo + "2-origin" ;
+        repo2_origin = self.repo + "2-origin"
         os.mkdir(repo2_origin)
         os.chdir(repo2_origin)
         git.gitcmd("init --bare", "Setup Failed")
-        os.chdir(os.path.join(repo2_origin,".."))
+        os.chdir(os.path.dirname(repo2_origin))
         # clone repo2
         git.gitcmd(f"clone {repo2_origin} {self.repos[1]}",
                    "could not clone test bare repo")

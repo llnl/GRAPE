@@ -12,7 +12,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     if verbose == -1:
         verbose = global_state.globalVerbosity
     if verbose > 1:
-        print(f"Executing: {command}" + "\n\t Working Directory: " +
+        print(f"Executing: {command}\n\t Working Directory: " +
               f"{workingDirectory}")
     #***************************************************************************************************************
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
@@ -25,9 +25,6 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
                                    shell=(os.name != "nt"),
                                    cwd=workingDirectory)
         _wait_for_process(process, command)
-        if verbose > 0:
-            sys.stdout.write(str(process.stdout))
-            sys.stdout.flush()
     else:
         with tempfile.TemporaryFile() as tmpFile:
             process = subprocess.Popen(command,
@@ -54,6 +51,6 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
 def _wait_for_process(process, command):
     while process.poll() is None:
         try:
-            process.wait(3)
+            process.wait(10)
         except subprocess.TimeoutExpired:
             print(f"COMMAND: '{command}' STILL RUNNING...")

@@ -41,14 +41,14 @@ class InstallHooks(Option):
     @staticmethod
     def installHooksInRepo(repo, args):
         cwd = os.getcwd()
-        os.chdir(os.path.join(repo))
+        os.chdir(repo)
         os.chdir(os.path.join(git.gitDir(), "hooks"))
         hooks = args["--toInstall"]
         for h in hooks:
             with io.open(h, 'w') as file_:
                 file_.write("#!/bin/sh\n")
                 grapeCmd = utility.getGrapeExec()
-                file_.write(f"{grapeCmd} runHook {h}" + " \"$@\" \n\n")
+                file_.write(f"{grapeCmd} runHook {h} \"$@\" \n\n")
             os.chmod(h, 0o755)
         os.chdir(cwd)
 

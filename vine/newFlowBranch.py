@@ -117,7 +117,7 @@ class NewBranchOption(Option):
         vine_logging.printMsg("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):
             vine_logging.printMsg(
-                "\t" + f"{branchName} off of {branch} in {repo}")
+                f"\t{branchName} off of {branch} in {repo}")
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
             grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={start}'])

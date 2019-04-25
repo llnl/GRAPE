@@ -1,4 +1,4 @@
-﻿import getpass
+import getpass
 import os
 import sys
 import time
@@ -298,12 +298,11 @@ class PullRequest(StashyNode):
 
     def __str__(self):
         all_reviewers = ', '.join(r[0] + " (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers())
-        nl = "\n"
-        return f"Title: {self.title()}{nl}" + \
-               f"From: {self.fromRef()}{nl}" + \
-               f"To: {self.toRef()}{nl}" + \
-               f"Reviewers: {all_reviewers}{nl}" + \
-               f"Description: {self.description()}{nl}"
+        return f"Title: {self.title()}\n" + \
+               f"From: {self.fromRef()}\n" + \
+               f"To: {self.toRef()}\n" + \
+               f"Reviewers: {all_reviewers}\n" + \
+               f"Description: {self.description()}\n"
     
     def merge(self):
         canMerge = self._stashy_pull_request.can_merge()
@@ -318,7 +317,7 @@ if __name__ == "__main__":
     plist = atlassian.projectlist()
     print(plist)
     for p in plist:
-        print("\n" + f"PROJECT:{p}")
+        print(f"\nPROJECT:{p}")
         project = atlassian.project(p)
         reponames = project.repolist()
         for reponame in reponames:
@@ -333,7 +332,7 @@ if __name__ == "__main__":
                     print(f"  REVIEWERS: {pull.reviewers()}")
                     print(f"  FROM:      {pull.fromRef()}")
                     print(f"  TO:        {pull.toRef()}")
-                    print(f"  DESC:      {pull.description()}" + "\n")
+                    print(f"  DESC:      {pull.description()}\n")
             except stashy.errors.NotFoundException:
                 print("  repo not found")
 

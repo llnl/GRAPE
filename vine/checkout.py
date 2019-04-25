@@ -54,7 +54,7 @@ def handleCheckoutMRE(mre):
                         createNewBranch = utility.userInput(
                             "Branch not found locally or remotely. Would you "+
                             f"like to create a new branch called {branch} " +
-                            f"in {project}? " + "\n(select 'a' to say yes for"+
+                            f"in {project}? \n(select 'a' to say yes for"+
                             " (a)ll, 's' to (s)kip creation for branches that"+
                             " don't exist )\n(y,n,a,s)", 'y')
 
@@ -85,11 +85,10 @@ def handleCheckoutMRE(mre):
                         action = ''
                         valid = False
                         while not valid:
-                            nl = "\n"
                             action = utility.userInput(
-                                f"Would you like to{nl}(k)eep it as is at: " +
-                                f"{branchDescription}{nl} or {nl} (f)orce " +
-                                f"it to: {headDescription}?{nl}(k,f)", 'k')
+                                f"Would you like to\n(k)eep it as is at: " +
+                                f"{branchDescription}\n or \n (f)orce " +
+                                f"it to: {headDescription}?\n(k,f)", 'k')
                             valid = (action == 'k') or (action == 'f')
                             if not valid:
                                 vine_logging.printMsg("Invalid input. Enter k or f. ")
@@ -197,7 +196,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                     unpushed = git.log("--branches --not --remotes --oneline --decorate")
                 if unpushed:
                     vine_logging.printMsg("You have unpushed changed in " +
-                                          f"{sub}:" + "\n" + f"{unpushed}")
+                                          f"{sub}:\n{unpushed}")
                     clean = utility.userInput(
                         "Would you like to remove the submodule {sub} " +
                         "(this will discard your unpushed changes)?", 'n')
@@ -272,8 +271,6 @@ class Checkout(option.Option):
         super(Checkout, self).__init__()
         self._key = "checkout"
         self._section = "Workspace"
-#        self._createNewBranch = False
-#        self._skipBranchCreation = False
 
     def description(self):
         return "Checks out a branch in all projects in this workspace."
@@ -312,10 +309,9 @@ class Checkout(option.Option):
                     # otherwise fetch it
                     git.fetch("origin", f"{branch}:{branch}")
                 except grape_errors.GrapeGitError as e:
-                    nl = "\n"
                     vine_logging.printMsg(
                         f"Branch {branch} could not be fetched in outer " +
-                        f"level repo:{nl}{e}{nl}Use grape checkout -b if" +
+                        f"level repo:\n{e}\nUse grape checkout -b if" +
                         " you really want to create a new branch off of HEAD.")
                     return False
 
@@ -343,7 +339,8 @@ class Checkout(option.Option):
                               " in outer level project.")
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, (checkoutargs, sync))])
 
-        if not launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)[0]:
+        retvals = launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
+        if not retvals or not retvals[0]:
             return False
 
         previousSHA = currentSHA
@@ -389,7 +386,7 @@ class Checkout(option.Option):
                         if not removeBehaviorSet:
                             remove = utility.userInput(
                                 "Would you like to remove the nested " +
-                                f"subproject {projPrefix}? " + "\nAll work " +
+                                f"subproject {projPrefix}? \nAll work " +
                                 "that has not been pushed will be lost. ", 'n')
                         elif args["--noUpdateView"]:
                             remove = False
@@ -406,7 +403,7 @@ class Checkout(option.Option):
                             shutil.rmtree(os.path.join(workspaceDir,projPrefix))
                     else:
                         vine_logging.printMsg(
-                            f"Unstaged / committed changes in {projPrefix}," 
+                            f"Unstaged / committed changes in {projPrefix},"
                             " not removing. \nNote this project is NOT " +
                             f"active in {branch}. ")
                         os.chdir(workspaceDir)
@@ -449,7 +446,7 @@ class Checkout(option.Option):
 
         if sync:
             vine_logging.printMsg(
-                f"Switched to {branch}. Updating from remote..." + "\n\t (use"+
+                f"Switched to {branch}. Updating from remote...\n\t (use"+
                 " --sync=False or .grapeconfig.post-checkout.syncWithOrigin" +
                 " to change behavior.)")
             if args["-b"]:

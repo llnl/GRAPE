@@ -26,9 +26,8 @@ class GrapeGitError(Exception):
         return (self.msg, self.code, self.gitOutput, self.gitCommand, self.cwd)
 
     def __str__(self):
-        NL = "\n"
-        return f"{NL}WORKING DIR: {self.cwd}{NL}CODE: {self.code}{NL}" + \
-               f"CMD: {self.gitCommand}{NL}OUTPUT: {self.gitOutput}"
+        return f"\nWORKING DIR: {self.cwd}\nCODE: {self.code}\n" + \
+               f"CMD: {self.gitCommand}\nOUTPUT: {self.gitOutput}"
 
     def __repr__(self):
         return self.__str__()
@@ -69,9 +68,8 @@ class MultiRepoException(Exception):
         return len(self._exceptions) > 0
 
     def __repr__(self):
-        NL = "\n"
-        return f"MRE with{NL} exceptions: {self._exceptions}{NL} repos: " + \
-               f"{self._repos}{NL} branches: {self._branches}{NL} args: " + \
+        return f"MRE with\n exceptions: {self._exceptions}\n repos: " + \
+               f"{self._repos}\n branches: {self._branches}\n args: " + \
                f"{self._args}"
 
 

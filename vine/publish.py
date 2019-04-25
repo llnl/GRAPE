@@ -371,7 +371,7 @@ class Publish(Resumable, Option):
             if startPoint not in self.order:
                 vine_logging.printMsg(
                     f"{startPoint} not a valid publish step." +
-                    "step. Choose 1 of :\n " + f"{self.order}")
+                    f"step. Choose 1 of :\n{self.order}")
                 return False
         else:
             startPoint = self.order[0]
@@ -382,7 +382,7 @@ class Publish(Resumable, Option):
             if stopPoint not in self.order:
                 vine_logging.printMsg(
                     f"{stopPoint} not a valid publish step." +
-                    "Choose 1 of :\n " + f"{self.order}")
+                    f"Choose 1 of :\n{self.order}")
                 return False
 
         steps = {"build": self.performCustomBuildStep,
@@ -986,7 +986,7 @@ class Publish(Resumable, Option):
             if args["--deleteTopic"].lower() == "true":
                 self.doDelete[args["--topic"]] = utility.userInput(
                     "Once the publish is done, would you like to delete " +
-                    f"the branch {args['--topic']} ? " + "\n[y/n]",
+                    f"the branch {args['--topic']} ?\n[y/n]",
                     default='y')
             else:
                 self.doDelete[args["--topic"]] = False
@@ -1117,7 +1117,7 @@ class Publish(Resumable, Option):
                 if "conflict" in e.gitOutput.lower():
                     vine_logging.printMsg(
                         f"Conflicts generated in cascade merge from {public}" +
-                        f" to {branch} in {repo}." + "\nPlease use git " +
+                        f" to {branch} in {repo}.\nPlease use git " +
                         "mergetool to resolve, and then git commit to commit" +
                         " your changes.\nOnce done, please run grape publish " +
                         "--continue .")
@@ -1272,7 +1272,7 @@ class Publish(Resumable, Option):
         topic = args["--topic"]
         submodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
 
-        userMsg = f"GRAPE: When ready, grape will publish {topic} to:" + "\n"
+        userMsg = f"GRAPE: When ready, grape will publish {topic} to:\n"
 
         useAnd = False
         if recurse:
@@ -1280,31 +1280,30 @@ class Publish(Resumable, Option):
             if submodules:
                 spaced_submodules = newline_and_tabs.join(submodules)
                 userMsg += f"{args['--submodulePublic']} for the "
-                userMsg += f"following submodules:{newline_and_tabs}{spaced_submodules}" 
-                userMsg += "\n"
+                userMsg += f"following submodules:{newline_and_tabs}"
+                userMsg += f"{spaced_submodules}\n"
                 useAnd = True
 
             if self.modifiedNestedProjects:
                 spaced_prefixes = newline_and_tabs.join(self.modifiedNestedProjects)
                 userMsg += f"{public} for the following nested "
-                userMsg += f"subprojects:{newline_and_tabs}{spaced_prefixes}"
-                userMsg += "\n"
+                userMsg += f"subprojects:{newline_and_tabs}{spaced_prefixes}\n"
                 useAnd = True
 
         if self.modifiedOuter:
             maybe_and = "and " if useAnd else ""
-            userMsg += f"{maybe_and}{public} for the outer level repo." + "\n" 
+            userMsg += f"{maybe_and}{public} for the outer level repo.\n"
 
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
             if self.modifiedSubtrees:
                 userMsg += "Additionally, grape will publish the following subtrees to the following destinations:\n"
                 for st in self.modifiedSubtrees:
-                    userMsg += f"subtree: {self.st_prefixes[st]}" + "\t"
-                    userMsg += f"repo: {self.st_remotes[st]}" + "\t"
-                    userMsg += f"branch:{self.st_branches[st]}" + "\n"
+                    userMsg += f"subtree: {self.st_prefixes[st]}\t"
+                    userMsg += f"repo: {self.st_remotes[st]}\t"
+                    userMsg += f"branch:{self.st_branches[st]}\n"
 
-        proceed = utility.userInput(f"{userMsg}" + "\nProceed? [y/n]", 'y')
+        proceed = utility.userInput(f"{userMsg}\nProceed? [y/n]", 'y')
         if not proceed:
             return False
         self.progress["targetsVerified"] = True

@@ -79,11 +79,10 @@ class AddSubproject(Option):
             # expand the URL
             if not proceed:
                 use_squash = "using a squash merge." if squash else ""
-                nl = "\n"
                 proceed = utility.userInput(
                     f"About to create a subtree called {name} at path " +
-                    f"{prefix},{nl}cloned from {fullurl} at " +
-                    f"{branch} {use_squash}{nl}Proceed? [y/n]", "y")
+                    f"{prefix},\ncloned from {fullurl} at " +
+                    f"{branch} {use_squash}\nProceed? [y/n]", "y")
 
             if proceed:
                 os.chdir(utility.workspaceDir())
@@ -108,10 +107,9 @@ class AddSubproject(Option):
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:
-                nl = "\n"
                 proceed = utility.userInput(
                     f"about to add {name} as a submodule at path {prefix}," +
-                    f"{nl}cloned from {url} at branch {branch}.{nl}proceed?" +
+                    f"\ncloned from {url} at branch {branch}.\nproceed?" +
                     " [y/n]", "y")
             if proceed:
                 git.submodule(f"add --name {name} --branch {branch} {url} {prefix}")
@@ -119,11 +117,10 @@ class AddSubproject(Option):
                       " Please review changes and commit.")
         elif projectType == "nested":
             if not proceed:
-                nl = "\n"
                 proceed = utility.userInput(
                     f" about to clone {name} as a nested git repo at path" +
-                    f" {prefix},{nl}cloned from {url} at branch" +
-                    f" {branch}.{nl}Proceed? [y/n]", 'y')
+                    f" {prefix},\ncloned from {url} at branch" +
+                    f" {branch}.\nProceed? [y/n]", 'y')
             if proceed:
                 git.clone(f"{fullurl} {prefix}")
                 ignorePath = os.path.join(git.baseDir(), ".gitignore")

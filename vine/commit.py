@@ -53,8 +53,8 @@ class Commit(Option):
 
         submodules = [(True, x ) for x in git.getModifiedSubmodules(utility.workspaceDir())]
         subprojects = [(False, x) for x in config_parser_user.getAllActiveNestedSubprojectPrefixes()]
-        for stage,sub in submodules +  subprojects:
-            os.chdir(os.path.join(wsDir,sub))
+        for stage, sub in submodules + subprojects:
+            os.chdir(os.path.join(wsDir, sub))
             subStatus = git.status("--porcelain -uno")
             if subStatus:
                 vine_logging.printMsg(f"Committing in {sub}...")

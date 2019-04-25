@@ -37,7 +37,7 @@ class Section(object):
 
     def write(self, file_):
         if self._text:
-            file_.write(f"## {self._name}" + "\n")
+            file_.write(f"## {self._name}\n")
             file_.write(self._text)
             file_.write("\n")
 

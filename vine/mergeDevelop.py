@@ -439,7 +439,7 @@ class MergeDevelop(Resumable, Option):
                 "same file.\nat: Accept Theirs - accept changes in " +
                 f"{branchName} if both branches touch same file" +
                 "\naT: Accept Theirs (if conflicted) - resolves conflicts by "+
-                f"accepting changes in {branchName}" + "\nay: Accept Yours - "+
+                f"accepting changes in {branchName}\nay: Accept Yours - "+
                 "accept changes in current branch if both branches touch " +
                 "same file\naY: Accept Yours (if conflicted) - resolves " +
                 "conflicts by using changes in current branch.", "am")

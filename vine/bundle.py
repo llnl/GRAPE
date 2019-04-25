@@ -185,7 +185,7 @@ def bundlecmd(repo='', branch='', args={}):
                 if not bundlename:
                     bundlename = f"{reponame}.{branch.replace('/', '.')}-" + \
                                  f"{previousLocation}-{currentLocation}.bundle"
-                vine_logging.printMsg(f"creating bundle {bundlename} in " + \
+                vine_logging.printMsg(f"creating bundle {bundlename} in " +
                                       f"{reponame}")
                 git.bundle(f"create {bundlename} {revlists} " +
                            f"--tags={tagsToBundle[branch]} ")
