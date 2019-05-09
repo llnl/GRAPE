@@ -115,7 +115,7 @@ class Status(Option):
 
         # check that nested subproject branching is consistent
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-            os.chdir(os.path.join(wsDir,nested))
+            os.chdir(os.path.join(wsDir, nested))
             nestedbranch = git.currentBranch()
             if nestedbranch != wsBranch:
                 consistentBranchState = False
@@ -124,17 +124,11 @@ class Status(Option):
         return consistentBranchState
 
     def execute(self, args):
-
-        with utility.cd(utility.workspaceDir()):
-
-
+        with utility.cd_workspace():
             if not args["--checkWSOnly"]:
                 self.printStatus(args)
-
             # Sanity check workspace layout
             publicBranchesExist = self.checkForLocalPublicBranches(args)
-
-
             # Check that submodule branching is consistent
             consistentBranchState = self.checkForConsistentWorkspaceBranches(args)
 
@@ -161,7 +155,7 @@ def getStatus(branch='', repo='', args=''):
         return ""
     try:
 
-        with utility.cd(sub):
+        with git.cd(sub):
             subStatus = git.status(f"--porcelain -b {statusArgs}").split('\n')
             for line in subStatus:
                 strippedL = line.strip()
@@ -175,7 +169,7 @@ def getStatus(branch='', repo='', args=''):
                         toReturn.append(' '.join([tokens[0], tokens[1]]))
                     else:
                         relPath = os.path.relpath(sub, wsDir)
-                        toReturn.append(' '.join([tokens[0], '/'.join([relPath, tokens[1]])]))
+                        toReturn.append(' '.join([tokens[0], os.path.join(relPath, tokens[1])]))
         return toReturn
     except Exception as e:
         print(e)

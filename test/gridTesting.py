@@ -9,10 +9,10 @@ from grape.vine import grapeGit as git
 
 #A grape project in a command list form that has reset capability.
 #Another way to make this work would be to take a user generated reset function
-#in the constructor and just apply that.  
+#in the constructor and just apply that.
 class ResettableProject(object):
     def __init__(self, projectDir):
-        
+
         self.projectPrefix = tempfile.mkdtemp()
         self.projectDir = projectDir
         if os.path.exists(projectDir):
@@ -21,25 +21,25 @@ class ResettableProject(object):
             sys.exit(1)
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
-        #param itself can be a tuple, a single parameter, or a single lambda function that provides arguments 
-        #  to the cmd. 
+        #param itself can be a tuple, a single parameter, or a single lambda function that provides arguments
+        #  to the cmd.
         #Default commands set up an empty repository and a clone of that repository.
         self.cmdList =  [(os.mkdir, lambda : self.getOriginDir()) ,
-                         (os.chdir, lambda : self.getOriginDir()) , 
+                         (os.chdir, lambda : self.getOriginDir()) ,
                          (git.gitcmd, ("init --bare", "Setup Failed")),
                          (git.clone, lambda : f"{self.getOriginDir()} " +
                                               f"{self.getProjectDir()}"),
                          (os.chdir, lambda : self.getProjectDir() )]
 
-    def getProjectDir(self): 
+    def getProjectDir(self):
         return os.path.abspath(os.path.join(self.projectPrefix,self.projectDir))
-    
-    def getOriginDir(self): 
+
+    def getOriginDir(self):
         return os.path.abspath(self.getProjectDir()+".origin")
-    
-    def cdToProjectDirCmd(self): 
+
+    def cdToProjectDirCmd(self):
         return (os.chdir, lambda : self.getProjectDir())
-    
+
     def cdToOriginDirCmd(self):
         return (os.chdir, lambda : self.getOriginDir())
 
@@ -49,17 +49,17 @@ class ResettableProject(object):
     def reset(self, projectPrefix=None):
         self.tearDown()
         if (not projectPrefix is None):
-                    self.projectPrefix = projectPrefix        
+            self.projectPrefix = projectPrefix
 
         #Run the commands using python's 1st order representations of the functions and tuples
         for (cmd, param) in self.cmdList:
             try:
                 # evaluate param if it's a function type
                 if isinstance(param, types.FunctionType):
-                    param = param()                
+                    param = param()
                 if isinstance(param, tuple):
                     cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
-                else: 
+                else:
                     cmd(param)
             except grape_errors.GrapeGitError as e:
                 print(f"{e.gitCommand} {e.gitOutput}", file=sys.stderr)
@@ -78,21 +78,21 @@ class ResettableProject(object):
 # a closure pattern.  It is part of the magic of createGridTestClass.
 def generateTest(project, method):
     def test(self):
-        if project.debugging(): 
+        if project.debugging():
             self.switchToStdout()
         project.reset(self.defaultWorkingDirectory)
         method(self, project)
-        if project.debugging(): 
+        if project.debugging():
             self.switchToHiddenOutput()
     return test
 
 
-# Beware, this is a wonky piece of metacode.  It takes a length M list of resettable projects, and 
+# Beware, this is a wonky piece of metacode.  It takes a length M list of resettable projects, and
 # a length N list of tests encapsulated in a unittest.TestCase class.  The test methods must be prefixed with
 # "gridtest" instead of test.  It then generates test methods for the M*N cases in that class.
 def gridifyTestClass(projectList, testClass, projectNames=None):
     #Digest the class into pieces we can work with namely the method names and the methods pulled out of the class
-    testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method)) 
+    testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method))
                             and method.find("gridtest") == 0]
     testMethods = [getattr(testClass, method) for method in testMethodNames]
 

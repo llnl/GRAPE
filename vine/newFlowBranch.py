@@ -75,7 +75,7 @@ class NewBranchOption(Option):
             args["--user"] = args["--user"].lower()
 
 
-        branchName = self._key + "/" + args["--user"] + "/" + args["<descr>"]
+        branchName = os.path.join(self._key, args["--user"], args["<descr>"])
 
         branchStatus = checkout.branchAlreadyExists(branchName)
         if branchStatus:
@@ -156,7 +156,7 @@ class NewBranchOptionFactory(object):
 def createBranch(repo="unknown", branch="master", args=[]):
     branchPoint = branch
     fullBranch = args
-    with utility.cd(repo):
+    with git.cd(repo):
         vine_logging.printMsg(f"creating and switching to {fullBranch} in {repo}")
         try:
             git.checkout(f"-b {fullBranch} {branchPoint} ")

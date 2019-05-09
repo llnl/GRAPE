@@ -1,5 +1,8 @@
+import os
+import unittest
 from grape.test import gridTesting
-from grape.test.testGrape import *
+from grape.test.testGrape import writeFile1
+from grape.vine import grapeGit as git
 
 
 class QuickGridTests(unittest.TestCase):
@@ -12,6 +15,7 @@ class QuickGridTests(unittest.TestCase):
         git.commit("f1 -m \"%s\"" % commitStr)
         log = git.log()
         self.assertTrue(commitStr in log)
+
 
 if __name__ == "__main__":
     base_dir = os.getcwd()
@@ -26,12 +30,11 @@ if __name__ == "__main__":
 
     projects = [empty_project,
                 onedir_project]
-    
+
     gridTesting.gridifyTestClass(projects, QuickGridTests)
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(QuickGridTests))
     result = unittest.TextTestRunner(verbosity=2).run(suite)
-
 
     #Clean up all of the Resettable projects
     for project in projects:

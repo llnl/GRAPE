@@ -37,14 +37,14 @@ class GrapeConfigParserBase(ConfigParser, object):
     def getList(self, section, cfgOption, raw=False, cfgVars=None):
         return self.get(section, cfgOption, raw=raw, vars=cfgVars).split()
 
-    def branchPrefix(self, branchName):
+    def branch_prefix(self, branchName):
         return branchName.split('/')[0]
 
     def getPublicBranchFor(self, branch, getDestinationBranch=True):
         if getDestinationBranch:
             destinationBranches = self.getMapping(Option.SECTION_FLOW, "topicDestinationMappings")
             try:
-                destinationBranch = destinationBranches[self.branchPrefix(branch)]
+                destinationBranch = destinationBranches[self.branch_prefix(branch)]
                 return destinationBranch
             except KeyError:
                 pass
@@ -53,7 +53,7 @@ class GrapeConfigParserBase(ConfigParser, object):
         if branch in publicBranches:
             return branch
         publicMapping = self.getMapping(Option.SECTION_FLOW, "topicPrefixMappings")
-        return publicMapping[self.branchPrefix(branch)]
+        return publicMapping[self.branch_prefix(branch)]
 
     def getMapping(self, section, cfgOption, raw=False, cfgVars=None):
         return self.parseConfigPairList(self.get(section, cfgOption, raw=raw, vars=cfgVars))

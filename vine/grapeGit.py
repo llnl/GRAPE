@@ -1,4 +1,5 @@
-"""GRAPE's git utility logic across multiple repositories."""
+"""GRAPE's git utility logic across a single repository."""
+from contextlib import contextmanager
 import configparser
 import io
 import os
@@ -7,6 +8,9 @@ import shutil
 from grape.vine import grape_errors
 from grape.vine import vine_logging
 from grape.vine import vine_subprocess
+
+
+GRAPE_CONFIG = '.grapeconfig'
 
 
 def gitcmd(cmd, errmsg):
@@ -23,7 +27,9 @@ def gitcmd(cmd, errmsg):
     if _cmd:
         _cmd += f" {cmd}"
     elif os.name == "nt":
-        _cmd = f"\"C:\\Program Files\\Git\\bin\\git.exe\" {cmd}"
+        git_path = os.path.join('C:', os.path.sep, 'Program Files',
+                                'Git', 'bin', 'git.exe')
+        _cmd = f"\"{git_path}\" {cmd}"
     else:
         _cmd = f"git {cmd}"
 
@@ -39,9 +45,10 @@ def add(filedescription):
 
 
 def baseDir():
-    unixStylePath = gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
-    path = makePathPortable(unixStylePath)
-    return path
+    """Returns path in an OS (non-git) format."""
+    git_formatted_path = gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
+    os_formatted_path = gitPathToOsPath(git_formatted_path)
+    return os_formatted_path
 
 def allBranches():
     return branch("-a").replace("*",' ').replace(" ",'').split()
@@ -58,6 +65,10 @@ def branchPrefix(branchName):
 
 
 def branchUpToDateWith(branchName, targetBranch):
+    """Provided branch names should delimited by '/'.
+
+    For Windows portability, see 'join_list_as_git_path()'.
+    """
     try:
         allUpToDateBranches = gitcmd(f"branch -a --contains {targetBranch}",
                                      "branch contains failed")
@@ -168,48 +179,44 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
 
 
 def getActiveSubmodules(ws_dir):
-    cwd = os.getcwd()
-    os.chdir(ws_dir)
-    if os.name == "nt":
-        submoduleList = submodule("foreach --quiet \"echo $path\"")
-    else:
-        submoduleList = submodule("foreach --quiet \"echo \$path\"")
-    submoduleList = [] if not submoduleList else submoduleList.split('\n')
-    submoduleList = [x.strip() for x in submoduleList]
-    # ignore any submodules that are not in .gitmodules
-    submoduleList = [x for x in submoduleList if not x.startswith("fatal: no submodule mapping found in .gitmodules for path")]
-    os.chdir(cwd)
+    with cd(ws_dir):
+        if os.name == "nt":
+            submoduleList = submodule("foreach --quiet \"echo $path\"")
+        else:
+            submoduleList = submodule("foreach --quiet \"echo \$path\"")
+        submoduleList = [] if not submoduleList else submoduleList.split('\n')
+        submoduleList = [x.strip() for x in submoduleList]
+        # ignore any submodules that are not in .gitmodules
+        submoduleList = [x for x in submoduleList if not x.startswith("fatal: no submodule mapping found in .gitmodules for path")]
     return submoduleList
 
 
 # Remove any active submodules that are not found in gitmodules
 def fixActiveSubmodules(ws_dir, user_input_func):
-    cwd = os.getcwd()
-    os.chdir(ws_dir)
-    if os.name == "nt":
-        submoduleList = submodule("foreach --quiet \"echo $path\"")
-    else:
-        submoduleList = submodule("foreach --quiet \"echo \$path\"")
-    submoduleList = [] if not submoduleList else submoduleList.split('\n')
-    submoduleList = [x.strip() for x in submoduleList]
-    pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
-    submoduleFixed = False
-    for output in submoduleList:
-        match = pattern.match(output)
-        if match:
-            submoduleFixed = True
-            sub = match.group(1)
-            # remove from index, if staged
-            rm(f"--ignore-unmatch --cached {sub}")
-            # remove from repo, if present
-            rm(f"--ignore-unmatch {sub}")
-            if os.path.exists(os.path.join(ws_dir, sub)):
-                delete = user_input_func(f"{sub} is no longer part of the " +
-                                         "workspace.  Would you like to " +
-                                         "delete it?", 'y')
-                if delete:
-                    shutil.rmtree(os.path.join(ws_dir, sub))
-    os.chdir(cwd)
+    with cd(ws_dir):
+        if os.name == "nt":
+            submoduleList = submodule("foreach --quiet \"echo $path\"")
+        else:
+            submoduleList = submodule("foreach --quiet \"echo \$path\"")
+        submoduleList = [] if not submoduleList else submoduleList.split('\n')
+        submoduleList = [x.strip() for x in submoduleList]
+        pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
+        submoduleFixed = False
+        for output in submoduleList:
+            match = pattern.match(output)
+            if match:
+                submoduleFixed = True
+                sub = match.group(1)
+                # remove from index, if staged
+                rm(f"--ignore-unmatch --cached {sub}")
+                # remove from repo, if present
+                rm(f"--ignore-unmatch {sub}")
+                if os.path.exists(os.path.join(ws_dir, sub)):
+                    delete = user_input_func(f"{sub} is no longer part of the " +
+                                             "workspace.  Would you like to " +
+                                             "delete it?", 'y')
+                    if delete:
+                        shutil.rmtree(os.path.join(ws_dir, sub))
     return submoduleFixed
 
 def getAllSubmodules():
@@ -238,48 +245,48 @@ def getAllSubmoduleURLMap():
 
 
 def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
-    cwd = os.getcwd()
-    os.chdir(ws_dir)
-    submodules = getAllSubmodules()
-    # if there are no submodules, then return the empty list
-    if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
-        return []
-    submodulesString = ' '.join(submodules)
-    try:
-        modifiedSubmodules = diff(f"--name-status {branch1} {branch2} -- " +
-                                  f"{submodulesString}").split('\n')
-        if includeAdded:
-            modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
-        else:
-            # only include submodules that are in both branches
-            modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
-    except grape_errors.GrapeGitError as e:
-        if "bad revision" in e.gitOutput:
-            vine_logging.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+    with cd(ws_dir):
+        submodules = getAllSubmodules()
+        # if there are no submodules, then return the empty list
+        if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
             return []
-    if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
-        return []
+        submodulesString = ' '.join(submodules)
+        try:
+            modifiedSubmodules = diff(f"--name-status {branch1} {branch2} -- " +
+                                      f"{submodulesString}").split('\n')
+            if includeAdded:
+                modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
+            else:
+                # only include submodules that are in both branches
+                modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
+        except grape_errors.GrapeGitError as e:
+            if "bad revision" in e.gitOutput:
+                vine_logging.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+                return []
+        if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
+            return []
 
-    # make sure everything in modifiedSubmodules is in the original list of submodules
-    # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
-    #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
-    verifiedSubmodules = []
-    for s in modifiedSubmodules:
-        if s in submodules:
-            verifiedSubmodules.append(s)
+        # make sure everything in modifiedSubmodules is in the original list of submodules
+        # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
+        #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
+        verifiedSubmodules = []
+        for s in modifiedSubmodules:
+            if s in submodules:
+                verifiedSubmodules.append(s)
 
-    os.chdir(cwd)
     return verifiedSubmodules
 
 
 # Takes a URL and returns a hard path for it
 def parseSubprojectRemoteURL(url):
-    path = url.strip().split('/')
-    if "https:" == path[0] or "ssh:" == path[0] or "" == path[0]:
+    URL_PATH_SEP = '/'
+    path = url.replace('\\', URL_PATH_SEP)
+    path = path.strip().split(URL_PATH_SEP)
+    if path[0] in ["https:", "ssh:", "C:", ""]:
         return url      #Already a hard path
 
     # We have a relative path so start the remote origin URL
-    originURL = config("--get remote.origin.url").strip().split('/')
+    originURL = config("--get remote.origin.url").strip().split(os.path.sep)
 
     #Now parse path and modify originURL to make a hard path
     for p in path:
@@ -289,7 +296,7 @@ def parseSubprojectRemoteURL(url):
             pass
         else:
             originURL.append(p)
-    return '/'.join(originURL)
+    return os.path.join(*originURL)
 
 
 def gitDir():
@@ -304,7 +311,7 @@ def gitDir():
             words = line.split()
             if words[0] == 'gitdir:':
                 relUnixPath = words[1]
-                toReturn = makePathPortable(relUnixPath)
+                toReturn = gitPathToOsPath(relUnixPath)
             else:
                 raise grape_errors.GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
     return toReturn
@@ -319,7 +326,7 @@ def isWorkingDirectoryClean(printOutput=False):
     statusOutput = status("-u --porcelain")
     toRet =  len(statusOutput.strip()) == 0
     if printOutput and not toRet:
-        print(os.getcwd()+":")
+        print(f"{os.getcwd()}:")
         print(statusOutput)
     return toRet
 
@@ -328,16 +335,33 @@ def isWorkingDirectoryClean(printOutput=False):
 def log(args=""):
     return gitcmd(f"log {args}", "git log failed")
 
+
 def mv(args):
     return gitcmd(f"mv {args}", "mv failed")
 
+
+def join_list_as_git_path(path):
+    """Returns a path delimited by '/' as Git would, regardless of OS.
+
+    Use in place of 'os.path.join()' when it is necessary to compare paths
+    returned by Git commands. Git paths do not match with Windows OS paths
+    by default, hence the Windows path substitution of '/' for '\\'.
+    Do not use when passing paths into Git,
+    only use when comparing paths output from Git.
+    """
+    if isinstance(path, list):
+        if os.name == "nt":
+            return os.path.altsep.join(path)
+        return os.path.join(*path)
+
 #ensures the path string is windows compatibile if necessary
-def makePathPortable(path):
+def gitPathToOsPath(path):
+    """
+    Converts Git's default '/' delimited branch paths to an OS based format.
+    """
     if os.name == "nt":
-        newPath = path.replace("/", "\\")
-    else:
-        newPath = path
-    return newPath
+        return path.replace(os.path.altsep, os.path.sep)
+    return path
 
 
 def merge(args):
@@ -405,7 +429,8 @@ def safeForceBranchToOriginRef(branchToSync):
     branchExists = False
     remoteRefExists = False
     branches = branch("-a").split("\n")
-    remoteRef = f"remotes/origin/{branchToSync}"
+#    remoteRef = os.path.join('remotes', 'origin', branchToSync)
+    remoteRef = join_list_as_git_path(['remotes', 'origin', branchToSync])
     for b in branches:
         b = b.replace('*', '')
         branchExists = branchExists or b.strip() == branchToSync.strip()
@@ -494,3 +519,19 @@ def tag(argstr):
 
 def version():
     return gitcmd("version", "")
+
+
+@contextmanager
+def cd(path):
+    starting_dir = os.getcwd()
+    if starting_dir == path:
+        yield
+        os.chdir(starting_dir)
+    else:
+        try:
+            os.chdir(path)
+            yield
+        except OSError as e:
+            print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+        finally:
+            os.chdir(starting_dir)

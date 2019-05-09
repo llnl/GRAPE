@@ -1,5 +1,4 @@
 import os
-import sys
 from grape.test import testGrape
 
 

@@ -41,20 +41,17 @@ def read(additionalFileNames=None):
         config_path = os.environ["HOME"]
     defaultFiles.append(os.path.join(config_path, config_file_name))
     globalconfigfile = defaultFiles[0]
-    try:
-        defaultFiles.append(os.path.join(
-            utility.workspaceDir(warn_if_not_found=False,
-                                 throw_if_not_found=False),
-            config_file_name))
-    except:
-        pass
-    try:
-        defaultFiles.append(os.path.join(
-            utility.workspaceDir(warn_if_not_found=False,
-                                 throw_if_not_found=False),
-            ".git", ".grapeuserconfig"))
-    except:
-        pass
+
+    workspace_dir = utility.workspaceDir()
+    if not workspace_dir:
+        print("GRAPE Warning: expected to be in your workspace, " +
+              "no .git directory found")
+    else:
+        config_file_path = os.path.join(workspace_dir, config_file_name)
+        defaultFiles.append(config_file_path)
+        grape_user_config_path = os.path.join(workspace_dir, '.git',
+                                              '.grapeuserconfig')
+        defaultFiles.append(grape_user_config_path)
 
     files = defaultFiles + additionalFileNames
     readFiles = grapeConfig().read(files)

@@ -148,7 +148,6 @@ class Config(Option):
 
         # install hooks here and in all submodules
         vine_logging.printMsg("Installing hooks in all repos...")
-        cwd = git.baseDir()
         grapeMenu.menu().applyMenuChoice("installHooks")
         
         #  ensure all public branches are available in all repos
@@ -173,33 +172,27 @@ class Config(Option):
     
     @staticmethod
     def ensurePublicBranchesExist(repo, publicBranches):
-        cwd =  os.getcwd()
-        os.chdir(repo)
-        allBranches = git.allBranches()
-        missingBranches = []
-        for branch in publicBranches:
-            if f"remotes/origin/{branch}" not in allBranches:
-               missingBranches.append(branch)
-            if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
+        with git.cd(repo):
+            allBranches = git.allBranches()
+            missingBranches = []
+            for branch in publicBranches:
+                if f"remotes/origin/{branch}" not in allBranches:
+                   missingBranches.append(branch)
+                if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
+                    vine_logging.printMsg(
+                        f"Public branch {branch} does not have local version " +
+                        f"in {repo}. Creating it now.")
+                    git.branch(f"{branch} origin/{branch}")
+            if len(missingBranches) > 0:
                 vine_logging.printMsg(
-                    f"Public branch {branch} does not have local version " +
-                    f"in {repo}. Creating it now.")
-                git.branch(f"{branch} origin/{branch}")
-        if len(missingBranches) > 0:
-            vine_logging.printMsg(
-                "WARNING: the following public branches do not appear " +
-                f"to exist on the remote origin of {repo}:\n" +
-                f"{' '.join(missingBranches)}")
-        os.chdir(cwd)
-        
+                    "WARNING: the following public branches do not appear " +
+                    f"to exist on the remote origin of {repo}:\n" +
+                    f"{' '.join(missingBranches)}")
+
     @staticmethod
     def checkIfPublicBranchesExist(repo, publicBranches):
-        origcwd =  os.getcwd()
-        os.chdir(repo)
-        allBranches = git.allBranches()
-        missingBranches = []
-        for branch in publicBranches:
-            if (branch not in allBranches):
-                missingBranches.append(branch)
-        os.chdir(origcwd)
+        with git.cd(repo):
+            allBranches = git.allBranches()
+            missingBranches = [branch for branch in publicBranches
+                               if branch not in allBranches]
         return missingBranches

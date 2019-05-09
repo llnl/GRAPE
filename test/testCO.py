@@ -11,10 +11,10 @@ class TestCheckout(testGrape.TestGrape):
     # the submodule has two branches, master and addSubmodule
     # master has the file f3, addSubmodule has the file f2.
     def setUpSubmoduleBranch(self):
-        git.clone("%s %s" % (self.repo, self.repos[1]))
+        git.clone(f"{self.repo} {self.repos[1]}")
         os.chdir(self.repo)
         git.checkout("-b addSubmodule")
-        git.submodule("add %s submodule" % self.repos[1])
+        git.submodule(f"add {self.repos[1]} submodule")
         git.commit("-m \"added submodule\"")
         git.push("origin HEAD")
 
@@ -65,7 +65,7 @@ class TestCheckout(testGrape.TestGrape):
             self.switchToStdout()
         try:
             self.setUpSubmoduleBranch()
-            
+
             with self.queue_user_input(["y", "\n", "\n", "\n"]):
                 self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()

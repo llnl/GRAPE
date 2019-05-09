@@ -64,7 +64,10 @@ class AddSubproject(Option):
 
     def execute(self, args):
         name = args["--name"]
-        prefix = args["--prefix"]
+        if os.name == 'nt':
+            prefix = args["--prefix"].replace(os.path.sep, os.path.altsep)
+        else:
+            prefix = args["--prefix"]
         url = args["--url"]
         fullurl = git.parseSubprojectRemoteURL(url)
         branch = args["--branch"]

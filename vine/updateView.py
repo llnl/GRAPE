@@ -1,5 +1,6 @@
 ﻿import os
 import shutil
+import stat
 from grape.vine import addSubproject
 from grape.vine import checkout
 from grape.vine import config_parser_global
@@ -322,6 +323,7 @@ class UpdateView(Option):
                     subprojectName = reverseLookupByPrefix[subproject]
                     section = f"nested-{reverseLookupByPrefix[subproject]}"
                     userConfig.ensureSection(section)
+                    subproject = git.gitPathToOsPath(subproject)
                     previouslyActive = userConfig.getboolean(section, "active")
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
@@ -340,19 +342,22 @@ class UpdateView(Option):
                         pass
                     if not nowActive and previouslyActive:
                         #remove the subproject
-                        subprojectdir = os.path.join(base, git.makePathPortable(subproject))
+                        subprojectdir = os.path.join(base, subproject)
                         proceed = args["-f"] or \
                                   utility.userInput(f"About to delete all contents in {subproject}. " +
                                                     "Any uncommitted changes, committed changes that have " +
                                                     "not been pushed, or ignored files will be lost.  Proceed?", 'n')
                         if proceed:
-                            shutil.rmtree(subprojectdir)
+                            def force_rm(func, path, excinfo):
+                                os.chmod(path, stat.S_IWRITE)
+                                func(path)
+                            shutil.rmtree(subprojectdir, onerror=force_rm)
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
                 config_parser_global.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
 
         checkoutArgs = "-b" if args["-b"] else ""
 
-        safeSwitchWorkspaceToBranch( git.currentBranch(), checkoutArgs, sync)
+        safeSwitchWorkspaceToBranch(git.currentBranch(), checkoutArgs, sync)
 
         os.chdir(origwd)
 
@@ -375,9 +380,9 @@ class UpdateView(Option):
 
 
 
-def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
+def ensureLocalUpToDateWithRemote(repo='', branch='master'):
     vine_logging.printMsg(f"Ensuring local branch {branch} in {repo} is up to date with origin")
-    with utility.cd(repo):
+    with git.cd(repo):
         # attempt to fetch the requested branch
         try:
             git.fetch("origin", f"{branch}:{branch}")
@@ -393,8 +398,7 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
             public = config_parser_workspace.GrapeConfigParserWorkspace().getPublicBranchFor(branch)
             # figure out if this is a submodule
             relpath = os.path.relpath(repo, utility.workspaceDir())
-            relpath = relpath.replace('\\',"/")
-            with utility.cd(utility.workspaceDir()):
+            with utility.cd_workspace():
                 # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
                     public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
@@ -404,7 +408,7 @@ def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
             git.checkout("--detach HEAD")
 
 def cleanupPush(repo='', branch='', args='none'):
-    with utility.cd(repo):
+    with git.cd(repo):
         vine_logging.printMsg(f"Attempting push of local {branch} in {repo}")
         git.push(f"origin {branch}")
 

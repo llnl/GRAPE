@@ -75,7 +75,7 @@ class TestGrapeGit(TestGrape):
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
-        # Second, test that a merge that should result in a conflict throws an appropriate GrapeGitError exception. 
+        # Second, test that a merge that should result in a conflict throws an appropriate GrapeGitError exception.
         try:
             git.checkout("master")
             f2name = os.path.join(self.repo,"f2")
@@ -88,7 +88,6 @@ class TestGrapeGit(TestGrape):
             git.commit("-m \"added f2 in tmp branch\"")
             git.merge("master -m \"merged master branch into testmerge/tmp1\"")
             self.fail("Merge did not throw grapeGitError for conflict")
-#            self.assertTrue(False,"Merge did not throw grapeGitError for conflict")
         except grape_errors.GrapeGitError as error:
             status = git.status()
             self.assertTrue("conflict" in status,
@@ -112,7 +111,6 @@ class TestGrapeGit(TestGrape):
             # a merge should generate a conflict
             git.merge("master -m \"merging from master\"")
             self.fail("conflict did not throw exception")
-#            self.assertTrue(False, "conflict did not throw exception")
         except:
             status = git.status()
             self.assertTrue("conflict" in status,
@@ -236,7 +234,6 @@ class TestGrapeGit(TestGrape):
                 self.assertTrue(git.branchUpToDateWith("testRebase/branchToRebase","master"),"rebase did not bring current branch up to date with master")
             except grape_errors.GrapeGitError as error:
                 self.fail("rebase that should not have generated a conflict failed")
-#                self.assertTrue(False,"rebase that should not have generated a conflict failed")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
 
@@ -255,9 +252,11 @@ class TestGrapeGit(TestGrape):
             git.config(f"--add remote.origin.url {os.getcwd()}")
 
             #Test existing hard paths
-            self.assertTrue(git.parseSubprojectRemoteURL("/usr/gapps/grape") == "/usr/gapps/grape")
-            self.assertTrue(git.parseSubprojectRemoteURL("ssh://www.grape.com") == "ssh://www.grape.com")
-            self.assertTrue(git.parseSubprojectRemoteURL("https://www.grape.com") == "https://www.grape.com")
+            urls = ["/usr/gapps/grape",
+                    "ssh://www.grape.com",
+                    "https://www.grape.com"]
+            for url in urls:
+                self.assertEqual(url, git.parseSubprojectRemoteURL(url))
 
             #Test some relative paths
             two_dirs_up = os.path.join(os.path.pardir, os.path.pardir)

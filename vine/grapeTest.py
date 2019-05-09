@@ -1,6 +1,3 @@
-import os
-import sys
-from grape.vine import utility
 from grape.vine.option import Option
 
 

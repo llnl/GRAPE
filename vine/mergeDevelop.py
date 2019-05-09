@@ -248,7 +248,6 @@ class MergeDevelop(Resumable, Option):
                         self.progress["conflictedFiles"] = conflictedFiles
                         self.dumpProgress(args)
                         return False
-                os.chdir(cwd)
                 conflictedFiles = git.conflictedFiles()
                 # now that we resolved the submodule conflicts, continue the outer level merge
                 if len(conflictedFiles) == 0:
@@ -301,7 +300,7 @@ class MergeDevelop(Resumable, Option):
         ret = self.mergeIntoCurrent(subPublic, mergeArgs, subproject)
         # skip nested subprojects that fail to merge
         if not ret and not isSubmodule and not git.conflictedFiles():
-            vine_logging.printMsg("Unable to merge subproject {0}, skipping...".format(subproject))
+            vine_logging.printMsg(f"Unable to merge subproject {subproject}, skipping...")
             ret = True
         conflict = not ret
         if conflict:

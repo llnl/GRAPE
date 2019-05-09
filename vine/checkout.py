@@ -16,7 +16,7 @@ from grape.vine import vine_logging
 def handledCheckout(repo = '', branch = 'master', args = []):
     checkoutargs = args[0]
     sync = args[1]
-    with utility.cd(repo):
+    with git.cd(repo):
         if sync:
             # attempt to fetch the requested branch
             try:
@@ -42,7 +42,7 @@ def handleCheckoutMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            with utility.cd(project):
+            with git.cd(project):
                 if "pathspec" in e.gitOutput:
                     createNewBranch = _createNewBranch
                     if _skipBranchCreation:
@@ -115,7 +115,7 @@ def handleCheckoutMRE(mre):
 def createNewBranches(repo='', branch='', args={}):
     project = repo
     checkoutargs = args["checkout"]
-    with utility.cd(project):
+    with git.cd(project):
         vine_logging.printMsg(f"Creating new branch {branch} in {project}.")
         git.checkout(checkoutargs+" -b "+branch)
         git.push(f"-u origin {branch}")
@@ -131,59 +131,55 @@ def createNewBranchesMREHandler(mre):
 #              2 : exists as a case-insensitive match
 def branchAlreadyExists(branch, verbose = True):
     retVal = 0
-    cwd = os.getcwd()
-    os.chdir(utility.workspaceDir())
-    git.fetch("--prune")
-    # make sure branch does not already exist
-    allBranches = set([b[len("remotes/origin/"):] if b.startswith("remotes/origin/") else b for b in git.allBranches()])
-    if branch in allBranches:
-        if verbose:
-            vine_logging.printMsg(f"Branch {branch} already exists!")
-        retVal = 1
-    else:
-        # make sure branch is not a case-insensitive match
-        # as this will cause problems on Windows and Mac filesystems.
-        for b in allBranches:
-            if branch.lower() == b.lower():
-                if verbose:
-                    vine_logging.printMsg(f"Branch {b} already exists!" + "\n"+
-                                          f"{branch} is a case insensitive" +
-                                          " match.")
-                retVal = 2
-    os.chdir(cwd)
+    with utility.cd_workspace():
+        git.fetch("--prune")
+        # Trailing '' used to add a delimiter to end of path.
+        branch_path = git.join_list_as_git_path(['remotes', 'origin', ''])
+        # make sure branch does not already exist
+        allBranches = set([b[len(branch_path):] if b.startswith(branch_path) else b for b in git.allBranches()])
+        if branch in allBranches:
+            if verbose:
+                vine_logging.printMsg(f"Branch {branch} already exists!")
+            retVal = 1
+        else:
+            # make sure branch is not a case-insensitive match
+            # as this will cause problems on Windows and Mac filesystems.
+            for b in allBranches:
+                if branch.lower() == b.lower():
+                    if verbose:
+                        vine_logging.printMsg(f"Branch {b} already exists!" + "\n"+
+                                              f"{branch} is a case insensitive" +
+                                              " match.")
+                    retVal = 2
     return retVal
 
 def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules):
-    cwd = os.getcwd()
-    os.chdir(utility.workspaceDir())
-    submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch}")
-    if submoduleListWillChange:
-        output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules")
-        currentSubmodule = False
-        for line in output.split('\n'):
-            if "[submodule" in line:
-                currentSubmodule = line.split('"')[1]
-            # This relies on the diff context being sufficient to catch the submodule line.
-            # Only 2 lines of backwards context should be required, so this should be ok.
-            if re.match("-\s+url\s*=", line):
-                if currentSubmodule:
-                    changedURLModules.append(currentSubmodule)
-            if "+[submodule" in line:
-                addedModules.append(line.split('"')[1])
-                currentSubmodule = False
-            if "-[submodule" in line:
-                removedModules.append(line.split('"')[1])
-                currentSubmodule = False
-    os.chdir(cwd)
+    with utility.cd_workspace():
+        submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch}")
+        if submoduleListWillChange:
+            output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules")
+            currentSubmodule = False
+            for line in output.split('\n'):
+                if "[submodule" in line:
+                    currentSubmodule = line.split('"')[1]
+                # This relies on the diff context being sufficient to catch the submodule line.
+                # Only 2 lines of backwards context should be required, so this should be ok.
+                if re.match("-\s+url\s*=", line):
+                    if currentSubmodule:
+                        changedURLModules.append(currentSubmodule)
+                if "+[submodule" in line:
+                    addedModules.append(line.split('"')[1])
+                    currentSubmodule = False
+                if "-[submodule" in line:
+                    removedModules.append(line.split('"')[1])
+                    currentSubmodule = False
 
     return addedModules, removedModules, changedURLModules
 
 def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
-    cwd = os.getcwd()
     workspaceDir = utility.workspaceDir()
     cleaned = False
-    try:
-        os.chdir(os.path.join(workspaceDir, sub))
+    with git.cd(os.path.join(workspaceDir, sub)):
         dirIsEmpty = len(os.listdir(".")) == 0
         workingDirClean = dirIsEmpty or git.isWorkingDirectoryClean()
         changedActive = sub in activeSubmodules
@@ -240,10 +236,6 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
             vine_logging.printMsg(f"Unstaged / committed changes in {sub}," +
                                   " not removing.")
 
-    except OSError as e:
-        vine_logging.printMsg(f"Warning in {sub}: {e}")
-        pass
-    os.chdir(cwd)
     return cleaned
 
 

@@ -1,7 +1,5 @@
 import os
-import sys
 from grape.vine import grapeGit as git
-from grape.vine import vine_logging as vine_logging
 from grape.vine.option import Option
 
 # list local branches (git branch)

@@ -13,7 +13,7 @@ def find_subclasses(module, clazz):
                 if inspect.isclass(cls) and issubclass(cls, clazz) and not cls is clazz
     ]
 
-class grapeProject(gridTesting.ResettableProject): 
+class grapeProject(gridTesting.ResettableProject):
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
         self._debugging = False
@@ -21,82 +21,82 @@ class grapeProject(gridTesting.ResettableProject):
         self._branchModelConsistent = False
         self._numExpectedFetches = 2
 
-    def isConsistent(self): 
+    def isConsistent(self):
         return self._publicBranchesValid and self._branchModelConsistent
-    
+
     def arePublicBranchesValid(self):
         return self._publicBranchesValid
-    
+
     def isStateConsistentWithBranchModel(self):
         return self._branchModelConsistent
-    
+
     def numExpectedFetches(self):
         return self._numExpectedFetches
-    
+
     def debugging(self):
         return self._debugging
 
-class singleRepo(grapeProject): 
+class singleRepo(grapeProject):
 
-    def __init__(self, path): 
+    def __init__(self, path):
         super(singleRepo, self).__init__(path)
-        
+
         self.addCommands([
             (testGrape.writeFile1, "f1"),
             (git.add,"f1"),
             (git.commit, "-m \"added a single file\"")
         ])
-        
+
         # public branches are not present on origin
         self._publicBranchesValid = False
         self._branchModelConsistent = True
 
 
 class repoWithLocalGitflowBranches(singleRepo):
-    def __init__(self, path): 
+    def __init__(self, path):
         super(repoWithLocalGitflowBranches, self).__init__(path)
         self.addCommands([
             (git.branch, "release master"),
             (git.branch, "develop master")
             ])
-        
+
         self._publicBranchesValid = True
         self._branchModelConsistent = True
 
-        
+
 class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
-    def __init__(self,path): 
+    def __init__(self,path):
         super(repoWithLocalAndOriginGitflowBranches, self).__init__(path)
         self.addCommands([(git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-        
-    
-class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
-    def __init__(self,path): 
+
+
+class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches):
+    def __init__(self,path):
         super(singleRepoWithMissingLocalPublicBranches, self).__init__(path)
-        
+
         self.addCommands([
             (git.checkout, "-b feature/user/f1"),
             (git.branch, "-D master")
         ])
-        
+
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-        
+
 
 # setting up subrojects
-# default grapeconfig expects all submodules to be on master branch when on 
-# public branch in workspace. 
-class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches): 
+# default grapeconfig expects all submodules to be on master branch when on
+# public branch in workspace.
+class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
     def __init__(self,path):
         super(validRepoWithSubmodule, self).__init__(path)
         self.addCommands([(grapeMenu.menu().applyMenuChoice,
                          lambda: ("addSubproject", ["--name=submodule1",
                                             "--prefix=submodule1",
                                             f"--url={self.getOriginDir()}",
-                                            "--branch=master", 
-                                            "--submodule", 
+                                            "--branch=master",
+                                            "--submodule",
                                             "--noverify"],
                                             None,
                                             ["-v"] )),
@@ -104,8 +104,8 @@ class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
                           (git.push, "origin --all")])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-        
-        
+
+
 class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
     def __init__(self,path):
         super(WorkspaceWithSubmoduleOnDevelop, self).__init__(path)
@@ -117,17 +117,17 @@ class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
         # outer on public branch means expect submodule on master
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
-        
+
+
 class WorkspaceOnDevelopSubmoduleOnDevelop(WorkspaceWithSubmoduleOnDevelop):
     def __init__(self, path):
         super(WorkspaceOnDevelopSubmoduleOnDevelop,self).__init__(path)
-        self.addCommands([(git.checkout,"-B develop master"), 
+        self.addCommands([(git.checkout,"-B develop master"),
                           ])
         # outer on public branch means we expect submodule on master
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
+
 class WorkspaceOnTopicSubmoduleOnMaster(validRepoWithSubmodule):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnMaster, self).__init__(path)
@@ -135,7 +135,7 @@ class WorkspaceOnTopicSubmoduleOnMaster(validRepoWithSubmodule):
         # outer on topic branch means we expect submodule on topic branch
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
+
 class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnTopic, self).__init__(path)
@@ -144,7 +144,7 @@ class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
         # now both are on topicBranch
         self._publicBranchesValid = True
         self._branchModelConsistent= True
-        
+
 class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopic):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
@@ -156,7 +156,7 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
 
         self.addCommands([(git.clone, lambda: "--recursive " +
                                               f"{self.getOriginDir()} " +
-                                              f"{self.getSecondProjectDir()}"), 
+                                              f"{self.getSecondProjectDir()}"),
                           (os.chdir, lambda : self.getSecondProjectDir()),
                           (os.chdir,"submodule1"),
                           (git.checkout, "master"),
@@ -176,16 +176,16 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         # now both are on topicBranch, but master is behind in both
         self._publicBranchesValid = True
         self._branchModelConsistent= True
-        
-    def getSecondProjectDir(self): 
+
+    def getSecondProjectDir(self):
         return os.path.abspath(os.path.join(self.projectPrefix,self.secondProjectDir))
-    def tearDown(self): 
+    def tearDown(self):
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).tearDown()
         secondProjectDir = self.getSecondProjectDir()
         if os.path.exists(secondProjectDir) and os.path.isdir(secondProjectDir):
             os.chdir(os.path.abspath(os.path.dirname(secondProjectDir)))
             shutil.rmtree(secondProjectDir, ignore_errors=True)
-        
+
 class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
     def __init__(self, path):
         super(WorkspaceWithDetachedSubmodule, self).__init__(path)
@@ -195,7 +195,7 @@ class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
         self._publicBranchesValid = True
         self._branchModelConsistent = False
         self._numExpectedFetches = 2
-        
+
 class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
     def __init__(self,path):
         super(ValidRepoWithNestedSubproject, self).__init__(path)
@@ -203,15 +203,15 @@ class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
                          lambda: ("addSubproject", ["--name=subproject1",
                                             "--prefix=subproject1",
                                             f"--url={self.getOriginDir()}",
-                                            "--branch=master", 
-                                            "--nested", 
-                                            "--noverify"], None, 
+                                            "--branch=master",
+                                            "--nested",
+                                            "--noverify"], None,
                                             ["-v"] ))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
         # there should be one fetch for the outer level master and one for the nested master
         self._numExpectedFetches = 2
-        
+
 class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
     def __init__(self,path):
         super(WorkspaceWithNestedOnDevelop, self).__init__(path)

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import os
-import shutil
-import subprocess
 import sys
 
 pythonMajorVersion = sys.version_info[0]

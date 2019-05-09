@@ -17,7 +17,7 @@ class TestPublish(testGrape.TestGrape):
         git.add("f2")
         git.commit("-m \"added f2\"")
         self.setUpConfig()
-        
+
     def setUpDevelopBranch(self):
         os.chdir(self.repo)
         git.branch("-f develop master")
@@ -56,13 +56,13 @@ class TestPublish(testGrape.TestGrape):
                 args = defaultArgs
             with self.queue_user_input(["1.1.1"]):
                 ret = self.menu.applyMenuChoice("publish", args=args)
-          
+
             self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
             self.fail(f"{self.get_output()}\n{e.message}")
         #origin has not been set up for these repos yet
         #self.assertNotIn("fatal:", self.output.getvalue())
-    
+
     def assertGrapePublishFailed(self, args=None):
         self.assertGrapePublishWorked(args=args, assertFail=True)
 
@@ -142,7 +142,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.get_output())
         # check that we tagged a new version
         self.assertIn("v1.0.1", git.describe())
-        
+
     def testPublishNestedSubprojects(self):
         from grape.test import testNestedSubproject
         self.setUpBranchToFFMerge()
@@ -157,7 +157,7 @@ class TestPublish(testGrape.TestGrape):
         os.chdir(self.repo)
         self.assertGrapePublishWorked(["--merge"])
         self.assertSuccessfulFastForwardMerge()
-        
+
         os.chdir(self.subproject)
         self.assertTrue(git.currentBranch() == "master",
                         f"on {git.currentBranch()}, expected to be on master")
@@ -167,7 +167,7 @@ class TestPublish(testGrape.TestGrape):
         self.setUpBranchToFFMerge()
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
- 
+
         os.chdir(self.subproject)
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
@@ -182,9 +182,8 @@ class TestPublish(testGrape.TestGrape):
         # create backend for repo2
         repo2_origin = self.repo + "2-origin"
         os.mkdir(repo2_origin)
-        os.chdir(repo2_origin)
-        git.gitcmd("init --bare", "Setup Failed")
-        os.chdir(os.path.dirname(repo2_origin))
+        with git.cd(repo2_origin):
+            git.gitcmd("init --bare", "Setup Failed")
         # clone repo2
         git.gitcmd(f"clone {repo2_origin} {self.repos[1]}",
                    "could not clone test bare repo")
@@ -200,19 +199,19 @@ class TestPublish(testGrape.TestGrape):
         git.push("origin testPublish")
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
-        git.submodule(f"add {os.path.join(repo2_origin)} submodule1")
+        git.submodule(f"add {repo2_origin} submodule1")
         git.commit("-m \"added submodule1\"")
-        os.chdir(os.path.join(self.repo,"submodule1"))
+        os.chdir(os.path.join(self.repo, "submodule1"))
         # add changes to feature branch
         git.checkout("testPublish")
-        f3 = os.path.join(self.repo,"submodule1","f3")
+        f3 = os.path.join(self.repo, "submodule1", "f3")
         testGrape.writeFile3(f3)
         git.add(f3)
         git.commit("-m \"added f3\"")
         # save the log from the feature branch
         branchlog = git.log()
         os.chdir(self.repo)
-        git.add(os.path.join(self.repo,"submodule1"))
+        git.add(os.path.join(self.repo, "submodule1"))
         git.commit("-m \"updated gitlink\"")
 
         self.assertTrue(git.currentBranch() == self.branch)

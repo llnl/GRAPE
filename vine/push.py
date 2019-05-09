@@ -30,17 +30,15 @@ class Push(Option):
     def execute(self, args):
         baseDir = utility.workspaceDir()
 
-        cwd = os.getcwd()
-        os.chdir(baseDir)
-        currentBranch = git.currentBranch()
-        config = config_parser_global.grapeConfig()
-        publicBranches = config.getPublicBranchList()
+        with utility.cd_workspace():
+            currentBranch = git.currentBranch()
+            config = config_parser_global.grapeConfig()
+            publicBranches = config.getPublicBranchList()
 
-        submodules = git.getActiveSubmodules(baseDir)
+            submodules = git.getActiveSubmodules(baseDir)
 
-        retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
+            retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
-        os.chdir(cwd)
         vine_logging.printMsg("Pushed current branch to origin")
         return False not in retvals
 
@@ -48,7 +46,7 @@ class Push(Option):
         pass
 
 def push(repo='', branch='master'):
-    with utility.cd(repo):
+    with git.cd(repo):
         vine_logging.printMsg(f"Pushing {branch} in {repo}...")
         git.push(f"-u origin {branch}", throwOnFail=True)
 

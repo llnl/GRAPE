@@ -82,50 +82,46 @@ class Walkthrough(Option):
             # This is already the default
             doMergeDiff = True
 
-        cwd = os.getcwd()
-        os.chdir(utility.workspaceDir())
+        with utility.cd_workspace():
+            b1 = args["<b1>"]
+            if not b1:
+                b1 = git.currentBranch()
 
-        b1 = args["<b1>"]
-        if not b1:
-            b1 = git.currentBranch()
+            b2 = args["<b2>"]
 
-        b2 = args["<b2>"]
+            if args["--staged"]:
+                b2 = b1
+                b1 = "--cached"
+                doMergeDiff = False
+            elif args["--workspace"]:
+                b2 = "--"
+                doMergeDiff = False
+            else:
+                if not b2:
+                    try:
+                        # put the public branch first so merge diff shows
+                        # changes on the current branch.
+                        b2 = b1
+                        b1 = config.getPublicBranchFor(b2)
+                    except:
+                        b2 = ""
+                        doMergeDiff = False
 
-        if args["--staged"]:
-            b2 = b1
-            b1 = "--cached"
-            doMergeDiff = False
-        elif args["--workspace"]:
-            b2 = "--"
-            doMergeDiff = False
-        else:
-            if not b2:
-                try:
-                    # put the public branch first so merge diff shows
-                    # changes on the current branch.
-                    b2 = b1
-                    b1 = config.getPublicBranchFor(b2)
-                except:
-                    b2 = ""
-                    doMergeDiff = False
+            diffargs = ""
 
-        diffargs = ""
+            root = Tk.Tk()
+            root.title("GRAPE walkthrough")
 
-        root = Tk.Tk()
-        root.title("GRAPE walkthrough")
+            diffmanager = DiffManager(master=root, height=height, width=width,
+                                      branchA=b1, branchB=b2,
+                                      difftool=difftool, diffargs=diffargs, doMergeDiff=doMergeDiff,
+                                      showUnchanged=args["--showUnchanged"],
+                                      showInactive=not args["--noInactive"], showToplevel=not args["--noTopLevel"],
+                                      showSubmodules=not args["--noSubmodules"], showSubtrees=not args["--noSubtrees"],
+                                      showNestedSubprojects=not args["--noNestedSubprojects"],
+                                      noFetch=args["--noFetch"])
 
-        diffmanager = DiffManager(master=root, height=height, width=width,
-                                  branchA=b1, branchB=b2,
-                                  difftool=difftool, diffargs=diffargs, doMergeDiff=doMergeDiff,
-                                  showUnchanged=args["--showUnchanged"],
-                                  showInactive=not args["--noInactive"], showToplevel=not args["--noTopLevel"],
-                                  showSubmodules=not args["--noSubmodules"], showSubtrees=not args["--noSubtrees"],
-                                  showNestedSubprojects=not args["--noNestedSubprojects"],
-                                  noFetch=args["--noFetch"])
-
-        root.mainloop()
-
-        os.chdir(cwd)
+            root.mainloop()
 
         try:
             root.destroy()
@@ -412,19 +408,18 @@ class DiffManager(ProjectManager):
                     #TODO
                     pass
                 else:
-                    os.chdir(os.path.join(utility.workspaceDir(), dir))
-                    vine_logging.printMsg(f"Gathering status in {dir}...")
-                    try:
-                        haveDiff = len(git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}").split()) > 0
-                    except grape_errors.GrapeGitError as e:
-                        if "unknown revision or path not in the working tree" in e.gitOutput:
-                            vine_logging.printMsg(f"Could not diff {self.diffBranchSpec(self.branchA, self.branchB)}.  Branch may not exist in {dir}.")
-                        else:
-                            raise
-                        haveDiff = False
-                    vine_logging.printMsg("Done.")
-                    os.chdir(utility.workspaceDir())
-                pass
+                    project_dir = os.path.join(utility.workspaceDir(), dir)
+                    with git.cd(project_dir):
+                        vine_logging.printMsg(f"Gathering status in {dir}...")
+                        try:
+                            haveDiff = len(git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}").split()) > 0
+                        except grape_errors.GrapeGitError as e:
+                            if "unknown revision or path not in the working tree" in e.gitOutput:
+                                vine_logging.printMsg(f"Could not diff {self.diffBranchSpec(self.branchA, self.branchB)}.  Branch may not exist in {dir}.")
+                            else:
+                                raise
+                            haveDiff = False
+                        vine_logging.printMsg("Done.")
             elif type.endswith("Subtree"):
                 nestedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)} {dir}").split()
                 if len(nestedFiles) > 0:
@@ -453,13 +448,14 @@ class DiffManager(ProjectManager):
             return f"{branchA}...{branchB}"
         else:
             return f"{branchA} {branchB}"
+
     def getBranch(self, branch):
         if not branch.startswith("--"):
             try:
                 git.shortSHA(branch)
             except:
                 if not branch.startswith("origin/"):
-                    branch = "origin/"+branch
+                    branch = git.join_list_as_git_path(["origin", branch])
             # TODO figure out what to do with SHA's in user input
             # TODO always fetch the origin before diffing?
             # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
@@ -474,7 +470,7 @@ class DiffManager(ProjectManager):
             if len(branchParts) == 1 or branchParts[0] == "origin":
                 if branchParts[-1] in submapping.keys():
                     branchParts[-1] = submapping[branchParts[-1]]
-            return "/".join(branchParts)
+            return git.join_list_as_git_path(*branchParts)
         else:
             return branch
 

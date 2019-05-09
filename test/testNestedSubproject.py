@@ -105,15 +105,15 @@ class TestNestedSubproject(testGrape.TestGrape):
                             f"{os.path.join('subproject1', 'f1')} shows up " +
                             "in git status when it shouldn't")
             self.menu.applyMenuChoice("status", ['-u'], globalArgs=["-v"])
-            expected_output = self.get_output()
+            actual_output = self.get_output()
             subproject_path = os.path.join('subs', 'subproject1', 'f1')
-            self.assertIn(f" ?? {subproject_path}", expected_output,
+            self.assertIn(f" ?? {subproject_path}", actual_output,
                           f"{subproject_path} does not show up in grape status")
 
         except grape_errors.GrapeGitError as e:
             output = self.get_output()
             self.fail(('\n'.join(output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
-        
+
     def testProjectWideGrapeCommitWithNestedProjects(self):
         try:
             self.assertCanAddNewSubproject(self)
@@ -139,4 +139,4 @@ class TestNestedSubproject(testGrape.TestGrape):
 
 if __name__ == "__main__":
     import unittest
-    unittest.main() 
+    unittest.main()

@@ -15,11 +15,11 @@ class TestClone(testGrape.TestGrape):
         with self.queue_user_input(["\n", "\n", "\n", "\n"]):
             ret = self.menu.applyMenuChoice("clone", args)
         self.assertTrue(ret)
-        
+
         # check to make sure we didn't get a usage string dump
         contents = self.get_output()
         self.assertNotIn(contents, "Usage: grape-clone")
-        
+
         # check to make sure we didn't see a GRAPE WARNING
         self.assertNotIn("WARNING", contents,
                          f"GRAPE ISSUED A WARNING DURING A CLONE\n{contents}")
@@ -55,7 +55,7 @@ class TestClone(testGrape.TestGrape):
         git.clone(f"--mirror {self.repo} {self.repos[1]} ")
         # add repo2 as a submodule to repo1
         os.chdir(self.repo)
-        git.submodule(f"add {os.path.join(self.repos[1])} submodule1")
+        git.submodule(f"add {self.repos[1]} submodule1")
         git.commit("-m \"added submodule1\"")
 
         #Now clone the repo into a temp dir and make sure the submodule is in the clone
@@ -109,7 +109,7 @@ class TestClone(testGrape.TestGrape):
             self._temp_dir_cleanup(tempDir)
 
     def _temp_dir_cleanup(self, tempDir):
-            # Skips Windows permissions errors when testing as non-admin user.
-            def skip_error(*args):
-                pass
-            shutil.rmtree(tempDir, onerror=skip_error)
+        """Skips Windows permissions errors when testing as non-admin user."""
+        def skip_rm(*args):
+            pass
+        shutil.rmtree(tempDir, onerror=skip_rm)

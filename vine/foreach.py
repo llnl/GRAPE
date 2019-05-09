@@ -1,7 +1,6 @@
-import os
 from grape.vine import grape_errors
+from grape.vine import grapeGit as git
 from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
 from grape.vine import vine_logging
 from grape.vine import vine_subprocess
 from grape.vine.option import Option
@@ -46,7 +45,7 @@ class ForEach(Option):
 
 def foreach(repo='', branch='', args={}):
     cmd = args["<cmd>"]
-    with utility.cd(repo):
+    with git.cd(repo):
         vine_subprocess.executeSubProcess(cmd, repo, verbose = -1)
     return True
 

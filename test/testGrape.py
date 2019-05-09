@@ -92,6 +92,12 @@ class TestGrape(unittest.TestCase):
         grapeMenu._resetMenu()
         grapeMenu.menu()
         config = config_parser_global.grapeConfig()
+        try:
+            # Git user name required for publish tests.
+            config.ensureSection('user')
+            config.get('--get user.name')
+        except:
+            config.set('user', 'name', 'TEST USER')
         config.set(Option.SECTION_FLOW, "publicBranches", "master")
         config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
         config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
@@ -132,9 +138,9 @@ class TestGrape(unittest.TestCase):
             os.chdir(os.path.dirname(self.repo))
         except grape_errors.GrapeGitError:
             pass
-        
+
         self.menu = grapeMenu.menu()
-        
+
         if self._debug:
             self.switchToStdout()
 
@@ -207,9 +213,9 @@ def buildSuite(cls, appendTo=None, sub=None):
     if suite is None:
         suite = unittest.TestSuite()
     if sub:
-       suite.addTest(cls(sub))
+        suite.addTest(cls(sub))
     else:
-       suite.addTest(unittest.makeSuite(cls))
+        suite.addTest(unittest.makeSuite(cls))
     return suite
 
 
@@ -253,7 +259,7 @@ def main(argv, debug=False):
 
 
     suite = unittest.TestSuite()
-    if len(argv) == 0: 
+    if len(argv) == 0:
         for cls in testClasses.values():
             suite = buildSuite(cls, suite)
     else:
@@ -262,34 +268,34 @@ def main(argv, debug=False):
             exit(0)
         for arg in argv:
             if '.' in arg:
-               (cls, sub) = arg.split('.')
-               try:
-                  cls = testClasses[cls]
-               except:
-                  print(f"*** {cls} is not a valid test suite!\n" + \
-                        f"Valid values are:\n{testClasses.keys()}")
-                  exit(0)
+                (cls, sub) = arg.split('.')
+                try:
+                    cls = testClasses[cls]
+                except:
+                    print(f"*** {cls} is not a valid test suite!\n" + \
+                          f"Valid values are:\n{testClasses.keys()}")
+                    exit(0)
             else:
-               try:
-                  cls = testClasses[arg]
-               except:
-                  print(f"*** {arg} is not a valid test suite!\n" + \
-                        f"Valid values are:\n{testClasses.keys()}")
-                  exit(0)
-               sub = None
+                try:
+                    cls = testClasses[arg]
+                except:
+                    print(f"*** {arg} is not a valid test suite!\n" + \
+                          f"Valid values are:\n{testClasses.keys()}")
+                    exit(0)
+                sub = None
             suite = buildSuite(cls, suite, sub)
 
     if debug:
         for cls in suite:
             try:
-               for case in cls:
-                   print(case)
-                   case._debug = True
+                for case in cls:
+                    print(case)
+                    case._debug = True
             except TypeError:
-               print(cls)
-               cls._debug = True
-        suite._tests    
-    
+                print(cls)
+                cls._debug = True
+        suite._tests
+
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 

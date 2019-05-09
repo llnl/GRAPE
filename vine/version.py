@@ -164,13 +164,11 @@ class Version(Option):
         if (not args["--nocommit"]) or args["--tag"]:
             self.tagVersion(self.ver, args)
             if args["--tagNested"]:
-                cwd = os.getcwd()
-                wsDir = utility.workspaceDir()
-                for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-                    os.chdir(os.path.join(wsDir, subproject))
-                    self.tagVersion(self.ver, args)
-                os.chdir(cwd)
-                
+                with utility.cd_workspace():
+                    for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes():
+                        os.chdir(os.path.join(wsDir, subproject))
+                        self.tagVersion(self.ver, args)
+
 
     @staticmethod
     def stageVersionFile(fname):

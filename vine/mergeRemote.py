@@ -75,21 +75,20 @@ class MergeRemote(Option):
                                       "Halting remote merge.")
                 return False
 
-
-
-
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
-        hasRemote = f"origin/{otherBranch}" in git.remoteBranches()
+        hasRemote = git.join_list_as_git_path(['origin', otherBranch]) in git.remoteBranches()
         hasBranch = git.hasBranch(otherBranch)
         currentBranch = git.currentBranch()
-        remoteUpToDateWithLocal = git.branchUpToDateWith(f"remotes/origin/{otherBranch}", otherBranch)
-        updateLocal =  hasRemote and  (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
-        if  updateLocal:
+        remote_other_branch = git.join_list_as_git_path(['remotes', 'origin', otherBranch])
+        remoteUpToDateWithLocal = git.branchUpToDateWith(remote_other_branch, otherBranch)
+        updateLocal = hasRemote and (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
+        if updateLocal:
+            origin_other_branch = git.join_list_as_git_path(['origin', otherBranch])
             vine_logging.printMsg(f"updating local branch {otherBranch} " +
-                                  f"from origin/{otherBranch}")
+                                  f"from {origin_other_branch}")
             multi_repo_cmd_launcher.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
 
-        args["<branch>"] = otherBranch if updateLocal else f"origin/{otherBranch}"
+        args["<branch>"] = otherBranch if updateLocal else git.join_list_as_git_path(['origin', otherBranch])
         # we've handled the update, we don't want m or md to update the local branch.
         args["--noUpdate"] = True
         # if mr is called by the user, need to initialize the --continue argument.

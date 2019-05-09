@@ -5,10 +5,10 @@ from grape.test import testGrape
 from grape.test import testProjectScenarios
 
 
-class GrapeUpTester(testGrape.TestGrape): 
+class GrapeUpTester(testGrape.TestGrape):
 
     def gridtestGrapeUp(self, testProjectScenario):
-        
+
         debugging = False
         #if testProjectScenario.debugging() or debugging:
         #     self.switchToStdout()
@@ -22,17 +22,17 @@ class GrapeUpTester(testGrape.TestGrape):
         #upoutput = "%s" % self.output.getvalue()
         #print upoutput.split('\n')
         #numberOfFetches = 0
-        #for l in upoutput.split('\n'): 
+        #for l in upoutput.split('\n'):
         #    if "git fetch origin" in l and "Executing" in l:
         #        numberOfFetches += 1
         #self.assertEqual(numberOfFetches, testProjectScenario.numExpectedFetches(),
         #                 "Unexpected number of fetches %d != %d\n%s" % (numberOfFetches, testProjectScenario.numExpectedFetches(),upoutput))
-        
+
         #if testProjectScenario.debugging() or debugging:
         #    self.switchToHiddenOutput()
 
-def createUpTester(): 
-    # create a tester for all grapeProject scenarios in the testProjectScenarios module. 
+def createUpTester():
+    # create a tester for all grapeProject scenarios in the testProjectScenarios module.
     scenarioClasses = testProjectScenarios.find_subclasses(testProjectScenarios, testProjectScenarios.grapeProject)
     names = [cls.__name__ for cls in scenarioClasses]
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]

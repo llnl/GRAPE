@@ -236,7 +236,7 @@ class Review(Option):
         nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(target_branch)
         
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            with utility.cd(prefix):
+            with git.cd(prefix):
                 git.push(f"origin {branch}")
             repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
             

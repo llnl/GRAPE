@@ -21,17 +21,14 @@ def runCommandOnRepoBranch(task_queue, results_queue):
         try:
             result = f(repo=repo, branch=branch, args=args)
             results_queue.put(result)
-            return
         except TypeError:
             try:
                 result = f(repo=repo, branch=branch)
                 results_queue.put(result)
-                return
             except TypeError:
                 try:
                     result = f()
                     results_queue.put(result)
-                    return
                 except Exception as e:
                     return e
             except Exception as e:
@@ -39,7 +36,6 @@ def runCommandOnRepoBranch(task_queue, results_queue):
         except Exception as e:
             return e
 
-        os.chdir(curDir)
 
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
@@ -63,7 +59,6 @@ class MultiRepoCommandLauncher(object):
         self.perRepoArgs = perRepoArgs
         self.globalArgs = globalArgs
         self.launchTuple = listOfRepoBranchArgTuples
-        self.results_queue = multiprocessing.Queue()
 
         self.repos = []
         self.branches = []
@@ -163,7 +158,7 @@ class MultiRepoCommandLauncher(object):
         return task_queue
 
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
-        with utility.cd(utility.workspaceDir()):
+        with utility.cd_workspace():
             self.initializeCommands()
 
             if not self.repos:

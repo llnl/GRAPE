@@ -149,7 +149,7 @@ def bundlecmd(repo='', branch='', args={}):
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
 
-    with utility.cd(repo):
+    with git.cd(repo):
         reponame = os.path.split(repo)[1]
         for branch in branchlist:
             # ensure branch can be fast forwardable to origin/branch and do so
@@ -256,7 +256,7 @@ class Unbundle(option.Option):
 def unbundlecmd(repo='', branch='', args={}):
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()
-    with utility.cd(repo):
+    with git.cd(repo):
         bundleNames = glob.glob("*.bundle")
         for bundleName in bundleNames:
             mappings = ""

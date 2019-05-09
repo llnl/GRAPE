@@ -1,7 +1,4 @@
-import os
-import shutil
 from grape.vine import config_parser_global
-from grape.vine import grapeGit as git
 from grape.vine import utility
 from grape.vine.option import Option
 from grape.vine.resumable import Resumable
@@ -87,7 +84,6 @@ class Merge(Resumable, Option):
         mdArgs["<<cmd>>"] = args["<<cmd>>"]
         mdArgs["--noUpdate"] = args["--noUpdate"]
         mdArgs["--squash"] = args["--squash"]
-
 
         return grapeMenu.menu().getOption("md").execute(mdArgs)
 

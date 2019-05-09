@@ -1,4 +1,4 @@
-﻿"""GRAPE's git utility logic across a single repository."""
+"""GRAPE's git utility logic across multiple repositories."""
 from contextlib import contextmanager
 import os
 import sys
@@ -31,7 +31,7 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
 def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
     for key in args:
-        if type(args[key]) is str and ".grapeconfig." in args[key] and config is not None:
+        if type(args[key]) is str and git.GRAPE_CONFIG in args[key] and config is not None:
             tokens = args[key].split('.')
             args[key] = config.get(tokens[2].strip(), tokens[3].strip())
     return args
@@ -60,7 +60,7 @@ def userInput(message, default=None):
 
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
+def workspaceDir():
     workspace_dir = None
     base_dir = os.getcwd()
     # Go until you're at the root (you don't have a head after splitting)
@@ -68,11 +68,6 @@ def workspaceDir(warn_if_not_found=True, throw_if_not_found=True):
         if os.path.exists(os.path.join(base_dir, '.git')):
             workspace_dir = base_dir
         base_dir = os.path.dirname(base_dir)
-    if not workspace_dir and warn_if_not_found:
-        vine_logging.warning("GRAPE WARNING: expected to be in your workspace, no .git found")
-        print("GRAPE WARNING: expected to be in your workspace, no .git found")
-    if not workspace_dir and throw_if_not_found:
-        raise grape_errors.NoWorkspaceDirException(os.getcwd())
     return workspace_dir
 
 
@@ -82,13 +77,12 @@ def isWorkspaceClean(printOutput=False):
     isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
     activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()
-    cwd = os.getcwd()
-    for sub in activeNestedSubprojects:
-        if not isClean:
-            break
-        os.chdir(os.path.join(base, sub))
-        isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
-    os.chdir(cwd)
+    with git.cd(os.getcwd()):
+        for sub in activeNestedSubprojects:
+            if not isClean:
+                break
+            os.chdir(os.path.join(base, sub))
+            isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
     return isClean
 
 
@@ -114,10 +108,21 @@ def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
 def getGrapeExec():
     par_dir_name = os.path.dirname(os.path.dirname(__file__))
     if os.name == "nt":
-        winpath = os.path.join(par_dir_name, "grape.py")
-        return "c:/Python27/python.exe " + winpath.replace("\\", "/")
+        grape_path = os.path.join(par_dir_name, "grape")
+        grape_path = win_path_to_linux_path(grape_path)
+        python_path = win_path_to_linux_path(sys.executable)
+        return f"{python_path} {grape_path}"
     else:
         return os.path.join(par_dir_name, "grape")
+
+
+def win_path_to_linux_path(path):
+    """Convert absolute Windows path to linux path for hooks in Git bash."""
+    path = path.replace('C:', f'{os.path.altsep}c')
+    path = path.replace(os.path.sep, os.path.altsep)
+    path = path.replace(' ', f'{os.path.sep} ')
+    path = path.replace('(x86)', f'{os.path.sep}(x86{os.path.sep})')
+    return path
 
 
 # returns the user's home directory:
@@ -130,10 +135,34 @@ def getHomeDirectory():
 
 
 @contextmanager
-def cd(path):
-    old_dir   =   os.getcwd()
-    os.chdir(path)
-    try:
+def cd_workspace():
+    starting_dir = os.getcwd()
+    workspace_dir = workspaceDir()
+    if starting_dir == workspace_dir:
         yield
-    finally:
-        os.chdir(old_dir)
+        os.chdir(starting_dir)
+    else:
+        try:
+            os.chdir(workspace_dir)
+            yield
+        except OSError as e:
+            print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+        finally:
+            os.chdir(starting_dir)
+
+
+@contextmanager
+def cd_workspace_grapeconfig():
+    starting_dir = os.getcwd()
+    workspace_grapeconfig_dir = os.path.join(workspaceDir(), git.GRAPE_CONFIG)
+    if starting_dir == workspace_grapeconfig_dir:
+        yield
+        os.chdir(starting_dir)
+    else:
+        try:
+            os.chdir(workspace_grapeconfig_dir)
+            yield
+        except OSError as e:
+            print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+        finally:
+            os.chdir(starting_dir)

@@ -8,7 +8,7 @@ from grape.vine import vine_logging
 from grape.vine.option import Option
 
 
-# update the repo from the remote using the PyGitUp module
+# update the repo from the remote
 class UpdateLocal(Option):
     """
     grape up
@@ -42,7 +42,6 @@ class UpdateLocal(Option):
         wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
         wsDir = os.path.abspath(wsDir)
         os.chdir(wsDir)
-        cwd = os.getcwd()
 
         config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
@@ -84,7 +83,7 @@ def fetchLocal(repo='unknown', branch='master'):
     if not branches:
         return
 
-    with utility.cd(repo):
+    with git.cd(repo):
         currentBranch = git.currentBranch()
 
         git.fetch("--prune")
@@ -94,7 +93,8 @@ def fetchLocal(repo='unknown', branch='master'):
         toFetch = []
         for b in branches:
             if b != currentBranch:
-                if f"origin/{b}" in allRemoteBranches:
+#                if os.path.join('origin', b) in allRemoteBranches:
+                if git.join_list_as_git_path('origin', b) in allRemoteBranches:
                     fetchArgs += f"{b}:{b} "
                     toFetch.append(b)
             else:

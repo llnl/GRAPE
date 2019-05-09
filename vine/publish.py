@@ -604,8 +604,11 @@ class Publish(Resumable, Option):
                     reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
-            url = '/'.join([atlassian.url, "projects", args["--project"],
-                            "repos", args["--repo"], "pull-requests"])
+            url = git.join_list_as_git_path(atlassian.url, "projects",
+                                            args["--project"], "repos",
+                                            args["--repo"], "pull-requests")
+#            url = os.path.join(atlassian.url, "projects", args["--project"],
+#                               "repos", args["--repo"], "pull-requests")
             vine_logging.printMsg(
                 "There is no pull request for your current branch.\n" +
                 f"Start one using grape review or by visiting {url}")
@@ -615,7 +618,7 @@ class Publish(Resumable, Option):
     @staticmethod
     def testForCleanWorkspace(args):
         vine_logging.printMsg("Checking to make sure workspace has a clean status.")
-        with utility.cd(utility.workspaceDir()):
+        with utility.cd_workspace():
             ret = utility.isWorkspaceClean(printOutput=True)
             ret = grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"]) and ret
             if ret:
@@ -631,15 +634,16 @@ class Publish(Resumable, Option):
     def performCustomStep(self, prefix, args):
         if not args[f"--{prefix}Cmds"]:
             return True
-        cwd = os.getcwd()
         if args[f"--{prefix}Dir"]:
-            os.chdir(os.path.join(utility.workspaceDir(), args[f"--{prefix}Dir"]))
-        cmds = args[f"--{prefix}Cmds"].split(',')
-        ret = True
-        vine_logging.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM " +
-                              f"{prefix.upper()} STEP")
-        for cmd in cmds:
-            if ret:
+            working_dir = os.path.join(utility.workspaceDir(), args[f"--{prefix}Dir"])
+        else:
+            working_dir = os.getcwd()
+
+        with git.cd(working_dir):
+            cmds = args[f"--{prefix}Cmds"].split(',')
+            vine_logging.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM " +
+                                  f"{prefix.upper()} STEP")
+            for cmd in cmds:
                 if "<version>" in cmd:
                     self.loadVersion(args)
                     verStr = self.progress["version"]
@@ -650,11 +654,9 @@ class Publish(Resumable, Option):
                 process_result = vine_subprocess.executeSubProcess(cmd.strip(),
                                                                    stream=True)
                 print(process_result.returncode)
-                ret = ret and (process_result.returncode == 0)
-                if not ret:
-                    break
-        os.chdir(cwd)
-        return ret
+                if process_result.returncode != 0:
+                    return False
+        return True
 
     def performCustomBuildStep(self, args):
         return self.performCustomStep("build", args) and self.checkInProgressLock(args)
@@ -688,7 +690,15 @@ class Publish(Resumable, Option):
     def getModifiedFileList(public, topic, args):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
-        updatelist = git.diff(f"--name-only {public} {topic}").split('\n')
+        try:
+            updatelist = git.diff(f"--name-only {public} {topic}").split('\n')
+        except:
+            # Ensure branches are on working tree, then retry diff.
+            current_branch = git.currentBranch()
+            git.checkout(public)
+            git.checkout(topic)
+            git.checkout(current_branch)
+            updatelist = git.diff(f"--name-only {public} {topic}").split('\n')
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
@@ -712,20 +722,20 @@ class Publish(Resumable, Option):
 
         # Get list of modified files in submodules
         if args["--recurse"]:
-            submodulePublic = args["--submodulePublic"]
-            submodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
-            for sub in submodules:
-                os.chdir(os.path.join(wsdir, sub))
-                self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic, args)]
-            os.chdir(wsdir)
+            with utility.cd_workspace():
+                submodulePublic = args["--submodulePublic"]
+                submodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
+                for sub in submodules:
+                    os.chdir(os.path.join(wsdir, sub))
+                    self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args)]
 
-        # Get list of modified files in nested subprojects
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-            os.chdir(os.path.join(wsdir, nested))
-            modified = self.getModifiedFileList(public, topic, args)
-            if len(modified) > 0:
-                self.progress["modifiedFiles"] += [nested + "/" + s for s in modified]
-        os.chdir(wsdir)
+        with utility.cd_workspace():
+            # Get list of modified files in nested subprojects
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
+                os.chdir(os.path.join(wsdir, nested))
+                modified = self.getModifiedFileList(public, topic, args)
+                if len(modified) > 0:
+                    self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
 
         return True
 
@@ -832,25 +842,23 @@ class Publish(Resumable, Option):
         if args["--noUpdateLog"]:
             return True
         logFile = args["--updateLog"]
-        cwd = os.getcwd()
-        os.chdir(utility.workspaceDir())
         if logFile:
-            header = args["--entryHeader"]
-            header = header.replace("<date>", time.asctime())
-            header = header.replace("<user>", git.config("--get user.name"))
-            header = header.replace("<version>", self.progress["version"])
-            header = header.replace("<reviewers>", self.progress["reviewers"])
-            header = ["\n"]+header.split("\\n")
-            commitMsg = header + commitMsg
-            numLinesToSkip = int(args["--skipFirstLines"])
-            with io.open(logFile, 'r') as f:
-                loglines = f.readlines()
-            loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
-            with io.open(logFile, 'w') as f:
-                f.writelines(loglines)
-            git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
-                       f"{logFile}\"")
-        os.chdir(cwd)
+            with utility.cd_workspace():
+                header = args["--entryHeader"]
+                header = header.replace("<date>", time.asctime())
+                header = header.replace("<user>", git.config("--get user.name"))
+                header = header.replace("<version>", self.progress["version"])
+                header = header.replace("<reviewers>", self.progress["reviewers"])
+                header = ["\n"]+header.split("\\n")
+                commitMsg = header + commitMsg
+                numLinesToSkip = int(args["--skipFirstLines"])
+                with io.open(logFile, 'r') as f:
+                    loglines = f.readlines()
+                loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+                with io.open(logFile, 'w') as f:
+                    f.writelines(loglines)
+                git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
+                           f"{logFile}\"")
         return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
@@ -881,21 +889,20 @@ class Publish(Resumable, Option):
 
     @staticmethod
     def tagVersion(args):
-        ret = True
-        if args["--tickVersion"]:
-            versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
-            for arg in args["-T"]:
-                versionArgs += [arg.strip()]
-            cwd = os.getcwd()
+        if not args["--tickVersion"]:
+            return True
+
+        versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
+        for arg in args["-T"]:
+            versionArgs += [arg.strip()]
+        with utility.cd_workspace():
             wsdir = utility.workspaceDir()
-            os.chdir(wsdir)
             ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
             for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
                 os.chdir(os.path.join(wsdir, nested))
                 git.push("--tags origin")
             os.chdir(wsdir)
             git.push("--tags origin")
-            os.chdir(cwd)
         return ret
 
     def sendNotificationEmail(self, args):
@@ -904,6 +911,12 @@ class Publish(Resumable, Option):
             return False
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
+
+        try:
+            vine_logging.printMsg(
+                'Failed to send notification email. Git "user.name" not set.')
+        except:
+            raise Exception
 
         with io.open(mailfile, 'w') as mf:
             date = time.asctime()
@@ -1050,7 +1063,7 @@ class Publish(Resumable, Option):
 
     @staticmethod
     def merge(public, topic, repo, args):
-        with utility.cd(repo):
+        with git.cd(repo):
             print(f"merging {topic} into {public}")
             git.checkout(public)
             git.merge(f"{topic} -m \"{args['-m']}\" ")
@@ -1059,7 +1072,7 @@ class Publish(Resumable, Option):
 
     @staticmethod
     def squashMerge(public, topic, repo, args):
-        with utility.cd(repo):
+        with git.cd(repo):
             print(f"squash merging {topic} into {public}")
             git.checkout(public)
             git.merge(f"--squash {topic}")
@@ -1070,7 +1083,7 @@ class Publish(Resumable, Option):
 
     @staticmethod
     def rebase(public, topic, repo):
-        with utility.cd(repo):
+        with git.cd(repo):
             print(f"rebasing {topic} onto {public}")
             git.rebase(public)
             print(f"{topic} successfully rebased onto {public}")
@@ -1160,7 +1173,7 @@ class Publish(Resumable, Option):
             repos = [os.path.join(wsdir,r) for r in repos]
             for repo in repos:
                 public = args["--public"]
-                with utility.cd(repo):
+                with git.cd(repo):
                     for branch in cascade:
                         mergeID = f"outer_{repo}_{branch}"
                         if not self.performCascade(status, args, mergeID, repo, branch, public):
@@ -1170,7 +1183,7 @@ class Publish(Resumable, Option):
                 cascade = self.cascadeDict["submodules"]
                 repos = [os.path.join(wsdir,r) for r in args["<<publishedSubmodules>>"]]
                 for repo in repos:
-                    with utility.cd(repo):
+                    with git.cd(repo):
                         public = args["--submodulePublic"]
                         for branch in cascade:
                             mergeID = f"submodules_{repo}_{branch}"
@@ -1209,7 +1222,7 @@ class Publish(Resumable, Option):
 
         if not args["--nopush"]:
             try:
-                with utility.cd(repo):
+                with git.cd(repo):
                     git.push("-u origin HEAD", throwOnFail=True)
             except grape_errors.GrapeGitError as e:
                 if e.commError:
@@ -1370,7 +1383,7 @@ class Publish(Resumable, Option):
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in modifiedSubmodules:
                     subpath = os.path.join(wsdir,sub)
-                    with utility.cd(subpath):
+                    with git.cd(subpath):
                         grapeMenu.menu().applyMenuChoice(
                             'up', ['up', '--noRecurse', f'--wd={subpath}',
                                    f'--public={submodulePublic}'])
@@ -1385,7 +1398,7 @@ class Publish(Resumable, Option):
                     pass
                 # ensure submodules that aren't modified end up on the public branch
                 for sub in unmodifiedSubmodules:
-                    with utility.cd(os.path.join(wsdir, sub)):
+                    with git.cd(os.path.join(wsdir, sub)):
                         git.checkout(submodulePublic)
 
                 # restore value for args["--cascade"]

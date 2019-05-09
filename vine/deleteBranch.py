@@ -63,7 +63,7 @@ class DeleteBranch(option.Option):
 def deleteBranch(repo='', branch='master', args = None):
     force = args[0]
     forceStr = "-D" if force is True else "-d"
-    with utility.cd(repo):
+    with git.cd(repo):
         vine_logging.printMsg(f"deleting {branch} in {repo}...")
         git.branch(f"{forceStr} {branch}")
         if f"origin/{branch}" in git.branch("-r"):
@@ -74,7 +74,7 @@ def deleteBranch(repo='', branch='master', args = None):
                     pass
 
 def detachThenForceDeleteBranch(repo='', branch='master', args = None):
-    with utility.cd(repo):
+    with git.cd(repo):
         vine_logging.printMsg(
             f"*** WARNING ***: Detaching in order to delete {branch} in " +
             f"{repo}. You will be in a headless state.")
@@ -95,7 +95,7 @@ def handleDeleteBranchMRE(mre, force=False):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            with utility.cd(repo):
+            with git.cd(repo):
                 if "Cannot delete the branch" in e.gitOutput and \
                    "which you are currently on." in e.gitOutput:
                     if force:
