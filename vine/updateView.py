@@ -1,4 +1,4 @@
-﻿import os
+import os
 import shutil
 import stat
 from grape.vine import addSubproject

@@ -93,7 +93,6 @@ def fetchLocal(repo='unknown', branch='master'):
         toFetch = []
         for b in branches:
             if b != currentBranch:
-#                if os.path.join('origin', b) in allRemoteBranches:
                 if git.join_list_as_git_path('origin', b) in allRemoteBranches:
                     fetchArgs += f"{b}:{b} "
                     toFetch.append(b)

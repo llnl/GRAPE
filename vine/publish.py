@@ -607,8 +607,6 @@ class Publish(Resumable, Option):
             url = git.join_list_as_git_path(atlassian.url, "projects",
                                             args["--project"], "repos",
                                             args["--repo"], "pull-requests")
-#            url = os.path.join(atlassian.url, "projects", args["--project"],
-#                               "repos", args["--repo"], "pull-requests")
             vine_logging.printMsg(
                 "There is no pull request for your current branch.\n" +
                 f"Start one using grape review or by visiting {url}")
@@ -911,12 +909,6 @@ class Publish(Resumable, Option):
             return False
         # Write the contents of the mail file out to a temporary file
         mailfile = tempfile.mktemp()
-
-        try:
-            vine_logging.printMsg(
-                'Failed to send notification email. Git "user.name" not set.')
-        except:
-            raise Exception
 
         with io.open(mailfile, 'w') as mf:
             date = time.asctime()

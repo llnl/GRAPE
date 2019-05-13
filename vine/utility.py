@@ -107,13 +107,13 @@ def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
 # returns the absolute path to the grape executable this file is bundled with
 def getGrapeExec():
     par_dir_name = os.path.dirname(os.path.dirname(__file__))
-    if os.name == "nt":
-        grape_path = os.path.join(par_dir_name, "grape")
-        grape_path = win_path_to_linux_path(grape_path)
-        python_path = win_path_to_linux_path(sys.executable)
-        return f"{python_path} {grape_path}"
-    else:
-        return os.path.join(par_dir_name, "grape")
+    grape_path = os.path.join(par_dir_name, "grape")
+    if os.name != "nt":
+        return grape_path
+
+    grape_path = win_path_to_linux_path(grape_path)
+    python_path = win_path_to_linux_path(sys.executable)
+    return f"{python_path} {grape_path}"
 
 
 def win_path_to_linux_path(path):
