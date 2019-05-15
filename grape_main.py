@@ -5,7 +5,8 @@ import sys
 pythonMajorVersion = sys.version_info[0]
 pythonMinorVersion = sys.version_info[1]
 
-if not pythonMajorVersion == 3 and pythonMinorVersion >= 6:
+if not pythonMajorVersion > 2 or (pythonMajorVersion == 3 and
+                                  pythonMinorVersion < 6):
     print('Grape requires Python 3.6 or greater.')
     exit(1)
 
