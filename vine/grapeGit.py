@@ -339,6 +339,8 @@ def log(args=""):
 def mv(args):
     return gitcmd(f"mv {args}", "mv failed")
 
+def mv(args):
+    return gitcmd("mv %s" % args, "mv failed")
 
 def join_list_as_git_path(path):
     """Returns a path delimited by '/' as Git would, regardless of OS.
