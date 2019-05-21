@@ -604,9 +604,9 @@ class Publish(Resumable, Option):
                     reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
-            url = git.join_list_as_git_path(atlassian.url, "projects",
+            url = git.join_list_as_git_path([atlassian.url, "projects",
                                             args["--project"], "repos",
-                                            args["--repo"], "pull-requests")
+                                            args["--repo"], "pull-requests"])
             vine_logging.printMsg(
                 "There is no pull request for your current branch.\n" +
                 f"Start one using grape review or by visiting {url}")

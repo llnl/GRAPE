@@ -285,6 +285,7 @@ class Checkout(option.Option):
         changedURLModules = []
         uvArgs = []
         checkoutargs = ''
+        submodulesDidChange = False
         if args['-b']:
             checkoutargs += " -b"
 
@@ -310,7 +311,6 @@ class Checkout(option.Option):
             if config_parser_global.grapeConfig().getboolean(self.SECTION_WORKSPACE, "manageSubmodules"):
                 parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules)
 
-            submodulesDidChange = False
             if addedModules or removedModules or changedURLModules:
                 submodulesDidChange = True
 

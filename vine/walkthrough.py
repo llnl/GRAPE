@@ -470,7 +470,9 @@ class DiffManager(ProjectManager):
             if len(branchParts) == 1 or branchParts[0] == "origin":
                 if branchParts[-1] in submapping.keys():
                     branchParts[-1] = submapping[branchParts[-1]]
-            return git.join_list_as_git_path(*branchParts)
+            if not isinstance(branchParts, list):
+                branchParts = [branchParts]
+            return git.join_list_as_git_path(branchParts)
         else:
             return branch
 
