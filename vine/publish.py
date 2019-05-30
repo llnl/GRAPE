@@ -12,7 +12,7 @@ try:
     from email.mime.text import MIMEText
 except ImportError:
     from email.MIMEText import MIMEText
-from grape.stashy.stashy import errors as stashyErrors
+from stashy import errors as stashyErrors
 from grape.vine import Atlassian
 from grape.vine import config_parser_global
 from grape.vine import config_parser_user

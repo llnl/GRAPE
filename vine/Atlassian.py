@@ -2,8 +2,8 @@ import getpass
 import os
 import sys
 import time
-from grape.keyring import keyring
-from grape.stashy import stashy
+import keyring
+import stashy
 from grape.vine import config_parser_global
 from grape.vine import grapeGit as git
 from grape.vine import utility

@@ -2,7 +2,7 @@ import io
 import os
 import re
 import urllib
-from grape.stashy.stashy import errors as stashy_errors
+from stashy import errors as stashy_errors
 from grape.vine import Atlassian
 from grape.vine import config_parser_global
 from grape.vine import config_parser_user

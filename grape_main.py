@@ -16,7 +16,7 @@ grape_parent_dir = os.path.dirname(grape_path)
 if grape_parent_dir not in sys.path:
     sys.path.insert(0, grape_parent_dir)
 
-from grape.docopt.docopt import docopt
+from docopt.docopt import docopt
 from grape.vine import grapeMenu
 from grape.vine import utility
 from grape.vine import grapeGit as git
