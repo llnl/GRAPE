@@ -1,3 +1,4 @@
+import logging
 import sys
 import os
 import inspect
@@ -25,7 +26,7 @@ class ResettableProject(object):
         self.projectPrefix = tempfile.mkdtemp()
         self.projectDir = projectDir
         if os.path.exists(projectDir):
-            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % projectDir
+            logging.error("Path (%s) already exists, so it cannot be used by a new ResettableProject." % projectDir)
             sys.exit(1)
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
@@ -69,7 +70,7 @@ class ResettableProject(object):
                 else: 
                     cmd(param)
             except grape_errors.GrapeGitError as e:
-                print e.gitCommand, e.gitOutput
+                logging.error("%s, %s" % (e.gitCommand, e.gitOutput))
                 raise e
 
     def tearDown(self):

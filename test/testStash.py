@@ -10,7 +10,7 @@ class TestStash(testGrape.TestGrape):
         result = self.menu.applyMenuChoice("stash")
         self.assertTrue(result, "Failed 'stash' command smoke test.")
 
-        contents = self.output.getvalue()
+        contents = self.get_output()
         start_index = self.repo.find('/tmp')
         expected_output = '{repo}: No local changes to save'\
                           .format(repo=self.repo[start_index:])

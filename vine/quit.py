@@ -1,4 +1,5 @@
 import option
+from vine_logging import log_wrapper
 
 
 class Quit(option.Option):
@@ -17,6 +18,7 @@ class Quit(option.Option):
     def description(self):
         return "Quit."
 
+    @log_wrapper
     def execute(self, args):
         return True
 

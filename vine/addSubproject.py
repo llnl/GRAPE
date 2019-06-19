@@ -1,10 +1,11 @@
+import logging
 import os
 import ConfigParser
 import config_parser_global
 import config_parser_user
 import config_parser_workspace
 from option import Option
-import vine_logging
+from vine_logging import log_wrapper
 import utility
 import grapeGit as git
 
@@ -59,9 +60,10 @@ class AddSubproject(Option):
             projectType = "nested"
         # can happen with invalid type in .grapeconfig and no type specified at command line
         if projectType != "subtree" and projectType != "submodule" and projectType != "nested":
-            vine_logging.printMsg("Invalid subprojectType specified in .grapeconfig section [workspace].")
+            logging.info("Invalid subprojectType specified in .grapeconfig section [workspace].")
         return projectType
 
+    @log_wrapper
     def execute(self, args):
         name = args["--name"]
         prefix = args["--prefix"]
@@ -101,7 +103,7 @@ class AddSubproject(Option):
                 config.set(section, "topicPrefixMappings", "?:%s" % branch)
                 with open(os.path.join(utility.workspaceDir(), ".grapeconfig"), "w") as f:
                     config.write(f)
-                vine_logging.printMsg("Successfully added subtree branch. \n"
+                logging.info("Successfully added subtree branch. \n" +
                       "Updated .grapeconfig file. Review changes and then commit. ")
         elif projectType == "submodule":
             if not proceed:
@@ -110,7 +112,7 @@ class AddSubproject(Option):
                                             (name, prefix, url, branch), "y")
             if proceed:
                 git.submodule("add --name %s --branch %s %s %s" % (name, branch, url, prefix))
-                print("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
+                logging.info("Successfully added submodule %s at %s. Please review changes and commit." % (name, prefix))
         elif projectType == "nested":
             if not proceed:
                 proceed = utility.userInput(" about to clone %s as a nested git repo at path %s,\n"
@@ -162,7 +164,7 @@ class AddSubproject(Option):
             elif '.git' in os.listdir(destDir):
                 pass
             else:
-                vine_logging.printMsg("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
+                logging.warning("WARNING: inactive nested subproject %s has files but is not a git repo" % prefix)
                 return False
         userconfig.set(section, "active", "True")
         config_parser_global.writeConfig(userconfig, os.path.join(wsDir, ".git", ".grapeuserconfig"))

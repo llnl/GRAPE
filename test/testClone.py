@@ -1,3 +1,5 @@
+import logging
+import StringIO
 import os
 import shutil
 import sys
@@ -17,7 +19,7 @@ class TestClone(testGrape.TestGrape):
         self.assertTrue(ret)
         
         # check to make sure we didn't get a usage string dump
-        contents = self.output.getvalue()
+        contents = self.get_output()
         self.assertNotIn(contents, "Usage: grape-clone")
         
         # check to make sure we didn't see a GRAPE WARNING
@@ -30,10 +32,17 @@ class TestClone(testGrape.TestGrape):
         self.assertTrue(ret)
 
     def testHelpMessage(self):
+        doc_output = StringIO.StringIO()
+        tmp_stdout = sys.stdout
+        sys.stdout = doc_output
+
         args = ["--help"]
         with self.assertRaises(SystemExit):
             ret = self.menu.applyMenuChoice("clone", args)
-        self.assertIn(clone.Clone.__doc__, self.output.getvalue())
+        # NOTE: Below assertion is testing 'docopt' logic.
+        self.assertIn(clone.Clone.__doc__, doc_output.getvalue())
+        sys.stdout = tmp_stdout
+        doc_output.close()
 
     def testClone02(self):
         tempDir = tempfile.mkdtemp()
@@ -44,7 +53,7 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(ret, "vine.clone returned failure")
 
             #ToDo: Finish checking contents
-            #contents = self.output.getvalue()
+            #contents = self.get_output()
             #self.stdout(contents)
         finally:
             shutil.rmtree(tempDir)
@@ -79,7 +88,7 @@ class TestClone(testGrape.TestGrape):
                                                            "--branch=master", "--url=%s" % self.repos[1],
                                                            "--nested", "--noverify"])
         self.menu.applyMenuChoice("commit",["-m", "\"added subproject1\""])
-        print git.log("--decorate")
+        logging.info(git.log("--decorate"))
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
@@ -95,7 +104,7 @@ class TestClone(testGrape.TestGrape):
             with self.queue_user_input(["all\n"]):
                 ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
-            print git.log("--decorate")
+            logging.info(git.log("--decorate"))
 
             subprojectpath = os.path.join(tempDir, "subs/subproject1")
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")

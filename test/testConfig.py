@@ -10,5 +10,5 @@ class TestConfig(testGrape.TestGrape):
 
         with self.queue_user_input(["\n", "\n", "\n", "\n"]):
             self.menu.applyMenuChoice("config")
-        contents = self.output.getvalue()
+        contents = self.get_output()
         self.assertTrue(contents)

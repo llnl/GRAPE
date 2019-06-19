@@ -1,14 +1,17 @@
+import logging
 import os
 import multiprocessing.pool
 import config_parser_global
 from option import Option
 import grape_errors
 import utility
+from vine_logging import log_wrapper
 
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
 # a method in, and launches the method. Needs to be at the file scope for stricter implementations of
 # pickle, used by the multiprocess module.
+@log_wrapper
 def runCommandOnRepoBranch(repoBranchCommandTuple):
     curDir = os.getcwd()
     repo = repoBranchCommandTuple[0]
@@ -86,12 +89,13 @@ class MultiRepoCommandLauncher(object):
         else:
             self.outer = utility.workspaceDir()
 
+    @log_wrapper
     def MergeLaunchSet(self, otherMRCL):
         self.initializeCommands()
         otherMRCL.initializeCommands()
         for args in self.perRepoArgs + otherMRCL.perRepoArgs:
             if args:
-                print ("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
+                logging.warning("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
                 break
 
         reducedSet = list(set(zip(self.branches+otherMRCL.branches, self.repos+otherMRCL.repos)))
@@ -103,6 +107,7 @@ class MultiRepoCommandLauncher(object):
             self.repos.append(t[1])
             self.perRepoArgs.append([])
 
+    @log_wrapper
     def collapseLaunchSetBranches(self):
         # ensures we have one launch per repo, turning the branch argument into the list of branches
         # this launcher will use
@@ -123,11 +128,7 @@ class MultiRepoCommandLauncher(object):
         self.repos = newRepos
         self.perRepoArgs = newArgs
 
-    def printLaunchSet(self):
-        for b, r, a in zip(self.branches, self.repos, self.perRepoArgs):
-            print "%s,%s,%s" % (b, r, a)
-
-
+    @log_wrapper
     def initializeCommands(self):
         # Imported here to delay grapeGit importing.
         import config_parser_user
@@ -166,6 +167,7 @@ class MultiRepoCommandLauncher(object):
                 else:
                     self.perRepoArgs = [self.globalArgs for x in self.repos]
 
+    @log_wrapper
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
         with utility.cd(utility.workspaceDir()):
             argLists = self.perRepoArgs

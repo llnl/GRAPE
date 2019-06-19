@@ -1,3 +1,4 @@
+import logging
 import option
 import os
 import grape_errors
@@ -5,7 +6,7 @@ import grapeGit as git
 import config_parser_global
 import multi_repo_cmd_launcher
 import utility
-import vine_logging
+from vine_logging import log_wrapper
 
 
 # update the repo from the remote using the PyGitUp module
@@ -38,6 +39,7 @@ class UpdateLocal(option.Option):
     def description(self):
         return "Update local branches that are tracked in your remote repo"
 
+    @log_wrapper
     def execute(self, args):
         wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
         wsDir = os.path.abspath(wsDir)
@@ -75,7 +77,7 @@ class UpdateLocal(option.Option):
 
 def fetchLocalHandler(mre):
     for e in mre.exceptions():
-        print e.gitOutput
+        logging.error(repr(e.gitOutput))
     raise mre
 
 def fetchLocal(repo='unknown', branch='master'):
@@ -97,23 +99,22 @@ def fetchLocal(repo='unknown', branch='master'):
                         toFetch.append(b)
                 else:
                     try:
-                        vine_logging.printMsg("Pulling current branch %s in %s" % (currentBranch, repo))
+                        logging.info("Pulling current branch %s in %s" % (currentBranch, repo))
                         git.pull("origin %s" % currentBranch)
                     except grape_errors.GrapeGitError:
-                        print("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
+                        logging.error("GRAPE: Could not pull %s from origin. Maybe you haven't pushed it yet?" % currentBranch)
             try:
                 if toFetch:
-                    vine_logging.printMsg("updating %s in %s" % (','.join(toFetch), repo))
+                    logging.info("updating %s in %s" % (','.join(toFetch), repo))
                     git.fetch(fetchArgs)
             except grape_errors.GrapeGitError as e:
                 # let non-fast-forward fetches slide
                 if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
-                    print e.gitCommand
-                    print e.gitOutput
-                    print("GRAPE: WARNING:  one of your public branches %s in %s has local commits! "
-                          "Did you forget to create a topic branch?" % (",".join(branches), repo))
+                    logging.error(e.gitCommand)
+                    logging.error(e.gitOutput)
+                    logging.warning("GRAPE: WARNING: one of your public branches %s in %s has local commits! Did you forget to create a topic branch?" % (",".join(branches), repo))
                     pass
                 elif "Refusing to fetch into current branch" in e.gitOutput:
-                    print e.gitOutput
+                    logging.error(e.gitOutput)
                 else:
                     raise e

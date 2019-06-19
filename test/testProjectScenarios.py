@@ -1,3 +1,4 @@
+import logging
 import gridTesting
 from testGrape import *
 
@@ -145,7 +146,7 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
         self.secondProjectDir = self.projectDir + "2"
         if os.path.exists(self.secondProjectDir):
-            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % self.secondProjectDir
+            logging.error("Path (%s) already exists, so it cannot be used by a new ResettableProject." % self.secondProjectDir)
             sys.exit(1)
 
         self.addCommands([(git.clone, lambda : "--recursive %s %s" % (self.getOriginDir(), self.getSecondProjectDir())), 

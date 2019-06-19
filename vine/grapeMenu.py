@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import traceback
@@ -99,7 +100,7 @@ class _Menu(object):
         try:
             return self._optionLookup[choice]
         except KeyError:
-            print("Unknown option '%s'" % choice)
+            logging.info("Unknown option '%s'" % choice)
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None, globalArgs=None):
@@ -124,6 +125,7 @@ class _Menu(object):
                     config_parser_global.read(os.path.join(chosen_option._config, config.GRAPE_CONFIG))
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:], config)
             except SystemExit as e:
+                # 'docopt' prints help doc then exists with SystemExit.
                 if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
                     print("GRAPE PARSING ERROR: could not parse %s\n" % (args[1:]))
                 raise e
@@ -136,14 +138,13 @@ class _Menu(object):
             return chosen_option.execute(option_args)
 
         except grape_errors.GrapeGitError as e:
-            print traceback.print_exc()
-            print ("GRAPE: Uncaught Error %s in grape-%s when executing '%s' in '%s'\n%s" %
-                   (e.code, chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
+            logging.error(traceback.print_exc())
+            logging.error("GRAPE: Uncaught Error %s in grape-%s when executing '%s' in '%s'\n%s" % (e.code, chosen_option._key,  e.gitCommand, e.cwd, e.gitOutput))
             exit(e.code)
 
         except grape_errors.NoWorkspaceDirException as e:
-            print ("GRAPE: grape %s must be run from a grape workspace." % chosen_option.key)
-            print ("GRAPE: %s" % e.message)
+            logging.error("GRAPE: grape %s must be run from a grape workspace." % chosen_option.key)
+            logging.error("GRAPE: %s" % e.message)
             exit(1)
         finally:
             if globalArgs is not None:

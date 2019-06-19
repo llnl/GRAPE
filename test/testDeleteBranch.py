@@ -15,7 +15,7 @@ class TestDeleteBranch(testGrape.TestGrape):
         self.assertTrue(result, "Failed 'delete branch' command smoke test.")
 
         # Asserts test branch was deleted.
-        contents = self.output.getvalue()
+        contents = self.get_output()
         start_index = self.repo.find('/tmp')
         expected_output = 'deleting {branch} in {repo}'\
                           .format(branch=test_branch,

@@ -1,10 +1,10 @@
+import logging
 import pickle
 import abc
 import os
 import grape_errors
 import grapeGit as git
 import utility
-import vine_logging
 import config_parser_global
 
 
@@ -23,7 +23,7 @@ class Resumable(object):
             self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
 
     def dumpProgress(self, args,msg=""):
-        print(msg)
+        logging.info(msg)
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
@@ -66,7 +66,7 @@ class Resumable(object):
                     self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
                     self._readProgressFile()
                 except:
-                    vine_logging.printMsg("No progress file found to continue from. Please enter a command without the "
+                    logging.error("No progress file found to continue from. Please enter a command without the "
                                      "--continue option. ")
                     raise e
         newArgs = self.progress["args"]

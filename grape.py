@@ -1,6 +1,7 @@
 #!/bin/sh
 "exec" "python" "-u" "-B" "$0" "$@"
 import os, shutil, subprocess, sys
+import tempfile
 
 pythonMajorVersion = sys.version_info[0]
 pythonMinorVersion = sys.version_info[1]
@@ -12,6 +13,7 @@ if not (pythonMajorVersion == 2 and pythonMinorVersion > 6):
 from vine import grapeMenu, utility
 from vine import grapeGit as git
 from vine import global_state
+from vine import vine_logging
 
 from docopt.docopt import docopt
 import StringIO
@@ -27,6 +29,7 @@ vinePath = os.path.dirname(vine.__file__)
 CLI = global_state.CLI
 
 def startup():
+    vine_logging.GrapeLogger.redirect_sys_stdout()
     versionOutput = git.version().split()
     versionString = versionOutput.pop()
 
@@ -36,8 +39,9 @@ def startup():
     versions = versionString.split('.') 
    
     if int(versions[0]) == 1 and int(versions[1]) < 8:
-      print('Grape requires at least git version 1.8, currently using %s' % versionString)
-      return False
+        vine_logging.GrapeLogger.restore_sys_stdout()
+        print('Grape requires at least git version 1.8, currently using %s' % versionString)
+        return False
 
     #TODO - allow addition grape config file to be specified at command line
     #additionalConfigFiles = []
@@ -51,16 +55,17 @@ def startup():
         
     retval = True
     try:
-        if (args["<command>"] is None):
+        if args["<command>"] is None:
             done = 0
             while not done:
+                vine_logging.GrapeLogger.restore_sys_stdout()
                 myMenu.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None).split()
-                done = myMenu.applyMenuChoice(choice[0],choice)
+                done = _run_grape_command(choice[0], choice)
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
-        elif (len(sys.argv) > 1):
-            retval = myMenu.applyMenuChoice(args["<command>"],args["<args>"])
+        elif len(sys.argv) > 1:
+            retval = _run_grape_command(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
         retval = False
@@ -69,6 +74,24 @@ def startup():
     print("Thank you - good bye")
     return retval
         
+
+def _run_grape_command(command, args):
+    """Single starting point to ensure vine_logging_setup runs before GRAPE."""
+    vine_logging_setup()
+    retval = grapeMenu.menu().applyMenuChoice(command, args)
+    return retval
+
+
+def vine_logging_setup():
+    """Dictates where output data is routed and which data is kept."""
+    logger = vine_logging.GrapeLogger()
+    logger.add_logger(__name__)
+    log_file = os.path.join(os.path.realpath(tempfile.mkdtemp()),
+                            'grape_main.log')
+    logger.add_stdout_handler(__name__)
+    logger.add_stderr_handler(__name__)
+    logger.add_file_handler_to_root(log_file)
+
 
 ## If this file is being run as a script, then run the main menu.
 ## If it's being imported, then don't

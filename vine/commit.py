@@ -1,10 +1,11 @@
+import logging
 import os
 import option
 import grapeGit as git
 import grape_errors
 import config_parser_user
 import utility
-import vine_logging
+from vine_logging import log_wrapper
 
 class Commit(option.Option):
     """
@@ -32,9 +33,10 @@ class Commit(option.Option):
             git.commit(commitargs)
             return True
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg("Commit in %s failed. Perhaps there were no staged changes? Use -a to commit all modified files." % repo)
+            logging.error("Commit in %s failed. Perhaps there were no staged changes? Use -a to commit all modified files." % repo)
             return False
 
+    @log_wrapper
     def execute(self, args):
         commitargs = ""
         if args['-a']:
@@ -54,15 +56,15 @@ class Commit(option.Option):
             os.chdir(os.path.join(wsDir,sub))
             subStatus = git.status("--porcelain -uno")
             if subStatus:
-                vine_logging.printMsg("Committing in %s..." % sub)
+                logging.info("Committing in %s..." % sub)
                 if self.commit(commitargs, sub) and stage:
                     os.chdir(wsDir)
-                    vine_logging.printMsg("Staging committed change in %s..." % sub)
+                    logging.info("Staging committed change in %s..." % sub)
                     git.add(sub)
 
         os.chdir(wsDir)
         if submodules or git.status("--porcelain"):
-            vine_logging.printMsg("Performing commit in outer level project...")
+            logging.info("Performing commit in outer level project...")
             self.commit(commitargs, wsDir)
         return True
 

@@ -19,7 +19,7 @@ class TestVersion(testGrape.TestGrape):
 #            self.assertEqual(grapeConfig.grapeConfig().get("versioning", "updateTag").lower(), "true")
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])
             self.assertTrue(ret, "grape version init v0.1.0 returned False\n%s" %
-                            self.output.getvalue())
+                            self.get_output())
             self.assertEqual(git.describe("--abbrev=0"), "v0.1.0")
 
             # test to make sure ticking the version works
@@ -27,7 +27,7 @@ class TestVersion(testGrape.TestGrape):
             self.assertTrue(ret, "grape version tick returned False")
             self.assertEqual(git.describe(), "v0.2.0")
         except SystemExit:
-            self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
+            self.fail("Unexpected SystemExit\n%s" % self.get_output())
         except grape_errors.GrapeGitError as e:
             self.fail("Uncaught GrapeGit error: %s" % e.gitOutput)
 
@@ -38,7 +38,7 @@ class TestVersion(testGrape.TestGrape):
 
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])
             self.assertTrue(ret, "grape version init v0.1.0 returned False\n%s" %
-                            self.output.getvalue())
+                            self.get_output())
             self.assertEqual(git.describe("--abbrev=0"), "v0.1.0")
 
             # test to make sure ticking the version works
@@ -70,6 +70,6 @@ class TestVersion(testGrape.TestGrape):
 
 
         except SystemExit:
-            self.fail("Unexpected SystemExit\n%s" % self.output.getvalue())
+            self.fail("Unexpected SystemExit\n%s" % self.get_output())
         except grape_errors.GrapeGitError as e:
             self.fail("Uncaught GrapeGitError: %s" % e.gitOutput)

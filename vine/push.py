@@ -3,7 +3,7 @@ import option
 import grape_errors
 import grapeGit as git
 import utility
-import vine_logging
+from vine_logging import log_wrapper
 import config_parser_global
 import multi_repo_cmd_launcher
 
@@ -27,6 +27,7 @@ class Push(option.Option):
     def description(self):
         return "Pushes your current branch to origin in all projects in this workspace."
 
+    @log_wrapper
     def execute(self, args):
         baseDir = utility.workspaceDir()
 
@@ -43,7 +44,7 @@ class Push(option.Option):
         retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         os.chdir(cwd)
-        vine_logging.printMsg("Pushed current branch to origin")
+        logging.info("Pushed current branch to origin")
         return False not in retvals
 
     def setDefaultConfig(self, config):
@@ -51,7 +52,7 @@ class Push(option.Option):
 
 def push(repo='', branch='master'):
     with utility.cd(repo):
-        vine_logging.printMsg("Pushing %s in %s..." % (branch, repo))
+        logging.info("Pushing %s in %s..." % (branch, repo))
         git.push("-u origin %s" % branch, throwOnFail=True)
 
 def handlePushMRE(mre):
@@ -59,10 +60,10 @@ def handlePushMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg("Failed to push branch.")
-            print e.gitCommand
-            print e.cwd
-            print e.gitOutput
+            logging.error("Failed to push branch.")
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(e.gitOutput)
             return False
 
 if __name__ is "__main__":

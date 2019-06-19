@@ -32,7 +32,7 @@ class TestPublish(testGrape.TestGrape):
             self.assertTrue(git.currentBranch() == toBranch, "FF merge did not put us on public branch")
             self.assertTrue(git.shortSHA(toBranch) == git.shortSHA(fromBranch))
         except grape_errors.GrapeGitError as e:
-            self.fail("%s\n%s" % (self.output.getvalue(), e.gitCommand+e.gitOutput))
+            self.fail("%s\n%s" % (self.get_output(), e.gitCommand+e.gitOutput))
 
     def assertSuccessfulSquashMerge(self, fromBranch="testPublish", toBranch="master"):
         self.assertTrue(git.currentBranch() == toBranch)
@@ -64,9 +64,9 @@ class TestPublish(testGrape.TestGrape):
           
             self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
-            self.fail("%s\n%s" % (self.output.getvalue(), e.message))
+            self.fail("%s\n%s" % (self.get_output(), e.message))
         #origin has not been set up for these repos yet
-        #self.assertNotIn("fatal:", self.output.getvalue())
+        #self.assertNotIn("fatal:", self.get_output())
     
     def assertGrapePublishFailed(self, args=None):
         self.assertGrapePublishWorked( args=args, assertFail=True)
@@ -111,9 +111,9 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello ,  echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
-        self.assertIn("echo hello", self.output.getvalue())
-        self.assertIn("echo world", self.output.getvalue())
-        self.assertIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
+        self.assertIn("echo hello", self.get_output())
+        self.assertIn("echo world", self.get_output())
+        self.assertIn("PERFORMING CUSTOM BUILD STEP", self.get_output())
 
     def testCustomTestStep(self):
         self.setUpBranchToFFMerge()
@@ -121,9 +121,9 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
-        self.assertIn("echo helloTest", self.output.getvalue())
-        self.assertIn("echo worldTest", self.output.getvalue())
-        self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
+        self.assertIn("echo helloTest", self.get_output())
+        self.assertIn("echo worldTest", self.get_output())
+        self.assertIn("PERFORMING CUSTOM TEST STEP", self.get_output())
 
     def testVersionTickArgumentPassing(self):
         self.setUpBranchToFFMerge()
@@ -142,9 +142,9 @@ class TestPublish(testGrape.TestGrape):
         self.assertGrapePublishWorked(["--startAt=test", "--stopAt=deleteTopic", "--tickVersion=True",
                                        "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         # check test occurred
-        self.assertIn("PERFORMING CUSTOM TEST STEP", self.output.getvalue())
+        self.assertIn("PERFORMING CUSTOM TEST STEP", self.get_output())
         # check that build never occurred
-        self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.output.getvalue())
+        self.assertNotIn("PERFORMING CUSTOM BUILD STEP", self.get_output())
         # check that we tagged a new version
         self.assertIn("v1.0.1", git.describe())
         

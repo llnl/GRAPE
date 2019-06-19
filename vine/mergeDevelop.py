@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import ConfigParser
@@ -8,7 +9,7 @@ import config_parser_global
 import config_parser_user
 from option import Option
 import resumable
-import vine_logging
+from vine_logging import log_wrapper
 import utility
 
 
@@ -68,10 +69,11 @@ class MergeDevelop(resumable.Resumable, Option):
             branch = config.getPublicBranchFor(currentBranch)
         except KeyError:
             branchPrefix = git.branchPrefix(currentBranch)
-            print("WARNING: prefix %s does not have an associated topic branch, nor is a default"
-                  "public branch configured. \n"
-                  "use --public=<branch> to define, or add %s:<branch> or ?:<branch> to \n"
-                  "[flow].publicBranches in your .grapeconfig or .git/.grapeuserconfig. " % (branchPrefix, branchPrefix))
+            logging.warning(
+                "WARNING: prefix %s does not have an associated topic branch,"+
+                " nor is a default public branch configured. \n" +
+                "use --public=<branch> to define, or add %s:<branch> or ?:<branch> to \n"+
+                "[flow].publicBranches in your .grapeconfig or .git/.grapeuserconfig. " % (branchPrefix, branchPrefix))
             branch = None
         return branch
 
@@ -85,6 +87,7 @@ class MergeDevelop(resumable.Resumable, Option):
         return "Merge latest changes on %s into %s" % (publicBranch, currentBranch)
 
 
+    @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
         import grapeMenu
@@ -95,7 +98,7 @@ class MergeDevelop(resumable.Resumable, Option):
         if not branch:
             branch = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch())
             if not branch:
-                vine_logging.printMsg("ERROR: public branches must be configured for grape md to work.")
+                logging.error("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
 
         # check to see if we already have the branch
@@ -122,10 +125,7 @@ class MergeDevelop(resumable.Resumable, Option):
             activeSubmodules = git.getActiveSubmodules(utility.workspaceDir())
             submodules = [sub for sub in modifiedSubmodules if sub in activeSubmodules]
 
-        try:
-            nested = self.progress["nested"]
-        except KeyError:
-            nested = config_parser_user.getAllActiveNestedSubprojectPrefixes()
+        nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes())
 
         config = config_parser_global.grapeConfig()
         recurse = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
@@ -150,15 +150,15 @@ class MergeDevelop(resumable.Resumable, Option):
         self.progress["allActive"] = set(git.getAllSubmodules()) == set(git.getActiveSubmodules(utility.workspaceDir()))
 
         # checking for a consistent workspace before doing a merge
-        vine_logging.printMsg("Checking for a consistent workspace before performing merge...")
+        logging.info("Checking for a consistent workspace before performing merge...")
         ret = grapeMenu.menu().applyMenuChoice("status", ['--failIfInconsistent'])
         if ret is False:
-            vine_logging.printMsg("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
+            logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
             return False
 
         if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
-            vine_logging.printMsg("Calling grape up to ensure topic and public branches are up-to-date. ")
+            logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
             grapeMenu.menu().applyMenuChoice('up', ['up','--public=%s' % args["--public"]])
             self.progress["updateLocalDone"] = True
 
@@ -169,10 +169,10 @@ class MergeDevelop(resumable.Resumable, Option):
             checkout.parseGitModulesDiffOutput(git.currentBranch(), branch, addedModules, removedModules, changedURLModules)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
-                vine_logging.printMsg("url for %s changed, attempting to remove references for %s submodule before merge." % (sub, "active" if sub in activeSubmodulesCheck0 else "inactive"))
+                logging.info("url for %s changed, attempting to remove references for %s submodule before merge." % (sub, "active" if sub in activeSubmodulesCheck0 else "inactive"))
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck0)
                 if not cleaned:
-                    vine_logging.printMsg("Failed to remove old submodule for %s." % sub)
+                    logging.warning("Failed to remove old submodule for %s." % sub)
                     return False
 
         # do an outer merge if we haven't done it yet
@@ -212,7 +212,7 @@ class MergeDevelop(resumable.Resumable, Option):
 
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
-            vine_logging.printMsg("Initial merge failed. Resolve issue and try again. ")
+            logging.warning("Initial merge failed. Resolve issue and try again. ")
             return False
 
         # merge nested subprojects
@@ -264,7 +264,7 @@ class MergeDevelop(resumable.Resumable, Option):
         if self.progress["allActive"]:
             activeSubmodulesCheck1 = git.getActiveSubmodules(utility.workspaceDir())
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
-                vine_logging.printMsg("Updating new submodules using grape uv --allSubmodules")
+                logging.info("Updating new submodules using grape uv --allSubmodules")
                 grapeMenu.menu().applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
 
         return True
@@ -281,7 +281,7 @@ class MergeDevelop(resumable.Resumable, Option):
         mergeArgs = args.copy()
         mergeArgs["--public"] = subPublic
 
-        vine_logging.printMsg("Merging %s into %s for %s %s" %
+        logging.info("Merging %s into %s for %s %s" %
                          (subPublic, git.currentBranch(), "submodule" if isSubmodule else "subproject", subproject))
         git.fetch("origin")
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -292,7 +292,7 @@ class MergeDevelop(resumable.Resumable, Option):
         ret = self.mergeIntoCurrent(subPublic, mergeArgs, subproject)
         # skip nested subprojects that fail to merge
         if not ret and not isSubmodule and not git.conflictedFiles():
-            vine_logging.printMsg("Unable to merge subproject {0}, skipping...".format(subproject))
+            logging.info("Unable to merge subproject {0}, skipping...".format(subproject))
             ret = True
         conflict = not ret
         if conflict:
@@ -307,13 +307,11 @@ class MergeDevelop(resumable.Resumable, Option):
                 else:
                     typeStr = "nested subproject"
 
-                vine_logging.printMsg("Merge in %s %s from %s to %s issued conflicts. Resolve and commit those changes \n"
-                                 "using git mergetool and git commit in the submodule, then continue using grape\n"
-                                 "%s --continue" % (typeStr, subproject, subPublic, git.currentBranch(), args["<<cmd>>"]))
+                logging.info(
+                    "Merge in %s %s from %s to %s issued conflicts. Resolve and commit those changes \nusing git mergetool and git commit in the submodule, then continue using grape\n%s --continue" % (typeStr, subproject, subPublic, git.currentBranch(), args["<<cmd>>"]))
             else:
-                vine_logging.printMsg("Merge in %s failed for an unhandled reason. You may need to stash / commit your current\n"
-                                 "changes before doing the merge. Inspect git output above to troubleshoot. Continue using\n"
-                                 "grape %s --continue." % (subproject, args["<<cmd>>"]))
+                logging.info(
+                    "Merge in %s failed for an unhandled reason. You may need to stash / commit your current\nchanges before doing the merge. Inspect git output above to troubleshoot. Continue using\ngrape %s --continue." % (subproject, args["<<cmd>>"]))
             return False
         # if we are resuming from a conflict, the above grape m call would have taken care of continuing.
         # clear out the --continue flag.
@@ -326,7 +324,7 @@ class MergeDevelop(resumable.Resumable, Option):
         return True
 
     def outerLevelMerge(self, args, branch):
-        vine_logging.printMsg("Merging changes from %s into your current branch..." % branch)
+        logging.info("Merging changes from %s into your current branch..." % branch)
 
         conflict = not self.mergeIntoCurrent(branch, args, "outer level project")
 
@@ -335,7 +333,7 @@ class MergeDevelop(resumable.Resumable, Option):
             if conflictedFiles:
                 return conflictedFiles
             else:
-                vine_logging.printMsg("Merge issued error, but no conflicts. Aborting...")
+                logging.warning("Merge issued error, but no conflicts. Aborting...")
                 return False
         else:
             self.progress["outerLevelDone"] = True
@@ -347,14 +345,14 @@ class MergeDevelop(resumable.Resumable, Option):
             git.merge("%s %s %s" % (squashArg, branch, strategy))
             return True
         except grape_errors.GrapeGitError as error:
-            print error.gitOutput
+            logging.error(error.gitOutput)
             if "conflict" in error.gitOutput.lower():
                 if args['--at'] or args['--ay']:
                     if args['--at']:
-                        vine_logging.printMsg("Resolving conflicted files by accepting changes from %s." % branch)
+                        logging.info("Resolving conflicted files by accepting changes from %s." % branch)
                         checkoutArg = "--theirs"
                     else:
-                        vine_logging.printMsg("Resolving conflicted files by accepting changes from your branch.")
+                        logging.info("Resolving conflicted files by accepting changes from your branch.")
                         checkoutArg = "--ours"
                     try:
                         path = git.baseDir()
@@ -363,14 +361,15 @@ class MergeDevelop(resumable.Resumable, Option):
                         git.commit("-m 'Resolve conflicts using %s'" % checkoutArg)
                         return True
                     except grape_errors.GrapeGitError as resolveError:
-                        print resolveError.gitOutput
+                        logging.error(
+                            resolveError.gitOutput)
                         return False
                 else:
-                    vine_logging.printMsg("Conflicts generated. Resolve using git mergetool, then continue "
+                    logging.warning("Conflicts generated. Resolve using git mergetool, then continue "
                                      "with grape %s --continue. " % args["<<cmd>>"])
                     return False
             else:
-                print("Merge command %s failed. Quitting." % error.gitCommand)
+                logging.error("Merge command %s failed. Quitting." % error.gitCommand)
                 return False
 
     def continueLocalMerge(self, args):
@@ -418,7 +417,7 @@ class MergeDevelop(resumable.Resumable, Option):
 
         if strategy == 'am':
             args["--am"] = True
-            vine_logging.printMsg("Merging using git's default strategy...")
+            logging.info("Merging using git's default strategy...")
             choice = self.merge(branchName, "", args)
         elif strategy == 'as' or strategy == 'at' or strategy == 'ay':
             if strategy == 'as':
@@ -429,7 +428,7 @@ class MergeDevelop(resumable.Resumable, Option):
                 # see
                 # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
                 # for details.
-                vine_logging.printMsg("Merging forcing conflicts whenever both branches edited the same file...")
+                logging.info("Merging forcing conflicts whenever both branches edited the same file...")
             elif strategy == 'at':
                 args["--at"] = True
             elif strategy == 'ay':
@@ -461,11 +460,11 @@ class MergeDevelop(resumable.Resumable, Option):
                 os.remove(attributes)
         elif strategy == 'aT':
             args["--aT"] = True
-            vine_logging.printMsg("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
+            logging.info("Merging using recursive strategy, resolving conflicts cleanly with changes in %s..." % branchName)
             choice = self.merge(branchName, "-Xtheirs", args)
         elif strategy == 'aY':
             args["--aY"] = True
-            vine_logging.printMsg("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
+            logging.info("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
             choice = self.merge(branchName, "-Xours", args)
 
         return choice

@@ -1,9 +1,10 @@
+import logging
 import os
 import ConfigParser
 
 import option
 import utility
-import vine_logging
+from vine_logging import log_wrapper
 import grape_errors
 import grapeGit as git
 import config_parser_base
@@ -52,13 +53,14 @@ class InstallHooks(option.Option):
             os.chmod(h, 0755)
         os.chdir(cwd)
 
+    @log_wrapper
     def execute(self, args):
         workspaceDir = utility.workspaceDir()
-        vine_logging.printMsg("Installing hooks in %s." % workspaceDir)
+        logging.info("Installing hooks in %s." % workspaceDir)
         self.installHooksInRepo(workspaceDir, args)
         if not args["--noRecurse"]:
             for sub in getActiveSubprojects():
-                vine_logging.printMsg("Installing hooks in %s." % sub)
+                logging.info("Installing hooks in %s." % sub)
                 self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
         return True
 
@@ -172,7 +174,7 @@ class RunHook(option.Option):
         else:
             autoPush = False
         #applies the cascade hook
-        print("GRAPE: checking for cascades...")
+        logging.info("GRAPE: checking for cascades...")
         cascadeDict = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
@@ -180,10 +182,10 @@ class RunHook(option.Option):
                 source = currentBranch
                 target = cascadeDict[source]
                 fastForward = False
-                print("GRAPE: Cascading commit from %s to %s..." % (source, target))
+                logging.info("GRAPE: Cascading commit from %s to %s..." % (source, target))
                 if git.branchUpToDateWith(source, target):
                     fastForward = True
-                    print("GRAPE: should be a fastforward cascade...")
+                    logging.info("GRAPE: should be a fastforward cascade...")
                 git.checkout("%s" % target)
                 git.merge("%s -m 'Cascade from %s to %s'" % (source, source, target))
                 # we need to kick off the next one if it was a fast forward merge.
@@ -191,7 +193,7 @@ class RunHook(option.Option):
                 if fastForward:
                     if autoPush:
                         git.push("origin %s" % target)
-                        print("GRAPE: auto push done")
+                        logging.info("GRAPE: auto push done")
                     currentBranch = target
                 else:
                     currentBranch = None
@@ -217,16 +219,16 @@ class RunHook(option.Option):
     def postMerge(args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            vine_logging.printMsg("Post-Merge Hook: Syncing submodule URLs...")
+            logging.info("Post-Merge Hook: Syncing submodule URLs...")
             git.submodule("--quiet sync")
-            vine_logging.printMsg("Post-Merge Hook: Updating submodules...")
+            logging.info("Post-Merge Hook: Updating submodules...")
             git.submodule("--quiet update --merge")
 
     @staticmethod
     def postCheckout(args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            vine_logging.printMsg("Post-Checkout Hook: Syncing submodule URLs...")
+            logging.info("Post-Checkout Hook: Syncing submodule URLs...")
             git.submodule("--quiet sync")
-            vine_logging.printMsg("Post-Checkout Hook: Updating submodules...")
+            logging.info("Post-Checkout Hook: Updating submodules...")
             git.submodule("--quiet update")

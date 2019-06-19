@@ -1,6 +1,6 @@
 import os
 import sys
-
+from vine_logging import log_wrapper
 import option
 import utility
 
@@ -26,6 +26,7 @@ class Test(option.Option):
     def description(self):
         return "Test Grape."
 
+    @log_wrapper
     def execute(self, args):
         testDir = os.path.join(utility.grapeDir(), "test")
         if not testDir in sys.path:

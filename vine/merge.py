@@ -1,6 +1,6 @@
 import os
 import shutil
-
+from vine_logging import log_wrapper
 import utility
 import grapeGit as git
 import config_parser_global
@@ -47,6 +47,7 @@ class Merge(resumable.Resumable, option.Option):
     def description(self):
         return "Merge another local branch into your current branch."
 
+    @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
         import grapeMenu

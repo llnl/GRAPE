@@ -10,5 +10,5 @@ class TestBranches(testGrape.TestGrape):
         ret = self.menu.applyMenuChoice("b", [])
         self.assertTrue(ret, "vine.branches returned failure.")
 
-        contents = self.output.getvalue()
+        contents = self.get_output()
         self.assertNotEquals(-1, contents.find("master"), "vine.branches could not find the master branch")

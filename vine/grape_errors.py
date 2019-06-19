@@ -1,3 +1,4 @@
+import logging
 import os
 
 
@@ -17,6 +18,7 @@ class GrapeGitError(Exception):
              "unable to access" in self.gitOutput or
              "remote end hung up unexpectedly" in self.gitOutput))
         self.cwd = cwd
+        logging.error(repr(self), exc_info=True)
 
     def __getinitargs__(self):
         return (self.msg, self.code, self.gitOutput, self.gitCommand, self.cwd)
@@ -37,6 +39,7 @@ class MultiRepoException(Exception):
         self._repos = []
         self._branches = []
         self._args = []
+        logging.debug(repr(self))
 
     def addException(self, e, repo, branch, args):
         self._exceptions.append(e)
@@ -63,7 +66,7 @@ class MultiRepoException(Exception):
         return len(self._exceptions) > 0
 
     def __repr__(self):
-        return "MRE with \n exceptions: %s \repos: %s\n branches: %s\n args: %s" % (
+        return "MRE with \n exceptions: %s \nrepos: %s\n branches: %s\n args: %s" % (
                 self._exceptions, self._repos, self._branches, self._args)
 
 
@@ -74,3 +77,4 @@ class NoWorkspaceDirException(Exception):
             self.message = "No .git found in %s" % cwd
         else:
             self.message = "No .git found"
+        logging.error(self.message)

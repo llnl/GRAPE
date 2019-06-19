@@ -1,4 +1,5 @@
-﻿import sys
+import logging
+import sys
 import os
 filedir = os.path.dirname(os.path.realpath(__file__))
 grapedir = os.path.join(filedir, os.path.pardir)
@@ -30,10 +31,10 @@ class Atlassian(object):
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
-            print("Connected to Bitbucket.")
+            logging.info("Connected to Bitbucket.")
         else:
             self._stash = None
-            print("Could not connect to Bitbucket...")
+            logging.info("Could not connect to Bitbucket...")
 
     def auth(self, service, username, password, verify=True):
         self._userName = username
@@ -47,9 +48,9 @@ class Atlassian(object):
                 success = True
             except stashy.errors.AuthenticationException:
                 if numAttempts == 0:
-                    print("session expired...")
+                    logging.info("session expired...")
                 else:
-                    print("incorrect username / password...")
+                    logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
                 keyring.set_password(service, self._userName, getpass.getpass("Enter password for %s: " % service))
                 self._stash = stashy.connect(service, self._userName, keyring.get_password(service, self._userName),
@@ -118,18 +119,18 @@ class StashyNode(object):
         for key in keys:
             val = d[key]
             if type(val) in (str, unicode, bool, int):
-                print "  "*level, key, "  :  ", val
+                logging.info("  "*level, key, "  :  ", val)
             elif type(val) == dict:
-                print "  "*level, key
+                logging.info("  "*level, key)
                 self._show(val, level + 1)
             elif type(val) == list:
                 dd = {}
                 for i in range(len(val)):
                     dd["%s[%d]" % (key, i)] = val[i]
-                print "  "*level, key
+                logging.info("  "*level, key)
                 self._show(dd, level + 1)
             else:
-                print "  "*level, key, type(val), "???"
+                logging.info("  "*level, key, type(val), "???")
                 
     def get(self, path):
         response = self.snode._client.get(self.snode.url(path))
@@ -310,33 +311,29 @@ class PullRequest(StashyNode):
         return False
             
 
-
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()
-    print plist
+    logging.info(plist)
     for p in plist:
-        print "\nPROJECT:", p
+        logging.info("\nPROJECT:%s" % p)
         project = atlassian.project(p)
         reponames = project.repolist()
         for reponame in reponames:
-            print " REPONAME", reponame
+            logging.info(" REPONAME%s" % reponame)
             try:
                 repo = project.repo(reponame)
                 for pull in repo.pullRequests():
- 
-                    print "  TITLE:     ", pull.title()
-                    print "  STATE:     ", pull.state()
-                    print "  AUTHOR:    ", pull.author()
-                    print "  DATE:      ", pull.date()
-                    print "  REVIEWERS: ", pull.reviewers()
-                    print "  FROM:      ", pull.fromRef()
-                    print "  TO:        ", pull.toRef()
-                    print "  DESC:      ", pull.description()
- 
-                    print 
+                    logging.info("  TITLE:     %s" % pull.title())
+                    logging.info("  STATE:     %s" % pull.state())
+                    logging.info("  AUTHOR:    %s" % pull.author())
+                    logging.info("  DATE:      %s" % pull.date())
+                    logging.info("  REVIEWERS: %s" % pull.reviewers())
+                    logging.info("  FROM:      %s" % pull.fromRef())
+                    logging.info("  TO:        %s" % pull.toRef())
+                    logging.info("  DESC:      %s\n" % pull.description())
             except stashy.errors.NotFoundException:
-                print "  repo not found"
+                logging.error("  repo not found")
 
 
 class TestStashResponse(dict):
@@ -345,7 +342,7 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print ("TESTBITBUCKET: resource %s does not exist" %item)
+            logging.error("TESTBITBUCKET: resource %s does not exist" % item)
             self.status_code = 999
             raise stashy.errors.GenericException(self)
 
@@ -454,7 +451,7 @@ class TestAtlassian(object):
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to Bitbucket")
+        logging.info("Connected to Bitbucket")
         
     def project(self, name):
         return self.stash.project(name)

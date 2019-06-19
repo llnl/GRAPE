@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from contextlib import contextmanager
+import logging
 import sys
 import os
 import inspect
@@ -19,6 +20,7 @@ from vine import grapeGit as git
 from vine import config_parser_global
 from vine import grapeMenu
 from vine import utility
+from vine import vine_logging
 from vine.option import Option
 
 str1 = "str1 \n a \n b\n c\n"
@@ -41,29 +43,11 @@ def writeFile3(path):
         f.write(str3)
 
 class TestGrape(unittest.TestCase):
-    """
-    TODO: output from multiple tests seem to be overlapping.
-    Tests inheriting from "TestGrape" are not 100% separated. A simple test
-    ran by itself can produce zero output to stdout and asserting stdout is
-    empty would succeed. This same test combined with the entire GRAPE suite
-    of tests will encounter a non-empty stdout, and fail.
-    """
 
-
-    def printToScreen(self, str): 
-        self.stdout.write(str)
-        
-    def switchToStdout(self):
-        sys.stdout = utility.multifile([sys.stdout, self.stdout])
-        sys.stderr = utility.multifile([sys.stderr, self.stderr])
-        
-    def switchToHiddenOutput(self):
-        sys.stdout = self.output
-        sys.stderr = self.error
-        
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
-        self.defaultWorkingDirectory = tempfile.mkdtemp()
+        # 'realpath' resolves issues caused by symlinks and path assumptions.
+        self.defaultWorkingDirectory = os.path.realpath(tempfile.mkdtemp())
 
         self.repos = [os.path.join(self.defaultWorkingDirectory, "testRepo"),
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
@@ -78,16 +62,25 @@ class TestGrape(unittest.TestCase):
         config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
         config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
 
+    def setUpLogging(self):
+        logger = vine_logging.GrapeLogger()
+        logger.add_logger(__name__)
+        if self._debug:
+            self.tmp_log_file = os.path.join(os.getcwd(),
+                                             self._testMethodName + '.log')
+            logger.add_stdout_handler(__name__)
+            logger.add_stderr_handler(__name__)
+        else:
+            logger.redirect_sys_stdout()
+            self.tmp_log_file = os.path.join(
+                self.defaultWorkingDirectory, self._testMethodName + '.log')
+        logger.add_file_handler_to_root(self.tmp_log_file)
+
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
-        self.output = StringIO.StringIO()
-        self.error = StringIO.StringIO()
-        self.stdout = sys.stdout
-        self.stderr = sys.stderr
+        self.setUpLogging()
         self.cwd = os.getcwd()
-        sys.stdout = self.output
-        sys.stderr = self.error
 
         # create a test repository to operate in.
         try:
@@ -115,9 +108,6 @@ class TestGrape(unittest.TestCase):
             pass
         
         self.menu = grapeMenu.menu()
-        
-        if self._debug:
-            self.switchToStdout()
 
     def tearDown(self):
         def onError(func, path, exc_info):
@@ -138,30 +128,25 @@ class TestGrape(unittest.TestCase):
                 func(path)
             else:
                 raise Exception
-        if self._debug:
-            self.switchToHiddenOutput()
         os.chdir(os.path.abspath(os.path.join(self.defaultWorkingDirectory,"..")))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
         # restore stdout and stderr to their original streams
-        sys.stdout = self.stdout
-        sys.stderr = self.stderr
         os.chdir(self.cwd)
-        self.output.close()
 
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
+        vine_logging.GrapeLogger.restore_sys_stdout()
+        if not self._debug and os.path.isfile(self.tmp_log_file):
+            os.remove(self.tmp_log_file)
 
-    # print the captured standard out
-    def printOutput(self):
-        for l in self.output:
-            self.stdout.write(l)
-
-    # print the captured standard error
-    def printError(self):
-        for l in self.error:
-            self.stderr.write(l)
+    def get_output(self):
+        output = ''
+        if os.path.isfile(self.tmp_log_file):
+            with open(self.tmp_log_file) as log_file:
+                output = log_file.read()
+        return output
 
     @contextmanager
     def queue_user_input(self, user_input_list):
@@ -181,12 +166,12 @@ class TestGrape(unittest.TestCase):
 
     def assertTrue(self, expr, msg=None):
         if msg is not None:
-            msg += "\n%s" % self.output.getvalue()
+            msg += "\n%s" % self.get_output()
         super(TestGrape, self).assertTrue(expr, msg=msg)
 
     def assertFalse(self, expr, msg=None):
         if msg is not None:
-            msg += "\n%s" % self.output.getvalue()
+            msg += "\n%s" % self.get_output()
         super(TestGrape, self).assertFalse(expr, msg=msg)
 
 

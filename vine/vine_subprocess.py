@@ -1,3 +1,4 @@
+import logging
 import os
 import multiprocessing
 import tailer
@@ -52,7 +53,7 @@ class FollowableCommand(object):
             fo = os.fdopen(f,'r');
             generator = tailer.follow(fo)
             for l in generator:
-                print l
+                logging.info(l)
         finally:
             os.close(fo)
             os.close(f)
@@ -68,7 +69,7 @@ class FollowableCommand(object):
         thread.join(startStreaming)
         if thread.is_alive():
             # follow output in the outfile
-            print "Executing %s\n\tWorking Directory: %s..." % (self.cmd, self.wd)
+            logging.info("Executing %s\n\tWorking Directory: %s..." % (self.cmd, self.wd))
             followThread.start()
             # keep going until the subprocess is done
             thread.join()
@@ -82,7 +83,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
     if verbose == -1:
         verbose = global_state.globalVerbosity
     if verbose > 1:
-        print("Executing: " + command + "\n\t Working Directory: " + workingDirectory)
+        logging.info("Executing: " + command + "\n\t Working Directory: " + workingDirectory)
     #***************************************************************************************************************
     #Note: Even though python's documentation says that "shell=True" opens up a computer for malicious shell commands,
     # it is needed to allow users to fully utilize shell commands, such as cd.
@@ -99,10 +100,11 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             output += out
         process.wait() # should be a noop
         out +=  process.communicate()[0] # also should be a noop
+        output += out
+        logging.info(output.strip())
         if verbose > 0:
             sys.stdout.write(out)
             sys.stdout.flush()
-        output += out
 
     # TODO: Followable commands aren't working in Windows right now - initially there were some pickling difficulties,
     # but now we are seeing behaviors that look like multiprocessing subprocesses are being launched in incorrect directories.
@@ -114,7 +116,7 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             tmpFile.seek( 0 )
             output = tmpFile.read()
             if verbose > 1 and launcher.stopFollowing == 0:
-                print(output.strip())
+                logging.info(output.strip())
             process = launcher.finishedProcesses.get()
     else:
         with tempfile.TemporaryFile() as tmpFile:
@@ -126,9 +128,12 @@ def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
             tmpFile.seek( 0 )
             output = tmpFile.read()
             if verbose > 1:
-                print(output.strip())
+                logging.info(output.strip())
 
-    process.output = output
+    process.output = output.strip()
+    logging.debug('RAN SUBPROCESS: ' + str(command) +
+                  '\nSUBPROCESS RETURNED: "' + output.strip() + '"')
+
     if process.returncode != 0 and verbose > 1:
-        print("Command '" + command + "': exited with error code " + str(process.returncode))
+        logging.info("Command '" + command + "': exited with error code " + str(process.returncode))
     return process
