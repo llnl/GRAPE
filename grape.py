@@ -65,6 +65,7 @@ def startup():
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif len(sys.argv) > 1:
+            vine_logging.GrapeLogger.restore_sys_stdout()
             retval = _run_grape_command(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")

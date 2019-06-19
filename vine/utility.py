@@ -5,7 +5,8 @@ import sys
 from contextlib import contextmanager
 import grape_errors
 import grapeGit as git
-
+if os.name != 'nt':
+    import readline
 
 toplevel = os.path.join(os.path.realpath(os.path.dirname(__file__)), os.path.pardir)
 if toplevel not in sys.path:
