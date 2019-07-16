@@ -52,6 +52,7 @@ class GrapeLogger(object):
         self.socket_server = LoggingServerManager()
 
         self.manager = logging.Manager(logging.root)
+        self.manager.root.setLevel(logging.DEBUG)
         self._silence_root_logger()
 
     def _silence_root_logger(self):
@@ -62,11 +63,15 @@ class GrapeLogger(object):
         logger and other specialized loggers. These shared handlers propagate
         messages for controlled printing and file logging.
         """
-        root = self.manager.root
-        for handler in root.handlers:
-            root.removeHandler(handler)
+        # This while loop is more reliable than an equivalent for loop due to
+        # an unexplored delay that occurs between modifying "self.manager.root"
+        # and the "logging.RootLogger" object. These 2 objects are identical.
+        while self.manager.root.handlers:
+            self.manager.root.removeHandler(self.manager.root.handlers[0])
+
         # Accepts everything, propagates messages through handlers, emits nothing.
-        logging.basicConfig(filename=os.devnull, level=logging.DEBUG)
+        devnull_handler = logging.FileHandler(os.devnull)
+        self.manager.root.addHandler(devnull_handler)
 
     @classmethod
     def redirect_sys_stdout(cls):
@@ -254,7 +259,7 @@ class StreamHandlerFactory(object):
 
     def _get_formatter(self, stream=sys.stdout):
         if stream == sys.stdout:
-            return logging.Formatter('%(message)s')
+            return logging.Formatter('GRAPE: %(message)s')
         elif stream == sys.stderr:
             return logging.Formatter('%(levelname)s: %(message)s')
 

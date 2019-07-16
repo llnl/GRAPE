@@ -37,7 +37,6 @@ def startup():
     versions = versionString.split('.') 
    
     if int(versions[0]) == 1 and int(versions[1]) < 8:
-        vine_logging.GrapeLogger.restore_sys_stdout()
         print('Grape requires at least git version 1.8, currently using %s' % versionString)
         return False
 
@@ -53,17 +52,22 @@ def startup():
         
     retval = True
     try:
+        logger = vine_logging.GrapeLogger()
         if args["<command>"] is None:
             done = 0
             while not done:
                 vine_logging.GrapeLogger.restore_sys_stdout()
                 myMenu.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None).split()
+                if 'test' not in choice:
+                    logger.log_to_stdout()
                 done = grapeMenu.menu().applyMenuChoice(choice[0], choice)
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif len(sys.argv) > 1:
             vine_logging.GrapeLogger.restore_sys_stdout()
+            if 'test' not in sys.argv:
+                logger.log_to_stdout()
             retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
