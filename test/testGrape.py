@@ -53,6 +53,7 @@ class TestGrape(unittest.TestCase):
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
         self._debug = False
+        self.logger = vine_logging.GrapeLogger()
 
     def setUpConfig(self):
         grapeMenu._resetMenu()
@@ -63,18 +64,15 @@ class TestGrape(unittest.TestCase):
         config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
 
     def setUpLogging(self):
-        logger = vine_logging.GrapeLogger()
-        logger.add_logger(__name__)
         if self._debug:
-            self.tmp_log_file = os.path.join(os.getcwd(),
-                                             self._testMethodName + '.log')
-            logger.add_stdout_handler(__name__)
-            logger.add_stderr_handler(__name__)
+            self.logger.log_to_stderr()
+            self.logger.log_to_stdout()
+            log_file = os.path.join(os.getcwd(), self._testMethodName + '.log')
         else:
-            logger.redirect_sys_stdout()
-            self.tmp_log_file = os.path.join(
-                self.defaultWorkingDirectory, self._testMethodName + '.log')
-        logger.add_file_handler_to_root(self.tmp_log_file)
+            self.logger.redirect_sys_stdout()
+            log_file = os.path.join(self.defaultWorkingDirectory,
+                                    self._testMethodName + '.log')
+        self.logger.log_to_file(log_file)
 
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
@@ -137,16 +135,14 @@ class TestGrape(unittest.TestCase):
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
-        vine_logging.GrapeLogger.restore_sys_stdout()
-        if not self._debug and os.path.isfile(self.tmp_log_file):
-            os.remove(self.tmp_log_file)
+        self.logger.restore_sys_stdout()
+        self.logger.clean_up_server()
+
+        if not self._debug and os.path.isfile(self.logger.log_file):
+            os.remove(self.logger.log_file)
 
     def get_output(self):
-        output = ''
-        if os.path.isfile(self.tmp_log_file):
-            with open(self.tmp_log_file) as log_file:
-                output = log_file.read()
-        return output
+        return self.logger.get_log_file_contents()
 
     @contextmanager
     def queue_user_input(self, user_input_list):

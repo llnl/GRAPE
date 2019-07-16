@@ -15,6 +15,7 @@ if grapePath not in sys.path:
     sys.path.insert(0, grapePath)
 from vine import grape_errors
 from vine import grapeGit as git
+from vine import vine_logging
 
 
 #A grape project in a command list form that has reset capability.
@@ -28,6 +29,8 @@ class ResettableProject(object):
         if os.path.exists(projectDir):
             logging.error("Path (%s) already exists, so it cannot be used by a new ResettableProject." % projectDir)
             sys.exit(1)
+
+        self.vine_logger = vine_logging.GrapeLogger()
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
         #param itself can be a tuple, a single parameter, or a single lambda function that provides arguments 
@@ -74,6 +77,8 @@ class ResettableProject(object):
                 raise e
 
     def tearDown(self):
+        self.vine_logger.clean_up_server()
+
         if os.path.exists(self.getProjectDir()) and os.path.isdir(self.getProjectDir()):
             os.chdir(os.path.abspath(os.path.join(self.getProjectDir(),"..")))
             shutil.rmtree(self.getProjectDir(), ignore_errors=True)
@@ -86,12 +91,12 @@ class ResettableProject(object):
 # a closure pattern.  It is part of the magic of createGridTestClass.
 def generateTest(project, method):
     def test(self):
-        if project.debugging(): 
-            self.switchToStdout()
+        if project.debugging():
+            project.vine_logger.restore_sys_stdout()
         project.reset(self.defaultWorkingDirectory)
         method(self, project)
-        if project.debugging(): 
-            self.switchToHiddenOutput()
+        if project.debugging():
+            project.vine_logger.redirect_sys_stdout()
     return test
 
 

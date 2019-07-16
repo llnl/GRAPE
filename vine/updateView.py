@@ -379,8 +379,8 @@ class UpdateView(Option):
 
 
 
-def ensureLocalUpToDateWithRemote(repo = '', branch = 'master'):
-    logging.info( "Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
+def ensureLocalUpToDateWithRemote(repo='', branch='master'):
+    logging.info("Ensuring local branch %s in %s is up to date with origin" % (branch, repo))
     with utility.cd(repo):
         # attempt to fetch the requested branch
         try:

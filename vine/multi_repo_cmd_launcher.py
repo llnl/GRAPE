@@ -5,7 +5,7 @@ import config_parser_global
 from option import Option
 import grape_errors
 import utility
-from vine_logging import log_wrapper
+from vine_logging import log_wrapper, GrapeLogger
 
 
 # Utility function for a MultiRepoCommandLauncher, unpacks a tuple, ensures cwd is the repo to run
@@ -13,6 +13,9 @@ from vine_logging import log_wrapper
 # pickle, used by the multiprocess module.
 @log_wrapper
 def runCommandOnRepoBranch(repoBranchCommandTuple):
+    # Global GrapeLogger singleton made accessible to each new process.
+    GrapeLogger()
+
     curDir = os.getcwd()
     repo = repoBranchCommandTuple[0]
     branch = repoBranchCommandTuple[1]

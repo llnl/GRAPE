@@ -29,10 +29,8 @@ vinePath = os.path.dirname(vine.__file__)
 CLI = global_state.CLI
 
 def startup():
-    vine_logging.GrapeLogger.redirect_sys_stdout()
     versionOutput = git.version().split()
     versionString = versionOutput.pop()
-
     while '.' not in versionString:
        versionString = versionOutput.pop()
 
@@ -61,12 +59,12 @@ def startup():
                 vine_logging.GrapeLogger.restore_sys_stdout()
                 myMenu.presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None).split()
-                done = _run_grape_command(choice[0], choice)
+                done = grapeMenu.menu().applyMenuChoice(choice[0], choice)
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif len(sys.argv) > 1:
             vine_logging.GrapeLogger.restore_sys_stdout()
-            retval = _run_grape_command(args["<command>"], args["<args>"])
+            retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
         retval = False
@@ -75,24 +73,6 @@ def startup():
     print("Thank you - good bye")
     return retval
         
-
-def _run_grape_command(command, args):
-    """Single starting point to ensure vine_logging_setup runs before GRAPE."""
-    vine_logging_setup()
-    retval = grapeMenu.menu().applyMenuChoice(command, args)
-    return retval
-
-
-def vine_logging_setup():
-    """Dictates where output data is routed and which data is kept."""
-    logger = vine_logging.GrapeLogger()
-    logger.add_logger(__name__)
-    log_file = os.path.join(os.path.realpath(tempfile.mkdtemp()),
-                            'grape_main.log')
-    logger.add_stdout_handler(__name__)
-    logger.add_stderr_handler(__name__)
-    logger.add_file_handler_to_root(log_file)
-
 
 ## If this file is being run as a script, then run the main menu.
 ## If it's being imported, then don't
