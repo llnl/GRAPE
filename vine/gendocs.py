@@ -2,7 +2,8 @@
 "exec" "python" "-B" "$0" "$@"
 
 import sys
-
+# Bandaid to later allow 'tailer' import in vine/vine_subprocess.py
+sys.path.insert(0, '')
 import grapeMenu
 from docopt.docopt import docopt
 
