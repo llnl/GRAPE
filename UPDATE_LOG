@@ -1,5 +1,14 @@
 
 
+Mon Jul 22 11:21:35 2019 David Bloss
+v1.31.14
+Reviewers: Peter Robinson, Ben Liu
+
+Patrick found two issues, this commit fixes the easy problem.
+
+The other issue seems to be cosmetic at worst. Error messages that should print only when debugging are printing to stdout on his machine. So far I have not been able to replicate this locally but am working on it.
+
+
 Thu Jul 18 16:33:03 2019 David Bloss
 v1.31.13
 Reviewers: Ben Liu, Peter Robinson
