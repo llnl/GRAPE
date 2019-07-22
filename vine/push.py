@@ -2,6 +2,7 @@ import os
 import option
 import grape_errors
 import grapeGit as git
+import logging
 import utility
 from vine_logging import log_wrapper
 import config_parser_global
