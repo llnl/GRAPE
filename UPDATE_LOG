@@ -1,5 +1,14 @@
 
 
+Tue Jul 23 16:59:36 2019 David Bloss
+v1.31.15
+Reviewers: Peter Robinson, Ben Liu
+
+GRAPE users would see erroneous error messages if they executed GRAPE from a directory not containing a git repository.
+
+Instantiating the GrapeLogger as the first step correctly handles these errors. GRAPE users should only see these error messages during testing while using the \"--debug\" flag.
+
+
 Mon Jul 22 11:21:35 2019 David Bloss
 v1.31.14
 Reviewers: Peter Robinson, Ben Liu
