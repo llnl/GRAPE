@@ -29,6 +29,9 @@ vinePath = os.path.dirname(vine.__file__)
 CLI = global_state.CLI
 
 def startup():
+    # Calling GrapeLogger first correctly hides erroneous error msgs from users
+    logger = vine_logging.GrapeLogger()
+
     versionOutput = git.version().split()
     versionString = versionOutput.pop()
     while '.' not in versionString:
@@ -52,7 +55,6 @@ def startup():
         
     retval = True
     try:
-        logger = vine_logging.GrapeLogger()
         if args["<command>"] is None:
             done = 0
             while not done:
