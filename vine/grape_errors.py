@@ -18,7 +18,7 @@ class GrapeGitError(Exception):
              "unable to access" in self.gitOutput or
              "remote end hung up unexpectedly" in self.gitOutput))
         self.cwd = cwd
-        logging.error(repr(self), exc_info=True)
+        logging.debug(repr(self), exc_info=True)
 
     def __getinitargs__(self):
         return (self.msg, self.code, self.gitOutput, self.gitCommand, self.cwd)

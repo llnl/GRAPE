@@ -63,6 +63,7 @@ def startup():
                 choice = utility.userInput("Please select an option from the above menu", None).split()
                 if 'test' not in choice:
                     logger.log_to_stdout()
+                    logger.log_to_stderr()
                 done = grapeMenu.menu().applyMenuChoice(choice[0], choice)
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
@@ -70,6 +71,7 @@ def startup():
             vine_logging.GrapeLogger.restore_sys_stdout()
             if 'test' not in sys.argv:
                 logger.log_to_stdout()
+                logger.log_to_stderr()
             retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
