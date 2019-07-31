@@ -1,5 +1,14 @@
 
 
+Wed Jul 31 08:29:26 2019 David Bloss
+v1.31.16
+Reviewers: Peter Robinson, Ben Liu
+
+Error messages are not being displayed to GRAPE users.
+
+During a previous commit, I unintentionally hid all error messages when I really just needed to hide one error message in one location; 'grape_errors.py'. Whenever an instance of 'grape_errors.py' is created, a summary of that instance was printed to screen as an error, and now the summary is printed only when \"--debug\" in testing is used.
+
+
 Tue Jul 23 16:59:36 2019 David Bloss
 v1.31.15
 Reviewers: Peter Robinson, Ben Liu
