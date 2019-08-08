@@ -17,8 +17,6 @@ class Atlassian(object):
 
     def __init__(self, username=None, url=rzbitbucketURL, verify=True):
 
-        import pdb
-        pdb.set_trace()
         if username is None:
             self._userName = utility.getUserName()
         else:
