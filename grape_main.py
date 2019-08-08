@@ -35,7 +35,9 @@ Options:
 """
 
 def startup():
+    # Calling GrapeLogger first correctly hides erroneous error msgs from users
     logger = vine_logging.GrapeLogger()
+
     versionOutput = git.version().split()
     versionString = versionOutput.pop()
     while '.' not in versionString:
