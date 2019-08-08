@@ -1,9 +1,10 @@
 import inspect
+import logging
 import os
-from grape.test import gridTesting
-from grape.test import testGrape
-from grape.vine import grapeGit as git
-from grape.vine import grapeMenu
+from test import gridTesting
+from test import testGrape
+from vine import grapeGit as git
+from vine import grapeMenu
 
 
 def find_subclasses(module, clazz):
@@ -150,8 +151,8 @@ class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopi
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
         self.secondProjectDir = self.projectDir + "2"
         if os.path.exists(self.secondProjectDir):
-            print(f"Path ({self.secondProjectDir}) already exists, so it" +
-                  " cannot be used by a new ResettableProject.")
+            logging.error(f"Path ({self.secondProjectDir}) already exists, " +
+                          "so it cannot be used by a new ResettableProject.")
             sys.exit(1)
 
         self.addCommands([(git.clone, lambda: "--recursive " +

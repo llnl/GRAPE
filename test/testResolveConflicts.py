@@ -1,5 +1,5 @@
 import os
-from grape.test import testGrape
+from test import testGrape
 
 
 class TestResolveConflicts(testGrape.TestGrape):

@@ -1,16 +1,18 @@
+import logging
 import os
 import re
 import shutil
 import stat
 import time
-from grape.vine import config_parser_base
-from grape.vine import config_parser_global
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import option
-from grape.vine import utility
-from grape.vine import vine_logging
+from vine import config_parser_base
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import option
+from vine import utility
+from vine import vine_logging
+from vine.vine_logging import log_wrapper
 
 
 def handledCheckout(repo = '', branch = 'master', args = []):
@@ -26,7 +28,7 @@ def handledCheckout(repo = '', branch = 'master', args = []):
                 # and allow the checkout to throw the exception.
                 pass
         git.checkout(f"{checkoutargs} {branch}")
-        vine_logging.printMsg(f"Checked out {branch} in {repo}")
+        logging.info(f"Checked out {branch} in {repo}")
 
     return True
 
@@ -46,8 +48,8 @@ def handleCheckoutMRE(mre):
                 if "pathspec" in e.gitOutput:
                     createNewBranch = _createNewBranch
                     if _skipBranchCreation:
-                        vine_logging.printMsg("Skipping checkout of " +
-                                              f"{branch} in {project}")
+                        logging.info(f"Skipping checkout of {branch} in " +
+                                     f"{project}")
                         createNewBranch = False
 
                     elif not createNewBranch:
@@ -70,17 +72,16 @@ def handleCheckoutMRE(mre):
                         continue
 
                 elif "already exists" in e.gitOutput:
-                    vine_logging.printMsg(f"Branch {branch} already exists " +
-                                          f"in {project}.")
+                    logging.info(f"Branch {branch} already exists in " +
+                                 f"{project}.")
                     branchDescription = git.commitDescription(branch)
                     headDescription = git.commitDescription("HEAD")
                     if branchDescription == headDescription:
-                        vine_logging.printMsg(
-                            f"Branch {branch} and HEAD are the same. " +
-                            f"Switching to {branch}.")
+                        logging.info(f"Branch {branch} and HEAD are the " +
+                                     f"same. Switching to {branch}.")
                         action = "k"
                     else:
-                        vine_logging.printMsg(f"Branch {branch} and HEAD " +
+                        logging.info(f"Branch {branch} and HEAD " +
                                               "are not the same.")
                         action = ''
                         valid = False
@@ -91,19 +92,19 @@ def handleCheckoutMRE(mre):
                                 f"it to: {headDescription}?\n(k,f)", 'k')
                             valid = (action == 'k') or (action == 'f')
                             if not valid:
-                                vine_logging.printMsg("Invalid input. Enter k or f. ")
+                                logging.info("Invalid input. Enter k or f. ")
                     if action == 'k':
                         git.checkout(branch)
                     elif action == 'f':
                         git.checkout(f"-B {branch}")
                 elif "conflict" in e.gitOutput.lower():
-                    vine_logging.printMsg("CONFLICT occurred when pulling " +
-                                          f"{branch} from origin.")
+                    logging.info("CONFLICT occurred when pulling {branch} " +
+                                 "from origin.")
                 elif "does not appear to be a git repository" in e.gitOutput.lower():
-                    vine_logging.printMsg("Remote 'origin' does not exist. "
+                    logging.info("Remote 'origin' does not exist. "
                                      "This branch was not updated from a remote repository.")
                 elif "Couldn't find remote ref" in e.gitOutput:
-                    vine_logging.printMsg(
+                    logging.info(
                         f"Remote of {project} does not have reference to " +
                         f"{branch}. You may want to push this branch. ")
                 else:
@@ -116,14 +117,14 @@ def createNewBranches(repo='', branch='', args={}):
     project = repo
     checkoutargs = args["checkout"]
     with git.cd(project):
-        vine_logging.printMsg(f"Creating new branch {branch} in {project}.")
+        logging.info(f"Creating new branch {branch} in {project}.")
         git.checkout(checkoutargs+" -b "+branch)
         git.push(f"-u origin {branch}")
     return True
 
 def createNewBranchesMREHandler(mre):
     for e, b in zip(mre.exceptions(), mre.branches()):
-        print(f"{b} {e}")
+        logging.error(f"{b} {e}")
 
 # check whether the branch exists already in the outer level repo
 # return value 0 : does not exist
@@ -139,7 +140,7 @@ def branchAlreadyExists(branch, verbose = True):
         allBranches = set([b[len(branch_path):] if b.startswith(branch_path) else b for b in git.allBranches()])
         if branch in allBranches:
             if verbose:
-                vine_logging.printMsg(f"Branch {branch} already exists!")
+                logging.info(f"Branch {branch} already exists!")
             retVal = 1
         else:
             # make sure branch is not a case-insensitive match
@@ -147,9 +148,8 @@ def branchAlreadyExists(branch, verbose = True):
             for b in allBranches:
                 if branch.lower() == b.lower():
                     if verbose:
-                        vine_logging.printMsg(f"Branch {b} already exists!" + "\n"+
-                                              f"{branch} is a case insensitive" +
-                                              " match.")
+                        logging.info(f"Branch {b} already exists!\n" +
+                                     f"{branch} is a case insensitive match.")
                     retVal = 2
     return retVal
 
@@ -191,10 +191,10 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                 if not dirIsEmpty and changedActive:
                     unpushed = git.log("--branches --not --remotes --oneline --decorate")
                 if unpushed:
-                    vine_logging.printMsg("You have unpushed changed in " +
-                                          f"{sub}:\n{unpushed}")
+                    logging.info("You have unpushed changed in " +
+                                 f"{sub}:\n{unpushed}")
                     clean = utility.userInput(
-                        "Would you like to remove the submodule {sub} " +
+                        f"Would you like to remove the submodule {sub} " +
                         "(this will discard your unpushed changes)?", 'n')
                 else:
                     clean = True
@@ -209,7 +209,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                     clean = True
             if clean:
                 os.chdir(workspaceDir)
-                vine_logging.printMsg(f"Removing clean submodule {sub}.")
+                logging.info(f"Removing clean submodule {sub}.")
                 if not veryclean or changedActive:
                     shutil.rmtree(os.path.join(workspaceDir, sub))
                 if veryclean:
@@ -233,9 +233,8 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = []):
                                 shutil.rmtree(modulepath)
                 cleaned = True
         else:
-            vine_logging.printMsg(f"Unstaged / committed changes in {sub}," +
-                                  " not removing.")
-
+            logging.info(f"Unstaged / committed changes in {sub}," +
+                         " not removing.")
     return cleaned
 
 
@@ -267,9 +266,10 @@ class Checkout(option.Option):
     def description(self):
         return "Checks out a branch in all projects in this workspace."
 
+    @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
@@ -291,7 +291,7 @@ class Checkout(option.Option):
 
             branchStatus = branchAlreadyExists(branch)
             if branchStatus:
-                vine_logging.printMsg("Not creating new branch.")
+                logging.info("Not creating new branch.")
                 return False
         else:
             # check to see if we already have the branch
@@ -302,7 +302,7 @@ class Checkout(option.Option):
                     # otherwise fetch it
                     git.fetch("origin", f"{branch}:{branch}")
                 except grape_errors.GrapeGitError as e:
-                    vine_logging.printMsg(
+                    logging.info(
                         f"Branch {branch} could not be fetched in outer " +
                         f"level repo:\n{e}\nUse grape checkout -b if" +
                         " you really want to create a new branch off of HEAD.")
@@ -318,17 +318,15 @@ class Checkout(option.Option):
             initiallyActiveSubmodules = git.getActiveSubmodules(workspaceDir)
             for sub in changedURLModules:
                 maybe_active = "active" if sub in initiallyActiveSubmodules else "inactive"
-                vine_logging.printMsg(
+                logging.info(
                     f"url for {sub} changed, attempting to remove " +
                     f"references for {maybe_active} submodule.")
                 cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules)
                 if not cleaned:
-                    vine_logging.printMsg("Failed to remove old submodule " +
-                                          f"for {sub}.")
+                    logging.info(f"Failed to remove old submodule for {sub}.")
                     return False
 
-        vine_logging.printMsg(f"Performing checkout of {branch}" +
-                              " in outer level project.")
+        logging.info(f"Performing checkout of {branch} in outer level project.")
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(handledCheckout, listOfRepoBranchArgTuples=[(workspaceDir, branch, (checkoutargs, sync))])
 
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
@@ -394,7 +392,7 @@ class Checkout(option.Option):
                             os.chdir(workspaceDir)
                             shutil.rmtree(os.path.join(workspaceDir,projPrefix))
                     else:
-                        vine_logging.printMsg(
+                        logging.info(
                             f"Unstaged / committed changes in {projPrefix},"
                             " not removing. \nNote this project is NOT " +
                             f"active in {branch}. ")
@@ -428,16 +426,16 @@ class Checkout(option.Option):
         # in case the user switches to a branch without corresponding branches in the submodules, make sure active submodules
         # are at the right commit before possibly creating new branches at the current HEAD.
         git.submodule("update")
-        vine_logging.printMsg(f"Calling grape uv {' '.join(uvArgs)} to" +
-                              " ensure branches are consistent across all" +
-                              " active subprojects and submodules.")
+        logging.info(f"Calling grape uv {' '.join(uvArgs)} to ensure" +
+                     " branches are consistent across all active " +
+                     " subprojects and submodules.")
         config_parser_global.read()
         grapeMenu.menu().applyMenuChoice('uv', uvArgs)
 
         os.chdir(workspaceDir)
 
         if sync:
-            vine_logging.printMsg(
+            logging.info(
                 f"Switched to {branch}. Updating from remote...\n\t (use"+
                 " --sync=False or .grapeconfig.post-checkout.syncWithOrigin" +
                 " to change behavior.)")
@@ -446,7 +444,7 @@ class Checkout(option.Option):
             else:
                 grapeMenu.menu().applyMenuChoice("pull")
         else:
-            vine_logging.printMsg(f"Switched to {branch}.")
+            logging.info(f"Switched to {branch}.")
 
         global _skipBranchCreation
         global _createNewBranch

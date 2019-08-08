@@ -1,8 +1,8 @@
 import os
 import sys
-from grape.test import gridTesting
-from grape.test import testGrape
-from grape.test import testProjectScenarios
+from test import gridTesting
+from test import testGrape
+from test import testProjectScenarios
 
 
 class GrapeUpTester(testGrape.TestGrape):

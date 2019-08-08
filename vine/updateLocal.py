@@ -1,11 +1,13 @@
+import logging
 import os
-from grape.vine import config_parser_global
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 # update the repo from the remote
@@ -38,6 +40,7 @@ class UpdateLocal(Option):
     def description(self):
         return "Update local branches that are tracked in your remote repo"
 
+    @log_wrapper
     def execute(self, args):
         wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
         wsDir = os.path.abspath(wsDir)
@@ -74,7 +77,7 @@ class UpdateLocal(Option):
 
 def fetchLocalHandler(mre):
     for e in mre.exceptions():
-        print(e.gitOutput)
+        logging.error(repr(e.gitOutput))
     raise mre
 
 def fetchLocal(repo='unknown', branch='master'):
@@ -98,24 +101,25 @@ def fetchLocal(repo='unknown', branch='master'):
                     toFetch.append(b)
             else:
                 try:
-                    vine_logging.printMsg(
+                    logging.info(
                         f"Pulling current branch {currentBranch} in {repo}")
                     git.pull(f"origin {currentBranch}")
                 except grape_errors.GrapeGitError:
-                    print(f"GRAPE: Could not pull {currentBranch} from" + 
-                          " origin. Maybe you haven't pushed it yet?")
+                    logging.error(f"GRAPE: Could not pull {currentBranch} from" +
+                                  " origin. Maybe you haven't pushed it yet?")
         try:
             if toFetch:
-                vine_logging.printMsg(f"updating {','.join(toFetch)} in {repo}")
+                logging.info(f"updating {','.join(toFetch)} in {repo}")
                 git.fetch(fetchArgs)
         except grape_errors.GrapeGitError as e:
             # let non-fast-forward fetches slide
             if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
-                print(e.gitCommand)
-                print(e.gitOutput)
-                print("GRAPE: WARNING: one of your public branches " +
-                      f"{','.join(branches)} in {repo} has local commits! " +
-                      "Did you forget to create a topic branch?")
+                logging.error(e.gitCommand)
+                logging.error(e.gitOutput)
+                logging.warning("GRAPE: WARNING: one of your public branches" +
+                                f" {','.join(branches)} in {repo} has local " +
+                                "commits! Did you forget to create a topic " +
+                                "branch?")
             elif "Refusing to fetch into current branch" in e.gitOutput:
                 print(e.gitOutput)
             else:

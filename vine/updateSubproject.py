@@ -1,9 +1,11 @@
+import logging
 import os
-from grape.vine import config_parser_global
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 """        
                     
@@ -32,6 +34,7 @@ class UpdateSubproject(Option):
     def description(self):
         return "Updates a subproject (such as a subtree) from the subproject's host repository."
     
+    @log_wrapper
     def execute(self, args):
         if args["subtree"]:
             self.updateSubtree(args)
@@ -40,7 +43,7 @@ class UpdateSubproject(Option):
         clean = git.isWorkspaceClean()
         os.chdir(utility.workspaceDir())
         if not clean:
-            vine_logging.printMsg("git-subtree requires a clean working tree before attempting a subtree update")
+            logging.info("git-subtree requires a clean working tree before attempting a subtree update")
             return False
         name = args["--name"]
         branch = args["--branch"]

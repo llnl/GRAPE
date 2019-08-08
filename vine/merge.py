@@ -1,7 +1,8 @@
-from grape.vine import config_parser_global
-from grape.vine import utility
-from grape.vine.option import Option
-from grape.vine.resumable import Resumable
+from vine import config_parser_global
+from vine import utility
+from vine.option import Option
+from vine.resumable import Resumable
+from vine.vine_logging import log_wrapper
 
 
 # merge in a local branch into this branch
@@ -43,9 +44,10 @@ class Merge(Resumable, Option):
     def description(self):
         return "Merge another local branch into your current branch."
 
+    @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         # this is necessary due to the unholy relationships between mr, m, and md.
         if not "<<cmd>>" in args:
@@ -89,7 +91,7 @@ class Merge(Resumable, Option):
 
     def _resume(self, args):
         # Imported here to avoid circular dependencies
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         grapeMenu.menu().getOption("md")._resume(args)
         return True

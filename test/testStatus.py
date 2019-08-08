@@ -1,15 +1,14 @@
 import os
-from grape.test import gridTesting
-from grape.test import testGrape
-from grape.test import testProjectScenarios
+from test import gridTesting
+from test import testGrape
+from test import testProjectScenarios
 
 
 class GrapeStatusTester(testGrape.TestGrape):
 
     def gridtestGrapeStatus(self, testProjectScenario):
-        debugging = False
-        if testProjectScenario.debugging() or debugging:
-            self.switchToStdout()
+        if testProjectScenario.debugging():
+            self.logger.restore_sys_stdout()
         os.chdir(testProjectScenario.getProjectDir())
         self.assertTrue(self.menu.applyMenuChoice("status"),
                         "status Failed when no flags requesting fail codes were used.")
@@ -17,15 +16,13 @@ class GrapeStatusTester(testGrape.TestGrape):
         if testProjectScenario.isConsistent():
             self.assertTrue(ret, "status thought a consistent project was inconsistent")
         else:
-            self.assertFalse(ret, "status thought an inconsistent project was consistent")
+            self.assertFalse(ret, "status thought an inconsistent project was consistent") 
+        if testProjectScenario.debugging():
+            self.logger.redirect_sys_stdout()
 
-        if testProjectScenario.debugging() or debugging:
-            self.switchToHiddenOutput()
-
-    def gridtestGrapeCheckoutOfMasterFixesGrapeStatusBranchConsistency(self, testProjectScenario):
-        debugging = False
-        if testProjectScenario.debugging() or debugging:
-            self.switchToStdout()
+    def gridtestGrapeCheckoutOfMasterFixesGrapeStatusBranchConsistency(self, testProjectScenario): 
+        if testProjectScenario.debugging():
+            self.logger.restore_sys_stdout()
         os.chdir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])
         if testProjectScenario.isStateConsistentWithBranchModel():
@@ -35,9 +32,8 @@ class GrapeStatusTester(testGrape.TestGrape):
             self.menu.applyMenuChoice("checkout", ["master"])
             ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])
             self.assertTrue(ret, "status not consistent after a grape checkout of master")
-
-        if testProjectScenario.debugging() or debugging:
-            self.switchToHiddenOutput()
+        if testProjectScenario.debugging():
+            self.logger.redirect_sys_stdout()
 
 def createStatusTester():
     # create a tester for all grapeProject scenarios in the testProjectScenarios module.

@@ -2,29 +2,24 @@
 from contextlib import contextmanager
 import configparser
 import io
+import logging
 import os
 import re
 import shutil
-from grape.vine import grape_errors
-from grape.vine import vine_logging
-from grape.vine import vine_subprocess
+from vine import grape_errors
+from vine import vine_logging
+from vine import vine_subprocess
 
 
 GRAPE_CONFIG = '.grapeconfig'
 
 
 def gitcmd(cmd, errmsg):
-    from grape.vine import config_parser_global
+    from vine import config_parser_global
 
-    _cmd = None
-    try:
-        cnfg = config_parser_global.grapeConfig()
+    cnfg = config_parser_global.grapeConfig()
+    if cnfg.has_section('git') and cnfg.has_option("executable"):
         _cmd = cnfg.get("git", "executable")
-    except configparser.NoOptionError:
-        pass
-    except configparser.NoSectionError:
-        pass
-    if _cmd:
         _cmd += f" {cmd}"
     elif os.name == "nt":
         git_path = os.path.join('C:', os.path.sep, 'Program Files',
@@ -34,10 +29,14 @@ def gitcmd(cmd, errmsg):
         _cmd = f"git {cmd}"
 
     cwd = os.getcwd()
-    process = vine_subprocess.executeSubProcess(_cmd, cwd, verbose=-1)
-    if process.returncode != 0:
-        raise grape_errors.GrapeGitError(f"Error: {errmsg} ", process.returncode, process.output, _cmd, cwd=cwd)
-    return process.output.strip()
+    completed_process = vine_subprocess.executeSubProcess(_cmd,
+                                                          workingDirectory=cwd)
+    stdout_output = completed_process.stdout.decode()
+    stderr_output = completed_process.stderr.decode()
+    process_output = '\n'.join([stdout_output, stderr_output]).strip()
+    if completed_process.returncode != 0:
+        raise grape_errors.GrapeGitError(f"Error: {errmsg}", completed_process.returncode, process_output, _cmd, cwd=cwd)
+    return process_output
 
 
 def add(filedescription):
@@ -107,11 +106,11 @@ def clone(argstr):
         if "already exists and is not an empty directory" in e.gitOutput:
             raise e
         if e.commError:
-            print("GRAPE: WARNING: clone failed due to connectivity issues.")
+            logging.warning("GRAPE: clone failed due to connectivity issues.")
             return e.gitOutput
         else:
-            print("GRAPE: Clone failed. Maybe you ran out of disk space?")
-            print(e.gitOutput)
+            logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
+            logging.warning(e.gitOutput)
             raise e
 
 
@@ -169,7 +168,7 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
             if "fatal: Couldn't find remote ref" in e.gitOutput:
                 raise e
             if warnOnCommError:
-                vine_logging.printMsg("WARNING: could not fetch due to communication error.")
+                logging.warning("WARNING: could not fetch due to communication error.")
             if raiseOnCommError:
                 raise e
             else:
@@ -237,6 +236,7 @@ def getAllSubmoduleURLMap():
     subconfig = configparser.ConfigParser()
     fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(baseDir(), ".gitmodules"))))
     subconfig.read_file(fp)
+    fp.close()
     sections = subconfig.sections()
     submodules = {}
     for s in sections:
@@ -261,10 +261,8 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
                 modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
         except grape_errors.GrapeGitError as e:
             if "bad revision" in e.gitOutput:
-                vine_logging.printMsg("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
+                logging.warning("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
                 return []
-        if len(modifiedSubmodules) == 1 and not modifiedSubmodules[0]:
-            return []
 
         # make sure everything in modifiedSubmodules is in the original list of submodules
         # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
@@ -326,8 +324,8 @@ def isWorkingDirectoryClean(printOutput=False):
     statusOutput = status("-u --porcelain")
     toRet =  len(statusOutput.strip()) == 0
     if printOutput and not toRet:
-        print(f"{os.getcwd()}:")
-        print(statusOutput)
+        logging.info(f"{os.getcwd()}:")
+        logging.info(statusOutput)
     return toRet
 
 
@@ -389,7 +387,7 @@ def pull(args, throwOnFail=False):
         return gitcmd(f"pull {args}", "Pull failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            vine_logging.printMsg("WARNING: Pull failed due to connectivity issues.")
+            logging.warning("WARNING: Pull failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -404,7 +402,7 @@ def push(args, throwOnFail = False):
         return gitcmd(f"push --porcelain {args}", "Push failed")
     except grape_errors.GrapeGitError as e:
         if e.commError:
-            vine_logging.printMsg("WARNING: Push failed due to connectivity issues.")
+            logging.warning("WARNING: Push failed due to connectivity issues.")
             if throwOnFail:
                 raise e
             else:
@@ -431,7 +429,6 @@ def safeForceBranchToOriginRef(branchToSync):
     branchExists = False
     remoteRefExists = False
     branches = branch("-a").split("\n")
-#    remoteRef = os.path.join('remotes', 'origin', branchToSync)
     remoteRef = join_list_as_git_path(['remotes', 'origin', branchToSync])
     for b in branches:
         b = b.replace('*', '')
@@ -441,21 +438,19 @@ def safeForceBranchToOriginRef(branchToSync):
             continue
 
     if branchExists and not remoteRefExists:
-        vine_logging.printMsg(f"origin does not have branch {branchToSync}")
+        logging.info(f"origin does not have branch {branchToSync}")
         return False
     if branchExists and remoteRefExists:
         remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
             if branchToSync == currentBranch():
-                vine_logging.printMsg(f"Current branch {branchToSync} is " +
-                                      "out of date with origin. Pulling " +
-                                      "new changes.")
+                logging.info(f"Current branch {branchToSync} is out of date" +
+                             " with origin. Pulling new changes.")
                 try:
                     pull(f"origin {branchToSync}", throwOnFail=True)
                 except:
-                    vine_logging.printMsg(f"Can't pull {branchToSync}." +
-                                          " Aborting...")
+                    logging.info(f"Can't pull {branchToSync}. Aborting...")
                     return False
             else:
                 branch(f"-f {branchToSync} {remoteRef}")
@@ -465,8 +460,8 @@ def safeForceBranchToOriginRef(branchToSync):
         else:
             return False
     if not branchExists and remoteRefExists:
-        vine_logging.printMsg("local branch did not exist. Creating " +
-                              f"{branchToSync} off of {remoteRef} now. ")
+        logging.info(f"local branch did not exist. Creating {branchToSync} " +
+                     f"off of {remoteRef} now. ")
         branch(f"{branchToSync} {remoteRef}")
         return True
 
@@ -492,8 +487,7 @@ def showRemote():
         return gitcmd("remote show origin", "unable to show remote")
     except grape_errors.GrapeGitError as e:
         if e.code == 128:
-            vine_logging.printMsg(f"WARNING: {e.gitCommand} failed." +
-                                  " Ignoring...")
+            logging.warning(f"WARNING: {e.gitCommand} failed. Ignoring...")
             return e.gitOutput
         else:
             raise e
@@ -535,5 +529,6 @@ def cd(path):
             yield
         except OSError as e:
             print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+            yield
         finally:
             os.chdir(starting_dir)

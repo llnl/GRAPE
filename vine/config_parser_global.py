@@ -1,7 +1,7 @@
 import io
 import os
-from grape.vine import config_parser_base
-from grape.vine import utility
+from vine import config_parser_base
+from vine import utility
 
 
 __GLOBAL_CONFIG = None
@@ -61,7 +61,7 @@ def read(additionalFileNames=None):
 
 # writes a config file with default options
 def writeDefaultConfig(filename):
-    from grape.vine import grapeMenu
+    from vine import grapeMenu
 
     config = config_parser_base.GrapeConfigParserBase()
     grapeMenu.menu().setDefaultConfig(config)

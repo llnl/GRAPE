@@ -1,13 +1,15 @@
 import getpass
+import logging
 import os
 import sys
 import time
 import keyring
-import stashy
-from grape.vine import config_parser_global
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine.option import Option
+from stashy.stashy import connect as stashy_connect
+import stashy.stashy.errors as stashy_errors
+from vine import config_parser_global
+from vine import grapeGit as git
+from vine import utility
+from vine.option import Option
 
 
 class Atlassian(object):
@@ -15,6 +17,8 @@ class Atlassian(object):
 
     def __init__(self, username=None, url=rzbitbucketURL, verify=True):
 
+        import pdb
+        pdb.set_trace()
         if username is None:
             self._userName = utility.getUserName()
         else:
@@ -26,31 +30,31 @@ class Atlassian(object):
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
-            print("Connected to Bitbucket.")
+            logging.info("Connected to Bitbucket.")
         else:
             self._stash = None
-            print("Could not connect to Bitbucket...")
+            logging.info("Could not connect to Bitbucket...")
 
     def auth(self, service, username, password, verify=True):
         self._userName = username
         self._service = service
-        self._stash = stashy.connect(service, username, password, verify=verify)
+        self._stash = stashy_connect(service, username, password, verify=verify)
         numAttempts = 0
         success = False
         while numAttempts < 3 and not success:
             try:
                 self._stash.projects.list()
                 success = True
-            except stashy.errors.AuthenticationException:
+            except stashy_errors.AuthenticationException:
                 if numAttempts == 0:
-                    print("session expired...")
+                    logging.info("session expired...")
                 else:
-                    print("incorrect username / password...")
+                    logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
                 keyring.set_password(service, self._userName,
                                      getpass.getpass("Enter password for " +
                                                      f"{service}: "))
-                self._stash = stashy.connect(service, self._userName, keyring.get_password(service, self._userName),
+                self._stash = stashy_connect(service, self._userName, keyring.get_password(service, self._userName),
                                             verify=verify)
                 numAttempts += 1
 
@@ -115,19 +119,19 @@ class StashyNode(object):
         keys.sort()
         for key in keys:
             val = d[key]
-            if type(val) in (str, unicode, bool, int):
-                print("  "*level, key, "  :  ", val)
-            elif type(val) == dict:
-                print("  "*level, key)
+            if isinstance(val, (str, unicode, bool, int)):
+                logging.info("  "*level, key, "  :  ", val)
+            elif isinstance(val, dict):
+                logging.info("  "*level, key)
                 self._show(val, level + 1)
-            elif type(val) == list:
+            elif isinstance(val, list):
                 dd = {}
                 for i in range(len(val)):
                     dd[f"{key}[{i}]"] = val[i]
-                print("  "*level, key)
+                logging.info("  "*level, key)
                 self._show(dd, level + 1)
             else:
-                print("  "*level, key, type(val), "???")
+                logging.info("  "*level, key, type(val), "???")
                 
     def get(self, path):
         response = self.snode._client.get(self.snode.url(path))
@@ -315,26 +319,26 @@ class PullRequest(StashyNode):
 if __name__ == "__main__":
     atlassian = Atlassian()
     plist = atlassian.projectlist()
-    print(plist)
+    logging.info(plist)
     for p in plist:
-        print(f"\nPROJECT:{p}")
+        logging.info(f"\nPROJECT:{p}")
         project = atlassian.project(p)
         reponames = project.repolist()
         for reponame in reponames:
-            print(f" REPONAME{reponame}")
+            logging.info(f" REPONAME{reponame}")
             try:
                 repo = project.repo(reponame)
                 for pull in repo.pullRequests():
-                    print(f"  TITLE:     {pull.title()}")
-                    print(f"  STATE:     {pull.state()}")
-                    print(f"  AUTHOR:    {pull.author()}")
-                    print(f"  DATE:      {pull.date()}")
-                    print(f"  REVIEWERS: {pull.reviewers()}")
-                    print(f"  FROM:      {pull.fromRef()}")
-                    print(f"  TO:        {pull.toRef()}")
-                    print(f"  DESC:      {pull.description()}\n")
-            except stashy.errors.NotFoundException:
-                print("  repo not found")
+                    logging.info(f"  TITLE:     {pull.title()}")
+                    logging.info(f"  STATE:     {pull.state()}")
+                    logging.info(f"  AUTHOR:    {pull.author()}")
+                    logging.info(f"  DATE:      {pull.date()}")
+                    logging.info(f"  REVIEWERS: {pull.reviewers()}")
+                    logging.info(f"  FROM:      {pull.fromRef()}")
+                    logging.info(f"  TO:        {pull.toRef()}")
+                    logging.info(f"  DESC:      {pull.description()}\n")
+            except stashy_errors.NotFoundException:
+                logging.info("  repo not found")
 
 
 class TestStashResponse(dict):
@@ -343,9 +347,9 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print(f"TESTBITBUCKET: resource {item} does not exist")
+            logging.error(f"TESTBITBUCKET: resource {item} does not exist")
             self.status_code = 999
-            raise stashy.errors.GenericException(self)
+            raise stashy_errors.GenericException(self)
 
     def json(self):
         return self
@@ -452,7 +456,7 @@ class TestAtlassian(object):
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to Bitbucket")
+        logging.info("Connected to Bitbucket")
         
     def project(self, name):
         return self.stash.project(name)

@@ -1,13 +1,15 @@
 import configparser
 import io
+import logging
 import os
-from grape.vine import config_parser_base
-from grape.vine import config_parser_user
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_base
+from vine import config_parser_user
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 def getActiveSubprojects():
@@ -50,13 +52,14 @@ class InstallHooks(Option):
                     file_.write(f"{grapeCmd} runHook {h} \"$@\" \n\n")
                 os.chmod(h, 0o755)
 
+    @log_wrapper
     def execute(self, args):
         workspaceDir = utility.workspaceDir()
-        vine_logging.printMsg(f"Installing hooks in {workspaceDir}.")
+        logging.info(f"Installing hooks in {workspaceDir}.")
         self.installHooksInRepo(workspaceDir, args)
         if not args["--noRecurse"]:
             for sub in getActiveSubprojects():
-                vine_logging.printMsg(f"Installing hooks in {sub}.")
+                logging.info(f"Installing hooks in {sub}.")
                 self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
         return True
 
@@ -170,7 +173,7 @@ class RunHook(Option):
         else:
             autoPush = False
         #applies the cascade hook
-        print("GRAPE: checking for cascades...")
+        logging.info("GRAPE: checking for cascades...")
         cascadeDict = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--cascade"])
         if cascadeDict:
             currentBranch = git.currentBranch()
@@ -178,10 +181,10 @@ class RunHook(Option):
                 source = currentBranch
                 target = cascadeDict[source]
                 fastForward = False
-                print(f"GRAPE: Cascading commit from {source} to {target}...")
+                logging.info(f"GRAPE: Cascading commit from {source} to {target}...")
                 if git.branchUpToDateWith(source, target):
                     fastForward = True
-                    print("GRAPE: should be a fastforward cascade...")
+                    logging.info("GRAPE: should be a fastforward cascade...")
                 git.checkout(f"{target}")
                 git.merge(f"{source} -m 'Cascade from {source} to {target}'")
                 # we need to kick off the next one if it was a fast forward merge.
@@ -189,7 +192,7 @@ class RunHook(Option):
                 if fastForward:
                     if autoPush:
                         git.push(f"origin {target}")
-                        print("GRAPE: auto push done")
+                        logging.info("GRAPE: auto push done")
                     currentBranch = target
                 else:
                     currentBranch = None
@@ -215,16 +218,16 @@ class RunHook(Option):
     def postMerge(args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            vine_logging.printMsg("Post-Merge Hook: Syncing submodule URLs...")
+            logging.info("Post-Merge Hook: Syncing submodule URLs...")
             git.submodule("--quiet sync")
-            vine_logging.printMsg("Post-Merge Hook: Updating submodules...")
+            logging.info("Post-Merge Hook: Updating submodules...")
             git.submodule("--quiet update --merge")
 
     @staticmethod
     def postCheckout(args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            vine_logging.printMsg("Post-Checkout Hook: Syncing submodule URLs...")
+            logging.info("Post-Checkout Hook: Syncing submodule URLs...")
             git.submodule("--quiet sync")
-            vine_logging.printMsg("Post-Checkout Hook: Updating submodules...")
+            logging.info("Post-Checkout Hook: Updating submodules...")
             git.submodule("--quiet update")

@@ -1,6 +1,6 @@
 import os
 import sys
-from grape.test import testGrape
+from test import testGrape
 
 
 class TestReview(testGrape.TestGrape):

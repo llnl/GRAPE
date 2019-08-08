@@ -1,9 +1,9 @@
 import os
 import shutil
 import sys
-from grape.test.testGrape import *
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
+from test.testGrape import *
+from vine import grape_errors
+from vine import grapeGit as git
 
 
 class TestGrapeGit(TestGrape):
@@ -195,7 +195,6 @@ class TestGrapeGit(TestGrape):
                             f"new branch not in returned string {branches} ")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
-
 
     def testCloneAndShowRemote(self):
         localSource = self.repo

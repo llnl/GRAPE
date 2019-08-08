@@ -1,10 +1,12 @@
+import logging
 import os
-from grape.vine import config_parser_global
-from grape.vine import config_parser_user
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine import config_parser_user
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 # Configure current repo
@@ -36,26 +38,27 @@ class Config(Option):
     def description(self):
         return "Initialize a repo you've already cloned without using GRAPE"
 
+    @log_wrapper
     def execute(self,args):
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         base = git.baseDir()
         if base == "":
             return False
         dotGit = git.gitDir()
          
-        vine_logging.printMsg("Optimizing git performance on slow file systems...")
+        logging.info("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
         git.config("core.preloadindex","true")
 
         #have git automatically do some garbage collection / optimization
-        vine_logging.printMsg("Setting up automatic git garbage collection...")
+        logging.info("Setting up automatic git garbage collection...")
         git.config("gc.auto","1")
 
         #prevents false conflict detection due to differences in filesystem
         # time stamps
-        vine_logging.printMsg("Optimizing cross platform portability...")
+        logging.info("Optimizing cross platform portability...")
         git.config("core.trustctime","false")
 
         # stores login info for 12 hrs (max allowed by RZBitbucket)
@@ -65,7 +68,7 @@ class Config(Option):
             if not cache:
                 cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
             if cache:
-                vine_logging.printMsg("Enabling 12 hr caching of https credentials...")
+                logging.info("Enabling 12 hr caching of https credentials...")
                 if os.name == "nt":
                     git.config("--global credential.helper", "wincred")
                 else :
@@ -77,14 +80,14 @@ class Config(Option):
                                        "merge-and-verify-driver")
         
         if os.path.exists(mergeVerifyPath): 
-            vine_logging.printMsg("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
+            logging.info("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
             git.config("merge.verify.name","merge and verify driver")
             git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
         else:
-            vine_logging.printMsg("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
+            logging.warning("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
-        vine_logging.printMsg("Setting lg as an alias for a pretty log call...")
+        logging.info("Setting lg as an alias for a pretty log call...")
         git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
         
         # perform an update of the active subprojects if asked.
@@ -107,7 +110,7 @@ class Config(Option):
             git.config("mergetool.p4merge.keepTemporaries","false")
             git.config("mergetool.p4merge.trustExitCode","false")
             git.config("mergetool.p4merge.keepBackup","false")
-            vine_logging.printMsg("Configured repo to use p4merge for conflict resolution")
+            logging.info("Configured repo to use p4merge for conflict resolution")
         else:
             git.config("merge.tool","tkdiff")
 
@@ -119,9 +122,9 @@ class Config(Option):
                                         "p4diff")
             if os.path.exists(p4diffScript): 
                 git.config("diff.external", p4diffScript)
-                vine_logging.printMsg("Configured repo to use p4merge for diff calls - p4merge must be in your path")
+                logging.info("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
-                vine_logging.printMsg(f"Could not find p4diff script at {p4diffScript}")
+                logging.info(f"Could not find p4diff script at {p4diffScript}")
         useGitP4 = args["--git-p4"]
         if useGitP4:
             git.config("git-p4.useclientspec", "true")
@@ -143,11 +146,11 @@ class Config(Option):
                     shutil.copyfile(p4settings,os.path.join(base,".p4settings"))
                     haveCopied = True
                 except:
-                    print("could not find p4settings file, please check your path and try again")
+                    logging.warning("Could not find p4settings file, please check your path and try again")
                     return False
 
         # install hooks here and in all submodules
-        vine_logging.printMsg("Installing hooks in all repos...")
+        logging.info("Installing hooks in all repos...")
         grapeMenu.menu().applyMenuChoice("installHooks")
         
         #  ensure all public branches are available in all repos
@@ -179,12 +182,12 @@ class Config(Option):
                 if f"remotes/origin/{branch}" not in allBranches:
                    missingBranches.append(branch)
                 if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
-                    vine_logging.printMsg(
+                    logging.info(
                         f"Public branch {branch} does not have local version " +
                         f"in {repo}. Creating it now.")
                     git.branch(f"{branch} origin/{branch}")
             if len(missingBranches) > 0:
-                vine_logging.printMsg(
+                logging.warning(
                     "WARNING: the following public branches do not appear " +
                     f"to exist on the remote origin of {repo}:\n" +
                     f"{' '.join(missingBranches)}")

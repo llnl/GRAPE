@@ -1,10 +1,12 @@
+import logging
+from io import StringIO
 import os
 import shutil
 import sys
 import tempfile
-from grape.test import testGrape
-from grape.vine import clone
-from grape.vine import grapeGit as git
+from test import testGrape
+from vine import clone
+from vine import grapeGit as git
 
 
 class TestClone(testGrape.TestGrape):
@@ -31,10 +33,17 @@ class TestClone(testGrape.TestGrape):
         self.assertTrue(ret)
 
     def testHelpMessage(self):
+        doc_output = StringIO()
+        tmp_stdout = sys.stdout
+        sys.stdout = doc_output
+
         args = ["--help"]
         with self.assertRaises(SystemExit):
             ret = self.menu.applyMenuChoice("clone", args)
-        self.assertIn(clone.Clone.__doc__, self.get_output())
+        # NOTE: Below assertion is testing 'docopt' logic.
+        self.assertIn(clone.Clone.__doc__, doc_output.getvalue())
+        sys.stdout = tmp_stdout
+        doc_output.close()
 
     def testClone02(self):
         tempDir = tempfile.mkdtemp()
@@ -45,7 +54,7 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(ret, "vine.clone returned failure")
 
             #ToDo: Finish checking contents
-            #contents = self.output.getvalue()
+            #contents = self.get_output()
             #self.stdout(contents)
         finally:
             self._temp_dir_cleanup(tempDir)
@@ -85,7 +94,7 @@ class TestClone(testGrape.TestGrape):
                                    "--nested",
                                    "--noverify"])
         self.menu.applyMenuChoice("commit", ["-m", "\"added subproject1\""])
-        print(git.log("--decorate"))
+        logging.info(git.log("--decorate"))
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
@@ -101,7 +110,7 @@ class TestClone(testGrape.TestGrape):
             with self.queue_user_input(["all\n"]):
                 ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
-            print(git.log("--decorate"))
+            logging.info(git.log("--decorate"))
 
             subprojectpath = os.path.join(tempDir, subproject_path)
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")

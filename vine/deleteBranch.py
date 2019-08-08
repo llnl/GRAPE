@@ -1,10 +1,11 @@
-import os
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import option
-from grape.vine import utility
-from grape.vine import vine_logging
+import logging
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import option
+from vine import utility
+from vine import vine_logging
+from vine.vine_logging import log_wrapper
 
 
 class DeleteBranch(option.Option):
@@ -32,6 +33,7 @@ class DeleteBranch(option.Option):
 
 
 
+    @log_wrapper
     def execute(self, args):
         branch = args["<branch>"]
         force = args["-D"]
@@ -64,7 +66,7 @@ def deleteBranch(repo='', branch='master', args = None):
     force = args[0]
     forceStr = "-D" if force is True else "-d"
     with git.cd(repo):
-        vine_logging.printMsg(f"deleting {branch} in {repo}...")
+        logging.info(f"deleting {branch} in {repo}...")
         git.branch(f"{forceStr} {branch}")
         if f"origin/{branch}" in git.branch("-r"):
             try:
@@ -75,7 +77,7 @@ def deleteBranch(repo='', branch='master', args = None):
 
 def detachThenForceDeleteBranch(repo='', branch='master', args = None):
     with git.cd(repo):
-        vine_logging.printMsg(
+        logging.warning(
             f"*** WARNING ***: Detaching in order to delete {branch} in " +
             f"{repo}. You will be in a headless state.")
         git.checkout("--detach HEAD")
@@ -86,7 +88,7 @@ def detachThenForceDeleteBranch(repo='', branch='master', args = None):
 def handleDetachThenForceMRE(mre):
     # this shouldn't happen, but here is some verbosity for when it does...
     for e1, branch, repo in zip(mre.exceptions(), mre.branches(), mre.repos()):
-        print(f"{e1} {branch} {repo}")
+        logging.error(f"{e1} {branch} {repo}")
     raise mre
 
 def handleDeleteBranchMRE(mre, force=False):
@@ -101,30 +103,30 @@ def handleDeleteBranchMRE(mre, force=False):
                     if force:
                         detachTuples.append((repo, branch, None))
                     else:
-                        vine_logging.printMsg(
+                        logging.info(
                             f"call grape db -D {branch} to force deletion" +
                             " of branch you are currently on.")
                 elif "not deleting branch" in e.gitOutput and "even though it is merged to HEAD." in e.gitOutput:
                     git.branch(f"-D {branch}")
                 elif "error: branch" in e.gitOutput and "not found" in e.gitOutput:
-                    print(f"{branch} not found in {repo}")
+                    logging.info(f"{branch} not found in {repo}")
                 elif "is not fully merged" in e.gitOutput:
                     if force:
-                        vine_logging.printMsg(
-                            f"**DELETING UNMERGED BRANCH {branch}")
+                        logging.info(f"**DELETING UNMERGED BRANCH {branch}")
                         git.branch(f"-D {branch}")
                     else:
-                        print(f"{branch} is not fully merged in {repo}. Run" +
-                              f" grape db -D {branch} to force the deletion")
+                        logging.info(
+                            f"{branch} is not fully merged in {repo}. " +
+                            f"Run grape db -D {branch} to force the deletion")
                 elif e.commError:
-                    vine_logging.printMsg(
+                    logging.warning(
                         "Could not connect to origin to delete remote " +
                         "references to your branch. You may want to call " +
                         f"grape db {branch} again once you've reconnected.")
                 else:
-                    vine_logging.printMsg(f"Deletion of {branch} failed" +
-                                          " for unhandled reason.")
-                    print(e.gitOutput)
+                    logging.error(f"Deletion of {branch} failed for " +
+                                  "unhandled reason.")
+                    logging.error(e.gitOutput)
                     raise e
 
     multi_repo_cmd_launcher.MultiRepoCommandLauncher(detachThenForceDeleteBranch,

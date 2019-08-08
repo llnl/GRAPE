@@ -1,5 +1,35 @@
 
 
+Thu Jul 18 16:33:03 2019 David Bloss
+v1.31.13
+Reviewers: Ben Liu, Peter Robinson
+
+* vine_logging logs to file, routes stdout/stderr
+* backspace usable for GRAPE menu input
+
+GRAPE's current state:
+Testing currently redirects the OS' stdout & stderr to \"file like objects\" before executing tests, and undoes this redirection after tests have finished. Users running a test can use \"--debug\" to have output printed to stdout, but can not set breakpoints for actual debugging with a debugger like \"pdb\". The \"--debug\" flag makes use of a custom \"multifile\" object to reroute the file like objects back to the OS' stdout & stderr, which does not seem to allow for interactive debugging.
+
+GRAPE's future state (with provided changes):
+Executing code's stdout/stderr traffic is routed through \"vine_logging\", which hooks into Python's built-in logging module. Using logging handlers, traffic can be send to nowhere (devnull), to stdout, stderr, a log file, or any combination of the above.
+The OS' stdout is left alone and only temporarily rerouted before GRAPE's menu is displayed or if tests are executed without the \"--debug\" flag. If tests are ran with \"--debug\" then stdout is left alone and devs can set pdb breakpoints for interactive debugging. Also log files are created and deleted as part of the testing process.
+
+
+Thu Jul 18 16:08:12 2019 David Bloss
+v1.31.13
+Reviewers: Peter Robinson, Ben Liu
+
+* vine_logging logs to file, routes stdout/stderr
+* backspace usable for GRAPE menu input
+
+GRAPE's current state:
+Testing currently redirects the OS' stdout & stderr to \"file like objects\" before executing tests, and undoes this redirection after tests have finished. Users running a test can use \"--debug\" to have output printed to stdout, but can not set breakpoints for actual debugging with a debugger like \"pdb\". The \"--debug\" flag makes use of a custom \"multifile\" object to reroute the file like objects back to the OS' stdout & stderr, which does not seem to allow for interactive debugging.
+
+GRAPE's future state (with provided changes):
+Executing code's stdout/stderr traffic is routed through \"vine_logging\", which hooks into Python's built-in logging module. Using logging handlers, traffic can be send to nowhere (devnull), to stdout, stderr, a log file, or any combination of the above.
+The OS' stdout is left alone and only temporarily rerouted before GRAPE's menu is displayed or if tests are executed without the \"--debug\" flag. If tests are ran with \"--debug\" then stdout is left alone and devs can set pdb breakpoints for interactive debugging. Also log files are created and deleted as part of the testing process.
+
+
 Thu Apr 18 10:57:33 2019 David Bloss
 v1.31.12
 Reviewers: Ben Liu, Peter Robinson

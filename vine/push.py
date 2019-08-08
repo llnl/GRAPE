@@ -1,11 +1,13 @@
+import logging
 import os
-from grape.vine import config_parser_global
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class Push(Option):
@@ -27,6 +29,7 @@ class Push(Option):
     def description(self):
         return "Pushes your current branch to origin in all projects in this workspace."
 
+    @log_wrapper
     def execute(self, args):
         baseDir = utility.workspaceDir()
 
@@ -39,7 +42,7 @@ class Push(Option):
 
             retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
-        vine_logging.printMsg("Pushed current branch to origin")
+        logging.info("Pushed current branch to origin")
         return False not in retvals
 
     def setDefaultConfig(self, config):
@@ -47,7 +50,7 @@ class Push(Option):
 
 def push(repo='', branch='master'):
     with git.cd(repo):
-        vine_logging.printMsg(f"Pushing {branch} in {repo}...")
+        logging.info(f"Pushing {branch} in {repo}...")
         git.push(f"-u origin {branch}", throwOnFail=True)
 
 def handlePushMRE(mre):
@@ -55,13 +58,13 @@ def handlePushMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg("Failed to push branch.")
-            print(e.gitCommand)
-            print(e.cwd)
-            print(e.gitOutput)
+            logging.error("Failed to push branch.")
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(e.gitOutput)
             return False
 
 if __name__ is "__main__":
-    from grape.vine import grapeMenu
+    from vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("push", [])

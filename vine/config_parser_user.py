@@ -1,8 +1,8 @@
 import configparser
 import os
-from grape.vine import config_parser_base
-from grape.vine import config_parser_global
-from grape.vine import utility
+from vine import config_parser_base
+from vine import config_parser_global
+from vine import utility
 
 
 class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
@@ -57,8 +57,8 @@ def getAllActiveNestedSubprojectPrefixes(workspaceDir=None):
 
 def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None):
     # Imported here to avoid circular dependencies
-    from grape.vine import config as configOption
-    from grape.vine import grapeGit as git
+    from vine import config as configOption
+    from vine import grapeGit as git
 
     config = __get_global_grape_config(workspaceDir)
     publicBranches = config.getPublicBranchList()

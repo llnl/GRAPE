@@ -1,6 +1,8 @@
+import logging
 import os
-from grape.vine import grapeGit as git
-from grape.vine.option import Option
+from vine import grapeGit as git
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 # list local branches (git branch)
 class Branches(Option):
@@ -12,9 +14,10 @@ class Branches(Option):
     def description(self):
         return "List all of your local repo's branches"
 
+    @log_wrapper
     def execute(self, args):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        print(git.branch())
+        logging.info(git.branch())
         return True
 
     def setDefaultConfig(self, config):

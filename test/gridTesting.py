@@ -1,10 +1,12 @@
+import logging
 import os
 import shutil
 import sys
 import tempfile
 import types
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import vine_logging
 
 
 #A grape project in a command list form that has reset capability.
@@ -16,9 +18,11 @@ class ResettableProject(object):
         self.projectPrefix = tempfile.mkdtemp()
         self.projectDir = projectDir
         if os.path.exists(projectDir):
-            print(f"Path ({projectDir}) already exists, so it cannot be " +
-                  "used by a new ResettableProject.")
+            logging.error(f"Path ({projectDir}) already exists, so it " +
+                          "cannot be used by a new ResettableProject.")
             sys.exit(1)
+
+        self.vine_logger = vine_logging.GrapeLogger()
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
         #param itself can be a tuple, a single parameter, or a single lambda function that provides arguments
@@ -62,7 +66,7 @@ class ResettableProject(object):
                 else:
                     cmd(param)
             except grape_errors.GrapeGitError as e:
-                print(f"{e.gitCommand} {e.gitOutput}", file=sys.stderr)
+                logging.error(f"{e.gitCommand} {e.gitOutput}")
                 raise e
 
     def tearDown(self):
@@ -79,11 +83,11 @@ class ResettableProject(object):
 def generateTest(project, method):
     def test(self):
         if project.debugging():
-            self.switchToStdout()
+            project.vine_logger.restore_sys_stdout()
         project.reset(self.defaultWorkingDirectory)
         method(self, project)
         if project.debugging():
-            self.switchToHiddenOutput()
+            project.vine_logger.redirect_sys_stdout()
     return test
 
 

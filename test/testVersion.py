@@ -1,11 +1,11 @@
 import os
 import sys
-from grape.test import testGrape
-from grape.vine import grape_errors
-from grape.vine import grapeMenu
-from grape.vine import grapeGit as git
-from grape.vine import config_parser_global
-from grape.vine.option import Option
+from test import testGrape
+from vine import grape_errors
+from vine import grapeMenu
+from vine import grapeGit as git
+from vine import config_parser_global
+from vine.option import Option
 
 
 class TestVersion(testGrape.TestGrape):

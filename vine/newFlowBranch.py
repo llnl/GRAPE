@@ -1,12 +1,14 @@
+import logging
 import os
-from grape.vine import checkout
-from grape.vine import config_parser_global
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import checkout
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class NewBranchOption(Option):
@@ -35,9 +37,9 @@ class NewBranchOption(Option):
         super(NewBranchOption, self).__init__()
         self._key = topic
         if (topic != topic.lower()):
-            vine_logging.printMsg(f"WARNING: {topic} in " +
-                                  ".grapeconfig.flow.topicPrefixMappings " +
-                                  "should be lowercase.")
+            logging.warning(
+                f"WARNING: {topic} in .grapeconfig.flow.topicPrefixMappings" +
+                " should be lowercase.")
             self._key = topic.lower()
         self._section = "Gitflow Tasks"
         self._public = public
@@ -47,9 +49,10 @@ class NewBranchOption(Option):
 
 
 
+    @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         start = args["--start"]
         if not start:
@@ -79,10 +82,9 @@ class NewBranchOption(Option):
 
         branchStatus = checkout.branchAlreadyExists(branchName)
         if branchStatus:
-            vine_logging.printMsg("Not creating new branch.")
+            logging.info("Not creating new branch.")
             if branchStatus == 1:
-                vine_logging.printMsg(f"Use `grape checkout {branchName}' " +
-                                      "instead.")
+                logging.info(f"Use `grape checkout {branchName}' instead.")
             return False
 
         activeSubmodulesCheck = git.getActiveSubmodules(utility.workspaceDir())
@@ -97,13 +99,12 @@ class NewBranchOption(Option):
             for sub in changedURLModules + removedModules:
                 url_update = "has changed URL" if sub in changedURLModules else f"is not present in {start}"
                 maybe_active = "active" if sub in activeSubmodulesCheck else "inactive"
-                vine_logging.printMsg(
+                logging.info(
                     f"{sub} {url_update}, attempting to remove references " +
                     f"for {maybe_active} submodule before branch creation.")
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck)
                 if not cleaned:
-                    vine_logging.printMsg(
-                        f"Failed to remove old submodule for {sub}.")
+                    logging.info(f"Failed to remove old submodule for {sub}.")
                     return False
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(createBranch,
@@ -114,16 +115,15 @@ class NewBranchOption(Option):
                                                    globalArgs=branchName)
 
         launcher.initializeCommands()
-        vine_logging.printMsg("About to create the following branches:")
+        logging.info("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):
-            vine_logging.printMsg(
-                f"\t{branchName} off of {branch} in {repo}")
+            logging.info(f"\t{branchName} off of {branch} in {repo}")
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
             grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={start}'])
             launcher.launchFromWorkspaceDir()
         else:
-            vine_logging.printMsg("branches not created")
+            logging.info("branches not created")
 
         # reinit any submodules with changed URLs
         for sub in changedURLModules:
@@ -157,24 +157,24 @@ def createBranch(repo="unknown", branch="master", args=[]):
     branchPoint = branch
     fullBranch = args
     with git.cd(repo):
-        vine_logging.printMsg(f"creating and switching to {fullBranch} in {repo}")
+        logging.info(f"creating and switching to {fullBranch} in {repo}")
         try:
             git.checkout(f"-b {fullBranch} {branchPoint} ")
         except grape_errors.GrapeGitError as e:
-            print(f"{repo}:{e.gitOutput}")
-            vine_logging.printMsg(f"WARNING: {fullBranch} in {repo}" +
-                                  " will not be pushed.")
+            logging.error(f"{repo}:{e.gitOutput}")
+            logging.warning(f"WARNING: {fullBranch} in {repo}" +
+                            " will not be pushed.")
             return
-        vine_logging.printMsg(f"pushing {fullBranch} to origin in {repo}")
+        logging.info(f"pushing {fullBranch} to origin in {repo}")
         try:
             git.push(f"-u origin {fullBranch}")
         except grape_errors.GrapeGitError as e:
-            print("{repo}:  {e.gitOutput}")
+            logging.error("{repo}:  {e.gitOutput}")
             return
 
 
 
 if __name__ == "__main__":
-    from grape.vine import grapeMenu
+    from vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("feature", [])

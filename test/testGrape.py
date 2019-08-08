@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 from contextlib import contextmanager
-import inspect
 import io
-import logging
 import os
 import shutil
 import stat
@@ -22,12 +20,13 @@ grape_par_dir = os.path.dirname(grape_path)
 if grape_par_dir not in sys.path:
     sys.path.insert(0, grape_par_dir)
 
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import config_parser_global
-from grape.vine import grapeMenu
-from grape.vine import utility
-from grape.vine.option import Option
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import config_parser_global
+from vine import grapeMenu
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
 
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
@@ -48,45 +47,19 @@ def writeFile3(path):
     with open(path, 'w') as f:
         f.write(str3)
 
-# object to allow splitting of output to multiple file-like objects.
-# from user shx2: https://stackoverflow.com/questions/616645/how-to-duplicate-sys-stdout-to-a-log-file
-class Multifile(object):
-    def __init__(self, files):
-        self._files = files
-    def __getattr__(self, attr, *args):
-        return self._wrap(attr, *args)
-    def _wrap(self, attr, *args):
-        def g(*a, **kw):
-            for f in self._files:
-                res = getattr(f, attr, *args)(*a, **kw)
-            return res
-        return g
 
 class TestGrape(unittest.TestCase):
-    """
-    TODO: output from multiple tests seem to be overlapping.
-    Tests inheriting from "TestGrape" are not 100% separated. A simple test
-    ran by itself can produce zero output to stdout and asserting stdout is
-    empty would succeed. This same test combined with the entire GRAPE suite
-    of tests will encounter a non-empty stdout, and fail.
-    """
-
-    def switchToStdout(self):
-        sys.stdout = Multifile([sys.stdout, self.stdout])
-        sys.stderr = Multifile([sys.stderr, self.stderr])
-
-    def switchToHiddenOutput(self):
-        sys.stdout = self.output
-        sys.stderr = self.error
 
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
-        self.defaultWorkingDirectory = tempfile.mkdtemp()
+        # 'realpath' resolves issues caused by symlinks and path assumptions.
+        self.defaultWorkingDirectory = os.path.realpath(tempfile.mkdtemp())
 
         self.repos = [os.path.join(self.defaultWorkingDirectory, "testRepo"),
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
         self._debug = False
+        self.logger = vine_logging.GrapeLogger()
 
     def setUpConfig(self):
         grapeMenu._resetMenu()
@@ -102,47 +75,48 @@ class TestGrape(unittest.TestCase):
         config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
         config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
 
+    def setUpLogging(self):
+        if self._debug:
+            self.logger.log_to_stderr()
+            self.logger.log_to_stdout()
+            log_file = os.path.join(os.getcwd(), self._testMethodName + '.log')
+        else:
+            self.logger.redirect_sys_stdout()
+            log_file = os.path.join(self.defaultWorkingDirectory,
+                                    self._testMethodName + '.log')
+        self.logger.log_to_file(log_file)
+
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
-        self.output = io.StringIO()
-        self.error = io.StringIO()
-        self.stdout = sys.stdout
-        self.stderr = sys.stderr
+        self.setUpLogging()
         self.cwd = os.getcwd()
-        sys.stdout = self.output
-        sys.stderr = self.error
 
         # create a test repository to operate in.
+        bare_repo = self.repo + '-origin'
         try:
-            try:
-                os.mkdir(self.repo + "-origin")
-            except OSError:
-                pass
-
-            os.chdir(self.repo + "-origin")
-            git.gitcmd("init --bare", "Setup Failed")
-            os.chdir(os.path.dirname(f"{self.repo}-origin"))
-            git.gitcmd(f"clone {self.repo}-origin {self.repo}",
-                       "could not clone test bare repo")
-            os.chdir(self.repo)
-            fname = os.path.join(self.repo, "testRepoFile")
-            writeFile1(fname)
-            self.file1 = fname
-            git.gitcmd(f"add {fname}", "Add Failed")
-            git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
-            git.gitcmd("push origin master", "push to master failed")
-            # create a develop branch in addition to master by default
-            git.branch("develop")
-            git.push("origin develop")
-            os.chdir(os.path.dirname(self.repo))
-        except grape_errors.GrapeGitError:
+            os.mkdir(bare_repo)
+        except OSError:
             pass
 
-        self.menu = grapeMenu.menu()
+        os.chdir(bare_repo)
+        git.gitcmd("init --bare", "Setup Failed")
+        os.chdir(os.path.dirname(f"{self.repo}-origin"))
+        git.gitcmd(f"clone {bare_repo} {self.repo}",
+                   "could not clone test bare repo")
+        os.chdir(self.repo)
+        fname = os.path.join(self.repo, "testRepoFile")
+        writeFile1(fname)
+        self.file1 = fname
+        git.gitcmd(f"add {fname}", "Add Failed")
+        git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
+        git.gitcmd("push origin master", "push to master failed")
+        # create a develop branch in addition to master by default
+        git.branch("develop")
+        git.push("origin develop")
+        os.chdir(os.path.dirname(self.repo))
 
-        if self._debug:
-            self.switchToStdout()
+        self.menu = grapeMenu.menu()
 
     def tearDown(self):
         def onError(func, path, exc_info):
@@ -162,24 +136,22 @@ class TestGrape(unittest.TestCase):
                 func(path)
             else:
                 raise Exception
-        if self._debug:
-            self.switchToHiddenOutput()
         os.chdir(os.path.abspath(os.path.dirname(self.defaultWorkingDirectory)))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
         # restore stdout and stderr to their original streams
-        sys.stdout = self.stdout
-        sys.stderr = self.stderr
         os.chdir(self.cwd)
-        self.output.close()
-        self.error.close()
 
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
+        self.logger.restore_sys_stdout()
+
+        if not self._debug and os.path.isfile(self.logger.log_file):
+            os.remove(self.logger.log_file)
 
     def get_output(self):
-        return self.output.getvalue()
+        return self.logger.get_log_file_contents()
 
     @contextmanager
     def queue_user_input(self, user_input_list):
@@ -221,23 +193,23 @@ def buildSuite(cls, appendTo=None, sub=None):
 
 def main(argv, debug=False):
 
-    from grape.test import testBranches
-    from grape.test import testBundle
-    from grape.test import testClone
-    from grape.test import testConfig
-    from grape.test import testDeleteBranch
-    from grape.test import testMergeDevelop
-    from grape.test import testGrapeGit
-    from grape.test import testResolveConflicts
-    from grape.test import testReview
-    from grape.test import testStash
-    from grape.test import testUnbundle
-    from grape.test import testVersion
-    from grape.test import testPublish
-    from grape.test import testCO
-    from grape.test import testNestedSubproject
-    from grape.test import testStatus
-    from grape.test import testUpdateLocal
+    from test import testBranches
+    from test import testBundle
+    from test import testClone
+    from test import testConfig
+    from test import testDeleteBranch
+    from test import testMergeDevelop
+    from test import testGrapeGit
+    from test import testResolveConflicts
+    from test import testReview
+    from test import testStash
+    from test import testUnbundle
+    from test import testVersion
+    from test import testPublish
+    from test import testCO
+    from test import testNestedSubproject
+    from test import testStatus
+    from test import testUpdateLocal
 
     testClasses = {"Branches":testBranches.TestBranches,
                    "Bundle":testBundle.TestBundle,

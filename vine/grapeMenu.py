@@ -1,41 +1,41 @@
+import logging
 import os
 import sys
 import traceback
 
-from grape.vine import addSubproject
-from grape.vine import bundle
-from grape.vine import branches
-from grape.vine import checkout
-from grape.vine import clone
-from grape.vine import commit
-from grape.vine import config
-from grape.vine import config_parser_global
-from grape.vine import deleteBranch
-from grape.vine import foreach
-from grape.vine import global_state
-from grape.vine import grape_errors
-from grape.vine import writeConfig
-from grape.vine import hooks
-from grape.vine import merge
-from grape.vine import mergeDevelop
-from grape.vine import mergeRemote
-from grape.vine import newFlowBranch
-from grape.vine import pull
-from grape.vine import push
-from grape.vine import quit
-from grape.vine import resolveConflicts
-from grape.vine import resumable
-from grape.vine import review
-from grape.vine import stash
-from grape.vine import status
-from grape.vine import grapeTest as test
-from grape.vine import updateLocal
-from grape.vine import updateSubproject
-from grape.vine import updateView
-from grape.vine import utility
-from grape.vine import version
-from grape.vine import vine_logging
-from grape.vine import walkthrough
+from vine import addSubproject
+from vine import bundle
+from vine import branches
+from vine import checkout
+from vine import clone
+from vine import commit
+from vine import config
+from vine import config_parser_global
+from vine import deleteBranch
+from vine import foreach
+from vine import grape_errors
+from vine import writeConfig
+from vine import hooks
+from vine import merge
+from vine import mergeDevelop
+from vine import mergeRemote
+from vine import newFlowBranch
+from vine import pull
+from vine import push
+from vine import quit
+from vine import resolveConflicts
+from vine import resumable
+from vine import review
+from vine import stash
+from vine import status
+from vine import grapeTest as test
+from vine import updateLocal
+from vine import updateSubproject
+from vine import updateView
+from vine import utility
+from vine import version
+from vine import vine_logging
+from vine import walkthrough
 
 
 #######################################################################
@@ -71,7 +71,7 @@ class _Menu(object):
 
     def __init__(self):
         # Imported here to avoid circular dependencies
-        from grape.vine import publish
+        from vine import publish
 
         #Add menu classes
         self._optionLookup = {}
@@ -107,7 +107,7 @@ class _Menu(object):
         try:
             return self._optionLookup[choice]
         except KeyError:
-            print(f"Unknown option '{choice}'")
+            logging.info(f"Unknown option '{choice}'")
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None, globalArgs=None):
@@ -132,11 +132,10 @@ class _Menu(object):
                     config_parser_global.read(os.path.join(chosen_option._config, config.GRAPE_CONFIG))
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:], config)
             except SystemExit as e:
+                # 'docopt' prints help doc then exists with SystemExit.
                 if len(args) > 1 and "--help" != args[1] and "-h" != args[1]:
                     print(f"GRAPE PARSING ERROR: could not parse {args[1:]}\n")
                 raise e
-        if globalArgs is not None:
-            global_state.applyGlobalArgs(globalArgs)
         try:
             if isinstance(chosen_option, resumable.Resumable):
                 if option_args["--continue"]:
@@ -144,19 +143,17 @@ class _Menu(object):
             return chosen_option.execute(option_args)
 
         except grape_errors.GrapeGitError as e:
-            print(traceback.print_exc())
-            print(f"GRAPE: Uncaught Error {e.code} in " +
+            logging.error(traceback.print_exc())
+            logging.error(f"GRAPE: Uncaught Error {e.code} in " +
                   f"grape-{chosen_option._key} when executing " +
                   f"'{e.gitCommand}' in '{e.cwd}'\n{e.gitOutput}")
             exit(e.code)
 
         except grape_errors.NoWorkspaceDirException as e:
-            print(f"GRAPE: grape {chosen_option.key} must be run from a grape workspace.")
-            print(f"GRAPE: {e.message}")
+            logging.error(f"GRAPE: grape {chosen_option.key} must be run" +
+                          " from a grape workspace.")
+            logging.error(f"GRAPE: {e.message}")
             exit(1)
-        finally:
-            if globalArgs is not None:
-                global_state.popGlobalArgs()
 
     # Present the main menu
     def presentTextMenu(self):

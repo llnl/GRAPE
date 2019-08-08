@@ -1,6 +1,7 @@
 import io
-from grape.vine import config_parser_global
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class WriteConfig(Option):
@@ -20,6 +21,7 @@ class WriteConfig(Option):
     def description(self):
         return "write a .grapeconfig file based on your current environment"
 
+    @log_wrapper
     def execute(self, args):
         config = config_parser_global.grapeConfig()
 

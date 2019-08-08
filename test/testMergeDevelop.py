@@ -1,9 +1,9 @@
 import os
 import sys
-from grape.test import testGrape
-from grape.test import testNestedSubproject
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
+from test import testGrape
+from test import testNestedSubproject
+from vine import grape_errors
+from vine import grapeGit as git
 
 
 class TestMD(testGrape.TestGrape):

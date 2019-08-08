@@ -1,10 +1,12 @@
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import merge
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+import logging
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import merge
+from vine import multi_repo_cmd_launcher
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 #merge a remote branch into this branch
@@ -44,21 +46,21 @@ class MergeRemote(Option):
     def description(self):
         return "Merge a remote branch into your current branch."
 
+    @log_wrapper
     def execute(self,args):
         # Imported here to avoid circular dependencies
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = "mr"
         otherBranch = args['<branch>']
         if not otherBranch:
             # list remote branches that are available
-            _branch = git.branch('-r')
-            print(_branch)
+            logging.info(git.branch('-r'))
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
 
         # make sure remote references are up to date
-        vine_logging.printMsg("Fetching remote references in all projects...")
+        logging.info("Fetching remote references in all projects...")
         try:
             multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as mre:
@@ -70,9 +72,8 @@ class MergeRemote(Option):
                     commError = True
 
             if commError:
-                vine_logging.printMsg("ERROR: can't communicate with " +
-                                      f"remotes for {commErrorRepos}. " +
-                                      "Halting remote merge.")
+                logging.error("ERROR: can't communicate with remotes for " +
+                              f"{commErrorRepos}. Halting remote merge.")
                 return False
 
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -84,8 +85,8 @@ class MergeRemote(Option):
         updateLocal = hasRemote and (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
         if updateLocal:
             origin_other_branch = git.join_list_as_git_path(['origin', otherBranch])
-            vine_logging.printMsg(f"updating local branch {otherBranch} " +
-                                  f"from {origin_other_branch}")
+            logging.info(f"updating local branch {otherBranch} " +
+                         f"from {origin_other_branch}")
             multi_repo_cmd_launcher.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
 
         args["<branch>"] = otherBranch if updateLocal else git.join_list_as_git_path(['origin', otherBranch])
@@ -105,13 +106,13 @@ def fetchHelper():
     return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True)
 
 def updateBranchHelper(repo="unknown", branch="master"):
-    vine_logging.printMsg("Updating local reference to {branch} in {repo}")
-    return git.fetch("origin {branch}:{branch}")
+    logging.info(f"Updating local reference to {branch} in {repo}")
+    return git.fetch(f"origin {branch}:{branch}")
 
 def updateBranchHandleMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         if "Couldn't find remote ref" in e.gitOutput:
-            vine_logging.printMsg(
+            logging.info(
                 f"Remote reference to {branch} not present in {repo}. " +
                 "Remote ref must be present in all active submodules to " +
                 "merge.\n\tEither create placeholder branches or deactivate" +

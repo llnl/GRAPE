@@ -1,10 +1,12 @@
+import logging
 import os
-from grape.vine import config_parser_user
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_user
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class Commit(Option):
@@ -33,11 +35,11 @@ class Commit(Option):
             git.commit(commitargs)
             return True
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg(f"Commit in {repo} failed. Perhaps there " +
-                                  "were no staged changes? Use -a to commit" +
-                                  " all modified files.")
+            logging.error(f"Commit in {repo} failed. Perhaps there were no " +
+                          "staged changes? Use -a to commit all modified files.")
             return False
 
+    @log_wrapper
     def execute(self, args):
         commitargs = ""
         if args['-a']:
@@ -57,15 +59,15 @@ class Commit(Option):
             os.chdir(os.path.join(wsDir, sub))
             subStatus = git.status("--porcelain -uno")
             if subStatus:
-                vine_logging.printMsg(f"Committing in {sub}...")
+                logging.info(f"Committing in {sub}...")
                 if self.commit(commitargs, sub) and stage:
                     os.chdir(wsDir)
-                    vine_logging.printMsg(f"Staging committed change in {sub}...")
+                    logging.info(f"Staging committed change in {sub}...")
                     git.add(sub)
 
         os.chdir(wsDir)
         if submodules or git.status("--porcelain"):
-            vine_logging.printMsg("Performing commit in outer level project...")
+            logging.info("Performing commit in outer level project...")
             self.commit(commitargs, wsDir)
         return True
 

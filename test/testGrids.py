@@ -1,8 +1,8 @@
 import os
 import unittest
-from grape.test import gridTesting
-from grape.test.testGrape import writeFile1
-from grape.vine import grapeGit as git
+from test import gridTesting
+from test.testGrape import writeFile1
+from vine import grapeGit as git
 
 
 class QuickGridTests(unittest.TestCase):

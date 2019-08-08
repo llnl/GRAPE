@@ -1,3 +1,4 @@
+import logging
 import os
 
 
@@ -9,7 +10,9 @@ class GrapeGitError(Exception):
         super(GrapeGitError, self).__init__()
         self.msg = errmsg
         self.code = returnCode
-        self.gitOutput = str(gitOutput)
+        if isinstance(gitOutput, bytes):
+            gitOutput = gitOutput.decode()
+        self.gitOutput = gitOutput
         self.gitCommand = gitCommand
         if self.code == 128 and "fatal: " in self.gitOutput:
             if "Could not read from remote" in self.gitOutput or \
@@ -21,19 +24,17 @@ class GrapeGitError(Exception):
         else:
             self.commError = False
         self.cwd = cwd
-
-    def __getinitargs__(self):
-        return (self.msg, self.code, self.gitOutput, self.gitCommand, self.cwd)
+        logging.debug(repr(self), exc_info=True)
 
     def __str__(self):
         return f"\nWORKING DIR: {self.cwd}\nCODE: {self.code}\n" + \
-               f"CMD: {self.gitCommand}\nOUTPUT: {self.gitOutput}"
+               f"CMD: {self.gitCommand}\nOUTPUT: {self.gitOutput}\n" + \
+               f"STDERR: {self.msg}"
 
     def __repr__(self):
         return self.__str__()
 
 
-# TODO: is pickle bug still a problem in Python 3.x?
 # there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
 # this is a wrapper to allow exception capture in runCommandOnRepoBranch.
 class MultiRepoException(Exception):
@@ -42,6 +43,7 @@ class MultiRepoException(Exception):
         self._repos = []
         self._branches = []
         self._args = []
+        logging.debug(repr(self))
 
     def addException(self, e, repo, branch, args):
         self._exceptions.append(e)
@@ -80,3 +82,4 @@ class NoWorkspaceDirException(Exception):
             self.message = f"No .git found in {cmd}"
         else:
             self.message = "No .git found"
+        logging.error(self.message)

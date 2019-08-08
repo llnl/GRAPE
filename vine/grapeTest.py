@@ -1,4 +1,5 @@
-from grape.vine.option import Option
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class Test(Option):
@@ -22,8 +23,9 @@ class Test(Option):
     def description(self):
         return "Test Grape."
 
+    @log_wrapper
     def execute(self, args):
-        from grape.test import testGrape
+        from test import testGrape
         good = testGrape.main(args["<suite>"], debug = args["--debug"])
         if not good:
             print("*"*80)

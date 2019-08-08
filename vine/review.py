@@ -1,15 +1,17 @@
 import io
+import logging
 import os
 import re
 import urllib
 from stashy import errors as stashy_errors
-from grape.vine import Atlassian
-from grape.vine import config_parser_global
-from grape.vine import config_parser_user
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import Atlassian
+from vine import config_parser_global
+from vine import config_parser_user
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 # Prepare Feature Branch for review
@@ -116,6 +118,7 @@ class Review(Option):
         return reviewers
         
 
+    @log_wrapper
     def execute(self, args):
         """
         A fair chunk of this stuff relies on stashy's wrapping of the STASH REST API, which is posted at
@@ -126,7 +129,7 @@ class Review(Option):
         if not name:
             name = utility.getUserName()
             
-        vine_logging.printMsg(f"Logging onto {args['--bitbucketURL']}")
+        logging.info(f"Logging onto {args['--bitbucketURL']}")
         if args["--test"]:
             bitbucket = Atlassian.TestAtlassian(name)
         else:
@@ -149,7 +152,7 @@ class Review(Option):
         os.chdir(wsDir)
 
         #ensure branch is pushed
-        vine_logging.printMsg(f"Pushing {branch} to bitbucket...")
+        logging.info(f"Pushing {branch} to bitbucket...")
         git.push(f"origin {branch}")
         #target branch for outer level repo
         target_branch = args["--target"]
@@ -191,10 +194,10 @@ class Review(Option):
         ##  Submodule Repos
         missing = utility.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
         if missing:
-            vine_logging.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+            logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
                              "these submodules, you may need to do a grape md to proceed.")
-            vine_logging.printMsg(','.join(missing))
+            logging.info(','.join(missing))
             return False        
         pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules")):
@@ -207,7 +210,7 @@ class Review(Option):
                     continue
                 # push branch
                 os.chdir(submodule)
-                vine_logging.printMsg(f"Pushing {branch} to bitbucket...")
+                logging.info(f"Pushing {branch} to bitbucket...")
                 git.push(f"origin {branch}")
                 os.chdir(wsDir)
                 repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
@@ -253,12 +256,12 @@ class Review(Option):
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
             if not git.hasBranch(branch):
-                vine_logging.printMsg(
+                logging.info(
                     f"Top level repository does not have a branch {branch}," +
                     " not generating a Pull Request")
                 return True
             if git.branchUpToDateWith(target_branch, branch):
-                vine_logging.printMsg(
+                logging.info(
                     f"{target_branch} up to date with {branch}," +
                     " not generating a Pull Request in Top Level repo")
                 return True
@@ -266,7 +269,7 @@ class Review(Option):
                 
             repo_name = args["--repo"]
             repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
-            vine_logging.printMsg(f"Posting pull request to {project_name},{repo_name}")
+            logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
             for link in pullRequestLinks:
@@ -278,7 +281,7 @@ class Review(Option):
                                          reviewers, 
                                          args)
                        
-            vine_logging.printMsg(f"Request generated/updated:\n\n{request}")
+            logging.info(f"Request generated/updated:\n\n{request}")
         return True
 
     def setDefaultConfig(self, config):
@@ -327,7 +330,7 @@ def pullRequestAlreadyMerged(errorMessage):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
-    vine_logging.printMsg(f"Gathering active pull requests on {branch}")
+    logging.info(f"Gathering active pull requests on {branch}")
     request = getReposPullRequest(repo, branch, target_branch, args)
 
     if not request:
@@ -336,15 +339,15 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             if not title:
                 title = branch
             try:
-                vine_logging.printMsg(
+                logging.info(
                     f"Creating new pull request titled '{title}' " + "\n" +
                     f" for branch {branch} targeting {target_branch}. ")
-                vine_logging.printMsg(f"reviewers: {reviewers}")
+                logging.info(f"reviewers: {reviewers}")
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
                 url = request.link()
-                vine_logging.printMsg(f"Pull request created at {url} .")
+                logging.info(f"Pull request created at {url} .")
             except stashy_errors.GenericException as e:
-                print(f"BITBUCKET: {e.data['errors'][0]['message']}")
+                logging.error(f"BITBUCKET: {e.data['errors'][0]['message']}")
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
@@ -354,7 +357,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     else:
         if not args["--add"]:
             # update the pull request
-            vine_logging.printMsg("Updating pull request...")
+            logging.info("Updating pull request...")
             try:
 
                 if reviewers:
@@ -366,7 +369,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     reviewers += revList
                 if not reviewers: 
                     reviewers = [r[0] for r in request.reviewers()]
-                vine_logging.printMsg(f"reviewer list is: {reviewers}")
+                logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
@@ -384,32 +387,32 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
 
                 subReviewers = reviewers
                 if request.author() in subReviewers:
-                    vine_logging.printMsg(
+                    logging.info(
                             f"{request.author()} is the author of the pull" +
                             " request and cannot be a reviewer")
                     subReviewers.remove(request.author())
                 if title is not None or descr is not None or subReviewers:
-                    vine_logging.printMsg(
+                    logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
                     request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
-                    vine_logging.printMsg(f"Pull request updated at {url} .")
+                    logging.info(f"Pull request updated at {url} .")
                 else:
                     url = request.link()
-                    vine_logging.printMsg(f"Pull request unchanged at {url} .")
+                    logging.info(f"Pull request unchanged at {url} .")
             except stashy_errors.GenericException as e:
-                print(f"BITBUCKET: {e.data['errors'][0]['message']}")
-                print(f"BITBUCKET: {e.data}")
+                logging.error(f"BITBUCKET: {e.data['errors'][0]['message']}")
+                logging.error(f"BITBUCKET: {e.data}")
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
 
         else:
-            print(f"BITBUCKET: Pull request from {branch} to {target_branch}" +
-                  " already exists, can't add a new one")
+            logging.info(f"BITBUCKET: Pull request from {branch} to " +
+                         f"{target_branch} already exists, can't add a new one")
             
     return request
 
 if __name__ == "__main__":
-    from grape.vine import grapeMenu
+    from vine import grapeMenu
     grapeMenu.menu().applyMenuChoice("review",[])

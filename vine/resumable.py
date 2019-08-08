@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 import io
+import logging
 import os
 import pickle
-from grape.vine import config_parser_global
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
 
 
 class Resumable(ABC):
@@ -24,7 +25,7 @@ class Resumable(ABC):
 
     def dumpProgress(self, args, msg=""):
         if msg:
-            print(msg)
+            logging.info(msg)
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
@@ -67,7 +68,7 @@ class Resumable(ABC):
                     self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
                     self._readProgressFile()
                 except:
-                    vine_logging.printMsg("No progress file found to continue from. Please enter a command without the "
+                    logging.error("No progress file found to continue from. Please enter a command without the "
                                      "--continue option. ")
                     raise e
         newArgs = self.progress["args"]

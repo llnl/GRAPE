@@ -1,8 +1,10 @@
+import logging
 import os
-from grape.vine import config_parser_global
-from grape.vine import grapeGit as git
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine import grapeGit as git
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class Clone(Option):
@@ -30,18 +32,19 @@ class Clone(Option):
     def description(self):
         return "Clone a repo and configure it for grape"
 
+    @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
-        from grape.vine import grapeMenu
+        from vine import grapeMenu
 
         remotepath = args["<url>"]
         destpath = args["<path>"]
         rstr = "--recursive" if args["--recursive"] else ""
         recursively = "recursively" if args["--recursive"] else ""
-        vine_logging.printMsg(
+        logging.info(
             f"Cloning {remotepath} into {destpath} {recursively}")
         git.clone(f" {rstr} {remotepath} {destpath}")
-        vine_logging.printMsg("Clone succeeded!")
+        logging.info("Clone succeeded!")
         os.chdir(destpath)
         config_parser_global.read()
         # ensure you start on a reasonable publish branch

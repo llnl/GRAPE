@@ -1,10 +1,11 @@
-import os
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+import logging
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 def stashHelper(repo=".", branch=""):
@@ -39,6 +40,7 @@ class Stash(Option):
     def description(self):
         return "Runs git stash in all repos in your workspace."
 
+    @log_wrapper
     def execute(self, args):
 
         if args["pop"]:
@@ -51,10 +53,10 @@ class Stash(Option):
             retvals = launcher.launchFromWorkspaceDir()
             for r in retvals:
                 if r[1]:
-                    print(f"{r[0]}: {r[1]}")
+                    logging.info(f"{r[0]}: {r[1]}")
         except grape_errors.MultiRepoException as mre:
             for e, r in zip(mre, mre.repos):
-                print(f"{r}:\n{e.gitOutput}")
+                logging.error(f"{r}:\n{e.gitOutput}")
 
         return True
 

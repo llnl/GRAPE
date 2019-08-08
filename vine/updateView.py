@@ -1,17 +1,19 @@
+import logging
 import os
 import shutil
 import stat
-from grape.vine import addSubproject
-from grape.vine import checkout
-from grape.vine import config_parser_global
-from grape.vine import config_parser_user
-from grape.vine import config_parser_workspace
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import addSubproject
+from vine import checkout
+from vine import config_parser_global
+from vine import config_parser_user
+from vine import config_parser_workspace
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 try:
     import tkinter as Tk
@@ -155,9 +157,10 @@ class UpdateView(Option):
         """
         return self.defineActiveSubprojects(projectType="nested subproject")
 
+    @log_wrapper
     def execute(self, args):
         if args["--gui"] and TkinterImportError:
-            vine_logging.printMsg("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
+            logging.error("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
             return True
         sync = args["--sync"].lower().strip()
         sync = sync == "true" or sync == "yes"
@@ -202,7 +205,7 @@ class UpdateView(Option):
                 notFound.append(proj)
 
         if notFound:
-            vine_logging.printMsg(f"\"{','.join(notFound)}\" not found in submodules {','.join(allSubmodules)} \nor\n nested subprojects {','.join(allNestedSubprojects)}")
+            logging.info(f"\"{','.join(notFound)}\" not found in submodules {','.join(allSubmodules)} \nor\n nested subprojects {','.join(allNestedSubprojects)}")
             return False
 
         if not args["--checkSubprojects"]:
@@ -240,16 +243,16 @@ class UpdateView(Option):
                 self.uvManager.finalize()
                 root.mainloop()
                 if self.uvManager.saved == False:
-                    vine_logging.printMsg("Not changing working view.")
+                    logging.info("Not changing working view.")
                     return False
                 # If --all/--add/--rm is used, only consider the
                 # command line for the included subprojects.
                 if self.uvManager.includedSubmodules == None:
-                    vine_logging.printMsg("Submodule changes from GUI ignored")
+                    logging.info("Submodule changes from GUI ignored")
                 else:
                     includedSubmodules = self.uvManager.includedSubmodules
                 if self.uvManager.includedNestedSubprojects == None:
-                    vine_logging.printMsg("Nested subproject changes from GUI ignored")
+                    logging.info("Nested subproject changes from GUI ignored")
                 else:
                     includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects
                 try:
@@ -272,11 +275,11 @@ class UpdateView(Option):
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
-                vine_logging.printMsg("Configuring submodules...")
-                vine_logging.printMsg("Initializing submodules...")
+                logging.info("Configuring submodules...")
+                logging.info("Initializing submodules...")
                 git.submodule(f"init {initStr.strip()}")
                 if deinitStr:
-                    vine_logging.printMsg(f"Deiniting submodules that were not requested... ({deinitStr})")
+                    logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
                     done = False
                     while not done:
                         try:
@@ -284,9 +287,11 @@ class UpdateView(Option):
                             done = True
                         except grape_errors.GrapeGitError as e:
                             if "the following file has local modifications" in e.gitOutput:
-                                print(e.gitOutput)
-                                vine_logging.printMsg("A submodule that you wanted to remove has local modifications. "
-                                                 "Use grape uv -f to force removal.")
+                                logging.error(e.gitOutput)
+                                logging.error(
+                                    "A submodule that you wanted to remove " +
+                                    "has local modifications. " +
+                                    "Use grape uv -f to force removal.")
                                 return False
 
                             elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput:
@@ -301,7 +306,7 @@ class UpdateView(Option):
                                 if module:
                                     src = os.path.join(module, ".git")
                                     dest =  os.path.join(wsDir, ".git", "modules", module)
-                                    vine_logging.printMsg(f"Moving {src} to {dest}")
+                                    logging.info(f"Moving {src} to {dest}")
                                     shutil.move(src, dest )
                                 else:
                                     raise e
@@ -311,7 +316,7 @@ class UpdateView(Option):
                     git.reset(f" {resetStr}")
 
                 if initStr:
-                    vine_logging.printMsg(f"Updating active submodules...({initStr})")
+                    logging.info(f"Updating active submodules...({initStr})")
                     git.submodule("update")
 
             # handle nested subprojects
@@ -331,9 +336,9 @@ class UpdateView(Option):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        vine_logging.printMsg(f"Activating Nested Subproject {subproject}")
+                        logging.info(f"Activating Nested Subproject {subproject}")
                         if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig):
-                            vine_logging.printMsg(f"Can't activate {subprojectName}. Exiting...")
+                            logging.info(f"Can't activate {subprojectName}. Exiting...")
                             return False
 
                         updatedActiveList.append(subprojectName)
@@ -381,7 +386,7 @@ class UpdateView(Option):
 
 
 def ensureLocalUpToDateWithRemote(repo='', branch='master'):
-    vine_logging.printMsg(f"Ensuring local branch {branch} in {repo} is up to date with origin")
+    logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     with git.cd(repo):
         # attempt to fetch the requested branch
         try:
@@ -402,14 +407,14 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master'):
                 # if this is a submodule, get the appropriate public mapping
                 if relpath in git.getAllSubmoduleURLMap().keys():
                     public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
-            vine_logging.printMsg(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
+            logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
             git.checkout(public)
             git.pull(f"origin {public}")
             git.checkout("--detach HEAD")
 
 def cleanupPush(repo='', branch='', args='none'):
     with git.cd(repo):
-        vine_logging.printMsg(f"Attempting push of local {branch} in {repo}")
+        logging.info(f"Attempting push of local {branch} in {repo}")
         git.push(f"origin {branch}")
 
 
@@ -418,9 +423,9 @@ def handleCleanupPushMRE(mre):
         try:
             raise e
         except grape_errors.GrapeGitError as e2:
-            vine_logging.printMsg(f"Local and remote versions of {branch} may have diverged in {repo}")
-            vine_logging.printMsg(f"{e2.gitOutput}")
-            vine_logging.printMsg("Use grape pull to merge the remote version into the local version.")
+            logging.error(f"Local and remote versions of {branch} may have diverged in {repo}")
+            logging.error(f"{e2.gitOutput}")
+            logging.error("Use grape pull to merge the remote version into the local version.")
 
 def handleEnsureLocalUpToDateMRE(mre):
     _pushBranch = False
@@ -433,9 +438,9 @@ def handleEnsureLocalUpToDateMRE(mre):
             if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
                 if "Couldn't find remote ref" in e.gitOutput:
                     if not _pushBranch:
-                        vine_logging.printMsg(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
+                        logging.info(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
                 else:
-                    vine_logging.printMsg(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
+                    logging.info(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
                 pushBranch = _pushBranch
                 if _skipPush:
                     pushBranch = False
@@ -454,11 +459,12 @@ def handleEnsureLocalUpToDateMRE(mre):
 
                     cleanupPushArgs.append((repo, branch, None))
                 else:
-                    vine_logging.printMsg(f"Skipping push of local {branch} in {repo}")
+                    logging.info(f"Skipping push of local {branch} in {repo}")
 
             elif e.commError:
-                vine_logging.printMsg(f"Could not update {branch} from origin due to a connectivity issue. Checking out most recent\n"
-                                      "local version. ")
+                logging.error(f"Could not update {branch} from origin due" +
+                              " to a connectivity issue. Checking out most" +
+                              " recent\nlocal version. ")
             else:
                 raise(e)
 

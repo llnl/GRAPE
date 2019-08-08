@@ -1,7 +1,7 @@
 from configparser import ConfigParser, DuplicateSectionError
 import io
 import os
-from grape.vine.option import Option
+from vine.option import Option
 
 
 class GrapeConfigParserBase(ConfigParser, object):

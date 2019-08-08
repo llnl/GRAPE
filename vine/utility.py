@@ -2,9 +2,13 @@
 from contextlib import contextmanager
 import os
 import sys
-from grape.docopt.docopt import docopt
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
+from docopt.docopt import docopt
+from vine import grapeGit as git
+if os.name != 'nt':
+    import readline
+
+
+GRAPE_CONFIG = '.grapeconfig'
 
 
 def ensure_dir(f):
@@ -31,7 +35,7 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
 def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
     for key in args:
-        if type(args[key]) is str and git.GRAPE_CONFIG in args[key] and config is not None:
+        if type(args[key]) is str and GRAPE_CONFIG in args[key] and config is not None:
             tokens = args[key].split('.')
             args[key] = config.get(tokens[2].strip(), tokens[3].strip())
     return args
@@ -73,7 +77,7 @@ def workspaceDir():
 
 def isWorkspaceClean(printOutput=False):
     # Imported here to avoid circular dependencies
-    from grape.vine import config_parser_user
+    from vine import config_parser_user
     isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
     activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
     base = workspaceDir()
@@ -154,7 +158,7 @@ def cd_workspace():
 @contextmanager
 def cd_workspace_grapeconfig():
     starting_dir = os.getcwd()
-    workspace_grapeconfig_dir = os.path.join(workspaceDir(), git.GRAPE_CONFIG)
+    workspace_grapeconfig_dir = os.path.join(workspaceDir(), GRAPE_CONFIG)
     if starting_dir == workspace_grapeconfig_dir:
         yield
         os.chdir(starting_dir)

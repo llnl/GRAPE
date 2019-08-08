@@ -1,6 +1,6 @@
 import os
-from grape.test import testGrape
-from grape.vine import grapeGit as git
+from test import testGrape
+from vine import grapeGit as git
 
 
 class TestDeleteBranch(testGrape.TestGrape):
@@ -18,7 +18,8 @@ class TestDeleteBranch(testGrape.TestGrape):
         contents = self.get_output()
         # '/tmp' not used on Windows. Defaults to using full path
         start_index = max(0, self.repo.find('/tmp'))
-        expected_output = f'deleting {test_branch} in '
+        expected_output = \
+            f'deleting {test_branch} in {self.repo[start_index:]}'
         self.assertIn(expected_output, contents)
         self.assertIn(self.repo[start_index:], contents)
 

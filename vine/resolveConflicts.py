@@ -1,5 +1,6 @@
-from grape.vine import grapeGit as git
-from grape.vine.option import Option
+from vine import grapeGit as git
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 # resolve conflicts using git mergetool
@@ -12,6 +13,7 @@ class ResolveConflicts(Option):
     def description(self):
         return "Resolve Conflicts that arose as result of a merge or a rebase"
 
+    @log_wrapper
     def execute(self, args):
         git.gitcmd("mergetool", "Mergetool Failed")
         # print out git status, which contains instructions to complete a merge

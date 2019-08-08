@@ -1,9 +1,11 @@
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine import multi_repo_cmd_launcher
-from grape.vine import vine_logging
-from grape.vine import vine_subprocess
-from grape.vine.option import Option
+import logging
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine import vine_logging
+from vine import vine_subprocess
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class ForEach(Option):
@@ -33,6 +35,7 @@ class ForEach(Option):
         return "runs a command in all projects in this workspace"
 
 
+    @log_wrapper
     def execute(self,args):
         cmd = args["<cmd>"]
         retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"],
@@ -54,8 +57,8 @@ def handleForeachMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            vine_logging.printMsg("Foreach failed.")
-            print(e.gitCommand)
-            print(e.cwd)
-            print(e.gitOutput)
+            logging.error("Foreach failed.")
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(e.gitOutput)
             return False

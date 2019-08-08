@@ -1,10 +1,10 @@
 import os
 import sys
-from grape.test import testGrape
-from grape.vine import config_parser_global
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
-from grape.vine.option import Option
+from test import testGrape
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine.option import Option
 
 
 class TestPublish(testGrape.TestGrape):
@@ -106,8 +106,8 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello ,  echo world")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
-        self.assertIn("hello", self.get_output())
-        self.assertIn("world", self.get_output())
+        self.assertIn("echo hello", self.get_output())
+        self.assertIn("echo world", self.get_output())
         self.assertIn("PERFORMING CUSTOM BUILD STEP", self.get_output())
 
     def testCustomTestStep(self):
@@ -116,8 +116,8 @@ class TestPublish(testGrape.TestGrape):
         config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
-        self.assertIn("helloTest", self.get_output())
-        self.assertIn("worldTest", self.get_output())
+        self.assertIn("echo helloTest", self.get_output())
+        self.assertIn("echo worldTest", self.get_output())
         self.assertIn("PERFORMING CUSTOM TEST STEP", self.get_output())
 
     def testVersionTickArgumentPassing(self):
@@ -144,7 +144,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertIn("v1.0.1", git.describe())
 
     def testPublishNestedSubprojects(self):
-        from grape.test import testNestedSubproject
+        from test import testNestedSubproject
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
@@ -163,7 +163,7 @@ class TestPublish(testGrape.TestGrape):
                         f"on {git.currentBranch()}, expected to be on master")
 
     def testPublishFromWithinNestedSubproject(self):
-        from grape.test import testNestedSubproject
+        from test import testNestedSubproject
         self.setUpBranchToFFMerge()
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(self)
@@ -173,7 +173,7 @@ class TestPublish(testGrape.TestGrape):
         self.assertSuccessfulFastForwardMerge()
 
     def testPublishNewSubmodule(self):
-        from grape.test import testNestedSubproject
+        from test import testNestedSubproject
         self.setUpBranchToFFMerge()
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")

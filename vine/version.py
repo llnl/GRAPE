@@ -1,13 +1,15 @@
 import configparser
 import io
+import logging
 import os
 import re
-from grape.vine import config_parser_global
-from grape.vine import config_parser_user
-from grape.vine import grapeGit as git
-from grape.vine import utility
-from grape.vine import vine_logging
-from grape.vine.option import Option
+from vine import config_parser_global
+from vine import config_parser_user
+from vine import grapeGit as git
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class Version(Option):
@@ -89,6 +91,7 @@ class Version(Option):
             branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
             args["--tagSuffix"] = branch2suffix[git.currentBranch()]
 
+    @log_wrapper
     def execute(self, args):
         self.parseArgs(args)
         if args["init"]:
@@ -172,7 +175,7 @@ class Version(Option):
 
     @staticmethod
     def stageVersionFile(fname):
-        print(f"STAGING {fname}")
+        logging.info(f"STAGING {fname}")
         git.add(fname)
         return True
 
@@ -243,7 +246,7 @@ class Version(Option):
                 VERSION_ID = list(map(int, m1.group(3).split(".")))
                 self.matchedLine = l
         if VERSION_ID is None:
-            print("GRAPE: .")
+            logging.info("GRAPE: .")
 
         return VERSION_ID
 
@@ -293,6 +296,6 @@ class Version(Option):
 
 if __name__ is "__main__": 
     import sys
-    from grape.vine import grapeMenu
+    from vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("version", sys.argv[1:])

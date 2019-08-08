@@ -1,4 +1,5 @@
-from grape.vine.option import Option
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
 class Quit(Option):
@@ -17,6 +18,7 @@ class Quit(Option):
     def description(self):
         return "Quit."
 
+    @log_wrapper
     def execute(self, args):
         return True
 

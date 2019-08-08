@@ -1,8 +1,8 @@
 __author__ = 'robinson96'
 import os
-from grape.test import testGrape
-from grape.vine import grape_errors
-from grape.vine import grapeGit as git
+from test import testGrape
+from vine import grape_errors
+from vine import grapeGit as git
 
 
 class TestCheckout(testGrape.TestGrape):
@@ -60,9 +60,6 @@ class TestCheckout(testGrape.TestGrape):
                          "submodule exists when it should not")
 
     def testSwitchingToBranchWithNewSubmodule(self):
-        debug = False
-        if debug:
-            self.switchToStdout()
         try:
             self.setUpSubmoduleBranch()
 
@@ -85,7 +82,4 @@ class TestCheckout(testGrape.TestGrape):
                 self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except grape_errors.GrapeGitError as e:
-            self.fail('\n'.join(self.get_output())+'\n'.join(self.error) + e.gitCommand + '\n' + e.gitOutput)
-        finally:
-            if debug:
-                self.switchToHiddenOutput()
+            self.fail('\n'.join(self.get_output()) + e.gitCommand + '\n' + e.gitOutput)
