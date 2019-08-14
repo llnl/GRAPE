@@ -3,11 +3,10 @@ import os
 import subprocess
 
 
-def executeSubProcess(command, workingDirectory=os.getcwd(), verbose=2,
-                      stream=False):
+def executeSubProcess(command, workingDirectory=os.getcwd()):
 
-    logging.info(f"Executing: \'{command}\'\n\t" +
-                 f"Working Directory: {workingDirectory}")
+    logging.debug(f"Executing: \'{command}\'\n\t" +
+                  f"Working Directory: {workingDirectory}")
 
     completed_process = subprocess.run(command,
                                        capture_output=True,

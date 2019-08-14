@@ -176,7 +176,7 @@ def getStatus(branch='', repo='', args=''):
                         toReturn.append(' '.join([tokens[0], tokens[1]]))
                     else:
                         relPath = os.path.relpath(sub, wsDir)
-                        branch_path = git.join_list_as_git_path([relPath, tokens[1]])
+                        branch_path = os.path.join(relPath, tokens[1])
                         toReturn.append(' '.join([tokens[0], branch_path]))
         return toReturn
     except Exception as e:

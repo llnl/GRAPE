@@ -649,8 +649,7 @@ class Publish(Resumable, Option):
                 if "<public>" in cmd:
                     cmd = cmd.replace("<public>", args["--public"])
 
-                process_result = vine_subprocess.executeSubProcess(cmd.strip(),
-                                                                   stream=True)
+                process_result = vine_subprocess.executeSubProcess(cmd.strip())
                 logging.info(process_result.returncode)
                 if process_result.returncode != 0:
                     return False

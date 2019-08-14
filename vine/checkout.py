@@ -130,7 +130,7 @@ def createNewBranchesMREHandler(mre):
 # return value 0 : does not exist
 #              1 : already exists
 #              2 : exists as a case-insensitive match
-def branchAlreadyExists(branch, verbose = True):
+def branchAlreadyExists(branch):
     retVal = 0
     with utility.cd_workspace():
         git.fetch("--prune")
@@ -139,17 +139,15 @@ def branchAlreadyExists(branch, verbose = True):
         # make sure branch does not already exist
         allBranches = set([b[len(branch_path):] if b.startswith(branch_path) else b for b in git.allBranches()])
         if branch in allBranches:
-            if verbose:
-                logging.info(f"Branch {branch} already exists!")
+            logging.info(f"Branch {branch} already exists!")
             retVal = 1
         else:
             # make sure branch is not a case-insensitive match
             # as this will cause problems on Windows and Mac filesystems.
             for b in allBranches:
                 if branch.lower() == b.lower():
-                    if verbose:
-                        logging.info(f"Branch {b} already exists!\n" +
-                                     f"{branch} is a case insensitive match.")
+                    logging.info(f"Branch {b} already exists!\n" +
+                                 f"{branch} is a case insensitive match.")
                     retVal = 2
     return retVal
 

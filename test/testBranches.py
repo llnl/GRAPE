@@ -1,10 +1,11 @@
-from vine import vine_subprocess
+import os
+from vine import grapeGit as git
 from test import testGrape
 
 
 class TestBranches(testGrape.TestGrape):
 
     def testBranches(self):
-        completed_process = vine_subprocess.executeSubProcess('git branch')
-        contents = completed_process.stdout.decode()
+        os.chdir(self.repo)
+        contents = git.branch()
         self.assertIn('master', contents, msg="vine.branches could not find the master branch")

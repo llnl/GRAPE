@@ -49,7 +49,7 @@ class ForEach(Option):
 def foreach(repo='', branch='', args={}):
     cmd = args["<cmd>"]
     with git.cd(repo):
-        vine_subprocess.executeSubProcess(cmd, repo, verbose = -1)
+        vine_subprocess.executeSubProcess(cmd, repo)
     return True
 
 def handleForeachMRE(mre):

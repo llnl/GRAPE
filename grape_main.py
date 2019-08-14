@@ -6,8 +6,8 @@ pythonMajorVersion = sys.version_info[0]
 pythonMinorVersion = sys.version_info[1]
 
 if not pythonMajorVersion > 2 or (pythonMajorVersion == 3 and
-                                  pythonMinorVersion < 6):
-    print('Grape requires Python 3.6 or greater.')
+                                  pythonMinorVersion < 7):
+    print('Grape requires Python 3.7 or greater.')
     exit(1)
 
 # Main GRAPE import path set up. Applies to GRAPE usage via menu.
@@ -28,6 +28,7 @@ Calling grape by itself will pull up the grape menu.
 Usage: grape [-q] [--version] [<command> <args>...]
 
 Options:
+-v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
 
 
@@ -87,8 +88,11 @@ def set_verbosity(logger, choice=None):
     """
     if '-q' in sys.argv or (choice and 'test' in choice) or 'test' in sys.argv:
         return
+
     logger.log_to_stderr()
     logger.log_to_stdout()
+    if '-v' in sys.argv:
+        logger.log_to_stdout_debug()
 
 
 ## If this file is being run as a script, then run the main menu.
