@@ -4,7 +4,7 @@ import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
-if os.name != 'nt':
+if os.uname().sysname == 'Linux':
     import readline
 
 
