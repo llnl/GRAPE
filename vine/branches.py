@@ -17,7 +17,8 @@ class Branches(Option):
     @log_wrapper
     def execute(self, args):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        logging.info(git.branch())
+        # Branches logged & printed during vine_subprocess.executeSubProcess()
+        git.branch()
         return True
 
     def setDefaultConfig(self, config):
