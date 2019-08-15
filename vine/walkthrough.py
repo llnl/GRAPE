@@ -413,7 +413,7 @@ class DiffManager(ProjectManager):
                         try:
                             haveDiff = len(git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}").split()) > 0
                         except grape_errors.GrapeGitError as e:
-                            if "unknown revision or path not in the working tree" in e.gitOutput:
+                            if "unknown revision or path not in the working tree" in e.gitOutput.lower():
                                 branches = self.diffBranchSpec(self.branchA, self.branchB)
                                 logging.info(f"Could not diff {branches}. " +
                                              " Branch may not exist in {dir}.")

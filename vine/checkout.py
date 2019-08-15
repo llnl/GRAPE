@@ -45,7 +45,7 @@ def handleCheckoutMRE(mre):
             raise e1
         except grape_errors.GrapeGitError as e:
             with git.cd(project):
-                if "pathspec" in e.gitOutput:
+                if "pathspec" in e.gitOutput.lower():
                     createNewBranch = _createNewBranch
                     if _skipBranchCreation:
                         logging.info(f"Skipping checkout of {branch} in " +
@@ -71,7 +71,7 @@ def handleCheckoutMRE(mre):
                     else:
                         continue
 
-                elif "already exists" in e.gitOutput:
+                elif "already exists" in e.gitOutput.lower():
                     logging.info(f"Branch {branch} already exists in " +
                                  f"{project}.")
                     branchDescription = git.commitDescription(branch)
@@ -97,13 +97,13 @@ def handleCheckoutMRE(mre):
                         git.checkout(branch)
                     elif action == 'f':
                         git.checkout(f"-B {branch}")
-                elif "conflict" in e.gitOutput.lower():
+                elif e.has_conflict():
                     logging.info("CONFLICT occurred when pulling {branch} " +
                                  "from origin.")
                 elif "does not appear to be a git repository" in e.gitOutput.lower():
                     logging.info("Remote 'origin' does not exist. "
                                      "This branch was not updated from a remote repository.")
-                elif "Couldn't find remote ref" in e.gitOutput:
+                elif e.could_not_find_remote_ref():
                     logging.info(
                         f"Remote of {project} does not have reference to " +
                         f"{branch}. You may want to push this branch. ")

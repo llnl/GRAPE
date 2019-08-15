@@ -113,14 +113,14 @@ def fetchLocal(repo='unknown', branch='master'):
                 git.fetch(fetchArgs)
         except grape_errors.GrapeGitError as e:
             # let non-fast-forward fetches slide
-            if "rejected" in e.gitOutput and "non-fast-forward" in e.gitOutput:
+            if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
                 logging.error(e.gitCommand)
                 logging.error(e.gitOutput)
                 logging.warning("GRAPE: WARNING: one of your public branches" +
                                 f" {','.join(branches)} in {repo} has local " +
                                 "commits! Did you forget to create a topic " +
                                 "branch?")
-            elif "Refusing to fetch into current branch" in e.gitOutput:
+            elif "refusing to fetch into current branch" in e.gitOutput.lower():
                 print(e.gitOutput)
             else:
                 raise e

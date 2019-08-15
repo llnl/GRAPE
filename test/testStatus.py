@@ -9,6 +9,7 @@ class GrapeStatusTester(testGrape.TestGrape):
     def gridtestGrapeStatus(self, testProjectScenario):
         if testProjectScenario.debugging():
             self.logger.restore_sys_stdout()
+            self.logger.log_to_stdout_debug()
         os.chdir(testProjectScenario.getProjectDir())
         self.assertTrue(self.menu.applyMenuChoice("status"),
                         "status Failed when no flags requesting fail codes were used.")
@@ -22,6 +23,7 @@ class GrapeStatusTester(testGrape.TestGrape):
 
     def gridtestGrapeCheckoutOfMasterFixesGrapeStatusBranchConsistency(self, testProjectScenario): 
         if testProjectScenario.debugging():
+            self.logger.log_to_stdout_debug()
             self.logger.restore_sys_stdout()
         os.chdir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])

@@ -72,7 +72,7 @@ def deleteBranch(repo='', branch='master', args = None):
             try:
                 git.push(f"--delete origin {branch}", throwOnFail=True)
             except grape_errors.GrapeGitError as e:
-                if "remote ref does not exist" in e.gitOutput:
+                if "remote ref does not exist" in e.gitOutput.lower():
                     pass
 
 def detachThenForceDeleteBranch(repo='', branch='master', args = None):
@@ -98,19 +98,19 @@ def handleDeleteBranchMRE(mre, force=False):
             raise e1
         except grape_errors.GrapeGitError as e:
             with git.cd(repo):
-                if "Cannot delete the branch" in e.gitOutput and \
-                   "which you are currently on." in e.gitOutput:
+                if "cannot delete the branch" in e.gitOutput.lower() and \
+                   "which you are currently on." in e.gitOutput.lower():
                     if force:
                         detachTuples.append((repo, branch, None))
                     else:
                         logging.info(
                             f"call grape db -D {branch} to force deletion" +
                             " of branch you are currently on.")
-                elif "not deleting branch" in e.gitOutput and "even though it is merged to HEAD." in e.gitOutput:
+                elif "not deleting branch" in e.gitOutput.lower() and "even though it is merged to head." in e.gitOutput.lower():
                     git.branch(f"-D {branch}")
-                elif "error: branch" in e.gitOutput and "not found" in e.gitOutput:
+                elif "error: branch" in e.gitOutput.lower() and "not found" in e.gitOutput.lower():
                     logging.info(f"{branch} not found in {repo}")
-                elif "is not fully merged" in e.gitOutput:
+                elif "is not fully merged" in e.gitOutput.lower():
                     if force:
                         logging.info(f"**DELETING UNMERGED BRANCH {branch}")
                         git.branch(f"-D {branch}")

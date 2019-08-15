@@ -1116,7 +1116,7 @@ class Publish(Resumable, Option):
                           f"{public} to {branch} after publish.\"")
                 status[mergeID] = "MERGED"
             except grape_errors.GrapeGitError as e:
-                if "conflict" in e.gitOutput.lower():
+                if e.has_conflict():
                     logging.error(
                         f"Conflicts generated in cascade merge from {public}" +
                         f" to {branch} in {repo}.\nPlease use git " +

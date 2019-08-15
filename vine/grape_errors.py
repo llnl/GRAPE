@@ -14,10 +14,10 @@ class GrapeGitError(Exception):
             gitOutput = gitOutput.decode()
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
-        if self.code == 128 and "fatal: " in self.gitOutput:
-            if "Could not read from remote" in self.gitOutput or \
-                    "unable to access" in self.gitOutput or \
-                    "remote end hung up unexpectedly" in self.gitOutput:
+        if self.code == 128 and "fatal: " in self.gitOutput.lower():
+            if "could not read from remote" in self.gitOutput.lower() or \
+                    "unable to access" in self.gitOutput.lower() or \
+                    "remote end hung up unexpectedly" in self.gitOutput.lower():
                 self.commError = True
             else:
                 self.commError = False
@@ -33,6 +33,12 @@ class GrapeGitError(Exception):
 
     def __repr__(self):
         return self.__str__()
+
+    def could_not_find_remote_ref(self):
+        return "couldn't find remote ref" in self.gitOutput.lower()
+
+    def has_conflict(self):
+        return "conflict" in self.gitOutput.lower()
 
 
 # there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,

@@ -140,33 +140,24 @@ def getHomeDirectory():
 
 @contextmanager
 def cd_workspace():
-    starting_dir = os.getcwd()
     workspace_dir = workspaceDir()
-    if starting_dir == workspace_dir:
-        yield
-        os.chdir(starting_dir)
-    else:
-        try:
-            os.chdir(workspace_dir)
-            yield
-        except OSError as e:
-            print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
-        finally:
-            os.chdir(starting_dir)
+    return _cd_to_target_dir(workspace_dir)
 
 
 @contextmanager
 def cd_workspace_grapeconfig():
-    starting_dir = os.getcwd()
     workspace_grapeconfig_dir = os.path.join(workspaceDir(), GRAPE_CONFIG)
-    if starting_dir == workspace_grapeconfig_dir:
+    return _cd_to_target_dir(workspace_grapeconfig_dir)
+
+
+def _cd_to_target_dir(target_dir):
+    """Temporarily work in a new dir, return to starting dir when done."""
+    starting_dir = os.getcwd()
+    try:
+        if starting_dir != target_dir:
+            os.chdir(target_dir)
         yield
+    except OSError as e:
+        print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+    finally:
         os.chdir(starting_dir)
-    else:
-        try:
-            os.chdir(workspace_grapeconfig_dir)
-            yield
-        except OSError as e:
-            print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
-        finally:
-            os.chdir(starting_dir)

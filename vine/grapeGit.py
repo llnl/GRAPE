@@ -103,7 +103,7 @@ def clone(argstr):
     try:
         return gitcmd(f"clone {argstr}", "Clone failed")
     except grape_errors.GrapeGitError as e:
-        if "already exists and is not an empty directory" in e.gitOutput:
+        if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
         if e.commError:
             logging.warning("GRAPE: clone failed due to connectivity issues.")
@@ -125,7 +125,7 @@ def commitDescription(committish):
                        "commitDescription failed")
     # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
     except grape_errors.GrapeGitError as e:
-        if "unknown revision" in e.gitOutput:
+        if "unknown revision" in e.gitOutput.lower():
             try:
                 descr = gitcmd(f"log --oneline {committish}",
                                "commitDescription failed")
@@ -165,7 +165,7 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
         if e.commError:
             # fetch can sometimes hang up when it can't find the remote, resulting in
             # a spurious comm error.  Catch that here.
-            if "fatal: Couldn't find remote ref" in e.gitOutput:
+            if "fatal: couldn't find remote ref" in e.gitOutput.lower():
                 raise e
             if warnOnCommError:
                 logging.warning("WARNING: could not fetch due to communication error.")
@@ -260,7 +260,7 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
                 # only include submodules that are in both branches
                 modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
         except grape_errors.GrapeGitError as e:
-            if "bad revision" in e.gitOutput:
+            if "bad revision" in e.gitOutput.lower():
                 logging.warning("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
                 return []
 
@@ -478,7 +478,7 @@ def show(argStr):
         return gitcmd(f"show {argStr}",
                       f"git show failed with argstr {argStr}")
     except grape_errors.GrapeGitError as e:
-        if "Path" in e.gitOutput and "does not exist in" in e.gitOutput:
+        if "path" in e.gitOutput.lower() and "does not exist in" in e.gitOutput.lower():
             return ""
 
 def showRemote():

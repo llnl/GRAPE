@@ -360,7 +360,7 @@ class MergeDevelop(Resumable, Option):
             return True
         except grape_errors.GrapeGitError as error:
             logging.error(error.gitOutput)
-            if "conflict" in error.gitOutput.lower():
+            if error.has_conflict():
                 if args['--at'] or args['--ay']:
                     if args['--at']:
                         logging.info("Resolving conflicted files by " +

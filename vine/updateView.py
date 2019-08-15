@@ -286,7 +286,7 @@ class UpdateView(Option):
                             git.submodule(f"deinit {deinitStr.strip()}")
                             done = True
                         except grape_errors.GrapeGitError as e:
-                            if "the following file has local modifications" in e.gitOutput:
+                            if "the following file has local modifications" in e.gitOutput.lower():
                                 logging.error(e.gitOutput)
                                 logging.error(
                                     "A submodule that you wanted to remove " +
@@ -294,13 +294,13 @@ class UpdateView(Option):
                                     "Use grape uv -f to force removal.")
                                 return False
 
-                            elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput:
+                            elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput.lower():
                                 if not args["-f"]:
                                     raise e
                                 # it is safe to move the .git of the submodule to the .git/modules area of the workspace...
                                 module = None
-                                for l in e.gitOutput.split('\n'):
-                                    if "Submodule work tree" in l and "contains a .git directory" in l:
+                                for l in e.gitOutput.lower().split('\n'):
+                                    if "submodule work tree" in l and "contains a .git directory" in l:
                                         module = l.split("'")[1]
                                         break
                                 if module:
@@ -435,8 +435,8 @@ def handleEnsureLocalUpToDateMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            if ("[rejected]" in e.gitOutput and "(non-fast-forward)" in e.gitOutput) or "Couldn't find remote ref" in e.gitOutput:
-                if "Couldn't find remote ref" in e.gitOutput:
+            if ("[rejected]" in e.gitOutput.lower() and "(non-fast-forward)" in e.gitOutput.lower()) or e.could_not_find_remote_ref():
+                if e.could_not_find_remote_ref():
                     if not _pushBranch:
                         logging.info(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
                 else:

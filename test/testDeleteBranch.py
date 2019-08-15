@@ -16,12 +16,8 @@ class TestDeleteBranch(testGrape.TestGrape):
 
         # Asserts test branch was deleted.
         contents = self.get_output()
-        # '/tmp' not used on Windows. Defaults to using full path
-        start_index = max(0, self.repo.find('/tmp'))
-        expected_output = \
-            f'deleting {test_branch} in {self.repo[start_index:]}'
+        expected_output = f'deleting {test_branch} in'
         self.assertIn(expected_output, contents)
-        self.assertIn(self.repo[start_index:], contents)
 
 
 if __name__ == "__main__":

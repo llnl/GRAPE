@@ -111,7 +111,7 @@ def updateBranchHelper(repo="unknown", branch="master"):
 
 def updateBranchHandleMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
-        if "Couldn't find remote ref" in e.gitOutput:
+        if e.could_not_find_remote_ref():
             logging.info(
                 f"Remote reference to {branch} not present in {repo}. " +
                 "Remote ref must be present in all active submodules to " +
