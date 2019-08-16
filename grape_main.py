@@ -25,7 +25,7 @@ from vine import vine_logging
 CLI =  """
 *** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 Calling grape by itself will pull up the grape menu.
-Usage: grape [-q] [--version] [<command> <args>...]
+Usage: grape [-v] [-q] [--version] [<command> <args>...]
 
 Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.

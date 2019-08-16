@@ -156,8 +156,7 @@ def _cd_to_target_dir(target_dir):
     try:
         if starting_dir != target_dir:
             os.chdir(target_dir)
-        yield
     except OSError as e:
         print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
-    finally:
-        os.chdir(starting_dir)
+    yield
+    os.chdir(starting_dir)

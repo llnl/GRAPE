@@ -518,17 +518,12 @@ def version():
 
 
 @contextmanager
-def cd(path):
+def cd(target_dir):
     starting_dir = os.getcwd()
-    if starting_dir == path:
-        yield
-        os.chdir(starting_dir)
-    else:
-        try:
-            os.chdir(path)
-            yield
-        except OSError as e:
-            print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
-            yield
-        finally:
-            os.chdir(starting_dir)
+    try:
+        if target_dir and target_dir != starting_dir:
+            os.chdir(target_dir)
+    except OSError as e:
+        print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+    yield
+    os.chdir(starting_dir)
