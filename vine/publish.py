@@ -22,6 +22,7 @@ from vine import grapeMenu
 from vine import utility
 from vine import vine_logging
 from vine import vine_subprocess
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
@@ -34,7 +35,7 @@ class PublishStepFailed(Exception):
         self.stepName = stepName
 
 
-class Publish(Resumable, Option):
+class Publish(Resumable, Option, CommandPathHandler):
     """
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
@@ -200,6 +201,18 @@ class Publish(Resumable, Option):
 
     """
 
+    def __init__(self):
+        super(Publish, self).__init__()
+        self._key = "publish"
+        self._section = "Gitflow Tasks"
+        self.branchPrefix = None
+        self.modifiedSubtrees = set()
+        self.st_prefixes = {}
+        self.st_remotes = {}
+        self.st_branches = {}
+        self.cascadeDict = {}
+        self.doDelete = {}
+
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.ensureSection(self.SECTION_FLOW)
@@ -248,22 +261,11 @@ class Publish(Resumable, Option):
         # tick on cascade behavior
         config.set(self.SECTION_FLOW, "topicCascadeTick","?:0")
 
-    def __init__(self):
-        super(Publish, self).__init__()
-        self._key = "publish"
-        self._section = "Gitflow Tasks"
-        self.branchPrefix = None
-        self.modifiedSubtrees = set()
-        self.st_prefixes = {}
-        self.st_remotes = {}
-        self.st_branches = {}
-        self.cascadeDict = {}
-        self.doDelete = {}
-
     def description(self):
         try:
-            current = git.currentBranch()
-            public = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch())
+            current = git.currentBranch(execution_path=self.command_path)
+            public = config_parser_global.grapeConfig().getPublicBranchFor(
+                git.currentBranch(execution_path=self.command_path))
         except grape_errors.GrapeGitError:
             public = "Unknown"
             current = "Unknown"
@@ -273,8 +275,8 @@ class Publish(Resumable, Option):
         return f"Publish the current {git.branchPrefix(current)} " + \
                f"branch to {public}"
 
-    def _resume(self, args):
-        super(Publish, self)._resume(args)
+    def _resume(self, args, *, workspace_dir):
+        super(Publish, self)._resume(args, workspace_dir)
         self.execute(args)
 
     def _saveProgress(self, args):
@@ -284,9 +286,9 @@ class Publish(Resumable, Option):
         # resolve default topic branch, ensure we are on the topic branch
         topic = args["--topic"]
         if not topic:
-            topic = git.currentBranch()
-        if topic != git.currentBranch() and self.after(self.order, "publish", args["--startAt"]):
-            git.checkout(topic)
+            topic = git.currentBranch(execution_path=self.command_path)
+        if topic != git.currentBranch(execution_path=self.command_path) and self.after(self.order, "publish", args["--startAt"]):
+            git.checkout(topic, execution_path=self.command_path)
         args["--topic"] = topic
 
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
@@ -320,16 +322,16 @@ class Publish(Resumable, Option):
 
     def abort(self, args):
         #undo any commits done since we first started
-        super(Publish, self)._resume(args)
-        branch = git.currentBranch()
-        if self.progress["startingSHA"] != git.SHA(branch):
+        super(Publish, self)._resume(args, workspace_dir=self.workspace_dir)
+        branch = git.currentBranch(execution_path=self.command_path)
+        if self.progress["startingSHA"] != git.SHA(branch, execution_path=self.command_path):
             logging.info(f"Reverting all commits from {branch} from " +
-                         f"{self.progress['startingSHA']} to {git.SHA(branch)}")
-            revert = utility.userInput("This will apply to " +
-                                       f"{git.currentBranch()}. continue? " +
+                         f"{self.progress['startingSHA']} to {git.SHA(branch, execution_path=self.command_path)}")
+            revert = utility.userInput("This will apply to {branch}. continue? ",
                                        "[y,n]", "y")
             if revert:
-                git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD")
+                git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD",
+                           execution_path=self.command_path)
         # release IN PROGRESS LOCK
         logging.info("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
@@ -344,21 +346,24 @@ class Publish(Resumable, Option):
 
     @log_wrapper
     def execute(self, args):
+        self.set_progress_file(execution_path=self.command_path)
+
         if args["--abort"]:
             self.abort(args)
             return True
         if "startingSHA" not in self.progress:
-            self.progress["startingSHA"] = git.SHA("HEAD")
+            self.progress["startingSHA"] = git.SHA("HEAD",
+                                                   execution_path=self.command_path)
 
-        self.order = ["testForCleanWorkspace1",  "md1", "ensureModifiedSubmodulesAreActive",
-                      "verifyPublishActions",
-                      "ensureReview", "verifyCompletedReview",
-                      "markInProgress", "md2", "tickVersion", "updateLog",
-                      "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                      "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
+        else:
+            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview",
+                          "markInProgress", "md2", "tickVersion", "updateLog",
+                          "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                          "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
 
         self.parseArgs(args)
 
@@ -410,7 +415,6 @@ class Publish(Resumable, Option):
 
 
         currentStep = startPoint
-        os.chdir(utility.workspaceDir())
         for step in self.order:
             if step == "done":
                 break
@@ -424,6 +428,7 @@ class Publish(Resumable, Option):
             try:
                 # Save the progress before attempting a step (this ensures that the progress
                 # is saved even if the first step after a --continue fails).
+                args['workspace_dir'] = self.workspace_dir
                 self.dumpProgress(args)
 
                 ret = steps[step](args)
@@ -452,7 +457,9 @@ class Publish(Resumable, Option):
         return
 
     def ensureModifiedSubmodulesAreActive(self, args):
-        missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"], includeAdded=True)
+        missing = utility.getModifiedInactiveSubmodules(
+            args["--public"], args["--topic"], includeAdded=True,
+            workspace_dir=self.workspace_dir)
         if missing:
             logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")
@@ -462,11 +469,11 @@ class Publish(Resumable, Option):
 
     def mergePublic(self, args):
         menu = grapeMenu.menu()
+        menu.set_command_path(self.command_path)
         return menu.applyMenuChoice("md", ["--am",
                                            f"--public={args['--public']}"])
 
-    @staticmethod
-    def markReview(args, newArgs, skipStr, updateOnly=True):
+    def markReview(self, args, newArgs, skipStr, updateOnly=True):
         if args["--noReview"]:
             logging.info(skipStr)
             return True
@@ -482,7 +489,9 @@ class Publish(Resumable, Option):
             finalArgs += newArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
-        return grapeMenu.menu().applyMenuChoice("review", finalArgs)
+        menu = grapeMenu.menu()
+        menu.set_command_path(self.command_path)
+        return menu.applyMenuChoice("review", finalArgs)
 
     def markReviewAsInProgress(self, args):
         logging.info("Prepending pull request title with **IN PROGRESS**...")
@@ -498,16 +507,13 @@ class Publish(Resumable, Option):
     def ensureReview(self, args):
         return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
-
-
-
-
-    @staticmethod
-    def checkInProgressLock(args):
+    def checkInProgressLock(self, args):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Check..")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
+        atlassian = Atlassian.Atlassian(
+            username=args["--user"], url=args["--bitbucketURL"],
+            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullRequests()
         inProgressRequests = []
@@ -550,7 +556,9 @@ class Publish(Resumable, Option):
             logging.info("Skipping In Progress Lock Release...")
             return True
 
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
+        atlassian = Atlassian.Atlassian(
+            username=args["--user"], url=args["--bitbucketURL"],
+            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         state = "open"
@@ -573,7 +581,9 @@ class Publish(Resumable, Option):
             logging.info("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
+        atlassian = Atlassian.Atlassian(
+            username=args["--user"], url=args["--bitbucketURL"],
+            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
@@ -613,46 +623,49 @@ class Publish(Resumable, Option):
             self.progress["reviewers"] = "No reviewers"
         return verified
 
-    @staticmethod
-    def testForCleanWorkspace(args):
+    def testForCleanWorkspace(self, args):
         logging.info("Checking to make sure workspace has a clean status.")
-        with utility.cd_workspace():
-            ret = utility.isWorkspaceClean(printOutput=True)
-            ret = grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"]) and ret
-            if ret:
-                cb = git.currentBranch()
-                topic = args["--topic"]
-                ret = ret and cb == topic
-                if not ret:
-                    logging.info(
-                        f"Current branch {cb} is not topic branch {topic}. " +
-                        f"Please checkout {topic} before publishing. ")
+        # TODO: replace next line
+        ret = utility.isWorkspaceClean(printOutput=True,
+                                       workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu.set_command_path(self.workspace_dir)
+        ret = menu.applyMenuChoice("status", ["--failIfInconsistent"]) and ret
+        if ret:
+            cb = git.currentBranch(execution_path=self.workspace_dir)
+            topic = args["--topic"]
+            ret = ret and cb == topic
+            if not ret:
+                logging.info(
+                    f"Current branch {cb} is not topic branch {topic}. " +
+                    f"Please checkout {topic} before publishing. ")
         return ret
 
     def performCustomStep(self, prefix, args):
         if not args[f"--{prefix}Cmds"]:
             return True
         if args[f"--{prefix}Dir"]:
-            working_dir = os.path.join(utility.workspaceDir(), args[f"--{prefix}Dir"])
+            working_dir = os.path.join(self.workspace_dir, args[f"--{prefix}Dir"])
         else:
             working_dir = os.getcwd()
 
-        with git.cd(working_dir):
-            cmds = args[f"--{prefix}Cmds"].split(',')
-            logging.info("GRAPE PUBLISH - PERFORMING CUSTOM " +
-                                  f"{prefix.upper()} STEP")
-            for cmd in cmds:
-                if "<version>" in cmd:
-                    self.loadVersion(args)
-                    verStr = self.progress["version"]
-                    cmd = cmd.replace("<version>", verStr)
-                if "<public>" in cmd:
-                    cmd = cmd.replace("<public>", args["--public"])
+#        with git.cd(working_dir):
+        # TODO: ensure args['command'] or whatever has working_dir in path
+        cmds = args[f"--{prefix}Cmds"].split(',')
+        logging.info("GRAPE PUBLISH - PERFORMING CUSTOM " +
+                              f"{prefix.upper()} STEP")
+        for cmd in cmds:
+            if "<version>" in cmd:
+                self.loadVersion(args)
+                verStr = self.progress["version"]
+                cmd = cmd.replace("<version>", verStr)
+            if "<public>" in cmd:
+                cmd = cmd.replace("<public>", args["--public"])
 
-                process_result = vine_subprocess.executeSubProcess(cmd.strip())
-                logging.info(process_result.returncode)
-                if process_result.returncode != 0:
-                    return False
+            process_result = vine_subprocess.executeSubProcess(cmd.strip())
+            logging.info(process_result.returncode)
+            if process_result.returncode != 0:
+                return False
         return True
 
     def performCustomBuildStep(self, args):
@@ -674,7 +687,8 @@ class Publish(Resumable, Option):
         # modified during the prepublish step, the git add *and* the git commit must be
         # handled in the custom step.
         try:
-            git.commit(f" -m \"{args['-m']}\"")
+            git.commit(f" -m \"{args['-m']}\"",
+                       execution_path=self.command_path)
         except grape_errors.GrapeGitError:
             pass
 
@@ -684,18 +698,20 @@ class Publish(Resumable, Option):
         return self.performCustomStep("postpublish", args)
 
     @staticmethod
-    def getModifiedFileList(public, topic, args):
+    def getModifiedFileList(public, topic, args, *, execution_path):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
         try:
-            updatelist = git.diff(f"--name-only {public} {topic}").split('\n')
+            updatelist = git.diff(f"--name-only {public} {topic}",
+                                  execution_path=execution_path).split('\n')
         except:
             # Ensure branches are on working tree, then retry diff.
-            current_branch = git.currentBranch()
-            git.checkout(public)
-            git.checkout(topic)
-            git.checkout(current_branch)
-            updatelist = git.diff(f"--name-only {public} {topic}").split('\n')
+            current_branch = git.currentBranch(execution_path=self.command_path)
+            git.checkout(public, execution_path=execution_path)
+            git.checkout(topic, execution_path=execution_path)
+            git.checkout(current_branch, execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {public} {topic}",
+                                  execution_path=execution_path).split('\n')
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
@@ -703,11 +719,10 @@ class Publish(Resumable, Option):
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
             return True
-        wsdir = utility.workspaceDir()
-        os.chdir(wsdir)
         public = args["--public"]
         topic = args["--topic"]
-        if git.SHA(public) == git.SHA(topic):
+        if git.SHA(public, execution_path=self.workspace_dir) == \
+                git.SHA(topic, execution_path=self.workspace_dir):
             public = utility.userInput(
                 "Please enter the branch name or SHA of the commit to diff " +
                 f"against {topic} for the modified file list.")
@@ -715,32 +730,31 @@ class Publish(Resumable, Option):
         self.progress["modifiedFiles"] = []
 
         # Get list of modified files in main repo
-        self.progress["modifiedFiles"] += self.getModifiedFileList(public, topic, args)
+        self.progress["modifiedFiles"] += self.getModifiedFileList(
+            public, topic, args, execution_path=self.workspace_dir)
 
         # Get list of modified files in submodules
         if args["--recurse"]:
-            with utility.cd_workspace():
-                submodulePublic = args["--submodulePublic"]
-                submodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
-                for sub in submodules:
-                    os.chdir(os.path.join(wsdir, sub))
-                    self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args)]
+            submodulePublic = args["--submodulePublic"]
+            submodules = git.getModifiedSubmodules(
+                self.workspace_dir, public, topic, includeAdded=True, execution_path=self.workspace_dir)
+            for sub in submodules:
+                execution_path = os.path.join(self.workspace_dir, sub)
+                self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
 
-        with utility.cd_workspace():
-            # Get list of modified files in nested subprojects
-            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-                os.chdir(os.path.join(wsdir, nested))
-                modified = self.getModifiedFileList(public, topic, args)
-                if len(modified) > 0:
-                    self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
+        # Get list of modified files in nested subprojects
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+            execution_path = os.path.join(self.workspace_dir, nested)
+            modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
+            if len(modified) > 0:
+                self.progress["modifiedFiles"] += [os.path.join(execution_path, s) for s in modified]
 
         return True
 
     def loadVersion(self, args):
-        if "version" in self.progress:
-            return True
-        else:
+        if "version" not in self.progress:
             menu = grapeMenu.menu()
+            menu.set_command_path(self.command_path)
             menu.applyMenuChoice("version", ["read"])
             guess = menu.getOption("version").ver
             self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
@@ -794,7 +808,9 @@ class Publish(Resumable, Option):
                                  "and no -m <msg> defined.")
                     return False
             logging.info("Retrieving pull request description for use as commit message...")
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
+            atlassian = Atlassian.Atlassian(
+                username=args["--user"], url=args["--bitbucketURL"],
+                verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if pullRequest:
@@ -839,36 +855,39 @@ class Publish(Resumable, Option):
             return True
         logFile = args["--updateLog"]
         if logFile:
-            with utility.cd_workspace():
-                header = args["--entryHeader"]
-                header = header.replace("<date>", time.asctime())
-                header = header.replace("<user>", git.config("--get user.name"))
-                header = header.replace("<version>", self.progress["version"])
-                header = header.replace("<reviewers>", self.progress["reviewers"])
-                header = ["\n"]+header.split("\\n")
-                commitMsg = header + commitMsg
-                numLinesToSkip = int(args["--skipFirstLines"])
-                with io.open(logFile, 'r') as f:
-                    loglines = f.readlines()
-                loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
-                with io.open(logFile, 'w') as f:
-                    f.writelines(loglines)
-                git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
-                           f"{logFile}\"")
+            header = args["--entryHeader"]
+            header = header.replace("<date>", time.asctime())
+            header = header.replace("<user>", git.config(
+                "--get user.name", execution_path=self.workspace_dir))
+            header = header.replace("<version>", self.progress["version"])
+            header = header.replace("<reviewers>", self.progress["reviewers"])
+            header = ["\n"]+header.split("\\n")
+            commitMsg = header + commitMsg
+            numLinesToSkip = int(args["--skipFirstLines"])
+            with io.open(logFile, 'r') as f:
+                loglines = f.readlines()
+            loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+            with io.open(logFile, 'w') as f:
+                f.writelines(loglines)
+            git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
+                       f"{logFile}\"", execution_path=self.workspace_dir)
         return self.checkInProgressLock(args)
 
     def tickVersion(self, args):
         if not args["--tickVersion"]:
             return True
         menu = grapeMenu.menu()
+        menu.set_command_path(self.command_path)
         if not args["--noReview"]:
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
+            atlassian = Atlassian.Atlassian(
+                username=args["--user"], url=args["--bitbucketURL"],
+                verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()
             versionArgs = ["read"]
             menu.applyMenuChoice("version", versionArgs)
-            currentVer = grapeMenu.menu().getOption("version").ver
+            currentVer = menu.getOption("version").ver
             if currentVer in requestTitle:
                 logging.info("Current Version string already in pull request title. Assuming this is from "
                 "a previous call to grape publish. Not ticking version again.")
@@ -878,27 +897,28 @@ class Publish(Resumable, Option):
             versionArgs = ["tick", "--notag", f"--public={args['--public']}"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
-            ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            self.progress["version"] = grapeMenu.menu().getOption("version").ver
+            ret = menu.applyMenuChoice("version", versionArgs)
+            self.progress["version"] = menu.getOption("version").ver
             ret = ret and self.markReviewWithVersionNumber(args)
         return ret and self.checkInProgressLock(args)
 
-    @staticmethod
-    def tagVersion(args):
+    def tagVersion(self, args):
         if not args["--tickVersion"]:
             return True
+        if 'workspace_dir' not in args:
+            logging.error("Failed to Tag Version. Workspace dir not given.")
+            raise Exception
 
         versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
-        with utility.cd_workspace():
-            wsdir = utility.workspaceDir()
-            ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-                os.chdir(os.path.join(wsdir, nested))
-                git.push("--tags origin")
-            os.chdir(wsdir)
-            git.push("--tags origin")
+        menu = grapeMenu.menu()
+        menu.set_command_path(self.command_path)
+        ret = menu.applyMenuChoice("version", versionArgs)
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+            nested_dir = os.path.join(args['workspace_dir'], nested)
+            git.push("--tags origin", execution_path=nested_dir)
+        git.push("--tags origin", execution_path=args['workspace_dir'])
         return ret
 
     def sendNotificationEmail(self, args):
@@ -906,12 +926,13 @@ class Publish(Resumable, Option):
         if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadModifiedFiles(args)):
             return False
         # Write the contents of the mail file out to a temporary file
-        mailfile = tempfile.mktemp()
+        mailfile = os.path.realpath(tempfile.mktemp())
 
         with io.open(mailfile, 'w') as mf:
             date = time.asctime()
             emailHeader = args["--emailHeader"]
-            emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
+            emailHeader = emailHeader.replace(
+                "<user>", git.config("--get user.name", execution_path=self.command_path))
             emailHeader = emailHeader.replace("<date>", date)
             emailHeader = emailHeader.replace("<version>", self.progress["version"])
             emailHeader = emailHeader.replace("<reviewers>", self.progress["reviewers"])
@@ -927,7 +948,8 @@ class Publish(Resumable, Option):
                 mf.write("\n".join(updatelist))
             mf.write('\n')
             emailFooter = args["--emailFooter"]
-            emailFooter = emailFooter.replace("<user>", git.config("--get user.name"))
+            emailFooter = emailFooter.replace(
+                "<user>", git.config("--get user.name", execution_path=self.command_path))
             emailFooter = emailFooter.replace("<date>", date)
             emailFooter = emailFooter.replace("<version>", self.progress["version"])
             emailFooter = emailFooter.replace("<reviewers>", self.progress["reviewers"])
@@ -949,9 +971,11 @@ class Publish(Resumable, Option):
         msg = MIMEText(message)
 
         # Use their email address from their git user profile.
-        myemail = git.config("--get user.email")
+        myemail = git.config("--get user.email",
+                             execution_path=self.command_path)
         mailsubj = args["--emailSubject"]
-        mailsubj = mailsubj.replace("<user>", git.config("--get user.name"))
+        mailsubj = mailsubj.replace(
+            "<user>", git.config("--get user.name", execution_path=self.command_path))
         mailsubj = mailsubj.replace("<public>", args["--public"])
         mailsubj = mailsubj.replace("<version>", self.progress["version"])
         mailsubj = mailsubj.replace("<date>", date)
@@ -999,17 +1023,22 @@ class Publish(Resumable, Option):
         self.askWhetherToDelete(args)
         if self.doDelete[args["--topic"]]:
             logging.info(f"Deleting {args['--topic']}")
-            grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
+            menu = grapeMenu.menu()
+            menu.set_command_path(self.command_path)
+            menu.applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
             # SHA will raise an exception if the branch has been deleted
-            if git.SHA(args["--topic"]):
+            if git.SHA(args["--topic"], execution_path=self.command_path):
                 checkout = utility.userInput(
-                    f"You are currently on {git.currentBranch()}. " +
+                    f"You are currently on {git.currentBranch(execution_path=self.command_path)}. " +
                     f"Would you like to checkout {args['--topic']}? [y,n]",
                     "n")
-                if checkout:
-                    grapeMenu.menu().applyMenuChoice("checkout", [args["--topic"]])
+                # 'checkout' is bool or the user's input. Enforces 'y' given.
+                if checkout is True:
+                    menu = grapeMenu.menu()
+                    menu.set_command_path(self.command_path)
+                    menu.applyMenuChoice("checkout", [args["--topic"]])
         except:
             pass
         return True
@@ -1029,9 +1058,10 @@ class Publish(Resumable, Option):
             logging.info("Type grape publish -h for more details")
         return valid
 
-    @staticmethod
-    def remoteMerge(public, topic, repo, args, isSubmodule, isNested):
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
+    def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
+        atlassian = Atlassian.Atlassian(
+            username=args["--user"], url=args["--stashURL"],
+            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         remoteRepo = atlassian.repoFromWorkspaceRepoPath(repo,
                                                         isSubmodule=isSubmodule,
                                                         isNested=isNested)
@@ -1039,8 +1069,8 @@ class Publish(Resumable, Option):
         if pr is not None:
             logging.info(f"remotely merging {topic} into {public}")
             if pr.merge():
-                git.checkout(public)
-                git.pull("")
+                git.checkout(execution_path=public)
+                git.pull("", execution_path=self.command_path)
                 logging.info(f"{topic} merged successfully to {public}")
                 logging.info(f"You are currently on {public}")
                 return True
@@ -1053,32 +1083,29 @@ class Publish(Resumable, Option):
 
     @staticmethod
     def merge(public, topic, repo, args):
-        with git.cd(repo):
-            logging.info(f"merging {topic} into {public}")
-            git.checkout(public)
-            git.merge(f"{topic} -m \"{args['-m']}\" ")
-            logging.info(f"{topic} merged successfully to {public}")
-            logging.info(f"You are currently on {public}")
+        logging.info(f"merging {topic} into {public}")
+        git.checkout(public, execution_path=repo)
+        git.merge(f"{topic} -m \"{args['-m']}\" ", execution_path=repo)
+        logging.info(f"{topic} merged successfully to {public}")
+        logging.info(f"You are currently on {public}")
 
     @staticmethod
     def squashMerge(public, topic, repo, args):
-        with git.cd(repo):
-            logging.info(f"squash merging {topic} into {public}")
-            git.checkout(public)
-            git.merge(f"--squash {topic}")
-            git.commit(f"-m \"{args['-m']}\"")
-            logging.info(f"{topic} squash-merged successfully to {public}")
-            logging.info(f"You are currently on {public}")
+        logging.info(f"squash merging {topic} into {public}")
+        git.checkout(public, execution_path=repo)
+        git.merge(f"--squash {topic}", execution_path=repo)
+        git.commit(f"-m \"{args['-m']}\"", execution_path=repo)
+        logging.info(f"{topic} squash-merged successfully to {public}")
+        logging.info(f"You are currently on {public}")
 
     @staticmethod
     def rebase(public, topic, repo):
-        with git.cd(repo):
-            logging.info(f"rebasing {topic} onto {public}")
-            git.rebase(public)
-            logging.info(f"{topic} successfully rebased onto {public}")
-            git.checkout(public)
-            git.merge(topic)
-            logging.info(f"You are currently on {public}")
+        logging.info(f"rebasing {topic} onto {public}")
+        git.rebase(public, execution_path=repo)
+        logging.info(f"{topic} successfully rebased onto {public}")
+        git.checkout(public, execution_path=repo)
+        git.merge(topic, execution_path=repo)
+        logging.info(f"You are currently on {public}")
 
     def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination, repoType="outer"):
         # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
@@ -1101,19 +1128,20 @@ class Publish(Resumable, Option):
             self.cascadeDict["outer"] = args["--cascade"]
             args["<<cascadeDict>>"] = self.cascadeDict
 
-    def performCascade(self, status,args,mergeID,repo, branch, public):
+    def performCascade(self, status, args, mergeID, repo, branch, public):
         if not mergeID in status:
             status[mergeID] = "READY"
         if status[mergeID] == "DONE":
             return True
         if status[mergeID] == "READY":
-            git.checkout(branch)
+            git.checkout(branch, execution_path=self.command_path)
             status[mergeID] = "SWITCHED"
         if status[mergeID] == "SWITCHED":
             status[mergeID] = "MERGING"
             try:
                 git.merge(f"{public} -m \"GRAPE PUBLISH: cascade merge of " +
-                          f"{public} to {branch} after publish.\"")
+                          f"{public} to {branch} after publish.\"",
+                          execution_path=self.command_path)
                 status[mergeID] = "MERGED"
             except grape_errors.GrapeGitError as e:
                 if e.has_conflict():
@@ -1136,13 +1164,15 @@ class Publish(Resumable, Option):
                 return False
         if status[mergeID] == "MERGED":
             public = branch
-            git.push(f"origin {branch}")
+            git.push(f"origin {branch}", execution_path=self.command_path)
             status[mergeID] = "PUSHED"
         if status[mergeID] == "PUSHED":
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
-                grapeMenu.menu().applyMenuChoice(
+                menu = grapeMenu.menu()
+                menu.set_command_path(self.command_path)
+                menu.applyMenuChoice(
                     "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
-                git.push("--tags origin")
+                git.push("--tags origin", execution_path=self.command_path)
             status[mergeID] = "DONE"
         return True
 
@@ -1154,15 +1184,14 @@ class Publish(Resumable, Option):
         if "<<cascadeMergeStatus>>" not in args:
             args["<<cascadeMergeStatus>>"] = {}
         status = args["<<cascadeMergeStatus>>"]
-        wsdir = utility.workspaceDir()
         if self.cascadeDict:
             # do outer level and nested project cascades
             cascade = self.cascadeDict["outer"]
-            repos= [""]+config_parser_user.getAllActiveNestedSubprojectPrefixes()
-            repos = [os.path.join(wsdir,r) for r in repos]
+            repos= [""] + config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+            repos = [os.path.join(self.workspace_dir, r) for r in repos]
             for repo in repos:
                 public = args["--public"]
-                with git.cd(repo):
+                with self.temp_work_in_dir(repo):
                     for branch in cascade:
                         mergeID = f"outer_{repo}_{branch}"
                         if not self.performCascade(status, args, mergeID, repo, branch, public):
@@ -1170,10 +1199,10 @@ class Publish(Resumable, Option):
 
             if "submodules" in self.cascadeDict and "<<publishedSubmodules>>" in args:
                 cascade = self.cascadeDict["submodules"]
-                repos = [os.path.join(wsdir,r) for r in args["<<publishedSubmodules>>"]]
+                repos = [os.path.join(self.workspace_dir, r) for r in args["<<publishedSubmodules>>"]]
                 for repo in repos:
-                    with git.cd(repo):
-                        public = args["--submodulePublic"]
+                    public = args["--submodulePublic"]
+                    with self.temp_work_in_dir(repo):
                         for branch in cascade:
                             mergeID = f"submodules_{repo}_{branch}"
                             if not self.performCascade(status, args, mergeID, repo, branch, public):
@@ -1185,8 +1214,9 @@ class Publish(Resumable, Option):
 
     def publish(self, policy, public, topic, repo, args, isSubmodule=False, isNested=False):
         # don't bother publishing if public and topic are the same commit
-        if git.shortSHA(public).strip() == git.shortSHA(topic).strip():
-            git.checkout(public)
+        if git.shortSHA(public, execution_path=repo).strip() \
+                == git.shortSHA(topic, execution_path=repo).strip():
+            git.checkout(public, execution_path=repo)
             return
         policy = policy.strip().lower()
         if policy == "merge":
@@ -1211,13 +1241,11 @@ class Publish(Resumable, Option):
 
         if not args["--nopush"]:
             try:
-                with git.cd(repo):
-                    git.push("-u origin HEAD", throwOnFail=True)
+                git.push("-u origin HEAD", throwOnFail=True, execution_path=repo)
             except grape_errors.GrapeGitError as e:
                 if e.commError:
                     logging.error("Unable to push result of publish to origin due to connectivity issue.")
                 raise e
-
 
     def loadPublishTargets(self, args):
         config = config_parser_global.grapeConfig()
@@ -1248,17 +1276,20 @@ class Publish(Resumable, Option):
             for st in allsubtrees:
                 prefix = config.get(f'subtree-{st}', 'prefix')
                 if git.diff(f"--name-only {public} {topic} -- " +
-                            f"{os.path.join(utility.workspaceDir(), prefix)}"):
+                            f"{os.path.join(self.workspace_dir, prefix)}",
+                            execution_path=self.command_path):
                     self.modifiedSubtrees.add(st)
             for st in self.modifiedSubtrees:
                 self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
-                self.st_remotes[st] = git.parseSubprojectRemoteURL(config.get(f'subtree-{st}', 'remote'))
+                self.st_remotes[st] = git.parseSubprojectRemoteURL(
+                    config.get(f'subtree-{st}', 'remote'),
+                    execution_path=self.command_path)
                 self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
 
-        # deal with nested subprojects
-        self.modifiedNestedProjects =  config_parser_user.getAllModifiedNestedSubprojectPrefixes(public,topic)
+        # deal with nested subprojects. 'workspaceDir' is None on purpose.
+        self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, topic, workspaceDir=self.workspace_dir)
 
-        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}") else False
+        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.command_path) else False
 
         return True
 
@@ -1272,7 +1303,9 @@ class Publish(Resumable, Option):
         recurse = args["--recurse"]
         public = args["--public"]
         topic = args["--topic"]
-        submodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
+        submodules = git.getModifiedSubmodules(self.workspace_dir, public,
+                                               topic, includeAdded=True,
+                                               execution_path=self.command_path)
 
         userMsg = f"GRAPE: When ready, grape will publish {topic} to:\n"
 
@@ -1315,10 +1348,6 @@ class Publish(Resumable, Option):
         self.askWhetherToDelete(args)
         return True
 
-
-
-
-
     def publishAllProjects(self, args):
         # make sure we have a commit message
         if not (self.loadCommitMessage(args) and self.loadPublishTargets(args)):
@@ -1350,13 +1379,10 @@ class Publish(Resumable, Option):
 
         self.parseCascadeArgs(args)
 
-        wsdir = utility.workspaceDir()
-        os.chdir(wsdir)
-
         if recurse:
             submodulePublic = args["--submodulePublic"]
-            activeSubmodules = git.getActiveSubmodules(wsdir)
-            modifiedSubmodules = git.getModifiedSubmodules(utility.workspaceDir(), public, topic, includeAdded=True)
+            activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, public, topic, includeAdded=True)
             unmodifiedSubmodules = list(set(activeSubmodules) - set(modifiedSubmodules))
 
             # submodule policy is Command Line requested policy, otherwise is based on
@@ -1371,29 +1397,32 @@ class Publish(Resumable, Option):
             valid = self.validateInput(submodulePolicy, args)
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in modifiedSubmodules:
-                    subpath = os.path.join(wsdir,sub)
-                    with git.cd(subpath):
-                        grapeMenu.menu().applyMenuChoice(
-                            'up', ['up', '--noRecurse', f'--wd={subpath}',
-                                   f'--public={submodulePublic}'])
+                    subpath = os.path.join(self.workspace_dir, sub)
+#                    with git.cd(subpath):
+                    menu = grapeMenu.menu()
+                    menu.set_command_path(subpath)
+                    menu.applyMenuChoice('up', ['up', '--noRecurse',
+                                         f'--wd={subpath}',
+                                         f'--public={submodulePublic}'])
+                    with self.temp_work_in_dir(subpath):
                         self.publish(submodulePolicy, submodulePublic, topic, subpath, args, isSubmodule=True)
                     #add and commit any new merge commits in submodules as a result of the publish
-                    git.add(sub)
+                    git.add(sub, execution_path=self.workspace_dir)
                 try:
                     # we are cool with this not working - only will have something to commit if the
                     # submodules were published without fast forward merges
-                    git.commit(f"-m \"{args['-m']} - submodules published\"")
+                    git.commit(f"-m \"{args['-m']} - submodules published\"",
+                               execution_path=self.workspace_dir)
                 except grape_errors.GrapeGitError:
                     pass
                 # ensure submodules that aren't modified end up on the public branch
                 for sub in unmodifiedSubmodules:
-                    with git.cd(os.path.join(wsdir, sub)):
-                        git.checkout(submodulePublic)
+                    git.checkout(submodulePublic,
+                                 execution_path=os.path.join(self.workspace_dir, sub))
 
                 # restore value for args["--cascade"]
                 args["<<publishedSubmodules>>"] = modifiedSubmodules
                 args["--cascade"] = outerCascadeOption
-            os.chdir(wsdir)
 
 
         # push subtrees to their respective remote branches
@@ -1414,7 +1443,8 @@ class Publish(Resumable, Option):
                             git.subtree(
                                 f"push --prefix={self.st_prefixes[st]} " +
                                 f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ")
+                                f"{self.st_branches[st]} ",
+                                execution_path=self.working_dir)
                         except grape_errors.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             logging.info("First attempt failed. Attempting a subtree pull then push...")
@@ -1422,21 +1452,23 @@ class Publish(Resumable, Option):
                                 f"pull {squash} " +
                                 f"--prefix={self.st_prefixes[st]} " +
                                 f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ")
+                                f"{self.st_branches[st]} ",
+                                execution_path=self.working_dir)
                             git.subtree(
                                 f"push --prefix={self.st_prefixes[st]} " +
                                 f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ")
+                                f"{self.st_branches[st]} ",
+                                execution_path=self.working_dir)
                             logging.info("Succeeded!")
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-                self.publish(policy, public, topic, os.path.join(wsdir, nested), args, isNested=True)
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested), args, isNested=True)
             if self.modifiedOuter:
-                self.publish(policy, public, topic, wsdir, args)
+                self.publish(policy, public, topic, self.workspace_dir, args)
             else:
-                git.checkout(public)
+                git.checkout(public, execution_path=self.working_dir)
             return True
         else:
             return False

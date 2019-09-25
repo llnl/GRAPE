@@ -3,16 +3,23 @@ import io
 import logging
 import os
 import re
+import shutil
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
 from vine.option import Option
+from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
 
 
-class Version(Option):
+def get_version_file_path():
+    fileName = os.path.join(os.path.dirname(__file__), 'VERSION')
+    return fileName if os.path.exists(fileName) else False
+
+
+class Version(Option, CommandPathHandler):
     """
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
@@ -89,7 +96,7 @@ class Version(Option):
         # parse tagSuffix for version mappings
         if args["--tagSuffix"] is None: 
             branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
-            args["--tagSuffix"] = branch2suffix[git.currentBranch()]
+            args["--tagSuffix"] = branch2suffix[git.currentBranch(execution_path=self.command_path)]
 
     @log_wrapper
     def execute(self, args):
@@ -119,14 +126,16 @@ class Version(Option):
             fname = args["--file"]
             with io.open(fname, 'w+') as f:
                 version = self.writeVersion(f, version, args)
-            self.stageVersionFile(fname)
+            self.stageVersionFile(fname, execution_path=self.command_path)
             config.set("versioning", "file", fname)
-            configFile = os.path.join(git.baseDir(), ".grapeconfig")
+            configFile = os.path.join(
+                git.baseDir(execution_path=self.command_path), ".grapeconfig")
             config_parser_global.writeConfig(config, configFile)
-            self.stageGrapeconfigFile(configFile)
+            self.stageGrapeconfigFile(configFile, execution_path=self.command_path)
             if not args["--nocommit"]:
-                git.commit(f"{fname} {configFile} -m \"GRAPE: added initial version info file {fname}\"")
-                self.tagVersion(version, args)
+                git.commit(f"{fname} {configFile} -m \"GRAPE: added initial version info file {fname}\"",
+                           execution_path=self.command_path)
+                self.tagVersion(version, args, execution_path=self.command_path)
 
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
@@ -142,7 +151,7 @@ class Version(Option):
                 if args["--public"]:
                     publicBranch = args["--public"]
                 else:
-                    publicBranch = config.getPublicBranchFor(git.currentBranch())
+                    publicBranch = config.getPublicBranchFor(git.currentBranch(execution_path=self.command_path))
                 slot = int(slotMappings[publicBranch])
             else:
                 slot = int(slot)
@@ -160,33 +169,32 @@ class Version(Option):
             # write the new version number to the version file. 
             with io.open(fileName, 'r+') as f:
                 self.ver = self.writeVersion(f, slots, args)
-            self.stageVersionFile(fileName)
+            self.stageVersionFile(fileName, execution_path=self.command_path)
             if not args["--nocommit"]:
-                git.commit(f"-m \"GRAPE: ticked version to {self.ver}\"")
+                git.commit(f"-m \"GRAPE: ticked version to {self.ver}\"",
+                           execution_path=self.command_path)
                 
         if (not args["--nocommit"]) or args["--tag"]:
-            self.tagVersion(self.ver, args)
+            self.tagVersion(self.ver, args, execution_path=self.command_path)
             if args["--tagNested"]:
-                with utility.cd_workspace():
-                    for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-                        os.chdir(os.path.join(wsDir, subproject))
-                        self.tagVersion(self.ver, args)
+                for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                    execution_path = os.path.join(self.workspace_dir, subproject)
+                    self.tagVersion(self.ver, args, execution_path=execution_path)
 
 
     @staticmethod
-    def stageVersionFile(fname):
+    def stageVersionFile(fname, *, execution_path):
         logging.info(f"STAGING {fname}")
-        git.add(fname)
+        git.add(fname, execution_path=execution_path)
         return True
 
     @staticmethod
-    def stageGrapeconfigFile(fname):
-        git.add(fname)
-
+    def stageGrapeconfigFile(fname, *, execution_path):
+        git.add(fname, execution_path=execution_path)
         return True
 
     @staticmethod
-    def tagVersion(version, args):
+    def tagVersion(version, args, *, execution_path):
         doTag = args["--updateTag"].strip().lower() == "true"
         if doTag:
             doTag = not args["--notag"]
@@ -197,7 +205,7 @@ class Version(Option):
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
-            
+
             if tagPrefix and tagPrefix != prefix:
                 if prefix: 
                     version.replace(prefix,tagPrefix,1)
@@ -209,9 +217,8 @@ class Version(Option):
                     version = version[0:-l] + version[-l:].replace(suffix, tagSuffix, 1)
                 else:
                     version = version + tagSuffix
-                    
-                
-            git.tag(f"-a {version} -m \"Tagged by grape\"")
+            git.tag(f"-a {version} -m \"Tagged by grape\"",
+                    execution_path=execution_path)
         return True
 
     def readVersion(self, fileName, args):
@@ -222,14 +229,14 @@ class Version(Option):
         else:
             try:
                 suffixMapping = config.getMapping(self.SECTION_VERSIONING, "branchSuffixMappings")
-                suffix = suffixMapping[config.getPublicBranchFor(git.currentBranch())]
+                suffix = suffixMapping[config.getPublicBranchFor(git.currentBranch(execution_path=self.command_path))]
             except KeyError:
                 suffix = ""
         args["--suffix"] = suffix
         regex = args["--matchTo"]
         try:
             regexMappings = config.getMapping(self.SECTION_VERSIONING, "branchVersionRegexMappings")
-            public = config.getPublicBranchFor(git.currentBranch())
+            public = config.getPublicBranchFor(git.currentBranch(execution_path=self.command_path))
             regex = regexMappings[public]
         except configparser.NoOptionError:
             pass

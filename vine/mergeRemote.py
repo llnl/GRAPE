@@ -1,16 +1,18 @@
 import logging
+import os
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import merge
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
 #merge a remote branch into this branch
-class MergeRemote(Option):
+class MergeRemote(Option, CommandPathHandler):
     """
     grape mr (merge remote branch). If the remote branch is different from your current branch, this will update
     or add a local version of that branch, then merge it into your current branch. If you perform a grape mr on the
@@ -47,7 +49,7 @@ class MergeRemote(Option):
         return "Merge a remote branch into your current branch."
 
     @log_wrapper
-    def execute(self,args):
+    def execute(self, args):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
@@ -56,13 +58,15 @@ class MergeRemote(Option):
         otherBranch = args['<branch>']
         if not otherBranch:
             # list remote branches that are available
-            logging.info(git.branch('-r'))
+            logging.info(git.branch('-r', execution_path=self.command_path))
             otherBranch = utility.userInput("Enter name of branch you would like to merge into this branch (without the origin/ prefix)")
 
         # make sure remote references are up to date
         logging.info("Fetching remote references in all projects...")
         try:
-            multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchHelper).launchFromWorkspaceDir()
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                fetchHelper, execution_path=self.command_path)
+            launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as mre:
             commError = False
             commErrorRepos = []
@@ -77,17 +81,20 @@ class MergeRemote(Option):
                 return False
 
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
-        hasRemote = git.join_list_as_git_path(['origin', otherBranch]) in git.remoteBranches()
-        hasBranch = git.hasBranch(otherBranch)
-        currentBranch = git.currentBranch()
+        hasRemote = git.join_list_as_git_path(['origin', otherBranch]) in git.remoteBranches(execution_path=self.command_path)
+        hasBranch = git.hasBranch(otherBranch, execution_path=self.command_path)
+        currentBranch = git.currentBranch(execution_path=self.command_path)
         remote_other_branch = git.join_list_as_git_path(['remotes', 'origin', otherBranch])
-        remoteUpToDateWithLocal = git.branchUpToDateWith(remote_other_branch, otherBranch)
+        remoteUpToDateWithLocal = git.branchUpToDateWith(remote_other_branch, otherBranch, execution_path=self.command_path)
         updateLocal = hasRemote and (remoteUpToDateWithLocal or not hasBranch) and currentBranch != otherBranch
         if updateLocal:
             origin_other_branch = git.join_list_as_git_path(['origin', otherBranch])
             logging.info(f"updating local branch {otherBranch} " +
                          f"from {origin_other_branch}")
-            multi_repo_cmd_launcher.MultiRepoCommandLauncher(updateBranchHelper, branch=otherBranch).launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                updateBranchHelper, branch=otherBranch,
+                execution_path=self.command_path)
+            launcher.launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
 
         args["<branch>"] = otherBranch if updateLocal else git.join_list_as_git_path(['origin', otherBranch])
         # we've handled the update, we don't want m or md to update the local branch.
@@ -97,17 +104,19 @@ class MergeRemote(Option):
         if not "--continue" in args:
             args["--continue"] = False
 
-        return grapeMenu.menu().getOption('m').execute(args)
+        merge_command = grapeMenu.menu().getOption('m')
+        merge_command.command_path = self.command_path
+        return merge_command.execute(args)
 
     def setDefaultConfig(self, config):
         pass
 
-def fetchHelper():
-    return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True)
+def fetchHelper(*, execution_path):
+    return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True, execution_path=execution_path)
 
-def updateBranchHelper(repo="unknown", branch="master"):
+def updateBranchHelper(repo="unknown", branch="master", *, execution_path):
     logging.info(f"Updating local reference to {branch} in {repo}")
-    return git.fetch(f"origin {branch}:{branch}")
+    return git.fetch(f"origin {branch}:{branch}", execution_path=execution_path)
 
 def updateBranchHandleMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):

@@ -38,18 +38,21 @@ class ForEach(Option):
     @log_wrapper
     def execute(self,args):
         cmd = args["<cmd>"]
-        retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(foreach, runInOuter = not args["--noTopLevel"],
-                                           skipSubmodules= args["--noSubmodules"],
-                                           runInSubprojects= not args["--noSubprojects"], globalArgs = args).launchFromWorkspaceDir(handleMRE=handleForeachMRE)
+        multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            foreach, runInOuter=not args["--noTopLevel"],
+            skipSubmodules=args["--noSubmodules"],
+            runInSubprojects=not args["--noSubprojects"],
+            globalArgs=args,
+            execution_path=self.command_path)
+        retvals = launcher.launchFromWorkspaceDir(handleMRE=handleForeachMRE)
         return retvals
 
     def setDefaultConfig(self,config):
         pass
 
-def foreach(repo='', branch='', args={}):
+def foreach(repo='', branch='', args={}, *, execution_path):
     cmd = args["<cmd>"]
-    with git.cd(repo):
-        vine_subprocess.executeSubProcess(cmd, repo)
+    vine_subprocess.executeSubProcess(cmd, working_dir=execution_path)
     return True
 
 def handleForeachMRE(mre):

@@ -6,14 +6,15 @@ from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine import option
+from vine.command_path_handler import CommandPathHandler
+from vine.option import Option
 from vine import utility
 from vine import vine_logging
 from vine.vine_logging import log_wrapper
 
 
 # pull and merge in an up-to-date development branch
-class Bundle(option.Option):
+class Bundle(Option, CommandPathHandler):
 
     """
     grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
@@ -104,8 +105,8 @@ class Bundle(option.Option):
         tagsToBundle = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--bundleTags"])
         recurse = not args["--noRecurse"]
 
-        git.fetch()
-        git.fetch("--tags --force")
+        git.fetch(execution_path=self.command_path)
+        git.fetch("--tags --force", execution_path=self.command_path)
         branchlist = branches.split()
 
         launchArgs["branchList"] = branchlist
@@ -114,21 +115,21 @@ class Bundle(option.Option):
         launchArgs["describePattern"] = describePattern
         launchArgs["--outfile"] = args["--outfile"]
 
-        otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                        runInSubprojects=recurse, globalArgs=launchArgs)
+        otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            bundlecmd, skipSubmodules=True, runInSubmodules=False,
+            runInSubprojects=recurse, globalArgs=launchArgs,
+            execution_path=self.command_path)
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         if recurse:
             launchArgs["branchList"] = args["--submoduleBranches"].split()
-            submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(bundlecmd,
-                                                                       runInSubmodules=recurse,
-                                                                       runInSubprojects=False,
-                                                                       skipSubmodules=not recurse,
-                                                                       runInOuter=False,
-                                                                       globalArgs=launchArgs
-                                                                       )
-            submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
+            submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                bundlecmd, runInSubmodules=recurse, runInSubprojects=False,
+                skipSubmodules=not recurse, runInOuter=False,
+                globalArgs=launchArgs, execution_path=self.command_path)
+            submoduleCommandLauncher.launchFromWorkspaceDir(
+                handleMRE=bundlecmdMRE, noPause=True)
 
         return True
 
@@ -144,50 +145,51 @@ class Bundle(option.Option):
         config.set(self.SECTION_PATCH, 'submodulebranchmappings', '?:?')
 
 
-def bundlecmd(repo='', branch='', args={}):
+def bundlecmd(repo='', branch='', args={}, *, execution_path):
     branchlist = args["branchList"]
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
 
-    with git.cd(repo):
-        reponame = os.path.split(repo)[1]
-        for branch in branchlist:
-            # ensure branch can be fast forwardable to origin/branch and do so
-            if not git.safeForceBranchToOriginRef(branch):
-                logging.info(f"Branch {branch} in {repo} has diverged from " +
-                             "or is ahead of origin, or does not exist. " +
-                             "Sync branches before bundling.")
-                continue
-            tagname = f"{tagprefix}/{branch}"
+    reponame = os.path.split(repo)[1]
+    for branch in branchlist:
+        # ensure branch can be fast forwardable to origin/branch and do so
+        if not git.safeForceBranchToOriginRef(branch, execution_path=execution_path):
+            logging.info(f"Branch {branch} in {repo} has diverged from " +
+                         "or is ahead of origin, or does not exist. " +
+                         "Sync branches before bundling.")
+            continue
+        tagname = f"{tagprefix}/{branch}"
+        try:
+            previousLocation = git.describe(
+                f"--always --match '{describePattern}' {tagname}",
+                execution_path=execution_path)
+        except:
+            # We should only get here if the tagname does not exist
+            previousLocation = "unknown"
+        try:
+            currentLocation = git.describe(
+                f"--always --match '{describePattern}' {branch}",
+                execution_path=execution_path)
+        except:
+            logging.warning(f"Unable to locate {branch} in {reponame}!" +
+                            " Something may be wrong...")
+            currentLocation = branch
+        if previousLocation.strip() != currentLocation.strip():
             try:
-                previousLocation = git.describe(
-                    f"--always --match '{describePattern}' {tagname}")
+                git.shortSHA(tagname, execution_path=execution_path)
+                revlists = f" {tagname}..{branch}"
             except:
-                # We should only get here if the tagname does not exist
-                previousLocation = "unknown"
-            try:
-                currentLocation = git.describe(
-                    f"--always --match '{describePattern}' {branch}")
-            except:
-                logging.warning(f"Unable to locate {branch} in {reponame}!" +
-                                " Something may be wrong...")
-                currentLocation = branch
-            if previousLocation.strip() != currentLocation.strip():
-                try:
-                    git.shortSHA(tagname)
-                    revlists = f" {tagname}..{branch}"
-                except:
-                    logging.info(f"{tagname} does not exist in {reponame}, " +
-                                 f"bundling entire branch {branch}")
-                    revlists = f" {branch}"
-                bundlename = args["--outfile"]
-                if not bundlename:
-                    bundlename = f"{reponame}.{branch.replace('/', '.')}-" + \
-                                 f"{previousLocation}-{currentLocation}.bundle"
-                logging.info(f"creating bundle {bundlename} in {reponame}")
-                git.bundle(f"create {bundlename} {revlists} " +
-                           f"--tags={tagsToBundle[branch]} ")
+                logging.info(f"{tagname} does not exist in {reponame}, " +
+                             f"bundling entire branch {branch}")
+                revlists = f" {branch}"
+            bundlename = args["--outfile"]
+            if not bundlename:
+                bundlename = f"{reponame}.{branch.replace('/', '.')}-" + \
+                             f"{previousLocation}-{currentLocation}.bundle"
+            logging.info(f"creating bundle {bundlename} in {reponame}")
+            git.bundle(f"create {bundlename} {revlists} " +
+                       f"--tags={tagsToBundle[branch]} ", execution_path=execution_path)
     return True
 
 def bundlecmdMRE(mre):
@@ -201,7 +203,7 @@ def bundlecmdMRE(mre):
             logging.error(f"{b} {e}")
 
 
-class Unbundle(option.Option):
+class Unbundle(Option, CommandPathHandler):
     """
     grape unbundle
 
@@ -234,18 +236,21 @@ class Unbundle(option.Option):
         recurse = not args["--noRecurse"]
         launchArgs = {}
         launchArgs["--branchMappings"] = args["--branchMappings"]
-        repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                 runInSubprojects=recurse, globalArgs=launchArgs)
+        repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            unbundlecmd, skipSubmodules=True, runInSubmodules=False,
+            runInSubprojects=recurse, globalArgs=launchArgs,
+            execution_path=self.command_path)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
+
         launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
-        submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(unbundlecmd,
-                                                                                    runInSubmodules=recurse,
-                                                                                    runInSubprojects=False,
-                                                                                    skipSubmodules=not recurse,
-                                                                                    runInOuter=False,
-                                                                                    globalArgs=launchArgs
-                                                                                    )
-        submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
+
+        submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            unbundlecmd, runInSubmodules=recurse, runInSubprojects=False,
+            skipSubmodules=not recurse, runInOuter=False,
+            globalArgs=launchArgs,
+            execution_path=self.command_path)
+        submoduleCommandLauncher.launchFromWorkspaceDir(
+            handleMRE=bundlecmdMRE, noPause=True)
 
         return True
 
@@ -253,31 +258,30 @@ class Unbundle(option.Option):
         config.ensureSection(self.SECTION_PATCH)
         config.set(self.SECTION_PATCH, 'branchMappings', 'master:master')
 
-def unbundlecmd(repo='', branch='', args={}):
+def unbundlecmd(repo='', branch='', args={}, *, execution_path):
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()
-    with git.cd(repo):
-        bundleNames = glob.glob("*.bundle")
-        for bundleName in bundleNames:
-            mappings = ""
-            for token in mapTokens:
-                sourceDestPair = token.split(":")
-                source = sourceDestPair[0]
-                dest = sourceDestPair[1]
-                bundleHeads = git.bundle(f"list-heads {bundleName}").split("\n")
-                bundleBranches = []
-                for line in bundleHeads:
-                    if "refs/heads" in line:
-                        bundleBranches.append(line.split()[1].split("refs/heads/")[1])
-                if source.replace('/', '.') in bundleBranches:
-                    mappings += f"{source}:{dest} "
+    bundleNames = glob.glob("*.bundle")
+    for bundleName in bundleNames:
+        mappings = ""
+        for token in mapTokens:
+            sourceDestPair = token.split(":")
+            source = sourceDestPair[0]
+            dest = sourceDestPair[1]
+            bundleHeads = git.bundle(f"list-heads {bundleName}", execution_path=execution_path).split("\n")
+            bundleBranches = []
+            for line in bundleHeads:
+                if "refs/heads" in line:
+                    bundleBranches.append(line.split()[1].split("refs/heads/")[1])
+            if source.replace('/', '.') in bundleBranches:
+                mappings += f"{source}:{dest} "
 
-            try:
-                git.bundle(f"verify {bundleName}")
-            except grape_errors.GrapeGitError as e:
-                logging.error(e.gitCommand)
-                logging.error(e.cwd)
-                logging.error(e.gitOutput)
-                raise e
-            git.fetch(f"--tags -u {bundleName} {mappings}")
+        try:
+            git.bundle(f"verify {bundleName}", execution_path=execution_path)
+        except grape_errors.GrapeGitError as e:
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(e.gitOutput)
+            raise e
+        git.fetch(f"--tags -u {bundleName} {mappings}", execution_path=execution_path)
     return True

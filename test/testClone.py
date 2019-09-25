@@ -27,8 +27,8 @@ class TestClone(testGrape.TestGrape):
                          f"GRAPE ISSUED A WARNING DURING A CLONE\n{contents}")
 
         # check to make sure the new repo has the old repo as a remote
-        os.chdir(self.repos[1])
-        remote = git.showRemote()
+        self.menu.set_command_path(self.repos[1])
+        remote = git.showRemote(execution_path=self.repos[1])
         self.assertIn(self.repo, remote)
         self.assertTrue(ret)
 
@@ -60,12 +60,16 @@ class TestClone(testGrape.TestGrape):
             self._temp_dir_cleanup(tempDir)
 
     def testRecursiveCloneWithSubmodule(self):
+        self.menu.set_command_path(self.repo)
+
         # make a repo to turn into a submodule
-        git.clone(f"--mirror {self.repo} {self.repos[1]} ")
+        git.clone(argstr="--mirror", source_repo=self.repo,
+                  clone_repo=self.repos[1],
+                  execution_path=self.defaultWorkingDirectory)
         # add repo2 as a submodule to repo1
-        os.chdir(self.repo)
-        git.submodule(f"add {self.repos[1]} submodule1")
-        git.commit("-m \"added submodule1\"")
+        git.submodule(f"add {self.repos[1]} submodule1",
+                      execution_path=self.repo)
+        git.commit("-m \"added submodule1\"", execution_path=self.repo)
 
         #Now clone the repo into a temp dir and make sure the submodule is in the clone
         try:
@@ -80,11 +84,12 @@ class TestClone(testGrape.TestGrape):
         finally:
             self._temp_dir_cleanup(tempDir)
 
-
     def testRecursiveCloneNestedSubproject(self):
         # make a repo to turn into a submodule
-        git.clone(f"--mirror {self.repo} {self.repos[1]} ")
-        os.chdir(self.repo)
+        git.clone(argstr="--mirror", source_repo=self.repo,
+                  clone_repo=self.repos[1],
+                  execution_path=self.defaultWorkingDirectory)
+        self.menu.set_command_path(self.repo)
         subproject_path = os.path.join('subs', 'subproject1')
         self.menu.applyMenuChoice("addSubproject",
                                   ["--name=subproject1",
@@ -94,23 +99,23 @@ class TestClone(testGrape.TestGrape):
                                    "--nested",
                                    "--noverify"])
         self.menu.applyMenuChoice("commit", ["-m", "\"added subproject1\""])
-        logging.info(git.log("--decorate"))
+        logging.info(git.log("--decorate", execution_path=self.repo))
 
         #Now clone the repo into a temp dir and make sure the subproject is in the clone
         try:
-            tempDir = tempfile.mkdtemp()
+            tempDir = os.path.realpath(tempfile.mkdtemp())
             args = [self.repo, tempDir, "--recursive", "--allNested"]
             with self.queue_user_input(["\n", "\n", "\n", "\n"]):
                 ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             # ensure we are on master with all nested subprojects
-            os.chdir(tempDir)
+            self.menu.set_command_path(tempDir)
             args = ["master", "--updateView"]
             with self.queue_user_input(["all\n"]):
                 ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
-            logging.info(git.log("--decorate"))
+            logging.info(git.log("--decorate", execution_path=tempDir))
 
             subprojectpath = os.path.join(tempDir, subproject_path)
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")

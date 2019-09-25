@@ -11,39 +11,41 @@ class TestCheckout(testGrape.TestGrape):
     # the submodule has two branches, master and addSubmodule
     # master has the file f3, addSubmodule has the file f2.
     def setUpSubmoduleBranch(self):
-        git.clone(f"{self.repo} {self.repos[1]}")
-        os.chdir(self.repo)
-        git.checkout("-b addSubmodule")
-        git.submodule(f"add {self.repos[1]} submodule")
-        git.commit("-m \"added submodule\"")
-        git.push("origin HEAD")
+        git.clone(source_repo=self.repo, clone_repo=self.repos[1],
+                  execution_path=self.defaultWorkingDirectory)
+#        git.clone(f"{self.repo} {self.repos[1]}")
+        git.checkout("-b addSubmodule", execution_path=self.repo)
+        git.submodule(f"add {self.repos[1]} submodule", execution_path=self.repo)
+        git.commit("-m \"added submodule\"", execution_path=self.repo)
+        git.push("origin HEAD", execution_path=self.repo)
 
         # put the remote for the submodule into a HEAD-less state so it can accept pushes
-        os.chdir(self.repos[1])
-        git.checkout("--orphan dummy_branch_name")
+        git.checkout("--orphan dummy_branch_name", execution_path=self.repos[1])
 
         # go to the submodule and add a file to it.
-        os.chdir(os.path.join(self.repo,"submodule"))
-        f2 = os.path.join(self.repo,"submodule","f2")
+#        os.chdir(os.path.join(self.repo,"submodule"))
+        f2 = os.path.join(self.repo, "submodule", "f2")
         testGrape.writeFile2(f2)
-        git.checkout("-b addSubmodule")
-        git.add(f2)
-        git.commit("-m \"added f2\"")
+
+        execution_path = os.path.join(self.repo, "submodule")
+        git.checkout("-b addSubmodule", execution_path=execution_path)
+        git.add(f2, execution_path=execution_path)
+        git.commit("-m \"added f2\"", execution_path=execution_path)
 
         # add another file on the master branch for the submodule
-        git.branch("-f master HEAD")
-        git.checkout("master")
+        git.branch("-f master HEAD", execution_path=execution_path)
+        git.checkout("master", execution_path=execution_path)
         f3 = os.path.join(self.repo, "submodule", "f3")
         testGrape.writeFile3(f3)
-        git.add(f3)
-        git.commit("f3 -m \"f3\"")
+        git.add(f3, execution_path=execution_path)
+        git.commit("f3 -m \"f3\"", execution_path=execution_path)
 
         # update the submodule's remote
-        git.push("origin --all")
+        git.push("origin --all", execution_path=execution_path)
 
         # git back to the master branch in the original repository
-        os.chdir(self.repo)
-        git.checkout("master")
+#        os.chdir(self.repo)
+        git.checkout("master", execution_path=self.repo)
 
     def switchToMaster(self):
         self.menu.applyMenuChoice("checkout", ["master"])

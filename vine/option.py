@@ -18,7 +18,6 @@ class Option(ABC):
     def __init__(self):
         self._key = "UNSET KEY"
         self._section = "UNSET SECTION"
-        self._config = None
 
     @abstractmethod
     def description(self):

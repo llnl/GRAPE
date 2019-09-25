@@ -1,22 +1,24 @@
 import logging
+import os
 from vine import grapeGit as git
 from vine import vine_logging
 from vine.option import Option
+from vine.command_path_handler import CommandPathHandler
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
-def pull(branch="develop", repo=".", rebase=False):
-    if rebase:
-        argStr = f"--rebase origin {branch}"
-    else:
-        argStr = f"origin {branch} "
+#def pull(branch="develop", repo=".", rebase=False):
+#    if rebase:
+#        argStr = f"--rebase origin {branch}"
+#    else:
+#        argStr = f"origin {branch} "
+#
+#    logging.info(f"Pulling {branch} in {repo}...")
+#    git.pull(argStr, throwOnFail=True)
 
-    logging.info(f"Pulling {branch} in {repo}...")
-    git.pull(argStr, throwOnFail=True)
 
-
-class Pull(Resumable, Option):
+class Pull(Resumable, Option, CommandPathHandler):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
     Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
@@ -39,8 +41,10 @@ class Pull(Resumable, Option):
 
     @log_wrapper
     def execute(self, args):
+        self.set_progress_file(execution_path=self.command_path)
+
         mrArgs = {}
-        currentBranch = git.currentBranch()
+        currentBranch = git.currentBranch(execution_path=self.command_path)
         mrArgs["<branch>"] = currentBranch
         # the <<cmd>> stuff is for consistent --continue output
         if not "<<cmd>>" in args:
@@ -59,22 +63,28 @@ class Pull(Resumable, Option):
         mrArgs["--squash"] = False
 
         if args["--noRecurse"]:
-            git.pull(f"origin {currentBranch}")
+            git.pull(f"origin {currentBranch}", execution_path=self.command_path)
             logging.info("Pulled current branch from origin")
             return True
         else:
             # Imported here to avoid circular dependencies
-            from vine import grapeMenu
+#            from vine import grapeMenu
+            from vine.mergeRemote import MergeRemote
 
-            val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
+#            merge_remote_command = grapeMenu.menu().getOption("mr")
+            merge_remote_command = MergeRemote()
+            merge_remote_command.command_path = self.command_path
+            val = merge_remote_command.execute(mrArgs)
             if val:
                 logging.info("Pulled current branch from origin")
             return val
 
-    def _resume(self, args):
+    def _resume(self, args, *, workspace_dir):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
-        grapeMenu.menu().getOption("md")._resume(args)
+        merge_down_command = grapeMenu.menu().getOption("md")
+        merge_down_command.command_path = self.command_path
+        merge_down_command._resume(args, workspace_dir)
         return True
 
     def _saveProgress(self, args):

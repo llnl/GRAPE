@@ -1,5 +1,7 @@
+import os
 from vine import config_parser_global
 from vine import utility
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
@@ -9,7 +11,7 @@ from vine.vine_logging import log_wrapper
 #
 # NOTE: any updates to merge's arguments should be reflected in Merge Remote's arguments, or at least given values
 # by mergeRemote before the call to merge.
-class Merge(Resumable, Option):
+class Merge(Resumable, Option, CommandPathHandler):
     """
     grape m
     merge a local branch into your current branch
@@ -49,6 +51,8 @@ class Merge(Resumable, Option):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
+        self.set_progress_file(execution_path=self.command_path)
+
         # this is necessary due to the unholy relationships between mr, m, and md.
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = 'm'
@@ -66,8 +70,6 @@ class Merge(Resumable, Option):
             subpublic = 'origin/'.join(toks)
         else:
             subpublic = otherBranch
-
-
 
         mdArgs = {}
         mdArgs["--am"] = args["--am"]
@@ -87,18 +89,21 @@ class Merge(Resumable, Option):
         mdArgs["--noUpdate"] = args["--noUpdate"]
         mdArgs["--squash"] = args["--squash"]
 
-        return grapeMenu.menu().getOption("md").execute(mdArgs)
+        merge_down_command = grapeMenu.menu().getOption("md")
+        merge_down_command.command_path = self.command_path
+        return merge_down_command.execute(mdArgs)
 
-    def _resume(self, args):
+    def _resume(self, args, *, workspace_dir):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
-        grapeMenu.menu().getOption("md")._resume(args)
+        merge_down_command = grapeMenu.menu().getOption("md")
+        merge_down_command.command_path = self.command_path
+        merge_down_command._resume(args, workspace_dir)
         return True
 
     def _saveProgress(self, args):
         super(Merge, self)._saveProgress(args)
-        pass
 
     def setDefaultConfig(self, config):
         pass

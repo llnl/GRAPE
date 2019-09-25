@@ -6,12 +6,13 @@ from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
 # update the repo from the remote
-class UpdateLocal(Option):
+class UpdateLocal(Option, CommandPathHandler):
     """
     grape up
     Updates the current branch and any public branches.
@@ -42,26 +43,26 @@ class UpdateLocal(Option):
 
     @log_wrapper
     def execute(self, args):
-        wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
-        wsDir = os.path.abspath(wsDir)
-        os.chdir(wsDir)
+        if args["--wd"]:
+            self.workspace_dir = os.path.abspath(args["--wd"])
+#        wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
+#        wsDir = os.path.abspath(wsDir)
+#  TODO      os.chdir(wsDir)
 
         config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
         skipSubmodules = args["--noRecurse"]
 
-
         recurseNestedSubprojects = not args["--noRecurse"] or args["--recurseSubprojects"]
         publicBranches = [x.strip() for x in args["--public"].split()]
         launchers = []
         for branch in publicBranches:
-            launchers.append(multi_repo_cmd_launcher.MultiRepoCommandLauncher(fetchLocal,
-                                                      runInSubmodules=recurseSubmodules,
-                                                      runInSubprojects=recurseNestedSubprojects,
-                                                      branch=branch,
-                                                      listOfRepoBranchArgTuples=None,
-                                                      skipSubmodules=skipSubmodules, outer=wsDir))
-
+            new_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                fetchLocal, runInSubmodules=recurseSubmodules,
+                runInSubprojects=recurseNestedSubprojects, branch=branch,
+                listOfRepoBranchArgTuples=None, skipSubmodules=skipSubmodules,
+                outer=self.workspace_dir, execution_path=self.command_path)
+            launchers.append(new_launcher)
         if len(launchers):
             launcher = launchers[0]
             for l in launchers[1:]:
@@ -71,7 +72,6 @@ class UpdateLocal(Option):
 
         return True
 
-
     def setDefaultConfig(self, config):
         pass
 
@@ -80,47 +80,46 @@ def fetchLocalHandler(mre):
         logging.error(repr(e.gitOutput))
     raise mre
 
-def fetchLocal(repo='unknown', branch='master'):
+def fetchLocal(repo='unknown', branch='master', *, execution_path):
     # branch is actually the list of branches
     branches = branch
     if not branches:
         return
 
-    with git.cd(repo):
-        currentBranch = git.currentBranch()
+    currentBranch = git.currentBranch(execution_path=execution_path)
 
-        git.fetch("--prune")
-        git.fetch("--tags --force")
-        allRemoteBranches = git.remoteBranches()
-        fetchArgs = "origin "
-        toFetch = []
-        for b in branches:
-            if b != currentBranch:
-                if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
-                    fetchArgs += f"{b}:{b} "
-                    toFetch.append(b)
-            else:
-                try:
-                    logging.info(
-                        f"Pulling current branch {currentBranch} in {repo}")
-                    git.pull(f"origin {currentBranch}")
-                except grape_errors.GrapeGitError:
-                    logging.error(f"GRAPE: Could not pull {currentBranch} from" +
-                                  " origin. Maybe you haven't pushed it yet?")
-        try:
-            if toFetch:
-                logging.info(f"updating {','.join(toFetch)} in {repo}")
-                git.fetch(fetchArgs)
-        except grape_errors.GrapeGitError as e:
-            # let non-fast-forward fetches slide
-            if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
-                logging.error(e.gitCommand)
-                logging.error(e.gitOutput)
-                logging.warning("GRAPE: WARNING: one of your public branches" +
-                                f" {','.join(branches)} in {repo} has local " +
-                                "commits! Did you forget to create a topic " +
-                                "branch?")
-            elif "refusing to fetch into current branch" in e.gitOutput.lower():
-                print(e.gitOutput)
-            else:
-                raise e
+    git.fetch("--prune", execution_path=execution_path)
+    git.fetch("--tags --force", execution_path=execution_path)
+    allRemoteBranches = git.remoteBranches(execution_path=execution_path)
+    fetchArgs = "origin "
+    toFetch = []
+    for b in branches:
+        if b != currentBranch:
+            if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
+                fetchArgs += f"{b}:{b} "
+                toFetch.append(b)
+        else:
+            try:
+                logging.info(
+                    f"Pulling current branch {currentBranch} in {execution_path}")
+                git.pull(f"origin {currentBranch}", execution_path=execution_path)
+            except grape_errors.GrapeGitError:
+                logging.error(f"GRAPE: Could not pull {currentBranch} from" +
+                              " origin. Maybe you haven't pushed it yet?")
+    try:
+        if toFetch:
+            logging.info(f"updating {','.join(toFetch)} in {execution_path}")
+            git.fetch(fetchArgs, execution_path=execution_path)
+    except grape_errors.GrapeGitError as e:
+        # let non-fast-forward fetches slide
+        if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
+            logging.error(e.gitCommand)
+            logging.error(e.gitOutput)
+            logging.warning("GRAPE: WARNING: one of your public branches" +
+                            f" {','.join(branches)} in {execution_path} has local " +
+                            "commits! Did you forget to create a topic " +
+                            "branch?")
+        elif "refusing to fetch into current branch" in e.gitOutput.lower():
+            print(e.gitOutput)
+        else:
+            raise e

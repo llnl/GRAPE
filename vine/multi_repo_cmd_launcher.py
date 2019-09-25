@@ -4,13 +4,14 @@ import logging
 import os
 import warnings
 from vine import config_parser_global
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine import grape_errors
 from vine import utility
 from vine.vine_logging import log_wrapper, GrapeLogger
 
 
-class MultiRepoCommandRunner(object):
+class MultiRepoCommandRunner(CommandPathHandler):
 
     def __init__(self):
         self.task_queue = []
@@ -27,8 +28,6 @@ class MultiRepoCommandRunner(object):
                 inner_tuple = cmd_tuple.pop()
                 self.add_cmd_tuple_to_task_queue(inner_tuple)
             return
-
-        repo, branch, func, args = cmd_tuple
 
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -55,11 +54,15 @@ class MultiRepoCommandRunner(object):
             return None
 
         if 'repo' not in varnames or 'branch' not in varnames:
-            return await loop.run_in_executor(None, func)
+            return await loop.run_in_executor(
+                None, functools.partial(func, execution_path=self.command_path))
         elif 'args' in varnames:
             return await loop.run_in_executor(
-                None, functools.partial(func, repo=repo, branch=branch, args=args))
-        return await loop.run_in_executor(None, functools.partial(func, repo=repo, branch=branch))
+                None, functools.partial(func, repo=repo, branch=branch,
+                                        args=args,
+                                        execution_path=self.command_path))
+        return await loop.run_in_executor(None, functools.partial(
+            func, repo=repo, branch=branch, execution_path=self.command_path))
 
     async def _run_commands(self, commands):
         runnable_coroutines = []
@@ -75,12 +78,14 @@ class MultiRepoCommandRunner(object):
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 
-class MultiRepoCommandLauncher(object):
+class MultiRepoCommandLauncher(CommandPathHandler):
 
     def __init__(self, lmbda, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
-                 globalArgs=None,perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False, outer=""):
+                 globalArgs=None, perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False,
+                 outer="", *, execution_path):
         self.cmd_runner = MultiRepoCommandRunner()
         self.lmbda = lmbda
+        self.command_path = execution_path
 
         config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules")
@@ -102,7 +107,7 @@ class MultiRepoCommandLauncher(object):
         if outer:
             self.outer = outer
         else:
-            self.outer = utility.workspaceDir()
+            self.outer = self.workspace_dir
 
     @log_wrapper
     def MergeLaunchSet(self, otherMRCL):
@@ -149,8 +154,11 @@ class MultiRepoCommandLauncher(object):
         from vine import config_parser_user
         from vine import grapeGit as git
 
+        if self.branchArg:
+            currentBranch = self.branchArg
+        else:
+            currentBranch = git.currentBranch(execution_path=self.command_path)
         config = config_parser_global.grapeConfig()
-        currentBranch = git.currentBranch() if not self.branchArg else self.branchArg
         publicBranches = config.getPublicBranchList()
 
         # don't reinit
@@ -162,13 +170,12 @@ class MultiRepoCommandLauncher(object):
             self.perRepoArgs = [x[2] for x in self.launchTuple]
         else:
             if self.runSubprojects:
-                activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
-                self.repos = self.repos + [os.path.join(utility.workspaceDir(), sub) for sub in activeSubprojects]
+                activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+                self.repos = self.repos + [os.path.join(self.workspace_dir, sub) for sub in activeSubprojects]
                 self.branches = self.branches + [currentBranch for x in activeSubprojects]
             if self.runSubmodules:
-                ws_dir = utility.workspaceDir()
-                activeSubmodules = git.getActiveSubmodules(ws_dir)
-                self.repos = self.repos + [os.path.join(ws_dir, r) for r in activeSubmodules]
+                activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+                self.repos = self.repos + [os.path.join(self.workspace_dir, r) for r in activeSubmodules]
                 subPubMap = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
@@ -183,27 +190,29 @@ class MultiRepoCommandLauncher(object):
 
     @log_wrapper
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
-        with utility.cd_workspace():
-            argLists = self.perRepoArgs
-            self.initializeCommands()
-            retvals = []
+        argLists = self.perRepoArgs
+        self.initializeCommands()
+        retvals = []
 
-            if noPause:
-                # for purely local operations, run them all at once.
-                if len(self.repos) > 0:
-                    command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)]
-                    self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                    retvals = self.cmd_runner.run_all()
-            else:
-                # run the first entry first so that things like logging in to the project's server happen up front
-                if len(self.repos) > 0:
-                    command_list = (self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])
-                    self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                    retvals = self.cmd_runner.run_all()
-                if len(self.repos) > 1:
-                    command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])]
-                    self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                    retvals = self.cmd_runner.run_all()
+        # TODO: explain.
+        self.cmd_runner.command_path = self.workspace_dir
+
+        if noPause:
+            # for purely local operations, run them all at once.
+            if len(self.repos) > 0:
+                command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)]
+                self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
+                retvals = self.cmd_runner.run_all()
+        else:
+            # run the first entry first so that things like logging in to the project's server happen up front
+            if len(self.repos) > 0:
+                command_list = (self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])
+                self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
+                retvals = self.cmd_runner.run_all()
+            if len(self.repos) > 1:
+                command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])]
+                self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
+                retvals = self.cmd_runner.run_all()
 
         MRE = grape_errors.MultiRepoException()
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):

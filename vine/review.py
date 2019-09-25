@@ -11,11 +11,12 @@ from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
 from vine.option import Option
+from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
 
 
 # Prepare Feature Branch for review
-class Review(Option):
+class Review(Option, CommandPathHandler):
     """
     grape review
     Usage: grape-review [--update | --add]
@@ -134,7 +135,9 @@ class Review(Option):
             bitbucket = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            bitbucket = Atlassian.Atlassian(name, url=args["--bitbucketURL"], verify=verify)
+            bitbucket = Atlassian.Atlassian(name, url=args["--bitbucketURL"],
+                                            verify=verify,
+                                            workspace_dir=self.workspace_dir)
 
         # default project (outer level project)
         project_name = args["--project"]
@@ -145,41 +148,35 @@ class Review(Option):
         # determine source branch and target branch
         branch = args["--source"]
         if not branch:
-            branch = git.currentBranch()
-
-        # make sure we are in the outer level repo before we push
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
+            branch = git.currentBranch(self.command_path)
 
         #ensure branch is pushed
         logging.info(f"Pushing {branch} to bitbucket...")
-        git.push(f"origin {branch}")
+        git.push(f"origin {branch}", execution_path=self.workspace_dir)
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)        
         # load pull request from Bitbucket if it already exists
         wsRepo =  bitbucket.project(project_name).repo(repo_name)
-        existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)  
+        existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
 
         # determine pull request title
         title = args["--title"]
         if existingOuterLevelRequest is not None and not title:
             title = existingOuterLevelRequest.title()
-
         
         #determine pull request URL
         outerLevelURL = None
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
-        
+
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
 
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-    
         # determine pull request reviewers
         reviewers = self.parseReviewerArgs(args)
         if reviewers is None and existingOuterLevelRequest is not None:
@@ -190,9 +187,10 @@ class Review(Option):
             title = args["--title"]
             descr = self.parseDescriptionArgs(args)
             reviewers = self.parseReviewerArgs(args)
-            
+
         ##  Submodule Repos
-        missing = utility.getModifiedInactiveSubmodules(target_branch, branch, includeAdded=True)
+        missing = utility.getModifiedInactiveSubmodules(
+            target_branch, branch, includeAdded=True, workspace_dir=self.workspace_dir)
         if missing:
             logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
@@ -201,20 +199,17 @@ class Review(Option):
             return False        
         pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules")):
-            
-            modifiedSubmodules = git.getModifiedSubmodules(utility.workspaceDir(), target_branch, branch, includeAdded=True)
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, branch, includeAdded=True)
             submoduleBranchMappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
-                        
+
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
                 # push branch
-                os.chdir(submodule)
                 logging.info(f"Pushing {branch} to bitbucket...")
-                git.push(f"origin {branch}")
-                os.chdir(wsDir)
+                git.push(f"origin {branch}", execution_path=submodule)
                 repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
-                                                         isSubmodule=True)
+                                                           isSubmodule=True)
                 # determine branch prefix
                 prefix = git.branchPrefix(branch)
                 sub_target_branch = submoduleBranchMappings[prefix]
@@ -231,42 +226,39 @@ class Review(Option):
                     pullRequestLinks[newRequest.link()] = True
                 else:
                     # if a pull request could not be generated, just add a link to browse the branch
-                    url_ = urllib.quote_plus(f"refs/heads/{branch}")
+                    url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
                     pullRequestLinks[f"{bitbucket.rzbitbucketURL}{repo.repo.url()}/browse?at={url_}"] = False
-        
+
         ## NESTED SUBPROJECT REPOS 
-        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(target_branch)
-        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(target_branch)
-        
+        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(target_branch, workspaceDir=workspaceDir)
+        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(target_branch, workspaceDir=workspaceDir)
+
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            with git.cd(prefix):
-                git.push(f"origin {branch}")
+            git.push(f"origin {branch}", execution_path=prefix)
             repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
-            
+
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
             if newRequest:
                 pullRequestLinks[newRequest.link()] = True
             else:
                 # if a pull request could not be generated, just add a link to browse the branch
-                url_ = urllib.quote_plus(f"refs/heads/{branch}")
+                url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
                 pullRequestLinks["{bitbucket.rzbitbucketURL}{repo.repo.url()}/browse?at={url}"] = False
-            
 
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
-            if not git.hasBranch(branch):
+            if not git.hasBranch(branch, execution_path=self.workspace_dir):
                 logging.info(
                     f"Top level repository does not have a branch {branch}," +
                     " not generating a Pull Request")
                 return True
-            if git.branchUpToDateWith(target_branch, branch):
+            if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
                 logging.info(
                     f"{target_branch} up to date with {branch}," +
                     " not generating a Pull Request in Top Level repo")
                 return True
-            
-                
+
             repo_name = args["--repo"]
             repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
@@ -280,7 +272,7 @@ class Review(Option):
                                          updatedDescription, 
                                          reviewers, 
                                          args)
-                       
+
             logging.info(f"Request generated/updated:\n\n{request}")
         return True
 
@@ -361,7 +353,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
             try:
 
                 if reviewers:
-                    
                     if args["--prepend"] or args["--append"]:
                         revList = [r[0] for r in request.reviewers()]
                     else:
@@ -406,7 +397,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 logging.error(f"BITBUCKET: {e.data}")
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
-
         else:
             logging.info(f"BITBUCKET: Pull request from {branch} to " +
                          f"{target_branch} already exists, can't add a new one")

@@ -8,16 +8,20 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-def getActiveSubprojects():
-    return git.getActiveSubmodules(utility.workspaceDir()) + config_parser_user.getAllActiveNestedSubprojectPrefixes()
+def getActiveSubprojects(*, workspace_dir):
+    active_submodules = git.getActiveSubmodules(execution_path=workspace_dir)
+    active_nested_subproject_prefixes = \
+        config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=workspace_dir)
+    return active_submodules + active_nested_subproject_prefixes
 
 
 #option that installs wrapper calls to grape as git hooks in this repo.
-class InstallHooks(Option):
+class InstallHooks(Option, CommandPathHandler):
     """ grape installHooks
     Installs callbacks to grape in .git/hooks, allowing grape-configurable hooks to be used
     in this repo.
@@ -40,34 +44,33 @@ class InstallHooks(Option):
         return "Installs grape as your hook manager for this repo. \n" \
                "\t\t(May overwrite existing hooks you have installed in this repo)"
 
-    @staticmethod
-    def installHooksInRepo(repo, args):
+    def installHooksInRepo(self, repo, args):
         header = "#!/Git/sh\n" if os.name == 'nt' else "#!/bin/sh\n"
-        with git.cd(os.path.join(git.gitDir(), "hooks")):
-            hooks = args["--toInstall"]
-            for h in hooks:
-                with io.open(h, 'w') as file_:
-                    file_.write(header)
-                    grapeCmd = utility.getGrapeExec()
-                    file_.write(f"{grapeCmd} runHook {h} \"$@\" \n\n")
-                os.chmod(h, 0o755)
+        hooks = args["--toInstall"]
+        for h in hooks:
+            hook_path = os.path.join(git.gitDir(
+                execution_path=self.command_path), "hooks", h)
+            with io.open(hook_path, 'w') as file_:
+                file_.write(header)
+                grapeCmd = utility.getGrapeExec()
+                file_.write(f"{grapeCmd} runHook {h} \"$@\" \n\n")
+            os.chmod(hook_path, 0o755)
 
     @log_wrapper
     def execute(self, args):
-        workspaceDir = utility.workspaceDir()
-        logging.info(f"Installing hooks in {workspaceDir}.")
-        self.installHooksInRepo(workspaceDir, args)
+        logging.info(f"Installing hooks in {self.workspace_dir}.")
+        self.installHooksInRepo(self.workspace_dir, args)
         if not args["--noRecurse"]:
-            for sub in getActiveSubprojects():
+            for sub in getActiveSubprojects(workspace_dir=self.workspace_dir):
                 logging.info(f"Installing hooks in {sub}.")
-                self.installHooksInRepo(os.path.join(workspaceDir, sub), args)
+                self.installHooksInRepo(os.path.join(self.workspace_dir, sub), args)
         return True
 
     def setDefaultConfig(self, config):
         pass
 
 
-class RunHook(Option):
+class RunHook(Option, CommandPathHandler):
     """ grape runHook
 
     Usage: grape-runHook
@@ -121,6 +124,7 @@ class RunHook(Option):
             if command in self.commands.keys():
                 if args[command]:
                     try:
+                        args['execution_path'] = self.command_path
                         self.commands[command](args)
                     except KeyError:
                         pass
@@ -166,7 +170,7 @@ class RunHook(Option):
         autoPush = args["--autopush"]
         if autoPush.lower().strip() != "false":
             try:
-                git.push("-u origin HEAD")
+                git.push("-u origin HEAD", self.command_path)
             except grape_errors.GrapeGitError:
                 pass
             autoPush = True
@@ -176,7 +180,7 @@ class RunHook(Option):
         logging.info("GRAPE: checking for cascades...")
         cascadeDict = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--cascade"])
         if cascadeDict:
-            currentBranch = git.currentBranch()
+            currentBranch = git.currentBranch(self.command_path)
             while currentBranch in cascadeDict:
                 source = currentBranch
                 target = cascadeDict[source]
@@ -185,13 +189,13 @@ class RunHook(Option):
                 if git.branchUpToDateWith(source, target):
                     fastForward = True
                     logging.info("GRAPE: should be a fastforward cascade...")
-                git.checkout(f"{target}")
-                git.merge(f"{source} -m 'Cascade from {source} to {target}'")
+                git.checkout(f"{target}", self.command_path)
+                git.merge(f"{source} -m 'Cascade from {source} to {target}'", self.command_path)
                 # we need to kick off the next one if it was a fast forward merge.
                 # otherwise, another post-commit hook should be called from the merge commit.
                 if fastForward:
                     if autoPush:
-                        git.push(f"origin {target}")
+                        git.push(f"origin {target}", self.command_path)
                         logging.info("GRAPE: auto push done")
                     currentBranch = target
                 else:
@@ -208,26 +212,26 @@ class RunHook(Option):
         pass
 
     @staticmethod
-    def postRebase(args):
+    def postRebase(args, *, execution_path):
         updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("--quiet sync")
-            git.submodule("update --rebase")
+            git.submodule("--quiet sync", execution_path=execution_path)
+            git.submodule("update --rebase", execution_path=execution_path)
 
     @staticmethod
-    def postMerge(args):
+    def postMerge(args, *, execution_path):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
             logging.info("Post-Merge Hook: Syncing submodule URLs...")
-            git.submodule("--quiet sync")
+            git.submodule("--quiet sync", execution_path=execution_path)
             logging.info("Post-Merge Hook: Updating submodules...")
-            git.submodule("--quiet update --merge")
+            git.submodule("--quiet update --merge", execution_path=execution_path)
 
     @staticmethod
-    def postCheckout(args):
+    def postCheckout(args, *, execution_path):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
             logging.info("Post-Checkout Hook: Syncing submodule URLs...")
-            git.submodule("--quiet sync")
+            git.submodule("--quiet sync", execution_path=execution_path)
             logging.info("Post-Checkout Hook: Updating submodules...")
-            git.submodule("--quiet update")
+            git.submodule("--quiet update", execution_path=execution_path)

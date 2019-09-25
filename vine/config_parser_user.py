@@ -7,17 +7,17 @@ from vine import utility
 
 class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
 
-    def __init__(self, workspaceDir=None, configString=None):
+#    def __init__(self, workspaceDir=None, configString=None, * workspace_dir):
+    def __init__(self, configString=None, *, workspace_dir):
         super(GrapeConfigParserUser, self).__init__(
-            workspaceDir=workspaceDir, configString=configString)
+            workspaceDir=workspace_dir, configString=configString)
+        self.workspace_dir = workspace_dir
         self.readWorkspaceUserConfigFile()
 
     def readWorkspaceUserConfigFile(self):
-        try:
-            self.read(os.path.join(utility.workspaceDir(),
-                                   self.GIT_DIR, '.grapeuserconfig'))
-        except IOError:
-            pass
+        grape_user_config = os.path.join(self.workspace_dir, self.GIT_DIR,
+                                         '.grapeuserconfig')
+        self.read(grape_user_config)
 
     def setActiveNestedSubprojects(self, listOfActiveSubprojects):
         allNested = config_parser_global.grapeConfig().getAllNestedSubprojects()
@@ -32,10 +32,10 @@ class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
             self.set(section, "active", "True" if active[proj] is True else "False")
 
 
-def getAllActiveNestedSubprojects(workspaceDir=None):
+def getAllActiveNestedSubprojects(*, workspaceDir):
     config = __get_global_grape_config(workspaceDir)
     allNested = config.getAllNestedSubprojects()
-    userConfig = GrapeConfigParserUser()
+    userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
     active = []
     for sub in allNested:
         try:
@@ -47,24 +47,24 @@ def getAllActiveNestedSubprojects(workspaceDir=None):
     return active
 
 
-def getAllActiveNestedSubprojectPrefixes(workspaceDir=None):
-    if workspaceDir is utility.workspaceDir():
+def getAllActiveNestedSubprojectPrefixes(*, workspaceDir):
+    if workspaceDir is None:
         config = config_parser_global.grapeConfig()
     else:
         config = __get_global_grape_config(workspaceDir)
-    return [config.get(f"nested-{name}", "prefix") for name in getAllActiveNestedSubprojects(workspaceDir)]
+    return [config.get(f"nested-{name}", "prefix") for name in getAllActiveNestedSubprojects(workspaceDir=workspaceDir)]
 
 
-def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None):
+def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir):
     # Imported here to avoid circular dependencies
     from vine import config as configOption
     from vine import grapeGit as git
 
-    config = __get_global_grape_config(workspaceDir)
+    config = __get_global_grape_config()
     publicBranches = config.getPublicBranchList()
     if workspaceDir is None:
-        workspaceDir = utility.workspaceDir()
-    active = getAllActiveNestedSubprojects(workspaceDir)
+        workspaceDir = self.workspace_dir
+    active = getAllActiveNestedSubprojects(workspaceDir=workspaceDir)
     modified = []
     for repo in active:
         prefix = config.get(f"nested-{repo}", "prefix")
@@ -78,8 +78,8 @@ def getAllModifiedNestedSubprojects(since, now="HEAD", workspaceDir=None):
     return modified
 
 
-def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD", workspaceDir=None):
-    config = __get_global_grape_config(workspaceDir)
+def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD", *, workspaceDir):
+    config = __get_global_grape_config()
     return [config.get(f"nested-{name}", "prefix") for name in getAllModifiedNestedSubprojects(since, workspaceDir=workspaceDir)]
 
 

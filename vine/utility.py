@@ -4,6 +4,7 @@ import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
+from vine import config_parser_user
 if os.uname().sysname == 'Linux':
     import readline
 
@@ -64,43 +65,49 @@ def userInput(message, default=None):
 
 
 # return the path to the base level of the current workspace. (outermost git repo)
-def workspaceDir():
-    workspace_dir = None
-    base_dir = os.getcwd()
-    # Go until you're at the root (you don't have a head after splitting)
-    while os.path.split(base_dir)[1]:
-        if os.path.exists(os.path.join(base_dir, '.git')):
-            workspace_dir = base_dir
-        base_dir = os.path.dirname(base_dir)
-    return workspace_dir
+#def workspaceDir():
+#    workspace_dir = None
+#    base_dir = os.getcwd()
+#    # Go until you're at the root (you don't have a head after splitting)
+#    while os.path.split(base_dir)[1]:
+#        if os.path.exists(os.path.join(base_dir, '.git')):
+#            workspace_dir = base_dir
+#        base_dir = os.path.dirname(base_dir)
+#    return workspace_dir
 
 
-def isWorkspaceClean(printOutput=False):
+def isWorkspaceClean(printOutput=False, *, workspace_dir):
     # Imported here to avoid circular dependencies
     from vine import config_parser_user
-    isClean = git.isWorkingDirectoryClean(printOutput=printOutput)
-    activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
-    base = workspaceDir()
-    with git.cd(os.getcwd()):
-        for sub in activeNestedSubprojects:
-            if not isClean:
-                break
-            os.chdir(os.path.join(base, sub))
-            isClean = isClean and git.isWorkingDirectoryClean(printOutput=printOutput)
+    isClean = git.isWorkingDirectoryClean(printOutput=printOutput,
+                                          execution_path=workspace_dir)
+    activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=workspace_dir)
+    for sub in activeNestedSubprojects:
+        if not isClean:
+            return False
+        isClean = isClean and git.isWorkingDirectoryClean(
+            printOutput=printOutput, execution_path=os.path.join(workspace_dir, sub))
     return isClean
 
 
-def getActiveSubprojects():
-        return git.getActiveSubmodules(workspaceDir()) + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
+#def getActiveSubprojects(*, workspace_dir):
+#        return git.getActiveSubmodules(workspace_dir) + grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes(workspaceDir=workspace_dir)
 
 
-def getModifiedSubprojects(includeAdded=False):
-        return git.getModifiedSubmodules(workspaceDir(), includeAdded) + grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes()
+#def getModifiedSubprojects(includeAdded=False, *, workspace_dir):
+#    modified_submodules = git.getModifiedSubmodules(workspace_dir, includeAdded,
+#                                             workspace_dir=workspace_dir)
+#    modified_nested_prefixes = config_parser_user.\
+#        getAllModifiedNestedSubprojectPrefixes(workspace_dir=workspace_dir)
+#    return modifiedSubs + modified_nested_prefixes
 
 
-def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False):
-    modifiedSubs = git.getModifiedSubmodules(workspaceDir(), branch1=branch1, branch2=branch2, includeAdded=includeAdded)
-    activeSubs = git.getActiveSubmodules(workspaceDir())
+def getModifiedInactiveSubmodules(branch1, branch2, includeAdded=False, *,
+                                  workspace_dir):
+    modifiedSubs = git.getModifiedSubmodules(workspace_dir, branch1=branch1,
+                                             branch2=branch2,
+                                             includeAdded=includeAdded)
+    activeSubs = git.getActiveSubmodules(execution_path=workspace_dir)
     missing = []
     for sub in modifiedSubs:
         if sub not in activeSubs:
@@ -129,34 +136,34 @@ def win_path_to_linux_path(path):
     return path
 
 
-# returns the user's home directory:
-def getHomeDirectory():
-    if os.name == "nt":
-        home = os.environ["USERPROFILE"]
-    else:
-        home = os.environ["HOME"]
-    return home
+## returns the user's home directory:
+#def getHomeDirectory():
+#    if os.name == "nt":
+#        home = os.environ["USERPROFILE"]
+#    else:
+#        home = os.environ["HOME"]
+#    return home
 
 
-@contextmanager
-def cd_workspace():
-    workspace_dir = workspaceDir()
-    return _cd_to_target_dir(workspace_dir)
+#@contextmanager
+#def cd_workspace():
+#    workspace_dir = workspaceDir()
+#    return _cd_to_target_dir(workspace_dir)
 
 
-@contextmanager
-def cd_workspace_grapeconfig():
-    workspace_grapeconfig_dir = os.path.join(workspaceDir(), GRAPE_CONFIG)
-    return _cd_to_target_dir(workspace_grapeconfig_dir)
+#@contextmanager
+#def cd_workspace_grapeconfig():
+#    workspace_grapeconfig_dir = os.path.join(workspaceDir(), GRAPE_CONFIG)
+#    return _cd_to_target_dir(workspace_grapeconfig_dir)
 
 
-def _cd_to_target_dir(target_dir):
-    """Temporarily work in a new dir, return to starting dir when done."""
-    starting_dir = os.getcwd()
-    try:
-        if starting_dir != target_dir:
-            os.chdir(target_dir)
-    except OSError as e:
-        print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
-    yield
-    os.chdir(starting_dir)
+#def _cd_to_target_dir(target_dir):
+#    """Temporarily work in a new dir, return to starting dir when done."""
+#    starting_dir = os.getcwd()
+#    try:
+#        if starting_dir != target_dir:
+#            os.chdir(target_dir)
+#    except OSError as e:
+#        print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
+#    yield
+#    os.chdir(starting_dir)

@@ -36,6 +36,7 @@ from vine import utility
 from vine import version
 from vine import vine_logging
 from vine import walkthrough
+from vine.command_path_handler import CommandPathHandler
 
 
 #######################################################################
@@ -46,13 +47,13 @@ from vine import walkthrough
 __menuInstance = None
 
 
-def menu():
+def menu(workspace_dir=os.getcwd()):
     global __menuInstance
     if __menuInstance is None:
         __menuInstance = _Menu()
         config = config_parser_global.grapeConfig()
         menu().setDefaultConfig(config)
-        config_parser_global.read()
+        config_parser_global.read(workspace_dir=workspace_dir)
         __menuInstance.postInit()
     return __menuInstance
 
@@ -67,9 +68,10 @@ def _resetMenu():
     config_parser_global.resetGrapeConfig()
 
 
-class _Menu(object):
+class _Menu(CommandPathHandler):
 
     def __init__(self):
+        super(_Menu, self).__init__()
         # Imported here to avoid circular dependencies
         from vine import publish
 
@@ -90,15 +92,28 @@ class _Menu(object):
             walkthrough.Walkthrough(), quit.Quit()
             ]
 
+        self.set_command_path(os.getcwd())
+
         #Add/order the menu sections here
         self._sections = [
             'Getting Started', 'Code Reviews', 'Workspace', 'Merge',
             'Gitflow Tasks', 'Hooks', 'Patches', 'Project Management', 'Other'
             ]
 
+    def set_command_path(self, command_path):
+        self.command_path = command_path
+        for menu_option in self._options:
+            if isinstance(menu_option, CommandPathHandler):
+                menu_option.command_path = command_path
+
     def postInit(self):
         # add dynamically generated (dependent on grapeConfig) options here
-        self._options = self._options + newFlowBranch.NewBranchOptionFactory().createNewBranchOptions(config_parser_global.grapeConfig())
+        branch_option_factory = newFlowBranch.NewBranchOptionFactory()
+        new_option_list = branch_option_factory.createNewBranchOptions(
+            config_parser_global.grapeConfig(),
+            execution_path=self.command_path)
+        self._options.extend(new_option_list)
+
         for currOption in self._options:
             self._optionLookup[currOption.key] = currOption
 
@@ -124,12 +139,7 @@ class _Menu(object):
         # utility.argParse also does the magic of filling in defaults from the config files as appropriate.
         if option_args is None and chosen_option.__doc__:
             try:
-                config = chosen_option._config
-                if config is None:
-                    config = config_parser_global.grapeConfig()
-                else:
-                    config = config_parser_global.grapeConfig()
-                    config_parser_global.read(os.path.join(chosen_option._config, config.GRAPE_CONFIG))
+                config = config_parser_global.grapeConfig()
                 option_args = utility.parseArgs(chosen_option.__doc__, args[1:], config)
             except SystemExit as e:
                 # 'docopt' prints help doc then exists with SystemExit.
@@ -139,7 +149,8 @@ class _Menu(object):
         try:
             if isinstance(chosen_option, resumable.Resumable):
                 if option_args["--continue"]:
-                    return chosen_option._resume(option_args)
+                    return chosen_option._resume(
+                        option_args, workspace_dir=chosen_option.workspace_dir)
             return chosen_option.execute(option_args)
 
         except grape_errors.GrapeGitError as e:

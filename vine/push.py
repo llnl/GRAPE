@@ -7,10 +7,11 @@ from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
 from vine.option import Option
+from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
 
 
-class Push(Option):
+class Push(Option, CommandPathHandler):
     """
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
@@ -31,16 +32,15 @@ class Push(Option):
 
     @log_wrapper
     def execute(self, args):
-        baseDir = utility.workspaceDir()
+        currentBranch = git.currentBranch(self.workspace_dir)
+        config = config_parser_global.grapeConfig()
+        publicBranches = config.getPublicBranchList()
 
-        with utility.cd_workspace():
-            currentBranch = git.currentBranch()
-            config = config_parser_global.grapeConfig()
-            publicBranches = config.getPublicBranchList()
+        submodules = git.getActiveSubmodules(self.workspace_dir)
 
-            submodules = git.getActiveSubmodules(baseDir)
-
-            retvals = multi_repo_cmd_launcher.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            push, execution_path=self.command_path)
+        retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         logging.info("Pushed current branch to origin")
         return False not in retvals
@@ -48,10 +48,9 @@ class Push(Option):
     def setDefaultConfig(self, config):
         pass
 
-def push(repo='', branch='master'):
-    with git.cd(repo):
-        logging.info(f"Pushing {branch} in {repo}...")
-        git.push(f"-u origin {branch}", throwOnFail=True)
+def push(repo='', branch='master', *, execution_path):
+    logging.info(f"Pushing {branch} in {execution_path}...")
+    git.push(f"-u origin {branch}", throwOnFail=True, execution_path=execution_path)
 
 def handlePushMRE(mre):
     for e1 in mre.exceptions():

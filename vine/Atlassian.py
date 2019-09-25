@@ -15,13 +15,15 @@ from vine.option import Option
 class Atlassian(object):
     rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
 
-    def __init__(self, username=None, url=rzbitbucketURL, verify=True):
+    def __init__(self, username=None, url=rzbitbucketURL, verify=True, *,
+                 workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
         else:
             self._userName = username
 
+        self.workspace_dir = workspace_dir
         self.keyring = keyring.get_keyring()
         self._service = url
         password = keyring.get_password(self._service, self._userName)
@@ -61,16 +63,16 @@ class Atlassian(object):
     def projectlist(self):
         projects = self._stash.projects.list()
         return [r["key"] for r in projects]
-    
+
     def project(self, name):
 
         for node in self._stash.projects:
             if node["key"].lower() == name.lower():
                 r = self._stash.projects[name]
                 return Project(r, node)
-            
+
         return None
-    
+
     def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
         config = config_parser_global.grapeConfig()
         if isNested:
@@ -84,12 +86,12 @@ class Atlassian(object):
             repo_name = '.'.join(repo_name.split('.')[:-1])
         elif isSubmodule:
             fullpath = os.path.abspath(path)
-            wsdir = utility.workspaceDir() + os.path.sep
+            wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
             url =  git.config(f"--get submodule.{proj}.url").split('/')
             proj = url[-2]
             repo_name = url[-1]
-    
+
             # strip off the .git extension
             repo_name = '.'.join(repo_name.split('.')[:-1])   
         else:
@@ -97,10 +99,10 @@ class Atlassian(object):
                 topLevelRepo = config.get(Option.SECTION_REPO, "name")
             if topLevelProject is None:
                 topLevelProject = config.get(Option.SECTION_PROJECT, "name")
-                
+
             repo_name = topLevelRepo
             proj = topLevelProject
-            
+
         repo = self.project(proj).repo(repo_name)
         return repo        
 
@@ -130,7 +132,7 @@ class StashyNode(object):
                 self._show(dd, level + 1)
             else:
                 logging.info("  "*level, key, type(val), "???")
-                
+
     def get(self, path):
         response = self.snode._client.get(self.snode.url(path))
         return response.json()
@@ -315,7 +317,7 @@ class PullRequest(StashyNode):
             
 
 if __name__ == "__main__":
-    atlassian = Atlassian()
+    atlassian = Atlassian(workspace_dir=os.getcwd())
     plist = atlassian.projectlist()
     logging.info(plist)
     for p in plist:

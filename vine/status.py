@@ -8,11 +8,12 @@ from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class Status(Option):
+class Status(Option, CommandPathHandler):
     """
     Usage: grape-status [-u | --uno]
               [--failIfInconsistent]
@@ -40,7 +41,6 @@ class Status(Option):
 
     # print the status for the entire workspace
     def printStatus(self, args):
-        wsDir = utility.workspaceDir()
         statusArgs = ""
         if args["-u"]:
             statusArgs += "-u "
@@ -51,8 +51,8 @@ class Status(Option):
                                             runInSubmodules=True,
                                             runInSubprojects=True,
                                             runInOuter=True,
-                                            globalArgs=[statusArgs, wsDir])
-
+                                            globalArgs=[statusArgs, self.workspace_dir],
+                                            execution_path=self.command_path)
         stati = launcher.launchFromWorkspaceDir(noPause=True)
         status = {}
         for s, r in (zip(stati, launcher.repos)):
@@ -68,7 +68,7 @@ class Status(Option):
                     if lstripped[0:2] == "##":
                         if "[ahead" in lstripped or "[behind" in lstripped:
                             logging.info(
-                                f"{os.path.abspath(os.path.join(wsDir, sub))}"+
+                                f"{os.path.abspath(os.path.join(self.workspace_dir, sub))}"+
                                 f": {lstripped}")
                         continue
                     # print other statuses
@@ -79,14 +79,15 @@ class Status(Option):
         # Check that all public branches exist locally.
         cfg = config_parser_global.grapeConfig()
         publicBranches = cfg.getPublicBranchList()
-        missingBranches = config.Config.checkIfPublicBranchesExist(utility.workspaceDir(),
+        missingBranches = config.Config.checkIfPublicBranchesExist(self.workspace_dir,
                                                                    publicBranches)
 
         if len(missingBranches) > 0:
             for mb in missingBranches:
                 logging.info(f"Repository is missing public branch {mb}, attempting to fetch it now...")
                 try:
-                    git.fetch(f"origin {mb}:{mb}")
+                    git.fetch(f"origin {mb}:{mb}",
+                              execution_path=self.workspace_dir)
                     logging.info(f"{mb} added as a local branch")
                 except grape_errors.GrapeGitError as e:
                     logging.error(e.gitOutput)
@@ -97,30 +98,25 @@ class Status(Option):
         consistentBranchState = True
         cfg = config_parser_global.grapeConfig()
         publicBranches = cfg.getPublicBranchList()
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
-        wsBranch = git.currentBranch()
+        wsBranch = git.currentBranch(execution_path=self.workspace_dir)
         subPubMap = cfg.getMapping(self.SECTION_WORKSPACE, "submodulepublicmappings")
         if wsBranch in publicBranches:
-            for sub in git.getActiveSubmodules(wsDir):
-                os.chdir(os.path.join(wsDir,sub))
-                subbranch = git.currentBranch()
+            for sub in git.getActiveSubmodules(execution_path=self.workspace_dir):
+                subbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, sub))
                 if subbranch != subPubMap[wsBranch]:
                     consistentBranchState = False
                     logging.info(f"Submodule {sub} on branch {subbranch} when grape expects it to be on {subPubMap[wsBranch]}")
         else:
-            for sub in git.getActiveSubmodules(wsDir):
-                os.chdir(os.path.join(wsDir,sub))
-                subbranch = git.currentBranch()
+            for sub in git.getActiveSubmodules(execution_path=self.workspace_dir):
+                subbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, sub))
                 if subbranch != wsBranch:
                     consistentBranchState = False
                     logging.info(f"Submodule {sub} on branch {subbranch}" +
                                  " when grape expects it to be on {wsBranch}")
 
         # check that nested subproject branching is consistent
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-            os.chdir(os.path.join(wsDir, nested))
-            nestedbranch = git.currentBranch()
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+            nestedbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, nested))
             if nestedbranch != wsBranch:
                 consistentBranchState = False
                 logging.info(f"Nested Project {nested} on branch " +
@@ -131,13 +127,12 @@ class Status(Option):
 
     @log_wrapper
     def execute(self, args):
-        with utility.cd_workspace():
-            if not args["--checkWSOnly"]:
-                self.printStatus(args)
-            # Sanity check workspace layout
-            publicBranchesExist = self.checkForLocalPublicBranches(args)
-            # Check that submodule branching is consistent
-            consistentBranchState = self.checkForConsistentWorkspaceBranches(args)
+        if not args["--checkWSOnly"]:
+            self.printStatus(args)
+        # Sanity check workspace layout
+        publicBranchesExist = self.checkForLocalPublicBranches(args)
+        # Check that submodule branching is consistent
+        consistentBranchState = self.checkForConsistentWorkspaceBranches(args)
 
         retval = True
         if args["--failIfInconsistent"]:
@@ -152,32 +147,29 @@ class Status(Option):
     def setDefaultConfig(self, config):
         pass
 
-def getStatus(branch='', repo='', args=''):
+def getStatus(branch='', repo='', args='', *, execution_path):
     statusArgs = args[0]
     wsDir = args[1]
     toReturn = []
 
-    sub = repo
-    if not sub.strip():
+    if not repo.strip():
         return ""
     try:
-
-        with git.cd(sub):
-            subStatus = git.status(f"--porcelain -b {statusArgs}").split('\n')
-            for line in subStatus:
-                strippedL = line.strip()
-                if strippedL:
-                    tokens = strippedL.split()
-                    tokens[0] = tokens[0].strip()
-                    if len(tokens[0]) == 1:
-                        tokens[0] = f" {tokens[0]} "
-                    if wsDir == sub:
-                        relPath = ""
-                        toReturn.append(' '.join([tokens[0], tokens[1]]))
-                    else:
-                        relPath = os.path.relpath(sub, wsDir)
-                        branch_path = os.path.join(relPath, tokens[1])
-                        toReturn.append(' '.join([tokens[0], branch_path]))
+        subStatus = git.status(f"--porcelain -b {statusArgs}", execution_path=repo).split('\n')
+        for line in subStatus:
+            strippedL = line.strip()
+            if strippedL:
+                tokens = strippedL.split()
+                tokens[0] = tokens[0].strip()
+                if len(tokens[0]) == 1:
+                    tokens[0] = f" {tokens[0]} "
+                if wsDir == repo:
+                    relPath = ""
+                    toReturn.append(' '.join([tokens[0], tokens[1]]))
+                else:
+                    relPath = os.path.relpath(repo, wsDir)
+                    branch_path = os.path.join(relPath, tokens[1])
+                    toReturn.append(' '.join([tokens[0], branch_path]))
         return toReturn
     except Exception as e:
         logging.error(e)

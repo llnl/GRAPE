@@ -14,7 +14,7 @@ from vine import vine_subprocess
 GRAPE_CONFIG = '.grapeconfig'
 
 
-def gitcmd(cmd, errmsg):
+def gitcmd(cmd, errmsg, *, execution_path):
     from vine import config_parser_global
 
     cnfg = config_parser_global.grapeConfig()
@@ -28,49 +28,64 @@ def gitcmd(cmd, errmsg):
     else:
         _cmd = f"git {cmd}"
 
-    cwd = os.getcwd()
-    completed_process = vine_subprocess.executeSubProcess(_cmd,
-                                                          workingDirectory=cwd)
+#    cwd = None
+#    if execution_path:
+#        cwd = os.getcwd()
+#        os.chdir(execution_path)
+    completed_process = vine_subprocess.executeSubProcess(_cmd, working_dir=execution_path)
+#    if cwd:
+#        os.chdir(cwd)
     stdout_output = completed_process.stdout.decode()
     stderr_output = completed_process.stderr.decode()
     process_output = '\n'.join([stdout_output, stderr_output]).strip()
     if completed_process.returncode != 0:
-        raise grape_errors.GrapeGitError(f"Error: {errmsg}", completed_process.returncode, process_output, _cmd, cwd=cwd)
+        raise grape_errors.GrapeGitError(
+            f"Error: {errmsg}", completed_process.returncode, process_output,
+            _cmd, cwd=execution_path)
     return process_output
 
 
-def add(filedescription):
-    return gitcmd(f"add {filedescription}", f"Could not add {filedescription}")
+def add(filedescription, *, execution_path):
+    return gitcmd(f"add {filedescription}",
+                  f"Could not add {filedescription}",
+                  execution_path=execution_path)
 
-
-def baseDir():
+def baseDir(*, execution_path):
     """Returns path in an OS (non-git) format."""
-    git_formatted_path = gitcmd("rev-parse --show-toplevel", "Could not locate base directory")
+    logging.info("Locating base directory.")
+    git_formatted_path = gitcmd(
+        "rev-parse --show-toplevel", "Could not locate base directory",
+        execution_path=execution_path)
     os_formatted_path = gitPathToOsPath(git_formatted_path)
     return os_formatted_path
 
-def allBranches():
-    return branch("-a").replace("*",' ').replace(" ",'').split()
+def allBranches(*, execution_path):
+    return branch("-a", execution_path=execution_path).replace("*",' ').replace(" ",'').split()
 
-def remoteBranches():
-    return branch("-r").replace(" ", '').split()
+def remoteBranches(*, execution_path):
+    return branch("-r", execution_path=execution_path).replace(" ", '').split()
 
-def branch(argstr=""):
-    return gitcmd(f"branch {argstr}", "Could not execute git branch command")
+def branch(argstr="", *, execution_path):
+    return gitcmd(f"branch {argstr}",
+                  "Could not execute git branch command",
+                  execution_path=execution_path)
 
 
 def branchPrefix(branchName):
     return branchName.split('/')[0]
 
 
-def branchUpToDateWith(branchName, targetBranch):
+def branchUpToDateWith(branchName, targetBranch, *, execution_path):
     """Provided branch names should delimited by '/'.
 
     For Windows portability, see 'join_list_as_git_path()'.
     """
     try:
+#        allUpToDateBranches = gitcmd(f"-C {execution_path} branch -a --contains {targetBranch}",
+#                                     "branch contains failed")
         allUpToDateBranches = gitcmd(f"branch -a --contains {targetBranch}",
-                                     "branch contains failed")
+                                     "branch contains failed",
+                                     execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         # Don't fail if the only issue is a dangling reference for origin/HEAD.
         allUpToDateBranches = e.gitOutput
@@ -91,17 +106,23 @@ def branchUpToDateWith(branchName, targetBranch):
     return upToDate
 
 
-def bundle(argstr):
-    return gitcmd(f"bundle {argstr}", "Bundle failed")
+def bundle(argstr, *, execution_path):
+    return gitcmd(f"bundle {argstr}", "Bundle failed",
+                  execution_path=execution_path)
 
 
-def checkout(argstr):
-    return gitcmd(f"checkout {argstr}", "Checkout failed")
+def checkout(argstr, *, execution_path):
+    return gitcmd(f"checkout {argstr}", "Checkout failed",
+                  execution_path=execution_path)
 
 
-def clone(argstr):
+def clone(argstr='', *, source_repo, clone_repo, execution_path):
+    if not os.path.isabs(clone_repo):
+        clone_repo = os.path.join(execution_path, clone_repo)
     try:
-        return gitcmd(f"clone {argstr}", "Clone failed")
+        return gitcmd(f"clone {argstr} {source_repo} {clone_repo}",
+                      "Clone failed",
+                      execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
@@ -114,53 +135,63 @@ def clone(argstr):
             raise e
 
 
-def commit(argstr):
-    return gitcmd(f"commit {argstr}", "Commit failed")
+def commit(argstr, *, execution_path):
+    return gitcmd(f"commit {argstr}", "Commit failed",
+                  execution_path=execution_path)
 
 
-def commitDescription(committish):
-
+def commitDescription(committish, *, execution_path):
     try:
         descr = gitcmd(f"log --oneline {committish}^1..{committish}",
-                       "commitDescription failed")
+                       "commitDescription failed",
+                       execution_path=execution_path)
     # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
     except grape_errors.GrapeGitError as e:
         if "unknown revision" in e.gitOutput.lower():
             try:
                 descr = gitcmd(f"log --oneline {committish}",
-                               "commitDescription failed")
+                               "commitDescription failed",
+                               execution_path=execution_path)
             except grape_errors.GrapeGitError as e:
                 raise e
     return descr
 
-def config(argstr, arg2=None):
+def config(argstr, arg2=None, *, execution_path):
     if arg2 is not None:
-        return gitcmd(f'config {argstr} "{arg2}"', "Config failed")
+        return gitcmd(f'config {argstr} "{arg2}"', "Config failed",
+                      execution_path=execution_path)
     else:
-        return gitcmd(f'config {argstr} ', "Config failed")
+        return gitcmd(f'config {argstr} ', "Config failed",
+                      execution_path=execution_path)
 
 
-def conflictedFiles():
-    fileStr = diff("--name-only --diff-filter=U").strip()
+def conflictedFiles(*, execution_path):
+    fileStr = diff("--name-only --diff-filter=U", execution_path=execution_path).strip()
     lines = fileStr.split('\n') if fileStr else []
     return lines
 
 
-def currentBranch():
-    return gitcmd("rev-parse --abbrev-ref HEAD", "could not determine current branch")
+def currentBranch(*, execution_path):
+    return gitcmd(f"rev-parse --abbrev-ref HEAD",
+                  "could not determine current branch",
+                  execution_path=execution_path)
 
 
-def describe(argstr=""):
-    return gitcmd(f"describe {argstr}", "could not describe commit")
+def describe(argstr="", *, execution_path):
+    return gitcmd(f"describe {argstr}", "could not describe commit",
+                  execution_path=execution_path)
 
 
-def diff(argstr):
-    return gitcmd(f"diff {argstr}", "could not perform diff")
+def diff(argstr, *, execution_path):
+    return gitcmd(f"diff {argstr}", "could not perform diff",
+                  execution_path=execution_path)
 
 
-def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
+def fetch(repo="", branchArg="", raiseOnCommError=False,
+          warnOnCommError=False, *, execution_path):
     try:
-        return gitcmd(f"fetch {repo} {branchArg}", "Fetch failed")
+        return gitcmd(f"fetch {repo} {branchArg}", "Fetch failed",
+                      execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if e.commError:
             # fetch can sometimes hang up when it can't find the remote, resulting in
@@ -177,51 +208,51 @@ def fetch(repo="", branchArg="", raiseOnCommError=False, warnOnCommError=False):
             raise e
 
 
-def getActiveSubmodules(ws_dir):
-    with cd(ws_dir):
-        if os.name == "nt":
-            submoduleList = submodule("foreach --quiet \"echo $path\"")
-        else:
-            submoduleList = submodule("foreach --quiet \"echo \$path\"")
-        submoduleList = [] if not submoduleList else submoduleList.split('\n')
-        submoduleList = [x.strip() for x in submoduleList]
-        # ignore any submodules that are not in .gitmodules
-        submoduleList = [x for x in submoduleList if not x.startswith("fatal: no submodule mapping found in .gitmodules for path")]
+def getActiveSubmodules(*, execution_path):
+    if os.name == "nt":
+        submoduleList = submodule("foreach --quiet \"echo $path\"", execution_path=execution_path)
+    else:
+        submoduleList = submodule("foreach --quiet \"echo \$path\"", execution_path=execution_path)
+    submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    submoduleList = [x.strip() for x in submoduleList]
+    # ignore any submodules that are not in .gitmodules
+    submoduleList = [x for x in submoduleList if not x.startswith("fatal: no submodule mapping found in .gitmodules for path")]
     return submoduleList
 
 
 # Remove any active submodules that are not found in gitmodules
 def fixActiveSubmodules(ws_dir, user_input_func):
-    with cd(ws_dir):
-        if os.name == "nt":
-            submoduleList = submodule("foreach --quiet \"echo $path\"")
-        else:
-            submoduleList = submodule("foreach --quiet \"echo \$path\"")
-        submoduleList = [] if not submoduleList else submoduleList.split('\n')
-        submoduleList = [x.strip() for x in submoduleList]
-        pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
-        submoduleFixed = False
-        for output in submoduleList:
-            match = pattern.match(output)
-            if match:
-                submoduleFixed = True
-                sub = match.group(1)
-                # remove from index, if staged
-                rm(f"--ignore-unmatch --cached {sub}")
-                # remove from repo, if present
-                rm(f"--ignore-unmatch {sub}")
-                if os.path.exists(os.path.join(ws_dir, sub)):
-                    delete = user_input_func(f"{sub} is no longer part of the " +
-                                             "workspace.  Would you like to " +
-                                             "delete it?", 'y')
-                    if delete:
-                        shutil.rmtree(os.path.join(ws_dir, sub))
+    if os.name == "nt":
+        submoduleList = submodule("foreach --quiet \"echo $path\"",
+                                  execution_path=ws_dir)
+    else:
+        submoduleList = submodule("foreach --quiet \"echo \$path\"",
+                                  execution_path=ws_dir)
+    submoduleList = [] if not submoduleList else submoduleList.split('\n')
+    submoduleList = [x.strip() for x in submoduleList]
+    pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
+    submoduleFixed = False
+    for output in submoduleList:
+        match = pattern.match(output)
+        if match:
+            submoduleFixed = True
+            sub = match.group(1)
+            # remove from index, if staged
+            rm(f"--ignore-unmatch --cached {sub}", execution_path=ws_dir)
+            # remove from repo, if present
+            rm(f"--ignore-unmatch {sub}", execution_path=ws_dir)
+            if os.path.exists(os.path.join(ws_dir, sub)):
+                delete = user_input_func(f"{sub} is no longer part of the " +
+                                         "workspace.  Would you like to " +
+                                         "delete it?", 'y')
+                if delete:
+                    shutil.rmtree(os.path.join(ws_dir, sub))
     return submoduleFixed
 
-def getAllSubmodules():
+def getAllSubmodules(*, execution_path):
     subconfig = configparser.ConfigParser()
     try:
-        subconfig.read(os.path.join(baseDir(), ".gitmodules"))
+        subconfig.read(os.path.join(baseDir(execution_path=execution_path), ".gitmodules"))
     except configparser.ParsingError:
         # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
         # read section names in successfully, which is all we need
@@ -232,9 +263,9 @@ def getAllSubmodules():
         submodules.append(s.split()[1].split('"')[1])
     return submodules
 
-def getAllSubmoduleURLMap():
+def getAllSubmoduleURLMap(*, execution_path):
     subconfig = configparser.ConfigParser()
-    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(baseDir(), ".gitmodules"))))
+    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(baseDir(execution_path=execution_path), ".gitmodules"))))
     subconfig.read_file(fp)
     fp.close()
     sections = subconfig.sections()
@@ -245,38 +276,37 @@ def getAllSubmoduleURLMap():
 
 
 def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
-    with cd(ws_dir):
-        submodules = getAllSubmodules()
-        # if there are no submodules, then return the empty list
-        if len(submodules) == 0 or (len(submodules) ==1 and not submodules[0]):
+    submodules = getAllSubmodules(execution_path=ws_dir)
+    # if there are no submodules, then return the empty list
+    if len(submodules) == 0 or (len(submodules) == 1 and not submodules[0]):
+        return []
+    submodulesString = ' '.join(submodules)
+    try:
+        modifiedSubmodules = diff(f"--name-status {branch1} {branch2} -- " +
+                                  f"{submodulesString}", execution_path=ws_dir).split('\n')
+        if includeAdded:
+            modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
+        else:
+            # only include submodules that are in both branches
+            modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
+    except grape_errors.GrapeGitError as e:
+        if "bad revision" in e.gitOutput.lower():
+            logging.warning("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
             return []
-        submodulesString = ' '.join(submodules)
-        try:
-            modifiedSubmodules = diff(f"--name-status {branch1} {branch2} -- " +
-                                      f"{submodulesString}").split('\n')
-            if includeAdded:
-                modifiedSubmodules = [sub.lstrip('AM \t') for sub in modifiedSubmodules if sub.startswith('M') or sub.startswith('A') ]
-            else:
-                # only include submodules that are in both branches
-                modifiedSubmodules = [sub.lstrip('M \t') for sub in modifiedSubmodules if sub.startswith('M')]
-        except grape_errors.GrapeGitError as e:
-            if "bad revision" in e.gitOutput.lower():
-                logging.warning("getModifiedSubmodules: requested difference between one or more branches that do not exist. Assuming no modifications.")
-                return []
 
-        # make sure everything in modifiedSubmodules is in the original list of submodules
-        # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
-        #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
-        verifiedSubmodules = []
-        for s in modifiedSubmodules:
-            if s in submodules:
-                verifiedSubmodules.append(s)
+    # make sure everything in modifiedSubmodules is in the original list of submodules
+    # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
+    #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
+    verifiedSubmodules = []
+    for s in modifiedSubmodules:
+        if s in submodules:
+            verifiedSubmodules.append(s)
 
     return verifiedSubmodules
 
 
 # Takes a URL and returns a hard path for it
-def parseSubprojectRemoteURL(url):
+def parseSubprojectRemoteURL(url, *, execution_path):
     URL_PATH_SEP = '/'
     path = url.replace('\\', URL_PATH_SEP)
     path = path.strip().split(URL_PATH_SEP)
@@ -284,7 +314,7 @@ def parseSubprojectRemoteURL(url):
         return url      #Already a hard path
 
     # We have a relative path so start the remote origin URL
-    originURL = config("--get remote.origin.url").strip().split(os.path.sep)
+    originURL = config("--get remote.origin.url", execution_path=execution_path).strip().split(os.path.sep)
 
     #Now parse path and modify originURL to make a hard path
     for p in path:
@@ -294,11 +324,13 @@ def parseSubprojectRemoteURL(url):
             pass
         else:
             originURL.append(p)
+    if originURL[0] == '' and os.name != 'nt':
+        originURL[0] = '/'
     return os.path.join(*originURL)
 
 
-def gitDir():
-    base = str(baseDir())
+def gitDir(*, execution_path):
+    base = str(baseDir(execution_path=execution_path))
     gitPath = os.path.join(base, ".git")
     toReturn = None
     if os.path.isdir(gitPath):
@@ -315,13 +347,13 @@ def gitDir():
     return toReturn
 
 
-def hasBranch(b):
-    branches = branch().split()
+def hasBranch(b, *, execution_path):
+    branches = branch(execution_path=execution_path).split()
     return b in branches
 
 
-def isWorkingDirectoryClean(printOutput=False):
-    statusOutput = status("-u --porcelain")
+def isWorkingDirectoryClean(printOutput=False, *, execution_path):
+    statusOutput = status("-u --porcelain", execution_path=execution_path)
     toRet =  len(statusOutput.strip()) == 0
     if printOutput and not toRet:
         logging.info(f"{os.getcwd()}:")
@@ -330,15 +362,14 @@ def isWorkingDirectoryClean(printOutput=False):
 
 
 
-def log(args=""):
-    return gitcmd(f"log {args}", "git log failed")
+def log(args="", *, execution_path):
+    return gitcmd(f"log {args}", "git log failed",
+                  execution_path=execution_path)
 
 
-def mv(args):
-    return gitcmd(f"mv {args}", "mv failed")
+def mv(args, *, execution_path):
+    return gitcmd(f"mv {args}", "mv failed", execution_path=execution_path)
 
-def mv(args):
-    return gitcmd("mv %s" % args, "mv failed")
 
 def join_list_as_git_path(path):
     """Returns a path delimited by '/' as Git would, regardless of OS.
@@ -364,27 +395,33 @@ def gitPathToOsPath(path):
     return path
 
 
-def merge(args):
-    return gitcmd(f"merge {args}", "merge failed")
+def merge(args, *, execution_path):
+    return gitcmd(f"merge {args}", "merge failed",
+                  execution_path=execution_path)
 
 
-def mergeAbort():
-    return gitcmd("merge --abort", "Could not determine top level git directory.")
+def mergeAbort(*, execution_path):
+    return gitcmd("merge --abort",
+                  "Could not determine top level git directory.",
+                  execution_path=execution_path)
 
 
-def numberCommitsSince(commitStr):
-    strCount = gitcmd(f"rev-list --count {commitStr}..HEAD", "Rev-list failed")
+def numberCommitsSince(commitStr, *, execution_path):
+    strCount = gitcmd(f"rev-list --count {commitStr}..HEAD", "Rev-list failed",
+                      execution_path=execution_path)
     return int(strCount)
 
 
-def numberCommitsSinceRoot():
-    root = gitcmd("rev-list --max-parents=0 HEAD", "rev-list failed")
+def numberCommitsSinceRoot(*, execution_path):
+    root = gitcmd(f"rev-list --max-parents=0 HEAD", "rev-list failed",
+                  execution_path=execution_path)
     return numberCommitsSince(root)
 
 
-def pull(args, throwOnFail=False):
+def pull(args, throwOnFail=False, *, execution_path):
     try:
-        return gitcmd(f"pull {args}", "Pull failed")
+        return gitcmd(f"pull {args}", "Pull failed",
+                      execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if e.commError:
             logging.warning("WARNING: Pull failed due to connectivity issues.")
@@ -397,9 +434,10 @@ def pull(args, throwOnFail=False):
             raise e
 
 
-def push(args, throwOnFail = False):
+def push(args, throwOnFail=False, *, execution_path):
     try:
-        return gitcmd(f"push --porcelain {args}", "Push failed")
+        return gitcmd(f"push --porcelain {args}", "Push failed",
+                      execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if e.commError:
             logging.warning("WARNING: Push failed due to connectivity issues.")
@@ -411,24 +449,27 @@ def push(args, throwOnFail = False):
             raise e
 
 
-def rebase(args):
-    return gitcmd(f"rebase {args}", "Rebase failed")
+def rebase(args, *, execution_path):
+    return gitcmd(f"rebase {args}", "Rebase failed",
+                  execution_path=execution_path)
 
-def reset(args):
-    return gitcmd(f"reset {args}", "Reset failed")
+def reset(args, *, execution_path):
+    return gitcmd(f"reset {args}", "Reset failed",
+                  execution_path=execution_path)
 
-def revert(args):
-    return gitcmd(f"revert {args}", "Revert failed")
+def revert(args, *, execution_path):
+    return gitcmd(f"revert {args}", "Revert failed",
+                  execution_path=execution_path)
 
-def rm(args):
-    return gitcmd(f"rm {args}", "Remove failed")
+def rm(args, *, execution_path):
+    return gitcmd(f"rm {args}", "Remove failed", execution_path=execution_path)
 
 
-def safeForceBranchToOriginRef(branchToSync):
+def safeForceBranchToOriginRef(branchToSync, *, execution_path):
     # first, check to see that branch exists
     branchExists = False
     remoteRefExists = False
-    branches = branch("-a").split("\n")
+    branches = branch("-a", execution_path=execution_path).split("\n")
     remoteRef = join_list_as_git_path(['remotes', 'origin', branchToSync])
     for b in branches:
         b = b.replace('*', '')
@@ -441,19 +482,21 @@ def safeForceBranchToOriginRef(branchToSync):
         logging.info(f"origin does not have branch {branchToSync}")
         return False
     if branchExists and remoteRefExists:
-        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync)
-        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef)
+        remoteUpToDateWithLocal = branchUpToDateWith(remoteRef, branchToSync,
+                                                     execution_path=execution_path)
+        localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef,
+                                                     execution_path=execution_path)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
-            if branchToSync == currentBranch():
+            if branchToSync == currentBranch(execution_path=execution_path):
                 logging.info(f"Current branch {branchToSync} is out of date" +
                              " with origin. Pulling new changes.")
                 try:
-                    pull(f"origin {branchToSync}", throwOnFail=True)
+                    pull(f"origin {branchToSync}", throwOnFail=True, execution_path=execution_path)
                 except:
                     logging.info(f"Can't pull {branchToSync}. Aborting...")
                     return False
             else:
-                branch(f"-f {branchToSync} {remoteRef}")
+                branch(f"-f {branchToSync} {remoteRef}", execution_path=execution_path)
             return True
         elif remoteUpToDateWithLocal and localUpToDateWithRemote:
             return True
@@ -465,26 +508,29 @@ def safeForceBranchToOriginRef(branchToSync):
         branch(f"{branchToSync} {remoteRef}")
         return True
 
-def SHA(branchName="HEAD"):
+def SHA(branchName="HEAD", *, execution_path):
     return gitcmd(f"rev-parse {branchName}",
-                  f"rev-parse of {branchName} failed!")
+                  f"rev-parse of {branchName} failed!",
+                  execution_path=execution_path)
 
-def shortSHA(branchName="HEAD"):
+def shortSHA(branchName="HEAD", *, execution_path):
     return gitcmd(f"rev-parse --short {branchName}",
-                  f"rev-parse of {branchName} failed!")
+                  f"rev-parse of {branchName} failed!",
+                  execution_path=execution_path)
 
-def show(argStr):
+def show(argStr, *, execution_path):
     try:
         return gitcmd(f"show {argStr}",
-                      f"git show failed with argstr {argStr}")
+                      f"show failed with argstr {argStr}",
+                      execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if "path" in e.gitOutput.lower() and "does not exist in" in e.gitOutput.lower():
             return ""
 
-def showRemote():
-
+def showRemote(*, execution_path):
     try:
-        return gitcmd("remote show origin", "unable to show remote")
+        return gitcmd("remote show origin", "unable to show remote",
+                      execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if e.code == 128:
             logging.warning(f"WARNING: {e.gitCommand} failed. Ignoring...")
@@ -492,38 +538,32 @@ def showRemote():
         else:
             raise e
 
-def stash(argstr=""):
-    return gitcmd(f"stash {argstr}", "git stash failed for some reason")
+def stash(argstr="", *, execution_path):
+    return gitcmd(f"stash {argstr}", "stash failed for some reason",
+                  execution_path=execution_path)
 
-def status(argstr=""):
-    return gitcmd(f"status {argstr}", "git status failed for some reason")
-
-
-def submodule(argstr):
-    return gitcmd(f"submodule {argstr}", f"git submodule {argstr} failed")
+def status(argstr="", *, execution_path):
+    return gitcmd(f"status {argstr}", "status failed for some reason",
+                  execution_path=execution_path)
 
 
-def subtree(argstr):
+def submodule(argstr, *, execution_path):
+    return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
+                  execution_path=execution_path)
+
+
+def subtree(argstr, *, execution_path):
     return gitcmd(f"subtree {argstr}",
-                  f"git subtree {argstr} failed - maybe subtree" +
-                  " isn't installed on your system?")
+                  f"subtree {argstr} failed - maybe subtree isn't installed" \
+                  " on your system?",
+                  execution_path=execution_path)
 
 
-def tag(argstr):
-    return gitcmd(f"tag {argstr}", f"git tag {argstr} failed")
+def tag(argstr, *, execution_path):
+    return gitcmd(f"tag {argstr}", f"tag {argstr} failed",
+                  execution_path=execution_path)
 
 
-def version():
-    return gitcmd("version", "")
-
-
-@contextmanager
-def cd(target_dir):
-    starting_dir = os.getcwd()
-    try:
-        if target_dir and target_dir != starting_dir:
-            os.chdir(target_dir)
-    except OSError as e:
-        print(f"GRAPE WARNING: in {os.getcwd()} : {e}")
-    yield
-    os.chdir(starting_dir)
+def version(*, execution_path):
+    return gitcmd("version", "",
+                  execution_path=execution_path)

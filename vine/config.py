@@ -5,12 +5,13 @@ from vine import config_parser_user
 from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
 # Configure current repo
-class Config(Option):
+class Config(Option, CommandPathHandler):
     """
     Configures the current repo to be optimized for GRAPE on LC
     Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
@@ -31,7 +32,7 @@ class Config(Option):
     """
 
     def __init__(self):
-        super(Config,self).__init__()
+        super(Config, self).__init__()
         self._key = "config"
         self._section = "Getting Started"
 
@@ -39,27 +40,27 @@ class Config(Option):
         return "Initialize a repo you've already cloned without using GRAPE"
 
     @log_wrapper
-    def execute(self,args):
+    def execute(self, args):
         from vine import grapeMenu
 
-        base = git.baseDir()
+        base = git.baseDir(execution_path=self.command_path)
         if base == "":
             return False
-        dotGit = git.gitDir()
+        dotGit = git.gitDir(execution_path=self.command_path)
          
         logging.info("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
-        git.config("core.preloadindex","true")
+        git.config("core.preloadindex","true", execution_path=self.command_path)
 
         #have git automatically do some garbage collection / optimization
         logging.info("Setting up automatic git garbage collection...")
-        git.config("gc.auto","1")
+        git.config("gc.auto", "1", execution_path=self.command_path)
 
         #prevents false conflict detection due to differences in filesystem
         # time stamps
         logging.info("Optimizing cross platform portability...")
-        git.config("core.trustctime","false")
+        git.config("core.trustctime", "false", execution_path=self.command_path)
 
         # stores login info for 12 hrs (max allowed by RZBitbucket)
 
@@ -70,32 +71,34 @@ class Config(Option):
             if cache:
                 logging.info("Enabling 12 hr caching of https credentials...")
                 if os.name == "nt":
-                    git.config("--global credential.helper", "wincred")
+                    git.config("--global credential.helper", "wincred", execution_path=self.command_path)
                 else :
-                    git.config("--global credential.helper", "cache --timeout=43200")
+                    git.config("--global credential.helper", "cache --timeout=43200", execution_path=self.command_path)
 
         # enables 'as' option for merge strategies -forces a conflict if two branches
         # modify the same file
         mergeVerifyPath = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                        "merge-and-verify-driver")
-        
+
         if os.path.exists(mergeVerifyPath): 
             logging.info("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
-            git.config("merge.verify.name","merge and verify driver")
-            git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B")
+            git.config("merge.verify.name","merge and verify driver", execution_path=self.command_path)
+            git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B", execution_path=self.command_path)
         else:
             logging.warning("WARNING: merge and verify script not detected, safe merges ('as' option to grape m / md) will not work!")
         # enables lg as an alias to print a pretty-font summary of
         # key junctions in the history for this branch.
         logging.info("Setting lg as an alias for a pretty log call...")
-        git.config("alias.lg","log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration")
+        git.config("alias.lg", "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration", execution_path=self.command_path)
         
         # perform an update of the active subprojects if asked.
         ask = not args["--nouv"]
         updateView = ask and (args["--uv"] or utility.userInput("Do you want to edit your active subprojects?"
                                                                 " (you can do this later using grape uv) [y/n]", "n"))
+        menu = grapeMenu.menu()
+        menu.set_command_path(self.command_path)
         if updateView:
-            grapeMenu.menu().applyMenuChoice("uv", args["--uvArg"])
+            menu.applyMenuChoice("uv", args["--uvArg"])
 
         # configure git to use p4merge for conflict resolution
         # and diffing
@@ -103,16 +106,16 @@ class Config(Option):
         useP4Merge = not args["--nop4merge"] and (args["--p4merge"] or utility.userInput("Would you like to use p4merge as your merge tool? [y/n]","y"))
         # note that this relies on p4merge being in your path somewhere
         if (useP4Merge):
-            git.config("merge.keepBackup","false")
-            git.config("merge.tool","p4merge")
-            git.config("mergetool.keepBackup","false")
-            git.config("mergetool.p4merge.cmd",'p4merge \"\$BASE\" \"\$LOCAL\" \"\$REMOTE\" \"\$MERGED\"')
-            git.config("mergetool.p4merge.keepTemporaries","false")
-            git.config("mergetool.p4merge.trustExitCode","false")
-            git.config("mergetool.p4merge.keepBackup","false")
+            git.config("merge.keepBackup", "false", execution_path=self.command_path)
+            git.config("merge.tool", "p4merge", execution_path=self.command_path)
+            git.config("mergetool.keepBackup", "false", execution_path=self.command_path)
+            git.config("mergetool.p4merge.cmd", 'p4merge \"\$BASE\" \"\$LOCAL\" \"\$REMOTE\" \"\$MERGED\"', execution_path=self.command_path)
+            git.config("mergetool.p4merge.keepTemporaries", "false", execution_path=self.command_path)
+            git.config("mergetool.p4merge.trustExitCode", "false", execution_path=self.command_path)
+            git.config("mergetool.p4merge.keepBackup", "false", execution_path=self.command_path)
             logging.info("Configured repo to use p4merge for conflict resolution")
         else:
-            git.config("merge.tool","tkdiff")
+            git.config("merge.tool", "tkdiff", execution_path=self.command_path)
 
         useP4Diff = not args["--nop4diff"] and (args["--p4diff"] or utility.userInput("Would you like to use p4merge as your diff tool? [y/n]","y"))
         # this relies on p4diff being defined as a custom bash script, with the following one-liner:
@@ -121,18 +124,18 @@ class Config(Option):
             p4diffScript = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                         "p4diff")
             if os.path.exists(p4diffScript): 
-                git.config("diff.external", p4diffScript)
+                git.config("diff.external", p4diffScript, execution_path=self.command_path)
                 logging.info("Configured repo to use p4merge for diff calls - p4merge must be in your path")
             else: 
                 logging.info(f"Could not find p4diff script at {p4diffScript}")
         useGitP4 = args["--git-p4"]
         if useGitP4:
-            git.config("git-p4.useclientspec", "true")
+            git.config("git-p4.useclientspec", "true", execution_path=self.command_path)
             # create p4 references to enable imports from p4
-            p4remotes = os.path.join(dotGit,"refs","remotes","p4","")
+            p4remotes = os.path.join(dotGit, "refs", "remotes", "p4", "")
             utility.ensure_dir(p4remotes)
             commit = utility.userInput("Please enter a descriptor (e.g. SHA, branch if tip, tag name) of the current git commit that mirrors the p4 repo","master")
-            sha = git.SHA(commit)
+            sha = git.SHA(commit, execution_path=self.command_path)
             with open(os.path.join(p4remotes,"HEAD"),'w') as f:
                 f.write(sha)
             with open(os.path.join(p4remotes,"master"),'w') as f:
@@ -151,22 +154,21 @@ class Config(Option):
 
         # install hooks here and in all submodules
         logging.info("Installing hooks in all repos...")
-        grapeMenu.menu().applyMenuChoice("installHooks")
-        
+        menu.applyMenuChoice("installHooks")
+
         #  ensure all public branches are available in all repos
-        submodules = git.getActiveSubmodules(utility.workspaceDir())
+        submodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         submodulePublicBranches = set(config.getMapping(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
             self.ensurePublicBranchesExist(sub, submodulePublicBranches)
-        
+
         # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
-        wsDir = utility.workspaceDir()
-        for proj in config_parser_user.getAllActiveNestedSubprojectPrefixes():
-            self.ensurePublicBranchesExist(os.path.join(wsDir,proj), publicBranches)
+        for proj in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+            self.ensurePublicBranchesExist(os.path.join(self.workspace_dir, proj), publicBranches)
         
-        self.ensurePublicBranchesExist(wsDir, publicBranches)
+        self.ensurePublicBranchesExist(self.workspace_dir, publicBranches)
             
         return True
 
@@ -175,27 +177,25 @@ class Config(Option):
     
     @staticmethod
     def ensurePublicBranchesExist(repo, publicBranches):
-        with git.cd(repo):
-            allBranches = git.allBranches()
-            missingBranches = []
-            for branch in publicBranches:
-                if f"remotes/origin/{branch}" not in allBranches:
-                   missingBranches.append(branch)
-                if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
-                    logging.info(
-                        f"Public branch {branch} does not have local version " +
-                        f"in {repo}. Creating it now.")
-                    git.branch(f"{branch} origin/{branch}")
-            if len(missingBranches) > 0:
-                logging.warning(
-                    "WARNING: the following public branches do not appear " +
-                    f"to exist on the remote origin of {repo}:\n" +
-                    f"{' '.join(missingBranches)}")
+        allBranches = git.allBranches(execution_path=repo)
+        missingBranches = []
+        for branch in publicBranches:
+            if f"remotes/origin/{branch}" not in allBranches:
+               missingBranches.append(branch)
+            if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
+                logging.info(
+                    f"Public branch {branch} does not have local version " +
+                    f"in {repo}. Creating it now.")
+                git.branch(f"{branch} origin/{branch}", execution_path=repo)
+        if len(missingBranches) > 0:
+            logging.warning(
+                "WARNING: the following public branches do not appear " +
+                f"to exist on the remote origin of {repo}:\n" +
+                f"{' '.join(missingBranches)}")
 
     @staticmethod
     def checkIfPublicBranchesExist(repo, publicBranches):
-        with git.cd(repo):
-            allBranches = git.allBranches()
-            missingBranches = [branch for branch in publicBranches
-                               if branch not in allBranches]
+        allBranches = git.allBranches(execution_path=repo)
+        missingBranches = [branch for branch in publicBranches
+                           if branch not in allBranches]
         return missingBranches

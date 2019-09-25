@@ -6,7 +6,6 @@ class TestBundle(testGrape.TestGrape):
 
     def test_bundle_given_defaults(self):
         """Test 'bundle' command (smoke test)."""
-        os.chdir(self.repo)
         result = self.menu.applyMenuChoice("bundle")
         self.assertTrue(result, "Failed 'bundle' command smoke test.")
 

@@ -15,8 +15,10 @@ class Resumable(ABC):
     def __init__(self):
         super(Resumable, self).__init__()
         self.progress = {}
+
+    def set_progress_file(self, *, execution_path):
         try:
-            gitDir = str(git.gitDir())
+            gitDir = str(git.gitDir(execution_path=execution_path))
             self.progressFile = os.path.join(gitDir, "grapeProgress")
         except grape_errors.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
@@ -54,13 +56,13 @@ class Resumable(ABC):
                 raise e
 
     @abstractmethod
-    def _resume(self, args, deleteProgressFile=True):
+    def _resume(self, args, deleteProgressFile=True, *, workspace_dir):
         try:
             self._readProgressFile()
         except IOError:
             # give the workspace level progress file a shot
             try:
-                self.progressFile = os.path.join(utility.workspaceDir(), ".git", "grapeProgress")
+                self.progressFile = os.path.join(workspace_dir, ".git", "grapeProgress")
                 self._readProgressFile()
             except IOError as e:
                 try:

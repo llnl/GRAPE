@@ -6,10 +6,11 @@ from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
 from vine.option import Option
+from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
 
 
-class Commit(Option):
+class Commit(Option, CommandPathHandler):
     """
     Usage: grape-commit [-m <message>] [-a | <filetree>]
 
@@ -23,7 +24,7 @@ class Commit(Option):
 
     """
     def __init__(self):
-        super(Commit,self).__init__()
+        super(Commit, self).__init__()
         self._key = "commit"
         self._section = "Workspace"
 
@@ -32,7 +33,7 @@ class Commit(Option):
 
     def commit(self, commitargs, repo):
         try:
-            git.commit(commitargs)
+            git.commit(commitargs, execution_path=repo)
             return True
         except grape_errors.GrapeGitError as e:
             logging.error(f"Commit in {repo} failed. Perhaps there were no " +
@@ -50,25 +51,20 @@ class Commit(Option):
             args["-m"] = utility.userInput("Please enter commit message:")
         commitargs += f" -m \"{args['-m']}\""
 
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
-
-        submodules = [(True, x ) for x in git.getModifiedSubmodules(utility.workspaceDir())]
-        subprojects = [(False, x) for x in config_parser_user.getAllActiveNestedSubprojectPrefixes()]
+        submodules = [(True, x ) for x in git.getModifiedSubmodules(self.workspace_dir)]
+        subprojects = [(False, x) for x in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)]
         for stage, sub in submodules + subprojects:
-            os.chdir(os.path.join(wsDir, sub))
-            subStatus = git.status("--porcelain -uno")
+            sub_path = os.path.join(self.workspace_dir, sub)
+            subStatus = git.status("--porcelain -uno", execution_path=sub_path)
             if subStatus:
                 logging.info(f"Committing in {sub}...")
-                if self.commit(commitargs, sub) and stage:
-                    os.chdir(wsDir)
+                if self.commit(commitargs, sub_path) and stage:
                     logging.info(f"Staging committed change in {sub}...")
-                    git.add(sub)
+                    git.add(sub, execution_path=self.workspace_dir)
 
-        os.chdir(wsDir)
-        if submodules or git.status("--porcelain"):
+        if submodules or git.status("--porcelain", execution_path=self.workspace_dir):
             logging.info("Performing commit in outer level project...")
-            self.commit(commitargs, wsDir)
+            self.commit(commitargs, execution_path=self.workspace_dir)
         return True
 
     def setDefaultConfig(self,config):

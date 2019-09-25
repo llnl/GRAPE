@@ -39,7 +39,7 @@ def startup():
     # Calling GrapeLogger first correctly hides erroneous error msgs from users
     logger = vine_logging.GrapeLogger()
 
-    versionOutput = git.version().split()
+    versionOutput = git.version(execution_path=os.getcwd()).split()
     versionString = versionOutput.pop()
     while '.' not in versionString:
        versionString = versionOutput.pop()
@@ -54,14 +54,13 @@ def startup():
     with open(os.path.join(vine_path, "VERSION"), 'r') as f:
         grapeVersion = f.read().split()[2]   
     args = docopt(CLI, version=grapeVersion, options_first=True )
-    myMenu = grapeMenu.menu()
 
     retval = True
     try:
         if args["<command>"] is None:
             done = 0
             while not done:
-                myMenu.presentTextMenu()
+                grapeMenu.menu().presentTextMenu()
                 choice = utility.userInput("Please select an option from the above menu", None).split()
                 set_verbosity(logger, choice)
                 done = grapeMenu.menu().applyMenuChoice(choice[0], choice)

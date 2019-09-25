@@ -4,8 +4,10 @@ import shutil
 import sys
 import tempfile
 import types
+#from test.testGrape import writeFile1
 from vine import grape_errors
 from vine import grapeGit as git
+from vine import grapeMenu
 from vine import vine_logging
 
 
@@ -15,7 +17,7 @@ from vine import vine_logging
 class ResettableProject(object):
     def __init__(self, projectDir):
 
-        self.projectPrefix = tempfile.mkdtemp()
+        self.projectPrefix = os.path.realpath(tempfile.mkdtemp())
         self.projectDir = projectDir
         if os.path.exists(projectDir):
             logging.error(f"Path ({projectDir}) already exists, so it " +
@@ -23,17 +25,20 @@ class ResettableProject(object):
             sys.exit(1)
 
         self.vine_logger = vine_logging.GrapeLogger()
+        grapeMenu._resetMenu()
+        self.menu = grapeMenu.menu(workspace_dir=self.projectPrefix)
+        self.apply_menu_choice = self.menu.applyMenuChoice
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
         #param itself can be a tuple, a single parameter, or a single lambda function that provides arguments
         #  to the cmd.
         #Default commands set up an empty repository and a clone of that repository.
-        self.cmdList =  [(os.mkdir, lambda : self.getOriginDir()) ,
-                         (os.chdir, lambda : self.getOriginDir()) ,
-                         (git.gitcmd, ("init --bare", "Setup Failed")),
-                         (git.clone, lambda : f"{self.getOriginDir()} " +
-                                              f"{self.getProjectDir()}"),
-                         (os.chdir, lambda : self.getProjectDir() )]
+        self.cmdList =  [(os.mkdir, lambda: self.getOriginDir()) ,
+                         (git.gitcmd, ("init --bare", "Setup Failed",
+                                       lambda: self.getOriginDir())),
+                         (git.clone, (lambda: self.getOriginDir(),
+                                      lambda: self.getProjectDir(),
+                                      lambda: self.getOriginDir()))]
 
     def getProjectDir(self):
         return os.path.abspath(os.path.join(self.projectPrefix,self.projectDir))
@@ -62,20 +67,58 @@ class ResettableProject(object):
                 if isinstance(param, types.FunctionType):
                     param = param()
                 if isinstance(param, tuple):
-                    cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
+                    if isinstance(cmd, types.BuiltinFunctionType):
+                        cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
+                        continue
+                    if cmd == self.apply_menu_choice:
+                        execution_path = self.getProjectDir()
+                        self.menu.set_command_path(execution_path)
+                        cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
+                        continue
+
+                    execution_path = self.get_execution_path(param)
+                    if cmd == git.clone:
+                        if len(param) == 2:
+                            clone_args = param[0]().split()
+                            cmd(clone_args[0],
+                                source_repo=clone_args[1],
+                                clone_repo=clone_args[2],
+                                execution_path=execution_path)
+                        else:
+                            cmd(source_repo=param[0](),
+                                clone_repo=param[1](),
+                                execution_path=execution_path)
+                    elif os.path.exists(execution_path):
+                        param = param[:-1]
+                        cmd(*param, execution_path=execution_path)
+                    else:
+                        raise RuntimeError
                 else:
                     cmd(param)
             except grape_errors.GrapeGitError as e:
                 logging.error(f"{e.gitCommand} {e.gitOutput}")
                 raise e
 
+    def get_execution_path(self, params):
+        if not params or not isinstance(params, tuple):
+            raise RuntimeError
+
+        execution_path = params[-1]
+        if isinstance(execution_path, types.FunctionType):
+            execution_path = execution_path()
+        if not os.path.exists(execution_path):
+            execution_path = os.path.join(self.projectPrefix,
+                                          execution_path)
+            if not os.path.exists(execution_path):
+                raise RuntimeError
+
+        return execution_path
+
     def tearDown(self):
         if os.path.exists(self.getProjectDir()) and os.path.isdir(self.getProjectDir()):
-            os.chdir(os.path.abspath(os.path.dirname(self.getProjectDir())))
             shutil.rmtree(self.getProjectDir(), ignore_errors=True)
         originDir = self.getOriginDir()
         if os.path.exists(originDir) and os.path.isdir(originDir):
-            os.chdir(os.path.abspath(os.path.dirname(originDir)))
             shutil.rmtree(originDir, ignore_errors=True)
 
 # This takes a project and various test methods and generates a test method using

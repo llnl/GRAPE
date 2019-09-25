@@ -11,12 +11,12 @@ class TestNestedSubproject(testGrape.TestGrape):
 
     # Sets up a new nested subproject
     @staticmethod
-    def assertCanAddNewSubproject(testGrapeObject):
-        git.clone(f"--mirror {testGrapeObject.repo} " +
-                  f"{testGrapeObject.repos[1]}")
-        os.chdir(testGrapeObject.repo)
+    def assertCanAddNewSubproject(testGrapeObject, *, execution_path):
+        git.clone(argstr='--mirror', source_repo=testGrapeObject.repo,
+                  clone_repo=testGrapeObject.repos[1],
+                  execution_path=execution_path)
         subproject_path = os.path.join('subs', 'subproject1')
-        grapeMenu.menu().applyMenuChoice(
+        grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory).applyMenuChoice(
             "addSubproject", ["--name=subproject1",
                               f"--prefix={subproject_path}",
                               "--branch=master",
@@ -24,9 +24,8 @@ class TestNestedSubproject(testGrape.TestGrape):
                               "--nested", "--noverify"])
         subproject1path = os.path.join(testGrapeObject.repo, subproject_path)
         testGrapeObject.assertTrue(os.path.exists(subproject1path), "subproject1 does not exist")
-        os.chdir(subproject1path)
         # check to see that subproject1 is a git repo
-        basedir = os.path.split(git.baseDir())[-1]
+        basedir = os.path.split(git.baseDir(execution_path=subproject1path))[-1]
         subdir = os.path.split(subproject1path)[-1]
         testGrapeObject.assertTrue(basedir == subdir,
                                    f"subproject1's git repo is {basedir}, " +
@@ -34,16 +33,16 @@ class TestNestedSubproject(testGrape.TestGrape):
         # check to see that edits that occur in the new subproject are ignored by outer repo
         testGrape.writeFile3(os.path.join(subproject1path, "f3"))
         # make sure there is an edit
-        testGrapeObject.assertFalse(git.isWorkingDirectoryClean(), "subproject1 clean after adding f3")
-        os.chdir(testGrapeObject.repo)
+        testGrapeObject.assertFalse(git.isWorkingDirectoryClean(execution_path=subproject1path),
+                                    "subproject1 clean after adding f3")
         # check that grape left the repository in a clean state
-        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(), "repo not clean after added subproject1")
+        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=testGrapeObject.repo),
+                                   "repo not clean after added subproject1")
         # check in the edit
-        os.chdir(subproject1path)
-        git.add("f3")
-        git.commit("-m \"added f3\"")
-        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(), "subproject1 not clean")
-        os.chdir(testGrapeObject.repo)
+        git.add("f3", execution_path=subproject1path)
+        git.commit("-m \"added f3\"", execution_path=subproject1path)
+        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=subproject1path),
+                                   "subproject1 not clean")
         testGrapeObject.subproject = subproject1path
 
     def switchToMaster(self):
@@ -51,30 +50,30 @@ class TestNestedSubproject(testGrape.TestGrape):
 
     def testAddingNewNestedSubproject(self):
         try:
-            self.assertCanAddNewSubproject(self)
+            self.assertCanAddNewSubproject(self, execution_path=self.repo)
         except grape_errors.GrapeGitError as e:
             self.fail(self.get_output() + e.gitCommand)
 
     def testSwitchingBranchesWithNestedProjects(self):
         try:
-            self.assertCanAddNewSubproject(self)
+            self.assertCanAddNewSubproject(self, execution_path=self.repo)
             # create the branches using git
-            os.chdir(self.repo)
-            git.branch("newBranch")
-            os.chdir(self.subproject)
-            git.branch("newBranch")
+            git.branch("newBranch", execution_path=self.repo)
+            git.branch("newBranch", execution_path=self.subproject)
             # try switching to the branches using grape
-            os.chdir(self.repo)
+#            os.chdir(self.repo)
             self.menu.applyMenuChoice("checkout", ["newBranch"])
-            self.assertTrue(git.currentBranch() == "newBranch", "outer level repo not on newBranch after checkout")
-            os.chdir(self.subproject)
-            self.assertTrue(git.currentBranch() == "newBranch", "subproject not on newBranch after checkout")
+            self.assertTrue(git.currentBranch(execution_path=self.repo) == "newBranch",
+                            "outer level repo not on newBranch after checkout")
+#            os.chdir(self.subproject)
+            self.assertTrue(git.currentBranch(execution_path=self.subproject) == "newBranch",
+                            "subproject not on newBranch after checkout")
         except grape_errors.GrapeGitError as e:
             self.fail(self.get_output() + e.gitCommand.split()[-10:])
 
     def testDeactivatingAndReactiviatingNestProjects(self):
         try:
-            self.assertCanAddNewSubproject(self)
+            self.assertCanAddNewSubproject(self, execution_path=self.repo)
             self.assertTrue(os.path.isdir(self.subproject))
             # answer none to whether we want all subprojects, y to deleting it
             with self.queue_user_input(["n\n", "y\n"]):
@@ -93,41 +92,43 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.fail(('\n'.join(output) + e.gitCommand).split()[-10:])
 
     def testProjectWideGrapeStatusWithNestedProjects(self):
+        import logging
         try:
-            self.assertCanAddNewSubproject(self)
+            self.assertCanAddNewSubproject(self, execution_path=self.repo)
             f1Path = os.path.join(self.subproject, "f1")
             testGrape.writeFile1(f1Path)
-            self.assertTrue(git.isWorkingDirectoryClean(),
+            self.assertTrue(git.isWorkingDirectoryClean(execution_path=self.repo),
                             f"{os.path.join('subproject1', 'f1')} shows up " +
                             "in git status when it shouldn't")
+            logging.critical("STARTING applyMenuChoice")
             self.menu.applyMenuChoice("status", ['-u'], globalArgs=["-v"])
+            logging.critical("FINISHED applyMenuChoice")
             actual_output = self.get_output()
             subproject_path = os.path.join('subs', 'subproject1', 'f1')
+            logging.critical("STARTING assertIn")
             self.assertIn(f" ?? {subproject_path}", actual_output,
                           f"{subproject_path} does not show up in grape status")
-
+            logging.critical("FINISHED assertIn")
         except grape_errors.GrapeGitError as e:
             output = self.get_output()
-            self.fail(('\n'.join(output)+'\n'.join(self.error) + e.gitCommand).split()[-10:])
+            self.fail('\n'.join([output, e.gitCommand]))
 
     def testProjectWideGrapeCommitWithNestedProjects(self):
         try:
-            self.assertCanAddNewSubproject(self)
+            self.assertCanAddNewSubproject(self, execution_path=self.repo)
             f1Path = os.path.join(self.subproject, "f1")
             testGrape.writeFile1(f1Path)
             cwd = os.getcwd()
-            os.chdir(self.subproject)
-            git.add(f1Path)
+            git.add(f1Path, execution_path=self.subproject)
             # check that git sees the file
-            firstStatus = git.status("--porcelain")
+            firstStatus = git.status("--porcelain",
+                                     execution_path=self.subproject)
             self.assertTrue("f1" in firstStatus)
-            os.chdir(cwd)
-            self.menu.applyMenuChoice("commit",["-m", "\"adding f1\""])
+            self.menu.applyMenuChoice("commit", ["-m", "\"adding f1\""])
             # check that running grape commit from the workspace base directory removes f1 from the status
-            os.chdir(self.subproject)
-            secondStatus = git.status("--porcelain")
+            secondStatus = git.status("--porcelain",
+                                      execution_path=self.subproject)
             self.assertTrue("f1" not in secondStatus,"commit didn't remove f1 from status")
-            os.chdir(cwd)
         except grape_errors.GrapeGitError as e:
             output = self.get_output()
             self.fail(('\n'.join(output) + e.gitCommand).split()[-10:])

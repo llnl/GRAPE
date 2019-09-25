@@ -7,11 +7,12 @@ from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class NewBranchOption(Option):
+class NewBranchOption(Option, CommandPathHandler):
     """
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
@@ -87,13 +88,13 @@ class NewBranchOption(Option):
                 logging.info(f"Use `grape checkout {branchName}' instead.")
             return False
 
-        activeSubmodulesCheck = git.getActiveSubmodules(utility.workspaceDir())
+        activeSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         addedModules = []
         removedModules = []
         changedURLModules = []
         if recurse:
-            checkout.parseGitModulesDiffOutput(git.currentBranch(), start, addedModules, removedModules, changedURLModules)
+            checkout.parseGitModulesDiffOutput(git.currentBranch(self.command_path), start, addedModules, removedModules, changedURLModules)
             # deinit and clean out any submodules that changed urls or
             # are not present in the public branch.
             for sub in changedURLModules + removedModules:
@@ -102,7 +103,7 @@ class NewBranchOption(Option):
                 logging.info(
                     f"{sub} {url_update}, attempting to remove references " +
                     f"for {maybe_active} submodule before branch creation.")
-                cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck)
+                cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck, workspace_dir=self.workspace_dir)
                 if not cleaned:
                     logging.info(f"Failed to remove old submodule for {sub}.")
                     return False
@@ -112,15 +113,17 @@ class NewBranchOption(Option):
                                                    runInSubprojects=recurse,
                                                    runInOuter=True,
                                                    branch=start,
-                                                   globalArgs=branchName)
-
+                                                   globalArgs=branchName,
+                                                   execution_path=self.command_path)
         launcher.initializeCommands()
         logging.info("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):
             logging.info(f"\t{branchName} off of {branch} in {repo}")
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
-            grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={start}'])
+            menu = grapeMenu.menu()
+            menu.set_command_path(self.command_path)
+            menu.applyMenuChoice('up', ['up', f'--public={start}'])
             launcher.launchFromWorkspaceDir()
         else:
             logging.info("branches not created")
@@ -128,12 +131,11 @@ class NewBranchOption(Option):
         # reinit any submodules with changed URLs
         for sub in changedURLModules:
             if sub in activeSubmodulesCheck:
-                os.chdir(utility.workspaceDir())
-                git.submodule(f"update --init {sub}")
-                os.chdir(os.path.join(utility.workspaceDir(), sub))
+                git.submodule(f"update --init {sub}", execution_path=self.workspace_dir)
                 # If there is already a branch by this name in the new repo,
                 # this will reset the branch.
-                git.checkout(f"-B {branchName}")
+                sub_dir = os.path.join(self.workspace_dir, sub)
+                git.checkout(f"-B {branchName}", execution_path=sub_dir)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
@@ -144,34 +146,35 @@ class NewBranchOption(Option):
 class NewBranchOptionFactory(object):
 
     @staticmethod
-    def createNewBranchOptions(config):
+    def createNewBranchOptions(config, *, execution_path):
         topicPublicMapping = config.getMapping(Option.SECTION_FLOW, 'topicPrefixMappings')
         options = []
         for topic in topicPublicMapping.keys():
             if topic != '?':
-                options.append(NewBranchOption(topic, topicPublicMapping[topic]))
+                new_branch_option = NewBranchOption(topic,
+                                                    topicPublicMapping[topic])
+                new_branch_option.command_path = execution_path
+                options.append(new_branch_option)
         return options
 
 
-def createBranch(repo="unknown", branch="master", args=[]):
+def createBranch(repo="unknown", branch="master", args=[], *, execution_path):
     branchPoint = branch
     fullBranch = args
-    with git.cd(repo):
-        logging.info(f"creating and switching to {fullBranch} in {repo}")
-        try:
-            git.checkout(f"-b {fullBranch} {branchPoint} ")
-        except grape_errors.GrapeGitError as e:
-            logging.error(f"{repo}:{e.gitOutput}")
-            logging.warning(f"WARNING: {fullBranch} in {repo}" +
-                            " will not be pushed.")
-            return
-        logging.info(f"pushing {fullBranch} to origin in {repo}")
-        try:
-            git.push(f"-u origin {fullBranch}")
-        except grape_errors.GrapeGitError as e:
-            logging.error("{repo}:  {e.gitOutput}")
-            return
-
+    logging.info(f"creating and switching to {fullBranch} in {execution_path}")
+    try:
+        git.checkout(f"-b {fullBranch} {branchPoint} ",
+                     execution_path=execution_path)
+    except grape_errors.GrapeGitError as e:
+        logging.error(f"{execution_path}:{e.gitOutput}")
+        logging.warning(f"WARNING: {fullBranch} in {execution_path}" +
+                        " will not be pushed.")
+        return
+    logging.info(f"pushing {fullBranch} to origin in {execution_path}")
+    try:
+        git.push(f"-u origin {fullBranch}", execution_path=execution_path)
+    except grape_errors.GrapeGitError as e:
+        logging.error("{execution_path}:  {e.gitOutput}")
 
 
 if __name__ == "__main__":

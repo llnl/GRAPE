@@ -12,7 +12,7 @@ class TestVersion(testGrape.TestGrape):
     def testMinorTick(self):
         os.chdir(self.repo)
         # test initialization of grape managed versioning
-        menu = grapeMenu.menu()
+        menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
         try:
 #            self.assertEqual(grapeConfig.grapeConfig().get("versioning", "updateTag").lower(), "true")
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])
@@ -31,7 +31,7 @@ class TestVersion(testGrape.TestGrape):
 
     def testMajorTick(self):
         os.chdir(self.repo)
-        menu = grapeMenu.menu()
+        menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
         try:
 
             ret = menu.applyMenuChoice("version", ["init","v0.1.0", "--file=.grapeversion"])

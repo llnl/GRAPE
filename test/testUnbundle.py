@@ -6,7 +6,6 @@ class TestUnbundle(testGrape.TestGrape):
 
     def test_unbundle_given_defaults(self):
         """Test 'unbundle' command (smoke test)."""
-        os.chdir(self.repo)
         result = self.menu.applyMenuChoice("unbundle")
         self.assertTrue(result, "Failed 'unbundle' command smoke test.")
 

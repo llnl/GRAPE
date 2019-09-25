@@ -12,6 +12,7 @@ from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
@@ -23,7 +24,7 @@ except ImportError as e:
 
 
 # update your custom sparse checkout view
-class UpdateView(Option):
+class UpdateView(Option, CommandPathHandler):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules] [--gui]
@@ -66,8 +67,8 @@ class UpdateView(Option):
 
         """
         if projectType == "submodule":
-            allSubprojects = git.getAllSubmodules()
-            activeSubprojects = git.getActiveSubmodules(utility.workspaceDir())
+            allSubprojects = git.getAllSubmodules(execution_path=self.command_path)
+            activeSubprojects = git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         if projectType == "nested subproject":
             config = config_parser_global.grapeConfig()
@@ -75,7 +76,7 @@ class UpdateView(Option):
             allSubprojects = []
             for project in allSubprojectNames:
                 allSubprojects.append(config.get(f"nested-{project}", "prefix"))
-            activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes()
+            activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
 
         toplevelDirs = {}
         toplevelActiveDirs = {}
@@ -166,17 +167,17 @@ class UpdateView(Option):
         sync = sync == "true" or sync == "yes"
         args["--sync"] = sync
         config = config_parser_global.grapeConfig()
-        origwd = os.getcwd()
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
-        base = git.baseDir()
+#        origwd = os.getcwd()
+#        wsDir = utility.workspaceDir()
+#        os.chdir(wsDir)
+        base = git.baseDir(execution_path=self.workspace_dir)
         if base == "":
             return False
-        hasSubmodules = len(git.getAllSubmodules()) > 0 and not args["--skipSubmodules"]
+        hasSubmodules = len(git.getAllSubmodules(execution_path=self.workspace_dir)) > 0 and not args["--skipSubmodules"]
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
 
-        allSubmodules = git.getAllSubmodules()
+        allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
         allNestedSubprojects = config.getAllNestedSubprojects()
 
         addedSubmodules = []
@@ -220,7 +221,7 @@ class UpdateView(Option):
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:True for sub in allSubmodules}
                 elif args["--add"] or args["--rm"]:
-                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules(utility.workspaceDir())}
+                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules(self.workspace_dir)}
                     includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
                 else:
@@ -233,7 +234,7 @@ class UpdateView(Option):
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):True for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"]:
-                    includedNestedSubprojectPrefixes = {sub:True for sub in config_parser_user.getAllActiveNestedSubprojectPrefixes()}
+                    includedNestedSubprojectPrefixes = {sub:True for sub in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)}
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
@@ -277,13 +278,15 @@ class UpdateView(Option):
 
                 logging.info("Configuring submodules...")
                 logging.info("Initializing submodules...")
-                git.submodule(f"init {initStr.strip()}")
+                git.submodule(f"init {initStr.strip()}",
+                              execution_path=self.workspace_dir)
                 if deinitStr:
                     logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
                     done = False
                     while not done:
                         try:
-                            git.submodule(f"deinit {deinitStr.strip()}")
+                            git.submodule(f"deinit {deinitStr.strip()}",
+                                          execution_path=self.workspace_dir)
                             done = True
                         except grape_errors.GrapeGitError as e:
                             if "the following file has local modifications" in e.gitOutput.lower():
@@ -293,7 +296,6 @@ class UpdateView(Option):
                                     "has local modifications. " +
                                     "Use grape uv -f to force removal.")
                                 return False
-
                             elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput.lower():
                                 if not args["-f"]:
                                     raise e
@@ -305,24 +307,25 @@ class UpdateView(Option):
                                         break
                                 if module:
                                     src = os.path.join(module, ".git")
-                                    dest =  os.path.join(wsDir, ".git", "modules", module)
+                                    dest =  os.path.join(self.workspace_dir, ".git", "modules", module)
                                     logging.info(f"Moving {src} to {dest}")
-                                    shutil.move(src, dest )
+                                    shutil.move(src, dest)
                                 else:
                                     raise e
                             else:
                                 raise e
-                    git.rm(f"--cached {rmCachedStr}")
-                    git.reset(f" {resetStr}")
+                    git.rm(f"--cached {rmCachedStr}",
+                           execution_path=self.workspace_dir)
+                    git.reset(f" {resetStr}", execution_path=self.workspace_dir)
 
                 if initStr:
                     logging.info(f"Updating active submodules...({initStr})")
-                    git.submodule("update")
+                    git.submodule("update", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
                 reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
-                userConfig = config_parser_user.GrapeConfigParserUser()
+                userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
@@ -337,7 +340,7 @@ class UpdateView(Option):
 
                     if nowActive and not previouslyActive:
                         logging.info(f"Activating Nested Subproject {subproject}")
-                        if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig):
+                        if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, self.workspace_dir):
                             logging.info(f"Can't activate {subprojectName}. Exiting...")
                             return False
 
@@ -358,64 +361,62 @@ class UpdateView(Option):
                                 func(path)
                             shutil.rmtree(subprojectdir, onerror=force_rm)
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
-                config_parser_global.writeConfig(userConfig, os.path.join(utility.workspaceDir(), ".git", ".grapeuserconfig"))
+                config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
 
         checkoutArgs = "-b" if args["-b"] else ""
 
-        safeSwitchWorkspaceToBranch(git.currentBranch(), checkoutArgs, sync)
+        safeSwitchWorkspaceToBranch(
+            git.currentBranch(execution_path=self.command_path), checkoutArgs,
+            sync, workspace_dir=self.workspace_dir)
 
-        os.chdir(origwd)
+#        os.chdir(origwd)
 
         return True
 
-    @staticmethod
-    def getDesiredSubmoduleBranch(config):
-        publicBranches = config.getPublicBranchList()
-        currentBranch = git.currentBranch()
-        if currentBranch in publicBranches:
-            desiredSubmoduleBranch = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[currentBranch]
-        else:
-            desiredSubmoduleBranch = currentBranch
-        return desiredSubmoduleBranch
-
+#    @staticmethod
+#    def getDesiredSubmoduleBranch(config, *, execution_path):
+#        publicBranches = config.getPublicBranchList()
+#        currentBranch = git.currentBranch(execution_path)
+#        if currentBranch in publicBranches:
+#            desiredSubmoduleBranch = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[currentBranch]
+#        else:
+#            desiredSubmoduleBranch = currentBranch
+#        return desiredSubmoduleBranch
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
 
 
-
-def ensureLocalUpToDateWithRemote(repo='', branch='master'):
+def ensureLocalUpToDateWithRemote(repo='', branch='master', *, execution_path):
+    workspace_dir = execution_path
     logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
-    with git.cd(repo):
-        # attempt to fetch the requested branch
-        try:
-            git.fetch("origin", f"{branch}:{branch}")
-        except:
-            # the branch may not exist, but this is ok
-            pass
+    # attempt to fetch the requested branch
+    try:
+        git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
+    except:
+        # the branch may not exist, but this is ok
+        pass
 
-        if git.currentBranch() == branch:
-            return
+    if git.currentBranch(execution_path=repo) == branch:
+        return
 
-        if not git.hasBranch(branch):
-            # switch to corresponding public branch if the branch does not exist
-            public = config_parser_workspace.GrapeConfigParserWorkspace().getPublicBranchFor(branch)
-            # figure out if this is a submodule
-            relpath = os.path.relpath(repo, utility.workspaceDir())
-            with utility.cd_workspace():
-                # if this is a submodule, get the appropriate public mapping
-                if relpath in git.getAllSubmoduleURLMap().keys():
-                    public = config_parser_workspace.GrapeConfigParserWorkspace().getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
-            logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
-            git.checkout(public)
-            git.pull(f"origin {public}")
-            git.checkout("--detach HEAD")
+    if not git.hasBranch(branch, execution_path=repo):
+        # switch to corresponding public branch if the branch does not exist
+        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+        # figure out if this is a submodule
+        relpath = os.path.relpath(repo, workspace_dir)
+        # if this is a submodule, get the appropriate public mapping
+        if relpath in git.getAllSubmoduleURLMap().keys():
+            public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
+        logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
+        git.checkout(public, execution_path=repo)
+        git.pull(f"origin {public}", execution_path=repo)
+        git.checkout("--detach HEAD", execution_path=repo)
 
-def cleanupPush(repo='', branch='', args='none'):
-    with git.cd(repo):
-        logging.info(f"Attempting push of local {branch} in {repo}")
-        git.push(f"origin {branch}")
+def cleanupPush(repo='', branch='', args='none', *, execution_path):
+    logging.info(f"Attempting push of local {branch} in {execution_path}")
+    git.push(f"origin {branch}", execution_path=execution_path)
 
 
 def handleCleanupPushMRE(mre):
@@ -469,17 +470,24 @@ def handleEnsureLocalUpToDateMRE(mre):
                 raise(e)
 
     # do another MRC launch to do any follow up pushes that were requested.
-    multi_repo_cmd_launcher.MultiRepoCommandLauncher(cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs).launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
+    launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+        cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs,
+        execution_path=self.command_path)
+    launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
-        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(ensureLocalUpToDateWithRemote, branch = branch, globalArgs=[checkoutArgs])
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            ensureLocalUpToDateWithRemote, branch=branch,
+            globalArgs=[checkoutArgs], execution_path=workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
-    launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(checkout.handledCheckout, branch = branch, globalArgs=[checkoutArgs, False])
+    launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+        checkout.handledCheckout, branch=branch,
+        globalArgs=[checkoutArgs, False], execution_path=workspace_dir)
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
 

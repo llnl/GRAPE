@@ -4,13 +4,14 @@ from vine import config_parser_global
 from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
+from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 """        
                     
         --branch=<committish>  """
-class UpdateSubproject(Option):
+class UpdateSubproject(Option, CommandPathHandler):
     """
         grape updateSubproject
         Updates an existing subproject from its host repository.  
@@ -25,7 +26,7 @@ class UpdateSubproject(Option):
                        repository.
 
     """
-    
+
     def __init__(self):
         super(UpdateSubproject, self).__init__()
         self._section = "Project Management"
@@ -40,8 +41,8 @@ class UpdateSubproject(Option):
             self.updateSubtree(args)
         
     def updateSubtree(self, args):
-        clean = git.isWorkspaceClean()
-        os.chdir(utility.workspaceDir())
+        clean = utility.isWorkspaceClean(workspace_dir=self.workspace_dir)
+#        os.chdir(utility.workspaceDir())
         if not clean:
             logging.info("git-subtree requires a clean working tree before attempting a subtree update")
             return False
@@ -50,12 +51,13 @@ class UpdateSubproject(Option):
         config = config_parser_global.grapeConfig()
         subtreePrefix = config.get(f"subtree-{name}", "prefix")
         subtreeRemote = config.get(f"subtree-{name}", "remote")
-        fullURL = git.parseSubprojectRemoteURL(subtreeRemote)
+        fullURL = git.parseSubprojectRemoteURL(
+            subtreeRemote, execution_path=self.workspace_dir)
         doSquash = config.get(Option.SECTION_SUBTREES, "mergePolicy").strip().lower() == "squash"
         squashArg = "--squash" if doSquash else ""
         git.subtree(f"pull --prefix {subtreePrefix} {fullURL} {branch} " +
                     f"{squashArg}")
-        
+
         return True
         
     def setDefaultConfig(self, config):
