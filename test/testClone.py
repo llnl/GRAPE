@@ -4,6 +4,7 @@ import os
 import shutil
 import sys
 import tempfile
+from unittest.mock import patch
 from test import testGrape
 from vine import clone
 from vine import grapeGit as git
@@ -11,11 +12,12 @@ from vine import grapeGit as git
 
 class TestClone(testGrape.TestGrape):
 
-    def testClone(self):
+    @patch('vine.utility.userInput')
+    def testClone(self, mock_userInput):
         self.setUpConfig()
         args = [self.repo, self.repos[1], "--recursive"]
-        with self.queue_user_input(["\n", "\n", "\n", "\n"]):
-            ret = self.menu.applyMenuChoice("clone", args)
+        mock_userInput.side_effect = ["\n", "\n", "\n", "\n"]
+        ret = self.menu.applyMenuChoice("clone", args)
         self.assertTrue(ret)
 
         # check to make sure we didn't get a usage string dump
@@ -45,12 +47,13 @@ class TestClone(testGrape.TestGrape):
         sys.stdout = tmp_stdout
         doc_output.close()
 
-    def testClone02(self):
+    @patch('vine.utility.userInput')
+    def testClone02(self, mock_userInput):
         tempDir = tempfile.mkdtemp()
         args = [self.repo, tempDir]
         try:
-            with self.queue_user_input(["\n", "\n", "\n", "\n"]):
-                ret = self.menu.applyMenuChoice("clone", args)
+            mock_userInput.side_effect = ["\n", "\n", "\n", "\n"]
+            ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             #ToDo: Finish checking contents
@@ -59,6 +62,8 @@ class TestClone(testGrape.TestGrape):
         finally:
             self._temp_dir_cleanup(tempDir)
 
+#    @patch('vine.utility.userInput')
+#    def testRecursiveCloneWithSubmodule(self, mock_userInput):
     def testRecursiveCloneWithSubmodule(self):
         self.menu.set_command_path(self.repo)
 
@@ -73,8 +78,9 @@ class TestClone(testGrape.TestGrape):
 
         #Now clone the repo into a temp dir and make sure the submodule is in the clone
         try:
-            tempDir = tempfile.mkdtemp()
+            tempDir = os.path.realpath(tempfile.mkdtemp())
             args = [self.repo, tempDir, "--recursive"]
+#            mock_userInput.side_effect = ["\n", "\n", "\n", "\n", "\n", "\n"]
             with self.queue_user_input(["\n", "\n", "\n", "\n", "\n", "\n"]):
                 ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
@@ -84,7 +90,8 @@ class TestClone(testGrape.TestGrape):
         finally:
             self._temp_dir_cleanup(tempDir)
 
-    def testRecursiveCloneNestedSubproject(self):
+    @patch('vine.utility.userInput')
+    def testRecursiveCloneNestedSubproject(self, mock_userInput):
         # make a repo to turn into a submodule
         git.clone(argstr="--mirror", source_repo=self.repo,
                   clone_repo=self.repos[1],
@@ -105,15 +112,15 @@ class TestClone(testGrape.TestGrape):
         try:
             tempDir = os.path.realpath(tempfile.mkdtemp())
             args = [self.repo, tempDir, "--recursive", "--allNested"]
-            with self.queue_user_input(["\n", "\n", "\n", "\n"]):
-                ret = self.menu.applyMenuChoice("clone", args)
+            mock_userInput.side_effect = ["\n", "\n", "\n", "\n"]
+            ret = self.menu.applyMenuChoice("clone", args)
             self.assertTrue(ret, "vine.clone returned failure")
 
             # ensure we are on master with all nested subprojects
             self.menu.set_command_path(tempDir)
             args = ["master", "--updateView"]
-            with self.queue_user_input(["all\n"]):
-                ret = self.menu.applyMenuChoice("checkout", args)
+            mock_userInput.side_effect = ["all\n"]
+            ret = self.menu.applyMenuChoice("checkout", args)
             self.assertTrue(ret, "vine.checkout master returned failure")
             logging.info(git.log("--decorate", execution_path=tempDir))
 

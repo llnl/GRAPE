@@ -706,7 +706,7 @@ class Publish(Resumable, Option, CommandPathHandler):
                                   execution_path=execution_path).split('\n')
         except:
             # Ensure branches are on working tree, then retry diff.
-            current_branch = git.currentBranch(execution_path=self.command_path)
+            current_branch = git.currentBranch(execution_path=execution_path)
             git.checkout(public, execution_path=execution_path)
             git.checkout(topic, execution_path=execution_path)
             git.checkout(current_branch, execution_path=execution_path)
@@ -737,7 +737,7 @@ class Publish(Resumable, Option, CommandPathHandler):
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
             submodules = git.getModifiedSubmodules(
-                self.workspace_dir, public, topic, includeAdded=True, execution_path=self.workspace_dir)
+                self.workspace_dir, public, topic, includeAdded=True)
             for sub in submodules:
                 execution_path = os.path.join(self.workspace_dir, sub)
                 self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
@@ -1304,8 +1304,7 @@ class Publish(Resumable, Option, CommandPathHandler):
         public = args["--public"]
         topic = args["--topic"]
         submodules = git.getModifiedSubmodules(self.workspace_dir, public,
-                                               topic, includeAdded=True,
-                                               execution_path=self.command_path)
+                                               topic, includeAdded=True)
 
         userMsg = f"GRAPE: When ready, grape will publish {topic} to:\n"
 

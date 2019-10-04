@@ -148,7 +148,7 @@ class Review(Option, CommandPathHandler):
         # determine source branch and target branch
         branch = args["--source"]
         if not branch:
-            branch = git.currentBranch(self.command_path)
+            branch = git.currentBranch(execution_path=self.command_path)
 
         #ensure branch is pushed
         logging.info(f"Pushing {branch} to bitbucket...")
@@ -230,8 +230,10 @@ class Review(Option, CommandPathHandler):
                     pullRequestLinks[f"{bitbucket.rzbitbucketURL}{repo.repo.url()}/browse?at={url_}"] = False
 
         ## NESTED SUBPROJECT REPOS 
-        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(target_branch, workspaceDir=workspaceDir)
-        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(target_branch, workspaceDir=workspaceDir)
+        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
+            target_branch, workspaceDir=self.workspace_dir)
+        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
+            target_branch, workspaceDir=self.workspace_dir)
 
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
             git.push(f"origin {branch}", execution_path=prefix)

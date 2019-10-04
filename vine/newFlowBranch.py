@@ -94,7 +94,10 @@ class NewBranchOption(Option, CommandPathHandler):
         removedModules = []
         changedURLModules = []
         if recurse:
-            checkout.parseGitModulesDiffOutput(git.currentBranch(self.command_path), start, addedModules, removedModules, changedURLModules)
+            checkout.parseGitModulesDiffOutput(
+                git.currentBranch(self.command_path), start, addedModules,
+                removedModules, changedURLModules,
+                workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls or
             # are not present in the public branch.
             for sub in changedURLModules + removedModules:

@@ -6,7 +6,6 @@ class TestStash(testGrape.TestGrape):
 
     def test_stash_given_empty_repo(self):
         """Stash command smoke test. Exits gracefully given empty repo."""
-        os.chdir(self.repo)
         result = self.menu.applyMenuChoice("stash")
         self.assertTrue(result, "Failed 'stash' command smoke test.")
 

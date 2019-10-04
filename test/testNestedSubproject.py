@@ -1,6 +1,7 @@
 __author__ = 'robinson96'
 import os
 import sys
+from unittest.mock import patch
 from test import testGrape
 from vine import grape_errors
 from vine import grapeGit as git
@@ -14,12 +15,11 @@ class TestNestedSubproject(testGrape.TestGrape):
     def assertCanAddNewSubproject(testGrapeObject, *, execution_path):
         git.clone(argstr='--mirror', source_repo=testGrapeObject.repo,
                   clone_repo=testGrapeObject.repos[1],
-                  execution_path=execution_path)
+                  execution_path=testGrapeObject.repo)
         subproject_path = os.path.join('subs', 'subproject1')
-        grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory).applyMenuChoice(
+        testGrapeObject.menu.applyMenuChoice(
             "addSubproject", ["--name=subproject1",
-                              f"--prefix={subproject_path}",
-                              "--branch=master",
+                              f"--prefix={subproject_path}", "--branch=master",
                               f"--url={testGrapeObject.repos[1]}",
                               "--nested", "--noverify"])
         subproject1path = os.path.join(testGrapeObject.repo, subproject_path)
@@ -27,7 +27,7 @@ class TestNestedSubproject(testGrape.TestGrape):
         # check to see that subproject1 is a git repo
         basedir = os.path.split(git.baseDir(execution_path=subproject1path))[-1]
         subdir = os.path.split(subproject1path)[-1]
-        testGrapeObject.assertTrue(basedir == subdir,
+        testGrapeObject.assertEqual(basedir, subdir,
                                    f"subproject1's git repo is {basedir}, " +
                                    f"not {subdir}")
         # check to see that edits that occur in the new subproject are ignored by outer repo
@@ -61,31 +61,30 @@ class TestNestedSubproject(testGrape.TestGrape):
             git.branch("newBranch", execution_path=self.repo)
             git.branch("newBranch", execution_path=self.subproject)
             # try switching to the branches using grape
-#            os.chdir(self.repo)
             self.menu.applyMenuChoice("checkout", ["newBranch"])
-            self.assertTrue(git.currentBranch(execution_path=self.repo) == "newBranch",
+            self.assertEqual(git.currentBranch(execution_path=self.repo), "newBranch",
                             "outer level repo not on newBranch after checkout")
-#            os.chdir(self.subproject)
-            self.assertTrue(git.currentBranch(execution_path=self.subproject) == "newBranch",
+            self.assertEqual(git.currentBranch(execution_path=self.subproject), "newBranch",
                             "subproject not on newBranch after checkout")
         except grape_errors.GrapeGitError as e:
             self.fail(self.get_output() + e.gitCommand.split()[-10:])
 
-    def testDeactivatingAndReactiviatingNestProjects(self):
+    @patch('vine.utility.userInput')
+    def testDeactivatingAndReactiviatingNestProjects(self, mock_userInput):
         try:
             self.assertCanAddNewSubproject(self, execution_path=self.repo)
             self.assertTrue(os.path.isdir(self.subproject))
             # answer none to whether we want all subprojects, y to deleting it
-            with self.queue_user_input(["n\n", "y\n"]):
-                self.menu.applyMenuChoice("uv")
+            mock_userInput.side_effect = ["n\n", "y\n"]
+            self.menu.applyMenuChoice("uv")
             self.assertFalse(os.path.isdir(self.subproject))
             # answer a to whether we want all subprojects
-            with self.queue_user_input(["a\n"]):
-                self.menu.applyMenuChoice("uv")
+            mock_userInput.side_effect = ["a\n"]
+            self.menu.applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject), '\n'.join(self.get_output()))
             # run grape uv again to make sure it just keeps things the same
-            with self.queue_user_input(["a\n"]):
-                self.menu.applyMenuChoice("uv")
+            mock_userInput.side_effect = ["a\n"]
+            self.menu.applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject))
         except grape_errors.GrapeGitError as e:
             output = self.get_output()

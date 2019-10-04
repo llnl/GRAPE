@@ -18,8 +18,6 @@ class ResolveConflicts(Option, CommandPathHandler):
 
     @log_wrapper
     def execute(self, args):
-        self.set_progress_file(self.command_path)
-
         git.gitcmd("mergetool", "Mergetool Failed",
                    execution_path=self.command_path)
         # print out git status, which contains instructions to complete a merge

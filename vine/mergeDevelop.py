@@ -95,7 +95,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
-        self.set_progress_file(execution_path=self.command_path)
+        self.set_progress_file(execution_path=self.workspace_dir)
 
         if not "<<cmd>>" in args:
             args["<<cmd>>"] = "md"
@@ -177,7 +177,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             checkout.parseGitModulesDiffOutput(
                 git.currentBranch(execution_path=self.command_path), branch, addedModules,
                 removedModules, changedURLModules,
-                execution_path=self.command_path)
+                workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
                 is_active = "active" if sub in activeSubmodulesCheck0 else "inactive"
@@ -254,7 +254,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             conflictedFiles = git.conflictedFiles(execution_path=cwd)
             # now that we resolved the submodule conflicts, continue the outer level merge
             if len(conflictedFiles) == 0:
-                self.continueLocalMerge(args)
+                self.continueLocalMerge(args, execution_path=cwd)
                 conflictedFiles = git.conflictedFiles(execution_path=cwd)
 
         if conflictedFiles:
@@ -264,14 +264,18 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                                     "and then \n continue by calling 'grape md --continue' .")
             return False
         else:
+            original_command_path = menu.command_path
             menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+            menu.set_command_path(original_command_path)
 
         # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
         if self.progress["allActive"]:
             activeSubmodulesCheck1 = git.getActiveSubmodules(execution_path=self.workspace_dir)
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
                 logging.info("Updating new submodules using grape uv --allSubmodules")
+                original_command_path = menu.command_path
                 menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
+                menu.set_command_path(original_command_path)
 
         return True
 
@@ -355,11 +359,11 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             self.progress["outerLevelDone"] = True
             return []
 
-    def merge(self, branch, strategy, args):
+    def merge(self, branch, strategy, args, *, execution_path):
         squashArg = "--squash" if args["--squash"] else ""
         try:
             git.merge(f"{squashArg} {branch} {strategy}",
-                      execution_path=self.command_path)
+                      execution_path=execution_path)
             return True
         except grape_errors.GrapeGitError as error:
             logging.error(error.gitOutput)
@@ -413,7 +417,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         choice = False
         strategy = 'am' 
         if args["--continue"]:
-            if self.continueLocalMerge(args, execution_path=execution_pat):
+            if self.continueLocalMerge(args, execution_path=execution_path):
                 return True
         if args['--am']:
             strategy = 'am'
@@ -448,7 +452,8 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         if strategy == 'am':
             args["--am"] = True
             logging.info("Merging using git's default strategy...")
-            choice = self.merge(branchName, "", args)
+            choice = self.merge(branchName, "", args,
+                                execution_path=execution_path)
         elif strategy == 'as' or strategy == 'at' or strategy == 'ay':
             if strategy == 'as':
                 args["--as"] = True
@@ -480,7 +485,8 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                     f.write("* merge=verify")
 
             # perform the merge
-            choice = self.merge(branchName, "", args)
+            choice = self.merge(branchName, "", args,
+                                execution_path=execution_path)
 
             # restore original attributes file
             if tmpattributes:
@@ -492,11 +498,13 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             args["--aT"] = True
             logging.info("Merging using recursive strategy, resolving " +
                          f"conflicts cleanly with changes in {branchName}...")
-            choice = self.merge(branchName, "-Xtheirs", args)
+            choice = self.merge(branchName, "-Xtheirs", args,
+                                execution_path=execution_path)
         elif strategy == 'aY':
             args["--aY"] = True
             logging.info("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
-            choice = self.merge(branchName, "-Xours", args)
+            choice = self.merge(branchName, "-Xours", args,
+                                execution_path=execution_path)
 
         return choice
 
@@ -510,7 +518,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         config.set(self.SECTION_FLOW, "topicDestinationMappings", "none")
 
     def _resume(self, args, *, workspace_dir):
-        super(MergeDevelop, self)._resume(args, workspace_dir)
+        super(MergeDevelop, self)._resume(args, workspace_dir=workspace_dir)
         if self.progress["stopPoint"] == "public rebase":
             # recover from conflicts by continuing the rebase
             git.rebase("--continue")

@@ -68,11 +68,10 @@ def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir):
     modified = []
     for repo in active:
         prefix = config.get(f"nested-{repo}", "prefix")
-        with git.cd(os.path.join(workspaceDir, prefix)):
-            configOption.Config.ensurePublicBranchesExist(
-                os.path.join(workspaceDir, prefix), publicBranches)
+        configOption.Config.ensurePublicBranchesExist(
+            os.path.join(workspaceDir, prefix), publicBranches)
 
-        if git.log(f"--oneline {since}..{now}"):
+        if git.log(f"--oneline {since}..{now}", execution_path=workspaceDir):
             modified.append(repo)
 
     return modified

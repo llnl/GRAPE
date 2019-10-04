@@ -144,12 +144,8 @@ def gridifyTestClass(projectList, testClass, projectNames=None):
     testMethods = [getattr(testClass, method) for method in testMethodNames]
 
     #Now add the N*M test methods to the class testClass
-    for projecti in range(len(projectList)):
-        project = projectList[projecti]
+    for projecti, project in enumerate(projectList):
         for (name, method) in zip(testMethodNames, testMethods):
             test = generateTest(project, method)
-            if projectNames is None:
-                mangled_name = name[4:] + str(projecti)
-            else:
-                mangled_name = name[4:] + '_' + projectNames[projecti]
+            mangled_name = name[4:] + '_' + projectNames[projecti]
             setattr(testClass, mangled_name, test)

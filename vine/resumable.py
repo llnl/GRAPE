@@ -15,15 +15,23 @@ class Resumable(ABC):
     def __init__(self):
         super(Resumable, self).__init__()
         self.progress = {}
+        self.progressFile = None
 
     def set_progress_file(self, *, execution_path):
         try:
             gitDir = str(git.gitDir(execution_path=execution_path))
-            self.progressFile = os.path.join(gitDir, "grapeProgress")
+            progressFile = os.path.join(gitDir, "grapeProgress")
+            self._reset_progress(progressFile)
         except grape_errors.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
             # in the user's $HOME directory
-            self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
+            progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
+            self._reset_progress(progressFile)
+
+    def _reset_progress(self, progress_file_path):
+        if not self.progressFile or self.progressFile != progress_file_path:
+            self.progressFile = progress_file_path
+            self.progress = {}
 
     def dumpProgress(self, args, msg=""):
         if msg:
@@ -57,22 +65,19 @@ class Resumable(ABC):
 
     @abstractmethod
     def _resume(self, args, deleteProgressFile=True, *, workspace_dir):
+        if not self.progressFile:
+            self.set_progress_file(execution_path=workspace_dir)
         try:
             self._readProgressFile()
-        except IOError:
-            # give the workspace level progress file a shot
+        except IOError as e:
             try:
-                self.progressFile = os.path.join(workspace_dir, ".git", "grapeProgress")
+                # look for it at the home directory level
+                self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
                 self._readProgressFile()
-            except IOError as e:
-                try:
-                    # look for it at the home directory level
-                    self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
-                    self._readProgressFile()
-                except:
-                    logging.error("No progress file found to continue from. Please enter a command without the "
-                                     "--continue option. ")
-                    raise e
+            except:
+                logging.error("No progress file found to continue from. Please enter a command without the "
+                                 "--continue option. ")
+                raise e
         newArgs = self.progress["args"]
         #overwrite args with the loaded args
         for key in newArgs.keys():

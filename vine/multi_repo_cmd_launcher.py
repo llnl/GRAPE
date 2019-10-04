@@ -212,7 +212,7 @@ class MultiRepoCommandLauncher(CommandPathHandler):
             if len(self.repos) > 1:
                 command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])]
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                retvals = self.cmd_runner.run_all()
+                retvals = retvals + self.cmd_runner.run_all()
 
         MRE = grape_errors.MultiRepoException()
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):

@@ -6,7 +6,6 @@ class TestResolveConflicts(testGrape.TestGrape):
 
     def test_resolve_conflicts_given_empty_repo(self):
         """Resolve command smoke test. Exits gracefully given empty repo."""
-        os.chdir(self.repo)
         result = self.menu.applyMenuChoice("resolve")
         self.assertTrue(result, "Failed 'resolve' command smoke test.")
 

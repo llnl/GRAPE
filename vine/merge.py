@@ -99,7 +99,7 @@ class Merge(Resumable, Option, CommandPathHandler):
 
         merge_down_command = grapeMenu.menu().getOption("md")
         merge_down_command.command_path = self.command_path
-        merge_down_command._resume(args, workspace_dir)
+        merge_down_command._resume(args, workspace_dir=workspace_dir)
         return True
 
     def _saveProgress(self, args):

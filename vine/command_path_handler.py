@@ -32,10 +32,17 @@ class CommandPathHandler(object):
         if not os.path.exists(command_path):
             logging.warning(f'Executable path "{command_path}" does not exist.')
         self._command_path = command_path
-        self.WORKSPACE_DIR = None  # TODO: keep here??
+        # Setting to None ensures WORKSPACE_DIR will update when needed.
+        self.WORKSPACE_DIR = None
 
     @property
     def workspace_dir(self):
+        """
+        Workspace dir set when needed. Changes with command_path updates.
+
+        Property setter intentionally not created as workspace_dir is dependent
+        on command_path, and should not be independently modified.
+        """
         if not self.WORKSPACE_DIR:
             self.__set_workspace_dir()
         return self.WORKSPACE_DIR

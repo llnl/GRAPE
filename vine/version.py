@@ -123,7 +123,7 @@ class Version(Option, CommandPathHandler):
         version.seek(0)
         version = self.readVersion(version, args)
         if args["--file"]:
-            fname = args["--file"]
+            fname = os.path.join(self.command_path, args["--file"])
             with io.open(fname, 'w+') as f:
                 version = self.writeVersion(f, version, args)
             self.stageVersionFile(fname, execution_path=self.command_path)

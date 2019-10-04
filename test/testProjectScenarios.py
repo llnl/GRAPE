@@ -232,8 +232,7 @@ class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
     def __init__(self,path):
         super(WorkspaceWithNestedOnDevelop, self).__init__(path)
         subproject_path = lambda: os.path.join(self.getProjectDir(),
-                                              'submodule1',
-                                              'subproject1')
+                                               'subproject1')
         self.addCommands([(git.checkout, ("develop", subproject_path))])
         # outer on public branch means expect submodule on master
         self._publicBranchesValid = True

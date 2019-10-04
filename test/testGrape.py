@@ -65,10 +65,9 @@ class TestGrape(unittest.TestCase):
 
     def setUpConfig(self):
         grapeMenu._resetMenu()
+        self.menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
         config = config_parser_global.grapeConfig()
         self.menu.set_command_path(self.defaultWorkingDirectory)
-#        grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
-#        grapeMenu.menu().set_command_path(self.defaultWorkingDirectory)
         try:
             # Git user name required for publish tests.
             config.ensureSection('user')
@@ -94,39 +93,27 @@ class TestGrape(unittest.TestCase):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
         self.setUpLogging()
-#        self.cwd = os.getcwd()
 
         # create a test repository to operate in.
         bare_repo = self.repo + '-origin'
         os.mkdir(bare_repo)
 
-#        os.chdir(bare_repo)
-# TODO:
         git.gitcmd("init --bare", "Setup Failed",
                    execution_path=bare_repo)
-#        os.chdir(os.path.dirname(f"{self.repo}-origin"))
         working_dir = os.path.dirname(f"{self.repo}-origin")
         git.clone(source_repo=bare_repo, clone_repo=self.repo,
                   execution_path=self.defaultWorkingDirectory)
-#        git.gitcmd(f"clone {bare_repo} {self.repo}",
-#                   "could not clone test bare repo")
-#                   execution_path=bare_repo)
-#        os.chdir(self.repo)
         fname = os.path.join(self.repo, "testRepoFile")
         writeFile1(fname)
         self.file1 = fname
         git.add(fname, execution_path=self.repo)
         git.commit("-m \"initial commit\"", execution_path=self.repo)
-#        git.gitcmd(f"add {fname}", "Add Failed", )
-#        git.gitcmd("commit -m \"initial commit\"", "Commit Failed", execution_path=self.repo)
         git.gitcmd(f"push origin master", "push to master failed",
                    execution_path=self.repo)
         # create a develop branch in addition to master by default
         git.branch("develop", execution_path=self.repo)
         git.push("origin develop", execution_path=self.repo)
-#        os.chdir(os.path.dirname(self.repo))
 
-#        self.menu = grapeMenu.menu()
         self.menu.set_command_path(self.repo)
 
     def tearDown(self):
@@ -149,9 +136,6 @@ class TestGrape(unittest.TestCase):
                 raise Exception
         os.chdir(os.path.abspath(os.path.dirname(self.defaultWorkingDirectory)))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
-
-        # restore stdout and stderr to their original streams
-#        os.chdir(self.cwd)
 
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
@@ -191,10 +175,8 @@ class TestGrape(unittest.TestCase):
         super(TestGrape, self).assertFalse(expr, msg=msg)
 
 
-def buildSuite(cls, appendTo=None, sub=None):
+def buildSuite(cls, appendTo, sub=None):
     suite = appendTo
-    if suite is None:
-        suite = unittest.TestSuite()
     if sub:
         suite.addTest(cls(sub))
     else:
@@ -236,19 +218,23 @@ def main(argv, debug=False):
                    "Version":testVersion.TestVersion,
                    "Publish":testPublish.TestPublish,
                    "CO":testCO.TestCheckout,
-                   "NestedSubproject":testNestedSubproject.TestNestedSubproject,
-                   "Status":testStatus.createStatusTester(),
-                   "GrapeUp":testUpdateLocal.createUpTester()}
+                   "NestedSubproject":testNestedSubproject.TestNestedSubproject}
 
 
     suite = unittest.TestSuite()
     if len(argv) == 0:
+        testClasses.update({"Status": testStatus.createStatusTester(),
+                            "GrapeUp":testUpdateLocal.createUpTester()})
         for cls in testClasses.values():
             suite = buildSuite(cls, suite)
     else:
         if argv[0] == "listSuites":
             print(testClasses.keys())
             exit(0)
+        if "Status" in argv:
+           testClasses.update({"Status": testStatus.createStatusTester()})
+        if "GrapeUp" in argv:
+           testClasses.update({"GrapeUp": testUpdateLocal.createUpTester()})
         for arg in argv:
             if '.' in arg:
                 (cls, sub) = arg.split('.')

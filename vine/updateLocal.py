@@ -44,10 +44,9 @@ class UpdateLocal(Option, CommandPathHandler):
     @log_wrapper
     def execute(self, args):
         if args["--wd"]:
-            self.workspace_dir = os.path.abspath(args["--wd"])
-#        wsDir = args["--wd"] if args["--wd"] else utility.workspaceDir()
-#        wsDir = os.path.abspath(wsDir)
-#  TODO      os.chdir(wsDir)
+            workspace_dir = os.path.abspath(args["--wd"])
+        else:
+            workspace_dir = self.workspace_dir
 
         config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
@@ -61,9 +60,9 @@ class UpdateLocal(Option, CommandPathHandler):
                 fetchLocal, runInSubmodules=recurseSubmodules,
                 runInSubprojects=recurseNestedSubprojects, branch=branch,
                 listOfRepoBranchArgTuples=None, skipSubmodules=skipSubmodules,
-                outer=self.workspace_dir, execution_path=self.command_path)
+                outer=workspace_dir, execution_path=workspace_dir)
             launchers.append(new_launcher)
-        if len(launchers):
+        if launchers:
             launcher = launchers[0]
             for l in launchers[1:]:
                 launcher.MergeLaunchSet(l)

@@ -21,6 +21,7 @@ if __name__ == "__main__":
     base_dir = os.getcwd()
     empty_project = gridTesting.ResettableProject(os.path.join(base_dir, "empty_project"))
 
+    # TODO: make these lambdas??
     onedir_project = gridTesting.ResettableProject(os.path.join(base_dir, "onedir_project"))
     onedir_project.addCommands([(os.mkdir, "dir1",),
                                 (git.add, "dir1"),

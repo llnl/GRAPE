@@ -153,7 +153,7 @@ def branchAlreadyExists(branch, workspace_dir):
     return retVal
 
 def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
-                              changedURLModules, workspace_dir=''):
+                              changedURLModules, *, workspace_dir):
     submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch}", execution_path=workspace_dir)
     if submoduleListWillChange:
         output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules", execution_path=workspace_dir)
@@ -175,7 +175,7 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
 
     return addedModules, removedModules, changedURLModules
 
-def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], workspace_dir=''):
+def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, workspace_dir):
     cleaned = False
     working_dir = os.path.join(workspace_dir, sub)
     dirIsEmpty = len(os.listdir(".")) == 0
@@ -304,7 +304,9 @@ class Checkout(Option, CommandPathHandler):
                     return False
 
             if config_parser_global.grapeConfig().getboolean(self.SECTION_WORKSPACE, "manageSubmodules"):
-                parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules, changedURLModules, self.workspace_dir)
+                parseGitModulesDiffOutput(
+                    currentSHA, branch, addedModules, removedModules,
+                    changedURLModules, workspace_dir=self.workspace_dir)
 
             if addedModules or removedModules or changedURLModules:
                 submodulesDidChange = True

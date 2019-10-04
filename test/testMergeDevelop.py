@@ -15,16 +15,20 @@ class TestMD(testGrape.TestGrape):
         # create a new branch
         git.branch("testMerge", execution_path=self.repo)
         # add f2 to master
-        testGrape.writeFile2("f2")
+        f2Path = os.path.join(self.repo, "f2")
+        testGrape.writeFile2(f2Path)
         git.add("f2", execution_path=self.repo)
         git.commit("-m \"f2\"", execution_path=self.repo)
         git.checkout("testMerge", execution_path=self.repo)
         self.setUpConfig()
+        # Set command_path after calling setUpConfig()
+        self.menu.set_command_path(self.repo)
 
     def setUpConflictingMerge(self):
         self.setUpMerge()
         # add a conflicting commit
-        testGrape.writeFile3("f2")
+        f2Path = os.path.join(self.repo, "f2")
+        testGrape.writeFile3(f2Path)
         git.add("f2", execution_path=self.repo)
         git.commit("-m \"f2\"", execution_path=self.repo)
 
@@ -93,26 +97,25 @@ class TestMD(testGrape.TestGrape):
         except SystemExit:
             self.fail(f"Unexpected SystemExit: {self.get_output()}")
 
-    def createTestSubmodule(self, execution_path=None):
-        if execution_path is None:
-            execution_path = self.repo
+    def createTestSubmodule(self, *, execution_path):
         # make a repo to turn into a submodule
         git.clone(argstr='--mirror', source_repo=self.repo,
                   clone_repo=self.repos[1], execution_path=execution_path)
         # add repo2 as a submodule to repo1
         git.submodule(f"add {self.repos[1]} submodule1",
-                      execution_path=execution_path)
-        git.commit("-m \"added submodule1\"", execution_path=execution_path)
+                      execution_path=self.repo)
+        git.commit("-m \"added submodule1\"", execution_path=self.repo)
 
 
     def setUpNonConflictingSubmoduleMerge(self):
         self.createTestSubmodule(execution_path=self.defaultWorkingDirectory)
         git.branch("testSubmoduleMerge",
-                   execution_path=self.defaultWorkingDirectory)
+                   execution_path=self.repo)
         # create a new commit in submodule1
         submodule1 = os.path.join(self.repo, "submodule1")
         git.checkout("master", execution_path=submodule1)
-        testGrape.writeFile2("f1")
+        f1Path = os.path.join(submodule1, "f1")
+        testGrape.writeFile2(f1Path)
         git.add("f1", execution_path=submodule1)
         git.commit("-m \"added f2 as f1\"", execution_path=submodule1)
         # update outer level with new commit
@@ -124,21 +127,24 @@ class TestMD(testGrape.TestGrape):
         git.checkout("testSubmoduleMerge", execution_path=self.repo)
         git.submodule("update", execution_path=self.repo)
         git.checkout("-b testSubmoduleMerge", execution_path=submodule1)
-        testGrape.writeFile3("f2")
+        f2Path = os.path.join(submodule1, "f2")
+        testGrape.writeFile3(f2Path)
         git.add("f2", execution_path=submodule1)
         git.commit("-m \"added f3 as f2\"", execution_path=submodule1)
         git.commit("-a -m \"updated gitlink on branch testSubmoduleMerge\"",
                    execution_path=self.repo)
         self.setUpConfig()
+        self.menu.set_command_path(self.repo)
 
     def setUpConflictingSubmoduleMerge(self):
         self.createTestSubmodule(execution_path=self.defaultWorkingDirectory)
         git.branch("testSubmoduleMerge2",
-                   execution_path=self.defaultWorkingDirectory)
+                   execution_path=self.repo)
         subPath = os.path.join(self.repo, "submodule1")
         git.branch("testSubmoduleMerge2", execution_path=subPath)
         git.checkout("master", execution_path=subPath)
-        testGrape.writeFile2("f1")
+        f1Path = os.path.join(subPath, "f1")
+        testGrape.writeFile2(f1Path)
         git.add("f1", execution_path=subPath)
         git.commit("-m \"added f2 as f1\"", execution_path=subPath)
         git.commit("submodule1 -m \"updated submodule gitlink on master branch\"",
@@ -146,12 +152,13 @@ class TestMD(testGrape.TestGrape):
         git.checkout("testSubmoduleMerge2", execution_path=self.repo)
         git.submodule("update", execution_path=self.repo)
         git.checkout("testSubmoduleMerge2", execution_path=subPath)
-        testGrape.writeFile3("f1")
+        testGrape.writeFile3(f1Path)
         git.add("f1", execution_path=subPath)
         git.commit("-m \"added f3 as f1\"", execution_path=subPath)
         git.commit("submodule1 -m \"updated submodule gitlink on testSubmoduleMerge branch\"",
                    execution_path=self.repo)
         self.setUpConfig()
+        self.menu.set_command_path(self.repo)
 
     def testNonConflictingSubmoduleMerge_MD(self):
         try:
@@ -209,10 +216,10 @@ class TestMD(testGrape.TestGrape):
             ret = self.menu.applyMenuChoice("md", ["--am"])
             self.assertFalse(ret, "grape md did not return False for conflicting merge.")
             # should only have modifications in submodule1, not conflicts
-            status = git.status("--porcelain", execution_path=self.repo)
+            subPath = os.path.join(self.repo, "submodule1")
+            status = git.status("--porcelain", execution_path=subPath)
             self.assertTrue("UU" not in status and "AA" in status,
                             f"unexpected status {status} at toplevel")
-            subPath = os.path.join(self.repo, "submodule1")
             status = git.status("--porcelain", execution_path=subPath)
             self.assertTrue("AA" in status,
                             f"unexpected status {status} in submodule1")
@@ -223,6 +230,7 @@ class TestMD(testGrape.TestGrape):
             git.commit("-m \"resolved conflict with our f1\"",
                        execution_path=subPath)
             self.setUpConfig()
+            self.menu.set_command_path(subPath)
             ret = self.menu.applyMenuChoice("md", ["--continue"])
 
             # test that we returned successfully
@@ -258,7 +266,8 @@ class TestMD(testGrape.TestGrape):
             ret = self.menu.applyMenuChoice("m", ["master", "--am"])
             self.assertFalse(ret, "grape m did not return False for conflicting merge.")
             # should only have modifications in submodule1, not conflicts
-            status = git.status("--porcelain", execution_path=self.repo)
+            subPath = os.path.join(self.repo, "submodule1")
+            status = git.status("--porcelain", execution_path=subPath)
             self.assertTrue("UU" not in status and "AA" in status,
                             f"unexpected status {status} at toplevel")
             subPath = os.path.join(self.repo, "submodule1")
@@ -272,6 +281,7 @@ class TestMD(testGrape.TestGrape):
             git.commit("-m \"resolved conflict with our f1\"",
                        execution_path=subPath)
             self.setUpConfig()
+            self.menu.set_command_path(subPath)
             ret = self.menu.applyMenuChoice("m", ["--continue"])
 
             # test that we returned successfully
@@ -280,7 +290,9 @@ class TestMD(testGrape.TestGrape):
                                  f"conflict\n{self.get_output()}")
 
             # test that the submodule master was merged in
-            self.assertTrue(git.branchUpToDateWith("testSubmoduleMerge2", "master"),
+            self.assertTrue(git.branchUpToDateWith("testSubmoduleMerge2",
+                                                   "master",
+                                                   execution_path=subPath),
                             "grape m --continue did not merge in submodule1`s master branch")
 
             # test that the outer level master was merged in
@@ -300,18 +312,18 @@ class TestMD(testGrape.TestGrape):
             self.fail(f"Uncaught exit\n{self.get_output()}")
 
     def setUpConflictingNestedSubprojectMerge(self):
-        os.chdir(self.defaultWorkingDirectory)
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(
             self, execution_path=self.defaultWorkingDirectory)
 
         # set up f1 with conflicting content on master  and testNestedMerge branches.
         git.checkout("master", execution_path=self.subproject)
         git.branch("testNestedMerge", execution_path=self.subproject)
-        testGrape.writeFile2("f1")
+        f1Path = os.path.join(self.subproject, "f1")
+        testGrape.writeFile2(f1Path)
         git.add("f1", execution_path=self.subproject)
         git.commit("-m \"added f2 as f1\"", execution_path=self.subproject)
         git.checkout("testNestedMerge", execution_path=self.subproject)
-        testGrape.writeFile3("f1")
+        testGrape.writeFile3(f1Path)
         git.add("f1", execution_path=self.subproject)
         git.commit("-m \"added f1 as f1\"", execution_path=self.subproject)
 
@@ -323,7 +335,6 @@ class TestMD(testGrape.TestGrape):
         self.assertFalse(git.branchUpToDateWith("testNestedMerge", "master",
                                                 execution_path=self.subproject),
                         msg=None)
-#        os.chdir(self.repo)
         # run grape m --am - this helps ensure m is following same code path as md.
         try:
             ret = self.menu.applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
@@ -334,7 +345,6 @@ class TestMD(testGrape.TestGrape):
         status = git.status("--porcelain", execution_path=self.repo)
         self.assertFalse(status, "status is not empty in outer repo after conflict in subproject")
         # git status in subproject should not be clean
-#        os.chdir(self.subproject)
         status = git.status("--porcelain", execution_path=self.subproject)
         self.assertIn("AA", status, "no conflicts in subproject status \n" +
                                     f"{status} ")
@@ -362,7 +372,6 @@ class TestMD(testGrape.TestGrape):
         self.assertFalse(git.branchUpToDateWith("testNestedMerge", "master",
                                                 execution_path=self.subproject),
                          msg=None)
-#        os.chdir(self.repo)
         # run grape md --am
         try:
             ret = self.menu.applyMenuChoice("md", ["--am", "--public=master"], globalArgs=["-v"])
@@ -373,7 +382,6 @@ class TestMD(testGrape.TestGrape):
         status = git.status("--porcelain", execution_path=self.repo)
         self.assertFalse(status, "status is not empty in outer repo after conflict in subproject")
         # git status in subproject should not be clean
-#        os.chdir(self.subproject)
         status = git.status("--porcelain", execution_path=self.subproject)
         self.assertIn("AA", status, "no conflicts in subproject status")
 
@@ -386,10 +394,8 @@ class TestMD(testGrape.TestGrape):
         # continue the merge
         ret = self.menu.applyMenuChoice("md", ["--continue"])
         self.assertTrue(ret, "md didn't return successfully after conflict resolution")
-#        os.chdir(self.subproject)
 
         self.assertTrue(git.branchUpToDateWith("testNestedMerge", "master",
                                                execution_path=self.subproject))
-#        os.chdir(self.repo)
         self.assertTrue(git.branchUpToDateWith("testNestedMerge", "master",
                                                execution_path=self.repo))

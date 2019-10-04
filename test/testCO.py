@@ -1,5 +1,6 @@
 __author__ = 'robinson96'
 import os
+from unittest.mock import patch
 from test import testGrape
 from vine import grape_errors
 from vine import grapeGit as git
@@ -13,7 +14,6 @@ class TestCheckout(testGrape.TestGrape):
     def setUpSubmoduleBranch(self):
         git.clone(source_repo=self.repo, clone_repo=self.repos[1],
                   execution_path=self.defaultWorkingDirectory)
-#        git.clone(f"{self.repo} {self.repos[1]}")
         git.checkout("-b addSubmodule", execution_path=self.repo)
         git.submodule(f"add {self.repos[1]} submodule", execution_path=self.repo)
         git.commit("-m \"added submodule\"", execution_path=self.repo)
@@ -23,7 +23,6 @@ class TestCheckout(testGrape.TestGrape):
         git.checkout("--orphan dummy_branch_name", execution_path=self.repos[1])
 
         # go to the submodule and add a file to it.
-#        os.chdir(os.path.join(self.repo,"submodule"))
         f2 = os.path.join(self.repo, "submodule", "f2")
         testGrape.writeFile2(f2)
 
@@ -44,7 +43,6 @@ class TestCheckout(testGrape.TestGrape):
         git.push("origin --all", execution_path=execution_path)
 
         # git back to the master branch in the original repository
-#        os.chdir(self.repo)
         git.checkout("master", execution_path=self.repo)
 
     def switchToMaster(self):
@@ -61,27 +59,28 @@ class TestCheckout(testGrape.TestGrape):
         self.assertFalse(os.path.exists(os.path.join(self.repo, "submodule")),
                          "submodule exists when it should not")
 
-    def testSwitchingToBranchWithNewSubmodule(self):
+    @patch('vine.utility.userInput')
+    def testSwitchingToBranchWithNewSubmodule(self, mock_userInput):
         try:
             self.setUpSubmoduleBranch()
 
-            with self.queue_user_input(["y", "\n", "\n", "\n"]):
-                self.switchToAddSubmodule()
+            mock_userInput.side_effect = ["y", "\n", "\n", "\n"]
+            self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()
 
+            mock_userInput.side_effect = ["y", "\n", "\n", "\n", "\n"]
             # switch to master, saying 'y' to delete request
-            with self.queue_user_input(["y", "\n", "\n", "\n", "\n"]):
-                self.switchToMaster()
+            self.switchToMaster()
             self.assertSubmoduleDirectoryDoesNotExist()
 
+            mock_userInput.side_effect = ["y", "\n", "\n", "\n"]
             # switch to addSubmodule, saying yes to request to have submodule
-            with self.queue_user_input(["y", "\n", "\n", "\n"]):
-                self.switchToAddSubmodule()
+            self.switchToAddSubmodule()
             self.assertFile1ExistsInSubmodule()
 
+            mock_userInput.side_effect = ["y", "\n", "\n"]
             # switch back to master, this time saying don't delete request
-            with self.queue_user_input(["y", "\n", "\n"]):
-                self.switchToMaster()
+            self.switchToMaster()
             self.assertFile1ExistsInSubmodule()
         except grape_errors.GrapeGitError as e:
             self.fail('\n'.join(self.get_output()) + e.gitCommand + '\n' + e.gitOutput)
