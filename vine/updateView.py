@@ -217,7 +217,7 @@ class UpdateView(Option, CommandPathHandler):
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:True for sub in allSubmodules}
                 elif args["--add"] or args["--rm"]:
-                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules(self.workspace_dir)}
+                    includedSubmodules = {sub:True for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
                     includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
                 else:
@@ -391,7 +391,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, execution_path):
         # figure out if this is a submodule
         relpath = os.path.relpath(repo, workspace_dir)
         # if this is a submodule, get the appropriate public mapping
-        if relpath in git.getAllSubmoduleURLMap().keys():
+        if relpath in git.getAllSubmoduleURLMap(execution_path=repo).keys():
             public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
         logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)

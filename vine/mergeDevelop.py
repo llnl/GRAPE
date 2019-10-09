@@ -521,7 +521,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         super(MergeDevelop, self)._resume(args, workspace_dir=workspace_dir)
         if self.progress["stopPoint"] == "public rebase":
             # recover from conflicts by continuing the rebase
-            git.rebase("--continue")
+            git.rebase("--continue", execution_path=workspace_dir)
             retval = True
         else:
             retval = self.execute(args)

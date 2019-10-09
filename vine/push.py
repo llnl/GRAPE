@@ -36,7 +36,7 @@ class Push(Option, CommandPathHandler):
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
-        submodules = git.getActiveSubmodules(self.workspace_dir)
+        submodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             push, execution_path=self.command_path)

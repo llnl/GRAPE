@@ -649,8 +649,6 @@ class Publish(Resumable, Option, CommandPathHandler):
         else:
             working_dir = os.getcwd()
 
-#        with git.cd(working_dir):
-        # TODO: ensure args['command'] or whatever has working_dir in path
         cmds = args[f"--{prefix}Cmds"].split(',')
         logging.info("GRAPE PUBLISH - PERFORMING CUSTOM " +
                               f"{prefix.upper()} STEP")
@@ -1397,7 +1395,6 @@ class Publish(Resumable, Option, CommandPathHandler):
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in modifiedSubmodules:
                     subpath = os.path.join(self.workspace_dir, sub)
-#                    with git.cd(subpath):
                     menu = grapeMenu.menu()
                     menu.set_command_path(subpath)
                     menu.applyMenuChoice('up', ['up', '--noRecurse',

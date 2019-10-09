@@ -121,18 +121,16 @@ class RunHook(Option, CommandPathHandler):
 
     def execute(self, args):
         for command in args.keys():
-            if command in self.commands.keys():
-                if args[command]:
-                    try:
-                        args['execution_path'] = self.command_path
-                        self.commands[command](args)
-                    except KeyError:
-                        pass
-                    finally:
-                        if args["--noExit"]:
-                            return True
-                        else:
-                            exit(0)
+            if command in self.commands.keys() and args[command]:
+                try:
+                    self.commands[command](args)
+                except KeyError:
+                    pass
+                finally:
+                    if args["--noExit"]:
+                        return True
+                    else:
+                        exit(0)
 
     def setDefaultConfig(self, config):
         # post-commit
@@ -164,13 +162,12 @@ class RunHook(Option, CommandPathHandler):
             pass
         config.set('post-checkout', 'submoduleUpdate', 'False')
 
-    @staticmethod
-    def postCommit(args):
+    def postCommit(self, args):
         #applies the autoPush hook
         autoPush = args["--autopush"]
         if autoPush.lower().strip() != "false":
             try:
-                git.push("-u origin HEAD", self.command_path)
+                git.push("-u origin HEAD", execution_path=self.command_path)
             except grape_errors.GrapeGitError:
                 pass
             autoPush = True
@@ -186,7 +183,8 @@ class RunHook(Option, CommandPathHandler):
                 target = cascadeDict[source]
                 fastForward = False
                 logging.info(f"GRAPE: Cascading commit from {source} to {target}...")
-                if git.branchUpToDateWith(source, target):
+                if git.branchUpToDateWith(source, target,
+                                          execution_path=self.command_path):
                     fastForward = True
                     logging.info("GRAPE: should be a fastforward cascade...")
                 git.checkout(f"{target}", self.command_path)
@@ -211,27 +209,25 @@ class RunHook(Option, CommandPathHandler):
     def preRebase(self, args):
         pass
 
-    @staticmethod
-    def postRebase(args, *, execution_path):
+    def postRebase(self, args):
         updateSubmodule = args["--rebaseSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
-            git.submodule("--quiet sync", execution_path=execution_path)
-            git.submodule("update --rebase", execution_path=execution_path)
+            git.submodule("--quiet sync", execution_path=self.command_path)
+            git.submodule("update --rebase", execution_path=self.command_path)
 
-    @staticmethod
-    def postMerge(args, *, execution_path):
+    def postMerge(self, args):
         updateSubmodule = args["--mergeSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
             logging.info("Post-Merge Hook: Syncing submodule URLs...")
-            git.submodule("--quiet sync", execution_path=execution_path)
+            git.submodule("--quiet sync", execution_path=self.command_path)
             logging.info("Post-Merge Hook: Updating submodules...")
-            git.submodule("--quiet update --merge", execution_path=execution_path)
+            git.submodule("--quiet update --merge",
+                          execution_path=self.command_path)
 
-    @staticmethod
-    def postCheckout(args, *, execution_path):
+    def postCheckout(self, args):
         updateSubmodule = args["--checkoutSubmodule"]
         if updateSubmodule and updateSubmodule.lower() == 'true':
             logging.info("Post-Checkout Hook: Syncing submodule URLs...")
-            git.submodule("--quiet sync", execution_path=execution_path)
+            git.submodule("--quiet sync", execution_path=self.command_path)
             logging.info("Post-Checkout Hook: Updating submodules...")
-            git.submodule("--quiet update", execution_path=execution_path)
+            git.submodule("--quiet update", execution_path=self.command_path)

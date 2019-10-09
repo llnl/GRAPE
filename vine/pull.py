@@ -8,16 +8,6 @@ from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
-#def pull(branch="develop", repo=".", rebase=False):
-#    if rebase:
-#        argStr = f"--rebase origin {branch}"
-#    else:
-#        argStr = f"origin {branch} "
-#
-#    logging.info(f"Pulling {branch} in {repo}...")
-#    git.pull(argStr, throwOnFail=True)
-
-
 class Pull(Resumable, Option, CommandPathHandler):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
@@ -68,11 +58,10 @@ class Pull(Resumable, Option, CommandPathHandler):
             return True
         else:
             # Imported here to avoid circular dependencies
-#            from vine import grapeMenu
+            from vine import grapeMenu
             from vine.mergeRemote import MergeRemote
 
-#            merge_remote_command = grapeMenu.menu().getOption("mr")
-            merge_remote_command = MergeRemote()
+            merge_remote_command = grapeMenu.menu().getOption("mr")
             merge_remote_command.command_path = self.command_path
             val = merge_remote_command.execute(mrArgs)
             if val:

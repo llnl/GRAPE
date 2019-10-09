@@ -78,7 +78,8 @@ class Atlassian(object):
         if isNested:
             proj = os.path.split(path)[1]
             nestedProjectURL = config.get(f"nested-{proj}", "url")
-            url = git.parseSubprojectRemoteURL(nestedProjectURL)
+            url = git.parseSubprojectRemoteURL(
+                nestedProjectURL, execution_path=self.workspace_dir)
             urlTokens = url.split('/')
             proj = urlTokens[-2]
             repo_name = urlTokens[-1]       
@@ -88,7 +89,8 @@ class Atlassian(object):
             fullpath = os.path.abspath(path)
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config(f"--get submodule.{proj}.url").split('/')
+            url =  git.config(f"--get submodule.{proj}.url",
+                              execution_path=self.workspace_dir).split('/')
             proj = url[-2]
             repo_name = url[-1]
 

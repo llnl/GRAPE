@@ -559,7 +559,8 @@ def status(argstr="", *, execution_path):
 
 def submodule(argstr, *, execution_path):
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
-                  execution_path=execution_path)
+                  execution_path=execution_path,
+                  capture_output=False)
 
 
 def subtree(argstr, *, execution_path):

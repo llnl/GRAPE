@@ -31,18 +31,17 @@ class UpdateSubproject(Option, CommandPathHandler):
         super(UpdateSubproject, self).__init__()
         self._section = "Project Management"
         self._key = "updateSubproject"
-        
+
     def description(self):
         return "Updates a subproject (such as a subtree) from the subproject's host repository."
-    
+
     @log_wrapper
     def execute(self, args):
         if args["subtree"]:
             self.updateSubtree(args)
-        
+
     def updateSubtree(self, args):
         clean = utility.isWorkspaceClean(workspace_dir=self.workspace_dir)
-#        os.chdir(utility.workspaceDir())
         if not clean:
             logging.info("git-subtree requires a clean working tree before attempting a subtree update")
             return False
@@ -56,7 +55,7 @@ class UpdateSubproject(Option, CommandPathHandler):
         doSquash = config.get(Option.SECTION_SUBTREES, "mergePolicy").strip().lower() == "squash"
         squashArg = "--squash" if doSquash else ""
         git.subtree(f"pull --prefix {subtreePrefix} {fullURL} {branch} " +
-                    f"{squashArg}")
+                    f"{squashArg}", execution_path=self.workspace_dir)
 
         return True
         

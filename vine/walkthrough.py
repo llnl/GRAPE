@@ -232,7 +232,7 @@ class ProjectManager(CommandPathHandler):
         # Submodules
         self.submodules = []
         if self.showSubmodules:
-            activeSubmodules = (git.getActiveSubmodules(self.workspace_dir))
+            activeSubmodules = (git.getActiveSubmodules(execution_path=self.workspace_dir))
             self.projects.extend(activeSubmodules)
             self.submodules.extend(activeSubmodules)
             for proj in activeSubmodules:
@@ -241,7 +241,7 @@ class ProjectManager(CommandPathHandler):
                 self.projstatus.append(status)
                 self.projtype.append("Submodule")
             if self.showInactive:
-                inactiveSubmodules = list(set(git.getAllSubmodules()) - set(git.getActiveSubmodules(self.workspace_dir)))
+                inactiveSubmodules = list(set(git.getAllSubmodules(execution_path=self.workspace_dir)) - set(git.getActiveSubmodules(execution_path=self.workspace_dir)))
                 self.projects.extend(inactiveSubmodules)
                 self.submodules.extend(inactiveSubmodules)
                 for proj in inactiveSubmodules:
@@ -335,7 +335,7 @@ class DiffManager(ProjectManager):
         difftool = kwargs.get('difftool', None)
         if difftool == None:
             try:
-                difftool = git.config("--get diff.tool", self.command_path)
+                difftool = git.config("--get diff.tool", execution_path=self.command_path)
             except:
                 pass
 
@@ -384,16 +384,16 @@ class DiffManager(ProjectManager):
 
         if self.showToplevel or len(self.submodules) > 0:
             logging.info("Gathering status in outer level project...")
-            changedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}", self.command_path).split()
+            changedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}",
+                                    execution_path=self.command_path).split()
             logging.info("Done.")
 
         # Get the url mapping for all submodules
         if len(self.submodules) > 0:
-            submoduleURLMap = git.getAllSubmoduleURLMap()
+            submoduleURLMap = git.getAllSubmoduleURLMap(execution_path=self.command_path)
 
         logging.info("Examining projects...")
 
-#        os.chdir(utility.workspaceDir())
         # Loop over list backwards so we can delete entries
         for index in reversed(range(self.numprojects)):
             dir_ = self.projects[index]
@@ -415,7 +415,6 @@ class DiffManager(ProjectManager):
                     pass
                 else:
                     project_dir = os.path.join(self.workspace_dir, dir_)
-#                    with git.cd(project_dir):
                     logging.info(f"Gathering status in {dir_}...")
                     try:
                         haveDiff = len(git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}", execution_path=project_dir).split()) > 0
@@ -497,7 +496,7 @@ class DiffManager(ProjectManager):
             self.diffbranchB = self.getSubBranch(self.branchB)
 
         if type_.startswith("Inactive"):
-            remotels = git.gitcmd("ls-remote")
+            remotels = git.gitcmd("ls-remote", execution_path=self.command_path)
             self.filelist.insert(Tk.END, "<Unable to diff>")
             self.filenames.append("")
         else:
@@ -567,6 +566,7 @@ class DiffManager(ProjectManager):
                 cmd += f"\"{file_[0]}\" \"{file_[1]}\""
             else:
                 cmd += f"\"{file_}\""
-            difftooloutput = git.gitcmd(cmd, "Failed to launch difftool", self.command_path)
+            difftooloutput = git.gitcmd(cmd, "Failed to launch difftool",
+                                        execution_path=self.command_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"{e.msg} (return code {e.returnCode})\n{e.gitOutput}")
