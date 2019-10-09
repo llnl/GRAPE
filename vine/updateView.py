@@ -14,7 +14,6 @@ from vine import utility
 from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
-from vine.vine_logging import log_wrapper
 
 try:
     import tkinter as Tk
@@ -158,7 +157,7 @@ class UpdateView(Option, CommandPathHandler):
         """
         return self.defineActiveSubprojects(projectType="nested subproject")
 
-    @log_wrapper
+    @vine_logging.log_wrapper
     def execute(self, args):
         if args["--gui"] and TkinterImportError:
             logging.error("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
@@ -167,9 +166,6 @@ class UpdateView(Option, CommandPathHandler):
         sync = sync == "true" or sync == "yes"
         args["--sync"] = sync
         config = config_parser_global.grapeConfig()
-#        origwd = os.getcwd()
-#        wsDir = utility.workspaceDir()
-#        os.chdir(wsDir)
         base = git.baseDir(execution_path=self.workspace_dir)
         if base == "":
             return False
@@ -369,19 +365,7 @@ class UpdateView(Option, CommandPathHandler):
             git.currentBranch(execution_path=self.command_path), checkoutArgs,
             sync, workspace_dir=self.workspace_dir)
 
-#        os.chdir(origwd)
-
         return True
-
-#    @staticmethod
-#    def getDesiredSubmoduleBranch(config, *, execution_path):
-#        publicBranches = config.getPublicBranchList()
-#        currentBranch = git.currentBranch(execution_path)
-#        if currentBranch in publicBranches:
-#            desiredSubmoduleBranch = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[currentBranch]
-#        else:
-#            desiredSubmoduleBranch = currentBranch
-#        return desiredSubmoduleBranch
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)

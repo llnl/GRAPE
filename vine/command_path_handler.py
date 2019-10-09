@@ -49,7 +49,7 @@ class CommandPathHandler(object):
 
     def __set_workspace_dir(self):
         _base_dir = self._command_path
-        while _base_dir != self.SYS_INDEPENDENT_ROOT_DIR:
+        while _base_dir and _base_dir != self.SYS_INDEPENDENT_ROOT_DIR:
             if os.path.exists(os.path.join(_base_dir, '.git')):
                 self.WORKSPACE_DIR = _base_dir
             _base_dir = os.path.dirname(_base_dir)

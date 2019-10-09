@@ -86,7 +86,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             currentBranch = git.currentBranch(execution_path=self.command_path)
         except grape_errors.GrapeGitError:
             currentBranch = 'unknown'
-        publicBranch = self.lookupPublicBranch(self.command_path)
+        publicBranch = self.lookupPublicBranch(execution_path=self.command_path)
 
         return "Merge latest changes on {publicBranch} into {currentBranch}"
 

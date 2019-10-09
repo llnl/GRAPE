@@ -20,7 +20,8 @@ class Branches(Option, CommandPathHandler):
     def execute(self, args):
         os.environ["GIT_PYTHON_TRACE"] = "full"
         # Branches logged & printed during vine_subprocess.executeSubProcess()
-        git.branch(execution_path=self.command_path)
+        branches = git.branch(execution_path=self.command_path)
+        logging.info(f'\n{branches}')
         return True
 
     def setDefaultConfig(self, config):

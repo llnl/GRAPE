@@ -6,15 +6,17 @@ import logging
 import os
 import re
 import shutil
+import tempfile
 from vine import grape_errors
 from vine import vine_logging
 from vine import vine_subprocess
 
 
 GRAPE_CONFIG = '.grapeconfig'
+TEST_DIRS = [tempfile.gettempdir(), os.path.realpath(tempfile.tempdir)]
 
 
-def gitcmd(cmd, errmsg, *, execution_path):
+def gitcmd(cmd, errmsg, *, execution_path, capture_output=True):
     from vine import config_parser_global
 
     cnfg = config_parser_global.grapeConfig()
@@ -28,13 +30,12 @@ def gitcmd(cmd, errmsg, *, execution_path):
     else:
         _cmd = f"git {cmd}"
 
-#    cwd = None
-#    if execution_path:
-#        cwd = os.getcwd()
-#        os.chdir(execution_path)
-    completed_process = vine_subprocess.executeSubProcess(_cmd, working_dir=execution_path)
-#    if cwd:
-#        os.chdir(cwd)
+    completed_process = vine_subprocess.executeSubProcess(
+        _cmd, working_dir=execution_path, capture_output=capture_output)
+
+    if not capture_output:
+        return
+
     stdout_output = completed_process.stdout.decode()
     stderr_output = completed_process.stderr.decode()
     process_output = '\n'.join([stdout_output, stderr_output]).strip()
@@ -52,7 +53,7 @@ def add(filedescription, *, execution_path):
 
 def baseDir(*, execution_path):
     """Returns path in an OS (non-git) format."""
-    logging.info("Locating base directory.")
+    logging.debug("Locating base directory.")
     git_formatted_path = gitcmd(
         "rev-parse --show-toplevel", "Could not locate base directory",
         execution_path=execution_path)
@@ -81,8 +82,6 @@ def branchUpToDateWith(branchName, targetBranch, *, execution_path):
     For Windows portability, see 'join_list_as_git_path()'.
     """
     try:
-#        allUpToDateBranches = gitcmd(f"-C {execution_path} branch -a --contains {targetBranch}",
-#                                     "branch contains failed")
         allUpToDateBranches = gitcmd(f"branch -a --contains {targetBranch}",
                                      "branch contains failed",
                                      execution_path=execution_path)
@@ -117,12 +116,19 @@ def checkout(argstr, *, execution_path):
 
 
 def clone(argstr='', *, source_repo, clone_repo, execution_path):
+    if any(test_dir in source_repo.lower() or test_dir in clone_repo.lower()
+           for test_dir in TEST_DIRS):
+        capture_output = True
+    else:
+        capture_output = False
+
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
     try:
         return gitcmd(f"clone {argstr} {source_repo} {clone_repo}",
                       "Clone failed",
-                      execution_path=execution_path)
+                      execution_path=execution_path,
+                      capture_output=capture_output)
     except grape_errors.GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
@@ -326,7 +332,11 @@ def parseSubprojectRemoteURL(url, *, execution_path):
             originURL.append(p)
     if originURL[0] == '' and os.name != 'nt':
         originURL[0] = '/'
-    return os.path.join(*originURL)
+    parsed_url = os.path.join(*originURL)
+    if (parsed_url.startswith('ssh:/') and not parsed_url.startswith('ssh://')) \
+            or (parsed_url.startswith('https:/') and not parsed_url.startswith('https://')):
+        parsed_url = parsed_url.replace(':/', '://', 1)
+    return parsed_url
 
 
 def gitDir(*, execution_path):
@@ -505,7 +515,7 @@ def safeForceBranchToOriginRef(branchToSync, *, execution_path):
     if not branchExists and remoteRefExists:
         logging.info(f"local branch did not exist. Creating {branchToSync} " +
                      f"off of {remoteRef} now. ")
-        branch(f"{branchToSync} {remoteRef}")
+        branch(f"{branchToSync} {remoteRef}", execution_path=execution_path)
         return True
 
 def SHA(branchName="HEAD", *, execution_path):
