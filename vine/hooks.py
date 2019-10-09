@@ -180,7 +180,7 @@ class RunHook(Option, CommandPathHandler):
         logging.info("GRAPE: checking for cascades...")
         cascadeDict = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--cascade"])
         if cascadeDict:
-            currentBranch = git.currentBranch(self.command_path)
+            currentBranch = git.currentBranch(execution_path=self.command_path)
             while currentBranch in cascadeDict:
                 source = currentBranch
                 target = cascadeDict[source]

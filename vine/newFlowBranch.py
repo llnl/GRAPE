@@ -95,7 +95,7 @@ class NewBranchOption(Option, CommandPathHandler):
         changedURLModules = []
         if recurse:
             checkout.parseGitModulesDiffOutput(
-                git.currentBranch(self.command_path), start, addedModules,
+                git.currentBranch(execution_path=self.command_path), start, addedModules,
                 removedModules, changedURLModules,
                 workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls or

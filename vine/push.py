@@ -32,7 +32,7 @@ class Push(Option, CommandPathHandler):
 
     @log_wrapper
     def execute(self, args):
-        currentBranch = git.currentBranch(self.workspace_dir)
+        currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
