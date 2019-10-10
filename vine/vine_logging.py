@@ -21,10 +21,10 @@ def log_wrapper(func, *args, **kwargs):
         func_info = func.__module__ + "." + func.__name__ + " IN " + \
                     func.__code__.co_filename + " LINE: " + \
                     str(func.__code__.co_firstlineno)
-        logging.debug("STARTING " + func_info)
+        logging.debug("STARTING %s", func_info)
         result = func(*args, **kwargs)
-        logging.debug(func_info + " RETURNED: '" + repr(result) + "'")
-        logging.debug("FINISHED " + func_info + "\n")
+        logging.debug("%s RETURNED: '%r'", func_info, repr(result))
+        logging.debug("FINISHED %s\n", func_info)
         return result
     return wrapper
 
@@ -96,9 +96,9 @@ class GrapeLogger(metaclass=Singleton):
         for handler in self.manager.root.handlers:
             if isinstance(handler, logging.StreamHandler) \
                 and handler.stream == stream:
-                    if logging_level:
-                        return handler.level == logging_level
-                    return True
+                if logging_level:
+                    return handler.level == logging_level
+                return True
         return False
 
     def log_to_file(self, log_file):
@@ -143,21 +143,21 @@ class GrapeLogger(metaclass=Singleton):
         self.manager.root.addHandler(stream_handler)
 
 
-class StreamHandlerFactory(object):
+class StreamHandlerFactory:
 
     DEBUG = 'debug'
     STDERR = 'stderr'
     STDOUT = 'stdout'
 
     def __call__(self, stream):
-        if stream == self.STDOUT:
-            return self.get_stdout_logger()
-        elif stream == self.STDERR:
-            return self.get_stderr_logger()
-        elif stream == self.DEBUG:
-            return self.get_stdout_logger(logging.DEBUG)
-        else:
-            logging.warning("StreamHandlerFactory: Invalid stream type given.")
+        stream_loggers = {
+            self.STDOUT: self.get_stdout_logger(),
+            self.STDERR: self.get_stderr_logger(),
+            self.DEBUG: self.get_stdout_logger(logging.DEBUG)
+            }
+        if stream in stream_loggers:
+            return stream_loggers[stream]
+        logging.warning("StreamHandlerFactory: Invalid stream type given.")
 
     def get_stdout_logger(self, logging_level=logging.INFO):
         """Returns a logger that exclusively logs to sys.stdout.
@@ -192,7 +192,7 @@ class StreamHandlerFactory(object):
     def _get_formatter(stream=sys.stdout):
         if stream == sys.stdout:
             return logging.Formatter('GRAPE: %(message)s')
-        elif stream == sys.stderr:
+        if stream == sys.stderr:
             return logging.Formatter('%(levelname)s: %(message)s')
 
 
@@ -201,6 +201,7 @@ class SingleLevelFilter(logging.Filter):
 
     def __init__(self, level, name=''):
         super(SingleLevelFilter, self).__init__(name)
+        logging.FileHandler.filter
         self.__level = level
 
     def filter(self, logRecord):

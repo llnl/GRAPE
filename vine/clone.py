@@ -1,8 +1,6 @@
 import logging
-import os
 from vine import config_parser_global
 from vine import grapeGit as git
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
@@ -20,8 +18,8 @@ class Clone(Option, CommandPathHandler):
 
     Options:
         --recursive   Recursively clone submodules.
-        --allNested   Get all nested subprojects. 
-        
+        --allNested   Get all nested subprojects.
+
     """
 
     def __init__(self):
@@ -69,7 +67,7 @@ class Clone(Option, CommandPathHandler):
 
         if args["--allNested"]:
             configArgs = ["--uv","--uvArg=--allNestedSubprojects"]
-        else: 
+        else:
             configArgs = []
         return menu.applyMenuChoice("config", configArgs)
 

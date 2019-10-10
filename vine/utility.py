@@ -1,10 +1,8 @@
 """GRAPE's git utility logic across multiple repositories."""
-from contextlib import contextmanager
 import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
-from vine import config_parser_user
 if os.uname().sysname == 'Linux':
     import readline
 
@@ -36,7 +34,7 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
 def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
     for key in args:
-        if type(args[key]) is str and GRAPE_CONFIG in args[key] and config is not None:
+        if isinstance(args[key], str) and GRAPE_CONFIG in args[key] and config is not None:
             tokens = args[key].split('.')
             args[key] = config.get(tokens[2].strip(), tokens[3].strip())
     return args
@@ -52,16 +50,15 @@ def userInput(message, default=None):
     print(f"\n{message}")
     if default is "" or default is None:
         return input('==> ').strip()
-    else:
-        value = input(f"(def: {default}) ==> ").strip()
-        if value == "":
-            value = default
-        if default.lower() == "y" or default.lower() == "n":
-            if value.lower()[0] == "y":
-                return True
-            if value.lower()[0] == "n":
-                return False
-        return value
+    value = input(f"(def: {default}) ==> ").strip()
+    if value == "":
+        value = default
+    if default.lower() == "y" or default.lower() == "n":
+        if value.lower()[0] == "y":
+            return True
+        if value.lower()[0] == "n":
+            return False
+    return value
 
 
 def isWorkspaceClean(printOutput=False, *, workspace_dir):

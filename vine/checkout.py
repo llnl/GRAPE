@@ -12,7 +12,6 @@ from vine import multi_repo_cmd_launcher
 from vine.option import Option
 from vine.command_path_handler import CommandPathHandler
 from vine import utility
-from vine import vine_logging
 from vine.vine_logging import log_wrapper
 
 
@@ -39,7 +38,6 @@ def handleCheckoutMRE(mre):
     global _skipBranchCreation
     global _createNewBranch
     newBranchReposArgTuples = []
-    newBranches = []
 
     for e1, branch, project, checkoutargs in zip(mre.exceptions(), mre.branches(), mre.repos(), mre.args()):
         try:
@@ -110,7 +108,7 @@ def handleCheckoutMRE(mre):
             else:
                 raise e
 
-    if len(newBranchReposArgTuples) > 0:
+    if newBranchReposArgTuples:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             createNewBranches,
             listOfRepoBranchArgTuples=newBranchReposArgTuples,
@@ -268,8 +266,7 @@ class Checkout(Option, CommandPathHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
-        sync = args["--sync"].lower().strip()
-        sync = sync == "true" or sync == "yes"
+        sync = args["--sync"].lower().strip() in ['true', 'yes']
         args["--sync"] = sync
         branch = args["<branch>"]
 

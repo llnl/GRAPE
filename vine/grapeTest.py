@@ -5,13 +5,13 @@ from vine.vine_logging import log_wrapper
 class Test(Option):
     """
     grape test
-    Runs grape's unit tests.    
+    Runs grape's unit tests.
     Usage: grape-test [--debug] [<suite>]...
 
 
     Arguments:
     <suite>  The name of the suite to test. The default is all.
-             Enter listSuites as the suite name to list available suites. 
+             Enter listSuites as the suite name to list available suites.
              <suite> = <suite name>.<test> will run a particular test in a suite.
 
     """

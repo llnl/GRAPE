@@ -1,4 +1,3 @@
-import os
 from vine import config_parser_global
 from vine import utility
 from vine.command_path_handler import CommandPathHandler
@@ -54,7 +53,7 @@ class Merge(Resumable, Option, CommandPathHandler):
         self.set_progress_file(execution_path=self.command_path)
 
         # this is necessary due to the unholy relationships between mr, m, and md.
-        if not "<<cmd>>" in args:
+        if "<<cmd>>" not in args:
             args["<<cmd>>"] = 'm'
         otherBranch = args["<branch>"] if args["<branch>"] else utility.userInput("Enter name of branch you would like"
                                                                                   " to merge into this branch")

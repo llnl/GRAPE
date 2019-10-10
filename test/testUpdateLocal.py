@@ -8,15 +8,8 @@ from test import testProjectScenarios
 class GrapeUpTester(testGrape.TestGrape):
 
     def gridtestGrapeUp(self, testProjectScenario):
-
-        debugging = False
-        #if testProjectScenario.debugging() or debugging:
-        #     self.switchToStdout()
-        #oldstdout = sys.stdout
-        os.chdir(testProjectScenario.getProjectDir())
-        # make sure the output is captured so we can check the number of fetches that occur
-
-        ret = self.menu.applyMenuChoice("up", args=None, option_args=None, globalArgs=['-v'])
+        self.menu.set_command_path(testProjectScenario.getProjectDir())
+        ret = self.menu.applyMenuChoice("up", args=None, option_args=None)
         self.assertTrue(ret, "up failed to run")
         # NOTE The following counting of the number of fetches is incorrect
         #upoutput = "%s" % self.output.getvalue()

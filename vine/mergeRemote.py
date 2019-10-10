@@ -1,11 +1,9 @@
 import logging
-import os
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import merge
 from vine import multi_repo_cmd_launcher
 from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
@@ -53,7 +51,7 @@ class MergeRemote(Option, CommandPathHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
-        if not "<<cmd>>" in args:
+        if "<<cmd>>" not in args:
             args["<<cmd>>"] = "mr"
         otherBranch = args['<branch>']
         if not otherBranch:
@@ -101,7 +99,7 @@ class MergeRemote(Option, CommandPathHandler):
         args["--noUpdate"] = True
         # if mr is called by the user, need to initialize the --continue argument.
         # if it is called by md, it will be set already.
-        if not "--continue" in args:
+        if "--continue" not in args:
             args["--continue"] = False
 
         merge_command = grapeMenu.menu().getOption('m')

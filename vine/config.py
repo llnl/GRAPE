@@ -1,10 +1,10 @@
 import logging
 import os
+import shutil
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
 from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
@@ -14,18 +14,18 @@ from vine.vine_logging import log_wrapper
 class Config(Option, CommandPathHandler):
     """
     Configures the current repo to be optimized for GRAPE on LC
-    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache | --credcache] [--p4merge] 
+    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv]
+                        [--nocredcache | --credcache] [--p4merge]
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
-        --credcache     enables https 12 hr credential cacheing. 
+        --credcache     enables https 12 hr credential cacheing.
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
-        --p4merge       will set up p4merge as your merge tool. 
+        --p4merge       will set up p4merge as your merge tool.
         --nop4merge     will skip p4merge questions.
-        --p4diff        will set up p4merge as your diff tool. 
+        --p4diff        will set up p4merge as your diff tool.
         --nop4diff      will skip p4diff questions.
         --git-p4        will configure your repo for use with git-p4 (deprecated)
 
@@ -47,7 +47,7 @@ class Config(Option, CommandPathHandler):
         if base == "":
             return False
         dotGit = git.gitDir(execution_path=self.command_path)
-         
+
         logging.info("Optimizing git performance on slow file systems...")
         #runs file system intensive tasks such as git status and git commit
         # in parallel (important for NFS systems such as LC)
@@ -80,7 +80,7 @@ class Config(Option, CommandPathHandler):
         mergeVerifyPath = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                        "merge-and-verify-driver")
 
-        if os.path.exists(mergeVerifyPath): 
+        if os.path.exists(mergeVerifyPath):
             logging.info("Enabling safe merges (triggers conflicts any time same file is modified),\n\t see 'as' option for grape m and grape md...")
             git.config("merge.verify.name","merge and verify driver", execution_path=self.command_path)
             git.config("merge.verify.driver","%s/merge-and-verify-driver %A %O %B", execution_path=self.command_path)
@@ -90,7 +90,7 @@ class Config(Option, CommandPathHandler):
         # key junctions in the history for this branch.
         logging.info("Setting lg as an alias for a pretty log call...")
         git.config("alias.lg", "log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative --simplify-by-decoration", execution_path=self.command_path)
-        
+
         # perform an update of the active subprojects if asked.
         ask = not args["--nouv"]
         updateView = ask and (args["--uv"] or utility.userInput("Do you want to edit your active subprojects?"
@@ -123,10 +123,10 @@ class Config(Option, CommandPathHandler):
         if useP4Diff:
             p4diffScript = os.path.join(os.path.dirname(os.path.dirname(__file__)),
                                         "p4diff")
-            if os.path.exists(p4diffScript): 
+            if os.path.exists(p4diffScript):
                 git.config("diff.external", p4diffScript, execution_path=self.command_path)
                 logging.info("Configured repo to use p4merge for diff calls - p4merge must be in your path")
-            else: 
+            else:
                 logging.info(f"Could not find p4diff script at {p4diffScript}")
         useGitP4 = args["--git-p4"]
         if useGitP4:
@@ -167,27 +167,27 @@ class Config(Option, CommandPathHandler):
         # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
         for proj in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             self.ensurePublicBranchesExist(os.path.join(self.workspace_dir, proj), publicBranches)
-        
+
         self.ensurePublicBranchesExist(self.workspace_dir, publicBranches)
-            
+
         return True
 
     def setDefaultConfig(self, config):
         pass
-    
+
     @staticmethod
     def ensurePublicBranchesExist(repo, publicBranches):
         allBranches = git.allBranches(execution_path=repo)
         missingBranches = []
         for branch in publicBranches:
             if f"remotes/origin/{branch}" not in allBranches:
-               missingBranches.append(branch)
+                missingBranches.append(branch)
             if (f"remotes/origin/{branch}" in allBranches) and (branch not in allBranches):
                 logging.info(
                     f"Public branch {branch} does not have local version " +
                     f"in {repo}. Creating it now.")
                 git.branch(f"{branch} origin/{branch}", execution_path=repo)
-        if len(missingBranches) > 0:
+        if missingBranches:
             logging.warning(
                 "WARNING: the following public branches do not appear " +
                 f"to exist on the remote origin of {repo}:\n" +

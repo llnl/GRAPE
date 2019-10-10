@@ -134,7 +134,6 @@ class TestGrape(unittest.TestCase):
                 func(path)
             else:
                 raise Exception
-        os.chdir(os.path.abspath(os.path.dirname(self.defaultWorkingDirectory)))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
         # reset grapeConfig and grapeMenu
@@ -232,9 +231,9 @@ def main(argv, debug=False):
             print(testClasses.keys())
             exit(0)
         if "Status" in argv:
-           testClasses.update({"Status": testStatus.createStatusTester()})
+            testClasses.update({"Status": testStatus.createStatusTester()})
         if "GrapeUp" in argv:
-           testClasses.update({"GrapeUp": testUpdateLocal.createUpTester()})
+            testClasses.update({"GrapeUp": testUpdateLocal.createUpTester()})
         for arg in argv:
             if '.' in arg:
                 (cls, sub) = arg.split('.')

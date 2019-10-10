@@ -4,8 +4,6 @@ import os
 import re
 import smtplib
 import socket
-import subprocess
-import sys
 import tempfile
 import time
 import traceback
@@ -20,7 +18,6 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import utility
-from vine import vine_logging
 from vine import vine_subprocess
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
@@ -276,7 +273,7 @@ class Publish(Resumable, Option, CommandPathHandler):
                f"branch to {public}"
 
     def _resume(self, args, *, workspace_dir):
-        super(Publish, self)._resume(args, workspace_dir)
+        super(Publish, self)._resume(args, workspace_dir=workspace_dir)
         self.execute(args)
 
     def _saveProgress(self, args):
@@ -287,7 +284,9 @@ class Publish(Resumable, Option, CommandPathHandler):
         topic = args["--topic"]
         if not topic:
             topic = git.currentBranch(execution_path=self.command_path)
-        if topic != git.currentBranch(execution_path=self.command_path) and self.after(self.order, "publish", args["--startAt"]):
+        if topic != git.currentBranch(execution_path=self.command_path) and \
+                args['--startAt'] and self.order in args['--startAt'] and \
+                'publish' in args["--startAt"]:
             git.checkout(topic, execution_path=self.command_path)
         args["--topic"] = topic
 
@@ -302,8 +301,8 @@ class Publish(Resumable, Option, CommandPathHandler):
         # whether or not to use Bitbucket
         if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
-        if not args["--noReview"] and type(args["--verifySSL"]) != bool:
-            verify = True if args["--verifySSL"].lower() == "true" else False
+        if not args["--noReview"] and not isinstance(args["--verifySSL"], bool):
+            verify = args["--verifySSL"].lower() == "true"
             args["--verifySSL"] = verify
         # get the Bitbucket Username
         user = args["--user"]
@@ -335,14 +334,6 @@ class Publish(Resumable, Option, CommandPathHandler):
         # release IN PROGRESS LOCK
         logging.info("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
-
-    @staticmethod
-    def after(array, item1, item2):
-        try:
-            pos1 = array.index(item1)
-            pos2 = array.index(item2)
-        except ValueError:
-            return False
 
     @log_wrapper
     def execute(self, args):
@@ -526,20 +517,20 @@ class Publish(Resumable, Option, CommandPathHandler):
         if len(inProgressRequests) == 0:
             logging.info("No other pull requests are IN PROGRESS...")
             return True
-        elif len(inProgressRequests) == 1:
+        if len(inProgressRequests) == 1:
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if thisRequest == inProgressRequests[0]:
                 logging.info("The pull request for this branch is already in progress. Continuing...")
                 return 2
-            else:
-                logging.info("The following pull request is already in progress:")
-                logging.info(inProgressRequests[0])
-                return False
+            logging.info("The following pull request is already in progress:")
+            logging.info(inProgressRequests[0])
+            return False
         else:
             logging.error("ERROR: There are multiple pull requests in progress!")
             for request in inProgressRequests:
                 logging.info(request)
             return False
+
     def acquireInProgressLock(self, args):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Check..")
@@ -839,10 +830,9 @@ class Publish(Resumable, Option, CommandPathHandler):
             args["<CommitMessageFile>"] = False
             args["-m"] = False
             raise e
-        else:
-            self.progress["commitMsg"] = escapedCommitMsg
-            args["-m"] = escapedCommitMsg
-            return True
+        self.progress["commitMsg"] = escapedCommitMsg
+        args["-m"] = escapedCommitMsg
+        return True
 
     def updateLog(self, args):
         if not (self.loadCommitMessage(args) and self.loadVersion(args)):
@@ -1072,8 +1062,7 @@ class Publish(Resumable, Option, CommandPathHandler):
                 logging.info(f"{topic} merged successfully to {public}")
                 logging.info(f"You are currently on {public}")
                 return True
-            else:
-                logging.info("Failed to do a remote merge.")
+            logging.info("Failed to do a remote merge.")
         else:
             logging.info(
                 f"Could not find open Pull Request for {topic} in {repo}")
@@ -1127,7 +1116,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             args["<<cascadeDict>>"] = self.cascadeDict
 
     def performCascade(self, status, args, mergeID, repo, branch, public):
-        if not mergeID in status:
+        if mergeID not in status:
             status[mergeID] = "READY"
         if status[mergeID] == "DONE":
             return True
@@ -1285,7 +1274,7 @@ class Publish(Resumable, Option, CommandPathHandler):
                 self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
 
         # deal with nested subprojects. 'workspaceDir' is None on purpose.
-        self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, topic, workspaceDir=self.workspace_dir)
+        self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
         self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.command_path) else False
 
@@ -1466,5 +1455,4 @@ class Publish(Resumable, Option, CommandPathHandler):
             else:
                 git.checkout(public, execution_path=self.working_dir)
             return True
-        else:
-            return False
+        return False

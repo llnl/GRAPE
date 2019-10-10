@@ -6,7 +6,6 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
@@ -81,7 +80,8 @@ class NewBranchOption(Option, CommandPathHandler):
 
         branchName = os.path.join(self._key, args["--user"], args["<descr>"])
 
-        branchStatus = checkout.branchAlreadyExists(branchName)
+        branchStatus = checkout.branchAlreadyExists(branchName,
+                                                    self.workspace_dir)
         if branchStatus:
             logging.info("Not creating new branch.")
             if branchStatus == 1:
@@ -146,7 +146,7 @@ class NewBranchOption(Option, CommandPathHandler):
         config.set(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings', '?:develop')
 
 
-class NewBranchOptionFactory(object):
+class NewBranchOptionFactory:
 
     @staticmethod
     def createNewBranchOptions(config, *, execution_path):

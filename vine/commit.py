@@ -4,7 +4,6 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
-from vine import vine_logging
 from vine.option import Option
 from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
@@ -64,7 +63,7 @@ class Commit(Option, CommandPathHandler):
 
         if submodules or git.status("--porcelain", execution_path=self.workspace_dir):
             logging.info("Performing commit in outer level project...")
-            self.commit(commitargs, execution_path=self.workspace_dir)
+            self.commit(commitargs, self.workspace_dir)
         return True
 
     def setDefaultConfig(self,config):

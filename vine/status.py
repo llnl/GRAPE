@@ -6,8 +6,6 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper

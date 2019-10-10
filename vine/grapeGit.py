@@ -1,5 +1,4 @@
 """GRAPE's git utility logic across a single repository."""
-from contextlib import contextmanager
 import configparser
 import io
 import logging
@@ -8,12 +7,10 @@ import re
 import shutil
 import tempfile
 from vine import grape_errors
-from vine import vine_logging
 from vine import vine_subprocess
 
 
 GRAPE_CONFIG = '.grapeconfig'
-TEST_DIRS = [tempfile.gettempdir(), os.path.realpath(tempfile.tempdir)]
 
 
 def gitcmd(cmd, errmsg, *, execution_path, capture_output=True):
@@ -115,12 +112,23 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
+def _should_capture_output(*args):
+    """
+    Indicates whether a Git subprocess' output should be captured or not.
+
+    Captured output is not streamed to STDOUT/STDERR but is returned with the
+    completed process object. This is desirable during routine testing.
+    Not capturing output permits the Git subprocess to stream to STDOUT/STDERR
+    and is desirable for long running processes such as cloning. One drawback
+    is that this output is not stored and returned for further processing.
+    """
+    TEST_DIR = os.path.realpath(tempfile.gettempdir())
+    return any(os.path.commonpath([TEST_DIR, path]) == TEST_DIR
+               for path in args)
+
+
 def clone(argstr='', *, source_repo, clone_repo, execution_path):
-    if any(test_dir in source_repo.lower() or test_dir in clone_repo.lower()
-           for test_dir in TEST_DIRS):
-        capture_output = True
-    else:
-        capture_output = False
+    capture_output = _should_capture_output(source_repo, clone_repo)
 
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
@@ -135,10 +143,9 @@ def clone(argstr='', *, source_repo, clone_repo, execution_path):
         if e.commError:
             logging.warning("GRAPE: clone failed due to connectivity issues.")
             return e.gitOutput
-        else:
-            logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
-            logging.warning(e.gitOutput)
-            raise e
+        logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
+        logging.warning(e.gitOutput)
+        raise e
 
 
 def commit(argstr, *, execution_path):
@@ -166,9 +173,8 @@ def config(argstr, arg2=None, *, execution_path):
     if arg2 is not None:
         return gitcmd(f'config {argstr} "{arg2}"', "Config failed",
                       execution_path=execution_path)
-    else:
-        return gitcmd(f'config {argstr} ', "Config failed",
-                      execution_path=execution_path)
+    return gitcmd(f'config {argstr} ', "Config failed",
+                  execution_path=execution_path)
 
 
 def conflictedFiles(*, execution_path):
@@ -210,8 +216,7 @@ def fetch(repo="", branchArg="", raiseOnCommError=False,
                 raise e
             else:
                 return e.gitOutput
-        else:
-            raise e
+        raise e
 
 
 def getActiveSubmodules(*, execution_path):
@@ -425,7 +430,7 @@ def numberCommitsSince(commitStr, *, execution_path):
 def numberCommitsSinceRoot(*, execution_path):
     root = gitcmd(f"rev-list --max-parents=0 HEAD", "rev-list failed",
                   execution_path=execution_path)
-    return numberCommitsSince(root)
+    return numberCommitsSince(root, execution_path=execution_path)
 
 
 def pull(args, throwOnFail=False, *, execution_path):
@@ -439,9 +444,7 @@ def pull(args, throwOnFail=False, *, execution_path):
                 raise e
             else:
                 return e.gitOutput
-
-        else:
-            raise e
+        raise e
 
 
 def push(args, throwOnFail=False, *, execution_path):
@@ -455,8 +458,7 @@ def push(args, throwOnFail=False, *, execution_path):
                 raise e
             else:
                 return e.gitOutput
-        else:
-            raise e
+        raise e
 
 
 def rebase(args, *, execution_path):
@@ -545,8 +547,7 @@ def showRemote(*, execution_path):
         if e.code == 128:
             logging.warning(f"WARNING: {e.gitCommand} failed. Ignoring...")
             return e.gitOutput
-        else:
-            raise e
+        raise e
 
 def stash(argstr="", *, execution_path):
     return gitcmd(f"stash {argstr}", "stash failed for some reason",
@@ -558,9 +559,10 @@ def status(argstr="", *, execution_path):
 
 
 def submodule(argstr, *, execution_path):
+    capture_output = _should_capture_output(execution_path)
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
                   execution_path=execution_path,
-                  capture_output=False)
+                  capture_output=capture_output)
 
 
 def subtree(argstr, *, execution_path):

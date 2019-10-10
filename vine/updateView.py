@@ -11,7 +11,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
-from vine import vine_logging
+from vine.vine_logging import log_wrapper
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 
@@ -157,13 +157,12 @@ class UpdateView(Option, CommandPathHandler):
         """
         return self.defineActiveSubprojects(projectType="nested subproject")
 
-    @vine_logging.log_wrapper
+    @log_wrapper
     def execute(self, args):
         if args["--gui"] and TkinterImportError:
             logging.error("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
             return True
-        sync = args["--sync"].lower().strip()
-        sync = sync == "true" or sync == "yes"
+        sync = args["--sync"].lower().strip() in ["true", "yes"]
         args["--sync"] = sync
         config = config_parser_global.grapeConfig()
         base = git.baseDir(execution_path=self.workspace_dir)
@@ -239,16 +238,16 @@ class UpdateView(Option, CommandPathHandler):
             if root:
                 self.uvManager.finalize()
                 root.mainloop()
-                if self.uvManager.saved == False:
+                if self.uvManager.saved is False:
                     logging.info("Not changing working view.")
                     return False
                 # If --all/--add/--rm is used, only consider the
                 # command line for the included subprojects.
-                if self.uvManager.includedSubmodules == None:
+                if self.uvManager.includedSubmodules is None:
                     logging.info("Submodule changes from GUI ignored")
                 else:
                     includedSubmodules = self.uvManager.includedSubmodules
-                if self.uvManager.includedNestedSubprojects == None:
+                if self.uvManager.includedNestedSubprojects is None:
                     logging.info("Nested subproject changes from GUI ignored")
                 else:
                     includedNestedSubprojectPrefixes = self.uvManager.includedNestedSubprojects
@@ -456,7 +455,7 @@ def handleEnsureLocalUpToDateMRE(mre):
     # do another MRC launch to do any follow up pushes that were requested.
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs,
-        execution_path=self.command_path)
+        execution_path=repo)
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
@@ -476,7 +475,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir):
 
 
 # Class for selecting subprojects in a workspace
-class UVManager(object):
+class UVManager:
     def __init__(self, master, **kwargs):
         height = kwargs.get('height', 0)
         width  = kwargs.get('width', 0)
@@ -523,14 +522,14 @@ class UVManager(object):
 
     # Save changes and exit
     def saveChanges(self):
-        if self.activeSets[0] != None:
+        if self.activeSets[0] is not None:
             self.saved = True
             self.includedSubmodules = {}
             for sub in self.activeSets[0]:
                 self.includedSubmodules[sub] = True
             for sub in self.inactiveSets[0]:
                 self.includedSubmodules[sub] = False
-        if self.activeSets[1] != None:
+        if self.activeSets[1] is not None:
             self.saved = True
             self.includedNestedSubprojects = {}
             for sub in self.activeSets[1]:
@@ -568,7 +567,7 @@ class UVManager(object):
     # Start a new section for a different directory
     def createSection(self, directory):
         # sort the previous section (if any)
-        if self.currentActiveList != None:
+        if self.currentActiveList is not None:
             self.resortList(self.currentActiveList)
             self.resortList(self.currentInactiveList)
 
@@ -614,9 +613,9 @@ class UVManager(object):
 
     # Create an entry for a subproject
     def createEntry(self, subproject, isActive):
-        if self.activeSets[self.currentProjectIndex] == None:
+        if self.activeSets[self.currentProjectIndex] is None:
             self.activeSets[self.currentProjectIndex] = set()
-        if self.inactiveSets[self.currentProjectIndex] == None:
+        if self.inactiveSets[self.currentProjectIndex] is None:
             self.inactiveSets[self.currentProjectIndex] = set()
 
         if isActive:
@@ -680,7 +679,7 @@ class UVManager(object):
         listbox.delete(0, Tk.END)
         for entry in sorted(entries):
             listbox.insert(Tk.END, entry)
-            if originalset != None:
+            if originalset is not None:
                 if entry in originalset:
                     listbox.itemconfig(Tk.END, fg=inSetColor)
                 else:

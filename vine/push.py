@@ -1,11 +1,8 @@
 import logging
-import os
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine import utility
-from vine import vine_logging
 from vine.option import Option
 from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
@@ -32,11 +29,11 @@ class Push(Option, CommandPathHandler):
 
     @log_wrapper
     def execute(self, args):
-        currentBranch = git.currentBranch(execution_path=self.workspace_dir)
+        git.currentBranch(execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
-        publicBranches = config.getPublicBranchList()
+        config.getPublicBranchList()
 
-        submodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             push, execution_path=self.command_path)

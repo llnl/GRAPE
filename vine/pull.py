@@ -1,7 +1,5 @@
 import logging
-import os
 from vine import grapeGit as git
-from vine import vine_logging
 from vine.option import Option
 from vine.command_path_handler import CommandPathHandler
 from vine.resumable import Resumable
@@ -37,7 +35,7 @@ class Pull(Resumable, Option, CommandPathHandler):
         currentBranch = git.currentBranch(execution_path=self.command_path)
         mrArgs["<branch>"] = currentBranch
         # the <<cmd>> stuff is for consistent --continue output
-        if not "<<cmd>>" in args:
+        if "<<cmd>>" not in args:
             args["<<cmd>>"] = "pull"
         mrArgs["<<cmd>>"] = args["<<cmd>>"]
         mrArgs["--am"] = True
@@ -56,17 +54,15 @@ class Pull(Resumable, Option, CommandPathHandler):
             git.pull(f"origin {currentBranch}", execution_path=self.command_path)
             logging.info("Pulled current branch from origin")
             return True
-        else:
-            # Imported here to avoid circular dependencies
-            from vine import grapeMenu
-            from vine.mergeRemote import MergeRemote
+        # Imported here to avoid circular dependencies
+        from vine import grapeMenu
 
-            merge_remote_command = grapeMenu.menu().getOption("mr")
-            merge_remote_command.command_path = self.command_path
-            val = merge_remote_command.execute(mrArgs)
-            if val:
-                logging.info("Pulled current branch from origin")
-            return val
+        merge_remote_command = grapeMenu.menu().getOption("mr")
+        merge_remote_command.command_path = self.command_path
+        val = merge_remote_command.execute(mrArgs)
+        if val:
+            logging.info("Pulled current branch from origin")
+        return val
 
     def _resume(self, args, *, workspace_dir):
         # Imported here to avoid circular dependencies

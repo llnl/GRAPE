@@ -3,7 +3,7 @@ import logging
 import os
 
 
-class CommandPathHandler(object):
+class CommandPathHandler:
     """Paths referenced by git commands when executed.
 
     Set 'command_path' to a directory where a user would manually run a git

@@ -2,12 +2,10 @@ import configparser
 import os
 from vine import config_parser_base
 from vine import config_parser_global
-from vine import utility
 
 
 class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
 
-#    def __init__(self, workspaceDir=None, configString=None, * workspace_dir):
     def __init__(self, configString=None, *, workspace_dir):
         super(GrapeConfigParserUser, self).__init__(
             workspaceDir=workspace_dir, configString=configString)
@@ -77,7 +75,7 @@ def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir):
     return modified
 
 
-def getAllModifiedNestedSubprojectPrefixes(since, now="HEAD", *, workspaceDir):
+def getAllModifiedNestedSubprojectPrefixes(since, *, workspaceDir):
     config = __get_global_grape_config()
     return [config.get(f"nested-{name}", "prefix") for name in getAllModifiedNestedSubprojects(since, workspaceDir=workspaceDir)]
 

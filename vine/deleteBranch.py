@@ -1,12 +1,10 @@
 import logging
-import os
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine.option import Option
 from vine.command_path_handler import CommandPathHandler
 from vine import utility
-from vine import vine_logging
 from vine.vine_logging import log_wrapper
 
 
@@ -128,5 +126,5 @@ def handleDeleteBranchMRE(mre, force=False):
 
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         detachThenForceDeleteBranch, listOfRepoBranchArgTuples=detachTuples,
-        execution_path=self.command_path)
+        execution_path=repo)
     launcher.launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)

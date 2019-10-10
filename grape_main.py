@@ -42,9 +42,7 @@ def startup():
     versionOutput = git.version(execution_path=os.getcwd()).split()
     versionString = versionOutput.pop()
     while '.' not in versionString:
-       versionString = versionOutput.pop()
-
-    versions = versionString.split('.') 
+        versionString = versionOutput.pop()
 
     #TODO - allow addition grape config file to be specified at command line
     #additionalConfigFiles = []

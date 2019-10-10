@@ -4,7 +4,6 @@ import shutil
 import sys
 import tempfile
 import types
-#from test.testGrape import writeFile1
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
@@ -14,7 +13,7 @@ from vine import vine_logging
 #A grape project in a command list form that has reset capability.
 #Another way to make this work would be to take a user generated reset function
 #in the constructor and just apply that.
-class ResettableProject(object):
+class ResettableProject:
     def __init__(self, projectDir):
 
         self.projectPrefix = os.path.realpath(tempfile.mkdtemp())
@@ -45,12 +44,6 @@ class ResettableProject(object):
 
     def getOriginDir(self):
         return os.path.abspath(self.getProjectDir()+".origin")
-
-    def cdToProjectDirCmd(self):
-        return (os.chdir, lambda : self.getProjectDir())
-
-    def cdToOriginDirCmd(self):
-        return (os.chdir, lambda : self.getOriginDir())
 
     def addCommands(self, newCmds):
         self.cmdList.extend(newCmds)
@@ -139,8 +132,8 @@ def generateTest(project, method):
 # "gridtest" instead of test.  It then generates test methods for the M*N cases in that class.
 def gridifyTestClass(projectList, testClass, projectNames=None):
     #Digest the class into pieces we can work with namely the method names and the methods pulled out of the class
-    testMethodNames = [method for method in dir(testClass) if callable(getattr(testClass, method))
-                            and method.find("gridtest") == 0]
+    testMethodNames = [method for method in dir(testClass)
+                       if callable(getattr(testClass, method)) and method.find("gridtest") == 0]
     testMethods = [getattr(testClass, method) for method in testMethodNames]
 
     #Now add the N*M test methods to the class testClass

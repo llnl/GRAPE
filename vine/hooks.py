@@ -7,7 +7,6 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
@@ -129,8 +128,7 @@ class RunHook(Option, CommandPathHandler):
                 finally:
                     if args["--noExit"]:
                         return True
-                    else:
-                        exit(0)
+                    exit(0)
 
     def setDefaultConfig(self, config):
         # post-commit
@@ -187,13 +185,14 @@ class RunHook(Option, CommandPathHandler):
                                           execution_path=self.command_path):
                     fastForward = True
                     logging.info("GRAPE: should be a fastforward cascade...")
-                git.checkout(f"{target}", self.command_path)
-                git.merge(f"{source} -m 'Cascade from {source} to {target}'", self.command_path)
+                git.checkout(f"{target}", execution_path=self.command_path)
+                git.merge(f"{source} -m 'Cascade from {source} to {target}'",
+                          execution_path=self.command_path)
                 # we need to kick off the next one if it was a fast forward merge.
                 # otherwise, another post-commit hook should be called from the merge commit.
                 if fastForward:
                     if autoPush:
-                        git.push(f"origin {target}", self.command_path)
+                        git.push(f"origin {target}", execution_path=self.command_path)
                         logging.info("GRAPE: auto push done")
                     currentBranch = target
                 else:

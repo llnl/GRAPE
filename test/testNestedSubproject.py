@@ -100,7 +100,7 @@ class TestNestedSubproject(testGrape.TestGrape):
                             f"{os.path.join('subproject1', 'f1')} shows up " +
                             "in git status when it shouldn't")
             logging.critical("STARTING applyMenuChoice")
-            self.menu.applyMenuChoice("status", ['-u'], globalArgs=["-v"])
+            self.menu.applyMenuChoice("status", ['-u'])
             logging.critical("FINISHED applyMenuChoice")
             actual_output = self.get_output()
             subproject_path = os.path.join('subs', 'subproject1', 'f1')

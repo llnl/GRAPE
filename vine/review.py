@@ -1,6 +1,5 @@
 import io
 import logging
-import os
 import re
 import urllib
 from stashy import errors as stashy_errors
@@ -56,7 +55,7 @@ class Review(Option, CommandPathHandler):
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket. 
+        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket.
                                     [default: .grapeconfig.project.stashURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
@@ -67,11 +66,11 @@ class Review(Option, CommandPathHandler):
                                     https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
-                                    The pull request for the outer level repo will have a description with links to the 
+                                    The pull request for the outer level repo will have a description with links to the
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
-                                    is set to true. 
-        --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket 
+                                    is set to true.
+        --norecurse                 Disables adding pull requests to submodules and subprojects.
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
@@ -79,7 +78,7 @@ class Review(Option, CommandPathHandler):
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
- 
+
 
 
     """
@@ -111,13 +110,13 @@ class Review(Option, CommandPathHandler):
             # Remove one backslash from any escaped \n's.
             descr = re.sub('\\\\\\\\n', "\\\\n", descr)
         return descr
-    
+
     def parseReviewerArgs(self, args):
         reviewers = args["--reviewers"]
         if reviewers is not None:
             reviewers = reviewers.split()
         return reviewers
-        
+
 
     @log_wrapper
     def execute(self, args):
@@ -129,7 +128,7 @@ class Review(Option, CommandPathHandler):
         name = args["--user"]
         if not name:
             name = utility.getUserName()
-            
+
         logging.info(f"Logging onto {args['--bitbucketURL']}")
         if args["--test"]:
             bitbucket = Atlassian.TestAtlassian(name)
@@ -141,7 +140,7 @@ class Review(Option, CommandPathHandler):
 
         # default project (outer level project)
         project_name = args["--project"]
-        
+
         # default repo (outer level repo)
         repo_name = args["--repo"]
 
@@ -156,7 +155,7 @@ class Review(Option, CommandPathHandler):
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
-            target_branch = config.getPublicBranchFor(branch)        
+            target_branch = config.getPublicBranchFor(branch)
         # load pull request from Bitbucket if it already exists
         wsRepo =  bitbucket.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
@@ -165,7 +164,7 @@ class Review(Option, CommandPathHandler):
         title = args["--title"]
         if existingOuterLevelRequest is not None and not title:
             title = existingOuterLevelRequest.title()
-        
+
         #determine pull request URL
         outerLevelURL = None
         if existingOuterLevelRequest:
@@ -196,7 +195,7 @@ class Review(Option, CommandPathHandler):
                              "You should activate them using grape uv  and then call grape review again. If you haven't modified "
                              "these submodules, you may need to do a grape md to proceed.")
             logging.info(','.join(missing))
-            return False        
+            return False
         pullRequestLinks = {}
         if not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules")):
             modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, branch, includeAdded=True)
@@ -208,15 +207,14 @@ class Review(Option, CommandPathHandler):
                 # push branch
                 logging.info(f"Pushing {branch} to bitbucket...")
                 git.push(f"origin {branch}", execution_path=submodule)
-                repo = bitbucket.repoFromWorkspaceRepoPath(submodule, 
+                repo = bitbucket.repoFromWorkspaceRepoPath(submodule,
                                                            isSubmodule=True)
                 # determine branch prefix
                 prefix = git.branchPrefix(branch)
                 sub_target_branch = submoduleBranchMappings[prefix]
-                
-                prevSubDescr = getReposPullRequestDescription(repo, branch, 
-                                                             sub_target_branch, 
-                                                             args)
+
+                getReposPullRequestDescription(repo, branch, sub_target_branch,
+                                               args)
                 #amend the subproject pull request description with the link to the outer pull request
                 subDescr = addLinkToDescription(descr, outerLevelURL, True)
                 if args["--prepend"] or args["--append"]:
@@ -229,7 +227,7 @@ class Review(Option, CommandPathHandler):
                     url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
                     pullRequestLinks[f"{bitbucket.rzbitbucketURL}{repo.repo.url()}/browse?at={url_}"] = False
 
-        ## NESTED SUBPROJECT REPOS 
+        ## NESTED SUBPROJECT REPOS
         nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
             target_branch, workspaceDir=self.workspace_dir)
         nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
@@ -262,17 +260,17 @@ class Review(Option, CommandPathHandler):
                 return True
 
             repo_name = args["--repo"]
-            repo = bitbucket.repoFromWorkspaceRepoPath(wsDir, topLevelRepo=repo_name, topLevelProject=project_name)
+            repo = bitbucket.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
             for link in pullRequestLinks:
                 updatedDescription = addLinkToDescription(updatedDescription, link, pullRequestLinks[link])
 
-            if updatedDescription != request.description(): 
-                request = postPullRequest(repo, title, branch, target_branch, 
-                                         updatedDescription, 
-                                         reviewers, 
+            if updatedDescription != request.description():
+                request = postPullRequest(repo, title, branch, target_branch,
+                                         updatedDescription,
+                                         reviewers,
                                          args)
 
             logging.info(f"Request generated/updated:\n\n{request}")
@@ -287,13 +285,13 @@ class Review(Option, CommandPathHandler):
 
 def addLinkToDescription(descr, link, isPullRequest):
     if descr is not None and link is not None:
-        if link not in descr: 
+        if link not in descr:
             if isPullRequest:
-               descr += "\nThis pull request is related to "
-               descr += f"the pull request at: {link}"
+                descr += "\nThis pull request is related to "
+                descr += f"the pull request at: {link}"
             else:
-               descr += "\nThis pull request is related to "
-               descr += f"the branch at: {link}"
+                descr += "\nThis pull request is related to "
+                descr += f"the branch at: {link}"
     return descr
 
 def getReposPullRequest(repo, branch, target_branch, args):
@@ -306,7 +304,7 @@ def getReposPullRequest(repo, branch, target_branch, args):
             break
     return request
 
-    
+
 def getReposPullRequestDescription(repo, branch, target_branch, args):
     descr = None
     request = getReposPullRequest(repo, branch, target_branch, args)
@@ -315,12 +313,10 @@ def getReposPullRequestDescription(repo, branch, target_branch, args):
     return descr
 
 def pullRequestAlreadyMerged(errorMessage):
-   if "already up-to-date with branch" in errorMessage:
-      return True
-   elif "This pull request has already been merged" in errorMessage:
-      return True
-   else:
-      return False
+    if "already up-to-date with branch" in errorMessage or \
+            "This pull request has already been merged" in errorMessage:
+        return True
+    return False
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
@@ -360,7 +356,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     else:
                         revList = []
                     reviewers += revList
-                if not reviewers: 
+                if not reviewers:
                     reviewers = [r[0] for r in request.reviewers()]
                 logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
@@ -402,7 +398,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
         else:
             logging.info(f"BITBUCKET: Pull request from {branch} to " +
                          f"{target_branch} already exists, can't add a new one")
-            
+
     return request
 
 if __name__ == "__main__":

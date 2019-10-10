@@ -85,7 +85,7 @@ class NoWorkspaceDirException(Exception):
     def __init__(self, cwd=''):
         self.cwd = cwd
         if cwd:
-            self.message = f"No .git found in {cmd}"
+            self.message = f"No .git found in {cwd}"
         else:
             self.message = "No .git found"
         logging.error(self.message)

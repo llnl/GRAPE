@@ -60,7 +60,7 @@ class AddSubproject(Option, CommandPathHandler):
         if args["--nested"]:
             projectType = "nested"
         # can happen with invalid type in .grapeconfig and no type specified at command line
-        if projectType != "subtree" and projectType != "submodule" and projectType != "nested":
+        if projectType not in ["subtree", "submodule", "nested"]:
             logging.info("Invalid subprojectType specified in .grapeconfig section [workspace].")
         return projectType
 

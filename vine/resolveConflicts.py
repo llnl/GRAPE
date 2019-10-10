@@ -1,4 +1,3 @@
-import os
 from vine import grapeGit as git
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option

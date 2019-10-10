@@ -6,8 +6,6 @@ import pickle
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
-from vine import utility
-from vine import vine_logging
 
 
 class Resumable(ABC):

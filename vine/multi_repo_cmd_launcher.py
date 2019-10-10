@@ -7,8 +7,7 @@ from vine import config_parser_global
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine import grape_errors
-from vine import utility
-from vine.vine_logging import log_wrapper, GrapeLogger
+from vine.vine_logging import log_wrapper
 
 
 class MultiRepoCommandRunner(CommandPathHandler):
@@ -190,11 +189,9 @@ class MultiRepoCommandLauncher(CommandPathHandler):
 
     @log_wrapper
     def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
-        argLists = self.perRepoArgs
         self.initializeCommands()
         retvals = []
 
-        # TODO: explain.
         self.cmd_runner.command_path = self.workspace_dir
 
         if noPause:

@@ -30,7 +30,7 @@ class Option(ABC):
     @abstractmethod
     def setDefaultConfig(self, config):
         pass
-    
+
     @property
     def key(self):
         return self._key

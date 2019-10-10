@@ -1,6 +1,5 @@
 import logging
 from vine import grape_errors
-from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import vine_logging
 from vine import vine_subprocess
@@ -38,7 +37,7 @@ class ForEach(Option):
     @log_wrapper
     def execute(self,args):
         cmd = args["<cmd>"]
-        multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             foreach, runInOuter=not args["--noTopLevel"],
             skipSubmodules=args["--noSubmodules"],
             runInSubprojects=not args["--noSubprojects"],

@@ -5,9 +5,9 @@ from vine.vine_logging import log_wrapper
 class Quit(Option):
     """
     grape q
-    Quits grape. 
+    Quits grape.
 
-    Usage: grape-q 
+    Usage: grape-q
 
     """
     def __init__(self):

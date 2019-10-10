@@ -5,7 +5,6 @@ from vine import grape_errors
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
-from vine import utility
 from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
@@ -82,7 +81,6 @@ class Walkthrough(Option, CommandPathHandler):
             # This is already the default
             doMergeDiff = True
 
-#        with utility.cd_workspace():
         b1 = args["<b1>"]
         if not b1:
             b1 = git.currentBranch(execution_path=self.workspace_dir)
@@ -112,16 +110,19 @@ class Walkthrough(Option, CommandPathHandler):
         root = Tk.Tk()
         root.title("GRAPE walkthrough")
 
-        diffmanager = DiffManager(master=root, height=height, width=width,
-                                  branchA=b1, branchB=b2,
-                                  difftool=difftool, diffargs=diffargs, doMergeDiff=doMergeDiff,
-                                  showUnchanged=args["--showUnchanged"],
-                                  showInactive=not args["--noInactive"], showToplevel=not args["--noTopLevel"],
-                                  showSubmodules=not args["--noSubmodules"], showSubtrees=not args["--noSubtrees"],
-                                  showNestedSubprojects=not args["--noNestedSubprojects"],
-                                  noFetch=args["--noFetch"],
-                                  workspace_dir=self.workspace_dir,
-                                  execution_path=self.command_path)
+        DiffManager(master=root, height=height, width=width,
+                    branchA=b1, branchB=b2,
+                    difftool=difftool, diffargs=diffargs,
+                    doMergeDiff=doMergeDiff,
+                    showUnchanged=args["--showUnchanged"],
+                    showInactive=not args["--noInactive"],
+                    showToplevel=not args["--noTopLevel"],
+                    showSubmodules=not args["--noSubmodules"],
+                    showSubtrees=not args["--noSubtrees"],
+                    showNestedSubprojects=not args["--noNestedSubprojects"],
+                    noFetch=args["--noFetch"],
+                    workspace_dir=self.workspace_dir,
+                    execution_path=self.command_path)
 
         root.mainloop()
 
@@ -333,7 +334,7 @@ class DiffManager(ProjectManager):
 
         # Configurable parameters
         difftool = kwargs.get('difftool', None)
-        if difftool == None:
+        if difftool is None:
             try:
                 difftool = git.config("--get diff.tool", execution_path=self.command_path)
             except:
@@ -390,7 +391,7 @@ class DiffManager(ProjectManager):
 
         # Get the url mapping for all submodules
         if len(self.submodules) > 0:
-            submoduleURLMap = git.getAllSubmoduleURLMap(execution_path=self.command_path)
+            git.getAllSubmoduleURLMap(execution_path=self.command_path)
 
         logging.info("Examining projects...")
 
@@ -453,8 +454,7 @@ class DiffManager(ProjectManager):
     def diffBranchSpec(self, branchA, branchB):
         if self.doMergeDiff:
             return f"{branchA}...{branchB}"
-        else:
-            return f"{branchA} {branchB}"
+        return f"{branchA} {branchB}"
 
     def getBranch(self, branch):
         if not branch.startswith("--"):
@@ -480,8 +480,7 @@ class DiffManager(ProjectManager):
             if not isinstance(branchParts, list):
                 branchParts = [branchParts]
             return git.join_list_as_git_path(branchParts)
-        else:
-            return branch
+        return branch
 
     def initFiles(self, index):
         self.filelist.delete(0,Tk.END)
@@ -496,7 +495,7 @@ class DiffManager(ProjectManager):
             self.diffbranchB = self.getSubBranch(self.branchB)
 
         if type_.startswith("Inactive"):
-            remotels = git.gitcmd("ls-remote", execution_path=self.command_path)
+            git.gitcmd("ls-remote", execution_path=self.command_path)
             self.filelist.insert(Tk.END, "<Unable to diff>")
             self.filenames.append("")
         else:
@@ -566,7 +565,7 @@ class DiffManager(ProjectManager):
                 cmd += f"\"{file_[0]}\" \"{file_[1]}\""
             else:
                 cmd += f"\"{file_}\""
-            difftooloutput = git.gitcmd(cmd, "Failed to launch difftool",
-                                        execution_path=self.command_path)
+            git.gitcmd(cmd, "Failed to launch difftool",
+                       execution_path=self.command_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"{e.msg} (return code {e.returnCode})\n{e.gitOutput}")

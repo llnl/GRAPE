@@ -3,12 +3,9 @@ import io
 import logging
 import os
 import re
-import shutil
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
-from vine import utility
-from vine import vine_logging
 from vine.option import Option
 from vine.command_path_handler import CommandPathHandler
 from vine.vine_logging import log_wrapper
@@ -23,7 +20,7 @@ class Version(Option, CommandPathHandler):
     """
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
-    The read subcommand is a no-op - it is used internally by other grape/vine modules. 
+    The read subcommand is a no-op - it is used internally by other grape/vine modules.
 
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
@@ -63,10 +60,10 @@ class Version(Option, CommandPathHandler):
         --minor             Tick the Minor (2nd) version number.
         --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
                             than the current max number of digits, the version number will be extended to have <int>
-                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings. 
-        --public=<branch>   The public branch to use for determine the slot to tick. Default based on 
+                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings.
+        --public=<branch>   The public branch to use for determine the slot to tick. Default based on
                             .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the version
-                            ticking is consistent with the --public option passed to grape publish. 
+                            ticking is consistent with the --public option passed to grape publish.
         --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
         --tag               Forces updateTag to be True.
         --notag             Forces updateTag to be False.
@@ -76,8 +73,8 @@ class Version(Option, CommandPathHandler):
         --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                             version in <file>.
-        --tagNested         Tag any active nested subprojects. 
-        
+        --tagNested         Tag any active nested subprojects.
+
 
 
     """
@@ -91,10 +88,10 @@ class Version(Option, CommandPathHandler):
     def description(self):
         return "Update the version for your current project."
 
-    def parseArgs(self, args): 
+    def parseArgs(self, args):
         config = config_parser_global.grapeConfig()
         # parse tagSuffix for version mappings
-        if args["--tagSuffix"] is None: 
+        if args["--tagSuffix"] is None:
             branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
             args["--tagSuffix"] = branch2suffix[git.currentBranch(execution_path=self.command_path)]
 
@@ -143,7 +140,7 @@ class Version(Option, CommandPathHandler):
         with io.open(fileName) as f:
             slots = self.readVersion(f, args)
             self.ver = self.slotsToString(args, slots)
-            
+
         if not args["--notick"]:
             slot = args["--slot"]
             if not slot:
@@ -166,14 +163,14 @@ class Version(Option, CommandPathHandler):
             while slot < len(slots):
                 slots[slot] = 0
                 slot += 1
-            # write the new version number to the version file. 
+            # write the new version number to the version file.
             with io.open(fileName, 'r+') as f:
                 self.ver = self.writeVersion(f, slots, args)
             self.stageVersionFile(fileName, execution_path=self.command_path)
             if not args["--nocommit"]:
                 git.commit(f"-m \"GRAPE: ticked version to {self.ver}\"",
                            execution_path=self.command_path)
-                
+
         if (not args["--nocommit"]) or args["--tag"]:
             self.tagVersion(self.ver, args, execution_path=self.command_path)
             if args["--tagNested"]:
@@ -207,9 +204,9 @@ class Version(Option, CommandPathHandler):
             tagSuffix = args["--tagSuffix"]
 
             if tagPrefix and tagPrefix != prefix:
-                if prefix: 
+                if prefix:
                     version.replace(prefix,tagPrefix,1)
-                else: 
+                else:
                     version = tagPrefix+version
             if tagSuffix and tagSuffix != suffix:
                 if suffix:
@@ -260,19 +257,19 @@ class Version(Option, CommandPathHandler):
     def versionLine(self, version):
         return self.r.sub(r'\g<1>\g<2>' + '.'.join([f'{v}' for v in version]) + r'\g<4>', self.matchedLine)
 
-    def slotsToString(self, args, slots): 
+    def slotsToString(self, args, slots):
         return args["--prefix"] + '.'.join([f'{v}' for v in slots]) + args["--suffix"]
-    
+
     def stringToSlots(self, args, string):
         prefix = args["--prefix"]
         suffix = args["--suffix"]
-        if prefix: 
+        if prefix:
             # strip off the prefix
             string = ''.join(string.strip().split(prefix)[1:])
         if suffix:
             string = ''.join(string.strip().split(suffix)[:-1])
         return string.strip().split('.')
-        
+
 
     def writeVersion(self, fileName, version, args):
         fileName.seek(0)
@@ -301,7 +298,7 @@ class Version(Option, CommandPathHandler):
         config.set(self.SECTION_VERSIONING, "prefix", "v")
 
 
-if __name__ is "__main__": 
+if __name__ is "__main__":
     import sys
     from vine import grapeMenu
     menu = grapeMenu.menu()

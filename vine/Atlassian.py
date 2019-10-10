@@ -12,7 +12,7 @@ from vine import utility
 from vine.option import Option
 
 
-class Atlassian(object):
+class Atlassian:
     rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
 
     def __init__(self, username=None, url=rzbitbucketURL, verify=True, *,
@@ -82,7 +82,7 @@ class Atlassian(object):
                 nestedProjectURL, execution_path=self.workspace_dir)
             urlTokens = url.split('/')
             proj = urlTokens[-2]
-            repo_name = urlTokens[-1]       
+            repo_name = urlTokens[-1]
             # strip off the git extension
             repo_name = '.'.join(repo_name.split('.')[:-1])
         elif isSubmodule:
@@ -95,7 +95,7 @@ class Atlassian(object):
             repo_name = url[-1]
 
             # strip off the .git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])   
+            repo_name = '.'.join(repo_name.split('.')[:-1])
         else:
             if topLevelRepo is None:
                 topLevelRepo = config.get(Option.SECTION_REPO, "name")
@@ -106,9 +106,9 @@ class Atlassian(object):
             proj = topLevelProject
 
         repo = self.project(proj).repo(repo_name)
-        return repo        
+        return repo
 
-class StashyNode(object):
+class StashyNode:
     def __init__(self, node, stashynode):
         self.node = node
         self.snode = stashynode
@@ -138,10 +138,10 @@ class StashyNode(object):
     def get(self, path):
         response = self.snode._client.get(self.snode.url(path))
         return response.json()
-    
+
     def put(self, path):
         return self.snode._client.put(self.snode.url(path)).json()
-    
+
     def post(self, path):
         return self.snode._client.post(self.snode.url(path)).json()
 
@@ -153,11 +153,11 @@ class Project(StashyNode):
 
     def name(self):
         return self.node["name"]
-    
+
     def repolist(self):
         repos = self.project.repos.list()
         return [r["name"] for r in repos]
-    
+
     def repo(self, name):
 
         repos = self.project.repos.list()
@@ -165,7 +165,7 @@ class Project(StashyNode):
             if node["name"].lower() == name.lower():
                 r = self.project.repos[name]
                 return Repo(r, node)
-            
+
         return None
 
 
@@ -197,17 +197,17 @@ class Repo(StashyNode):
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
         """reviewers"""
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
-        
+
         return PullRequest(stashyRequest,self.repo.pull_requests)
-    
-    
-        
-        
+
+
+
+
 
 class PullRequest(StashyNode):
     """
-    node is the dictionary with the state of the Pull Request. 
-    stashy_pull_requests is the stashy object needed to update the pull request.    
+    node is the dictionary with the state of the Pull Request.
+    stashy_pull_requests is the stashy object needed to update the pull request.
     """
     def __init__(self, node, stashy_pull_requests):
         StashyNode.__init__(self, node, stashy_pull_requests[str(node["id"])])
@@ -219,7 +219,7 @@ class PullRequest(StashyNode):
 
     def authorName(self):
         return self.node["author"]["user"]["displayName"]
-    
+
     def description(self):
         try:
             return self.node["description"].encode('ascii', 'ignore')
@@ -243,26 +243,26 @@ class PullRequest(StashyNode):
         #         }
         #     }
         #   ]
-        # Which I interpret to mean the following:        
+        # Which I interpret to mean the following:
         ret = []
         for reviewer in self.node["reviewers"]:
             name = reviewer["user"]["name"]
-            approved = reviewer["approved"] 
-            displayName = reviewer["user"]["displayName"] 
+            approved = reviewer["approved"]
+            displayName = reviewer["user"]["displayName"]
             if displayName == "":
-                displayName = name 
+                displayName = name
             ret.append((name, approved, displayName))
         return ret
 
     def state(self):
         return self.node["state"]
-    
+
     def title(self):
         return self.node["title"]
-    
+
     def fromRef(self):
         return self.node["fromRef"]["displayId"]
-        
+
     def toRef(self):
         return self.node["toRef"]["displayId"]
 
@@ -273,15 +273,15 @@ class PullRequest(StashyNode):
             approved = reviewer[1]
             ret = ret and approved
         return ret
-    
-    def link(self): 
+
+    def link(self):
         return self.node["links"]["self"][0]["href"]
-    
+
     def version(self):
         return self.node["version"]
-    
+
     # reviewers is a list of username-approved(bool) pairs
-    def update(self, ver, title=None, description=None, reviewers=None): 
+    def update(self, ver, title=None, description=None, reviewers=None):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -289,15 +289,15 @@ class PullRequest(StashyNode):
         #             "name": "charlie"
         #         }
         #     }
-        #   ]       
+        #   ]
         reviewerList = []
         if reviewers is not None:
             for r in reviewers:
                 reviewerList.append(dict(user=dict(name=r)))
-                
+
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
         return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewerList), self._stashy_pull_requests)
-        
+
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
@@ -309,14 +309,14 @@ class PullRequest(StashyNode):
                f"To: {self.toRef()}\n" + \
                f"Reviewers: {all_reviewers}\n" + \
                f"Description: {self.description()}\n"
-    
+
     def merge(self):
         canMerge = self._stashy_pull_request.can_merge()
         if canMerge is True:
             response = self._stashy_pull_request.merge(version=self.node["version"])
             return response["state"] == "MERGED"
         return False
-            
+
 
 if __name__ == "__main__":
     atlassian = Atlassian(workspace_dir=os.getcwd())
@@ -365,25 +365,25 @@ class TestPullRequest(TestStashResponse):
         super(TestPullRequest, self).__init__(title=title, fromRef=fromRef, toRef=toRef, id=id,
                                               description=description,
                                               reviewers=reviewers, links=links)
-    
+
     def toRef(self):
         return self["toRef"]
-    
+
     def title(self):
         return self["title"]
-    
+
     def fromRef(self):
         return self["fromRef"]
-    
+
     def id(self):
         return self["id"]
-    
+
     def reviewers(self):
         return self["reviewers"]
-    
+
     def link(self):
-        return self["links"]["self"][0]["href"] 
-    
+        return self["links"]["self"][0]["href"]
+
     def description(self):
         if self["description"] is not None:
             return self["description"]
@@ -405,7 +405,7 @@ class TestPullRequests(TestStashResponse):
         self[newId] = TestPullRequest(title, fromRef, toRef, self.url, id=newId, description=description,
                                       reviewers=reviewers)
         return self[newId]
-    
+
 
 
 
@@ -414,14 +414,14 @@ class TestRepo(TestStashResponse):
         self.url = parent + "repos/" + name
         self.name = name
         self.pull_requests = TestPullRequests(self.url)
-        
+
     def pullRequests(self, direction="OUTGOING", at=None, state="OPEN"):
         return self.pull_requests.all(direction,at,state)
-    
+
     def createPullRequest(self, title,branch,target_branch, description=None,reviewers=None):
-        
-        return self.pull_requests.create(title, branch, target_branch, 
-                                        description=description, 
+
+        return self.pull_requests.create(title, branch, target_branch,
+                                        description=description,
                                         reviewers=reviewers)
 
 
@@ -446,7 +446,7 @@ class TestStash(TestStashResponse):
 
 
 
-class TestAtlassian(object):
+class TestAtlassian:
     """
     A version of an Atlassian Bitbucket server that is meant to emulate the responses of Bitbucket for testing purposes.
 
@@ -459,6 +459,6 @@ class TestAtlassian(object):
             self.userName = username
         self.stash = TestStash()
         logging.info("Connected to Bitbucket")
-        
+
     def project(self, name):
         return self.stash.project(name)

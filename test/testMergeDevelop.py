@@ -337,7 +337,7 @@ class TestMD(testGrape.TestGrape):
                         msg=None)
         # run grape m --am - this helps ensure m is following same code path as md.
         try:
-            ret = self.menu.applyMenuChoice("m", ["--am", "master"], globalArgs=["-v"])
+            ret = self.menu.applyMenuChoice("m", ["--am", "master"])
         except SystemExit as e:
             self.fail(f"grape m raised exception {e}")
         self.assertFalse(ret, "grape m did not return False for conflicting merge.")
@@ -374,7 +374,7 @@ class TestMD(testGrape.TestGrape):
                          msg=None)
         # run grape md --am
         try:
-            ret = self.menu.applyMenuChoice("md", ["--am", "--public=master"], globalArgs=["-v"])
+            ret = self.menu.applyMenuChoice("md", ["--am", "--public=master"])
         except SystemExit as e:
             self.fail(f"grape md raised exception {e}")
         self.assertFalse(ret, "grape md did not return False for conflicting merge.")

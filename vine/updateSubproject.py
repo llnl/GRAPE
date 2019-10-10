@@ -1,29 +1,25 @@
 import logging
-import os
 from vine import config_parser_global
 from vine import grapeGit as git
 from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
-"""        
-                    
-        --branch=<committish>  """
+
 class UpdateSubproject(Option, CommandPathHandler):
     """
         grape updateSubproject
-        Updates an existing subproject from its host repository.  
-        
+        Updates an existing subproject from its host repository.
+
         Usage: grape-updateSubproject subtree --name=<name> --branch=<committish>
 
         Options:
-        --name=<name>  The name of the subproject. Must match a [subtree-<name>] section in .grapeconfig
-                       that has prefix and remote options defined. 
-        
-        --branch=<b>   The branch in the subtree's host repository whose state you want in your 
-                       repository.
+        --name=<name>           The name of the subproject. Must match a [subtree-<name>]
+                                section in .grapeconfig that has prefix and remote options defined.
+
+        --branch=<committish>   The branch in the subtree's host repository whose state
+                                you want in your repository.
 
     """
 
@@ -58,7 +54,7 @@ class UpdateSubproject(Option, CommandPathHandler):
                     f"{squashArg}", execution_path=self.workspace_dir)
 
         return True
-        
+
     def setDefaultConfig(self, config):
         # let addSubproject govern needed defaults
         pass

@@ -4,7 +4,7 @@ import os
 from vine.option import Option
 
 
-class GrapeConfigParserBase(ConfigParser, object):
+class GrapeConfigParserBase(ConfigParser):
 
     GIT_DIR = '.git'
     GRAPE_CONFIG = '.grapeconfig'
@@ -80,7 +80,6 @@ class ConfigPairDict(dict):
         except KeyError as e:
             if '?' in self.keys():
                 return self['?'].replace('?', key)
-            else:
-                e.message = f"GRAPE CONFIG ERROR: No value found for {key}," +\
-                            " no default '?':<value> in config."
-                raise e
+            e.message = f"GRAPE CONFIG ERROR: No value found for {key}," +\
+                        " no default '?':<value> in config."
+            raise e

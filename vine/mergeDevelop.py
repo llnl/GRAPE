@@ -2,14 +2,12 @@ import configparser
 import io
 import logging
 import os
-import sys
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
-from vine import vine_logging
 from vine.command_path_handler import CommandPathHandler
 from vine.option import Option
 from vine.resumable import Resumable
@@ -88,7 +86,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             currentBranch = 'unknown'
         publicBranch = self.lookupPublicBranch(execution_path=self.command_path)
 
-        return "Merge latest changes on {publicBranch} into {currentBranch}"
+        return f"Merge latest changes on {publicBranch} into {currentBranch}"
 
     @log_wrapper
     def execute(self, args):
@@ -97,7 +95,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
 
         self.set_progress_file(execution_path=self.workspace_dir)
 
-        if not "<<cmd>>" in args:
+        if "<<cmd>>" not in args:
             args["<<cmd>>"] = "md"
         branch = args["--public"]
         if not branch:
@@ -164,7 +162,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
             return False
 
-        if not "updateLocalDone" in self.progress and not args["--noUpdate"]:
+        if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
             menu.applyMenuChoice('up', ['up', f'--public={args["--public"]}'])
@@ -190,7 +188,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                     return False
 
         # do an outer merge if we haven't done it yet
-        if not "outerLevelDone" in self.progress:
+        if "outerLevelDone" not in self.progress:
             self.progress["outerLevelDone"] = False
         if not self.progress["outerLevelDone"]:
             conflictedFiles = self.outerLevelMerge(args, branch)
@@ -263,10 +261,10 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool "
                                     "and then \n continue by calling 'grape md --continue' .")
             return False
-        else:
-            original_command_path = menu.command_path
-            menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
-            menu.set_command_path(original_command_path)
+
+        original_command_path = menu.command_path
+        menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+        menu.set_command_path(original_command_path)
 
         # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
         if self.progress["allActive"]:
@@ -410,12 +408,11 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             git.commit(f"-m \"GRAPE: merge from {args['--public']} after " +
                        "conflict resolution.\"", execution_path=execution_path)
             return True
-        else:
-            return False
+        return False
 
     def mergeIntoCurrent(self, branchName, args, projectName, *, execution_path):
         choice = False
-        strategy = 'am' 
+        strategy = 'am'
         if args["--continue"]:
             if self.continueLocalMerge(args, execution_path=execution_path):
                 return True
@@ -454,7 +451,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             logging.info("Merging using git's default strategy...")
             choice = self.merge(branchName, "", args,
                                 execution_path=execution_path)
-        elif strategy == 'as' or strategy == 'at' or strategy == 'ay':
+        elif strategy in ['as', 'at', 'ay']:
             if strategy == 'as':
                 args["--as"] = True
                 # this employs using the custom low-level merge driver "verify" and

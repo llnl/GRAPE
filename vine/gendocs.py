@@ -12,7 +12,7 @@ from docopt import docopt
 from vine import grapeMenu
 
 
-class Documentation(object):
+class Documentation:
 
     def __init__(self, menu):
         super(Documentation, self).__init__()
@@ -30,7 +30,7 @@ class Documentation(object):
             s.write(f)
 
 
-class Section(object):
+class Section:
     def __init__(self, option):
         self._name = option._key
         self._text = option.__doc__
@@ -224,7 +224,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 ## Managing Subprojects with grape
 If you'd like to manage third-party library source-code inline with your project, git provides a couple of ways
-to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project. 
+to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
 
 Googling submodules vs. subtrees will yield discussions as vehemently
 idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
@@ -291,7 +291,7 @@ it might matter a great deal.
     submodulepublishpolicy = ?:merge
     submodulepublicmappings = ?:master
 
-`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested. 
+`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested.
 
 `managesubmodules` should be set to True to enable grape managed subprojects. Otherwise, you're on your own.
 
@@ -321,12 +321,12 @@ calling `grape bugfix` will create a new branch off of develop in project foo, a
 foo_dev in submodule libBar.
 
 ### `grape status`
-Grape status will gather the status across all submodules and nested projectes and your outer-level project. This is different 
+Grape status will gather the status across all submodules and nested projectes and your outer-level project. This is different
 from git status, which will only give you the status of the repo / submodule / nested project you are currently in.
 
 ### `grape commit`
 Grape commit will commit all changes in submodules and nested subprojectes first, then perform the commit in the outer level repository to
-ensure you have updated the gitlink for your submodules. 
+ensure you have updated the gitlink for your submodules.
 
 ### `grape push`
 Grape push pushes changes in your current branch to origin in all submodules and your outer level repository.
@@ -386,35 +386,35 @@ file as appropriate.
 Grape can be configured to split-push changes in subtrees to their host repository as part of your publish step by
 setting subtrees.pushonpublish to True.
 
-## How grape works with nested subprojects 
-A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish 
+## How grape works with nested subprojects
+A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish
 actions, gathering information with status, etc. Individual developers decide whether they want the nested subproject in
-their workspace by using 'grape uv'. 
+their workspace by using 'grape uv'.
 
-Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig 
-to know which ones to expect to find in the user's workspace. 
+Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig
+to know which ones to expect to find in the user's workspace.
 
-nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at 
-the moment includes publish, merge actions (m, mr, and md), and foreach. 
+nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at
+the moment includes publish, merge actions (m, mr, and md), and foreach.
 
 ### relevant nested subproject `.grapeconfig` sections
-    
+
     [nested]
     names = libBar
 
     [nested-libBar]
     prefix = imports/libBar
     remote = ../libBar
-    
-All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts. 
-    
+
+All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts.
+
 ### relevant nested subproject `.grapeuserconfig` sections
     [nested-libBar]
     active = True
-    
-The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will 
+
+The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will
 only look in .git/.grapeuserconfig for this particular setting, since the intended use cases for nested projects tend to be highly
-individualized. 
+individualized.
 
 
 # Grape Commands
