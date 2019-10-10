@@ -123,8 +123,11 @@ def _should_capture_output(*args):
     is that this output is not stored and returned for further processing.
     """
     TEST_DIR = os.path.realpath(tempfile.gettempdir())
-    return any(os.path.commonpath([TEST_DIR, path]) == TEST_DIR
-               for path in args)
+    try:
+        return any(os.path.commonpath([TEST_DIR, path]) == TEST_DIR
+                   for path in args)
+    except:
+        return False
 
 
 def clone(argstr='', *, source_repo, clone_repo, execution_path):
