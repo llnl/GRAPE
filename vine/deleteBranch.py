@@ -61,11 +61,11 @@ class DeleteBranch(Option, CommandPathHandler):
 def deleteBranch(repo='', branch='master', args=None, *, execution_path):
     force = args[0]
     forceStr = "-D" if force is True else "-d"
-    logging.info(f"deleting {branch} in {execution_path}...")
-    git.branch(f"{forceStr} {branch}", execution_path=execution_path)
-    if f"origin/{branch}" in git.branch("-r", execution_path=execution_path):
+    logging.info(f"deleting {branch} in {repo}...")
+    git.branch(f"{forceStr} {branch}", execution_path=repo)
+    if f"origin/{branch}" in git.branch("-r", execution_path=repo):
         try:
-            git.push(f"--delete origin {branch}", throwOnFail=True, execution_path=execution_path)
+            git.push(f"--delete origin {branch}", throwOnFail=True, execution_path=repo)
         except grape_errors.GrapeGitError as e:
             if "remote ref does not exist" in e.gitOutput.lower():
                 pass
@@ -74,11 +74,11 @@ def deleteBranch(repo='', branch='master', args=None, *, execution_path):
 def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, execution_path):
     logging.warning(
         f"*** WARNING ***: Detaching in order to delete {branch} in " +
-        f"{execution_path}. You will be in a headless state.")
-    git.checkout("--detach HEAD", execution_path=execution_path)
-    git.branch(f"-D {branch}", execution_path=execution_path)
-    if f"origin/{branch}" in git.remoteBranches(execution_path=execution_path):
-        git.push(f"--delete origin {branch}", throwOnFail=False, execution_path=execution_path)
+        f"{repo}. You will be in a headless state.")
+    git.checkout("--detach HEAD", execution_path=repo)
+    git.branch(f"-D {branch}", execution_path=repo)
+    if f"origin/{branch}" in git.remoteBranches(execution_path=repo):
+        git.push(f"--delete origin {branch}", throwOnFail=False, execution_path=repo)
 
 
 def handleDetachThenForceMRE(mre):

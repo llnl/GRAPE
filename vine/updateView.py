@@ -390,7 +390,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, execution_path):
         # figure out if this is a submodule
         relpath = os.path.relpath(repo, workspace_dir)
         # if this is a submodule, get the appropriate public mapping
-        if relpath in git.getAllSubmoduleURLMap(execution_path=repo).keys():
+        if relpath in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys():
             public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
         logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
@@ -398,8 +398,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, execution_path):
         git.checkout("--detach HEAD", execution_path=repo)
 
 def cleanupPush(repo='', branch='', args='none', *, execution_path):
-    logging.info(f"Attempting push of local {branch} in {execution_path}")
-    git.push(f"origin {branch}", execution_path=execution_path)
+    logging.info(f"Attempting push of local {branch} in {repo}")
+    git.push(f"origin {branch}", execution_path=repo)
 
 
 def handleCleanupPushMRE(mre):

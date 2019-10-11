@@ -21,6 +21,6 @@ def executeSubProcess(command, working_dir=os.getcwd(), capture_output=True):
             logging.debug(stderr_msg)
 
     if completed_process.returncode != 0:
-        logging.info(f"Command '{command}': exited with error code " +
-                     f"{completed_process.returncode}")
+        logging.debug(f"Command '{command}': exited with error code " +
+                      f"{completed_process.returncode}")
     return completed_process

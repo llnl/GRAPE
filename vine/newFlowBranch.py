@@ -164,20 +164,20 @@ class NewBranchOptionFactory:
 def createBranch(repo="unknown", branch="master", args=[], *, execution_path):
     branchPoint = branch
     fullBranch = args
-    logging.info(f"creating and switching to {fullBranch} in {execution_path}")
+    logging.info(f"creating and switching to {fullBranch} in {repo}")
     try:
         git.checkout(f"-b {fullBranch} {branchPoint} ",
-                     execution_path=execution_path)
+                     execution_path=repo)
     except grape_errors.GrapeGitError as e:
-        logging.error(f"{execution_path}:{e.gitOutput}")
-        logging.warning(f"WARNING: {fullBranch} in {execution_path}" +
+        logging.error(f"{repo}:{e.gitOutput}")
+        logging.warning(f"WARNING: {fullBranch} in {repo}" +
                         " will not be pushed.")
         return
-    logging.info(f"pushing {fullBranch} to origin in {execution_path}")
+    logging.info(f"pushing {fullBranch} to origin in {repo}")
     try:
-        git.push(f"-u origin {fullBranch}", execution_path=execution_path)
+        git.push(f"-u origin {fullBranch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
-        logging.error("{execution_path}:  {e.gitOutput}")
+        logging.error("{repo}:  {e.gitOutput}")
 
 
 if __name__ == "__main__":

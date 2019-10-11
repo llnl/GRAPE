@@ -261,6 +261,7 @@ class Unbundle(Option, CommandPathHandler):
         config.set(self.SECTION_PATCH, 'branchMappings', 'master:master')
 
 def unbundlecmd(repo='', branch='', args={}, *, execution_path):
+    execution_path = repo
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()
     bundleNames = glob.glob("*.bundle")

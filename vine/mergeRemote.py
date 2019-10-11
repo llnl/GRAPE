@@ -109,12 +109,12 @@ class MergeRemote(Option, CommandPathHandler):
     def setDefaultConfig(self, config):
         pass
 
-def fetchHelper(*, execution_path):
-    return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True, execution_path=execution_path)
+def fetchHelper(repo="unknown", branch="master", *, execution_path):
+    return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True, execution_path=repo)
 
 def updateBranchHelper(repo="unknown", branch="master", *, execution_path):
     logging.info(f"Updating local reference to {branch} in {repo}")
-    return git.fetch(f"origin {branch}:{branch}", execution_path=execution_path)
+    return git.fetch(f"origin {branch}:{branch}", execution_path=repo)
 
 def updateBranchHandleMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):

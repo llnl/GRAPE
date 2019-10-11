@@ -51,7 +51,7 @@ class ForEach(Option):
 
 def foreach(repo='', branch='', args={}, *, execution_path):
     cmd = args["<cmd>"]
-    vine_subprocess.executeSubProcess(cmd, working_dir=execution_path)
+    vine_subprocess.executeSubProcess(cmd, working_dir=repo)
     return True
 
 def handleForeachMRE(mre):
