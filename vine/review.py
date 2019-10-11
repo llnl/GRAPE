@@ -174,7 +174,7 @@ class Review(Option, CommandPathHandler):
         descr = self.parseDescriptionArgs(args)
 
         if not descr and existingOuterLevelRequest:
-            descr = existingOuterLevelRequest.description()
+            descr = existingOuterLevelRequest.description().decode("utf-8")
 
         # determine pull request reviewers
         reviewers = self.parseReviewerArgs(args)
@@ -243,7 +243,7 @@ class Review(Option, CommandPathHandler):
             else:
                 # if a pull request could not be generated, just add a link to browse the branch
                 url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
-                pullRequestLinks["{bitbucket.rzbitbucketURL}{repo.repo.url()}/browse?at={url}"] = False
+                pullRequestLinks[f"{bitbucket.rzbitbucketURL}{repo.repo.url().replace('api/1.0','')}/browse?at={url_}"] = False
 
         ## OUTER LEVEL REPO
         # load the repo level REST resource
@@ -285,12 +285,16 @@ class Review(Option, CommandPathHandler):
 
 def addLinkToDescription(descr, link, isPullRequest):
     if descr is not None and link is not None:
+        if type(link) is not str:
+            link = link.decode("utf-8")
+        if type(descr) is not str:
+            descr = descr.decode("utf-8")
         if link not in descr:
             if isPullRequest:
-                descr += "\nThis pull request is related to "
+                descr += f"\nThis pull request is related to "
                 descr += f"the pull request at: {link}"
             else:
-                descr += "\nThis pull request is related to "
+                descr += f"\nThis pull request is related to "
                 descr += f"the branch at: {link}"
     return descr
 
@@ -320,7 +324,7 @@ def pullRequestAlreadyMerged(errorMessage):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
-    logging.info(f"Gathering active pull requests on {branch}")
+    logging.info(f"Gathering active pull requests on {branch} for repo {repo}")
     request = getReposPullRequest(repo, branch, target_branch, args)
 
     if not request:

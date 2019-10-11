@@ -290,13 +290,15 @@ class PullRequest(StashyNode):
         #         }
         #     }
         #   ]
-        reviewerList = []
-        if reviewers is not None:
-            for r in reviewers:
-                reviewerList.append(dict(user=dict(name=r)))
+        # Older versions of stashy needed this translation, the current one does it for us so we don't need to anymore.
+        # leaving this commented version around in case the magic that appeared in stashy disappears in the future.
+        #reviewerList = []
+        #if reviewers is not None:
+        #    for r in reviewers:
+        #        reviewerList.append(dict(user=dict(name=r)))
 
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
-        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewerList), self._stashy_pull_requests)
+        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewers), self._stashy_pull_requests)
 
 
     def __eq__(self, other):
