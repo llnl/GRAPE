@@ -119,6 +119,6 @@ def fetchLocal(repo='unknown', branch='master', *, execution_path):
                             "commits! Did you forget to create a topic " +
                             "branch?")
         elif "refusing to fetch into current branch" in e.gitOutput.lower():
-            logging.error(e.gitOutput))
+            logging.error(e.gitOutput)
         else:
             raise e

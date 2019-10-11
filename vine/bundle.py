@@ -144,12 +144,14 @@ class Bundle(Option, CommandPathHandler):
 
 
 def bundlecmd(repo='', branch='', args={}, *, execution_path):
+    execution_path = repo
     branchlist = args["branchList"]
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
 
     reponame = os.path.split(repo)[1]
+    logging.debug(f"bundlecmd called with {repo}, {execution_path}, {branchlist}")
     for branch in branchlist:
         # ensure branch can be fast forwardable to origin/branch and do so
         if not git.safeForceBranchToOriginRef(branch, execution_path=execution_path):
@@ -188,6 +190,8 @@ def bundlecmd(repo='', branch='', args={}, *, execution_path):
             logging.info(f"creating bundle {bundlename} in {reponame}")
             git.bundle(f"create {bundlename} {revlists} " +
                        f"--tags={tagsToBundle[branch]} ", execution_path=execution_path)
+        else:
+            logging.debug(f"{previousLocation} the same as {currentLocation} in {reponame}, no bundle necessary.")
     return True
 
 def bundlecmdMRE(mre):
