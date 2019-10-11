@@ -224,9 +224,9 @@ def fetch(repo="", branchArg="", raiseOnCommError=False,
 
 def getActiveSubmodules(*, execution_path):
     if os.name == "nt":
-        submoduleList = submodule("foreach --quiet \"echo $path\"", execution_path=execution_path)
+        submoduleList = submodule("foreach --quiet \"echo $path\"", execution_path=execution_path, capture_output=True)
     else:
-        submoduleList = submodule("foreach --quiet \"echo \$path\"", execution_path=execution_path)
+        submoduleList = submodule("foreach --quiet \"echo \$path\"", execution_path=execution_path, capture_output=True)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]
     # ignore any submodules that are not in .gitmodules
@@ -238,10 +238,10 @@ def getActiveSubmodules(*, execution_path):
 def fixActiveSubmodules(ws_dir, user_input_func):
     if os.name == "nt":
         submoduleList = submodule("foreach --quiet \"echo $path\"",
-                                  execution_path=ws_dir)
+                                  execution_path=ws_dir, capture_output=True)
     else:
         submoduleList = submodule("foreach --quiet \"echo \$path\"",
-                                  execution_path=ws_dir)
+                                  execution_path=ws_dir, capture_output=True)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]
     pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
@@ -561,8 +561,9 @@ def status(argstr="", *, execution_path):
                   execution_path=execution_path)
 
 
-def submodule(argstr, *, execution_path):
-    capture_output = _should_capture_output(execution_path)
+def submodule(argstr, *, execution_path, capture_output = None):
+    if capture_output is None:
+        capture_output = _should_capture_output(execution_path)
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
                   execution_path=execution_path,
                   capture_output=capture_output)
