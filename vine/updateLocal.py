@@ -78,6 +78,8 @@ def fetchLocalHandler(mre):
     raise mre
 
 def fetchLocal(repo='unknown', branch='master', *, execution_path):
+    # the execution path we actually care about is in repo
+    execution_path = repo
     # branch is actually the list of branches
     branches = branch
     if not branches:
@@ -117,6 +119,6 @@ def fetchLocal(repo='unknown', branch='master', *, execution_path):
                             "commits! Did you forget to create a topic " +
                             "branch?")
         elif "refusing to fetch into current branch" in e.gitOutput.lower():
-            print(e.gitOutput)
+            logging.error(e.gitOutput))
         else:
             raise e
