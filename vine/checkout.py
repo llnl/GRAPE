@@ -27,7 +27,12 @@ def handledCheckout(repo='', branch='master', args=[], *, execution_path):
             # the branch may not exist, but ignore the exception
             # and allow the checkout to throw the exception.
             pass
-    git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
+    try:
+        git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
+    except grape_errors.GrapeGitError as e:
+        if "already exists" in e.gitOutput and "-b" in checkoutargs:
+            logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
+            git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
     logging.info(f"Checked out {branch} in {repo}")
 
     return True
@@ -118,8 +123,8 @@ def handleCheckoutMRE(mre):
 def createNewBranches(repo='', branch='', args={}, *, execution_path):
     checkoutargs = args["checkout"]
     logging.info(f"Creating new branch {branch} in {project}.")
-    git.checkout(f"{checkoutargs} -b {branch}", execution_path=execution_path)
-    git.push(f"-u origin {branch}", execution_path=execution_path)
+    git.checkout(f"{checkoutargs} -b {branch}", execution_path=repo)
+    git.push(f"-u origin {branch}", execution_path=repo)
     return True
 
 def createNewBranchesMREHandler(mre):
@@ -136,7 +141,7 @@ def branchAlreadyExists(branch, workspace_dir):
     # Trailing '' used to add a delimiter to end of path.
     branch_path = git.join_list_as_git_path(['remotes', 'origin', ''])
     # make sure branch does not already exist
-    allBranches = set([b[len(branch_path):] if b.startswith(branch_path) else b for b in git.allBranches(workspace_dir)])
+    allBranches = set([b[len(branch_path):] if b.startswith(branch_path) else b for b in git.allBranches(execution_path=workspace_dir)])
     if branch in allBranches:
         logging.info(f"Branch {branch} already exists!")
         retVal = 1
