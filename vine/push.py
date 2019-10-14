@@ -46,8 +46,8 @@ class Push(Option, CommandPathHandler):
         pass
 
 def push(repo='', branch='master', *, execution_path):
-    logging.info(f"Pushing {branch} in {execution_path}...")
-    git.push(f"-u origin {branch}", throwOnFail=True, execution_path=execution_path)
+    logging.info(f"Pushing {branch} in {repo}...")
+    git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
 
 def handlePushMRE(mre):
     for e1 in mre.exceptions():
