@@ -803,7 +803,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if pullRequest:
-                commitMsg = pullRequest.description().splitlines(True)+['\n']
+                commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
             else:
                 commitMsg = ""
 
