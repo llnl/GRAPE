@@ -62,7 +62,14 @@ def deleteBranch(repo='', branch='master', args=None, *, execution_path):
     force = args[0]
     forceStr = "-D" if force is True else "-d"
     logging.info(f"deleting {branch} in {repo}...")
-    git.branch(f"{forceStr} {branch}", execution_path=repo)
+    try:
+        git.branch(f"{forceStr} {branch}", execution_path=repo)
+    except grape_errors.GrapeGitError as e:
+        if "branch" in e.gitOutput and "not found." in e.gitOutput:
+            pass
+        else:
+            raise e
+
     if f"origin/{branch}" in git.branch("-r", execution_path=repo):
         try:
             git.push(f"--delete origin {branch}", throwOnFail=True, execution_path=repo)
