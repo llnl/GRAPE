@@ -28,11 +28,15 @@ def handledCheckout(repo='', branch='master', args=[], *, execution_path):
             # and allow the checkout to throw the exception.
             pass
     try:
+        logging.info(f"checking out {branch} in {repo}")
         git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
         if "already exists" in e.gitOutput and "-b" in checkoutargs:
             logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
             git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
+        else:
+            logging.error("checkout failed.")
+            raise e
     logging.info(f"Checked out {branch} in {repo}")
 
     return True
