@@ -112,7 +112,7 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def _should_capture_output(*args):
+def is_test_dir_given(*args):
     """
     Indicates whether a Git subprocess' output should be captured or not.
 
@@ -131,7 +131,7 @@ def _should_capture_output(*args):
 
 
 def clone(argstr='', *, source_repo, clone_repo, execution_path):
-    capture_output = _should_capture_output(source_repo, clone_repo)
+    capture_output = is_test_dir_given(source_repo, clone_repo)
 
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
@@ -563,7 +563,7 @@ def status(argstr="", *, execution_path):
 
 def submodule(argstr, *, execution_path, capture_output = None):
     if capture_output is None:
-        capture_output = _should_capture_output(execution_path)
+        capture_output = is_test_dir_given(execution_path)
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
                   execution_path=execution_path,
                   capture_output=capture_output)

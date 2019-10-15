@@ -616,7 +616,6 @@ class Publish(Resumable, Option, CommandPathHandler):
 
     def testForCleanWorkspace(self, args):
         logging.info("Checking to make sure workspace has a clean status.")
-        # TODO: replace next line
         ret = utility.isWorkspaceClean(printOutput=True,
                                        workspace_dir=self.workspace_dir)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
@@ -651,7 +650,10 @@ class Publish(Resumable, Option, CommandPathHandler):
             if "<public>" in cmd:
                 cmd = cmd.replace("<public>", args["--public"])
 
-            process_result = vine_subprocess.executeSubProcess(cmd.strip())
+            # Withhold output to STDOUT for testing, but not normal operations.
+            capture_output = git.is_test_dir_given(working_dir)
+            process_result = vine_subprocess.executeSubProcess(
+                cmd.strip(), capture_output=capture_output)
             logging.info(process_result.returncode)
             if process_result.returncode != 0:
                 logging.info(process_result.stdout.decode().strip())
@@ -805,7 +807,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             repo = atlassian.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if pullRequest:
-                commitMsg = pullRequest.description().splitlines(True)+['\n']
+                commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
             else:
                 commitMsg = ""
 
@@ -956,7 +958,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             return True
 
         # Open the file back up and attach it to a MIME message
-        with io.open(mailfile, 'rb') as t:
+        with io.open(mailfile, 'r') as t:
             message = t.read()
         msg = MIMEText(message)
 
