@@ -619,7 +619,6 @@ class Publish(Resumable, Option, CommandPathHandler):
         ret = utility.isWorkspaceClean(printOutput=True,
                                        workspace_dir=self.workspace_dir)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        menu.set_command_path(self.workspace_dir)
         ret = menu.applyMenuChoice("status", ["--failIfInconsistent"]) and ret
         if ret:
             cb = git.currentBranch(execution_path=self.workspace_dir)

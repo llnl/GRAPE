@@ -162,7 +162,10 @@ class Config(Option, CommandPathHandler):
         publicBranches = config.getPublicBranchList()
         submodulePublicBranches = set(config.getMapping(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings').values())
         for sub in submodules:
+            config.read(sub)
             self.ensurePublicBranchesExist(sub, submodulePublicBranches)
+
+        config.read(self.workspace_dir)
 
         # reset config to the workspace grapeconfig, use that one for all nested projects' public branches.
         for proj in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
