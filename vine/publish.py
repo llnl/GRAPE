@@ -655,8 +655,10 @@ class Publish(Resumable, Option, CommandPathHandler):
                 cmd.strip(), capture_output=capture_output)
             logging.info(process_result.returncode)
             if process_result.returncode != 0:
-                logging.info(process_result.stdout.decode().strip())
-                logging.error(process_result.stderr.decode().strip())
+                if process_result.stdout:
+                    logging.info(process_result.stdout.decode().strip())
+                if process_result.stderr:
+                    logging.error(process_result.stderr.decode().strip())
                 return False
         return True
 
