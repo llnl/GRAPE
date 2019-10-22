@@ -34,8 +34,13 @@ def handledCheckout(repo='', branch='master', args=[], *, execution_path):
         if "already exists" in e.gitOutput and "-b" in checkoutargs:
             logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
             git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
+        if "index.lock" in e.gitOutput:
+            logging.info(f"waiting for 3 seconds in {branch} in {repo} due to index.lock detection")
+            time.wait(3)
+            logging.info(f"retrying checkout out of {branch} in {repo}")
+            git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
         else:
-            logging.error("checkout failed.")
+            logging.debug(f"checkout failed in {repo}.")
             raise e
     logging.info(f"Checked out {branch} in {repo}")
 
@@ -121,12 +126,13 @@ def handleCheckoutMRE(mre):
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             createNewBranches,
             listOfRepoBranchArgTuples=newBranchReposArgTuples,
-            execution_path=self.command_path)
+            execution_path=mre.command_path)
         launcher.launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
 def createNewBranches(repo='', branch='', args={}, *, execution_path):
+    #execution_path ignored
     checkoutargs = args["checkout"]
-    logging.info(f"Creating new branch {branch} in {project}.")
+    logging.info(f"Checking out new branch {branch} in {repo}.")
     git.checkout(f"{checkoutargs} -b {branch}", execution_path=repo)
     git.push(f"-u origin {branch}", execution_path=repo)
     return True
