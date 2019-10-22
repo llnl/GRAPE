@@ -378,6 +378,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                     currentDescription = request.description()
                     if isinstance(descr, bytes):
                         descr = descr.decode("utf-8")
+                    if isinstance(currentDescription, bytes):
+                        currentDescription = currentDescription.decode("utf-8")
                     if args["--prepend"]:
                         descr = descr + "\n" + currentDescription
                     elif args["--append"]:
