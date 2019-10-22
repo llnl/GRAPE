@@ -24,7 +24,8 @@ class MultiRepoCommandRunner(CommandPathHandler):
         """
         if isinstance(cmd_tuple, list):
             while cmd_tuple:
-                inner_tuple = cmd_tuple.pop()
+                #important to pop from front to keep result order the same
+                inner_tuple = cmd_tuple.pop(0)
                 self.add_cmd_tuple_to_task_queue(inner_tuple)
             return
 
@@ -67,7 +68,7 @@ class MultiRepoCommandRunner(CommandPathHandler):
         runnable_coroutines = []
         for command in commands:
             runnable_coroutines.append(command)
-        results = await asyncio.gather(*runnable_coroutines)
+        results = await asyncio.gather(*runnable_coroutines, return_exceptions=True)
         self.task_queue = []
         return results
 
@@ -211,7 +212,7 @@ class MultiRepoCommandLauncher(CommandPathHandler):
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
                 retvals = retvals + self.cmd_runner.run_all()
 
-        MRE = grape_errors.MultiRepoException()
+        MRE = grape_errors.MultiRepoException(command_path=self.command_path)
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
             if isinstance(val[0], Exception):
                 MRE.addException(val[0], val[1], val[2], val[3])

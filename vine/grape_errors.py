@@ -44,11 +44,12 @@ class GrapeGitError(Exception):
 # there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
 # this is a wrapper to allow exception capture in runCommandOnRepoBranch.
 class MultiRepoException(Exception):
-    def __init__(self):
+    def __init__(self, command_path):
         self._exceptions = []
         self._repos = []
         self._branches = []
         self._args = []
+        self.command_path = command_path
         logging.debug(repr(self))
 
     def addException(self, e, repo, branch, args):
