@@ -110,7 +110,7 @@ class Status(Option, CommandPathHandler):
                 if subbranch != wsBranch:
                     consistentBranchState = False
                     logging.info(f"Submodule {sub} on branch {subbranch}" +
-                                 " when grape expects it to be on {wsBranch}")
+                                 f" when grape expects it to be on {wsBranch}")
 
         # check that nested subproject branching is consistent
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
