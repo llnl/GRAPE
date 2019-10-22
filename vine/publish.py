@@ -326,8 +326,8 @@ class Publish(Resumable, Option, CommandPathHandler):
         if self.progress["startingSHA"] != git.SHA(branch, execution_path=self.command_path):
             logging.info(f"Reverting all commits from {branch} from " +
                          f"{self.progress['startingSHA']} to {git.SHA(branch, execution_path=self.command_path)}")
-            revert = utility.userInput("This will apply to {branch}. continue? ",
-                                       "[y,n]", "y")
+            revert = utility.userInput(
+                "This will apply to {branch}. continue? [y,n]", "y")
             if revert:
                 git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD",
                            execution_path=self.command_path)
@@ -619,7 +619,6 @@ class Publish(Resumable, Option, CommandPathHandler):
         ret = utility.isWorkspaceClean(printOutput=True,
                                        workspace_dir=self.workspace_dir)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        menu.set_command_path(self.workspace_dir)
         ret = menu.applyMenuChoice("status", ["--failIfInconsistent"]) and ret
         if ret:
             cb = git.currentBranch(execution_path=self.workspace_dir)
@@ -656,8 +655,10 @@ class Publish(Resumable, Option, CommandPathHandler):
                 cmd.strip(), capture_output=capture_output)
             logging.info(process_result.returncode)
             if process_result.returncode != 0:
-                logging.info(process_result.stdout.decode().strip())
-                logging.error(process_result.stderr.decode().strip())
+                if process_result.stdout:
+                    logging.info(process_result.stdout.decode().strip())
+                if process_result.stderr:
+                    logging.error(process_result.stderr.decode().strip())
                 return False
         return True
 
