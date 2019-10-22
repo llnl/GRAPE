@@ -4,13 +4,13 @@ from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
 # update the repo from the remote
-class UpdateLocal(Option, CommandPathHandler):
+class UpdateLocal(Option, WorkspaceDirHandler):
     """
     grape up
     Updates the current branch and any public branches.

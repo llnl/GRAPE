@@ -8,7 +8,7 @@ from test import testProjectScenarios
 class GrapeUpTester(testGrape.TestGrape):
 
     def gridtestGrapeUp(self, testProjectScenario):
-        self.menu.set_command_path(testProjectScenario.getProjectDir())
+        self.menu.set_workspace_dir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("up", args=None, option_args=None)
         self.assertTrue(ret, "up failed to run")
         # NOTE The following counting of the number of fetches is incorrect

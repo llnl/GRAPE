@@ -1,12 +1,12 @@
 import logging
 from vine import config_parser_global
 from vine import grapeGit as git
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class Clone(Option, CommandPathHandler):
+class Clone(Option, WorkspaceDirHandler):
     """ grape-clone
     Clones a git repo and configures it for use with git.
 
@@ -43,16 +43,16 @@ class Clone(Option, CommandPathHandler):
         logging.info(
             f"Cloning {remotepath} into {destpath} {recursively}")
         git.clone(argstr=rstr, source_repo=remotepath, clone_repo=destpath,
-                  execution_path=self.command_path)
+                  execution_path=self.workspace_dir)
         logging.info("Clone succeeded!")
 
         # Following config tasks done in 'destpath'
-        self.command_path = destpath
+        self.workspace_dir = destpath
 
         config_parser_global.read(workspace_dir=self.workspace_dir)
         # ensure you start on a reasonable publish branch
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         if publicBranches:

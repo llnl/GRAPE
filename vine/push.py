@@ -4,11 +4,11 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine.option import Option
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
 
-class Push(Option, CommandPathHandler):
+class Push(Option, WorkspaceDirHandler):
     """
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
@@ -36,7 +36,7 @@ class Push(Option, CommandPathHandler):
         git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            push, execution_path=self.command_path)
+            push, execution_path=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         logging.info("Pushed current branch to origin")

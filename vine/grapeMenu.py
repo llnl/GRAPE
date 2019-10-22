@@ -35,7 +35,7 @@ from vine import utility
 from vine import version
 from vine import vine_logging
 from vine import walkthrough
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 
 
 #######################################################################
@@ -67,7 +67,7 @@ def _resetMenu():
     config_parser_global.resetGrapeConfig()
 
 
-class _Menu(CommandPathHandler):
+class _Menu(WorkspaceDirHandler):
 
     def __init__(self):
         super(_Menu, self).__init__()
@@ -91,7 +91,7 @@ class _Menu(CommandPathHandler):
             walkthrough.Walkthrough(), quit.Quit()
             ]
 
-        self.set_command_path(os.getcwd())
+        self.set_workspace_dir(os.getcwd())
 
         #Add/order the menu sections here
         self._sections = [
@@ -99,18 +99,18 @@ class _Menu(CommandPathHandler):
             'Gitflow Tasks', 'Hooks', 'Patches', 'Project Management', 'Other'
             ]
 
-    def set_command_path(self, command_path):
-        self.command_path = command_path
+    def set_workspace_dir(self, workspace_dir):
+        self.workspace_dir = workspace_dir
         for menu_option in self._options:
-            if isinstance(menu_option, CommandPathHandler):
-                menu_option.command_path = command_path
+            if isinstance(menu_option, WorkspaceDirHandler):
+                menu_option.workspace_dir = workspace_dir
 
     def postInit(self):
         # add dynamically generated (dependent on grapeConfig) options here
         branch_option_factory = newFlowBranch.NewBranchOptionFactory()
         new_option_list = branch_option_factory.createNewBranchOptions(
             config_parser_global.grapeConfig(),
-            execution_path=self.command_path)
+            execution_path=self.workspace_dir)
         self._options.extend(new_option_list)
 
         for currOption in self._options:

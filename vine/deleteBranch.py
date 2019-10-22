@@ -3,12 +3,12 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine.option import Option
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine import utility
 from vine.vine_logging import log_wrapper
 
 
-class DeleteBranch(Option, CommandPathHandler):
+class DeleteBranch(Option, WorkspaceDirHandler):
     """ Deletes a topic branch both locally and on origin for all projects in this workspace.
     Usage: grape-db [-D] [<branch>] [--verify]
 
@@ -46,7 +46,7 @@ class DeleteBranch(Option, CommandPathHandler):
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             deleteBranch, branch=branch, globalArgs=[force],
-            execution_path=self.command_path)
+            execution_path=self.workspace_dir)
         try:
             launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as e:

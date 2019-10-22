@@ -12,7 +12,7 @@ from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine.vine_logging import log_wrapper
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 
 try:
@@ -23,7 +23,7 @@ except ImportError as e:
 
 
 # update your custom sparse checkout view
-class UpdateView(Option, CommandPathHandler):
+class UpdateView(Option, WorkspaceDirHandler):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules] [--gui]
@@ -66,7 +66,7 @@ class UpdateView(Option, CommandPathHandler):
 
         """
         if projectType == "submodule":
-            allSubprojects = git.getAllSubmodules(execution_path=self.command_path)
+            allSubprojects = git.getAllSubmodules(execution_path=self.workspace_dir)
             activeSubprojects = git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         if projectType == "nested subproject":
@@ -361,7 +361,7 @@ class UpdateView(Option, CommandPathHandler):
         checkoutArgs = "-b" if args["-b"] else ""
 
         safeSwitchWorkspaceToBranch(
-            git.currentBranch(execution_path=self.command_path), checkoutArgs,
+            git.currentBranch(execution_path=self.workspace_dir), checkoutArgs,
             sync, workspace_dir=self.workspace_dir)
 
         return True

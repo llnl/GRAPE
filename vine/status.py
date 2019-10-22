@@ -6,12 +6,12 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class Status(Option, CommandPathHandler):
+class Status(Option, WorkspaceDirHandler):
     """
     Usage: grape-status [-u | --uno]
               [--failIfInconsistent]
@@ -50,7 +50,7 @@ class Status(Option, CommandPathHandler):
                                             runInSubprojects=True,
                                             runInOuter=True,
                                             globalArgs=[statusArgs, self.workspace_dir],
-                                            execution_path=self.command_path)
+                                            execution_path=self.workspace_dir)
         stati = launcher.launchFromWorkspaceDir(noPause=True)
         status = {}
         for s, r in (zip(stati, launcher.repos)):

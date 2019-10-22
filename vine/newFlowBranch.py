@@ -6,12 +6,12 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class NewBranchOption(Option, CommandPathHandler):
+class NewBranchOption(Option, WorkspaceDirHandler):
     """
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
@@ -95,7 +95,7 @@ class NewBranchOption(Option, CommandPathHandler):
         changedURLModules = []
         if recurse:
             checkout.parseGitModulesDiffOutput(
-                git.currentBranch(execution_path=self.command_path), start, addedModules,
+                git.currentBranch(execution_path=self.workspace_dir), start, addedModules,
                 removedModules, changedURLModules,
                 workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls or
@@ -117,7 +117,7 @@ class NewBranchOption(Option, CommandPathHandler):
                                                    runInOuter=True,
                                                    branch=start,
                                                    globalArgs=branchName,
-                                                   execution_path=self.command_path)
+                                                   execution_path=self.workspace_dir)
         launcher.initializeCommands()
         logging.info("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):
@@ -125,7 +125,7 @@ class NewBranchOption(Option, CommandPathHandler):
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
             menu = grapeMenu.menu()
-            menu.set_command_path(self.command_path)
+            menu.set_workspace_dir(self.workspace_dir)
             menu.applyMenuChoice('up', ['up', f'--public={start}'])
             launcher.launchFromWorkspaceDir()
         else:
@@ -156,7 +156,7 @@ class NewBranchOptionFactory:
             if topic != '?':
                 new_branch_option = NewBranchOption(topic,
                                                     topicPublicMapping[topic])
-                new_branch_option.command_path = execution_path
+                new_branch_option.workspace_dir = execution_path
                 options.append(new_branch_option)
         return options
 

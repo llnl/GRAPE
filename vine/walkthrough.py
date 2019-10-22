@@ -6,7 +6,7 @@ from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
 from vine import vine_logging
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 
 try:
@@ -16,7 +16,7 @@ except ImportError as e:
     TkinterImportError = e
 
 
-class Walkthrough(Option, CommandPathHandler):
+class Walkthrough(Option, WorkspaceDirHandler):
     """
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
@@ -122,7 +122,7 @@ class Walkthrough(Option, CommandPathHandler):
                     showNestedSubprojects=not args["--noNestedSubprojects"],
                     noFetch=args["--noFetch"],
                     workspace_dir=self.workspace_dir,
-                    execution_path=self.command_path)
+                    execution_path=self.workspace_dir)
 
         root.mainloop()
 
@@ -133,7 +133,7 @@ class Walkthrough(Option, CommandPathHandler):
         return True
 
 # Base class for navigating files in a workspace
-class ProjectManager(CommandPathHandler):
+class ProjectManager(WorkspaceDirHandler):
     def __init__(self, master, *, execution_path, **kwargs):
         super(ProjectManager, self).__init__()
         height = kwargs.get('height', 0)
@@ -336,7 +336,7 @@ class DiffManager(ProjectManager):
         difftool = kwargs.get('difftool', None)
         if difftool is None:
             try:
-                difftool = git.config("--get diff.tool", execution_path=self.command_path)
+                difftool = git.config("--get diff.tool", execution_path=self.workspace_dir)
             except:
                 pass
 
@@ -386,12 +386,12 @@ class DiffManager(ProjectManager):
         if self.showToplevel or len(self.submodules) > 0:
             logging.info("Gathering status in outer level project...")
             changedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)}",
-                                    execution_path=self.command_path).split()
+                                    execution_path=self.workspace_dir).split()
             logging.info("Done.")
 
         # Get the url mapping for all submodules
         if len(self.submodules) > 0:
-            git.getAllSubmoduleURLMap(execution_path=self.command_path)
+            git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
 
         logging.info("Examining projects...")
 
@@ -459,7 +459,7 @@ class DiffManager(ProjectManager):
     def getBranch(self, branch):
         if not branch.startswith("--"):
             try:
-                git.shortSHA(branch, execution_path=self.command_path)
+                git.shortSHA(branch, execution_path=self.workspace_dir)
             except:
                 if not branch.startswith("origin/"):
                     branch = git.join_list_as_git_path(["origin", branch])
@@ -467,7 +467,7 @@ class DiffManager(ProjectManager):
             # TODO always fetch the origin before diffing?
             # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
             if not self.noFetch and branch.startswith("origin/"):
-                git.fetch("origin", branch.partition("/")[2], execution_path=self.command_path)
+                git.fetch("origin", branch.partition("/")[2], execution_path=self.workspace_dir)
         return branch
 
     def getSubBranch(self, branch):
@@ -495,7 +495,7 @@ class DiffManager(ProjectManager):
             self.diffbranchB = self.getSubBranch(self.branchB)
 
         if type_.startswith("Inactive"):
-            git.gitcmd("ls-remote", execution_path=self.command_path)
+            git.gitcmd("ls-remote", execution_path=self.workspace_dir)
             self.filelist.insert(Tk.END, "<Unable to diff>")
             self.filenames.append("")
         else:
@@ -505,7 +505,7 @@ class DiffManager(ProjectManager):
                 self.diffbranchA = self.getBranch(self.diffbranchA)
                 self.diffbranchB = self.getBranch(self.diffbranchB)
                 self.filenames = []
-                diffoutput = git.diff(f"--name-status --find-renames --find-copies {self.diffargs} {self.diffBranchSpec(self.diffbranchA, self.diffbranchB)} .", execution_path=self.command_path).splitlines()
+                diffoutput = git.diff(f"--name-status --find-renames --find-copies {self.diffargs} {self.diffBranchSpec(self.diffbranchA, self.diffbranchB)} .", execution_path=self.workspace_dir).splitlines()
             statusdict = { "A":"<Only in B>",
                            "C":"<File copied>",
                            "D":"<Only in A>",
@@ -566,6 +566,6 @@ class DiffManager(ProjectManager):
             else:
                 cmd += f"\"{file_}\""
             git.gitcmd(cmd, "Failed to launch difftool",
-                       execution_path=self.command_path)
+                       execution_path=self.workspace_dir)
         except grape_errors.GrapeGitError as e:
             logging.error(f"{e.msg} (return code {e.returnCode})\n{e.gitOutput}")

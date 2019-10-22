@@ -1,6 +1,6 @@
 from vine import config_parser_global
 from vine import utility
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
@@ -10,7 +10,7 @@ from vine.vine_logging import log_wrapper
 #
 # NOTE: any updates to merge's arguments should be reflected in Merge Remote's arguments, or at least given values
 # by mergeRemote before the call to merge.
-class Merge(Resumable, Option, CommandPathHandler):
+class Merge(Resumable, Option, WorkspaceDirHandler):
     """
     grape m
     merge a local branch into your current branch
@@ -50,7 +50,7 @@ class Merge(Resumable, Option, CommandPathHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
-        self.set_progress_file(execution_path=self.command_path)
+        self.set_progress_file(execution_path=self.workspace_dir)
 
         # this is necessary due to the unholy relationships between mr, m, and md.
         if "<<cmd>>" not in args:
@@ -89,7 +89,7 @@ class Merge(Resumable, Option, CommandPathHandler):
         mdArgs["--squash"] = args["--squash"]
 
         merge_down_command = grapeMenu.menu().getOption("md")
-        merge_down_command.command_path = self.command_path
+        merge_down_command.workspace_dir = self.workspace_dir
         return merge_down_command.execute(mdArgs)
 
     def _resume(self, args, *, workspace_dir):
@@ -97,7 +97,7 @@ class Merge(Resumable, Option, CommandPathHandler):
         from vine import grapeMenu
 
         merge_down_command = grapeMenu.menu().getOption("md")
-        merge_down_command.command_path = self.command_path
+        merge_down_command.workspace_dir = self.workspace_dir
         merge_down_command._resume(args, workspace_dir=workspace_dir)
         return True
 

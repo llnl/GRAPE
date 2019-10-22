@@ -1,11 +1,11 @@
 from vine import grapeGit as git
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
 # resolve conflicts using git mergetool
-class ResolveConflicts(Option, CommandPathHandler):
+class ResolveConflicts(Option, WorkspaceDirHandler):
 
     def __init__(self):
         super(ResolveConflicts, self).__init__()
@@ -18,9 +18,9 @@ class ResolveConflicts(Option, CommandPathHandler):
     @log_wrapper
     def execute(self, args):
         git.gitcmd("mergetool", "Mergetool Failed",
-                   execution_path=self.command_path)
+                   execution_path=self.workspace_dir)
         # print out git status, which contains instructions to complete a merge
-        git.status(execution_path=self.command_path)
+        git.status(execution_path=self.workspace_dir)
         return True
 
     def setDefaultConfig(self, config):

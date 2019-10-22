@@ -21,8 +21,8 @@ class TestMD(testGrape.TestGrape):
         git.commit("-m \"f2\"", execution_path=self.repo)
         git.checkout("testMerge", execution_path=self.repo)
         self.setUpConfig()
-        # Set command_path after calling setUpConfig()
-        self.menu.set_command_path(self.repo)
+        # Set workspace_dir after calling setUpConfig()
+        self.menu.set_workspace_dir(self.repo)
 
     def setUpConflictingMerge(self):
         self.setUpMerge()
@@ -134,7 +134,7 @@ class TestMD(testGrape.TestGrape):
         git.commit("-a -m \"updated gitlink on branch testSubmoduleMerge\"",
                    execution_path=self.repo)
         self.setUpConfig()
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
 
     def setUpConflictingSubmoduleMerge(self):
         self.createTestSubmodule(execution_path=self.defaultWorkingDirectory)
@@ -158,7 +158,7 @@ class TestMD(testGrape.TestGrape):
         git.commit("submodule1 -m \"updated submodule gitlink on testSubmoduleMerge branch\"",
                    execution_path=self.repo)
         self.setUpConfig()
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
 
     def testNonConflictingSubmoduleMerge_MD(self):
         try:
@@ -230,7 +230,7 @@ class TestMD(testGrape.TestGrape):
             git.commit("-m \"resolved conflict with our f1\"",
                        execution_path=subPath)
             self.setUpConfig()
-            self.menu.set_command_path(subPath)
+            self.menu.set_workspace_dir(subPath)
             ret = self.menu.applyMenuChoice("md", ["--continue"])
 
             # test that we returned successfully
@@ -281,7 +281,7 @@ class TestMD(testGrape.TestGrape):
             git.commit("-m \"resolved conflict with our f1\"",
                        execution_path=subPath)
             self.setUpConfig()
-            self.menu.set_command_path(subPath)
+            self.menu.set_workspace_dir(subPath)
             ret = self.menu.applyMenuChoice("m", ["--continue"])
 
             # test that we returned successfully

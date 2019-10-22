@@ -2,7 +2,7 @@ import logging
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
@@ -16,7 +16,7 @@ def popHelper(repo=".", branch="", *, execution_path):
 def listHelper(repo=".", branch="", *, execution_path):
     return [repo, git.stash(execution_path=execution_path)]
 
-class Stash(Option, CommandPathHandler):
+class Stash(Option, WorkspaceDirHandler):
     """
     grape stash can run simple git stash, git stash pop, or git stash list commands in all repositories
     in your workspace.
@@ -44,13 +44,13 @@ class Stash(Option, CommandPathHandler):
 
         if args["pop"]:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                popHelper, execution_path=self.command_path)
+                popHelper, execution_path=self.workspace_dir)
         elif args["list"]:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                listHelper, execution_path=self.command_path)
+                listHelper, execution_path=self.workspace_dir)
         else:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                stashHelper, execution_path=self.command_path)
+                stashHelper, execution_path=self.workspace_dir)
         try:
             retvals = launcher.launchFromWorkspaceDir()
             for r in retvals:

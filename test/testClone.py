@@ -29,7 +29,7 @@ class TestClone(testGrape.TestGrape):
                          f"GRAPE ISSUED A WARNING DURING A CLONE\n{contents}")
 
         # check to make sure the new repo has the old repo as a remote
-        self.menu.set_command_path(self.repos[1])
+        self.menu.set_workspace_dir(self.repos[1])
         remote = git.showRemote(execution_path=self.repos[1])
         self.assertIn(self.repo, remote)
         self.assertTrue(ret)
@@ -65,7 +65,7 @@ class TestClone(testGrape.TestGrape):
 #    @patch('vine.utility.userInput')
 #    def testRecursiveCloneWithSubmodule(self, mock_userInput):
     def testRecursiveCloneWithSubmodule(self):
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
 
         # make a repo to turn into a submodule
         git.clone(argstr="--mirror", source_repo=self.repo,
@@ -96,7 +96,7 @@ class TestClone(testGrape.TestGrape):
         git.clone(argstr="--mirror", source_repo=self.repo,
                   clone_repo=self.repos[1],
                   execution_path=self.defaultWorkingDirectory)
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
         subproject_path = os.path.join('subs', 'subproject1')
         self.menu.applyMenuChoice("addSubproject",
                                   ["--name=subproject1",
@@ -117,7 +117,7 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(ret, "vine.clone returned failure")
 
             # ensure we are on master with all nested subprojects
-            self.menu.set_command_path(tempDir)
+            self.menu.set_workspace_dir(tempDir)
             args = ["master", "--updateView"]
             mock_userInput.side_effect = ["all\n"]
             ret = self.menu.applyMenuChoice("checkout", args)

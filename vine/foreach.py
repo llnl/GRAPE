@@ -3,12 +3,12 @@ from vine import grape_errors
 from vine import multi_repo_cmd_launcher
 from vine import vine_logging
 from vine import vine_subprocess
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class ForEach(Option, CommandPathHandler):
+class ForEach(Option, WorkspaceDirHandler):
     """
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 

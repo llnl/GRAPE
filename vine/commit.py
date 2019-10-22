@@ -5,11 +5,11 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
 from vine.option import Option
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
 
-class Commit(Option, CommandPathHandler):
+class Commit(Option, WorkspaceDirHandler):
     """
     Usage: grape-commit [-m <message>] [-a | <filetree>]
 

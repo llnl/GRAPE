@@ -59,7 +59,7 @@ class TestGrape(unittest.TestCase):
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
         self.menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
-        self.menu.set_command_path(self.defaultWorkingDirectory)
+        self.menu.set_workspace_dir(self.defaultWorkingDirectory)
         self._debug = False
         self.logger = vine_logging.GrapeLogger()
 
@@ -67,7 +67,7 @@ class TestGrape(unittest.TestCase):
         grapeMenu._resetMenu()
         self.menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
         config = config_parser_global.grapeConfig()
-        self.menu.set_command_path(self.defaultWorkingDirectory)
+        self.menu.set_workspace_dir(self.defaultWorkingDirectory)
         try:
             # Git user name required for publish tests.
             config.ensureSection('user')
@@ -114,7 +114,7 @@ class TestGrape(unittest.TestCase):
         git.branch("develop", execution_path=self.repo)
         git.push("origin develop", execution_path=self.repo)
 
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
 
     def tearDown(self):
         def onError(func, path, exc_info):

@@ -8,14 +8,14 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
 # pull and merge in an up-to-date development branch
-class MergeDevelop(Resumable, Option, CommandPathHandler):
+class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     """
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
@@ -81,10 +81,10 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
 
     def description(self):
         try:
-            currentBranch = git.currentBranch(execution_path=self.command_path)
+            currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         except grape_errors.GrapeGitError:
             currentBranch = 'unknown'
-        publicBranch = self.lookupPublicBranch(execution_path=self.command_path)
+        publicBranch = self.lookupPublicBranch(execution_path=self.workspace_dir)
 
         return f"Merge latest changes on {publicBranch} into {currentBranch}"
 
@@ -99,14 +99,14 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
             args["<<cmd>>"] = "md"
         branch = args["--public"]
         if not branch:
-            branch = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch(execution_path=self.command_path))
+            branch = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
             if not branch:
                 logging.error("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
 
         # check to see if we already have the branch
         try:
-            git.shortSHA(branch, execution_path=self.command_path)
+            git.shortSHA(branch, execution_path=self.workspace_dir)
         except:
             # stripping of origin/ from the branch specification
             if branch.startswith("origin/"):
@@ -115,17 +115,17 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                 basebranch = branch
             # see if the branch exists locally
             try:
-                git.shortSHA(basebranch, execution_path=self.command_path)
+                git.shortSHA(basebranch, execution_path=self.workspace_dir)
             except:
                 # otherwise fetch it
                 git.fetch("origin", f"{basebranch}:{basebranch}",
-                          execution_path=self.command_path)
+                          execution_path=self.workspace_dir)
 
         # determine whether to merge in subprojects that have changed
         if "submodules" in self.progress:
             submodules = self.progress["submodules"]
         else:
-            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, branch, git.currentBranch(execution_path=self.command_path))
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, branch, git.currentBranch(execution_path=self.workspace_dir))
             activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
             submodules = [sub for sub in modifiedSubmodules if sub in activeSubmodules]
 
@@ -139,7 +139,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         # if we stored cwd in self.progress, make sure we end up there
         if "cwd" in self.progress:
             cwd = self.progress["cwd"]
-            self.command_path = cwd
+            self.workspace_dir = cwd
         else:
             cwd = self.workspace_dir
 
@@ -156,7 +156,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         # checking for a consistent workspace before doing a merge
         logging.info("Checking for a consistent workspace before performing merge...")
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         ret = menu.applyMenuChoice("status", ['--failIfInconsistent'])
         if ret is False:
             logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
@@ -173,7 +173,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         changedURLModules = []
         if recurse:
             checkout.parseGitModulesDiffOutput(
-                git.currentBranch(execution_path=self.command_path), branch, addedModules,
+                git.currentBranch(execution_path=self.workspace_dir), branch, addedModules,
                 removedModules, changedURLModules,
                 workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls
@@ -203,7 +203,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         # or new submodules from the merge (usually these new submodules will be inactive,
         # but they could be active if it was in the workspace already).
         if reinitModules and reinitActiveSubmodulesCheck:
-            currentBranch = git.currentBranch(execution_path=self.command_path)
+            currentBranch = git.currentBranch(execution_path=self.workspace_dir)
             submapping = config.getMapping(Option.SECTION_WORKSPACE, 'submodulepublicmappings')
             try:
                 submodulePubBranch = submapping[args["--public"]]
@@ -262,18 +262,18 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                                     "and then \n continue by calling 'grape md --continue' .")
             return False
 
-        original_command_path = menu.command_path
+        original_workspace_dir = menu.workspace_dir
         menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
-        menu.set_command_path(original_command_path)
+        menu.set_workspace_dir(original_workspace_dir)
 
         # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
         if self.progress["allActive"]:
             activeSubmodulesCheck1 = git.getActiveSubmodules(execution_path=self.workspace_dir)
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
                 logging.info("Updating new submodules using grape uv --allSubmodules")
-                original_command_path = menu.command_path
+                original_workspace_dir = menu.workspace_dir
                 menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
-                menu.set_command_path(original_command_path)
+                menu.set_workspace_dir(original_workspace_dir)
 
         return True
 
@@ -286,12 +286,12 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         except KeyError:
             pass
         execution_path = os.path.join(
-            git.baseDir(execution_path=self.command_path), subproject)
+            git.baseDir(execution_path=self.workspace_dir), subproject)
         mergeArgs = args.copy()
         mergeArgs["--public"] = subPublic
 
         submodule_or_subproject = "submodule" if isSubmodule else "subproject"
-        logging.info(f"Merging {subPublic} into {git.currentBranch(execution_path=self.command_path)} " +
+        logging.info(f"Merging {subPublic} into {git.currentBranch(execution_path=self.workspace_dir)} " +
                      f"for {submodule_or_subproject} {subproject}")
         git.fetch("origin", execution_path=execution_path)
         # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
@@ -319,7 +319,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
 
                 logging.info(
                     f"Merge in {typeStr} {subproject} from {subPublic} to " +
-                    f"{git.currentBranch(execution_path=self.command_path)} issued conflicts. Resolve and " +
+                    f"{git.currentBranch(execution_path=self.workspace_dir)} issued conflicts. Resolve and " +
                     "commit those changes \nusing git mergetool and git " +
                     "commit in the submodule, then continue using grape\n" +
                     f"{args['<<cmd>>']} --continue")
@@ -344,10 +344,10 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
         logging.info(f"Merging changes from {branch}" +
                      " into your current branch...")
 
-        conflict = not self.mergeIntoCurrent(branch, args, "outer level project", execution_path=self.command_path)
+        conflict = not self.mergeIntoCurrent(branch, args, "outer level project", execution_path=self.workspace_dir)
 
         if conflict:
-            conflictedFiles = git.conflictedFiles(execution_path=self.command_path)
+            conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
             if conflictedFiles:
                 return conflictedFiles
             else:
@@ -375,10 +375,10 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                         logging.info("Resolving conflicted files by accepting changes from your branch.")
                         checkoutArg = "--ours"
                     try:
-                        path = git.baseDir(execution_path=self.command_path)
+                        path = git.baseDir(execution_path=self.workspace_dir)
                         git.checkout(f"{checkoutArg} {path}",
-                                     execution_path=self.command_path)
-                        git.add(f"{path}", execution_path=self.command_path)
+                                     execution_path=self.workspace_dir)
+                        git.add(f"{path}", execution_path=self.workspace_dir)
                         git.commit(f"-m 'Resolve conflicts using {checkoutArg}'",
                                    execution_path=self.command_pat)
                         return True
@@ -465,7 +465,7 @@ class MergeDevelop(Resumable, Option, CommandPathHandler):
                 args["--at"] = True
             elif strategy == 'ay':
                 args["--ay"] = True
-            base = git.gitDir(execution_path=self.command_path)
+            base = git.gitDir(execution_path=self.workspace_dir)
             if base == "":
                 return False
             attributes = os.path.join(base, ".gitattributes")

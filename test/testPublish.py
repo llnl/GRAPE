@@ -91,7 +91,7 @@ class TestPublish(testGrape.TestGrape):
                 args += defaultArgs
             else:
                 args = defaultArgs
-            self.menu.set_command_path(self.repo)
+            self.menu.set_workspace_dir(self.repo)
 
             ret = self.menu.applyMenuChoice("publish", args=args)
 
@@ -149,7 +149,7 @@ class TestPublish(testGrape.TestGrape):
         testGrape.writeFile1(other_file)
         git.add(other_file, execution_path=self.repo)
         git.commit("-a -m \"someOtherfile\"", execution_path=self.repo)
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
         self.assertGrapePublishFailed(["--topic=testPublish"])
 
     @patch('vine.utility.userInput')
@@ -180,7 +180,7 @@ class TestPublish(testGrape.TestGrape):
     def testVersionTickArgumentPassing(self, mock_userInput):
         mock_userInput.side_effect = ['1.1.1']
         self.setUpBranchToFFMerge()
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--tickVersion=True", "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         self.assertIn("v1.0.1", git.describe(execution_path=self.repo))
@@ -192,7 +192,7 @@ class TestPublish(testGrape.TestGrape):
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
         config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--startAt=tickVersion", "--stopAt=updateLog", "--tickVersion=True",
                                        "-T", "--slot=3", "-T", "--file=VERSION.txt"])
@@ -213,7 +213,7 @@ class TestPublish(testGrape.TestGrape):
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_PUBLISH, "buildCmds", "echo hello , echo world")
         config.set(Option.SECTION_PUBLISH, "testCmds", "echo helloTest , echo worldTest")
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(
             self, execution_path=self.repo)
@@ -233,12 +233,12 @@ class TestPublish(testGrape.TestGrape):
         from test import testNestedSubproject
         mock_userInput.side_effect = ['1.1.1']
         self.setUpBranchToFFMerge()
-        self.menu.set_command_path(self.repo)
+        self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(
             self, execution_path=self.repo)
 
-        self.menu.set_command_path(self.subproject)
+        self.menu.set_workspace_dir(self.subproject)
         self.assertGrapePublishWorked()
         self.assertSuccessfulFastForwardMerge()
 

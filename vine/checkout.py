@@ -10,7 +10,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine.option import Option
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine import utility
 from vine.vine_logging import log_wrapper
 
@@ -126,7 +126,7 @@ def handleCheckoutMRE(mre):
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             createNewBranches,
             listOfRepoBranchArgTuples=newBranchReposArgTuples,
-            execution_path=mre.command_path)
+            execution_path=mre.workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
 def createNewBranches(repo='', branch='', args={}, *, execution_path):
@@ -248,7 +248,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
     return cleaned
 
 
-class Checkout(Option, CommandPathHandler):
+class Checkout(Option, WorkspaceDirHandler):
     """
     grape checkout
 
@@ -440,7 +440,7 @@ class Checkout(Option, CommandPathHandler):
                      " subprojects and submodules.")
         config_parser_global.read(workspace_dir=self.workspace_dir)
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         menu.applyMenuChoice('uv', uvArgs)
 
         if sync:

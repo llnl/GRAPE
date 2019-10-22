@@ -6,13 +6,13 @@ from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
 # pull and merge in an up-to-date development branch
-class Bundle(Option, CommandPathHandler):
+class Bundle(Option, WorkspaceDirHandler):
 
     """
     grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
@@ -103,8 +103,8 @@ class Bundle(Option, CommandPathHandler):
         tagsToBundle = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--bundleTags"])
         recurse = not args["--noRecurse"]
 
-        git.fetch(execution_path=self.command_path)
-        git.fetch("--tags --force", execution_path=self.command_path)
+        git.fetch(execution_path=self.workspace_dir)
+        git.fetch("--tags --force", execution_path=self.workspace_dir)
         branchlist = branches.split()
 
         launchArgs["branchList"] = branchlist
@@ -116,7 +116,7 @@ class Bundle(Option, CommandPathHandler):
         otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             bundlecmd, skipSubmodules=True, runInSubmodules=False,
             runInSubprojects=recurse, globalArgs=launchArgs,
-            execution_path=self.command_path)
+            execution_path=self.workspace_dir)
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
@@ -125,7 +125,7 @@ class Bundle(Option, CommandPathHandler):
             submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 bundlecmd, runInSubmodules=recurse, runInSubprojects=False,
                 skipSubmodules=not recurse, runInOuter=False,
-                globalArgs=launchArgs, execution_path=self.command_path)
+                globalArgs=launchArgs, execution_path=self.workspace_dir)
             submoduleCommandLauncher.launchFromWorkspaceDir(
                 handleMRE=bundlecmdMRE, noPause=True)
 
@@ -205,7 +205,7 @@ def bundlecmdMRE(mre):
             logging.error(f"{b} {e}")
 
 
-class Unbundle(Option, CommandPathHandler):
+class Unbundle(Option, WorkspaceDirHandler):
     """
     grape unbundle
 
@@ -241,7 +241,7 @@ class Unbundle(Option, CommandPathHandler):
         repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             unbundlecmd, skipSubmodules=True, runInSubmodules=False,
             runInSubprojects=recurse, globalArgs=launchArgs,
-            execution_path=self.command_path)
+            execution_path=self.workspace_dir)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
@@ -250,7 +250,7 @@ class Unbundle(Option, CommandPathHandler):
             unbundlecmd, runInSubmodules=recurse, runInSubprojects=False,
             skipSubmodules=not recurse, runInOuter=False,
             globalArgs=launchArgs,
-            execution_path=self.command_path)
+            execution_path=self.workspace_dir)
         submoduleCommandLauncher.launchFromWorkspaceDir(
             handleMRE=bundlecmdMRE, noPause=True)
 

@@ -10,12 +10,12 @@ from vine import grapeGit as git
 from vine import utility
 from vine import vine_logging
 from vine.option import Option
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
 
 # Prepare Feature Branch for review
-class Review(Option, CommandPathHandler):
+class Review(Option, WorkspaceDirHandler):
     """
     grape review
     Usage: grape-review [--update | --add]
@@ -147,7 +147,7 @@ class Review(Option, CommandPathHandler):
         # determine source branch and target branch
         branch = args["--source"]
         if not branch:
-            branch = git.currentBranch(execution_path=self.command_path)
+            branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
         logging.info(f"Pushing {branch} to bitbucket...")

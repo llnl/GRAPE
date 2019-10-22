@@ -19,7 +19,7 @@ from vine import grapeGit as git
 from vine import grapeMenu
 from vine import utility
 from vine import vine_subprocess
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
@@ -32,7 +32,7 @@ class PublishStepFailed(Exception):
         self.stepName = stepName
 
 
-class Publish(Resumable, Option, CommandPathHandler):
+class Publish(Resumable, Option, WorkspaceDirHandler):
     """
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
@@ -260,9 +260,9 @@ class Publish(Resumable, Option, CommandPathHandler):
 
     def description(self):
         try:
-            current = git.currentBranch(execution_path=self.command_path)
+            current = git.currentBranch(execution_path=self.workspace_dir)
             public = config_parser_global.grapeConfig().getPublicBranchFor(
-                git.currentBranch(execution_path=self.command_path))
+                git.currentBranch(execution_path=self.workspace_dir))
         except grape_errors.GrapeGitError:
             public = "Unknown"
             current = "Unknown"
@@ -283,11 +283,11 @@ class Publish(Resumable, Option, CommandPathHandler):
         # resolve default topic branch, ensure we are on the topic branch
         topic = args["--topic"]
         if not topic:
-            topic = git.currentBranch(execution_path=self.command_path)
-        if topic != git.currentBranch(execution_path=self.command_path) and \
+            topic = git.currentBranch(execution_path=self.workspace_dir)
+        if topic != git.currentBranch(execution_path=self.workspace_dir) and \
                 args['--startAt'] and self.order in args['--startAt'] and \
                 'publish' in args["--startAt"]:
-            git.checkout(topic, execution_path=self.command_path)
+            git.checkout(topic, execution_path=self.workspace_dir)
         args["--topic"] = topic
 
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
@@ -322,29 +322,29 @@ class Publish(Resumable, Option, CommandPathHandler):
     def abort(self, args):
         #undo any commits done since we first started
         super(Publish, self)._resume(args, workspace_dir=self.workspace_dir)
-        branch = git.currentBranch(execution_path=self.command_path)
-        if self.progress["startingSHA"] != git.SHA(branch, execution_path=self.command_path):
+        branch = git.currentBranch(execution_path=self.workspace_dir)
+        if self.progress["startingSHA"] != git.SHA(branch, execution_path=self.workspace_dir):
             logging.info(f"Reverting all commits from {branch} from " +
-                         f"{self.progress['startingSHA']} to {git.SHA(branch, execution_path=self.command_path)}")
+                         f"{self.progress['startingSHA']} to {git.SHA(branch, execution_path=self.workspace_dir)}")
             revert = utility.userInput(
                 "This will apply to {branch}. continue? [y,n]", "y")
             if revert:
                 git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD",
-                           execution_path=self.command_path)
+                           execution_path=self.workspace_dir)
         # release IN PROGRESS LOCK
         logging.info("Releasing In Progress Lock")
         self.releaseInProgressLock(args)
 
     @log_wrapper
     def execute(self, args):
-        self.set_progress_file(execution_path=self.command_path)
+        self.set_progress_file(execution_path=self.workspace_dir)
 
         if args["--abort"]:
             self.abort(args)
             return True
         if "startingSHA" not in self.progress:
             self.progress["startingSHA"] = git.SHA("HEAD",
-                                                   execution_path=self.command_path)
+                                                   execution_path=self.workspace_dir)
 
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
@@ -460,7 +460,7 @@ class Publish(Resumable, Option, CommandPathHandler):
 
     def mergePublic(self, args):
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         return menu.applyMenuChoice("md", ["--am",
                                            f"--public={args['--public']}"])
 
@@ -481,7 +481,7 @@ class Publish(Resumable, Option, CommandPathHandler):
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         return menu.applyMenuChoice("review", finalArgs)
 
     def markReviewAsInProgress(self, args):
@@ -682,7 +682,7 @@ class Publish(Resumable, Option, CommandPathHandler):
         # handled in the custom step.
         try:
             git.commit(f" -m \"{args['-m']}\"",
-                       execution_path=self.command_path)
+                       execution_path=self.workspace_dir)
         except grape_errors.GrapeGitError:
             pass
 
@@ -748,7 +748,7 @@ class Publish(Resumable, Option, CommandPathHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             menu = grapeMenu.menu()
-            menu.set_command_path(self.command_path)
+            menu.set_workspace_dir(self.workspace_dir)
             menu.applyMenuChoice("version", ["read"])
             guess = menu.getOption("version").ver
             self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
@@ -870,7 +870,7 @@ class Publish(Resumable, Option, CommandPathHandler):
         if not args["--tickVersion"]:
             return True
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         if not args["--noReview"]:
             atlassian = Atlassian.Atlassian(
                 username=args["--user"], url=args["--bitbucketURL"],
@@ -906,7 +906,7 @@ class Publish(Resumable, Option, CommandPathHandler):
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
         menu = grapeMenu.menu()
-        menu.set_command_path(self.command_path)
+        menu.set_workspace_dir(self.workspace_dir)
         ret = menu.applyMenuChoice("version", versionArgs)
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             nested_dir = os.path.join(args['workspace_dir'], nested)
@@ -925,7 +925,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             date = time.asctime()
             emailHeader = args["--emailHeader"]
             emailHeader = emailHeader.replace(
-                "<user>", git.config("--get user.name", execution_path=self.command_path))
+                "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
             emailHeader = emailHeader.replace("<date>", date)
             emailHeader = emailHeader.replace("<version>", self.progress["version"])
             emailHeader = emailHeader.replace("<reviewers>", self.progress["reviewers"])
@@ -942,7 +942,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             mf.write('\n')
             emailFooter = args["--emailFooter"]
             emailFooter = emailFooter.replace(
-                "<user>", git.config("--get user.name", execution_path=self.command_path))
+                "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
             emailFooter = emailFooter.replace("<date>", date)
             emailFooter = emailFooter.replace("<version>", self.progress["version"])
             emailFooter = emailFooter.replace("<reviewers>", self.progress["reviewers"])
@@ -965,10 +965,10 @@ class Publish(Resumable, Option, CommandPathHandler):
 
         # Use their email address from their git user profile.
         myemail = git.config("--get user.email",
-                             execution_path=self.command_path)
+                             execution_path=self.workspace_dir)
         mailsubj = args["--emailSubject"]
         mailsubj = mailsubj.replace(
-            "<user>", git.config("--get user.name", execution_path=self.command_path))
+            "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
         mailsubj = mailsubj.replace("<public>", args["--public"])
         mailsubj = mailsubj.replace("<version>", self.progress["version"])
         mailsubj = mailsubj.replace("<date>", date)
@@ -1017,20 +1017,20 @@ class Publish(Resumable, Option, CommandPathHandler):
         if self.doDelete[args["--topic"]]:
             logging.info(f"Deleting {args['--topic']}")
             menu = grapeMenu.menu()
-            menu.set_command_path(self.command_path)
+            menu.set_workspace_dir(self.workspace_dir)
             menu.applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
             # SHA will raise an exception if the branch has been deleted
-            if git.SHA(args["--topic"], execution_path=self.command_path):
+            if git.SHA(args["--topic"], execution_path=self.workspace_dir):
                 checkout = utility.userInput(
-                    f"You are currently on {git.currentBranch(execution_path=self.command_path)}. " +
+                    f"You are currently on {git.currentBranch(execution_path=self.workspace_dir)}. " +
                     f"Would you like to checkout {args['--topic']}? [y,n]",
                     "n")
                 # 'checkout' is bool or the user's input. Enforces 'y' given.
                 if checkout is True:
                     menu = grapeMenu.menu()
-                    menu.set_command_path(self.command_path)
+                    menu.set_workspace_dir(self.workspace_dir)
                     menu.applyMenuChoice("checkout", [args["--topic"]])
         except:
             pass
@@ -1063,7 +1063,7 @@ class Publish(Resumable, Option, CommandPathHandler):
             logging.info(f"remotely merging {topic} into {public}")
             if pr.merge():
                 git.checkout(execution_path=public)
-                git.pull("", execution_path=self.command_path)
+                git.pull("", execution_path=self.workspace_dir)
                 logging.info(f"{topic} merged successfully to {public}")
                 logging.info(f"You are currently on {public}")
                 return True
@@ -1126,14 +1126,14 @@ class Publish(Resumable, Option, CommandPathHandler):
         if status[mergeID] == "DONE":
             return True
         if status[mergeID] == "READY":
-            git.checkout(branch, execution_path=self.command_path)
+            git.checkout(branch, execution_path=self.workspace_dir)
             status[mergeID] = "SWITCHED"
         if status[mergeID] == "SWITCHED":
             status[mergeID] = "MERGING"
             try:
                 git.merge(f"{public} -m \"GRAPE PUBLISH: cascade merge of " +
                           f"{public} to {branch} after publish.\"",
-                          execution_path=self.command_path)
+                          execution_path=self.workspace_dir)
                 status[mergeID] = "MERGED"
             except grape_errors.GrapeGitError as e:
                 if e.has_conflict():
@@ -1156,15 +1156,15 @@ class Publish(Resumable, Option, CommandPathHandler):
                 return False
         if status[mergeID] == "MERGED":
             public = branch
-            git.push(f"origin {branch}", execution_path=self.command_path)
+            git.push(f"origin {branch}", execution_path=self.workspace_dir)
             status[mergeID] = "PUSHED"
         if status[mergeID] == "PUSHED":
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
                 menu = grapeMenu.menu()
-                menu.set_command_path(self.command_path)
+                menu.set_workspace_dir(self.workspace_dir)
                 menu.applyMenuChoice(
                     "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
-                git.push("--tags origin", execution_path=self.command_path)
+                git.push("--tags origin", execution_path=self.workspace_dir)
             status[mergeID] = "DONE"
         return True
 
@@ -1269,19 +1269,19 @@ class Publish(Resumable, Option, CommandPathHandler):
                 prefix = config.get(f'subtree-{st}', 'prefix')
                 if git.diff(f"--name-only {public} {topic} -- " +
                             f"{os.path.join(self.workspace_dir, prefix)}",
-                            execution_path=self.command_path):
+                            execution_path=self.workspace_dir):
                     self.modifiedSubtrees.add(st)
             for st in self.modifiedSubtrees:
                 self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
                 self.st_remotes[st] = git.parseSubprojectRemoteURL(
                     config.get(f'subtree-{st}', 'remote'),
-                    execution_path=self.command_path)
+                    execution_path=self.workspace_dir)
                 self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
 
         # deal with nested subprojects. 'workspaceDir' is None on purpose.
         self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
-        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.command_path) else False
+        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
 
         return True
 
@@ -1390,7 +1390,7 @@ class Publish(Resumable, Option, CommandPathHandler):
                 for sub in modifiedSubmodules:
                     subpath = os.path.join(self.workspace_dir, sub)
                     menu = grapeMenu.menu()
-                    menu.set_command_path(subpath)
+                    menu.set_workspace_dir(subpath)
                     menu.applyMenuChoice('up', ['up', '--noRecurse',
                                          f'--wd={subpath}',
                                          f'--public={submodulePublic}'])

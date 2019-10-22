@@ -65,7 +65,7 @@ class ResettableProject:
                         continue
                     if cmd == self.apply_menu_choice:
                         execution_path = self.getProjectDir()
-                        self.menu.set_command_path(execution_path)
+                        self.menu.set_workspace_dir(execution_path)
                         cmd(*param)     #The * does the magic of unpacking the tuple and using it as the parameter list
                         continue
 

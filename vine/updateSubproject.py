@@ -2,12 +2,12 @@ import logging
 from vine import config_parser_global
 from vine import grapeGit as git
 from vine import utility
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-class UpdateSubproject(Option, CommandPathHandler):
+class UpdateSubproject(Option, WorkspaceDirHandler):
     """
         grape updateSubproject
         Updates an existing subproject from its host repository.

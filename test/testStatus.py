@@ -10,7 +10,7 @@ class GrapeStatusTester(testGrape.TestGrape):
         if testProjectScenario.debugging():
             self.logger.restore_sys_stdout()
             self.logger.log_to_stdout_debug()
-        self.menu.set_command_path(testProjectScenario.getProjectDir())
+        self.menu.set_workspace_dir(testProjectScenario.getProjectDir())
         self.assertTrue(self.menu.applyMenuChoice("status"),
                         "status Failed when no flags requesting fail codes were used.")
         ret = self.menu.applyMenuChoice("status", ["--failIfInconsistent"])
@@ -25,7 +25,7 @@ class GrapeStatusTester(testGrape.TestGrape):
         if testProjectScenario.debugging():
             self.logger.log_to_stdout_debug()
             self.logger.restore_sys_stdout()
-        self.menu.set_command_path(testProjectScenario.getProjectDir())
+        self.menu.set_workspace_dir(testProjectScenario.getProjectDir())
         ret = self.menu.applyMenuChoice("status", ["--failIfBranchesInconsistent"])
         if testProjectScenario.isStateConsistentWithBranchModel():
             self.assertTrue(ret, "grape thought consistent branch model repo was inconsistent")

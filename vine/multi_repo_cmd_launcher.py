@@ -4,13 +4,13 @@ import logging
 import os
 import warnings
 from vine import config_parser_global
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine import grape_errors
 from vine.vine_logging import log_wrapper
 
 
-class MultiRepoCommandRunner(CommandPathHandler):
+class MultiRepoCommandRunner(WorkspaceDirHandler):
 
     def __init__(self):
         self.task_queue = []
@@ -55,14 +55,14 @@ class MultiRepoCommandRunner(CommandPathHandler):
 
         if 'repo' not in varnames or 'branch' not in varnames:
             return await loop.run_in_executor(
-                None, functools.partial(func, execution_path=self.command_path))
+                None, functools.partial(func, execution_path=self.workspace_dir))
         elif 'args' in varnames:
             return await loop.run_in_executor(
                 None, functools.partial(func, repo=repo, branch=branch,
                                         args=args,
-                                        execution_path=self.command_path))
+                                        execution_path=self.workspace_dir))
         return await loop.run_in_executor(None, functools.partial(
-            func, repo=repo, branch=branch, execution_path=self.command_path))
+            func, repo=repo, branch=branch, execution_path=self.workspace_dir))
 
     async def _run_commands(self, commands):
         runnable_coroutines = []
@@ -78,14 +78,14 @@ class MultiRepoCommandRunner(CommandPathHandler):
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 
-class MultiRepoCommandLauncher(CommandPathHandler):
+class MultiRepoCommandLauncher(WorkspaceDirHandler):
 
     def __init__(self, lmbda, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
                  globalArgs=None, perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False,
                  outer="", *, execution_path):
         self.cmd_runner = MultiRepoCommandRunner()
         self.lmbda = lmbda
-        self.command_path = execution_path
+        self.workspace_dir = execution_path
 
         config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules")
@@ -157,7 +157,7 @@ class MultiRepoCommandLauncher(CommandPathHandler):
         if self.branchArg:
             currentBranch = self.branchArg
         else:
-            currentBranch = git.currentBranch(execution_path=self.command_path)
+            currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
 
@@ -193,7 +193,7 @@ class MultiRepoCommandLauncher(CommandPathHandler):
         self.initializeCommands()
         retvals = []
 
-        self.cmd_runner.command_path = self.workspace_dir
+        self.cmd_runner.workspace_dir = self.workspace_dir
 
         if noPause:
             # for purely local operations, run them all at once.
@@ -212,7 +212,7 @@ class MultiRepoCommandLauncher(CommandPathHandler):
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
                 retvals = retvals + self.cmd_runner.run_all()
 
-        MRE = grape_errors.MultiRepoException(command_path=self.command_path)
+        MRE = grape_errors.MultiRepoException(workspace_dir=self.workspace_dir)
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
             if isinstance(val[0], Exception):
                 MRE.addException(val[0], val[1], val[2], val[3])

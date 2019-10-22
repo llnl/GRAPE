@@ -1,12 +1,12 @@
 import logging
 from vine import grapeGit as git
 from vine.option import Option
-from vine.command_path_handler import CommandPathHandler
+from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
-class Pull(Resumable, Option, CommandPathHandler):
+class Pull(Resumable, Option, WorkspaceDirHandler):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
     Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
@@ -29,10 +29,10 @@ class Pull(Resumable, Option, CommandPathHandler):
 
     @log_wrapper
     def execute(self, args):
-        self.set_progress_file(execution_path=self.command_path)
+        self.set_progress_file(execution_path=self.workspace_dir)
 
         mrArgs = {}
-        currentBranch = git.currentBranch(execution_path=self.command_path)
+        currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         mrArgs["<branch>"] = currentBranch
         # the <<cmd>> stuff is for consistent --continue output
         if "<<cmd>>" not in args:
@@ -51,14 +51,14 @@ class Pull(Resumable, Option, CommandPathHandler):
         mrArgs["--squash"] = False
 
         if args["--noRecurse"]:
-            git.pull(f"origin {currentBranch}", execution_path=self.command_path)
+            git.pull(f"origin {currentBranch}", execution_path=self.workspace_dir)
             logging.info("Pulled current branch from origin")
             return True
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
         merge_remote_command = grapeMenu.menu().getOption("mr")
-        merge_remote_command.command_path = self.command_path
+        merge_remote_command.workspace_dir = self.workspace_dir
         val = merge_remote_command.execute(mrArgs)
         if val:
             logging.info("Pulled current branch from origin")
@@ -68,7 +68,7 @@ class Pull(Resumable, Option, CommandPathHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
         merge_down_command = grapeMenu.menu().getOption("md")
-        merge_down_command.command_path = self.command_path
+        merge_down_command.workspace_dir = self.workspace_dir
         merge_down_command._resume(args, workspace_dir)
         return True
 
