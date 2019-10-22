@@ -174,7 +174,10 @@ class Review(Option, CommandPathHandler):
         descr = self.parseDescriptionArgs(args)
 
         if not descr and existingOuterLevelRequest:
-            descr = existingOuterLevelRequest.description().decode("utf-8")
+            pr_description = existingOuterLevelRequest.description()
+            if isinstance(pr_description, bytes):
+                pr_description = pr_description.decode("utf-8")
+            descr = pr_description
 
         # determine pull request reviewers
         reviewers = self.parseReviewerArgs(args)
