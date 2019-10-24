@@ -867,7 +867,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if not args["--tickVersion"]:
             return True
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        menu.set_workspace_dir()
         if not args["--noReview"]:
             atlassian = Atlassian.Atlassian(
                 username=args["--user"], url=args["--bitbucketURL"],

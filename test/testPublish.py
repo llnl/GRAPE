@@ -149,7 +149,6 @@ class TestPublish(testGrape.TestGrape):
         testGrape.writeFile1(other_file)
         git.add(other_file, execution_path=self.repo)
         git.commit("-a -m \"someOtherfile\"", execution_path=self.repo)
-        self.menu.set_workspace_dir(self.repo)
         self.assertGrapePublishFailed(["--topic=testPublish"])
 
     @patch('vine.utility.userInput')
@@ -180,7 +179,6 @@ class TestPublish(testGrape.TestGrape):
     def testVersionTickArgumentPassing(self, mock_userInput):
         mock_userInput.side_effect = ['1.1.1']
         self.setUpBranchToFFMerge()
-        self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         self.assertGrapePublishWorked(["--tickVersion=True", "-T", "--slot=3", "-T", "--file=VERSION.txt"])
         self.assertIn("v1.0.1", git.describe(execution_path=self.repo))

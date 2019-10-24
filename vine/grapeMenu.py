@@ -53,7 +53,7 @@ def menu(workspace_dir=None):
 
         # __menuInstance process workspace_dir via @workspace_dir.setter in WorkspaceDirHandler
         # After processing, __menuInstance.workspace_dir may be a parent dir or workspace_dir
-        __menuInstance.workspace_dir = workspace_dir
+        __menuInstance.set_workspace_dir(workspace_dir)
         menu_workspace_dir = __menuInstance.workspace_dir
 
         config = config_parser_global.grapeConfig()
