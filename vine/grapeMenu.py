@@ -46,14 +46,22 @@ from vine.workspace_dir_handler import WorkspaceDirHandler
 __menuInstance = None
 
 
-def menu(workspace_dir=os.getcwd()):
+def menu(workspace_dir=None):
     global __menuInstance
     if __menuInstance is None:
         __menuInstance = _Menu()
+
+        # __menuInstance process workspace_dir via @workspace_dir.setter in WorkspaceDirHandler
+        # After processing, __menuInstance.workspace_dir may be a parent dir or workspace_dir
+        __menuInstance.workspace_dir = workspace_dir
+        menu_workspace_dir = __menuInstance.workspace_dir
+
         config = config_parser_global.grapeConfig()
         menu().setDefaultConfig(config)
-        config_parser_global.read(workspace_dir=workspace_dir)
+        config_parser_global.read(workspace_dir=menu_workspace_dir)
         __menuInstance.postInit()
+    elif workspace_dir:
+        __menuInstance.set_workspace_dir(workspace_dir)
     return __menuInstance
 
 
