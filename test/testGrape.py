@@ -58,16 +58,18 @@ class TestGrape(unittest.TestCase):
         self.repos = [os.path.join(self.defaultWorkingDirectory, "testRepo"),
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
-        self.menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
-        self.menu.set_workspace_dir(self.defaultWorkingDirectory)
+
+        # Wipe out grape menu created by calling "grape test"
+        grapeMenu._resetMenu()
+        self.menu = None
+
         self._debug = False
         self.logger = vine_logging.GrapeLogger()
 
     def setUpConfig(self):
         grapeMenu._resetMenu()
-        self.menu = grapeMenu.menu(workspace_dir=self.defaultWorkingDirectory)
+        self.menu = grapeMenu.menu(workspace_dir=self.repo)
         config = config_parser_global.grapeConfig()
-        self.menu.set_workspace_dir(self.defaultWorkingDirectory)
         try:
             # Git user name required for publish tests.
             config.ensureSection('user')
@@ -100,6 +102,8 @@ class TestGrape(unittest.TestCase):
 
         git.gitcmd("init --bare", "Setup Failed",
                    execution_path=bare_repo)
+        self.menu = grapeMenu.menu(workspace_dir=self.repo)
+
         working_dir = os.path.dirname(f"{self.repo}-origin")
         git.clone(source_repo=bare_repo, clone_repo=self.repo,
                   execution_path=self.defaultWorkingDirectory)

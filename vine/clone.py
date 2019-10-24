@@ -51,8 +51,7 @@ class Clone(Option, WorkspaceDirHandler):
 
         config_parser_global.read(workspace_dir=self.workspace_dir)
         # ensure you start on a reasonable publish branch
-        menu = grapeMenu.menu()
-        menu.set_workspace_dir(self.workspace_dir)
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         publicBranches = config.getPublicBranchList()
         if publicBranches:

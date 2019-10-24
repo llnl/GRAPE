@@ -95,8 +95,7 @@ class Config(Option, WorkspaceDirHandler):
         ask = not args["--nouv"]
         updateView = ask and (args["--uv"] or utility.userInput("Do you want to edit your active subprojects?"
                                                                 " (you can do this later using grape uv) [y/n]", "n"))
-        menu = grapeMenu.menu()
-        menu.set_workspace_dir(self.workspace_dir)
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         if updateView:
             menu.applyMenuChoice("uv", args["--uvArg"])
 
