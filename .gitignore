@@ -13,4 +13,3 @@ build/
 \.idea
 *.egg-info
 *.log
-subs/subproject1
