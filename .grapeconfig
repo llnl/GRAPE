@@ -14,20 +14,23 @@ subprojecttype = subtree
 managesubmodules = True
 submoduletopicprefixmappings = ?:develop
 submodulepublishpolicy = ?:merge
+submodulepublicmappings = ?:master
 
 [patch]
 tagprefix = bundled
 describepattern = v*
 branches = develop master  master-cz
 branchmappings = develop:develop master:master  master-cz:master-cz
+branchtotagpatternmapping = ?:v*
+submodulebranches = master
+submodulebranchmappings = ?:?
 
 [flow]
-#publishpolicy = ?:merge master:cascade->develop master-cz:cascade->master
 publishpolicy = ?:merge
-publicbranches = master develop release 
+publicbranches = master develop release
 topicprefixmappings = hotfix:master feature:develop bugfix:develop internal_release:develop public_release:develop ?:develop
 topicdestinationmappings = internal_release:master public_release:master-cz
-topicCascadeTick = internal_release:2 ?:1
+topiccascadetick = internal_release:2 ?:1
 
 [publish]
 buildcmds = 
@@ -48,10 +51,13 @@ emailheader = <public> updated to <version>\nReviewers: <reviewers>\n
 emailserver = nospam.llnl.gov
 emailsendto = robinson96@llnl.gov
 emailsubject = <public> updated to <version>
+usestash = True
+emailfooter = 
+emailmaxfiles = 100
 
 [post-commit]
 autopush = True
-#cascade = master:develop
+cascade = None
 
 [post-rebase]
 submoduleupdate = False
@@ -61,6 +67,7 @@ submoduleupdate = False
 
 [post-checkout]
 submoduleupdate = False
+syncwithorigin = True
 
 [view]
 alldirs = *
@@ -82,9 +89,24 @@ prefix = v
 
 [project]
 name = GRP
+stashurl = https://rzlc.llnl.gov/bitbucket
+verifyssl = True
 
 [subtree-stashy]
 prefix = stashy
 remote = ../stashy.git
 topicprefixmappings = ?:grape
+
+[nestedProjects]
+names = subproject1
+
+[walkthrough]
+height = 400
+width = 800
+difftool = xxdiff
+
+[nested-subproject1]
+active = False
+prefix = subs/subproject1
+url = /tmp/bloss1/tmplmpqt9k8/testRepo2
 
