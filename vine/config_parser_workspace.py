@@ -11,7 +11,13 @@ class GrapeConfigParserWorkspace(GrapeConfigParserBase):
 
         super(GrapeConfigParserWorkspace, self).__init__(
             workspaceDir=workspaceDir, configString=configString)
-        menu = grapeMenu.menu(workspace_dir=workspaceDir)
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(workspaceDir)
         menu.setDefaultConfig(self)
-        workspaceDir = menu.workspace_dir
+        workspaceDir = self.__verify_workspace_dir(workspaceDir)
         self.read(os.path.join(workspaceDir, self.GRAPE_CONFIG))
+
+    def __verify_workspace_dir(self, workspace_dir):
+        tmp_handler = WorkspaceDirHandler()
+        tmp_handler.workspace_dir = workspace_dir
+        return tmp_handler.workspace_dir

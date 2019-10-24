@@ -439,7 +439,8 @@ class Checkout(Option, WorkspaceDirHandler):
                      " branches are consistent across all active " +
                      " subprojects and submodules.")
         config_parser_global.read(workspace_dir=self.workspace_dir)
-        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(self.workspace_dir)
         menu.applyMenuChoice('uv', uvArgs)
 
         if sync:

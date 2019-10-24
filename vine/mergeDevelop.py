@@ -155,7 +155,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
         # checking for a consistent workspace before doing a merge
         logging.info("Checking for a consistent workspace before performing merge...")
-        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(self.workspace_dir)
         ret = menu.applyMenuChoice("status", ['--failIfInconsistent'])
         if ret is False:
             logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")

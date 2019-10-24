@@ -124,7 +124,8 @@ class NewBranchOption(Option, WorkspaceDirHandler):
             logging.info(f"\t{branchName} off of {branch} in {repo}")
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
-            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+            menu = grapeMenu.menu()
+            menu.set_workspace_dir(self.workspace_dir)
             menu.applyMenuChoice('up', ['up', f'--public={start}'])
             launcher.launchFromWorkspaceDir()
         else:

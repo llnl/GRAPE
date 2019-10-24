@@ -459,7 +459,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return True
 
     def mergePublic(self, args):
-        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(self.workspace_dir)
         return menu.applyMenuChoice("md", ["--am",
                                            f"--public={args['--public']}"])
 
@@ -479,7 +480,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             finalArgs += newArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
-        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(self.workspace_dir)
         return menu.applyMenuChoice("review", finalArgs)
 
     def markReviewAsInProgress(self, args):
@@ -745,7 +747,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def loadVersion(self, args):
         if "version" not in self.progress:
-            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+            menu = grapeMenu.menu()
+            menu.set_workspace_dir(self.workspace_dir)
             menu.applyMenuChoice("version", ["read"])
             guess = menu.getOption("version").ver
             self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
@@ -866,8 +869,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def tickVersion(self, args):
         if not args["--tickVersion"]:
             return True
-        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        menu.set_workspace_dir()
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(self.workspace_dir)
         if not args["--noReview"]:
             atlassian = Atlassian.Atlassian(
                 username=args["--user"], url=args["--bitbucketURL"],
@@ -902,7 +905,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
-        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu()
+        menu.set_workspace_dir(self.workspace_dir)
         ret = menu.applyMenuChoice("version", versionArgs)
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             nested_dir = os.path.join(args['workspace_dir'], nested)
@@ -1012,7 +1016,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.askWhetherToDelete(args)
         if self.doDelete[args["--topic"]]:
             logging.info(f"Deleting {args['--topic']}")
-            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+            menu = grapeMenu.menu()
+            menu.set_workspace_dir(self.workspace_dir)
             menu.applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
@@ -1024,7 +1029,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     "n")
                 # 'checkout' is bool or the user's input. Enforces 'y' given.
                 if checkout is True:
-                    menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                    menu = grapeMenu.menu()
+                    menu.set_workspace_dir(self.workspace_dir)
                     menu.applyMenuChoice("checkout", [args["--topic"]])
         except:
             pass
@@ -1154,7 +1160,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             status[mergeID] = "PUSHED"
         if status[mergeID] == "PUSHED":
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
-                menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                menu = grapeMenu.menu()
+                menu.set_workspace_dir(self.workspace_dir)
                 menu.applyMenuChoice(
                     "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
                 git.push("--tags origin", execution_path=self.workspace_dir)
@@ -1382,7 +1389,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in modifiedSubmodules:
                     subpath = os.path.join(self.workspace_dir, sub)
-                    menu = grapeMenu.menu(workspace_dir=subpath)
+                    menu = grapeMenu.menu()
+                    menu.set_workspace_dir(subpath)
                     menu.applyMenuChoice('up', ['up', '--noRecurse',
                                          f'--wd={subpath}',
                                          f'--public={submodulePublic}'])
