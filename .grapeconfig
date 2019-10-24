@@ -1,13 +1,13 @@
 [repo]
-name = grape
-url = ssh://git@rz-stash.llnl.gov:7999/grp/grape.git
-httpsbase = https://rzlc.llnl.gov/stash/scm/grp/
-sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
+name = repo_name_not.yet.configured
+url = https://not.yet.configured/scm/project/unknown.git
+httpsbase = https://not.yet.configured
+sshbase = ssh://git@not.yet.configured
 
 [subtrees]
 mergepolicy = squash
-names = stashy
-pushonpublish = True
+names = 
+pushonpublish = False
 
 [workspace]
 subprojecttype = subtree
@@ -16,47 +16,59 @@ submoduletopicprefixmappings = ?:develop
 submodulepublishpolicy = ?:merge
 submodulepublicmappings = ?:master
 
+[nestedProjects]
+names = 
+
 [patch]
-tagprefix = bundled
+tagprefix = patched
 describepattern = v*
-branches = develop master  master-cz
-branchmappings = develop:develop master:master  master-cz:master-cz
+branches = master
+branchmappings = master:master
 branchtotagpatternmapping = ?:v*
 submodulebranches = master
 submodulebranchmappings = ?:?
 
+[post-checkout]
+syncwithorigin = True
+submoduleupdate = False
+
 [flow]
 publishpolicy = ?:merge
-publicbranches = master develop release
-topicprefixmappings = hotfix:master feature:develop bugfix:develop internal_release:develop public_release:develop ?:develop
-topicdestinationmappings = internal_release:master public_release:master-cz
-topiccascadetick = internal_release:2 ?:1
+topiccascadetick = ?:0
+publicbranches = develop master
+topicprefixmappings = ?:develop
+topicdestinationmappings = none
 
 [publish]
 buildcmds = 
-builddir = 
-testcmds = ./grape test
-testdir = ./
-prepublishcmds = vine/gendocs.py README.md , git add README.md
+builddir = .
+testcmds = 
+testdir = .
+prepublishcmds = 
 prepublishdir = .
 postpublishcmds = 
-postpublishdir = 
-tickversion = True
-deletetopic = True
-updatelog = UPDATE_LOG
-logskipfirstlines = 0
-logentryheader = <date> <user>\n<version>\nReviewers: <reviewers>\n
-emailnotification = True
-emailheader = <public> updated to <version>\nReviewers: <reviewers>\n
-emailserver = nospam.llnl.gov
-emailsendto = robinson96@llnl.gov
-emailsubject = <public> updated to <version>
+postpublishdir = .
+tickversion = False
 usestash = True
+deletetopic = False
+updatelog = .grapepublishlog
+logskipfirstlines = 0
+logentryheader = <date> <user>\n<version>\n
+emailnotification = False
+emailheader = <public> updated to <version>
 emailfooter = 
+emailserver = smtp.email.server
+emailsendto = user.list@company.com
+emailsubject = <public> updated to <version>
 emailmaxfiles = 100
 
+[project]
+stashurl = https://rzlc.llnl.gov/bitbucket
+verifyssl = True
+name = My unnamed project
+
 [post-commit]
-autopush = True
+autopush = False
 cascade = None
 
 [post-rebase]
@@ -65,48 +77,16 @@ submoduleupdate = False
 [post-merge]
 submoduleupdate = False
 
-[post-checkout]
-submoduleupdate = False
-syncwithorigin = True
-
-[view]
-alldirs = *
-required = *
-
 [versioning]
-file = vine/VERSION
+file = /usr/WS2/bloss1/grape/.grapeversion
 updatetag = True
-branchslotmappings = ?:3 master:2
+branchslotmappings = ?:2
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v
-
-[pre-push]
-
-[pre-rebase]
-
-[pre-commit]
-
-[project]
-name = GRP
-stashurl = https://rzlc.llnl.gov/bitbucket
-verifyssl = True
-
-[subtree-stashy]
-prefix = stashy
-remote = ../stashy.git
-topicprefixmappings = ?:grape
-
-[nestedProjects]
-names = subproject1
 
 [walkthrough]
 height = 400
 width = 800
 difftool = xxdiff
-
-[nested-subproject1]
-active = False
-prefix = subs/subproject1
-url = /tmp/bloss1/tmplmpqt9k8/testRepo2
 
