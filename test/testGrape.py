@@ -102,11 +102,11 @@ class TestGrape(unittest.TestCase):
 
         git.gitcmd("init --bare", "Setup Failed",
                    execution_path=bare_repo)
-        self.menu = grapeMenu.menu(workspace_dir=self.repo)
 
         working_dir = os.path.dirname(f"{self.repo}-origin")
         git.clone(source_repo=bare_repo, clone_repo=self.repo,
                   execution_path=self.defaultWorkingDirectory)
+        self.menu = grapeMenu.menu(workspace_dir=self.repo)
         fname = os.path.join(self.repo, "testRepoFile")
         writeFile1(fname)
         self.file1 = fname
@@ -117,8 +117,6 @@ class TestGrape(unittest.TestCase):
         # create a develop branch in addition to master by default
         git.branch("develop", execution_path=self.repo)
         git.push("origin develop", execution_path=self.repo)
-
-        self.menu.set_workspace_dir(self.repo)
 
     def tearDown(self):
         def onError(func, path, exc_info):
