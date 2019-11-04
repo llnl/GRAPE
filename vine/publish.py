@@ -327,7 +327,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info(f"Reverting all commits from {branch} from " +
                          f"{self.progress['startingSHA']} to {git.SHA(branch, execution_path=self.workspace_dir)}")
             revert = utility.userInput(
-                "This will apply to {branch}. continue? [y,n]", "y")
+                f"This will apply to {branch}. continue? [y,n]", "y")
             if revert:
                 git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD",
                            execution_path=self.workspace_dir)
