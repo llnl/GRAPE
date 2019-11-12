@@ -436,10 +436,13 @@ def numberCommitsSinceRoot(*, execution_path):
     return numberCommitsSince(root, execution_path=execution_path)
 
 
-def pull(args, throwOnFail=False, *, execution_path):
+def pull(args, throwOnFail=False, *, execution_path, capture_output=None):
+    if capture_output is None:
+        capture_output = is_test_dir_given(execution_path)
     try:
         return gitcmd(f"pull {args}", "Pull failed",
-                      execution_path=execution_path)
+                      execution_path=execution_path,
+                      capture_output=capture_output)
     except grape_errors.GrapeGitError as e:
         if e.commError:
             logging.warning("WARNING: Pull failed due to connectivity issues.")
@@ -561,7 +564,7 @@ def status(argstr="", *, execution_path):
                   execution_path=execution_path)
 
 
-def submodule(argstr, *, execution_path, capture_output = None):
+def submodule(argstr, *, execution_path, capture_output=None):
     if capture_output is None:
         capture_output = is_test_dir_given(execution_path)
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",

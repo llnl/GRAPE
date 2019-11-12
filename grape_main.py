@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from contextlib import contextmanager
 import os
 import sys
 
@@ -20,6 +21,7 @@ from vine import grapeMenu
 from vine import utility
 from vine import grapeGit as git
 from vine import vine_logging
+from vine import workspace_dir_handler
 
 
 CLI =  """
@@ -65,8 +67,11 @@ def startup():
         # If they specified a command line argument, then assume that it's
         # a menu option, and bypass the menu
         elif len(sys.argv) > 1:
-            set_verbosity(logger)
-            retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
+            if args['<command>'] == 'clone':
+                retval = clone_from_anywhere(args["<args>"], logger)
+            else:
+                set_verbosity(logger)
+                retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
         retval = False
@@ -75,6 +80,30 @@ def startup():
     print("Thank you - good bye")
     return retval
         
+
+def clone_from_anywhere(args_, logger):
+    wsdir_handler = workspace_dir_handler.WorkspaceDirHandler()
+    wsdir_handler.workspace_dir = os.getcwd()
+    if wsdir_handler.workspace_dir:
+        # set verbosity after if statement to hide printing erroneous error.
+        set_verbosity(logger)
+        grapeMenu.menu().applyMenuChoice('clone', args_)
+    else:
+        set_verbosity(logger)
+        with setup_temp_git_dir():
+            grapeMenu.menu().applyMenuChoice('clone', args_)
+
+
+@contextmanager
+def setup_temp_git_dir():
+    """Temp git dir created to set a 'workspace_dir', then removed later."""
+    TMP_GIT_DIR = '.git'
+    try:
+        os.mkdir(TMP_GIT_DIR)
+        yield
+    finally:
+        os.rmdir(TMP_GIT_DIR)
+
 
 def set_verbosity(logger, choice=None):
     """

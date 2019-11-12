@@ -24,7 +24,15 @@ class Atlassian:
             self._userName = username
 
         self.workspace_dir = workspace_dir
+
+        # Ensures same keyring used across all OSes
+        MAGIC_PRIORITY_NUM = .5
+        if keyring.get_keyring().priority != MAGIC_PRIORITY_NUM:
+            key_rings = [kr for kr in keyring.backend.get_all_keyring()
+                         if kr.priority == MAGIC_PRIORITY_NUM]
+            keyring.set_keyring(key_rings.pop())
         self.keyring = keyring.get_keyring()
+
         self._service = url
         password = keyring.get_password(self._service, self._userName)
 
