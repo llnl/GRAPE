@@ -266,7 +266,7 @@ def fixActiveSubmodules(ws_dir, user_input_func):
 def getAllSubmodules(*, execution_path):
     subconfig = configparser.ConfigParser()
     try:
-        subconfig.read(os.path.join(baseDir(execution_path=execution_path), ".gitmodules"))
+        subconfig.read(os.path.join(execution_path, ".gitmodules"))
     except configparser.ParsingError:
         # this is guaranteed to happen due to .gitmodules format incompatibility, but it does
         # read section names in successfully, which is all we need
@@ -279,7 +279,7 @@ def getAllSubmodules(*, execution_path):
 
 def getAllSubmoduleURLMap(*, execution_path):
     subconfig = configparser.ConfigParser()
-    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(baseDir(execution_path=execution_path), ".gitmodules"))))
+    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
     subconfig.read_file(fp)
     fp.close()
     sections = subconfig.sections()

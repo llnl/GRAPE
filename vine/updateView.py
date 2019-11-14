@@ -328,7 +328,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     userConfig.ensureSection(section)
                     subproject = git.gitPathToOsPath(subproject)
                     previouslyActive = userConfig.getboolean(section, "active")
-                    previouslyActive = previouslyActive and os.path.exists(os.path.join(base, subproject, ".git"))
+                    previouslyActive = previouslyActive and os.path.exists(os.path.join(self.workspace_dir, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
                     if nowActive and previouslyActive:
                         updatedActiveList.append(subprojectName)
@@ -345,7 +345,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         pass
                     if not nowActive and previouslyActive:
                         #remove the subproject
-                        subprojectdir = os.path.join(base, subproject)
+                        subprojectdir = os.path.join(self.workspace_dir, subproject)
                         proceed = args["-f"] or \
                                   utility.userInput(f"About to delete all contents in {subproject}. " +
                                                     "Any uncommitted changes, committed changes that have " +

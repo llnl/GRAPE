@@ -284,8 +284,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 return True
         except KeyError:
             pass
-        execution_path = os.path.join(
-            git.baseDir(execution_path=self.workspace_dir), subproject)
+        execution_path = os.path.join(self.workspace_dir, subproject)
         mergeArgs = args.copy()
         mergeArgs["--public"] = subPublic
 

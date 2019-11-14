@@ -125,8 +125,7 @@ class Version(Option, WorkspaceDirHandler):
                 version = self.writeVersion(f, version, args)
             self.stageVersionFile(fname, execution_path=self.workspace_dir)
             config.set("versioning", "file", fname)
-            configFile = os.path.join(
-                git.baseDir(execution_path=self.workspace_dir), ".grapeconfig")
+            configFile = os.path.join(self.workspace_dir, ".grapeconfig")
             config_parser_global.writeConfig(config, configFile)
             self.stageGrapeconfigFile(configFile, execution_path=self.workspace_dir)
             if not args["--nocommit"]:
