@@ -267,6 +267,9 @@ class Review(Option, WorkspaceDirHandler):
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
+            if isinstance(updatedDescription, bytes):
+                updatedDescription = updatedDescription.decode("utf-8")
+
             for link in pullRequestLinks:
                 updatedDescription = addLinkToDescription(updatedDescription, link, pullRequestLinks[link])
 
@@ -317,6 +320,8 @@ def getReposPullRequestDescription(repo, branch, target_branch, args):
     request = getReposPullRequest(repo, branch, target_branch, args)
     if request is not None:
         descr = request.description()
+        if isinstance(descr, bytes):
+            descr = descr.decode("utf-8")
     return descr
 
 def pullRequestAlreadyMerged(errorMessage):
