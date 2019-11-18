@@ -273,7 +273,10 @@ class Review(Option, WorkspaceDirHandler):
             for link in pullRequestLinks:
                 updatedDescription = addLinkToDescription(updatedDescription, link, pullRequestLinks[link])
 
-            if updatedDescription != request.description():
+            pre_update_description = request.description()
+            if isinstance(pre_update_description, bytes):
+                pre_update_description = pre_update_description.decode("utf-8")
+            if updatedDescription != pre_update_description:
                 request = postPullRequest(repo, title, branch, target_branch,
                                          updatedDescription,
                                          reviewers,
