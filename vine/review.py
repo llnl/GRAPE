@@ -239,7 +239,8 @@ class Review(Option, WorkspaceDirHandler):
             target_branch, workspaceDir=self.workspace_dir)
 
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            git.push(f"origin {branch}", execution_path=prefix)
+            prefix_path = os.path.join(self.workspace_dir, prefix)
+            git.push(f"origin {branch}", execution_path=prefix_path)
             repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
 
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
