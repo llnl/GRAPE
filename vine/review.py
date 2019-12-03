@@ -1,4 +1,5 @@
 import io
+import os
 import logging
 import re
 import urllib
@@ -209,8 +210,9 @@ class Review(Option, WorkspaceDirHandler):
                     continue
                 # push branch
                 logging.info(f"Pushing {branch} to bitbucket...")
-                git.push(f"origin {branch}", execution_path=submodule)
-                repo = bitbucket.repoFromWorkspaceRepoPath(submodule,
+                submodule_path = os.path.join(self.workspace_dir, submodule)
+                git.push(f"origin {branch}", execution_path=submodule_path)
+                repo = bitbucket.repoFromWorkspaceRepoPath(submodule_path,
                                                            isSubmodule=True)
                 # determine branch prefix
                 prefix = git.branchPrefix(branch)
@@ -237,7 +239,8 @@ class Review(Option, WorkspaceDirHandler):
             target_branch, workspaceDir=self.workspace_dir)
 
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            git.push(f"origin {branch}", execution_path=prefix)
+            prefix_path = os.path.join(self.workspace_dir, prefix)
+            git.push(f"origin {branch}", execution_path=prefix_path)
             repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
 
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
