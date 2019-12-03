@@ -3,7 +3,7 @@ import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
-if os.uname().sysname == 'Linux':
+if sys.platform == 'linux2':
     import readline
 
 
