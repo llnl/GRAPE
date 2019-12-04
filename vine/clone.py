@@ -1,4 +1,5 @@
 import logging
+import os
 from vine import config_parser_global
 from vine import grapeGit as git
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -31,6 +32,10 @@ class Clone(Option, WorkspaceDirHandler):
     def description(self):
         return "Clone a repo and configure it for grape"
 
+    def get_clone_into_dir_from_url(self, url):
+        url = url.split('/')[-1]
+        return url.split('.')[0]
+
     @log_wrapper
     def execute(self, args):
         # Imported here to avoid circular dependencies
@@ -38,6 +43,8 @@ class Clone(Option, WorkspaceDirHandler):
 
         remotepath = args["<url>"]
         destpath = args["<path>"]
+        if destpath == os.path.curdir:
+            destpath = self.get_clone_into_dir_from_url(remotepath)
         rstr = "--recursive" if args["--recursive"] else ""
         recursively = "recursively" if args["--recursive"] else ""
         logging.info(
