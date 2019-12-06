@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import tempfile
+from posixpath import join as urljoin
 from vine import grape_errors
 from vine import vine_subprocess
 
@@ -328,7 +329,7 @@ def parseSubprojectRemoteURL(url, *, execution_path):
         return url      #Already a hard path
 
     # We have a relative path so start the remote origin URL
-    originURL = config("--get remote.origin.url", execution_path=execution_path).strip().split(os.path.sep)
+    originURL = config("--get remote.origin.url", execution_path=execution_path).strip().split(URL_PATH_SEP)
 
     #Now parse path and modify originURL to make a hard path
     for p in path:
@@ -340,7 +341,7 @@ def parseSubprojectRemoteURL(url, *, execution_path):
             originURL.append(p)
     if originURL[0] == '' and os.name != 'nt':
         originURL[0] = '/'
-    parsed_url = os.path.join(*originURL)
+    parsed_url = urljoin(*originURL)
     if (parsed_url.startswith('ssh:/') and not parsed_url.startswith('ssh://')) \
             or (parsed_url.startswith('https:/') and not parsed_url.startswith('https://')):
         parsed_url = parsed_url.replace(':/', '://', 1)
