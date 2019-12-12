@@ -1425,7 +1425,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 f"push --prefix={self.st_prefixes[st]} " +
                                 f"{self.st_remotes[st]} " +
                                 f"{self.st_branches[st]} ",
-                                execution_path=self.working_dir)
+                                execution_path=self.workspace_dir)
                         except grape_errors.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
                             logging.info("First attempt failed. Attempting a subtree pull then push...")
@@ -1434,12 +1434,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 f"--prefix={self.st_prefixes[st]} " +
                                 f"{self.st_remotes[st]} " +
                                 f"{self.st_branches[st]} ",
-                                execution_path=self.working_dir)
+                                execution_path=self.workspace_dir)
                             git.subtree(
                                 f"push --prefix={self.st_prefixes[st]} " +
                                 f"{self.st_remotes[st]} " +
                                 f"{self.st_branches[st]} ",
-                                execution_path=self.working_dir)
+                                execution_path=self.workspace_dir)
                             logging.info("Succeeded!")
 
         valid = self.validateInput(policy, args)
@@ -1449,6 +1449,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if self.modifiedOuter:
                 self.publish(policy, public, topic, self.workspace_dir, args)
             else:
-                git.checkout(public, execution_path=self.working_dir)
+                git.checkout(public, execution_path=self.workspace_dir)
             return True
         return False
