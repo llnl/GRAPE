@@ -446,7 +446,7 @@ def main(fname):
     <fname>     The file to write documentation to.
 
     """
-    doc = Documentation(grapeMenu.menu())
+    doc = Documentation(grapeMenu.menu(os.getcwd()))
     with io.open(fname, 'w') as f:
         doc.write(f)
 
