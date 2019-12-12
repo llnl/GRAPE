@@ -8,7 +8,7 @@ if not python_major_version == 3 and python_minor_version >=6:
     print('Grape requires Python 3.6 or greater.')
     exit(1)
 
-from grape.docopt.docopt import docopt
+from docopt.docopt import docopt
 from vine import grapeMenu
 
 
