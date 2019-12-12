@@ -1,16 +1,5 @@
 
 
-Wed Dec 11 16:34:32 2019 David Bloss
-v1.33.1
-Reviewers: Ben Liu, Peter Robinson
-
-Grape upgraded to Python 3.6 (or higher).
-Third party libraries \"stashy\" and \"keyring\" updated to run with Python 3.x.
-Importing is more explicit.
-\"f strings\" introduced (Python 3.6 string formatter).
-Improvements to multiprocessing.
-
-
 Wed Dec 11 16:14:25 2019 Peter B. Robinson
 v1.32.0
 Reviewers: Ben Liu, David Bloss
