@@ -4,13 +4,7 @@ url = ssh://git@rz-stash.llnl.gov:7999/grp/grape.git
 httpsbase = https://rzlc.llnl.gov/stash/scm/grp/
 sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
 
-[subtrees]
-mergepolicy = squash
-names = stashy
-pushonpublish = True
-
 [workspace]
-subprojecttype = subtree
 managesubmodules = True
 submoduletopicprefixmappings = ?:develop
 submodulepublishpolicy = ?:merge
