@@ -1,5 +1,12 @@
 
 
+Wed Dec 11 16:14:25 2019 Peter B. Robinson
+v1.32.0
+Reviewers: Ben Liu, David Bloss
+
+putting current state of grape into master before we switch to python 3.
+
+
 Wed Jul 31 08:29:26 2019 David Bloss
 v1.31.16
 Reviewers: Peter Robinson, Ben Liu
@@ -153,6 +160,22 @@ The first significant step toward upgrading GRAPE to python 3.x is updating GRAP
 In python 2.7 \"implicit importing\" is allowed, i.e. 'import grapeGit' (path implied). But python 3.x requires relative or absolute importing, i.e. 'import ..grapeGit' or 'import grape.vine.grapeGit' respectively.
 
 This revealed some circular dependencies that must be unraveled before python 3.x can begin to process GRAPE's demands. Separating 'option.py' and 'resumable.py' is a decent first step and can be visually seen by running 'pylint --disable=all --enable=imports,RP0401,RP0402 --import-graph=stuff.pdf **/*.py' on both this branch and develop. Results output to \"stuff.pdf\".
+
+
+Mon Mar 18 16:41:16 2019 Benjamin T. Liu
+v1.31.0
+Reviewers: Patrick Greene, Al Nichols
+
+Hotfix for checkout of branch that is not present locally
+- Previously would return early after the fetch
+- Fix is already in develop
+
+
+Mon Mar 25 14:01:14 2019 Benjamin T. Liu
+v1.30.2
+Reviewers: Peter Robinson
+
+Roll back master version after incorrect publish
 
 
 Wed Feb 20 09:59:17 2019 Peter B. Robinson
