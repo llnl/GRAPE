@@ -1,6 +1,8 @@
 from functools import wraps
-from decorator.src.decorator import decorator
-
+try:
+   from decorator.src.decorator import decorator
+except:
+   from decorator import decorator
 
 class NotFoundException(Exception):
     def __init__(self, response):
