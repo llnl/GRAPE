@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import io
+import os
 import sys
 
 python_major_version = sys.version_info[0]
@@ -8,8 +9,12 @@ if not python_major_version == 3 and python_minor_version >=6:
     print('Grape requires Python 3.6 or greater.')
     exit(1)
 
-from grape.docopt.docopt import docopt
-from vine import grapeMenu
+# Ensures 'this' grape dir is referenced if gendocs called from command line.
+grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+if grape_dir not in sys.path:
+    sys.path.insert(0, grape_dir)
+from docopt.docopt import docopt
+import vine.grapeMenu as grapeMenu
 
 
 class Documentation:
