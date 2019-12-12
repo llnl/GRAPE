@@ -182,7 +182,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 ## Managing Subprojects with grape
 If you'd like to manage third-party library source-code inline with your project, git provides a couple of ways
-to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project. 
+to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
 
 Googling submodules vs. subtrees will yield discussions as vehemently
 idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
@@ -249,7 +249,7 @@ it might matter a great deal.
     submodulepublishpolicy = ?:merge
     submodulepublicmappings = ?:master
 
-`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested. 
+`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested.
 
 `managesubmodules` should be set to True to enable grape managed subprojects. Otherwise, you're on your own.
 
@@ -279,12 +279,12 @@ calling `grape bugfix` will create a new branch off of develop in project foo, a
 foo_dev in submodule libBar.
 
 ### `grape status`
-Grape status will gather the status across all submodules and nested projectes and your outer-level project. This is different 
+Grape status will gather the status across all submodules and nested projectes and your outer-level project. This is different
 from git status, which will only give you the status of the repo / submodule / nested project you are currently in.
 
 ### `grape commit`
 Grape commit will commit all changes in submodules and nested subprojectes first, then perform the commit in the outer level repository to
-ensure you have updated the gitlink for your submodules. 
+ensure you have updated the gitlink for your submodules.
 
 ### `grape push`
 Grape push pushes changes in your current branch to origin in all submodules and your outer level repository.
@@ -344,35 +344,35 @@ file as appropriate.
 Grape can be configured to split-push changes in subtrees to their host repository as part of your publish step by
 setting subtrees.pushonpublish to True.
 
-## How grape works with nested subprojects 
-A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish 
+## How grape works with nested subprojects
+A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish
 actions, gathering information with status, etc. Individual developers decide whether they want the nested subproject in
-their workspace by using 'grape uv'. 
+their workspace by using 'grape uv'.
 
-Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig 
-to know which ones to expect to find in the user's workspace. 
+Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig
+to know which ones to expect to find in the user's workspace.
 
-nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at 
-the moment includes publish, merge actions (m, mr, and md), and foreach. 
+nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at
+the moment includes publish, merge actions (m, mr, and md), and foreach.
 
 ### relevant nested subproject `.grapeconfig` sections
-    
+
     [nested]
     names = libBar
 
     [nested-libBar]
     prefix = imports/libBar
     remote = ../libBar
-    
-All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts. 
-    
+
+All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts.
+
 ### relevant nested subproject `.grapeuserconfig` sections
     [nested-libBar]
     active = True
-    
-The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will 
+
+The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will
 only look in .git/.grapeuserconfig for this particular setting, since the intended use cases for nested projects tend to be highly
-individualized. 
+individualized.
 
 
 # Grape Commands
@@ -761,24 +761,24 @@ options are at least listed below.
 
     Options:
         --recursive   Recursively clone submodules.
-        --allNested   Get all nested subprojects. 
-        
+        --allNested   Get all nested subprojects.
+
     
 ## config
 
     Configures the current repo to be optimized for GRAPE on LC
-    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache | --credcache] [--p4merge] 
+    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv]
+                        [--nocredcache | --credcache] [--p4merge]
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
-        --credcache     enables https 12 hr credential cacheing. 
+        --credcache     enables https 12 hr credential cacheing.
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
-        --p4merge       will set up p4merge as your merge tool. 
+        --p4merge       will set up p4merge as your merge tool.
         --nop4merge     will skip p4merge questions.
-        --p4diff        will set up p4merge as your diff tool. 
+        --p4diff        will set up p4merge as your diff tool.
         --nop4diff      will skip p4diff questions.
         --git-p4        will configure your repo for use with git-p4 (deprecated)
 
@@ -957,7 +957,7 @@ options are at least listed below.
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket. 
+        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket.
                                     [default: .grapeconfig.project.stashURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
@@ -968,11 +968,11 @@ options are at least listed below.
                                     https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
-                                    The pull request for the outer level repo will have a description with links to the 
+                                    The pull request for the outer level repo will have a description with links to the
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
-                                    is set to true. 
-        --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket 
+                                    is set to true.
+        --norecurse                 Disables adding pull requests to submodules and subprojects.
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
@@ -980,20 +980,20 @@ options are at least listed below.
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
- 
+
 
 
     
 ## test
 
     grape test
-    Runs grape's unit tests.    
+    Runs grape's unit tests.
     Usage: grape-test [--debug] [<suite>]...
 
 
     Arguments:
     <suite>  The name of the suite to test. The default is all.
-             Enter listSuites as the suite name to list available suites. 
+             Enter listSuites as the suite name to list available suites.
              <suite> = <suite name>.<test> will run a particular test in a suite.
 
     
@@ -1021,16 +1021,16 @@ options are at least listed below.
 ## updateSubproject
 
         grape updateSubproject
-        Updates an existing subproject from its host repository.  
-        
+        Updates an existing subproject from its host repository.
+
         Usage: grape-updateSubproject subtree --name=<name> --branch=<committish>
 
         Options:
-        --name=<name>  The name of the subproject. Must match a [subtree-<name>] section in .grapeconfig
-                       that has prefix and remote options defined. 
-        
-        --branch=<b>   The branch in the subtree's host repository whose state you want in your 
-                       repository.
+        --name=<name>           The name of the subproject. Must match a [subtree-<name>]
+                                section in .grapeconfig that has prefix and remote options defined.
+
+        --branch=<committish>   The branch in the subtree's host repository whose state
+                                you want in your repository.
 
     
 ## installHooks
@@ -1108,7 +1108,7 @@ options are at least listed below.
 
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
-    The read subcommand is a no-op - it is used internally by other grape/vine modules. 
+    The read subcommand is a no-op - it is used internally by other grape/vine modules.
 
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
@@ -1148,10 +1148,10 @@ options are at least listed below.
         --minor             Tick the Minor (2nd) version number.
         --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
                             than the current max number of digits, the version number will be extended to have <int>
-                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings. 
-        --public=<branch>   The public branch to use for determine the slot to tick. Default based on 
+                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings.
+        --public=<branch>   The public branch to use for determine the slot to tick. Default based on
                             .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the version
-                            ticking is consistent with the --public option passed to grape publish. 
+                            ticking is consistent with the --public option passed to grape publish.
         --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
         --tag               Forces updateTag to be True.
         --notag             Forces updateTag to be False.
@@ -1161,8 +1161,8 @@ options are at least listed below.
         --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                             version in <file>.
-        --tagNested         Tag any active nested subprojects. 
-        
+        --tagNested         Tag any active nested subprojects.
+
 
 
     
@@ -1204,12 +1204,12 @@ options are at least listed below.
 ## q
 
     grape q
-    Quits grape. 
+    Quits grape.
 
-    Usage: grape-q 
+    Usage: grape-q
 
     
-## internal_release
+## hotfix
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
@@ -1231,7 +1231,7 @@ options are at least listed below.
 
 
     
-## public_release
+## feature
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
@@ -1275,7 +1275,7 @@ options are at least listed below.
 
 
     
-## hotfix
+## internal_release
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
@@ -1297,7 +1297,7 @@ options are at least listed below.
 
 
     
-## feature
+## public_release
 
     grape <newtopicbranch>
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
