@@ -10,6 +10,7 @@ if not (pythonMajorVersion == 2 and pythonMinorVersion > 6):
     print('Grape requires python 2.x, where x is greater than or equal to 7.')
     exit(1)
 
+import tailer
 from vine import grapeMenu, utility
 from vine import grapeGit as git
 from vine import global_state
