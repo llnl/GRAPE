@@ -1,5 +1,15 @@
 
 
+Mon Dec 16 14:38:53 2019 David Bloss
+v1.33.0
+Reviewers: David Dawson, Peter Robinson, Ben Liu
+
+Importing the 'tailer' modules was failing.
+This is fixed by first importing 'tailer' from the main 'grape.py' file, so that it exists as 'grape.tailer'.
+Second, in 'vine/vine_subprocess.py', 'tailer' is imported from 'grape.tailer' as 'tailer'. No other files make use of tailer.
+Tailer is not used in the python 3 grape code so no changes to the develop branch are needed.
+
+
 Wed Dec 11 16:14:25 2019 Peter B. Robinson
 v1.32.0
 Reviewers: Ben Liu, David Bloss
