@@ -1,7 +1,7 @@
 import logging
 import os
 import multiprocessing
-from grape import tailer
+import tailer
 import subprocess
 import sys
 import tempfile
