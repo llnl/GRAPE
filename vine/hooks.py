@@ -61,7 +61,7 @@ class InstallHooks(Option, WorkspaceDirHandler):
         self.installHooksInRepo(self.workspace_dir, args)
         if not args["--noRecurse"]:
             for sub in getActiveSubprojects(workspace_dir=self.workspace_dir):
-                logging.info(f"Installing hooks in {sub}.")
+                logging.info(f"Installing hooks in {os.path.join(self.workspace_dir, sub)}.")
                 self.installHooksInRepo(os.path.join(self.workspace_dir, sub), args)
         return True
 
