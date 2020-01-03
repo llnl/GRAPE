@@ -78,7 +78,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
             args["--user"] = args["--user"].lower()
 
 
-        branchName = os.path.join(self._key, args["--user"], args["<descr>"])
+        branchName = git.join_list_as_git_path([self._key, args["--user"], args["<descr>"]])
 
         branchStatus = checkout.branchAlreadyExists(branchName,
                                                     self.workspace_dir)

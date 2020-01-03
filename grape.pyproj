@@ -7,14 +7,15 @@
     <ProjectHome />
     <StartupFile>grape_main.py</StartupFile>
     <SearchPath />
-    <WorkingDirectory>D:\ale3d_dev</WorkingDirectory>
+    <WorkingDirectory>c:\grape</WorkingDirectory>
     <OutputPath>.</OutputPath>
     <InterpreterId>Global|PythonCore|3.7</InterpreterId>
     <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <IsWindowsApplication>False</IsWindowsApplication>
     <LaunchProvider>Standard Python launcher</LaunchProvider>
-    <CommandLineArguments>review --reviewers="benliu"</CommandLineArguments>
+    <CommandLineArguments>
+    </CommandLineArguments>
     <InterpreterPath />
     <InterpreterArguments />
     <EnableNativeCodeDebugging>False</EnableNativeCodeDebugging>
@@ -75,18 +76,12 @@
     <Compile Include="vine\clone.py" />
     <Compile Include="vine\config.py" />
     <Compile Include="vine\deleteBranch.py" />
-    <Compile Include="vine\gitflowHelp.py" />
-    <Compile Include="vine\grapeConfig.py" />
     <Compile Include="vine\grapeGit.py" />
     <Compile Include="vine\grapeMenu.py" />
     <Compile Include="vine\merge.py" />
-    <Compile Include="vine\mergeAbort.py" />
     <Compile Include="vine\mergeDevelop.py" />
     <Compile Include="vine\mergeRemote.py" />
-    <Compile Include="vine\newWorkingTree.py" />
     <Compile Include="vine\option.py" />
-    <Compile Include="vine\p4Export.py" />
-    <Compile Include="vine\p4Import.py" />
     <Compile Include="vine\quit.py" />
     <Compile Include="vine\resolveConflicts.py" />
     <Compile Include="vine\review.py" />

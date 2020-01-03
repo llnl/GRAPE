@@ -48,7 +48,7 @@ class InstallHooks(Option, WorkspaceDirHandler):
         hooks = args["--toInstall"]
         for h in hooks:
             hook_path = os.path.join(git.gitDir(
-                execution_path=self.workspace_dir), "hooks", h)
+                execution_path=repo), "hooks", h)
             with io.open(hook_path, 'w') as file_:
                 file_.write(header)
                 grapeCmd = utility.getGrapeExec()
@@ -61,7 +61,7 @@ class InstallHooks(Option, WorkspaceDirHandler):
         self.installHooksInRepo(self.workspace_dir, args)
         if not args["--noRecurse"]:
             for sub in getActiveSubprojects(workspace_dir=self.workspace_dir):
-                logging.info(f"Installing hooks in {sub}.")
+                logging.info(f"Installing hooks in {os.path.join(self.workspace_dir, sub)}.")
                 self.installHooksInRepo(os.path.join(self.workspace_dir, sub), args)
         return True
 

@@ -360,7 +360,7 @@ def gitDir(*, execution_path):
             words = line.split()
             if words[0] == 'gitdir:':
                 relUnixPath = words[1]
-                toReturn = gitPathToOsPath(relUnixPath)
+                toReturn = os.path.join(execution_path,gitPathToOsPath(relUnixPath))
             else:
                 raise grape_errors.GrapeGitError("print .git file does not have gitdir: prefix as expected", 1, "", "grape gitDir()")
     return toReturn
