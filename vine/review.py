@@ -359,7 +359,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
-            vine_logging.printMsg(
+            logging.info(
                 f"No pull request from {branch} to {target_branch} to update")
 
     else:
