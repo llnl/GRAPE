@@ -650,7 +650,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # Withhold output to STDOUT for testing, but not normal operations.
             capture_output = git.is_test_dir_given(working_dir)
             process_result = vine_subprocess.executeSubProcess(
-                cmd.strip(), capture_output=capture_output)
+                cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
             logging.info(process_result.returncode)
             if process_result.returncode != 0:
                 if process_result.stdout:
@@ -854,10 +854,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             header = ["\n"]+header.split("\\n")
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
-            with io.open(logFile, 'r') as f:
+            logFilePath = os.path.join(self.workspace_dir,logFile)
+            with io.open(logFilePath, 'r') as f:
                 loglines = f.readlines()
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
-            with io.open(logFile, 'w') as f:
+            with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
             git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
                        f"{logFile}\"", execution_path=self.workspace_dir)
