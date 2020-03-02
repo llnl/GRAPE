@@ -102,8 +102,9 @@ def getGrapeExec():
 
 def win_path_to_linux_path(path):
     """Convert absolute Windows path to linux path for hooks in Git bash."""
-    path = path.replace('C:', f'{os.path.altsep}c')
-    path = path.replace(os.path.sep, os.path.altsep)
+    if os.path.altsep:
+       path = path.replace('C:', f'{os.path.altsep}c')
+       path = path.replace(os.path.sep, os.path.altsep)
     path = path.replace(' ', f'{os.path.sep} ')
     path = path.replace('(x86)', f'{os.path.sep}(x86{os.path.sep})')
     return path
