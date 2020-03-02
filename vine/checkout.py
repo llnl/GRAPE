@@ -191,7 +191,8 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
 def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, workspace_dir):
     cleaned = False
     working_dir = os.path.join(workspace_dir, sub)
-    dirIsEmpty = len(os.listdir(".")) == 0
+    dirExists = os.path.exists(working_dir)
+    dirIsEmpty = not dirExists or len(os.listdir(working_dir)) == 0
     workingDirClean = dirIsEmpty or git.isWorkingDirectoryClean(execution_path=working_dir)
     changedActive = sub in activeSubmodules
     if workingDirClean or (veryclean and not changedActive):
@@ -221,7 +222,10 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
         if clean:
             logging.info(f"Removing clean submodule {sub}.")
             if not veryclean or changedActive:
-                shutil.rmtree(os.path.join(workspace_dir, sub))
+                try:
+                    shutil.rmtree(os.path.join(workspace_dir, sub))
+                except FileNotFoundError:
+                    pass
             if veryclean:
                 if changedActive:
                     git.submodule(f"deinit -f {sub}", execution_path=workspace_dir)
