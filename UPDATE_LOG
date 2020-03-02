@@ -1,5 +1,12 @@
 
 
+Mon Mar  2 13:04:18 2020 Peter B. Robinson
+v1.33.3
+Reviewers: Ben Liu
+
+Fix crash caused by failure to check for missing directories.
+
+
 Thu Feb  6 14:12:50 2020 Peter B. Robinson
 v1.33.2
 Reviewers: Ben Liu
