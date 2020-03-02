@@ -1,5 +1,14 @@
 
 
+Mon Mar  2 14:33:24 2020 Benjamin T. Liu
+v1.33.4
+Reviewers: Al Nichols, Peter Robinson
+
+Fix sporadic Linux crash due to Windows fix
+- os.altsep is None on Linux
+- fixes crash in grape uv when initializing a subproject that does not have the current branch
+
+
 Mon Mar  2 13:04:18 2020 Peter B. Robinson
 v1.33.3
 Reviewers: Ben Liu
