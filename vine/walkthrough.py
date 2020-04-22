@@ -121,8 +121,7 @@ class Walkthrough(Option, WorkspaceDirHandler):
                     showSubtrees=not args["--noSubtrees"],
                     showNestedSubprojects=not args["--noNestedSubprojects"],
                     noFetch=args["--noFetch"],
-                    workspace_dir=self.workspace_dir,
-                    execution_path=self.workspace_dir)
+                    workspace_dir=self.workspace_dir)
 
         root.mainloop()
 
@@ -134,8 +133,9 @@ class Walkthrough(Option, WorkspaceDirHandler):
 
 # Base class for navigating files in a workspace
 class ProjectManager(WorkspaceDirHandler):
-    def __init__(self, master, *, execution_path, **kwargs):
+    def __init__(self, master, *, workspace_dir, **kwargs):
         super(ProjectManager, self).__init__()
+        self.workspace_dir = workspace_dir
         height = kwargs.get('height', 0)
         width  = kwargs.get('width', 0)
 
@@ -326,8 +326,11 @@ class ProjectManager(WorkspaceDirHandler):
         pass
 
 class DiffManager(ProjectManager):
-    def __init__(self, master, **kwargs):
-        self.set_executable_path(execution_path)
+    def __init__(self, master, *, workspace_dir, **kwargs):
+        super(DiffManager, self).__init__(master, workspace_dir=workspace_dir,
+                                          **kwargs)
+        # self.workspace_dir mro (method resolution order):
+        # self->DiffManager->ProjectManager->WorkspaceDirHandler->workspace_dir
         self.workspace_dir = workspace_dir
 
         validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
@@ -377,7 +380,8 @@ class DiffManager(ProjectManager):
         self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
         self.branchpane.pack(side=Tk.TOP)
 
-        ProjectManager.__init__(self, master, **kwargs)
+        ProjectManager.__init__(self, master, workspace_dir=self.workspace_dir,
+                                **kwargs)
 
         # If we are diffing against the workspace, get the status of the workspace
         # and save the set of changed files in the outer project (including submodules).
