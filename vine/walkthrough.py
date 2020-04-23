@@ -327,19 +327,13 @@ class ProjectManager(WorkspaceDirHandler):
 
 class DiffManager(ProjectManager):
     def __init__(self, master, *, workspace_dir, **kwargs):
-        super(DiffManager, self).__init__(master, workspace_dir=workspace_dir,
-                                          **kwargs)
-        # self.workspace_dir mro (method resolution order):
-        # self->DiffManager->ProjectManager->WorkspaceDirHandler->workspace_dir
-        self.workspace_dir = workspace_dir
-
         validDiffTools = [ 'kdiff3', 'kompare', 'tkdiff', 'meld', 'xxdiff', 'emerge', 'gvimdiff', 'ecmerge', 'diffuse', 'opendiff', 'p4merge', 'araxis' ]
 
         # Configurable parameters
         difftool = kwargs.get('difftool', None)
         if difftool is None:
             try:
-                difftool = git.config("--get diff.tool", execution_path=self.workspace_dir)
+                difftool = git.config("--get diff.tool", execution_path=workspace_dir)
             except:
                 pass
 
@@ -380,8 +374,8 @@ class DiffManager(ProjectManager):
         self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
         self.branchpane.pack(side=Tk.TOP)
 
-        ProjectManager.__init__(self, master, workspace_dir=self.workspace_dir,
-                                **kwargs)
+        super(DiffManager, self).__init__(master, workspace_dir=workspace_dir,
+                                          **kwargs)
 
         # If we are diffing against the workspace, get the status of the workspace
         # and save the set of changed files in the outer project (including submodules).
