@@ -298,7 +298,7 @@ class ProjectManager(WorkspaceDirHandler):
         try:
             file = self.filenames[index]
             if file != "":
-                t = threading.Thread(target=self.execute, kwargs={'file':file})
+                t = threading.Thread(target=self.execute, kwargs={'file_':file})
                 t.start()
                 self.filelist.itemconfig(index, bg=self.bgvisited, fg=self.fgvisited)
         except:
@@ -322,7 +322,7 @@ class ProjectManager(WorkspaceDirHandler):
         pass
 
     # This should be implemented by derived classes
-    def execute(self, file):
+    def execute(self, file_):
         pass
 
 class DiffManager(ProjectManager):

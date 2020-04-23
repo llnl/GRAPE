@@ -29,6 +29,6 @@ class WorkspaceDirHandler:
     @contextmanager
     def temp_work_in_dir(self, tmp_path):
         long_term_exec_path = self.workspace_dir
-        self.workspace_dir = os.path.realpath(tmp_path)
+        self._workspace_dir = os.path.realpath(tmp_path)
         yield
-        self.workspace_dir = long_term_exec_path
+        self._workspace_dir = long_term_exec_path
