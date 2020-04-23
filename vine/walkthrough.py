@@ -351,8 +351,10 @@ class DiffManager(ProjectManager):
 
         self.diffargs = kwargs.get('diffargs', "")
         self.noFetch = kwargs.get('noFetch', False)
-        self.branchA = self.getBranch(kwargs.get('branchA', ""))
-        self.branchB = self.getBranch(kwargs.get('branchB', ""))
+        self.branchA = self.getBranch(kwargs.get('branchA', ""),
+                                      workspace_dir=workspace_dir)
+        self.branchB = self.getBranch(kwargs.get('branchB', ""),
+                                      workspace_dir=workspace_dir)
         self.diffbranchA = ""
         self.diffAnnotationA = Tk.StringVar()
         self.diffAnnotationA.set(self.branchA)
@@ -454,10 +456,13 @@ class DiffManager(ProjectManager):
             return f"{branchA}...{branchB}"
         return f"{branchA} {branchB}"
 
-    def getBranch(self, branch):
+    def getBranch(self, branch, workspace_dir=None):
+        # workspace_dir manually set only before DiffManager' super() call.
+        if not workspace_dir:
+            workspace_dir = self.workspace_dir
         if not branch.startswith("--"):
             try:
-                git.shortSHA(branch, execution_path=self.workspace_dir)
+                git.shortSHA(branch, execution_path=workspace_dir)
             except:
                 if not branch.startswith("origin/"):
                     branch = git.join_list_as_git_path(["origin", branch])
@@ -465,7 +470,7 @@ class DiffManager(ProjectManager):
             # TODO always fetch the origin before diffing?
             # TODO figure out ahead behind (git rev-list --left-right --count develop...develop)
             if not self.noFetch and branch.startswith("origin/"):
-                git.fetch("origin", branch.partition("/")[2], execution_path=self.workspace_dir)
+                git.fetch("origin", branch.partition("/")[2], execution_path=workspace_dir)
         return branch
 
     def getSubBranch(self, branch):
