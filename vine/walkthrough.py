@@ -197,16 +197,14 @@ class ProjectManager(WorkspaceDirHandler):
         logging.info("Populating projects list...")
 
         self.projects = []
-        self.projstatus = []
         self.projtype = []
 
         # Outer level repo
         if self.showToplevel:
-            status = "?"
             self.projects.append("")
-            self.projlist.insert(Tk.END, f"{status} <Outer Level Project>")
-            self.projstatus.append(status)
-            self.projtype.append("Outer")
+            self.append_project_data(
+                list_item="? <Outer Level Project>",
+                type_="Outer")
 
         # Nested subprojects
         self.subprojects = []
@@ -215,20 +213,18 @@ class ProjectManager(WorkspaceDirHandler):
             self.projects.extend(activeNestedSubprojects)
             self.subprojects.extend(activeNestedSubprojects)
             for proj in activeNestedSubprojects:
-                status = "?"
-                self.projlist.insert(Tk.END, f"{status} {proj} <Nested Subproject>")
-                self.projstatus.append(status)
-                self.projtype.append("Active Nested")
+                self.append_project_data(
+                    list_item=f"? {proj} <Nested Subproject>",
+                    type_="Active Nested")
             if self.showInactive:
                 inactiveNestedSubprojects = list(set(config_parser_global.grapeConfig().getAllNestedSubprojects())
                     - set(config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)))
                 self.projects.extend(inactiveNestedSubprojects)
                 self.subprojects.extend(inactiveNestedSubprojects)
                 for proj in inactiveNestedSubprojects:
-                    status = "?"
-                    self.projlist.insert(Tk.END, f"{status} {proj} <Inactive Nested Subproject>")
-                    self.projstatus.append(status)
-                    self.projtype.append("Inactive Nested")
+                    self.append_project_data(
+                        list_item=f"? {proj} <Inactive Nested Subproject>",
+                        type_="Inactive Nested")
 
         # Submodules
         self.submodules = []
@@ -237,19 +233,17 @@ class ProjectManager(WorkspaceDirHandler):
             self.projects.extend(activeSubmodules)
             self.submodules.extend(activeSubmodules)
             for proj in activeSubmodules:
-                status = "?"
-                self.projlist.insert(Tk.END, f"{status} {proj} <Submodule>")
-                self.projstatus.append(status)
-                self.projtype.append("Submodule")
+                self.append_project_data(
+                    list_item=f"? {proj} <Submodule>",
+                    type_="Submodule")
             if self.showInactive:
                 inactiveSubmodules = list(set(git.getAllSubmodules(execution_path=self.workspace_dir)) - set(git.getActiveSubmodules(execution_path=self.workspace_dir)))
                 self.projects.extend(inactiveSubmodules)
                 self.submodules.extend(inactiveSubmodules)
                 for proj in inactiveSubmodules:
-                    status = "?"
-                    self.projlist.insert(Tk.END, f"{status} {proj} <Inactive Submodule>")
-                    self.projstatus.append(status)
-                    self.projtype.append("Inactive Submodule")
+                    self.append_project_data(
+                        list_item=f"? {proj} <Inactive Submodule>",
+                        type_="Inactive Submodule")
 
         # Subtrees
         self.subtrees = []
@@ -257,10 +251,9 @@ class ProjectManager(WorkspaceDirHandler):
             self.subtrees = [self.grapeconfig.get(f'subtree-{proj}', 'prefix') for proj in self.grapeconfig.get(Option.SECTION_SUBTREES, 'names').strip().split()]
             self.projects.extend(self.subtrees)
             for proj in self.subtrees:
-                status = "?"
-                self.projlist.insert(Tk.END, f"{status} {proj} <Subtree>")
-                self.projstatus.append(status)
-                self.projtype.append("Subtree")
+                self.append_project_data(
+                    list_item=f"? {proj} <Subtree>",
+                    type_="Subtree")
 
         logging.info("Done.")
 
@@ -278,6 +271,10 @@ class ProjectManager(WorkspaceDirHandler):
         self.main.add(self.filepanel)
         self.main.pack(fill=Tk.BOTH, expand=1, side=Tk.BOTTOM)
 
+    def append_project_data(self, *, list_item, type_):
+        self.projlist.insert(Tk.END, list_item)
+        self.projtype.append(type_)
+
     def chooseProject(self):
         oldlabel = self.projpanelabel.get()
         self.projpanelabel.set("Working...")
@@ -293,12 +290,27 @@ class ProjectManager(WorkspaceDirHandler):
         self.projpanelabel.set(oldlabel)
         self.master.update()
 
+    def get_selected_project_name(self):
+        index = self.projlist.index(Tk.ACTIVE)
+        # Status (ignored), project_name, module type (ignored)
+        _, project_name, _ = self.projlist.get(index).split()
+        return project_name
+
     def spawnDiff(self):
         index = self.filelist.index(Tk.ANCHOR)
         try:
             file = self.filenames[index]
             if file != "":
-                t = threading.Thread(target=self.execute, kwargs={'file_':file})
+                project_name = self.get_selected_project_name()
+                file_abs_path = os.path.join(self.workspace_dir,
+                                             project_name,
+                                             file)
+                if not os.path.exists(file_abs_path):
+                    logging.warning(f"Diff file {file_abs_path} not found.")
+
+                t = threading.Thread(target=self.execute,
+                                     kwargs={'file_': file_abs_path,
+                                             'workspace_dir': os.getcwd()})
                 t.start()
                 self.filelist.itemconfig(index, bg=self.bgvisited, fg=self.fgvisited)
         except:
@@ -307,14 +319,12 @@ class ProjectManager(WorkspaceDirHandler):
     def setProjectStatus(self, index, status):
         oldString = self.projlist.get(index)
         newString = status + oldString[1:]
-        self.projstatus[index] = status
         self.projlist.delete(index)
         self.projlist.insert(index, newString)
 
     def removeProjectEntry(self, index):
         del self.projects[index]
         self.projlist.delete(index)
-        del self.projstatus[index]
         del self.projtype[index]
 
     # This should be implemented by derived classes
@@ -561,7 +571,10 @@ class DiffManager(ProjectManager):
             self.diffAnnotationB.set(self.diffbranchB)
 
 
-    def execute(self, file_):
+    def execute(self, file_, workspace_dir=None):
+        if workspace_dir:
+            # Directly set workspace_dir from within new thread.
+            self._workspace_dir = workspace_dir
         try:
             cmd = f"difftool --find-renames --find-copies  {self.difftoolarg} -y {self.diffargs} {self.diffBranchSpec(self.diffbranchA, self.diffbranchB)} -- "
             if isinstance(file_, list):
@@ -571,4 +584,4 @@ class DiffManager(ProjectManager):
             git.gitcmd(cmd, "Failed to launch difftool",
                        execution_path=self.workspace_dir)
         except grape_errors.GrapeGitError as e:
-            logging.error(f"{e.msg} (return code {e.returnCode})\n{e.gitOutput}")
+            logging.error(f"{e.msg} (return code {e.code})\n{e.gitOutput}")
