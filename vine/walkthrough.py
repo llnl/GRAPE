@@ -581,7 +581,9 @@ class DiffManager(ProjectManager):
                 cmd += f"\"{file_[0]}\" \"{file_[1]}\""
             else:
                 cmd += f"\"{file_}\""
+            # Git command executed from same path as diffed file.
+            execution_path = os.path.dirname(file_)
             git.gitcmd(cmd, "Failed to launch difftool",
-                       execution_path=self.workspace_dir)
+                       execution_path=execution_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"{e.msg} (return code {e.code})\n{e.gitOutput}")
