@@ -292,9 +292,12 @@ class ProjectManager(WorkspaceDirHandler):
 
     def get_selected_project_name(self):
         index = self.projlist.index(Tk.ACTIVE)
-        # Status (ignored), project_name, module type (ignored)
-        _, project_name, _ = self.projlist.get(index).split()
-        return project_name
+        project_name, _ = self.projlist.get(index).split("<")
+        name_split = project_name.split()
+        if len(name_split) < 2:
+            return ""
+        # name_split[1] is the project name, name_split[0] is status
+        return name_split[1]
 
     def spawnDiff(self):
         index = self.filelist.index(Tk.ANCHOR)
@@ -309,8 +312,7 @@ class ProjectManager(WorkspaceDirHandler):
                     logging.warning(f"Diff file {file_abs_path} not found.")
 
                 t = threading.Thread(target=self.execute,
-                                     kwargs={'file_': file_abs_path,
-                                             'workspace_dir': os.getcwd()})
+                                     kwargs={'file_': file_abs_path})
                 t.start()
                 self.filelist.itemconfig(index, bg=self.bgvisited, fg=self.fgvisited)
         except:
@@ -571,10 +573,7 @@ class DiffManager(ProjectManager):
             self.diffAnnotationB.set(self.diffbranchB)
 
 
-    def execute(self, file_, workspace_dir=None):
-        if workspace_dir:
-            # Directly set workspace_dir from within new thread.
-            self._workspace_dir = workspace_dir
+    def execute(self, file_):
         try:
             cmd = f"difftool --find-renames --find-copies  {self.difftoolarg} -y {self.diffargs} {self.diffBranchSpec(self.diffbranchA, self.diffbranchB)} -- "
             if isinstance(file_, list):
