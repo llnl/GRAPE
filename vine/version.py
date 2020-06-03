@@ -105,6 +105,7 @@ class Version(Option, WorkspaceDirHandler):
         if args["read"]:
             config = config_parser_global.grapeConfig()
             fileName = config.get(self.SECTION_VERSIONING, "file")
+            fileName = os.path.join(self.workspace_dir, fileName)
             try:
                 with io.open(fileName) as f:
                     slots = self.readVersion(f, args)
@@ -136,6 +137,7 @@ class Version(Option, WorkspaceDirHandler):
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
         fileName = config.get(self.SECTION_VERSIONING, "file")
+        fileName = os.path.join(self.workspace_dir, fileName)
         with io.open(fileName) as f:
             slots = self.readVersion(f, args)
             self.ver = self.slotsToString(args, slots)
