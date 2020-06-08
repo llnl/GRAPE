@@ -1,5 +1,15 @@
 
 
+Mon Jun  8 07:27:19 2020 David Bloss
+v1.33.6
+Reviewers: Peter Robinson, Ben Liu
+
+The version file was sometimes correctly found relative to the workspace directory, and sometimes incorrectly found relative to the current working directly.
+Now it's all relative to the workspace directory.
+
+See https://rzlc.llnl.gov/jira/browse/GRP-187
+
+
 Thu Apr 30 13:22:27 2020 David Bloss
 v1.33.5
 Reviewers: Ben Liu, Peter Robinson
