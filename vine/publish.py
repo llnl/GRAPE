@@ -739,7 +739,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             execution_path = os.path.join(self.workspace_dir, nested)
             modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
             if len(modified) > 0:
-                self.progress["modifiedFiles"] += [os.path.join(execution_path, s) for s in modified]
+                self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
 
         return True
 
