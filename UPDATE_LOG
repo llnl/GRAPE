@@ -1,5 +1,12 @@
 
 
+Mon Jun 29 08:49:05 2020 Benjamin T. Liu
+v1.33.7
+Reviewers: David Bloss, Patrick Greene, Peter Robinson
+
+Fix grape publish file list within nested subprojects
+
+
 Mon Jun  8 07:27:19 2020 David Bloss
 v1.33.6
 Reviewers: Peter Robinson, Ben Liu
