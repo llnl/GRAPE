@@ -166,8 +166,8 @@ class TestNestedSubproject(testGrape.TestGrape):
             mock_userInput.side_effect = ["a\n"]
             self.menu.applyMenuChoice("uv", ["-f"])
             # ensure that changes from the main client are picked up
-            self.assertFalse(os.path.isdir(os.path.join(second_space, "subs", "subproject1")))
-            self.assertTrue(os.path.isdir(os.path.join(second_space, "subs", "subproject2")))
+            self.assertFalse(os.path.isdir(os.path.join(second_space, "subs", "subproject1")), "subproject1 should not be present")
+            self.assertTrue(os.path.isdir(os.path.join(second_space, "subs", "subproject2")), "subproject2 should be present")
         
         except grape_errors.GrapeGitError as e:
             output = self.get_output()
