@@ -6,11 +6,20 @@ from vine import config_parser_global
 
 class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
 
-    def __init__(self, configString=None, *, workspace_dir):
+    def __init__(self, configString=None, read_global=True, *, workspace_dir):
         super(GrapeConfigParserUser, self).__init__(
-            workspaceDir=workspace_dir, configString=configString)
+            workspaceDir=workspace_dir if read_global else None, configString=configString)
         self.workspace_dir = workspace_dir
         self.readWorkspaceUserConfigFile()
+        # strip out everything except the relevant user configs
+        old_sections = self.sections()
+        for section in old_sections:
+           if section.startswith("nested-"):
+               for option in self.options(section):
+                  if option != "active":
+                     self.remove_option(section, option)
+           else:
+               self.remove_section(section)
 
     def readWorkspaceUserConfigFile(self):
         grape_user_config = os.path.join(self.workspace_dir, self.GIT_DIR,
@@ -18,6 +27,12 @@ class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
         self.read(grape_user_config)
 
     def setActiveNestedSubprojects(self, listOfActiveSubprojects):
+        # clear out any old nested subproject sections
+        old_sections = self.sections()
+        for section in old_sections:
+           if section.startswith("nested-"):
+              self.remove_section(section)
+
         allNested = config_parser_global.grapeConfig().getAllNestedSubprojects()
         active = {}
         for proj in allNested:
