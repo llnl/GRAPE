@@ -1,11 +1,14 @@
 __author__ = 'robinson96'
 import os
 import sys
+import tempfile
 from unittest.mock import patch
 from test import testGrape
+from vine import config_parser_base
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
+from vine.option import Option
 
 
 class TestNestedSubproject(testGrape.TestGrape):
@@ -45,8 +48,47 @@ class TestNestedSubproject(testGrape.TestGrape):
                                    "subproject1 not clean")
         testGrapeObject.subproject = subproject1path
 
+    # Sets up a second nested subproject referring to the first
+    @staticmethod
+    def assertCanAddSecondSubproject(testGrapeObject, *, execution_path):
+        subproject_path = os.path.join('subs', 'subproject2')
+        testGrapeObject.menu.applyMenuChoice(
+            "addSubproject", ["--name=subproject2",
+                              f"--prefix={subproject_path}", "--branch=master",
+                              f"--url={testGrapeObject.repos[1]}",
+                              "--nested", "--noverify"])
+        subproject2path = os.path.join(testGrapeObject.repo, subproject_path)
+        testGrapeObject.assertTrue(os.path.exists(subproject2path), "subproject2 does not exist")
+        # check to see that subproject2 is a git repo
+        basedir = os.path.split(git.baseDir(execution_path=subproject2path))[-1]
+        subdir = os.path.split(subproject2path)[-1]
+        testGrapeObject.assertEqual(basedir, subdir,
+                                   f"subproject2's git repo is {basedir}, " +
+                                   f"not {subdir}")
+        testGrapeObject.subproject2 = subproject2path
+
+    # Remove first nested subproject
+    @staticmethod
+    def assertCanRemoveFirstSubproject(testGrapeObject, *, execution_path):
+        # There is currently no elegant way of doing this
+        grapeConfig = config_parser_base.GrapeConfigParserBase(execution_path)
+        allSubprojects = grapeConfig.getAllNestedSubprojects()
+        # Edit the grapeconfig
+        testGrapeObject.assertTrue("subproject1" in allSubprojects,"subproject1 not in grapeconfig")
+        allSubprojects.remove("subproject1")
+        grapeConfig.set(Option.SECTION_NESTED_PROJECTS, "names", " ".join(allSubprojects))
+        grapeConfig.remove_section("nested-subproject1")
+        with open(os.path.join(execution_path, ".grapeconfig"), 'w') as f:
+           grapeConfig.write(f)
+        git.add(".grapeconfig", execution_path=execution_path)
+        git.commit("-m \"removed subproject1\"", execution_path=execution_path)
+
     def switchToMaster(self):
         self.menu.applyMenuChoice("checkout", ["master"])
+
+    def resetMenu(self, workspace_dir):
+        grapeMenu._resetMenu()
+        self.menu = grapeMenu.menu(workspace_dir)
 
     def testAddingNewNestedSubproject(self):
         try:
@@ -70,8 +112,9 @@ class TestNestedSubproject(testGrape.TestGrape):
             self.fail(self.get_output() + e.gitCommand.split()[-10:])
 
     @patch('vine.utility.userInput')
-    def testDeactivatingAndReactiviatingNestProjects(self, mock_userInput):
+    def testDeactivatingAndReactivatingNestProjects(self, mock_userInput):
         try:
+            # Set up main workspace and add a new subproject
             self.assertCanAddNewSubproject(self, execution_path=self.repo)
             self.assertTrue(os.path.isdir(self.subproject))
             # answer none to whether we want all subprojects, y to deleting it
@@ -86,6 +129,46 @@ class TestNestedSubproject(testGrape.TestGrape):
             mock_userInput.side_effect = ["a\n"]
             self.menu.applyMenuChoice("uv")
             self.assertTrue(os.path.isdir(self.subproject))
+
+            # Set up a second workspace
+            second_space = os.path.join(self.defaultWorkingDirectory, "client2")
+            args = [self.repo, second_space]
+            # this clones develop which has no nested subprojects
+            mock_userInput.side_effect = ["\n", "y\n", "a\n", "\n", "\n"]
+            ret = self.menu.applyMenuChoice("clone", args)
+
+            # We have to reset the menu everytime we change workspaces
+            self.resetMenu(second_space)
+
+            # checkout master which has nested subprojects
+            mock_userInput.side_effect = ["y", "\n", "\n"]
+            ret = self.menu.applyMenuChoice("checkout", ["master"])
+            self.assertTrue(ret, "vine.clone returned failure")
+            # run grape uv to get the nested subprojects
+            mock_userInput.side_effect = ["a\n"]
+            self.menu.applyMenuChoice("uv")
+
+            ## Go back to the main workspace and modify the subprojects
+            self.resetMenu(self.repo)
+            self.assertCanAddSecondSubproject(self, execution_path=self.repo)
+            self.assertCanRemoveFirstSubproject(self, execution_path=self.repo)
+
+            ## Try uv on the second workspace
+            # deactivate all nested subprojects
+            self.resetMenu(second_space)
+            mock_userInput.side_effect = ["n\n"]
+            self.menu.applyMenuChoice("uv", ["-f"])
+            # update workspace
+            git.pull("origin master", execution_path=second_space, capture_output=True)
+            # activate all nested subprojects
+            # reset the menu here to reread the grapeconfig
+            self.resetMenu(second_space)
+            mock_userInput.side_effect = ["a\n"]
+            self.menu.applyMenuChoice("uv", ["-f"])
+            # ensure that changes from the main client are picked up
+            self.assertFalse(os.path.isdir(os.path.join(second_space, "subs", "subproject1")))
+            self.assertTrue(os.path.isdir(os.path.join(second_space, "subs", "subproject2")))
+        
         except grape_errors.GrapeGitError as e:
             output = self.get_output()
             self.fail(('\n'.join(output) + e.gitCommand).split()[-10:])
