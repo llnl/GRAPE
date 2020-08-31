@@ -1,5 +1,12 @@
 
 
+Mon Aug 31 11:55:59 2020 David Bloss
+v1.33.9
+Reviewers: Ben Liu, Peter Robinson
+
+Updated if statements using \"is\" where \"==\" is more appropriate in accordance with Python 3.8.5 standards.
+
+
 Mon Aug 31 09:04:55 2020 Benjamin T. Liu
 v1.33.8
 Reviewers: Peter Robinson
