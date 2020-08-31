@@ -320,11 +320,11 @@ class UpdateView(Option, WorkspaceDirHandler):
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
                 reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
-                userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
+                userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir, read_global=False)
                 updatedActiveList = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
-                    section = f"nested-{reverseLookupByPrefix[subproject]}"
+                    section = f"nested-{subprojectName}"
                     userConfig.ensureSection(section)
                     subproject = git.gitPathToOsPath(subproject)
                     previouslyActive = userConfig.getboolean(section, "active")

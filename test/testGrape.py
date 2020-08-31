@@ -141,6 +141,7 @@ class TestGrape(unittest.TestCase):
         # reset grapeConfig and grapeMenu
         config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
+        self.menu = None
         self.logger.restore_sys_stdout()
 
         if not self._debug and os.path.isfile(self.logger.log_file):
