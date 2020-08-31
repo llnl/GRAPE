@@ -60,7 +60,7 @@ def handlePushMRE(mre):
             logging.error(e.gitOutput)
             return False
 
-if __name__ is "__main__":
+if __name__ == "__main__":
     from vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("push", [])

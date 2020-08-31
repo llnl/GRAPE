@@ -48,7 +48,7 @@ def parseArgs(docstr, arguments, config):
 # with a 'N' or 'n'.
 def userInput(message, default=None):
     print(f"\n{message}")
-    if default is "" or default is None:
+    if default == "" or default is None:
         return input('==> ').strip()
     value = input(f"(def: {default}) ==> ").strip()
     if value == "":

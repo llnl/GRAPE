@@ -297,9 +297,9 @@ class Review(Option, WorkspaceDirHandler):
 
 def addLinkToDescription(descr, link, isPullRequest):
     if descr is not None and link is not None:
-        if type(link) is not str:
+        if not isinstance(link, str):
             link = link.decode("utf-8")
-        if type(descr) is not str:
+        if not isinstance(descr, str):
             descr = descr.decode("utf-8")
         if link not in descr:
             if isPullRequest:
