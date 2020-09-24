@@ -289,7 +289,7 @@ class PullRequest(StashyNode):
     def version(self):
         return self.node["version"]
 
-    # reviewers is a list of username-approved(bool) pairs
+    # reviewers is a list of usernames
     def update(self, ver, title=None, description=None, reviewers=None):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
