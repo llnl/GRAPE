@@ -39,10 +39,10 @@ class GrapeGitlabAdapter:
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
-            logging.info("Connected to Bitbucket.")
+            logging.info("Connected to Gitlab.")
         else:
             self._gitlab= None
-            logging.info("Could not connect to Bitbucket...")
+            logging.info("Could not connect to Gitlab...")
 
     def auth(self, service, username, password, verify=True):
         # set a password to something bogus to trigger an authentication error
@@ -171,7 +171,7 @@ class Repo:
                                             "target_branch": target_branch,
                                             "title": title,
                                             "description":description,
-                                            "reviewers":reviewers)
+                                            "reviewers":reviewers})
          return PullRequest(mr, self.gitlab)
 
 
@@ -238,14 +238,19 @@ class PullRequest:
         return self.mergerequest.web_url
 
     def version(self):
-        return self.node["version"]
+        # gitlab does not seem to have the same concept of a version exposed to the REST API
+        return 123
 
     # reviewers is a list of usernames
     def update(self, ver, title=None, description=None, reviewers=None):
-        self.mergerequest.update(title=title, description=description)
-        
+        if title:
+            self.mergerequest.title = title
+        if description:
+            self.mergerequest.description = description
         if reviewers:
             self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewers, approval_rule_name="RAG")
+        self.mergerequest.save()
+        return self
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())

@@ -129,5 +129,5 @@ if __name__ == '__main__':
     logger = vine_logging.GrapeLogger()
     set_verbosity(logger)
 #    Atlassian.testMe()
-    Gitlab.testMe()
-    #exit(0 if startup() else 1)
+#    Gitlab.testMe()
+    exit(0 if startup() else 1)
