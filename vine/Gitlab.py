@@ -84,7 +84,8 @@ class GrapeGitlabAdapter:
 
     def project(self, name):
         print(f"in project call with {self._gitlab.groups}, name {name}")
-        p = Project(self._gitlab.groups.list(search=name)[0], self._gitlab)
+        group_id = self._gitlab.groups.list(search=name)[0].id
+        p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         print("Project found")
         return  p
 #
@@ -134,22 +135,32 @@ class Project:
         return self.group.name
 
     def repolist(self):
-        print(f"repolist {self.group.list()}")
-        return [r.name for r in self.group.list()]
+        print(f"repolist {self.group.projects.list()}")
+        return [r.name for r in self.group.projects.list()]
 
     def repo(self, name):
-        return Repo(self.group.projects.list(search=name))
+        project_id = self.group.projects.list(search=name)[0].id
+        print(f"repo {name} has id {project_id}")
+        return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 
 class Repo:
     def __init__(self, gitlab_project, gitlab ):
         #self.project = gitlab.projects.get(gitlab_group_project.id, lazy=True)
         self.project = gitlab_project
+        self.gitlab = gitlab
+        print(f"created Repo with gitlab project {self.project}, {self.project.__dict__['_updated_attrs']}")
         
     # state can be "all", "merged", "opened", or "closed"
-    def pullRequests(self, direction= "IGNORED", at=None, state="open"):
-        mrs = self.project.mergerequests.list(state=state.lower())
-        return [PullRequest(x, self.project.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
+    def pullRequests(self, direction= "IGNORED", at=None, state="opened"):
+        # translates from bitbucket to gitlab state types
+        state_dict = {"open":"opened", "opened":"opened",
+                      "merged": "merged",
+                      "declined":"closed", "closed":"closed",
+                      "all":"all"
+                      }
+        state = state_dict[state.lower()]
+        return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(state=state) ]
 #
 #    def getOpenPullRequest(self, source, target):
 #        ret = None
@@ -178,46 +189,40 @@ class Repo:
 #
 #
 #
-#class PullRequest(StashyNode):
-#    """
-#    node is the dictionary with the state of the Pull Request.
-#    stashy_pull_requests is the stashy object needed to update the pull request.
-#    """
-#    def __init__(self, node, stashy_pull_requests):
-#        StashyNode.__init__(self, node, stashy_pull_requests[str(node["id"])])
-#        self._stashy_pull_requests = stashy_pull_requests
-#        self._stashy_pull_request = stashy_pull_requests[str(self.node["id"])]
-#
-#    def author(self):
-#        return self.node["author"]["user"]["name"]
-#
-#    def authorName(self):
-#        return self.node["author"]["user"]["displayName"]
-#
-#    def description(self):
-#        try:
-#            return self.node["description"].encode('ascii', 'ignore')
-#        except KeyError:
-#            return ""
-#
-#    def date(self):
-#        msec = self.node["createdDate"]
-#        sec = msec / 1000
-#        return time.ctime(sec)
-#
-#    def reviewers(self):
-#        """
-#        Returns [(username,bool(approved),displayname)...]
-#        """
-#        #Bitbucket REST API for reviewer definition snippet:
-#        # "reviewers": [
-#        #     {
-#        #         "user": {
-#        #             "name": "charlie"
-#        #         }
-#        #     }
-#        #   ]
-#        # Which I interpret to mean the following:
+class PullRequest:
+    """
+    node is the dictionary with the state of the Pull Request.
+    stashy_pull_requests is the stashy object needed to update the pull request.
+    """
+    def __init__(self, gitlab_mergerequest, gitlab):
+        self.mergerequest = gitlab_mergerequest
+        self.gitlab = gitlab
+        print(f"created PullRequest with gitlab mergerequest {self.mergerequest}, {self.mergerequest.__dict__['_updated_attrs']}")
+
+    def author(self):
+        return self.mergerequest.author["username"]
+
+    def authorName(self):
+        return self.mergerequest.author["name"]
+
+    def description(self):
+        return self.mergerequest.description
+
+    def date(self):
+        return self.mergerequest.created_at
+
+    def reviewers(self):
+        """
+        Returns [(username,bool(approved),displayname)...]
+        """
+        #Gitlab REST API for reviewer definition snippet:
+        # "assignees": [
+        #     {
+        #       "name": "charlie"
+        #        
+        #     }
+        #   ]
+        # Which I interpret to mean the following:
 #        ret = []
 #        for reviewer in self.node["reviewers"]:
 #            name = reviewer["user"]["name"]
@@ -228,17 +233,17 @@ class Repo:
 #            ret.append((name, approved, displayName))
 #        return ret
 #
-#    def state(self):
-#        return self.node["state"]
-#
-#    def title(self):
-#        return self.node["title"]
-#
-#    def fromRef(self):
-#        return self.node["fromRef"]["displayId"]
-#
-#    def toRef(self):
-#        return self.node["toRef"]["displayId"]
+    def state(self):
+        return self.mergerequest.state
+
+    def title(self):
+        return self.mergerequest.title
+
+    def fromRef(self):
+        return self.mergerequest.source_branch
+
+    def toRef(self):
+        return self.mergerequest.target_branch
 #
 #    def approved(self):
 #        reviewers = self.reviewers()
@@ -296,7 +301,8 @@ class Repo:
 
 def testMe():
     grape_gitlab = GrapeGitlabAdapter(workspace_dir=os.getcwd())
-    plist = grape_gitlab.projectlist()
+#    plist = grape_gitlab.projectlist()
+    plist = [grape_gitlab.project("GRP")]
     logging.info(plist)
     for p in plist:
         logging.info(f"\nPROJECT:{p}")
@@ -306,15 +312,17 @@ def testMe():
             logging.info(f" REPONAME{reponame}")
             try:
                 repo = project.repo(reponame)
-                for pull in repo.pullRequests():
+                for pull in repo.pullRequests(state="merged"):
                     logging.info(f"  TITLE:     {pull.title()}")
                     logging.info(f"  STATE:     {pull.state()}")
                     logging.info(f"  AUTHOR:    {pull.author()}")
+                    logging.info(f"  AUTHORNAME:    {pull.authorName()}")
                     logging.info(f"  DATE:      {pull.date()}")
                     logging.info(f"  REVIEWERS: {pull.reviewers()}")
                     logging.info(f"  FROM:      {pull.fromRef()}")
                     logging.info(f"  TO:        {pull.toRef()}")
                     logging.info(f"  DESC:      {pull.description()}\n")
+                    exit(0)
             except stashy_errors.NotFoundException:
                 logging.info("  repo not found")
 

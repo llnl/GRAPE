@@ -124,8 +124,10 @@ def set_verbosity(logger, choice=None):
 ## If this file is being run as a script, then run the main menu.
 ## If it's being imported, then don't
 from vine import Gitlab as Gitlab
+from vine import Atlassian as Atlassian
 if __name__ == '__main__':
     logger = vine_logging.GrapeLogger()
     set_verbosity(logger)
+#    Atlassian.testMe()
     Gitlab.testMe()
     #exit(0 if startup() else 1)

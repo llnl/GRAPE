@@ -67,7 +67,8 @@ class Atlassian:
                 numAttempts += 1
 
         return success
-
+    
+    # Return list of project names
     def projectlist(self):
         projects = self._stash.projects.list()
         return [r["key"] for r in projects]
@@ -328,7 +329,7 @@ class PullRequest(StashyNode):
         return False
 
 
-if __name__ == "__main__":
+def testMe():
     atlassian = Atlassian(workspace_dir=os.getcwd())
     plist = atlassian.projectlist()
     logging.info(plist)
@@ -340,7 +341,7 @@ if __name__ == "__main__":
             logging.info(f" REPONAME{reponame}")
             try:
                 repo = project.repo(reponame)
-                for pull in repo.pullRequests():
+                for pull in repo.pullRequests()[0:1]:
                     logging.info(f"  TITLE:     {pull.title()}")
                     logging.info(f"  STATE:     {pull.state()}")
                     logging.info(f"  AUTHOR:    {pull.author()}")
