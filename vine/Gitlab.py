@@ -11,6 +11,7 @@ from vine import utility
 from vine.option import Option
 
 
+GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
 # Grape has the following definitions, most strongly correllated with Bitbucket definitions:
 # Project - collection of repositories (roughly analogous to a Gitlab Group)
 # Repo - the actual repository (roughly analogous to a Gitlap Project)
@@ -83,7 +84,6 @@ class GrapeGitlabAdapter:
     def project(self, name):
         group_id = self._gitlab.groups.list(search=name)[0].id
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
-        print("Project found")
         return  p
 
     def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
@@ -125,18 +125,15 @@ class Project:
     def __init__(self, gitlab_group, gitlab):
         self.group = gitlab_group
         self.gitlab = gitlab
-        print(f"created Project with gitlab group {self.group}, {self.group.__dict__['_parent_attrs']}")
 
     def name(self):
         return self.group.name
 
     def repolist(self):
-        print(f"repolist {self.group.projects.list()}")
         return [r.name for r in self.group.projects.list()]
 
     def repo(self, name):
         project_id = self.group.projects.list(search=name)[0].id
-        print(f"repo {name} has id {project_id}")
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 
@@ -145,7 +142,6 @@ class Repo:
         #self.project = gitlab.projects.get(gitlab_group_project.id, lazy=True)
         self.project = gitlab_project
         self.gitlab = gitlab
-        print(f"created Repo with gitlab project {self.project}, {self.project.__dict__['_updated_attrs']}")
         
     # state can be "all", "merged", "opened", or "closed"
     def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None):
@@ -183,7 +179,6 @@ class PullRequest:
     def __init__(self, gitlab_mergerequest, gitlab):
         self.mergerequest = gitlab_mergerequest
         self.gitlab = gitlab
-        print(f"created PullRequest with gitlab mergerequest {self.mergerequest}, {self.mergerequest.__dict__['_updated_attrs']}")
 
     def author(self):
         return self.mergerequest.author["username"]
@@ -204,19 +199,26 @@ class PullRequest:
         do not show up in the REST API until they've actually approved something, we fill in dummy names for
         the nnumber of entries matching approvals_left
         """
+        approval_rule = None
+        approval_rules = self.mergerequest.approval_rules.list()
+        for ar in approval_rules:
+            if ar.name == GRAPE_GITLAB_APPROVAL_RULE_NAME:
+                approval_rule = ar
+                break
+
+        if approval_rule is None:
+            return []
+        ret = {}
+        for approver in ar.eligible_approvers:
+            ret[approver["username"]] = (approver["username"], False, approver["name"])
+
         approvals = self.mergerequest.approvals.get()
-        ret = []
-        while len(ret) < approvals.approvals_left:
-            ret.append(("Unassigned", False, "Unassigned"))
         for reviewer in approvals.approved_by:
-            print(reviewer["user"])
             name = reviewer["user"]["username"]
-            approved = True
-            displayName = reviewer["user"]["name"]
-            if displayName == "":
-                displayName = name
-            ret.append((name, approved, displayName))
-        return ret
+            if name in ret:
+                ret[name][1] = True
+
+        return ret.values()
 
     def state(self):
         return self.mergerequest.state
@@ -251,9 +253,8 @@ class PullRequest:
             reviewer_ids = []
             for r in reviewers:
                 gitlab_reviewer = self.gitlab.users.list(username=r)[0]
-                print(f"identified {gitlab_reviewer.username} as {gitlab_reviewer.id}")
                 reviewer_ids.append(gitlab_reviewer.id)
-            self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name="GRAPE Reviewers")
+            self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
         self.mergerequest.save()
         return self
 
