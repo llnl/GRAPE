@@ -60,7 +60,7 @@ class GrapeGitlabAdapter:
                     success = True
                 else:
                     logging.info("empty list from gitlab project.")
-                    raise Exception 
+                    raise gitlab.exceptions.GitlabAuthenticationError()
             except gitlab.exceptions.GitlabAuthenticationError as e:
                 logging.error(e, type(e), f"numAttempts is {numAttempts}")
                 if numAttempts == 0:
@@ -248,7 +248,12 @@ class PullRequest:
         if description:
             self.mergerequest.description = description
         if reviewers:
-            self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewers, approval_rule_name="RAG")
+            reviewer_ids = []
+            for r in reviewers:
+                gitlab_reviewer = self.gitlab.users.list(username=r)[0]
+                print(f"identified {gitlab_reviewer.username} as {gitlab_reviewer.id}")
+                reviewer_ids.append(gitlab_reviewer.id)
+            self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name="GRAPE Reviewers")
         self.mergerequest.save()
         return self
 
@@ -273,38 +278,34 @@ class PullRequest:
 
 def testMe():
     grape_gitlab = GrapeGitlabAdapter(workspace_dir=os.getcwd())
-#    plist = grape_gitlab.projectlist()
-    plist = ["GRP"]
-    logging.info(plist)
-    for p in plist:
-        logging.info(f"\nPROJECT:{p}")
-        project = grape_gitlab.project(p)
-        reponames = project.repolist()
-        for reponame in reponames:
-            logging.info(f" REPONAME{reponame}")
-            try:
-                repo = project.repo(reponame)
-                for pull in repo.pullRequests(state="open"):
-                    logging.info(f"  TITLE:     {pull.title()}")
-                    logging.info(f"  STATE:     {pull.state()}")
-                    logging.info(f"  AUTHOR:    {pull.author()}")
-                    logging.info(f"  AUTHORNAME:{pull.authorName()}")
-                    logging.info(f"  DATE:      {pull.date()}")
-                    logging.info(f"  REVIEWERS: {pull.reviewers()}")
-                    logging.info(f"  FROM:      {pull.fromRef()}")
-                    logging.info(f"  TO:        {pull.toRef()}")
-                    logging.info(f"  DESC:      {pull.description()}")
-                    logging.info(f"  APPROVED:  {pull.approved()}")
-                    logging.info(f"  LINK:      {pull.link()}\n")
-#                    logging.info(f"  MERGE success {pull.merge()}")
-                logging.info("GETTING OPEN PULL REQUEST")
-                pull = repo.getOpenPullRequest("feature/probinso/gitlab_support","develop")
+    logging.info(f"\nPROJECT:{p}")
+    project = grape_gitlab.project("GRP")
+    reponames = project.repolist()
+    for reponame in reponames:
+        logging.info(f" REPONAME{reponame}")
+        try:
+            repo = project.repo(reponame)
+            for pull in repo.pullRequests(state="open"):
                 logging.info(f"  TITLE:     {pull.title()}")
+                logging.info(f"  STATE:     {pull.state()}")
+                logging.info(f"  AUTHOR:    {pull.author()}")
+                logging.info(f"  AUTHORNAME:{pull.authorName()}")
+                logging.info(f"  DATE:      {pull.date()}")
                 logging.info(f"  REVIEWERS: {pull.reviewers()}")
+                logging.info(f"  FROM:      {pull.fromRef()}")
+                logging.info(f"  TO:        {pull.toRef()}")
+                logging.info(f"  DESC:      {pull.description()}")
                 logging.info(f"  APPROVED:  {pull.approved()}")
+                logging.info(f"  LINK:      {pull.link()}\n")
+#                    logging.info(f"  MERGE success {pull.merge()}")
+            logging.info("GETTING OPEN PULL REQUEST")
+            pull = repo.getOpenPullRequest("feature/probinso/gitlab_support","develop")
+            logging.info(f"  TITLE:     {pull.title()}")
+            logging.info(f"  REVIEWERS: {pull.reviewers()}")
+            logging.info(f"  APPROVED:  {pull.approved()}")
 
-            except:
-                pass
+        except:
+            pass
 
 
 if __name__ == "__main__":
