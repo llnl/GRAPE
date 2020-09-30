@@ -195,9 +195,6 @@ class PullRequest:
     def reviewers(self):
         """
         Returns [(username,bool(approved),displayname)...]
-        Since Gitlab has a notion of approval rules, requiring a number of reviewers, but assigned reviewers
-        do not show up in the REST API until they've actually approved something, we fill in dummy names for
-        the nnumber of entries matching approvals_left
         """
         approval_rule = None
         approval_rules = self.mergerequest.approval_rules.list()
