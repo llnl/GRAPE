@@ -139,7 +139,6 @@ class Project:
 
 class Repo:
     def __init__(self, gitlab_project, gitlab ):
-        #self.project = gitlab.projects.get(gitlab_group_project.id, lazy=True)
         self.project = gitlab_project
         self.gitlab = gitlab
         
