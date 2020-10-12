@@ -612,7 +612,7 @@ options are at least listed below.
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
-                         [--bitbucketURL=<httpsURL>]
+                         [--codeReviewsURL=<httpsURL>]
                          [--verifySSL=<bool>]
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
@@ -694,9 +694,9 @@ options are at least listed below.
                             Default behavior governed by the flow.topicCascadeTick mapping.
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Bitbucket username.
-    --bitbucketURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
-                            [default: .grapeconfig.project.stashURL]
+    --user=<user>           Your Bitbucket/Gitlab username.
+    --codeReviewsURL=<url>        Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+                            [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
     --project=<project>     Your Bitbucket Project. See grape-review for more details.
@@ -928,7 +928,7 @@ options are at least listed below.
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
-                        [--bitbucketURL=<url>]
+                        [--codeReviewsURL=<url>]
                         [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
@@ -957,15 +957,16 @@ options are at least listed below.
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket.
-                                    [default: .grapeconfig.project.stashURL]
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab. Grape supports
+                                    both Bitbucket and Gitlab code review platforms.
+                                    [default: .grapeconfig.project.codeReviewsURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
-        --project=<prj>             The project key part of the bitbucket url, e.g. the "GRP" in
-                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
+        --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
+                                    https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repo name part of the bitbucket url, e.g. the "grape" in
-                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The repo name part of the codeReviews url, e.g. the "grape" in
+                                    https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the
