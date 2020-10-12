@@ -28,7 +28,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
-                        [--bitbucketURL=<url>]
+                        [--codeReviewsURL=<url>]
                         [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
@@ -57,15 +57,16 @@ class Review(Option, WorkspaceDirHandler):
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket.
-                                    [default: .grapeconfig.project.stashURL]
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab. Grape supports
+                                    both Bitbucket and Gitlab code review platforms.
+                                    [default: .grapeconfig.project.codeReviewsURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
-        --project=<prj>             The project key part of the bitbucket url, e.g. the "GRP" in
-                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
+        --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
+                                    https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repo name part of the bitbucket url, e.g. the "grape" in
-                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The repo name part of the codeReviews url, e.g. the "grape" in
+                                    https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
         --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
                                     The pull request for the outer level repo will have a description with links to the
@@ -131,20 +132,19 @@ class Review(Option, WorkspaceDirHandler):
         if not name:
             name = utility.getUserName()
 
-        logging.info(f"Logging onto {args['--bitbucketURL']}")
+        logging.info(f"Logging onto {args['--codeReviewsURL']}")
         if args["--test"]:
-            bitbucket = Atlassian.TestAtlassian(name)
+            codeReviews = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            # TODO - promote bitbucketURL to a config option
-            if ("gitlab") in args["--bitbucketURL"] or None == args["--bitbucketURL"]:
+            if ("gitlab") in args["--codeReviewsURL"] or None == args["--codeReviewsURL"]:
                 logging.info("Logging into Gitlab")
-                bitbucket = Gitlab.GrapeGitlabAdapter(name, url=args["--bitbucketURL"],
+                codeReviews = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
                                                 verify=verify,
                                                 workspace_dir=self.workspace_dir)
             else:
                 logging.info("Logging into Atlassian")
-                bitbucket = Atlassian.Atlassian(name, url=args["--bitbucketURL"],
+                codeReviews = Atlassian.Atlassian(name, url=args["--codeReviewsURL"],
                                                 verify=verify,
                                                 workspace_dir=self.workspace_dir)
 
@@ -167,7 +167,7 @@ class Review(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
         # load pull request from Bitbucket if it already exists
-        wsRepo =  bitbucket.project(project_name).repo(repo_name)
+        wsRepo =  codeReviews.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
 
         # determine pull request title
@@ -218,10 +218,10 @@ class Review(Option, WorkspaceDirHandler):
                 if not submodule:
                     continue
                 # push branch
-                logging.info(f"Pushing {branch} to bitbucket...")
+                logging.info(f"Pushing {branch} to {codeReviews.url}...")
                 submodule_path = os.path.join(self.workspace_dir, submodule)
                 git.push(f"origin {branch}", execution_path=submodule_path)
-                repo = bitbucket.repoFromWorkspaceRepoPath(submodule_path,
+                repo = codeReviews.repoFromWorkspaceRepoPath(submodule_path,
                                                            isSubmodule=True)
                 # determine branch prefix
                 prefix = git.branchPrefix(branch)
@@ -239,7 +239,7 @@ class Review(Option, WorkspaceDirHandler):
                 else:
                     # if a pull request could not be generated, just add a link to browse the branch
                     url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
-                    pullRequestLinks[f"{bitbucket.rzbitbucketURL}{repo.repo.url()}/browse?at={url_}"] = False
+                    pullRequestLinks[f"{codeReviews.url}{repo.repo.url()}/browse?at={url_}"] = False
 
         ## NESTED SUBPROJECT REPOS
         nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
@@ -250,7 +250,7 @@ class Review(Option, WorkspaceDirHandler):
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
             prefix_path = os.path.join(self.workspace_dir, prefix)
             git.push(f"origin {branch}", execution_path=prefix_path)
-            repo = bitbucket.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
+            repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
 
             newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
             if newRequest:
@@ -258,7 +258,7 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 # if a pull request could not be generated, just add a link to browse the branch
                 url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
-                pullRequestLinks[f"{bitbucket.rzbitbucketURL}{repo.repo.url().replace('api/1.0','')}/browse?at={url_}"] = False
+                pullRequestLinks[f"{codeReviews.url}{repo.repo.url().replace('api/1.0','')}/browse?at={url_}"] = False
 
         ## OUTER LEVEL REPO
         # load the repo level REST resource
@@ -275,7 +275,7 @@ class Review(Option, WorkspaceDirHandler):
                 return True
 
             repo_name = args["--repo"]
-            repo = bitbucket.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
+            repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
             updatedDescription = request.description()
@@ -299,7 +299,7 @@ class Review(Option, WorkspaceDirHandler):
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
-        config.set(self.SECTION_PROJECT, "stashURL", "https://rzlc.llnl.gov/bitbucket")
+        config.set(self.SECTION_PROJECT, "codeReviewsURL", "https://your.host.org/gitlab/or/bitbucket")
         config.set(self.SECTION_PROJECT, "verifySSL", "True")
         config.set(self.SECTION_PROJECT, "name", "My unnamed project")
 

@@ -13,9 +13,17 @@ class GrapeConfigParserBase(ConfigParser):
         ConfigParser.__init__(self)
 
         if workspaceDir:
-            self.read(os.path.join(workspaceDir, self.GRAPE_CONFIG))
+            ConfigParser.read(self,os.path.join(workspaceDir, self.GRAPE_CONFIG))
         if configString:
-            self.read_file(io.StringIO(configString))
+            ConfigParser.read_file(self,io.StringIO(configString))
+
+
+    def read(self, *args,**kwargs):
+        ConfigParser.read(self,*args,**kwargs)
+        # ensure backwards compatibility with stashURL
+        stashURL = self.get("project","stashURL")
+        if stashURL:
+            self.set("project","codeReviewsURL",stashURL)
 
     def ensureSection(self, section):
         try:
