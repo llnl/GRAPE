@@ -95,7 +95,7 @@ def branchUpToDateWith(branchName, targetBranch, *, execution_path):
     for b in allUpToDateBranches:
         # remove the * prefix from the active branch
         cleanB = b.strip()
-        if b[0] is '*':
+        if b[0] == '*':
             cleanB = b[1:].strip()
         upToDate = cleanB == branchName.strip()
         if upToDate:

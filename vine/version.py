@@ -299,7 +299,7 @@ class Version(Option, WorkspaceDirHandler):
         config.set(self.SECTION_VERSIONING, "prefix", "v")
 
 
-if __name__ is "__main__":
+if __name__ == "__main__":
     import sys
     from vine import grapeMenu
     menu = grapeMenu.menu()
