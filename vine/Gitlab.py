@@ -186,7 +186,7 @@ class PullRequest:
         return self.mergerequest.author["name"]
 
     def description(self):
-        return self.mergerequest.description
+        return self.mergerequest.description.encode('ascii', 'ignore')
 
     def date(self):
         return self.mergerequest.created_at
