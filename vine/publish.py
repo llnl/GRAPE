@@ -11,7 +11,7 @@ try:
     from email.mime.text import MIMEText
 except ImportError:
     from email.MIMEText import MIMEText
-from vine import Atlassian
+from vine import CodeReviewsFactory
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
@@ -500,7 +500,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Check..")
             return True
-        atlassian = Atlassian.Atlassian(
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--bitbucketURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = atlassian.project(args["--project"]).repo(args["--repo"])
@@ -545,10 +545,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Skipping In Progress Lock Release...")
             return True
 
-        atlassian = Atlassian.Atlassian(
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--bitbucketURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
-        repo = atlassian.project(args["--project"]).repo(args["--repo"])
+        repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         state = "open"
         if not request:
@@ -570,10 +570,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
             return True
-        atlassian = Atlassian.Atlassian(
+        codeReviews = CodeReviewsFactor.makeCodeReviews(
             username=args["--user"], url=args["--bitbucketURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
-        repo = atlassian.project(args["--project"]).repo(args["--repo"])
+        repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
         if pullRequest:
@@ -603,7 +603,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
         else:
-            url = git.join_list_as_git_path([atlassian.url, "projects",
+            url = git.join_list_as_git_path([codeReviews.url, "projects",
                                             args["--project"], "repos",
                                             args["--repo"], "pull-requests"])
             logging.info(
@@ -799,10 +799,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                  "and no -m <msg> defined.")
                     return False
             logging.info("Retrieving pull request description for use as commit message...")
-            atlassian = Atlassian.Atlassian(
+            codeReviews = CodeReviewsFactory.makeCodeReviews(
                 username=args["--user"], url=args["--bitbucketURL"],
                 verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
-            repo = atlassian.project(args["--project"]).repo(args["--repo"])
+            repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if pullRequest:
                 commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
@@ -869,10 +869,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         if not args["--noReview"]:
-            atlassian = Atlassian.Atlassian(
+            codeReviews = CodeReviewsFactory.makeCodeReviews(
                 username=args["--user"], url=args["--bitbucketURL"],
                 verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
-            repo = atlassian.project(args["--project"]).repo(args["--repo"])
+            repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()
             versionArgs = ["read"]
@@ -1046,10 +1046,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return valid
 
     def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
-        atlassian = Atlassian.Atlassian(
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--stashURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
-        remoteRepo = atlassian.repoFromWorkspaceRepoPath(repo,
+        remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
                                                         isSubmodule=isSubmodule,
                                                         isNested=isNested)
         pr = remoteRepo.getOpenPullRequest(topic, public)

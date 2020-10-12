@@ -4,8 +4,7 @@ import logging
 import re
 import urllib
 from stashy import errors as stashy_errors
-from vine import Atlassian
-from vine import Gitlab
+from vine import CodeReviewsFactory
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
@@ -137,14 +136,8 @@ class Review(Option, WorkspaceDirHandler):
             codeReviews = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            if ("gitlab") in args["--codeReviewsURL"] or None == args["--codeReviewsURL"]:
-                logging.info("Logging into Gitlab")
-                codeReviews = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
-                                                verify=verify,
-                                                workspace_dir=self.workspace_dir)
-            else:
-                logging.info("Logging into Atlassian")
-                codeReviews = Atlassian.Atlassian(name, url=args["--codeReviewsURL"],
+            logging.info(f"Logging into {args['codeReviewsURL']}")
+            codeReviews = CodeReviewsFactory.makeCodeReviews(name, url=args["--codeReviewsURL"],
                                                 verify=verify,
                                                 workspace_dir=self.workspace_dir)
 
