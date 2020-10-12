@@ -1,5 +1,16 @@
 
 
+Mon Oct 12 14:46:46 2020 Peter B. Robinson
+v1.33.10
+Reviewers: Alan Dayton, Ben Liu
+
+Attempting to get grape to work with gitlab.
+
+Adds a dependency on python-gitlab (https://github.com/python-gitlab/python-gitlab). Contents of https://github.com/python-gitlab/python-gitlab/pull/1200 is copied into GRAPE for now. 
+
+-Peter
+
+
 Mon Oct 12 14:09:42 2020 Peter B. Robinson
 v1.33.10
 Reviewers: Alan Dayton, Ben Liu
