@@ -570,7 +570,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
             return True
-        codeReviews = CodeReviewsFactor.makeCodeReviews(
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--bitbucketURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
