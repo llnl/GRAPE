@@ -503,7 +503,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--bitbucketURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
-        repo = atlassian.project(args["--project"]).repo(args["--repo"])
+        repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullRequests()
         inProgressRequests = []
         for request in pullRequests:
