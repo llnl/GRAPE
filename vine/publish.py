@@ -143,8 +143,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket username.
-    --bitbucketURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
-                            [default: .grapeconfig.project.stashURL]
+    --codeReviewsURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
+                            [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
     --project=<project>     Your Bitbucket Project. See grape-review for more details.
@@ -1047,7 +1047,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
         codeReviews = CodeReviewsFactory.makeCodeReviews(
-            username=args["--user"], url=args["--stashURL"],
+            username=args["--user"], url=args["--codeReviewsURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
                                                         isSubmodule=isSubmodule,

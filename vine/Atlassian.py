@@ -469,6 +469,7 @@ class TestAtlassian:
         else:
             self.userName = username
         self.stash = TestStash()
+        self.url = "https://your.org/test/bitbucket"
         logging.info("Connected to Bitbucket")
 
     def project(self, name):

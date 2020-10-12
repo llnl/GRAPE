@@ -129,7 +129,8 @@ class _Menu(WorkspaceDirHandler):
         try:
             return self._optionLookup[choice]
         except KeyError:
-            logging.info(f"Unknown option '{choice}'")
+            logging.info(f"Unknown option '{choice}'\n {self._optionLookup}")
+            raise Exception
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None):

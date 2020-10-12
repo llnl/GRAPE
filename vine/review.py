@@ -5,6 +5,7 @@ import re
 import urllib
 from stashy import errors as stashy_errors
 from vine import CodeReviewsFactory
+from vine import Atlassian
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
