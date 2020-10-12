@@ -60,7 +60,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
-                         [--bitbucketURL=<httpsURL>]
+                         [--codeReviewsURL=<httpsURL>]
                          [--verifySSL=<bool>]
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
@@ -142,8 +142,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             Default behavior governed by the flow.topicCascadeTick mapping.
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Bitbucket username.
-    --codeReviewsURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
+    --user=<user>           Your Bitbucket/Gitlab username.
+    --codeReviewsURL=<url>        Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
                             [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
@@ -501,7 +501,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Skipping In Progress Lock Check..")
             return True
         codeReviews = CodeReviewsFactory.makeCodeReviews(
-            username=args["--user"], url=args["--bitbucketURL"],
+            username=args["--user"], url=args["--codeReviewsURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullRequests()
@@ -546,7 +546,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
 
         codeReviews = CodeReviewsFactory.makeCodeReviews(
-            username=args["--user"], url=args["--bitbucketURL"],
+            username=args["--user"], url=args["--codeReviewsURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
@@ -571,7 +571,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["reviewers"] = "No reviewers"
             return True
         codeReviews = CodeReviewsFactory.makeCodeReviews(
-            username=args["--user"], url=args["--bitbucketURL"],
+            username=args["--user"], url=args["--codeReviewsURL"],
             verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
@@ -800,7 +800,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     return False
             logging.info("Retrieving pull request description for use as commit message...")
             codeReviews = CodeReviewsFactory.makeCodeReviews(
-                username=args["--user"], url=args["--bitbucketURL"],
+                username=args["--user"], url=args["--codeReviewsURL"],
                 verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
             repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
@@ -870,7 +870,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         if not args["--noReview"]:
             codeReviews = CodeReviewsFactory.makeCodeReviews(
-                username=args["--user"], url=args["--bitbucketURL"],
+                username=args["--user"], url=args["--codeReviewsURL"],
                 verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
             repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
