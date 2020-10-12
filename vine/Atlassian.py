@@ -13,9 +13,9 @@ from vine.option import Option
 
 
 class Atlassian:
-    defaultbitbucketURL = "https://your.host.org/bitbucket"
+    defaultURL = "https://your.host.org/bitbucket"
 
-    def __init__(self, username=None, url=defaultbitbucketURL, verify=True, *,
+    def __init__(self, username=None, url=defaultURL, verify=True, *,
                  workspace_dir):
 
         if username is None:

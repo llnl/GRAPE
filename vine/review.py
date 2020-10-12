@@ -160,7 +160,7 @@ class Review(Option, WorkspaceDirHandler):
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
-        logging.info(f"Pushing {branch}...")
+        logging.info(f"Pushing {branch} to {codeReviews.url}...")
         git.push(f"origin {branch}", execution_path=self.workspace_dir)
         #target branch for outer level repo
         target_branch = args["--target"]

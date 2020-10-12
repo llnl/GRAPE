@@ -16,9 +16,9 @@ GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
 # Project - collection of repositories (roughly analogous to a Gitlab Group)
 # Repo - the actual repository (roughly analogous to a Gitlap Project)
 class GrapeGitlabAdapter:
-    defaultgitlabURL = "https://your.host.org/gitlab"
+    defaultURL = "https://your.host.org/gitlab"
 
-    def __init__(self, username=None, url=defaultgitlabURL, verify=True, *, workspace_dir):
+    def __init__(self, username=None, url=defaultURL, verify=True, *, workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
