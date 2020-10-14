@@ -316,7 +316,7 @@ def getReposPullRequest(repo, branch, target_branch, args):
     # check to see if pull request already exists for this branch
     request = None
     for rqst in pull_requests:
-        if rqst.toRef() == target_branch:
+        if rqst.toRef() == target_branch and rqst.fromRef() == branch:
             request = rqst
             break
     return request

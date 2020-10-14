@@ -186,7 +186,10 @@ class PullRequest:
         return self.mergerequest.author["name"]
 
     def description(self):
-        return self.mergerequest.description.encode('ascii', 'ignore')
+        if self.mergerequest.description != None:
+            return self.mergerequest.description.encode('ascii', 'ignore')
+        else:
+            return "".encode('ascii', 'ignore')
 
     def date(self):
         return self.mergerequest.created_at
