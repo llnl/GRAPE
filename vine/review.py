@@ -137,11 +137,9 @@ class Review(Option, WorkspaceDirHandler):
             codeReviews = Atlassian.TestAtlassian(name)
         else:
             verify = True if args["--verifySSL"].lower() == "true" else False
-            logging.info(f"Logging into {args['--codeReviewsURL']}")
             codeReviews = CodeReviewsFactory.makeCodeReviews(name, url=args["--codeReviewsURL"],
                                                 verify=verify,
                                                 workspace_dir=self.workspace_dir)
-
         # default project (outer level project)
         project_name = args["--project"]
 
