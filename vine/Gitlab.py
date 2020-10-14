@@ -158,8 +158,7 @@ class Repo:
         return requests[0] if requests else None
 
     def getMergedPullRequests(self, source, target):
-        requests = self.pullRequests(state="merged", target_branch=target, source_branch=source)
-        return requests[0] if requests else None
+        return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
          mr = self.project.mergerequests.create({"source_branch": branch,
