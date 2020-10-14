@@ -1,5 +1,13 @@
 
 
+Wed Oct 14 10:51:47 2020 Peter B. Robinson
+v1.33.11
+Reviewers: Ben Liu, Alan Dayton
+
+Addresses an issue where if a stash URL is being used an Atlassian CodeReviews object is never created.
+Addresses some issues for creating new MRs in Gitlab.
+
+
 Mon Oct 12 14:50:25 2020 Peter B. Robinson
 v1.33.10
 Reviewers: Alan Dayton, Ben Liu
