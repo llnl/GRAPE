@@ -1,5 +1,12 @@
 
 
+Wed Oct 14 11:12:30 2020 Peter B. Robinson
+v1.33.12
+Reviewers: Ben Liu, Alan Dayton
+
+Fix an issue that prevented completion of previous publish.
+
+
 Wed Oct 14 10:51:47 2020 Peter B. Robinson
 v1.33.11
 Reviewers: Ben Liu, Alan Dayton
