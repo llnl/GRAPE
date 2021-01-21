@@ -203,10 +203,10 @@ def diff(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def fetch(repo="", branchArg="", raiseOnCommError=False,
+def fetch(repo="", branchArg="", recurseSubmodules="no", raiseOnCommError=False,
           warnOnCommError=False, *, execution_path):
     try:
-        return gitcmd(f"fetch {repo} {branchArg}", "Fetch failed",
+        return gitcmd(f"fetch --recurse-submodules={recurseSubmodules} {repo} {branchArg}", "Fetch failed",
                       execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         if e.commError:
