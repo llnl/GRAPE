@@ -1,7 +1,6 @@
 import os
 from test import testGrape
 from vine import grapeGit as git
-from vine import utility
 
 
 class TestUnbundle(testGrape.TestGrape):
@@ -36,15 +35,22 @@ class TestUnbundle(testGrape.TestGrape):
         # Set up repo with one nested subproject
         self.assertCanAddNewSubproject(self, execution_path=self.repo)
 
-        # Start from the top-level directory
-        result = False
-        with utility.cd(self.repo):
-           # Bundle the repos
-           result = self.menu.applyMenuChoice("bundle")
-           self.assertTrue(result, "Failed 'bundle' command in unbundle test.")
-           # Unbundle the repos
-           result = self.menu.applyMenuChoice("unbundle")
+        # Run bundle/unbundle from the top-level directory.
+        # This ensures that unbundle will fail if glob is run from
+        # the wrong directory.
+        old_dir = os.getcwd()
+        os.chdir(self.repo)
+        # Bundle the repos
+        result = self.menu.applyMenuChoice("bundle")
+        self.assertTrue(result, "Failed 'bundle' command in unbundle test.")
+        # Unbundle the repos
+        result = self.menu.applyMenuChoice("unbundle")
         self.assertTrue(result, "Failed 'unbundle' command in unbundle test.")
+        contents = self.get_output()
+        self.assertNotIn("WARNING", contents,
+                         f"GRAPE ISSUED A WARNING DURING UNBUNDLE\n{contents}")
+        # Return to previous directory
+        os.chdir(old_dir)
 
 
 if __name__ == "__main__":
