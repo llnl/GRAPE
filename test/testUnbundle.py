@@ -9,34 +9,14 @@ from vine import grapeMenu
 
 class TestUnbundle(testGrape.TestGrape):
 
-    def setupSubproject(self):
-        # Create new subproject
-        git.clone(argstr='--mirror', source_repo=self.repo,
-                  clone_repo=self.repos[1],
-                  execution_path=self.repo)
-        subproject_path = 'subproject1'
-        self.menu.applyMenuChoice(
-            "addSubproject", ["--name=subproject1",
-                              f"--prefix={subproject_path}", "--branch=master",
-                              f"--url={self.repos[1]}",
-                              "--nested", "--noverify"])
-
-        subproject1path = os.path.join(self.repo, subproject_path)
-        self.assertTrue(os.path.exists(subproject1path), "subproject1 does not exist")
-        # check in a file in subproject
-        testGrape.writeFile3(os.path.join(subproject1path, "f3"))
-        git.add("f3", execution_path=subproject1path)
-        git.commit("-m \"added f3\"", execution_path=subproject1path)
-        self.subproject = subproject1path
-        # push changes to origin
-        git.push("origin master", execution_path=self.repo)
-        git.push("origin master", execution_path=self.subproject)
-
     @patch('vine.utility.userInput')
     def testUnbundleWithSubproject(self, mock_userInput):
         """Test 'unbundle' command."""
         # Set up nested subproject
-        self.setupSubproject()
+        self.assertCanAddNewSubproject(self, execution_path=self.repo)
+        # push changes to origin
+        git.push("origin master", execution_path=self.repo)
+        git.push("origin master", execution_path=self.subproject)
 
         # Save unmodified repos
         temp_repo = os.path.join(self.defaultWorkingDirectory, "temp_repo")

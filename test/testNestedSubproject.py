@@ -13,41 +13,6 @@ from vine.option import Option
 
 class TestNestedSubproject(testGrape.TestGrape):
 
-    # Sets up a new nested subproject
-    @staticmethod
-    def assertCanAddNewSubproject(testGrapeObject, *, execution_path):
-        git.clone(argstr='--mirror', source_repo=testGrapeObject.repo,
-                  clone_repo=testGrapeObject.repos[1],
-                  execution_path=testGrapeObject.repo)
-        subproject_path = os.path.join('subs', 'subproject1')
-        testGrapeObject.menu.applyMenuChoice(
-            "addSubproject", ["--name=subproject1",
-                              f"--prefix={subproject_path}", "--branch=master",
-                              f"--url={testGrapeObject.repos[1]}",
-                              "--nested", "--noverify"])
-        subproject1path = os.path.join(testGrapeObject.repo, subproject_path)
-        testGrapeObject.assertTrue(os.path.exists(subproject1path), "subproject1 does not exist")
-        # check to see that subproject1 is a git repo
-        basedir = os.path.split(git.baseDir(execution_path=subproject1path))[-1]
-        subdir = os.path.split(subproject1path)[-1]
-        testGrapeObject.assertEqual(basedir, subdir,
-                                   f"subproject1's git repo is {basedir}, " +
-                                   f"not {subdir}")
-        # check to see that edits that occur in the new subproject are ignored by outer repo
-        testGrape.writeFile3(os.path.join(subproject1path, "f3"))
-        # make sure there is an edit
-        testGrapeObject.assertFalse(git.isWorkingDirectoryClean(execution_path=subproject1path),
-                                    "subproject1 clean after adding f3")
-        # check that grape left the repository in a clean state
-        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=testGrapeObject.repo),
-                                   "repo not clean after added subproject1")
-        # check in the edit
-        git.add("f3", execution_path=subproject1path)
-        git.commit("-m \"added f3\"", execution_path=subproject1path)
-        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=subproject1path),
-                                   "subproject1 not clean")
-        testGrapeObject.subproject = subproject1path
-
     # Sets up a second nested subproject referring to the first
     @staticmethod
     def assertCanAddSecondSubproject(testGrapeObject, *, execution_path):
