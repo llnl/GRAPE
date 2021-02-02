@@ -38,14 +38,16 @@ class TestUnbundle(testGrape.TestGrape):
         # Run bundle/unbundle from the top-level directory.
         # This ensures that unbundle will fail if glob is run from
         # the wrong directory.
+        # Note that this test does not currently check that bundle/unbundle
+        # does the right thing, only that it does not crash.
         old_dir = os.getcwd()
         os.chdir(self.repo)
         # Bundle the repos
         result = self.menu.applyMenuChoice("bundle")
-        self.assertTrue(result, "Failed 'bundle' command in unbundle test.")
+        self.assertTrue(result, "Failed 'bundle' command in unbundle smoke test.")
         # Unbundle the repos
         result = self.menu.applyMenuChoice("unbundle")
-        self.assertTrue(result, "Failed 'unbundle' command in unbundle test.")
+        self.assertTrue(result, "Failed 'unbundle' command in unbundle smoke test.")
         contents = self.get_output()
         self.assertNotIn("WARNING", contents,
                          f"GRAPE ISSUED A WARNING DURING UNBUNDLE\n{contents}")
