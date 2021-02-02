@@ -51,10 +51,10 @@ class TestUnbundle(testGrape.TestGrape):
         # Make some additional commits in each repo
         testGrape.writeFile3(os.path.join(self.repo, "extra"))
         git.add("extra", execution_path=self.repo)
-        git.commit("-m \"added extra\"", execution_path=self.repo)
+        git.commit("-m \"added extra outer\"", execution_path=self.repo)
         testGrape.writeFile3(os.path.join(self.subproject, "extrasub"))
         git.add("extrasub", execution_path=self.subproject)
-        git.commit("-m \"added extrasub\"", execution_path=self.subproject)
+        git.commit("-m \"added extra subproject\"", execution_path=self.subproject)
         # push changes to origin
         git.push("origin master", execution_path=self.repo)
         git.push("origin master", execution_path=self.subproject)
@@ -64,7 +64,7 @@ class TestUnbundle(testGrape.TestGrape):
         os.chdir(self.repo)
         # Bundle the repos
         result = self.menu.applyMenuChoice("bundle")
-        self.assertTrue(result, "Failed 'bundle' command in unbundle smoke test.")
+        self.assertTrue(result, "Failed 'bundle' command in unbundle test.")
 
         # Check that the bundle files exist
         toplevelbundle = glob.glob(os.path.join(self.repo, "*.bundle"))
@@ -101,16 +101,34 @@ class TestUnbundle(testGrape.TestGrape):
         mock_userInput.side_effect = ["a\n"]
         self.menu.applyMenuChoice("uv")
 
+        # Verify that new commits are not present
+        outer_log = git.log(execution_path=self.repo)
+        self.assertNotIn("added extra outer", outer_log,
+                         f"Missing commit in outer repo after unbundle\n{outer_log}")
+
+        sub_log = git.log(execution_path=self.subproject)
+        self.assertNotIn("added extra subproject", sub_log,
+                         f"Missing commit in subproject after unbundle\n{sub_log}")
+
         # Copy the bundles back into place
         shutil.copyfile(toplevelbundletemp, toplevelbundle[0])
         shutil.copyfile(subprojectbundletemp, subprojectbundle[0])
 
         # Run unbundle from the top-level repo to simulate typical usage.
         result = self.menu.applyMenuChoice("unbundle")
-        self.assertTrue(result, "Failed 'unbundle' command in unbundle smoke test.")
+        self.assertTrue(result, "Failed 'unbundle' command in unbundle test.")
         contents = self.get_output()
         self.assertNotIn("WARNING", contents,
                          f"GRAPE ISSUED A WARNING DURING UNBUNDLE\n{contents}")
+
+        # Verify that new commits are now present
+        outer_log = git.log(execution_path=self.repo)
+        self.assertIn("added extra outer", outer_log,
+                      f"Missing commit in outer repo after unbundle\n{outer_log}")
+
+        sub_log = git.log(execution_path=self.subproject)
+        self.assertIn("added extra subproject", sub_log,
+                      f"Missing commit in subproject after unbundle\n{sub_log}")
 
         # Return to previous directory
         os.chdir(old_dir)
