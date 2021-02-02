@@ -1,6 +1,7 @@
 """GRAPE's git utility logic across multiple repositories."""
 import os
 import sys
+from contextlib import contextmanager
 from docopt.docopt import docopt
 from vine import grapeGit as git
 if sys.platform == 'linux2':
@@ -99,6 +100,14 @@ def getGrapeExec():
     python_path = win_path_to_linux_path(sys.executable)
     return f"{python_path} {grape_path}"
 
+@contextmanager
+def cd(path):
+    old_dir = os.getcwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(old_dir)
 
 def win_path_to_linux_path(path):
     """Convert absolute Windows path to linux path for hooks in Git bash."""

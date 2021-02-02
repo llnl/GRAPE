@@ -6,6 +6,7 @@ from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
+from vine import utility
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
@@ -264,27 +265,28 @@ def unbundlecmd(repo='', branch='', args={}, *, execution_path):
     execution_path = repo
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()
-    bundleNames = glob.glob("*.bundle")
-    for bundleName in bundleNames:
-        mappings = ""
-        for token in mapTokens:
-            sourceDestPair = token.split(":")
-            source = sourceDestPair[0]
-            dest = sourceDestPair[1]
-            bundleHeads = git.bundle(f"list-heads {bundleName}", execution_path=execution_path).split("\n")
-            bundleBranches = []
-            for line in bundleHeads:
-                if "refs/heads" in line:
-                    bundleBranches.append(line.split()[1].split("refs/heads/")[1])
-            if source.replace('/', '.') in bundleBranches:
-                mappings += f"{source}:{dest} "
+    with utility.cd(execution_path):
+       bundleNames = glob.glob("*.bundle")
+       for bundleName in bundleNames:
+           mappings = ""
+           for token in mapTokens:
+               sourceDestPair = token.split(":")
+               source = sourceDestPair[0]
+               dest = sourceDestPair[1]
+               bundleHeads = git.bundle(f"list-heads {bundleName}", execution_path=execution_path).split("\n")
+               bundleBranches = []
+               for line in bundleHeads:
+                   if "refs/heads" in line:
+                       bundleBranches.append(line.split()[1].split("refs/heads/")[1])
+               if source.replace('/', '.') in bundleBranches:
+                   mappings += f"{source}:{dest} "
 
-        try:
-            git.bundle(f"verify {bundleName}", execution_path=execution_path)
-        except grape_errors.GrapeGitError as e:
-            logging.error(e.gitCommand)
-            logging.error(e.cwd)
-            logging.error(e.gitOutput)
-            raise e
-        git.fetch(f"--tags -u {bundleName} {mappings}", execution_path=execution_path)
+           try:
+               git.bundle(f"verify {bundleName}", execution_path=execution_path)
+           except grape_errors.GrapeGitError as e:
+               logging.error(e.gitCommand)
+               logging.error(e.cwd)
+               logging.error(e.gitOutput)
+               raise e
+           git.fetch(f"--tags -u {bundleName} {mappings}", execution_path=execution_path)
     return True
