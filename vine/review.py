@@ -231,7 +231,7 @@ class Review(Option, WorkspaceDirHandler):
                 else:
                     # if a pull request could not be generated, just add a link to browse the branch
                     url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
-                    pullRequestLinks[f"{codeReviews.url}{repo.repo.url()}/browse?at={url_}"] = False
+                    pullRequestLinks[f"{codeReviews.url}{repo.repo.url().replace('api/1.0','')}/browse?at={url_}"] = False
 
         ## NESTED SUBPROJECT REPOS
         nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
@@ -339,7 +339,7 @@ def pullRequestAlreadyMerged(errorMessage):
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
     # get the open pull requests outgoing from our public branch
-    logging.info(f"Gathering active pull requests on {branch} for repo {repo}")
+    logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
 
     if not request:
