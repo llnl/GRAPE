@@ -1,5 +1,14 @@
 
 
+Tue Feb  2 17:04:27 2021 Benjamin T. Liu
+v1.33.14
+Reviewers: David Bloss, Peter Robinson
+
+Fix bug in grape unbundle introduced in Python3 refactor
+- Fix path for unbundle glob
+- Add testing for unbundle with nested subproject
+
+
 Mon Jan 25 10:56:31 2021 Benjamin T. Liu
 v1.33.13
 Reviewers: Peter Robinson
