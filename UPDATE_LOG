@@ -1,5 +1,13 @@
 
 
+Wed Mar 31 15:44:10 2021 Peter B. Robinson
+v1.33.16
+Reviewers: Ben Liu
+
+Summary: 
+cleaner exit when grape called outside of a git repo
+
+
 Thu Feb  4 08:50:16 2021 Benjamin T. Liu
 v1.33.15
 Reviewers: Peter Robinson
