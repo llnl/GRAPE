@@ -16,7 +16,8 @@ class WorkspaceDirHandler:
     def workspace_dir(self):
         if self._workspace_dir:
             return self._workspace_dir
-        logging.error('"workspace_dir" in "WorkspaceDirHandler" not set.')
+        logging.error(f'GRAPE needs to be called from within a git repo.')
+        exit(1)
 
     @workspace_dir.setter
     def workspace_dir(self, workspace_dir):
