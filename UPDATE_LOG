@@ -1,5 +1,18 @@
 
 
+Thu Apr  1 11:54:45 2021 Peter B. Robinson
+v1.34.0
+Reviewers: Ben Liu
+
+SUMMARY: 
+Updates master to the current state of v1.33.16. 
+
+Details:
+Switch to Python 3. 
+Initial Gitlab support.
+Miscellaneous bugfixes and robustness improvments.
+
+
 Wed Mar 31 15:44:10 2021 Peter B. Robinson
 v1.33.16
 Reviewers: Ben Liu
