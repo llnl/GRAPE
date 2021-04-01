@@ -565,7 +565,7 @@ def status(argstr="", *, execution_path):
                   execution_path=execution_path)
 
 
-def submodule(argstr, *, execution_path, capture_output=None):
+def submodule(argstr, *, execution_path, capture_output=True):
     if capture_output is None:
         capture_output = is_test_dir_given(execution_path)
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
