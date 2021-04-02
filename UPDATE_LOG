@@ -1,14 +1,3 @@
-
-
-Fri Apr  2 09:47:11 2021 Benjamin T. Liu
-v1.35.0
-Reviewers: Peter Robinson
-
-Make grapeGit.submodule less noisy
-- Change default to capture output
-- This is closer to python2 grape behavior
-
-
 Thu Apr  1 11:54:45 2021 Peter B. Robinson
 v1.34.0
 Reviewers: Ben Liu
