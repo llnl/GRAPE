@@ -1,5 +1,15 @@
 
 
+Fri Apr  2 10:26:49 2021 Benjamin T. Liu
+v1.34.1
+Reviewers: Peter Robinson
+
+Fix version ticking for hotfix
+Make grapeGit.submodule less noisy
+- Change default to capture output
+- This is closer to python2 grape behavior
+
+
 Thu Apr  1 11:54:45 2021 Peter B. Robinson
 v1.34.0
 Reviewers: Ben Liu
