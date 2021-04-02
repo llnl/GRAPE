@@ -977,7 +977,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # Send the message via the configured SMTP server (don't know if this
         # is necessary - localhost might work just as well)
         try:
-            s = smtplib.SMTP("nospam.llnl.gov", timeout=10)
+            server = args["--emailServer"]
+            s = smtplib.SMTP(server, timeout=10)
         except socket.error as e:
             logging.error(f"Failed to email: {e}")
             return False
