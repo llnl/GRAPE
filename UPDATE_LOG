@@ -1,5 +1,16 @@
 
 
+Fri Apr  2 13:49:17 2021 Benjamin T. Liu
+v1.35.2
+Reviewers: Alan Dayton
+
+Mergeback of v1.34.3
+- Reduce noisiness of grapeGit.submodule by capturing output by default
+- Update grape publish to respect emailServer configurations
+- Update email server due to LC system update
+- Fix version tick for grape project's hotfix
+
+
 Thu Apr  1 12:25:46 2021 Peter B. Robinson
 v1.35.1
 Reviewers: Ben Liu
