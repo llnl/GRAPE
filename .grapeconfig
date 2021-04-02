@@ -39,7 +39,7 @@ logskipfirstlines = 0
 logentryheader = <date> <user>\n<version>\nReviewers: <reviewers>\n
 emailnotification = True
 emailheader = <public> updated to <version>\nReviewers: <reviewers>\n
-emailserver = nospam.llnl.gov
+emailserver = smtp.llnl.gov
 emailsendto = robinson96@llnl.gov
 emailsubject = <public> updated to <version>
 
