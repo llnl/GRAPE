@@ -1,5 +1,12 @@
 
 
+Fri Apr  2 11:18:21 2021 Benjamin T. Liu
+v1.34.3
+Reviewers: Peter Robinson
+
+Connect emailServer to configuration variable
+
+
 Fri Apr  2 10:46:08 2021 Benjamin T. Liu
 v1.34.2
 Reviewers: Peter Robinson
