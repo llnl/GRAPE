@@ -1,5 +1,15 @@
 
 
+Tue Apr  6 15:09:49 2021 Benjamin T. Liu
+v1.34.5
+Reviewers: David Bloss, Peter Robinson
+
+Ensure that output is captured in git commands
+- Fix pull and publish to use captured output
+- Errors and warnings cannot be checked without captured output
+- This fixes issue during python3 conversion
+
+
 Tue Apr  6 10:00:56 2021 Benjamin T. Liu
 v1.34.4
 Reviewers: Peter Robinson, David Bloss
