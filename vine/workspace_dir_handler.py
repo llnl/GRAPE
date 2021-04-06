@@ -13,10 +13,6 @@ class WorkspaceDirHandler:
         self._workspace_dir = None
 
     @property
-    def has_workspace_dir(self):
-        return self._workspace_dir != None
-
-    @property
     def workspace_dir(self):
         if self._workspace_dir:
             return self._workspace_dir

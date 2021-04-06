@@ -86,7 +86,8 @@ def clone_from_anywhere(args_, logger):
     # The workspace_dir will only be set if it a git repo
     wsdir_handler.workspace_dir = os.getcwd()
     set_verbosity(logger)
-    if wsdir_handler.has_workspace_dir:
+    # Access the internal _workspace_dir variable to prevent exit due to not being in git repo
+    if wsdir_handler._workspace_dir:
         grapeMenu.menu().applyMenuChoice('clone', args_)
     else:
         # Create a phony .git directory so we can set the workspace_dir
