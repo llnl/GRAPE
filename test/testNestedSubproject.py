@@ -124,7 +124,7 @@ class TestNestedSubproject(testGrape.TestGrape):
             mock_userInput.side_effect = ["n\n"]
             self.menu.applyMenuChoice("uv", ["-f"])
             # update workspace
-            git.pull("origin master", execution_path=second_space, capture_output=True)
+            git.pull("origin master", execution_path=second_space)
             # activate all nested subprojects
             # reset the menu here to reread the grapeconfig
             self.resetMenu(second_space)

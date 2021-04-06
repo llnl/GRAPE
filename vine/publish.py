@@ -647,10 +647,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if "<public>" in cmd:
                 cmd = cmd.replace("<public>", args["--public"])
 
-            # Withhold output to STDOUT for testing, but not normal operations.
-            capture_output = git.is_test_dir_given(working_dir)
             process_result = vine_subprocess.executeSubProcess(
-                cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
+                cmd.strip(), capture_output=True, working_dir=self.workspace_dir)
             logging.info(process_result.returncode)
             if process_result.returncode != 0:
                 if process_result.stdout:

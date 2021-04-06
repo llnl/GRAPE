@@ -14,6 +14,8 @@ from vine import vine_subprocess
 GRAPE_CONFIG = '.grapeconfig'
 
 
+# Note that if capture_output is None, the return code and
+# any errors are ignored.
 def gitcmd(cmd, errmsg, *, execution_path, capture_output=True):
     from vine import config_parser_global
 
@@ -113,34 +115,14 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def is_test_dir_given(*args):
-    """
-    Indicates whether a Git subprocess' output should be captured or not.
-
-    Captured output is not streamed to STDOUT/STDERR but is returned with the
-    completed process object. This is desirable during routine testing.
-    Not capturing output permits the Git subprocess to stream to STDOUT/STDERR
-    and is desirable for long running processes such as cloning. One drawback
-    is that this output is not stored and returned for further processing.
-    """
-    TEST_DIR = os.path.realpath(tempfile.gettempdir())
-    try:
-        return any(os.path.commonpath([TEST_DIR, path]) == TEST_DIR
-                   for path in args)
-    except:
-        return False
-
-
 def clone(argstr='', *, source_repo, clone_repo, execution_path):
-    capture_output = is_test_dir_given(source_repo, clone_repo)
-
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
     try:
         return gitcmd(f"clone {argstr} {source_repo} {clone_repo}",
                       "Clone failed",
                       execution_path=execution_path,
-                      capture_output=capture_output)
+                      capture_output=True)
     except grape_errors.GrapeGitError as e:
         if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
@@ -437,13 +419,11 @@ def numberCommitsSinceRoot(*, execution_path):
     return numberCommitsSince(root, execution_path=execution_path)
 
 
-def pull(args, throwOnFail=False, *, execution_path, capture_output=None):
-    if capture_output is None:
-        capture_output = is_test_dir_given(execution_path)
+def pull(args, throwOnFail=False, *, execution_path):
     try:
         return gitcmd(f"pull {args}", "Pull failed",
                       execution_path=execution_path,
-                      capture_output=capture_output)
+                      capture_output=True)
     except grape_errors.GrapeGitError as e:
         if e.commError:
             logging.warning("WARNING: Pull failed due to connectivity issues.")
@@ -566,8 +546,6 @@ def status(argstr="", *, execution_path):
 
 
 def submodule(argstr, *, execution_path, capture_output=True):
-    if capture_output is None:
-        capture_output = is_test_dir_given(execution_path)
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
                   execution_path=execution_path,
                   capture_output=capture_output)
