@@ -12,10 +12,9 @@ class ForEach(Option, WorkspaceDirHandler):
     """
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd>
+    Usage: grape-foreach [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd>
 
     Options:
-    --quiet          Quiets git's printout of "Entering submodule..."
     --noTopLevel     Does not call <cmd> in the workspace directory.
     --noSubprojects  Does not call <cmd> in any grape nested subprojects.
     --noSubmodules   Does not call <cmd> in any git submodules.
