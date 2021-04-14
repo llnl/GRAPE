@@ -1,5 +1,18 @@
 
 
+Wed Apr 14 11:35:55 2021 Benjamin T. Liu
+v1.34.6
+Reviewers: Daniel Taller, David Dawson, David Bloss
+
+Control verbosity of custom build and test steps in grape publish
+- Default to verbose (to match behavior before 1.34.5/1.35.3)
+- Add --quiet option to suppress output
+- TODO consider streaming captured output to a tail-able file and changing default behavior on develop
+
+Remove unused --quiet option for grape foreach
+- This capability disappeared between v1.19.6 and v1.19.7 with the MultiRepoLauncher
+
+
 Tue Apr  6 15:09:49 2021 Benjamin T. Liu
 v1.34.5
 Reviewers: David Bloss, Peter Robinson
