@@ -54,7 +54,9 @@ class Clone(Option, WorkspaceDirHandler):
         logging.info("Clone succeeded!")
 
         # Following config tasks done in 'destpath'
-        self.workspace_dir = destpath
+        logging.info("Changing directory to %s..." % destpath)
+        os.chdir(destpath)
+        self.workspace_dir = "."
 
         config_parser_global.read(workspace_dir=self.workspace_dir)
         # ensure you start on a reasonable publish branch

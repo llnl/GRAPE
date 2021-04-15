@@ -98,7 +98,7 @@ def clone_from_anywhere(args_, logger):
 @contextmanager
 def setup_temp_git_dir():
     """Temp git dir created to set a 'workspace_dir', then removed later."""
-    TMP_GIT_DIR = '.git'
+    TMP_GIT_DIR = os.path.abspath('.git')
     try:
         os.mkdir(TMP_GIT_DIR)
         yield
