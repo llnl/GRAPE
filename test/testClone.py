@@ -14,6 +14,7 @@ class TestClone(testGrape.TestGrape):
 
     @patch('vine.utility.userInput')
     def testClone(self, mock_userInput):
+        cwd = os.getcwd()
         self.setUpConfig()
         args = [self.repo, self.repos[1], "--recursive"]
         mock_userInput.side_effect = ["\n", "\n", "\n", "\n"]
@@ -33,8 +34,10 @@ class TestClone(testGrape.TestGrape):
         remote = git.showRemote(execution_path=self.repos[1])
         self.assertIn(self.repo, remote)
         self.assertTrue(ret)
+        os.chdir(cwd)
 
     def testHelpMessage(self):
+        cwd = os.getcwd()
         doc_output = StringIO()
         tmp_stdout = sys.stdout
         sys.stdout = doc_output
@@ -46,9 +49,11 @@ class TestClone(testGrape.TestGrape):
         self.assertIn(clone.Clone.__doc__, doc_output.getvalue())
         sys.stdout = tmp_stdout
         doc_output.close()
+        os.chdir(cwd)
 
     @patch('vine.utility.userInput')
     def testClone02(self, mock_userInput):
+        cwd = os.getcwd()
         tempDir = tempfile.mkdtemp()
         args = [self.repo, tempDir]
         try:
@@ -61,10 +66,12 @@ class TestClone(testGrape.TestGrape):
             #self.stdout(contents)
         finally:
             self._temp_dir_cleanup(tempDir)
+            os.chdir(cwd)
 
 #    @patch('vine.utility.userInput')
 #    def testRecursiveCloneWithSubmodule(self, mock_userInput):
     def testRecursiveCloneWithSubmodule(self):
+        cwd = os.getcwd()
         self.menu.set_workspace_dir(self.repo)
 
         # make a repo to turn into a submodule
@@ -89,9 +96,11 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(os.path.exists(submodulepath), "submodule1 does not exist in clone")
         finally:
             self._temp_dir_cleanup(tempDir)
+            os.chdir(cwd)
 
     @patch('vine.utility.userInput')
     def testRecursiveCloneNestedSubproject(self, mock_userInput):
+        cwd = os.getcwd()
         # make a repo to turn into a submodule
         git.clone(argstr="--mirror", source_repo=self.repo,
                   clone_repo=self.repos[1],
@@ -128,6 +137,7 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")
         finally:
             self._temp_dir_cleanup(tempDir)
+            os.chdir(cwd)
 
     def _temp_dir_cleanup(self, tempDir):
         """Skips Windows permissions errors when testing as non-admin user."""
