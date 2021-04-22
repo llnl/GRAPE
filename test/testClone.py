@@ -34,6 +34,7 @@ class TestClone(testGrape.TestGrape):
         remote = git.showRemote(execution_path=self.repos[1])
         self.assertIn(self.repo, remote)
         self.assertTrue(ret)
+        # grape clone changes the working directory, so reset it
         os.chdir(cwd)
 
     def testHelpMessage(self):
@@ -49,6 +50,7 @@ class TestClone(testGrape.TestGrape):
         self.assertIn(clone.Clone.__doc__, doc_output.getvalue())
         sys.stdout = tmp_stdout
         doc_output.close()
+        # grape clone changes the working directory, so reset it
         os.chdir(cwd)
 
     @patch('vine.utility.userInput')
@@ -66,6 +68,7 @@ class TestClone(testGrape.TestGrape):
             #self.stdout(contents)
         finally:
             self._temp_dir_cleanup(tempDir)
+            # grape clone changes the working directory, so reset it
             os.chdir(cwd)
 
 #    @patch('vine.utility.userInput')
@@ -96,6 +99,7 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(os.path.exists(submodulepath), "submodule1 does not exist in clone")
         finally:
             self._temp_dir_cleanup(tempDir)
+            # grape clone changes the working directory, so reset it
             os.chdir(cwd)
 
     @patch('vine.utility.userInput')
@@ -137,6 +141,7 @@ class TestClone(testGrape.TestGrape):
             self.assertTrue(os.path.exists(subprojectpath), "subproject1 does not exist in clone")
         finally:
             self._temp_dir_cleanup(tempDir)
+            # grape clone changes the working directory, so reset it
             os.chdir(cwd)
 
     def _temp_dir_cleanup(self, tempDir):

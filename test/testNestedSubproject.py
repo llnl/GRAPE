@@ -98,9 +98,12 @@ class TestNestedSubproject(testGrape.TestGrape):
             # Set up a second workspace
             second_space = os.path.join(self.defaultWorkingDirectory, "client2")
             args = [self.repo, second_space]
+            cwd = os.getcwd()
             # this clones develop which has no nested subprojects
             mock_userInput.side_effect = ["\n", "y\n", "a\n", "\n", "\n"]
             ret = self.menu.applyMenuChoice("clone", args)
+            # grape clone changes the working directory, so reset it
+            os.chdir(cwd)
 
             # We have to reset the menu everytime we change workspaces
             self.resetMenu(second_space)
