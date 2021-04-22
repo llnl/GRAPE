@@ -624,6 +624,7 @@ options are at least listed below.
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
                          [--remoteMerge]
+                         [--quiet]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
@@ -738,6 +739,7 @@ options are at least listed below.
     --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
     --remoteMerge           Perform the merge using the Bitbucket REST API.
+    --quiet                 Suppress output from custom build and test steps unless there is a failure.
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -796,10 +798,9 @@ options are at least listed below.
 
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd>
+    Usage: grape-foreach [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd>
 
     Options:
-    --quiet          Quiets git's printout of "Entering submodule..."
     --noTopLevel     Does not call <cmd> in the workspace directory.
     --noSubprojects  Does not call <cmd> in any grape nested subprojects.
     --noSubmodules   Does not call <cmd> in any git submodules.

@@ -54,7 +54,21 @@ class Clone(Option, WorkspaceDirHandler):
         logging.info("Clone succeeded!")
 
         # Following config tasks done in 'destpath'
-        self.workspace_dir = destpath
+        # NOTE This chdir is necessary so that both the checkout and config
+        # are properly called from the workspace directory. By just setting
+        # the workspace_dir to destpath, the checkout occurs in the new
+        # clone, but the config call is confused about where the workspace
+        # directory should be and creates another subdirectory called
+        # destpath (in destpath) when initializing nested subprojects.
+        # TODO Figure out what is going on. This may be related to to the
+        # python3 refactoring for the workspace_dir handler, which may not
+        # be appropriate for clone. Note also that the workspace_dir handler
+        # will give different results depending on whether an absolute path
+        # or a relative path is given (clone might be the only place that
+        # it is possible to provide either).
+        logging.info("Changing directory to %s..." % destpath)
+        os.chdir(destpath)
+        self.workspace_dir = "."
 
         config_parser_global.read(workspace_dir=self.workspace_dir)
         # ensure you start on a reasonable publish branch

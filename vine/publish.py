@@ -72,6 +72,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
                          [--remoteMerge]
+                         [--quiet]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
@@ -186,6 +187,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
     --remoteMerge           Perform the merge using the Bitbucket REST API.
+    --quiet                 Suppress output from custom build and test steps unless there is a failure.
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -647,8 +649,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if "<public>" in cmd:
                 cmd = cmd.replace("<public>", args["--public"])
 
+            capture_output = args["--quiet"]
             process_result = vine_subprocess.executeSubProcess(
-                cmd.strip(), capture_output=True, working_dir=self.workspace_dir)
+                cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
             logging.info(process_result.returncode)
             if process_result.returncode != 0:
                 if process_result.stdout:
