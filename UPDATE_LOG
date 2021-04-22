@@ -1,5 +1,14 @@
 
 
+Thu Apr 22 08:41:27 2021 Benjamin T. Liu
+v1.34.7
+Reviewers: Daniel Taller, David Bloss, Peter Robinson
+
+Fix bug running grape config as part of grape clone
+- Bug introduced in python3 refactoring
+- workspace_dir handler probably requires more examination
+
+
 Wed Apr 14 11:35:55 2021 Benjamin T. Liu
 v1.34.6
 Reviewers: Daniel Taller, David Dawson, David Bloss
