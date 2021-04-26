@@ -1,5 +1,23 @@
 
 
+Mon Apr 26 14:54:19 2021 Benjamin T. Liu
+v1.35.4
+Reviewers: Peter Robinson
+
+Mergeback of v1.34.6:
+Control verbosity of custom build and test steps in grape publish
+- Default to verbose (to match behavior before 1.34.5/1.35.3)
+- Add --quiet option to suppress output
+- TODO consider streaming captured output to a tail-able file and changing default behavior on develop
+Remove unused --quiet option for grape foreach
+- This capability disappeared between v1.19.6 and v1.19.7 with the MultiRepoLauncher
+
+Mergeback of v1.34.7:
+Fix bug running grape config as part of grape clone
+- Bug introduced in python3 refactoring
+- workspace_dir handler probably requires more examination
+
+
 Mon Apr 12 09:20:12 2021 Benjamin T. Liu
 v1.35.3
 Reviewers: Peter Robinson
