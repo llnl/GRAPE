@@ -60,15 +60,6 @@ class Status(Option, WorkspaceDirHandler):
             for line in status[sub]:
                 lstripped = line.strip()
                 if lstripped:
-                    # filter out branch tracking status
-                    # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [ahead 1]
-                    # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [behind 29]
-                    if lstripped[0:2] == "##":
-                        if "[ahead" in lstripped or "[behind" in lstripped:
-                            logging.info(
-                                f"{os.path.abspath(os.path.join(self.workspace_dir, sub))}"+
-                                f": {lstripped}")
-                        continue
                     # print other statuses
                     logging.info(f' {lstripped}')
 
@@ -153,21 +144,41 @@ def getStatus(branch='', repo='', args='', *, execution_path):
     if not repo.strip():
         return ""
     try:
+        if wsDir == repo:
+            relPath = ""
+            pathSpec = "[workspace]"
+        else:
+            relPath = os.path.relpath(repo, wsDir)
+            pathSpec = relPath
+
+        # Identify if the repo is still merging (this does not show up in short formats)
+        subStatusLong = git.status(f"--long -uno", execution_path=repo).split('\n')
+        if "All conflicts fixed but you are still merging." in subStatusLong:
+            toReturn.append(f" {pathSpec}: You are still merging")
+
+        # Get the status of each file as well as the branch status
         subStatus = git.status(f"--porcelain -b {statusArgs}", execution_path=repo).split('\n')
+
         for line in subStatus:
             strippedL = line.strip()
             if strippedL:
-                tokens = strippedL.split()
-                tokens[0] = tokens[0].strip()
-                if len(tokens[0]) == 1:
-                    tokens[0] = f" {tokens[0]} "
-                if wsDir == repo:
-                    relPath = ""
-                    toReturn.append(' '.join([tokens[0], tokens[1]]))
+                # filter out branch tracking status unless ahead or behind
+                # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [ahead 1]
+                # ## bugfix/bugfixday/DLThreadSafety...remotes/origin/bugfix/bugfixday/DLThreadSafety [behind 29]
+                if strippedL[0:2] == "##":
+                   if "[ahead" in strippedL or "[behind" in strippedL:
+                       toReturn.append(f"{pathSpec}: {strippedL}")
                 else:
-                    relPath = os.path.relpath(repo, wsDir)
-                    branch_path = os.path.join(relPath, tokens[1])
-                    toReturn.append(' '.join([tokens[0], branch_path]))
+                   tokens = strippedL.split()
+                   tokens[0] = tokens[0].strip()
+                   if len(tokens) == 2:
+                       if len(tokens[0]) == 1:
+                          tokens[0] = f" {tokens[0]} "
+                       branch_path = os.path.join(relPath, tokens[1])
+                       toReturn.append(' '.join([tokens[0], branch_path]))
+                   else:
+                       toReturn.append(' '.join(tokens))
+
         return toReturn
     except Exception as e:
         logging.error(e)
