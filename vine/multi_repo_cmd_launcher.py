@@ -9,6 +9,18 @@ from vine.option import Option
 from vine import grape_errors
 from vine.vine_logging import log_wrapper
 
+# default level of concurrency (user can control using the --np option to the top level executable)
+NUM_TASKS = 8
+
+# using async Semaphore to limit concurrency of the gather
+# https://stackoverflow.com/questions/48483348/how-to-limit-concurrency-with-python-asyncio/61478547#61478547
+async def gather_with_concurrency(n, *tasks):
+    semaphore = asyncio.Semaphore(n)
+
+    async def sem_task(task):
+        async with semaphore:
+            return await task
+    return await asyncio.gather(*(sem_task(task) for task in tasks), return_exceptions=True)
 
 class MultiRepoCommandRunner(WorkspaceDirHandler):
 
@@ -64,11 +76,12 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
         return await loop.run_in_executor(None, functools.partial(
             func, repo=repo, branch=branch, execution_path=self.workspace_dir))
 
+
     async def _run_commands(self, commands):
         runnable_coroutines = []
         for command in commands:
             runnable_coroutines.append(command)
-        results = await asyncio.gather(*runnable_coroutines, return_exceptions=True)
+        results = await gather_with_concurrency(NUM_TASKS, *runnable_coroutines)
         self.task_queue = []
         return results
 
