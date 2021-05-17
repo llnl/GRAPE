@@ -1,5 +1,17 @@
 
 
+Mon May 17 13:37:57 2021 Peter B. Robinson
+v1.34.8
+Reviewers: Ben Liu, Alan Dayton
+
+Summary:
+Reenable --np feature that was dropped in initial python 3 conversion.
+Details
+clean up args parsing in top level grape.
+Use asyncio.semaphore to limit concurrency for parallel operations.
+Reenable --np.
+
+
 Thu Apr 22 10:33:00 2021 Benjamin T. Liu
 v1.34.7
 Reviewers: Daniel Taller, David Bloss, Peter Robinson
