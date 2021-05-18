@@ -1,5 +1,15 @@
 
 
+Tue May 18 11:46:59 2021 Peter B. Robinson
+v1.35.7
+Reviewers: Alan Dayton, Ben Liu
+
+SUMMARY
+Adds configurable concurrency defaults.
+Details:
+np default is now configurable, with differing behavior for login nodes than on backend nodes for SLURM and BLUEOS clusters.
+
+
 Mon May 17 13:52:36 2021 Peter B. Robinson
 v1.35.6
 Reviewers: Ben Liu
