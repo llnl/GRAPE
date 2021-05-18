@@ -84,8 +84,7 @@ remote = ../stashy.git
 topicprefixmappings = ?:grape
 
 [concurrency-control]
-exclusivenodenumtasks = 40
-sharednodenumtasks = 8
-defaultsharednode = True
-exclusivevarlist = SLURM_NODELIST LLNL_COMPUTE_NODES
+defaultnumtasks = 8
+exclusivenodenumtasks = -1
+exclusivevarlist = SLURM_NODEID LLNL_COMPUTE_NODES
 

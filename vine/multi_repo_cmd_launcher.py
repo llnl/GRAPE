@@ -16,10 +16,9 @@ SECTION_CONCURRENCY_CONTROL = "concurrency-control"
 
 def setDefaultConfig(cfg):
     cfg.ensureSection(SECTION_CONCURRENCY_CONTROL)
-    cfg.set(SECTION_CONCURRENCY_CONTROL,"sharednodenumtasks", "8")
-    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivenodenumtasks", "40")
-    cfg.set(SECTION_CONCURRENCY_CONTROL,"defaultsharednode", "False")
-    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivevarlist", "False")
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"defaultnumtasks", "8")
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivenodenumtasks", "-1")
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivevarlist", "SLURM_NODEID LLNL_COMPUTE_NODES")
 
 
 # default level of concurrency (user can control using the --np option to the top level executable)
@@ -28,12 +27,16 @@ NUM_TASKS = -1
 # using async Semaphore to limit concurrency of the gather
 # https://stackoverflow.com/questions/48483348/how-to-limit-concurrency-with-python-asyncio/61478547#61478547
 async def gather_with_concurrency(n, *tasks):
-    semaphore = asyncio.Semaphore(n)
+    if n > 0:
+        semaphore = asyncio.Semaphore(n)
 
-    async def sem_task(task):
-        async with semaphore:
-            return await task
-    return await asyncio.gather(*(sem_task(task) for task in tasks), return_exceptions=True)
+        async def sem_task(task):
+            async with semaphore:
+                return await task
+        return await asyncio.gather(*(sem_task(task) for task in tasks), return_exceptions=True)
+    else:
+        #if n <= 0, do not limit concurrency
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
 class MultiRepoCommandRunner(WorkspaceDirHandler):
 
@@ -258,11 +261,10 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         else:
             config = config_parser_global.grapeConfig()
 
-            # user needs to opt out of assuming an exlusive node by setting defaultsharednode to True
-            is_exclusive_node = not config.getboolean(SECTION_CONCURRENCY_CONTROL, "defaultsharednode")
+            is_exclusive_node = False
 
             # if we are on osx or windows, assume to be a personal machine, therefore an exclusive resource
-            if not is_exclusive_node and (os.name == "nt" or sys.platform == "darwin"):
+            if os.name == "nt" or sys.platform == "darwin":
                 is_exclusive_node = True
 
             #if any of these environment variables exist, the user has indicated this signals being on
@@ -278,6 +280,6 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
             if is_exclusive_node:
                 n = config.getint(SECTION_CONCURRENCY_CONTROL, "exclusivenodenumtasks")
             else:
-                n = config.getint(SECTION_CONCURRENCY_CONTROL, "sharednodenumtasks")
+                n = config.getint(SECTION_CONCURRENCY_CONTROL, "defaultnumtasks")
         logging.debug(f"concurrency set to {n}")
         return n

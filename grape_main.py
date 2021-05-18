@@ -32,19 +32,26 @@ Usage: grape [-v | -q] [--np=<numProcs>] [--version] [<command> <args>...]
 Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
---np=<int>   The number of processes grape should use when performing parallel operations.
-             Default value is configurable via the concurrency-control section in the .grapeconfig.
-                exclusivenodenumtasks: # of tasks for exlusive nodes. Exclusive nodes include all
-                                       windows and osx environments and environments with environment
-                                       variables given in exclusivevarlist.
-                sharednodenumtasks: # of tasks for non-exclusive nodes.
-                defaultsharenode: (boolean) Whather grape will check to see if you are on an shared
-                                   node resource. If set to false (the default), will always assume
-                                   an exslusive node.
-                exclusivevarlist: space separate list of environment variables GRAPE should check for
-                                  to determine if on an exclusive node in Linux environments. If any
-                                  if the variables in the list exist, will use exclusivenodenumtasks,
-                                  otherwise will use sharednodenumtasks.
+--np=<int>   The number of processes grape should use when performing parallel operations. Values
+             less than 0 will use max number of processors available.
+             Default value is configurable via the concurrency-control section in the .grapeconfig:
+                #### default configuration ###
+                [concurrency-control]
+                # number of tasks for non-exclusive nodes.
+                defaultnumtasks = 8
+
+                # number of tasks for exclusive nodes. Exclusive nodes include all windows and osx
+                # environments and environments with environment variables given in exclusivevarlist.
+                exclusivenodenumtasks = -1
+
+                # space separated list of environment variables GRAPE should check for to determine if 
+                # on an exclusive node in Linux environments. If any if the variables in the list exist,
+                # will use exclusivenodenumtasks, otherwise will use defaultnumtasks.
+                # Note - setting this to the string 'False' will instruct GRAPE not to check for
+                # environment variables, and you will get defaultnumtasks for default behavior in
+                # linux environments.
+                exclusivevarlist = SLURM_NODEID LLNL_COMPUTE_NODES
+
 
 
 
