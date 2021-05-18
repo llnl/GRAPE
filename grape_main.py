@@ -33,7 +33,7 @@ Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
 --np=<int>   The number of processes grape should use when performing parallel operations. Values
-             less than 0 will use max number of processors available.
+             less than 1 will use max number of processors available.
              Default value is configurable via the concurrency-control section in the .grapeconfig:
                 #### default configuration ###
                 [concurrency-control]
