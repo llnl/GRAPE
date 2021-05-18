@@ -2,15 +2,28 @@ import asyncio
 import functools
 import logging
 import os
+import socket
+import sys
 import warnings
 from vine import config_parser_global
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine import grape_errors
 from vine.vine_logging import log_wrapper
+from vine.gendocs import Section
+
+SECTION_CONCURRENCY_CONTROL = "concurrency-control"
+
+def setDefaultConfig(cfg):
+    cfg.ensureSection(SECTION_CONCURRENCY_CONTROL)
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"sharednodenumtasks", "8")
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivenodenumtasks", "40")
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"defaultsharednode", "False")
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivevarlist", "False")
+
 
 # default level of concurrency (user can control using the --np option to the top level executable)
-NUM_TASKS = 8
+NUM_TASKS = -1
 
 # using async Semaphore to limit concurrency of the gather
 # https://stackoverflow.com/questions/48483348/how-to-limit-concurrency-with-python-asyncio/61478547#61478547
@@ -46,10 +59,10 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
             runnable_task = self._tuple_task(cmd_tuple)
         self.task_queue.append(runnable_task)
 
-    def run_all(self):
+    def run_all(self, concurrency):
         tasks = self.task_queue
         if all(asyncio.iscoroutine(task) for task in tasks):
-            return asyncio.run(self._run_commands(tasks))
+            return asyncio.run(self._run_commands(tasks, concurrency))
 
     async def _tuple_task(self, cmd_tuple):
         """
@@ -77,11 +90,11 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
             func, repo=repo, branch=branch, execution_path=self.workspace_dir))
 
 
-    async def _run_commands(self, commands):
+    async def _run_commands(self, commands, concurrency):
         runnable_coroutines = []
         for command in commands:
             runnable_coroutines.append(command)
-        results = await gather_with_concurrency(NUM_TASKS, *runnable_coroutines)
+        results = await gather_with_concurrency(concurrency, *runnable_coroutines)
         self.task_queue = []
         return results
 
@@ -213,17 +226,17 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
             if len(self.repos) > 0:
                 command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)]
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                retvals = self.cmd_runner.run_all()
+                retvals = self.cmd_runner.run_all(self.concurrency)
         else:
             # run the first entry first so that things like logging in to the project's server happen up front
             if len(self.repos) > 0:
                 command_list = (self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                retvals = self.cmd_runner.run_all()
+                retvals = self.cmd_runner.run_all(self.concurrency)
             if len(self.repos) > 1:
                 command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])]
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
-                retvals = retvals + self.cmd_runner.run_all()
+                retvals = retvals + self.cmd_runner.run_all(self.concurrency)
 
         MRE = grape_errors.MultiRepoException(workspace_dir=self.workspace_dir)
         for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
@@ -235,3 +248,36 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
             else:
                 raise MRE
         return retvals
+
+    # determine concurrency based off of whether we are executing on a shared or exclusive resource
+    @property
+    def concurrency(self):
+        # this is set via the command line, which overrides configuration behavior
+        if NUM_TASKS > -1:
+            n = NUM_TASKS
+        else:
+            config = config_parser_global.grapeConfig()
+
+            # user needs to opt out of assuming an exlusive node by setting defaultsharednode to True
+            is_exclusive_node = not config.getboolean(SECTION_CONCURRENCY_CONTROL, "defaultsharednode")
+
+            # if we are on osx or windows, assume to be a personal machine, therefore an exclusive resource
+            if not is_exclusive_node and (os.name == "nt" or sys.platform == "darwin"):
+                is_exclusive_node = True
+
+            #if any of these environment variables exist, the user has indicated this signals being on
+            #an exclusive resource
+            if not is_exclusive_node:
+                exclusive_environment_variables = config.get(SECTION_CONCURRENCY_CONTROL, "exclusivevarlist")
+                if exclusive_environment_variables != "False":
+                    for var in exclusive_environment_variables.split(' '):
+                        if var in os.environ:
+                            is_exclusive_node = True
+                            break
+
+            if is_exclusive_node:
+                n = config.getint(SECTION_CONCURRENCY_CONTROL, "exclusivenodenumtasks")
+            else:
+                n = config.getint(SECTION_CONCURRENCY_CONTROL, "sharednodenumtasks")
+        logging.debug(f"concurrency set to {n}")
+        return n

@@ -83,3 +83,9 @@ prefix = stashy
 remote = ../stashy.git
 topicprefixmappings = ?:grape
 
+[concurrency-control]
+exclusivenodenumtasks = 40
+sharednodenumtasks = 8
+defaultsharednode = True
+exclusivevarlist = SLURM_NODELIST LLNL_COMPUTE_NODES
+

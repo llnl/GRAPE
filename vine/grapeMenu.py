@@ -18,6 +18,7 @@ from vine import hooks
 from vine import merge
 from vine import mergeDevelop
 from vine import mergeRemote
+from vine import multi_repo_cmd_launcher
 from vine import newFlowBranch
 from vine import pull
 from vine import push
@@ -201,3 +202,4 @@ class _Menu(WorkspaceDirHandler):
         cfg.set("repo", "sshbase", "ssh://git@not.yet.configured")
         for currOption in self._options:
             currOption.setDefaultConfig(cfg)
+        multi_repo_cmd_launcher.setDefaultConfig(cfg)

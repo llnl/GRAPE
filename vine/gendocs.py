@@ -23,7 +23,7 @@ class Documentation:
         super(Documentation, self).__init__()
         self._sections = [Tutorial()]
         for option in menu._options:
-            self._sections.append(Section(option))
+            self._sections.append(Section(option._key, option.__doc__))
 
     @property
     def sections(self):
@@ -36,9 +36,9 @@ class Documentation:
 
 
 class Section:
-    def __init__(self, option):
-        self._name = option._key
-        self._text = option.__doc__
+    def __init__(self, name, text):
+        self._name = name
+        self._text = text
 
     def write(self, file_):
         if self._text:
