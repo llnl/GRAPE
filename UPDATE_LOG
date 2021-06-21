@@ -1,5 +1,12 @@
 
 
+Mon Jun 21 08:40:17 2021 Benjamin T. Liu
+v1.34.9
+Reviewers: Al Nichols, Peter Robinson
+
+Fix crash when using interactive menu
+
+
 Mon May 17 13:37:57 2021 Peter B. Robinson
 v1.34.8
 Reviewers: Ben Liu, Alan Dayton
