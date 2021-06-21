@@ -137,7 +137,7 @@ def set_verbosity(logger, args, choice=None):
     Messages are printed to stdout/stderr by default. Messages are otherwise
     silenced during normal testing or if user specifies the 'quiet' flag.
     """
-    if args['-q'] or (choice and 'test' in choice) or 'test' in args["<command>"]:
+    if args['-q'] or (choice and 'test' in choice) or (args["<command>"] and 'test' in args["<command>"]):
         return
 
     logger.log_to_stderr()
