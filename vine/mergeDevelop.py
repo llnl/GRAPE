@@ -26,6 +26,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--continue]
                     [--recurse | --noRecurse]
                     [--noUpdate]
+                    [--noChecks]
                     [--squash]
 
 
@@ -46,6 +47,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
+        --noChecks              Skip workspace consistency checks.
         --squash                Perform squash merges.
 
 
@@ -146,12 +148,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         self.progress["allActive"] = set(git.getAllSubmodules(execution_path=self.workspace_dir)) == set(git.getActiveSubmodules(execution_path=self.workspace_dir))
 
         # checking for a consistent workspace before doing a merge
-        logging.info("Checking for a consistent workspace before performing merge...")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        ret = menu.applyMenuChoice("status", ['--failIfInconsistent'])
-        if ret is False:
-            logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
-            return False
+        if not args["--noChecks"]:
+            logging.info("Checking for a consistent workspace before performing merge...")
+            ret = menu.applyMenuChoice("status", ['--failIfInconsistent'])
+            if ret is False:
+                logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
+                return False
 
         if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
@@ -246,12 +249,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     pass
                 listOfRepoBranchArgTuples.append((submodule, subPublic, [args,  True]))
 
+        repos = [x[0] for x in listOfRepoBranchArgTuples]
+        logging.info(f"Launching merges for {', '.join(repos)}")
+
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(mergeSubproject,
                                             listOfRepoBranchArgTuples=listOfRepoBranchArgTuples,
                                             execution_path=self.workspace_dir)
         
         info_or_true = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=handleMergeSubprojectMRE)
-        repos = [x[0] for x in listOfRepoBranchArgTuples]
         isSubmodule = [x[2][1] for x in listOfRepoBranchArgTuples]
         all_good = True
         for info, repo, isSubmodule in zip(info_or_true, repos, isSubmodule):
@@ -268,14 +273,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             self.dumpProgress(args)
             return False
 
+        mergeComplete = continueLocalMerge(args, execution_path=self.workspace_dir)
 
-        conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
-        # now that we resolved the submodule conflicts, continue the outer level merge
-        if len(conflictedFiles) == 0:
-            continueLocalMerge(args, execution_path=self.workspace_dir)
-            conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
-
-        if conflictedFiles:
+        if not mergeComplete:
             self.progress["stopPoint"] = "resolve conflicts"
             self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool "
                                     "and then \n continue by calling 'grape md --continue' .")
@@ -302,6 +302,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if "outerLevelDone" not in self.progress:
             self.progress["outerLevelDone"] = False
         if self.progress["outerLevelDone"]:
+            logging.info(f"Skipping previously performed outer level merge.")
             return []
         logging.info(f"Merging changes from {branch}" +
                      " into your current branch...")
@@ -383,6 +384,7 @@ def merge(branch, strategy, args, *, execution_path):
                           " Quitting.")
             return False
 
+@log_wrapper
 def continueLocalMerge(args, *, execution_path):
     status = git.status(execution_path=execution_path)
     # Commit after conflict resolution.
@@ -393,8 +395,13 @@ def continueLocalMerge(args, *, execution_path):
         git.commit(f"-m \"GRAPE: merge from {args['--public']} after " +
                    "conflict resolution.\"", execution_path=execution_path)
         return True
+    # also return True if there are no modified files and nothing to commit
+    # (the parenthetical says use "git add" and/or "git commit -a" if there are modifications)
+    if "nothing to commit (use -u to show untracked files)" in status:
+        return True
     return False
 
+@log_wrapper
 def mergeIntoCurrent(branchName, args, projectName, *, execution_path):
     choice = False
     strategy = 'am'
@@ -469,6 +476,7 @@ def mergeIntoCurrent(branchName, args, projectName, *, execution_path):
 
     return choice
 
+@log_wrapper
 def handleMergeSubprojectMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         try:
@@ -476,7 +484,6 @@ def handleMergeSubprojectMRE(mre):
         except grape_errors.GrapeGitError as e2:
             logging.error(f" mergeSubproject  of {branch} {repo}")
             logging.error(f"{e2.gitOutput}")
-
 
 def mergeSubproject(branch='', repo='', args='', *, execution_path):
     subPublic = branch 
