@@ -135,13 +135,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
         args["--recurse"] = recurse
 
-        # if we stored cwd in self.progress, make sure we end up there
-        if "cwd" in self.progress:
-            cwd = self.progress["cwd"]
-            self.workspace_dir = cwd
-        else:
-            cwd = self.workspace_dir
-
         if "conflictedFiles" in self.progress:
             conflictedFiles = self.progress["conflictedFiles"]
         else:
@@ -225,7 +218,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             return False
         
         listOfRepoBranchArgTuples = [] 
-        # merge nested subprojects
+        # queue merges for nested subprojects
         for subproject in nested:
             # if we did this merge in a previous run, don't do it again
             try:
@@ -235,7 +228,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 pass
             listOfRepoBranchArgTuples.append((subproject,branch,[args,False]))
         
-        # merge submodules
+        # queue merges for submodules
         if recurse and len(submodules) > 0:
             if args["--subpublic"]:
                 # respect the callers wishes (usually this is grape m , mr, or pull)
@@ -260,24 +253,30 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         info_or_true = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=handleMergeSubprojectMRE)
         repos = [x[0] for x in listOfRepoBranchArgTuples]
         isSubmodule = [x[2][1] for x in listOfRepoBranchArgTuples]
-        for info,repo,isSubmodule in zip(info_or_true,repos):
+        all_good = True
+        for info, repo, isSubmodule in zip(info_or_true, repos, isSubmodule):
             if info is True:
                 # stage the updated submodule
                 if isSubmodule:
-                    git.add(repo, execution_path=workspaceDir)
+                    git.add(repo, execution_path=self.workspace_dir)
                 self.progress[f"Subproject: {repo}"] = "finished"
             else:
                 logging.info(info)
+                all_good = False
+        if not all_good:
+            self.progress["stopPoint"] = "subproject merge"
+            self.dumpProgress(args)
+            return False
 
-        conflictedFiles = git.conflictedFiles(execution_path=cwd)
+
+        conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
         # now that we resolved the submodule conflicts, continue the outer level merge
         if len(conflictedFiles) == 0:
-            self.continueLocalMerge(args, execution_path=cwd)
-            conflictedFiles = git.conflictedFiles(execution_path=cwd)
+            continueLocalMerge(args, execution_path=self.workspace_dir)
+            conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
 
         if conflictedFiles:
             self.progress["stopPoint"] = "resolve conflicts"
-            self.progress["cwd"] = cwd
             self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool "
                                     "and then \n continue by calling 'grape md --continue' .")
             return False
@@ -307,7 +306,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         logging.info(f"Merging changes from {branch}" +
                      " into your current branch...")
 
-        conflict = not mergeIntoCurrent(self.workspace_dir, branch, args, "outer level project", execution_path=self.workspace_dir)
+        conflict = not mergeIntoCurrent(branch, args, "outer level project", execution_path=self.workspace_dir)
 
         if conflict:
             conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
@@ -396,7 +395,7 @@ def continueLocalMerge(args, *, execution_path):
         return True
     return False
 
-def mergeIntoCurrent(workspace_dir, branchName, args, projectName, *, execution_path):
+def mergeIntoCurrent(branchName, args, projectName, *, execution_path):
     choice = False
     strategy = 'am'
     if args["--continue"]:
@@ -495,7 +494,7 @@ def mergeSubproject(branch='', repo='', args='', *, execution_path):
     hasBranch = git.hasBranch(subPublic, execution_path=execution_path)
     if hasRemote and (git.branchUpToDateWith(subPublic, f"origin/{subPublic}", execution_path=execution_path) or not hasBranch):
         git.fetch("origin {subPublic}:{subPublic}", execution_path=execution_path)
-    ret = self.mergeIntoCurrent(subPublic, mergeArgs, repo, execution_path=execution_path)
+    ret = mergeIntoCurrent(subPublic, mergeArgs, repo, execution_path=execution_path)
     # skip nested subprojects that fail to merge
     info = ''
     if not ret and not isSubmodule and not git.conflictedFiles(execution_path=execution_path):
@@ -515,12 +514,12 @@ def mergeSubproject(branch='', repo='', args='', *, execution_path):
                    f"{git.currentBranch(execution_path=repo)} issued conflicts. Resolve and " \
                    "commit those changes \nusing git mergetool and git " \
                    "commit in the {typeStr}, then continue using grape\n" \
-                   f"{args['<<cmd>>']} --continue"
+                   f"{mergeArgs['<<cmd>>']} --continue"
         else:
             info = f"Merge in {repo} failed for an unhandled " \
                    "reason. You may need to stash / commit your current\n" \
                    "changes before doing the merge. Inspect git output " \
                    "above to troubleshoot. Continue using\ngrape " \
-                   f"{args['<<cmd>>']} --continue."
+                   f"{mergeArgs['<<cmd>>']} --continue."
         return info
     return True

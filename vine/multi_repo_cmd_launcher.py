@@ -194,7 +194,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         if self.repos:
             return
         if self.launchTuple is not None:
-            self.repos = [os.path.abspath(x[0]) for x in self.launchTuple]
+            self.repos = [os.path.join(self.workspace_dir,x[0]) for x in self.launchTuple]
             self.branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
         else:
