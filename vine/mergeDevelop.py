@@ -240,6 +240,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 subPublic = subBranchMappings[config.getPublicBranchFor(branch)]
             for submodule in submodules:
                 # if we did this merge in a previous run, don't do it again
+                key = f"Subproject: {submodule}"
                 if key in self.progress and self.progress[key] == "finished":
                    continue 
                 listOfRepoBranchArgTuples.append((submodule, subPublic, [args,  True]))

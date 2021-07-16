@@ -260,7 +260,7 @@ class Unbundle(Option, WorkspaceDirHandler):
         config.ensureSection(self.SECTION_PATCH)
         config.set(self.SECTION_PATCH, 'branchMappings', 'master:master')
 
-def unbundlecmd(repo='', branch='', args={}, *, execution_path):
+def unbundlecmd(repo='', branch='', args={}, *, workspace_dir):
     execution_path = repo
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()

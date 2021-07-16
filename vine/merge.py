@@ -82,6 +82,7 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         mdArgs["--continue"] = args["--continue"]
         mdArgs["<<cmd>>"] = args["<<cmd>>"]
         mdArgs["--noUpdate"] = args["--noUpdate"]
+        mdArgs["--noChecks"] = False
         mdArgs["--squash"] = args["--squash"]
 
         merge_down_command = grapeMenu.menu().getOption("md")
