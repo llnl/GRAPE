@@ -87,7 +87,9 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
 
     currentBranch = git.currentBranch(execution_path=execution_path)
 
+    logging.info(f"pruning remote references in {execution_path}")
     git.fetch("--prune", execution_path=execution_path)
+    logging.info(f"updating tags in {execution_path}")
     git.fetch("--tags --force", execution_path=execution_path)
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
     fetchArgs = "origin "
