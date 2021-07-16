@@ -45,7 +45,7 @@ class Push(Option, WorkspaceDirHandler):
     def setDefaultConfig(self, config):
         pass
 
-def push(repo='', branch='master', *, execution_path):
+def push(repo='', branch='master', *, workspace_dir):
     logging.info(f"Pushing {branch} in {repo}...")
     git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
 

@@ -83,14 +83,14 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
 
         if 'repo' not in varnames or 'branch' not in varnames:
             return await loop.run_in_executor(
-                None, functools.partial(func, execution_path=self.workspace_dir))
+                None, functools.partial(func, workspace_dir=self.workspace_dir))
         elif 'args' in varnames:
             return await loop.run_in_executor(
                 None, functools.partial(func, repo=repo, branch=branch,
                                         args=args,
-                                        execution_path=self.workspace_dir))
+                                        workspace_dir=self.workspace_dir))
         return await loop.run_in_executor(None, functools.partial(
-            func, repo=repo, branch=branch, execution_path=self.workspace_dir))
+            func, repo=repo, branch=branch, workspace_dir=self.workspace_dir))
 
 
     async def _run_commands(self, commands, concurrency):

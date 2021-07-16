@@ -143,7 +143,7 @@ class Bundle(Option, WorkspaceDirHandler):
         config.set(self.SECTION_PATCH, 'submodulebranchmappings', '?:?')
 
 
-def bundlecmd(repo='', branch='', args={}, *, execution_path):
+def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
     execution_path = repo
     branchlist = args["branchList"]
     tagsToBundle = args["tags"]

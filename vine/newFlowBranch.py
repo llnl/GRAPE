@@ -160,7 +160,7 @@ class NewBranchOptionFactory:
         return options
 
 
-def createBranch(repo="unknown", branch="master", args=[], *, execution_path):
+def createBranch(repo="unknown", branch="master", args=[], *, workspace_dir):
     branchPoint = branch
     fullBranch = args
     logging.info(f"creating and switching to {fullBranch} in {repo}")

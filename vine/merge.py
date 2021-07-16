@@ -24,8 +24,6 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
         --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
         --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
-        --ask           Ask to determine the merge strategy.
-        --askAll        Ask to determine the merge strategy before merging each subproject.
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch>
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
@@ -77,8 +75,6 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         mdArgs["--aT"] = args["--aT"]
         mdArgs["--ay"] = args["--ay"]
         mdArgs["--aY"] = args["--aY"]
-        mdArgs["--ask"] = args["--ask"]
-        mdArgs["--askAll"] = args["--askAll"]
         mdArgs["--public"] = args["<branch>"]
         mdArgs["--subpublic"] = subpublic
         mdArgs["--recurse"] = not args["--noRecurse"]

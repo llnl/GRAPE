@@ -58,7 +58,7 @@ class DeleteBranch(Option, WorkspaceDirHandler):
         pass
 
 
-def deleteBranch(repo='', branch='master', args=None, *, execution_path):
+def deleteBranch(repo='', branch='master', args=None, *, workspace_dir):
     force = args[0]
     forceStr = "-D" if force is True else "-d"
     logging.info(f"deleting {branch} in {repo}...")
@@ -78,7 +78,7 @@ def deleteBranch(repo='', branch='master', args=None, *, execution_path):
                 pass
 
 
-def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, execution_path):
+def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, workspace_dir):
     logging.warning(
         f"*** WARNING ***: Detaching in order to delete {branch} in " +
         f"{repo}. You will be in a headless state.")

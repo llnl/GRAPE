@@ -49,7 +49,7 @@ class ForEach(Option, WorkspaceDirHandler):
     def setDefaultConfig(self,config):
         pass
 
-def foreach(repo='', branch='', args={}, *, execution_path):
+def foreach(repo='', branch='', args={}, *, workspace_dir):
     cmd = args["<cmd>"]
     vine_subprocess.executeSubProcess(cmd, working_dir=repo)
     return True

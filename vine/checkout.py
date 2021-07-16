@@ -15,8 +15,8 @@ from vine import utility
 from vine.vine_logging import log_wrapper
 
 
-def handledCheckout(repo='', branch='master', args=[], *, execution_path):
-    # 'execution_path' included for continuity with multi_repo_cmd_launcher.
+def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
+    # 'workspace_dir' included for continuity with multi_repo_cmd_launcher.
     checkoutargs = args[0]
     sync = args[1]
     if sync:
@@ -129,8 +129,8 @@ def handleCheckoutMRE(mre):
             execution_path=mre.workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
-def createNewBranches(repo='', branch='', args={}, *, execution_path):
-    #execution_path ignored
+def createNewBranches(repo='', branch='', args={}, *, workspace_dir):
+    #workspace_dir ignored
     checkoutargs = args["checkout"]
     logging.info(f"Checking out new branch {branch} in {repo}.")
     git.checkout(f"{checkoutargs} -b {branch}", execution_path=repo)

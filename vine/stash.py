@@ -7,14 +7,14 @@ from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-def stashHelper(repo=".", branch="", *, execution_path):
-    return [repo, git.stash(execution_path=execution_path)]
+def stashHelper(repo=".", branch="", *, workspace_dir):
+    return [repo, git.stash(execution_path=repo)]
 
-def popHelper(repo=".", branch="", *, execution_path):
-    return [repo, git.stash(execution_path=execution_path)]
+def popHelper(repo=".", branch="", *, workspace_dir):
+    return [repo, git.stash("pop", execution_path=repo)]
 
-def listHelper(repo=".", branch="", *, execution_path):
-    return [repo, git.stash(execution_path=execution_path)]
+def listHelper(repo=".", branch="", *, workspace_dir):
+    return [repo, git.stash("list", execution_path=repo)]
 
 class Stash(Option, WorkspaceDirHandler):
     """

@@ -224,11 +224,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         # queue merges for nested subprojects
         for subproject in nested:
             # if we did this merge in a previous run, don't do it again
-            try:
-                if self.progress[f"Subproject: {subproject}"] == "finished":
-                   continue 
-            except KeyError:
-                pass
+            key = f"Subproject: {subproject}"
+            if key in self.progress and self.progress[key] == "finished":
+               continue 
             listOfRepoBranchArgTuples.append((subproject,branch,[args,False]))
         
         # queue merges for submodules
@@ -242,11 +240,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 subPublic = subBranchMappings[config.getPublicBranchFor(branch)]
             for submodule in submodules:
                 # if we did this merge in a previous run, don't do it again
-                try:
-                    if self.progress[f"Subproject: {submodule}"] == "finished":
-                       continue 
-                except KeyError:
-                    pass
+                if key in self.progress and self.progress[key] == "finished":
+                   continue 
                 listOfRepoBranchArgTuples.append((submodule, subPublic, [args,  True]))
 
         repos = [x[0] for x in listOfRepoBranchArgTuples]
@@ -485,32 +480,31 @@ def handleMergeSubprojectMRE(mre):
             logging.error(f" mergeSubproject  of {branch} {repo}")
             logging.error(f"{e2.gitOutput}")
 
-def mergeSubproject(branch='', repo='', args='', *, execution_path):
+def mergeSubproject(branch, repo, args, *, workspace_dir):
     subPublic = branch 
     mergeArgs = args[0]
     isSubmodule= args[1]
-    execution_path = repo
     mergeArgs["--public"] = subPublic
 
     submodule_or_subproject = "submodule" if isSubmodule else "subproject"
     logging.info(f"Merging {subPublic} into {git.currentBranch(execution_path=repo)} " +
                  f"for {submodule_or_subproject} {repo}")
-    git.fetch("origin", execution_path=execution_path)
+    git.fetch("origin", execution_path=repo)
     # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
-    hasRemote = git.hasBranch(f"origin/{subPublic}", execution_path=execution_path)
-    hasBranch = git.hasBranch(subPublic, execution_path=execution_path)
-    if hasRemote and (git.branchUpToDateWith(subPublic, f"origin/{subPublic}", execution_path=execution_path) or not hasBranch):
-        git.fetch("origin {subPublic}:{subPublic}", execution_path=execution_path)
-    ret = mergeIntoCurrent(subPublic, mergeArgs, repo, execution_path=execution_path)
+    hasRemote = git.hasBranch(f"origin/{subPublic}", execution_path=repo)
+    hasBranch = git.hasBranch(subPublic, execution_path=repo)
+    if hasRemote and (git.branchUpToDateWith(subPublic, f"origin/{subPublic}", execution_path=repo) or not hasBranch):
+        git.fetch("origin {subPublic}:{subPublic}", execution_path=repo)
+    ret = mergeIntoCurrent(subPublic, mergeArgs, repo, execution_path=repo)
     # skip nested subprojects that fail to merge
     info = ''
-    if not ret and not isSubmodule and not git.conflictedFiles(execution_path=execution_path):
+    if not ret and not isSubmodule and not git.conflictedFiles(execution_path=repo):
         info = f"Unable to merge subproject {repo}, skipping..."
         ret = True
     conflict = not ret
     if conflict:
         subprojectKey = "submodules" if isSubmodule else "nested"
-        conflictedFiles = git.conflictedFiles(execution_path=execution_path)
+        conflictedFiles = git.conflictedFiles(execution_path=repo)
         if conflictedFiles:
             if isSubmodule:
                 typeStr = "submodule"

@@ -371,8 +371,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
 
 
-def ensureLocalUpToDateWithRemote(repo='', branch='master', *, execution_path):
-    workspace_dir = execution_path
+def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
     logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:

@@ -49,7 +49,7 @@ class Status(Option, WorkspaceDirHandler):
                                             runInSubmodules=True,
                                             runInSubprojects=True,
                                             runInOuter=True,
-                                            globalArgs=[statusArgs, self.workspace_dir],
+                                            globalArgs=[statusArgs],
                                             execution_path=self.workspace_dir)
         stati = launcher.launchFromWorkspaceDir(noPause=True)
         status = {}
@@ -136,19 +136,18 @@ class Status(Option, WorkspaceDirHandler):
     def setDefaultConfig(self, config):
         pass
 
-def getStatus(branch='', repo='', args='', *, execution_path):
+def getStatus(branch='', repo='', args='', *, workspace_dir):
     statusArgs = args[0]
-    wsDir = args[1]
     toReturn = []
 
     if not repo.strip():
         return ""
     try:
-        if wsDir == repo:
+        if workspace_dir == repo:
             relPath = ""
             pathSpec = "[workspace]"
         else:
-            relPath = os.path.relpath(repo, wsDir)
+            relPath = os.path.relpath(repo, workspace_dir)
             pathSpec = relPath
 
         # Identify if the repo is still merging (this does not show up in short formats)

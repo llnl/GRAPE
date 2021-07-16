@@ -44,8 +44,6 @@ class Pull(Resumable, Option, WorkspaceDirHandler):
         mrArgs["--aT"] = False
         mrArgs["--ay"] = False
         mrArgs["--aY"] = False
-        mrArgs["--ask"] = False
-        mrArgs["--askAll"] = False
         mrArgs["--continue"] = args["--continue"]
         mrArgs["--noRecurse"] = False
         mrArgs["--squash"] = False

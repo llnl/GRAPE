@@ -18,7 +18,7 @@ class MergeRemote(Option, WorkspaceDirHandler):
     then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY ] [--continue] [--noRecurse] [--noUpdate] [--squash]
 
 
     Options:
@@ -28,7 +28,6 @@ class MergeRemote(Option, WorkspaceDirHandler):
         --aT                    Perform the merge resolving conficts using the remote branch's version.
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
         --aY                    Perform the merge using your topic branch's version for any file modified by both branches.
-        --askAll                Ask to determine the merge strategy before merging each subproject.
         --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
                                 grape md --public=<branch> to handle submodule and nested project merges.
         --continue              Resume your previous merge after resolving conflicts.
@@ -109,10 +108,10 @@ class MergeRemote(Option, WorkspaceDirHandler):
     def setDefaultConfig(self, config):
         pass
 
-def fetchHelper(repo="unknown", branch="master", *, execution_path):
+def fetchHelper(repo="unknown", branch="master", *, workspace_dir):
     return git.fetch("origin", warnOnCommError=False, raiseOnCommError=True, execution_path=repo)
 
-def updateBranchHelper(repo="unknown", branch="master", *, execution_path):
+def updateBranchHelper(repo="unknown", branch="master", *, workspace_dir):
     logging.info(f"Updating local reference to {branch} in {repo}")
     return git.fetch(f"origin {branch}:{branch}", execution_path=repo)
 

@@ -77,7 +77,7 @@ def fetchLocalHandler(mre):
         logging.error(repr(e.gitOutput))
     raise mre
 
-def fetchLocal(repo='unknown', branch='master', *, execution_path):
+def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
     # the execution path we actually care about is in repo
     execution_path = repo
     # branch is actually the list of branches
