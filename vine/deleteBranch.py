@@ -46,7 +46,7 @@ class DeleteBranch(Option, WorkspaceDirHandler):
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             deleteBranch, branch=branch, globalArgs=[force],
-            execution_path=self.workspace_dir)
+            workspace_dir=self.workspace_dir)
         try:
             launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as e:
@@ -133,5 +133,5 @@ def handleDeleteBranchMRE(mre, force=False):
 
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         detachThenForceDeleteBranch, listOfRepoBranchArgTuples=detachTuples,
-        execution_path=repo)
+        workspace_dir=mre.workspace_dir)
     launcher.launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)

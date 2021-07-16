@@ -62,7 +62,7 @@ class MergeRemote(Option, WorkspaceDirHandler):
         logging.info("Fetching remote references in all projects...")
         try:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                fetchHelper, execution_path=self.workspace_dir)
+                fetchHelper, workspace_dir=self.workspace_dir)
             launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as mre:
             commError = False
@@ -90,7 +90,7 @@ class MergeRemote(Option, WorkspaceDirHandler):
                          f"from {origin_other_branch}")
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 updateBranchHelper, branch=otherBranch,
-                execution_path=self.workspace_dir)
+                workspace_dir=self.workspace_dir)
             launcher.launchFromWorkspaceDir(handleMRE=updateBranchHandleMRE)
 
         args["<branch>"] = otherBranch if updateLocal else git.join_list_as_git_path(['origin', otherBranch])

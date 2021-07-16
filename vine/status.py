@@ -50,7 +50,7 @@ class Status(Option, WorkspaceDirHandler):
                                             runInSubprojects=True,
                                             runInOuter=True,
                                             globalArgs=[statusArgs],
-                                            execution_path=self.workspace_dir)
+                                            workspace_dir=self.workspace_dir)
         stati = launcher.launchFromWorkspaceDir(noPause=True)
         status = {}
         for s, r in (zip(stati, launcher.repos)):

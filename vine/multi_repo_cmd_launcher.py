@@ -111,10 +111,10 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
 
     def __init__(self, lmbda, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
                  globalArgs=None, perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False,
-                 outer="", *, execution_path):
+                 outer="", *, workspace_dir):
         self.cmd_runner = MultiRepoCommandRunner()
         self.lmbda = lmbda
-        self.workspace_dir = execution_path
+        self.workspace_dir = workspace_dir
 
         config = config_parser_global.grapeConfig()
         recurseSubmodules = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules")

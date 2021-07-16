@@ -253,7 +253,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(mergeSubproject,
                                             listOfRepoBranchArgTuples=listOfRepoBranchArgTuples,
-                                            execution_path=self.workspace_dir)
+                                            workspace_dir=self.workspace_dir)
         
         info_or_true = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=handleMergeSubprojectMRE)
         isSubmodule = [x[2][1] for x in listOfRepoBranchArgTuples]

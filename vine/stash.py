@@ -44,13 +44,13 @@ class Stash(Option, WorkspaceDirHandler):
 
         if args["pop"]:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                popHelper, execution_path=self.workspace_dir)
+                popHelper, workspace_dir=self.workspace_dir)
         elif args["list"]:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                listHelper, execution_path=self.workspace_dir)
+                listHelper, workspace_dir=self.workspace_dir)
         else:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                stashHelper, execution_path=self.workspace_dir)
+                stashHelper, workspace_dir=self.workspace_dir)
         try:
             retvals = launcher.launchFromWorkspaceDir()
             for r in retvals:

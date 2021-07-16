@@ -126,7 +126,7 @@ def handleCheckoutMRE(mre):
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             createNewBranches,
             listOfRepoBranchArgTuples=newBranchReposArgTuples,
-            execution_path=mre.workspace_dir)
+            workspace_dir=mre.workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
 def createNewBranches(repo='', branch='', args={}, *, workspace_dir):
@@ -344,7 +344,7 @@ class Checkout(Option, WorkspaceDirHandler):
             handledCheckout,
             listOfRepoBranchArgTuples=[(self.workspace_dir, branch,
                                         (checkoutargs, sync))],
-            execution_path=self.workspace_dir)
+            workspace_dir=self.workspace_dir)
 
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
         if not retvals or not retvals[0]:

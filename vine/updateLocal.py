@@ -58,7 +58,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
                 fetchLocal, runInSubmodules=recurseSubmodules,
                 runInSubprojects=recurseNestedSubprojects, branch=branch,
                 listOfRepoBranchArgTuples=None, skipSubmodules=skipSubmodules,
-                outer=workspace_dir, execution_path=workspace_dir)
+                outer=workspace_dir, workspace_dir=workspace_dir)
             launchers.append(new_launcher)
         if launchers:
             launcher = launchers[0]

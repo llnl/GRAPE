@@ -454,7 +454,7 @@ def handleEnsureLocalUpToDateMRE(mre):
     # do another MRC launch to do any follow up pushes that were requested.
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         cleanupPush, listOfRepoBranchArgTuples=cleanupPushArgs,
-        execution_path=repo)
+        workspace_dir=mre.workspace_dir)
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
@@ -463,13 +463,13 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir):
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
-            globalArgs=[checkoutArgs], execution_path=workspace_dir)
+            globalArgs=[checkoutArgs], workspace_dir=workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         checkout.handledCheckout, branch=branch,
-        globalArgs=[checkoutArgs, False], execution_path=workspace_dir)
+        globalArgs=[checkoutArgs, False], workspace_dir=workspace_dir)
     launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
 

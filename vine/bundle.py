@@ -116,7 +116,7 @@ class Bundle(Option, WorkspaceDirHandler):
         otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             bundlecmd, skipSubmodules=True, runInSubmodules=False,
             runInSubprojects=recurse, globalArgs=launchArgs,
-            execution_path=self.workspace_dir)
+            workspace_dir=self.workspace_dir)
 
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
@@ -125,7 +125,7 @@ class Bundle(Option, WorkspaceDirHandler):
             submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 bundlecmd, runInSubmodules=recurse, runInSubprojects=False,
                 skipSubmodules=not recurse, runInOuter=False,
-                globalArgs=launchArgs, execution_path=self.workspace_dir)
+                globalArgs=launchArgs, workspace_dir=self.workspace_dir)
             submoduleCommandLauncher.launchFromWorkspaceDir(
                 handleMRE=bundlecmdMRE, noPause=True)
 
@@ -241,7 +241,7 @@ class Unbundle(Option, WorkspaceDirHandler):
         repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             unbundlecmd, skipSubmodules=True, runInSubmodules=False,
             runInSubprojects=recurse, globalArgs=launchArgs,
-            execution_path=self.workspace_dir)
+            workspace_dir=self.workspace_dir)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
@@ -250,7 +250,7 @@ class Unbundle(Option, WorkspaceDirHandler):
             unbundlecmd, runInSubmodules=recurse, runInSubprojects=False,
             skipSubmodules=not recurse, runInOuter=False,
             globalArgs=launchArgs,
-            execution_path=self.workspace_dir)
+            workspace_dir=self.workspace_dir)
         submoduleCommandLauncher.launchFromWorkspaceDir(
             handleMRE=bundlecmdMRE, noPause=True)
 

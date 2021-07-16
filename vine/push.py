@@ -36,7 +36,7 @@ class Push(Option, WorkspaceDirHandler):
         git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            push, execution_path=self.workspace_dir)
+            push, workspace_dir=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         logging.info("Pushed current branch to origin")

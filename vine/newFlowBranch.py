@@ -117,7 +117,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                                                    runInOuter=True,
                                                    branch=start,
                                                    globalArgs=branchName,
-                                                   execution_path=self.workspace_dir)
+                                                   workspace_dir=self.workspace_dir)
         launcher.initializeCommands()
         logging.info("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):

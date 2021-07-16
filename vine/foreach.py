@@ -42,7 +42,7 @@ class ForEach(Option, WorkspaceDirHandler):
             skipSubmodules=args["--noSubmodules"],
             runInSubprojects=not args["--noSubprojects"],
             globalArgs=args,
-            execution_path=self.workspace_dir)
+            workspace_dir=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleForeachMRE)
         return retvals
 
