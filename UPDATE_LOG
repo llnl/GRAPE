@@ -1,5 +1,12 @@
 
 
+Mon Jul 19 11:29:15 2021 Peter B. Robinson
+v1.35.10
+Reviewers: Ben Liu, Patrick Greene
+
+Addresses an issue with rewritten grape md where grape reported conflicted files when there were none.
+
+
 Fri Jul 16 14:03:12 2021 Peter B. Robinson
 v1.35.9
 Reviewers: Alan Dayton, Ben Liu
