@@ -273,13 +273,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             self.dumpProgress(args)
             return False
 
-        mergeComplete = continueLocalMerge(args, execution_path=self.workspace_dir)
-
-        if not mergeComplete:
-            self.progress["stopPoint"] = "resolve conflicts"
-            self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool "
-                                    "and then \n continue by calling 'grape md --continue' .")
-            return False
+        cleanAfterMerge = continueLocalMerge(args, execution_path=self.workspace_dir)
+        if not cleanAfterMerge:
+            conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
+            if len(conflictedFiles) != 0:
+                self.progress["stopPoint"] = "resolve conflicts"
+                self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool "
+                                        "and then \n continue by calling 'grape md --continue' .")
+                return False
 
         original_workspace_dir = menu.workspace_dir
         menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
@@ -388,6 +389,7 @@ def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
 @log_wrapper
 def continueLocalMerge(args, *, execution_path):
     status = git.status(execution_path=execution_path)
+    logging.debug(f"continueLocalMerge status is {status}")
     # Commit after conflict resolution.
     # If there were no conflicts in the outer-level repo, we still need to commit the submodule gitlinks.
     if "All conflicts fixed but you are still merging." in status or \
@@ -395,10 +397,6 @@ def continueLocalMerge(args, *, execution_path):
             "Changes to be committed:" in status):
         git.commit(f"-m \"GRAPE: merge from {args['--public']} after " +
                    "conflict resolution.\"", execution_path=execution_path)
-        return True
-    # also return True if there are no modified files and nothing to commit
-    # (the parenthetical says use "git add" and/or "git commit -a" if there are modifications)
-    if "nothing to commit (use -u to show untracked files)" in status:
         return True
     return False
 
