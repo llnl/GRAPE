@@ -177,6 +177,7 @@ class Version(Option, WorkspaceDirHandler):
             if args["--tagNested"]:
                 for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
                     execution_path = os.path.join(self.workspace_dir, subproject)
+                    logging.info(f"tagging {execution_path} with {self.ver}")
                     self.tagVersion(self.ver, args, execution_path=execution_path)
 
 

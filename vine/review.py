@@ -225,7 +225,7 @@ class Review(Option, WorkspaceDirHandler):
                 subDescr = addLinkToDescription(descr, outerLevelURL, True)
                 if args["--prepend"] or args["--append"]:
                     subDescr = descr
-                newRequest = postPullRequest(repo, title, branch, sub_target_branch, subDescr, reviewers, args)
+                newRequest = postPullRequest(repo, title, branch, sub_target_branch, subDescr, reviewers, args, submodule_path)
                 if newRequest:
                     pullRequestLinks[newRequest.link()] = True
                 else:
@@ -244,7 +244,7 @@ class Review(Option, WorkspaceDirHandler):
             git.push(f"origin {branch}", execution_path=prefix_path)
             repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=False, isNested=True)
 
-            newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args)
+            newRequest = postPullRequest(repo, title, branch, target_branch,descr, reviewers, args, prefix_path)
             if newRequest:
                 pullRequestLinks[newRequest.link()] = True
             else:
@@ -269,7 +269,7 @@ class Review(Option, WorkspaceDirHandler):
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args)
+            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, self.workspace_dir)
             updatedDescription = request.description()
             if isinstance(updatedDescription, bytes):
                 updatedDescription = updatedDescription.decode("utf-8")
@@ -284,7 +284,8 @@ class Review(Option, WorkspaceDirHandler):
                 request = postPullRequest(repo, title, branch, target_branch,
                                          updatedDescription,
                                          reviewers,
-                                         args)
+                                         args,
+                                         self.workspace_dir)
 
             logging.info(f"Request generated/updated:\n\n{request}")
         return True
@@ -337,7 +338,12 @@ def pullRequestAlreadyMerged(errorMessage):
         return True
     return False
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
+def targetBranchMissing(errorMessage):
+    if "Repository" in errorMessage and "of project with key" in errorMessage and "has no branch" in errorMessage:
+        return True
+    return False
+
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path):
     # get the open pull requests outgoing from our public branch
     logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
@@ -359,6 +365,13 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args):
                 logging.error(f"BITBUCKET: {e.data['errors'][0]['message']}")
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
+            except stashy_errors.NotFoundException as e:
+                if targetBranchMissing(e.data["errors"][0]["message"]):
+                    if utility.userInput(f"Target branch {target_branch} in {git_execution_path} is missing ... would you like to create and push it? [y/n]"):
+                        start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
+                        git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
+                        git.push(f"origin {target_branch}", execution_path=git_execution_path)
+                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path)
         else:
             logging.info(
                 f"No pull request from {branch} to {target_branch} to update")
