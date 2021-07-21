@@ -112,11 +112,11 @@ def clone_from_anywhere(args_ ):
     wsdir_handler.workspace_dir = os.getcwd()
     # Access the internal _workspace_dir variable to prevent exit due to not being in git repo
     if wsdir_handler._workspace_dir:
-        grapeMenu.menu().applyMenuChoice('clone', args_)
+        return grapeMenu.menu().applyMenuChoice('clone', args_)
     else:
         # Create a phony .git directory so we can set the workspace_dir
         with setup_temp_git_dir():
-            grapeMenu.menu().applyMenuChoice('clone', args_)
+            return grapeMenu.menu().applyMenuChoice('clone', args_)
 
 
 @contextmanager
