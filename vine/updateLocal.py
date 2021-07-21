@@ -87,30 +87,19 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
 
     currentBranch = git.currentBranch(execution_path=execution_path)
 
-    logging.info(f"pruning remote references in {execution_path}")
-    git.fetch("--prune", execution_path=execution_path)
-    logging.info(f"updating tags in {execution_path}")
-    git.fetch("--tags --force", execution_path=execution_path)
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
-    fetchArgs = "origin "
-    toFetch = []
+    fetchArgs = "--prune origin '+refs/tags/*:refs/tags/*' 'refs/heads/*:refs/remotes/origin/*' "
+    mergeRequired = False
     for b in branches:
-        if b != currentBranch:
-            if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
+        if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
+            if b == currentBranch:
+                mergeRequired = True
+                fetchArgs += f"{b} "
+            else:
                 fetchArgs += f"{b}:{b} "
-                toFetch.append(b)
-        else:
-            try:
-                logging.info(
-                    f"Pulling current branch {currentBranch} in {execution_path}")
-                git.pull(f"origin {currentBranch}", execution_path=execution_path)
-            except grape_errors.GrapeGitError:
-                logging.error(f"GRAPE: Could not pull {currentBranch} from" +
-                              " origin. Maybe you haven't pushed it yet?")
     try:
-        if toFetch:
-            logging.info(f"updating {','.join(toFetch)} in {execution_path}")
-            git.fetch(fetchArgs, execution_path=execution_path)
+        logging.info(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
+        git.fetch(fetchArgs, execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         # let non-fast-forward fetches slide
         if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
@@ -124,3 +113,11 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
             logging.error(e.gitOutput)
         else:
             raise e
+    if mergeRequired:
+        try:
+            logging.info(
+                f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
+            git.merge(f"origin/{currentBranch}", execution_path=execution_path)
+        except grape_errors.GrapeGitError:
+            logging.error(f"GRAPE: Could not pull {currentBranch} from" +
+                          " origin. Maybe you haven't pushed it yet?")
