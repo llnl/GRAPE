@@ -217,7 +217,17 @@ class Review(Option, WorkspaceDirHandler):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
-                listOfRepoBranchArgTuples.append((submodule,branch,[codeReviews,config, True, False, args, sub_target_branch, descr, title, None, outerLevelURL, reviewers]))
+                listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
+                                                                     "config": config,
+                                                                     "isSubmodule": True,
+                                                                     "isNested": False,
+                                                                     "args": args,
+                                                                     "target_branch": sub_target_branch,
+                                                                     "descr": descr,
+                                                                     "title": title,
+                                                                     "proj": submodule,
+                                                                     "outerLevelURL": outerLevelURL,
+                                                                     "reviewers": reviewers}]))
 
         ## NESTED SUBPROJECT REPOS
         nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
@@ -227,9 +237,17 @@ class Review(Option, WorkspaceDirHandler):
 
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
             prefix_path = os.path.join(self.workspace_dir, prefix)
-            listOfRepoBranchArgTuples.append((prefix_path,branch,[codeReviews, config, False, True, args, target_branch, descr, title, proj, outerLevelURL, reviewers]))
-
-
+            listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
+                                                                 "config": config,
+                                                                 "isSubmodule": False,
+                                                                 "isNested": True,
+                                                                 "args": args,
+                                                                 "target_branch": target_branch,
+                                                                 "descr": descr,
+                                                                 "title": title,
+                                                                 "proj": proj,
+                                                                 "outerLevelURL": outerLevelURL,
+                                                                 "reviewers": reviewers}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
@@ -287,17 +305,18 @@ def HandlePostPullRequestForRepoMRE(mre):
 
 
 def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
-    codeReviews = args[0]
-    config = args[1]
-    isSubmodule = args[2]
-    isNested = args[3]
-    review_args = args[4]
-    target_branch = args[5]
-    descr = args[6]
-    title = args[7]
-    proj = args[8] if isNested else repo
-    outerLevelURL = args[9]
-    reviewers = args[10]
+    kwargs = args[0]
+    codeReviews = kwargs["codeReviews"]
+    config = kwargs["config"]
+    isSubmodule = kwargs["isSubmodule"]
+    isNested = kwargs["isNested"]
+    review_args = kwargs["args"]
+    target_branch = kwargs["target_branch"]
+    descr = kwargs["descr"]
+    title = kwargs["title"]
+    proj = kwargs["proj"]
+    outerLevelURL = kwargs["outerLevelURL"]
+    reviewers = kwargs["reviewers"]
 
     # push branch
     logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
