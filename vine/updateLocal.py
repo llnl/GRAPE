@@ -118,6 +118,6 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
             logging.info(
                 f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
-        except grape_errors.GrapeGitError:
-            logging.error(f"GRAPE: Could not pull {currentBranch} from" +
-                          " origin. Maybe you haven't pushed it yet?")
+        except grape_errors.GrapeGitError as e:
+            logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
+            raise e
