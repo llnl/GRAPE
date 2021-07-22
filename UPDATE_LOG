@@ -1,5 +1,12 @@
 
 
+Thu Jul 22 14:48:27 2021 Peter B. Robinson
+v1.35.14
+Reviewers: Ben Liu, Alan Dayton
+
+Change the merge technique in publish to avoid file thrashing.
+
+
 Thu Jul 22 10:40:27 2021 Peter B. Robinson
 v1.35.13
 Reviewers: Alan Dayton, Ben Liu

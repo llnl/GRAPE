@@ -1072,8 +1072,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     @staticmethod
     def merge(public, topic, repo, args):
         logging.info(f"merging {topic} into {public}")
+        git.push(f". {topic}:{public}", execution_path=repo)
         git.checkout(public, execution_path=repo)
-        git.merge(f"{topic} -m \"{args['-m']}\" ", execution_path=repo)
         logging.info(f"{topic} merged successfully to {public}")
         logging.info(f"You are currently on {public}")
 
