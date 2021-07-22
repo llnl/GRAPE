@@ -88,7 +88,7 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
     currentBranch = git.currentBranch(execution_path=execution_path)
 
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
-    fetchArgs = "--prune origin '+refs/tags/*:refs/tags/*' 'refs/heads/*:refs/remotes/origin/*' "
+    fetchArgs = "--recurse-submodules=no --prune origin '+refs/tags/*:refs/tags/*' 'refs/heads/*:refs/remotes/origin/*' "
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
@@ -115,8 +115,7 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
             raise e
     if mergeRequired:
         try:
-            logging.info(
-                f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
+            logging.info( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
