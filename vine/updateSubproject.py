@@ -34,7 +34,8 @@ class UpdateSubproject(Option, WorkspaceDirHandler):
     @log_wrapper
     def execute(self, args):
         if args["subtree"]:
-            self.updateSubtree(args)
+            return self.updateSubtree(args)
+        return True
 
     def updateSubtree(self, args):
         clean = utility.isWorkspaceClean(workspace_dir=self.workspace_dir)

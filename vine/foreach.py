@@ -44,7 +44,7 @@ class ForEach(Option, WorkspaceDirHandler):
             globalArgs=args,
             execution_path=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleForeachMRE)
-        return retvals
+        return False not in retvals
 
     def setDefaultConfig(self,config):
         pass

@@ -139,6 +139,8 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                 sub_dir = os.path.join(self.workspace_dir, sub)
                 git.checkout(f"-B {branchName}", execution_path=sub_dir)
 
+        return True
+
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.set(self.SECTION_WORKSPACE, 'manageSubmodules', 'True')
