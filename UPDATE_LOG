@@ -1,5 +1,12 @@
 
 
+Thu Aug  5 11:40:53 2021 Peter B. Robinson
+v1.34.11
+Reviewers: Patrick Greene
+
+Fix return values for a few grape commands.
+
+
 Wed Jul 21 14:00:56 2021 Peter B. Robinson
 v1.34.10
 Reviewers: Patrick Greene
