@@ -98,7 +98,7 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
             else:
                 fetchArgs += f"{b}:{b} "
     try:
-        logging.info(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
+        logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
         git.fetch(fetchArgs, execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
         # let non-fast-forward fetches slide
@@ -115,7 +115,7 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
             raise e
     if mergeRequired:
         try:
-            logging.info( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
+            logging.debug( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
