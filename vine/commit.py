@@ -45,7 +45,7 @@ class Commit(Option, WorkspaceDirHandler):
         commitargs = ""
         if args['-a']:
             commitargs = commitargs +  " -a"
-        else if args["<filetree>"]:
+        elif args["<filetree>"]:
             filetrees = {os.path.abspath(x):False for x in args['<filetree>']}
         if not args['-m']:
             args["-m"] = utility.userInput("Please enter commit message:")
