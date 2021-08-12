@@ -295,6 +295,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
                 menu.set_workspace_dir(original_workspace_dir)
 
+        # clear out the progress now that we're done so that when we are called a second time during a publish
+        # we don't just skip the md
+        self.progress = {}
         return True
 
 
