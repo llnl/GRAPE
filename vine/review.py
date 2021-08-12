@@ -218,7 +218,6 @@ class Review(Option, WorkspaceDirHandler):
                 if not submodule:
                     continue
                 listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
-                                                                     "config": config,
                                                                      "isSubmodule": True,
                                                                      "isNested": False,
                                                                      "args": args,
@@ -238,7 +237,6 @@ class Review(Option, WorkspaceDirHandler):
         for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
             prefix_path = os.path.join(self.workspace_dir, prefix)
             listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
-                                                                 "config": config,
                                                                  "isSubmodule": False,
                                                                  "isNested": True,
                                                                  "args": args,
@@ -307,7 +305,6 @@ def HandlePostPullRequestForRepoMRE(mre):
 def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     kwargs = args[0]
     codeReviews = kwargs["codeReviews"]
-    config = kwargs["config"]
     isSubmodule = kwargs["isSubmodule"]
     isNested = kwargs["isNested"]
     review_args = kwargs["args"]
