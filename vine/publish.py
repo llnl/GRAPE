@@ -462,8 +462,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def mergePublic(self, args):
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        return menu.applyMenuChoice("md", ["--am",
-                                           f"--public={args['--public']}"])
+        if  menu.applyMenuChoice("md", ["--am", f"--public={args['--public']}"]):
+            # update the startingSHA to be after any merges as they cause all sorts of problems for git revert in the
+            # event of a grape publish --abort
+            self.progress["startingSHA"] = git.SHA("HEAD", execution_path=self.workspace_dir)
+            return True
+        else:
+            return False
+
 
     def markReview(self, args, newArgs, skipStr, updateOnly=True):
         if args["--noReview"]:
