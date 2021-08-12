@@ -1,5 +1,13 @@
 
 
+Thu Aug 12 09:48:58 2021 Peter B. Robinson
+v1.35.16
+Reviewers: Alan Dayton, Ben Liu
+
+teach grape to correctly handle filetrees across subprojects, can commit multiple filetrees.
+Addresses GRP-157.
+
+
 Thu Jul 22 15:07:14 2021 Peter B. Robinson
 v1.35.15
 Reviewers: Alan Dayton, Ben Liu
