@@ -278,8 +278,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
             if len(conflictedFiles) != 0:
                 self.progress["stopPoint"] = "resolve conflicts"
-                self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool "
-                                        "and then \n continue by calling 'grape md --continue' .")
+                self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool " +
+                                        f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
                 return False
 
         original_workspace_dir = menu.workspace_dir
