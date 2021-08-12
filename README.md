@@ -573,7 +573,7 @@ options are at least listed below.
     
 ## commit
 
-    Usage: grape-commit [-m <message>] [-a | <filetree>]
+    Usage: grape-commit [-m <message>] [-a | <filetree>...]
 
     Options:
     -m <message>    The commit message.
@@ -581,7 +581,7 @@ options are at least listed below.
 
 
     Arguments:
-    <filetree> The relative path of files to include in this commit.
+    <filetree>... The relative paths of files to include in this commit.
 
     
 ## publish
