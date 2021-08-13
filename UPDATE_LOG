@@ -1,5 +1,12 @@
 
 
+Fri Aug 13 09:38:41 2021 Peter B. Robinson
+v1.35.19
+Reviewers: Alan Dayton, Ben Liu
+
+Addresses crashes in grape abort where the md1 step actually incurred a merge. (Addresses GRP-195)
+
+
 Thu Aug 12 15:02:56 2021 Peter B. Robinson
 v1.35.18
 Reviewers: Alan Dayton, Ben Liu
