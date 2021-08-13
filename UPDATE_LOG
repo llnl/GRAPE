@@ -1,5 +1,12 @@
 
 
+Fri Aug 13 09:44:33 2021 Peter B. Robinson
+v1.35.20
+Reviewers: Ben Liu, Alan Dayton
+
+Fixes error message when there is a conflict in the outer repo (addresses GRP-194).
+
+
 Fri Aug 13 09:38:41 2021 Peter B. Robinson
 v1.35.19
 Reviewers: Alan Dayton, Ben Liu
