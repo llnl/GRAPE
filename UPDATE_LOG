@@ -1,5 +1,58 @@
 
 
+Mon Aug 23 10:58:17 2021 Daniel Taller
+v1.35.21
+Reviewers: Peter Robinson, Ben Liu
+
+BRANCH: feature/taller1/printMenu
+SUMMARY: Previously, if you wrote \"grape option\" with an unknown option, you got an ugly error message. Now I print the menu and give nicer user feedback.
+
+Now:
+
+rzgenie2{taller1}57: ./grape poop
+
+GRAPE: GRAPE: Unknown option 'poop'
+GRAPE: Please choose option from menu below
+
+**GRAPE - Git Replacement for \"Awesome\" PARSEC Environment**
+
+********************* Getting Started **********************
+clone           : Clone a repo and configure it for grape
+config          : Initialize a repo you've already cloned without using GRAPE
+writeConfig     : write a .grapeconfig file based on your current environment
+
+*********************** Code Reviews ***********************
+review          : Prepare current topic branch for review
+
+....
+
+Before:
+
+rzgenie2{taller1}27: grape merge
+GRAPE: Unknown option 'merge'
+ {'addSubproject': <vine.addSubproject.AddSubproject object at 0x2aaab2a03470>, 'bundle': <vine.bundle.Bundle object at 0x2aaab2729d30>, 'unbundle': <vine.bundle.Unbundle object at 0x2aaab2729710>, 'b': <vine.branches.Branches object at 0x2aaab2729c88>, 'status': <vine.status.Status object at 0x2aaab2729cc0>, 'stash': <vine.stash.Stash object at 0x2aaab2729ba8>, 'checkout': <vine.checkout.Checkout object at 0x2aaab520f3c8>, 'push': <vine.push.Push object at 0x2aaab520f518>, 'pull': <vine.pull.Pull object at 0x2aaab520f5f8>, 'commit': <vine.commit.Commit object at 0x2aaab520f748>, 'publish': <vine.publish.Publish object at 0x2aaab520f780>, 'clone': <vine.clone.Clone object at 0x2aaab520f7b8>, 'config': <vine.config.Config object at 0x2aaab520f8d0>, 'writeConfig': <vine.writeConfig.WriteConfig object at 0x2aaab50a7e10>, 'foreach': <vine.foreach.ForEach object at 0x2aaab50a7e80>, 'm': <vine.merge.Merge object at 0x2aaab50a7eb8>, 'md': <vine.mergeDevelop.MergeDevelop object at 0x2aaab50a7ef0>, 'mr': <vine.mergeRemote.MergeRemote object at 0x2aaab50a7f28>, 'db': <vine.deleteBranch.DeleteBranch object at 0x2aaab50a7f60>, 'resolve': <vine.resolveConflicts.ResolveConflicts object at 0x2aaab50a7f98>, 'review': <vine.review.Review object at 0x2aaab50a7fd0>, 'test': <vine.grapeTest.Test object at 0x2aaab2758048>, 'up': <vine.updateLocal.UpdateLocal object at 0x2aaab2758080>, 'updateSubproject': <vine.updateSubproject.UpdateSubproject object at 0x2aaab27580b8>, 'installHooks': <vine.hooks.InstallHooks object at 0x2aaab27580f0>, 'runHook': <vine.hooks.RunHook object at 0x2aaab2758128>, 'uv': <vine.updateView.UpdateView object at 0x2aaab2758160>, 'version': <vine.version.Version object at 0x2aaab2758198>, 'w': <vine.walkthrough.Walkthrough object at 0x2aaab27581d0>, 'q': <vine.quit.Quit object at 0x2aaab2758208>, 'feature': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c048>, 'rel': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c390>, 'hotfix': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c2e8>, 'mergeback': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c358>, 'rebaseline': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c400>, 'bugfix': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c3c8>}
+Traceback (most recent call last):
+  File \"/usr/gapps/grape/master/vine/grapeMenu.py\", line 130, in getOption
+    return self._optionLookup[choice]
+KeyError: 'merge'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File \"/usr/gapps/ale3d_dev/bin/grape\", line 133, in <module>
+    exit(0 if startup() else 1)
+  File \"/usr/gapps/ale3d_dev/bin/grape\", line 80, in startup
+    retval = grapeMenu.menu().applyMenuChoice(args[\"<command>\"], args[\"<args>\"])
+  File \"/usr/gapps/grape/master/vine/grapeMenu.py\", line 137, in applyMenuChoice
+    chosen_option = self.getOption(choice)
+  File \"/usr/gapps/grape/master/vine/grapeMenu.py\", line 133, in getOption
+    raise Exception
+Exception
+
+    
+TESTS REBASELINED: NONE
+
+
 Fri Aug 13 09:44:33 2021 Peter B. Robinson
 v1.35.20
 Reviewers: Ben Liu, Alan Dayton
