@@ -93,7 +93,14 @@ def startup():
         # a menu option, and bypass the menu
         elif args['<command>']:
             set_verbosity(logger, args)
-            if args['<command>'] == 'clone':
+            if not grapeMenu.menu().hasOption(args["<command>"]):
+                print()
+                print("GRAPE: Unknown Menu Option")
+                print("GRAPE: Please choose option from menu below")
+                print()
+                grapeMenu.menu().presentTextMenu()
+                retVal = False
+            elif args['<command>'] == 'clone':
                 retval = clone_from_anywhere(args["<args>"])
             else:
                 retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])

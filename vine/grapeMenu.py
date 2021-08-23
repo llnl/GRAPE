@@ -126,6 +126,9 @@ class _Menu(WorkspaceDirHandler):
             self._optionLookup[currOption.key] = currOption
 
     #######      MENU STUFF         #########################################################################
+    def hasOption(self, choice):
+        return choice in self._optionLookup.keys()
+
     def getOption(self, choice):
         try:
             return self._optionLookup[choice]
