@@ -95,7 +95,7 @@ def startup():
             set_verbosity(logger, args)
             if not grapeMenu.menu().hasOption(args["<command>"]):
                 print()
-                print("GRAPE: Unknown Menu Option")
+                print("GRAPE: Unknown option '{}'".format(args["<command>"]))
                 print("GRAPE: Please choose option from menu below")
                 print()
                 grapeMenu.menu().presentTextMenu()
