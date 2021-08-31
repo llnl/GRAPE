@@ -14,15 +14,19 @@ class GrapeGitError(Exception):
             gitOutput = gitOutput.decode()
         self.gitOutput = gitOutput
         self.gitCommand = gitCommand
-        if self.code == 128 and "fatal: " in self.gitOutput.lower():
-            if "could not read from remote" in self.gitOutput.lower() or \
-                    "unable to access" in self.gitOutput.lower() or \
-                    "remote end hung up unexpectedly" in self.gitOutput.lower():
+        self.lowerGitOutput = self.gitOutput.lower()
+        if self.code == 128 and "fatal: " in self.lowerGitOutput:
+            if "could not read from remote" in self.lowerGitOutput or \
+                    "unable to access" in self.lowerGitOutput or \
+                    "remote end hung up unexpectedly" in self.lowerGitOutput:
                 self.commError = True
             else:
                 self.commError = False
         else:
             self.commError = False
+        self.authError = False
+        if "authentication failed" in self.lowerGitOutput:
+            self.authError = True
         self.cwd = cwd
         logging.debug(repr(self), exc_info=True)
 
