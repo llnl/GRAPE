@@ -105,13 +105,8 @@ def startup():
             else:
                 retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
-        logger.error("Operation interrupted by user, exiting...")
+        print("GRAPE ERROR: Operation interrupted by user, exiting...")
         retval = False
-    except grape_errors.GrapeGitError as e:
-        if e.authError:
-            logger.error(f"{e}\n\n ******Authentication Error******* \n" +
-                          "You may need to reset your git credential cache or issue a simple git\n" +
-                          "command to cache your credentials.")
 
     # Exit the script
     print("Thank you - good bye")

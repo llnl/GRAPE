@@ -167,9 +167,15 @@ class _Menu(WorkspaceDirHandler):
 
         except grape_errors.GrapeGitError as e:
             logging.error(traceback.print_exc())
-            logging.error(f"GRAPE: Uncaught Error {e.code} in " +
-                  f"grape-{chosen_option._key} when executing " +
-                  f"'{e.gitCommand}' in '{e.cwd}'\n{e.gitOutput}")
+            if e.authError:
+                logging.error(f"\n\n************************** AUTHENTICATION ERROR ********************************\n" +
+                              "You may need to reset your git credential cache or issue a simple git\n" +
+                              "command to cache your credentials.\n"+
+                              "********************************************************************************")
+            else:
+                logging.error(f"GRAPE: Uncaught Error {e.code} in " +
+                      f"grape-{chosen_option._key} when executing " +
+                      f"'{e.gitCommand}' in '{e.cwd}'\n{e.gitOutput}")
             exit(e.code)
 
         except grape_errors.NoWorkspaceDirException as e:
