@@ -1,5 +1,13 @@
 
 
+Wed Sep  1 08:35:43 2021 Peter B. Robinson
+v1.35.22
+Reviewers: Ben Liu, Alan Dayton
+
+Summary: Global handling of authentication errors with some helpful suggestions for how a user can get out of that cycle of sadness.
+Addresses GRP_198
+
+
 Mon Aug 23 10:58:17 2021 Daniel Taller
 v1.35.21
 Reviewers: Peter Robinson, Ben Liu
