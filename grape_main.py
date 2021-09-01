@@ -44,7 +44,7 @@ Options:
                 # environments and environments with environment variables given in exclusivevarlist.
                 exclusivenodenumtasks = -1
 
-                # space separated list of environment variables GRAPE should check for to determine if 
+                # space separated list of environment variables GRAPE should check for to determine if
                 # on an exclusive node in Linux environments. If any if the variables in the list exist,
                 # will use exclusivenodenumtasks, otherwise will use defaultnumtasks.
                 # Note - setting this to the string 'False' will instruct GRAPE not to check for
@@ -93,6 +93,7 @@ def startup():
         # a menu option, and bypass the menu
         elif args['<command>']:
             set_verbosity(logger, args)
+            # this check needs to be first
             if args['<command>'] == 'clone':
                 retval = clone_from_anywhere(args["<args>"])
             elif not grapeMenu.menu().hasOption(args["<command>"]):
