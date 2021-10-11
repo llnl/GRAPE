@@ -216,6 +216,9 @@ class PullRequest:
             if name in ret:
                 ret[name] = (ret[name][0],True,ret[name][2])
 
+
+
+
         return ret.values()
 
     def state(self):
@@ -253,6 +256,7 @@ class PullRequest:
                 gitlab_reviewer = self.gitlab.users.list(username=r)[0]
                 reviewer_ids.append(gitlab_reviewer.id)
             self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
+            self.mergerequest.reviewer_ids = reviewer_ids
         self.mergerequest.save()
         return self
 
