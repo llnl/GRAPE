@@ -15,20 +15,30 @@
 # You should have received a copy of the GNU Lesser General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import configparser
+import os
+import shlex
+import subprocess
+from os.path import expanduser, expandvars
+from typing import List, Optional, Union
+
+from gitlab.const import USER_AGENT
 
 
-def _env_config():
+def _env_config() -> List[str]:
     if "PYTHON_GITLAB_CFG" in os.environ:
         return [os.environ["PYTHON_GITLAB_CFG"]]
     return []
 
 
-_DEFAULT_FILES = _env_config() + [
+_DEFAULT_FILES: List[str] = _env_config() + [
     "/etc/python-gitlab.cfg",
     os.path.expanduser("~/.python-gitlab.cfg"),
 ]
+
+HELPER_PREFIX = "helper:"
+
+HELPER_ATTRIBUTES = ["job_token", "http_password", "private_token", "oauth_token"]
 
 
 class ConfigError(Exception):
@@ -47,8 +57,14 @@ class GitlabConfigMissingError(ConfigError):
     pass
 
 
+class GitlabConfigHelperError(ConfigError):
+    pass
+
+
 class GitlabConfigParser(object):
-    def __init__(self, gitlab_id=None, config_files=None):
+    def __init__(
+        self, gitlab_id: Optional[str] = None, config_files: Optional[List[str]] = None
+    ) -> None:
         self.gitlab_id = gitlab_id
         _files = config_files or _DEFAULT_FILES
         file_exist = False
@@ -83,7 +99,7 @@ class GitlabConfigParser(object):
                 "configuration (%s)" % self.gitlab_id
             ) from e
 
-        self.ssl_verify = True
+        self.ssl_verify: Union[bool, str] = True
         try:
             self.ssl_verify = self._config.getboolean("global", "ssl_verify")
         except ValueError:
@@ -145,6 +161,8 @@ class GitlabConfigParser(object):
         except Exception:
             pass
 
+        self._get_values_from_helper()
+
         self.api_version = "4"
         try:
             self.api_version = self._config.get("global", "api_version")
@@ -177,3 +195,55 @@ class GitlabConfigParser(object):
             self.order_by = self._config.get(self.gitlab_id, "order_by")
         except Exception:
             pass
+
+        self.user_agent = USER_AGENT
+        try:
+            self.user_agent = self._config.get("global", "user_agent")
+        except Exception:
+            pass
+        try:
+            self.user_agent = self._config.get(self.gitlab_id, "user_agent")
+        except Exception:
+            pass
+
+        self.retry_transient_errors = False
+        try:
+            self.retry_transient_errors = self._config.getboolean(
+                "global", "retry_transient_errors"
+            )
+        except Exception:
+            pass
+        try:
+            self.retry_transient_errors = self._config.getboolean(
+                self.gitlab_id, "retry_transient_errors"
+            )
+        except Exception:
+            pass
+
+    def _get_values_from_helper(self) -> None:
+        """Update attributes that may get values from an external helper program"""
+        for attr in HELPER_ATTRIBUTES:
+            value = getattr(self, attr)
+            if not isinstance(value, str):
+                continue
+
+            if not value.lower().strip().startswith(HELPER_PREFIX):
+                continue
+
+            helper = value[len(HELPER_PREFIX) :].strip()
+            commmand = [expanduser(expandvars(token)) for token in shlex.split(helper)]
+
+            try:
+                value = (
+                    subprocess.check_output(commmand, stderr=subprocess.PIPE)
+                    .decode("utf-8")
+                    .strip()
+                )
+            except subprocess.CalledProcessError as e:
+                stderr = e.stderr.decode().strip()
+                raise GitlabConfigHelperError(
+                    f"Failed to read {attr} value from helper "
+                    f"for {self.gitlab_id}:\n{stderr}"
+                ) from e
+
+            setattr(self, attr, value)
