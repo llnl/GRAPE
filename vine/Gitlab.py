@@ -216,9 +216,6 @@ class PullRequest:
             if name in ret:
                 ret[name] = (ret[name][0],True,ret[name][2])
 
-
-
-
         return ret.values()
 
     def state(self):
