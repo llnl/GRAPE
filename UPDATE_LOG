@@ -1,5 +1,14 @@
 
 
+Tue Oct 12 13:55:03 2021 Peter B. Robinson
+v1.35.25
+Reviewers: David Dawson, Ben Liu
+
+Summary: 
+Correctly update reviewer IDs in gitlab during grape review. 
+Modify the description to use 2 newline characters everywhere there is currently a single newline character to enforce displaying new lines on a separate line in the markdown description context.
+
+
 Tue Oct 12 11:33:24 2021 Peter B. Robinson
 v1.35.24
 Reviewers: Ben Liu, David Dawson
