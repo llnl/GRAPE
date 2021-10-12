@@ -1,6 +1,7 @@
 import getpass
 import logging
 import os
+import re
 import sys
 import time
 import keyring
@@ -254,6 +255,9 @@ class PullRequest:
                 reviewer_ids.append(gitlab_reviewer.id)
             self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
             self.mergerequest.reviewer_ids = reviewer_ids
+
+        if self.mergerequest.description:
+            self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
         self.mergerequest.save()
         return self
 
