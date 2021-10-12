@@ -1,5 +1,18 @@
 
 
+Tue Oct 12 11:33:24 2021 Peter B. Robinson
+v1.35.24
+Reviewers: Ben Liu, David Dawson
+
+Summary
+Updates gitlab and requests, adds requests_toolbelts (new dependency of gitlab).
+
+Details:
+python-gitlab updated to 2.10.1
+requests updated to v2.26.0
+requests_toolbelt added v0.9.1
+
+
 Thu Sep  2 11:24:28 2021 Peter B. Robinson
 v1.35.23
 Reviewers: Ben Liu, Alan Dayton
