@@ -935,6 +935,8 @@ options are at least listed below.
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
+                        [--ssh_pat_url=<url>]
+                        [--ssh_pat_port=<int>]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -979,6 +981,12 @@ options are at least listed below.
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API. 
+                                    [default: .grapeconfig.repo.ssh_pat_port]
 
 
 
