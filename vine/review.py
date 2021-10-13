@@ -39,6 +39,8 @@ class Review(Option, WorkspaceDirHandler):
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
+                        [--ssh_pat_url=<url>]
+                        [--ssh_pat_port=<int>]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -83,6 +85,12 @@ class Review(Option, WorkspaceDirHandler):
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API. 
+                                    [default: .grapeconfig.repo.ssh_pat_port]
 
 
 
@@ -141,7 +149,10 @@ class Review(Option, WorkspaceDirHandler):
             verify = True if args["--verifySSL"].lower() == "true" else False
             codeReviews = CodeReviewsFactory.makeCodeReviews(name, url=args["--codeReviewsURL"],
                                                 verify=verify,
-                                                workspace_dir=self.workspace_dir)
+                                                port=int(args["--ssh_pat_port"]),
+                                                ssh_path = args["--ssh_pat_url"],
+                                                workspace_dir=self.workspace_dir
+                                                )
         # default project (outer level project)
         project_name = args["--project"]
 
@@ -295,6 +306,8 @@ class Review(Option, WorkspaceDirHandler):
         config.set(self.SECTION_PROJECT, "codeReviewsURL", "https://your.host.org/gitlab/or/bitbucket")
         config.set(self.SECTION_PROJECT, "verifySSL", "True")
         config.set(self.SECTION_PROJECT, "name", "My unnamed project")
+        config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
+        config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
 
 
 def HandlePostPullRequestForRepoMRE(mre):

@@ -2,6 +2,7 @@ import getpass
 import logging
 import os
 import re
+import subprocess
 import sys
 import time
 import keyring
@@ -18,8 +19,10 @@ GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
 # Repo - the actual repository (roughly analogous to a Gitlap Project)
 class GrapeGitlabAdapter:
     defaultURL = "https://your.host.org/gitlab"
+    defaultPort = 7999
+    defaultSSH_Path= "git@gitlab.your.host.org"
 
-    def __init__(self, username=None, url=defaultURL, verify=True, *, workspace_dir):
+    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, *, workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -39,14 +42,22 @@ class GrapeGitlabAdapter:
         self._service = url
         password = keyring.get_password(self._service, self._userName)
 
-        if self.auth(self._service, self._userName, password, verify=verify):
+        if self.auth(self._service, self._userName, password, port, ssh_path, verify=verify):
             self.url = url
             logging.info("Connected to Gitlab.")
         else:
             self._gitlab= None
             logging.info("Could not connect to Gitlab...")
 
-    def auth(self, service, username, password, verify=True):
+    def generate_personal_access_token(self, port, ssh_url):
+        command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api"
+        print(f"Generating token by executing {command}")
+        completed_process = subprocess.run(command,
+                                           capture_output=True,
+                                           shell=True)
+        return completed_process.stdout.decode().strip().split()[1].strip()
+
+    def auth(self, service, username, password, port, ssh_path, verify=True):
         # set a password to something bogus to trigger an authentication error
         if (password is None):
             password = "123456_bad_password"
@@ -55,7 +66,7 @@ class GrapeGitlabAdapter:
         self._gitlab = gitlab.Gitlab(service, password, api_version=4)
         numAttempts = 0
         success = False
-        while numAttempts < 3 and not success:
+        while numAttempts < 4 and not success:
             try:
                 projects = self.projectlist()
                 if projects:
@@ -64,15 +75,23 @@ class GrapeGitlabAdapter:
                     logging.info("empty list from gitlab project.")
                     raise gitlab.exceptions.GitlabAuthenticationError()
             except gitlab.exceptions.GitlabAuthenticationError as e:
-                logging.error(e, type(e), f"numAttempts is {numAttempts}")
+                logging.debug(e, type(e), f"numAttempts is {numAttempts}")
                 if numAttempts == 0:
                     logging.info("session expired...")
+                    try:
+                        keyring.set_password(service, self._userName,
+                                             self.generate_personal_access_token(port, ssh_path))
+                    except Exception as e:
+                        logging.error("Generating personal access token via ssh failed.")
+                        logging.error(e)
+                        numAttempts += 1
+                        continue
                 else:
                     logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                keyring.set_password(service, self._userName,
-                                     getpass.getpass("Enter personal access token for " +
-                                                     f"{service}: "))
+                    keyring.set_password(service, self._userName,
+                                         getpass.getpass("Enter personal access token for " +
+                                                         f"{service}: "))
                 self._gitlab = gitlab.Gitlab(service,  keyring.get_password(service, self._userName), api_version=4)
                 numAttempts += 1
 
