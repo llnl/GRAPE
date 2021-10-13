@@ -1,5 +1,12 @@
 
 
+Wed Oct 13 13:12:41 2021 Peter B. Robinson
+v1.35.26
+Reviewers: David Dawson, Ben Liu
+
+Authenticate to Gitlab REST API using SSH generated Personal Access Tokens.
+
+
 Tue Oct 12 13:55:03 2021 Peter B. Robinson
 v1.35.25
 Reviewers: David Dawson, Ben Liu
