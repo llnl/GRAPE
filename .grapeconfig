@@ -79,7 +79,7 @@ prefix = v
 
 [project]
 name = GRP
-stashURL = https://rzlc.llnl.gov/stash
+stashURL = https://rzlc.llnl.gov/gitlab
 
 [subtree-stashy]
 prefix = stashy
