@@ -1,8 +1,11 @@
 [repo]
 name = grape
-url = ssh://git@rz-stash.llnl.gov:7999/grp/grape.git
-httpsbase = https://rzlc.llnl.gov/stash/scm/grp/
-sshbase = ssh://git@rz-stash.llnl.gov:7999/grp/
+url = ssh://git@rzgitlab.llnl.gov:7999/grp/grape.git
+httpsbase = https://rzlc.llnl.gov/gitlab/grp/
+sshbase = ssh://git@rzgitlab.llnl.gov:7999/grp/
+ssh_pat_url = git@rzgitlab.llnl.gov
+ssh_pat_port = 7999
+
 
 [workspace]
 managesubmodules = True
