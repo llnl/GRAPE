@@ -274,6 +274,101 @@ Reviewers: Ben Liu
 
 Ticks develop to 1.35.0 after merging in 1.34.0
 
+Thu Aug  5 11:40:53 2021 Peter B. Robinson
+v1.34.11
+Reviewers: Patrick Greene
+
+Fix return values for a few grape commands.
+
+
+Wed Jul 21 14:00:56 2021 Peter B. Robinson
+v1.34.10
+Reviewers: Patrick Greene
+
+Fix return values for grape clone
+
+
+Mon Jun 21 08:40:17 2021 Benjamin T. Liu
+v1.34.9
+Reviewers: Al Nichols, Peter Robinson
+
+Fix crash when using interactive menu
+
+
+Mon May 17 13:37:57 2021 Peter B. Robinson
+v1.34.8
+Reviewers: Ben Liu, Alan Dayton
+
+Summary:
+Reenable --np feature that was dropped in initial python 3 conversion.
+Details
+clean up args parsing in top level grape.
+Use asyncio.semaphore to limit concurrency for parallel operations.
+Reenable --np.
+
+
+Thu Apr 22 10:33:00 2021 Benjamin T. Liu
+v1.34.7
+Reviewers: Daniel Taller, David Bloss, Peter Robinson
+
+Fix bug running grape config as part of grape clone
+- Bug introduced in python3 refactoring
+- workspace_dir handler probably requires more examination
+
+
+Wed Apr 14 11:35:55 2021 Benjamin T. Liu
+v1.34.6
+Reviewers: Daniel Taller, David Dawson, David Bloss
+
+Control verbosity of custom build and test steps in grape publish
+- Default to verbose (to match behavior before 1.34.5/1.35.3)
+- Add --quiet option to suppress output
+- TODO consider streaming captured output to a tail-able file and changing default behavior on develop
+
+Remove unused --quiet option for grape foreach
+- This capability disappeared between v1.19.6 and v1.19.7 with the MultiRepoLauncher
+
+
+Tue Apr  6 15:09:49 2021 Benjamin T. Liu
+v1.34.5
+Reviewers: David Bloss, Peter Robinson
+
+Ensure that output is captured in git commands
+- Fix pull and publish to use captured output
+- Errors and warnings cannot be checked without captured output
+- This fixes issue during python3 conversion
+
+
+Tue Apr  6 10:00:56 2021 Benjamin T. Liu
+v1.34.4
+Reviewers: Peter Robinson, David Bloss
+
+Fix grape clone from outside of git repo
+
+
+Fri Apr  2 11:18:21 2021 Benjamin T. Liu
+v1.34.3
+Reviewers: Peter Robinson
+
+Connect emailServer to configuration variable
+
+
+Fri Apr  2 10:46:08 2021 Benjamin T. Liu
+v1.34.2
+Reviewers: Peter Robinson
+
+Update email server for LC email migration
+
+
+Fri Apr  2 10:26:49 2021 Benjamin T. Liu
+v1.34.1
+Reviewers: Peter Robinson
+
+Fix version ticking for hotfix
+Make grapeGit.submodule less noisy
+- Change default to capture output
+- This is closer to python2 grape behavior
+
 
 Thu Apr  1 11:54:45 2021 Peter B. Robinson
 v1.34.0
