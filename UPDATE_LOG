@@ -1,5 +1,20 @@
 
 
+Tue Oct 19 12:20:08 2021 Peter B. Robinson
+v1.36.1
+Reviewers: Ben Liu
+
+SUMMARY
+Merge latest develop in, create v1.36. 
+
+Details:
+GitLab support for grape review, grape publish. 
+Moves grape to be hosted on GitLab. 
+Various robustness improvements. 
+Grape commit can now handle filetrees across subprojects and commit multiple filetrees. 
+Performance improvements.
+
+
 Thu Oct 14 15:16:35 2021 Peter B. Robinson
 v1.35.27
 Reviewers: David Dawson
