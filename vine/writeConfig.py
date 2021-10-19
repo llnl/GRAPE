@@ -28,6 +28,7 @@ class WriteConfig(Option):
         self.setFlowModelConfig(config, args)
         with io.open(args["<file>"], 'w') as f:
             config.write(f)
+        return True
 
     @staticmethod
     def setFlowModelConfig(config, args):
