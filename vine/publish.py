@@ -518,7 +518,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullRequests()
         inProgressRequests = []
@@ -563,7 +564,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         state = "open"
@@ -817,7 +819,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Retrieving pull request description for use as commit message...")
             codeReviews = CodeReviewsFactory.makeCodeReviews(
                 username=args["--user"], url=args["--codeReviewsURL"],
-                verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+                verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+                ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
             repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if pullRequest:
@@ -887,7 +890,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if not args["--noReview"]:
             codeReviews = CodeReviewsFactory.makeCodeReviews(
                 username=args["--user"], url=args["--codeReviewsURL"],
-                verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+                verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+                ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
             repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()
@@ -1065,7 +1069,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
                                                         isSubmodule=isSubmodule,
                                                         isNested=isNested)
