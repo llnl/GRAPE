@@ -157,7 +157,7 @@ class Project:
         return [r.name for r in self.group.projects.list()]
 
     def repo(self, name):
-        project_id = self.group.projects.list(search=name)[0].id
+        project_id = [x.id for x in self.group.projects.list(search=name) if x.name == name][0]
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 
