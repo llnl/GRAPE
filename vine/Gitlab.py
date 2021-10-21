@@ -68,7 +68,11 @@ class GrapeGitlabAdapter:
         success = False
         while numAttempts < 4 and not success:
             try:
-                projects = self.projectlist()
+                projects = None
+                try:
+                    projects = self.projectlist()
+                except:
+                    pass
                 if projects:
                     success = True
                 else:
@@ -92,7 +96,7 @@ class GrapeGitlabAdapter:
                     keyring.set_password(service, self._userName,
                                          getpass.getpass("Enter personal access token for " +
                                                          f"{service}: "))
-                self._gitlab = gitlab.Gitlab(service,  keyring.get_password(service, self._userName), api_version=4)
+                self._gitlab = gitlab.Gitlab(service,  keyring.get_password(service, self._userName), api_version=4, ssl_verify=verify)
                 numAttempts += 1
 
         return success
@@ -153,7 +157,7 @@ class Project:
         return [r.name for r in self.group.projects.list()]
 
     def repo(self, name):
-        project_id = self.group.projects.list(search=name)[0].id
+        project_id = [x.id for x in self.group.projects.list(search=name) if x.name == name][0]
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 

@@ -7,6 +7,14 @@ Reviewers: Ben Liu
 mergeback of v1.36.2
 
 
+Thu Oct 21 13:21:55 2021 Peter B. Robinson
+v1.36.3
+Reviewers: Ben Liu
+
+Ensures repo lookups in Gitlab RestAPI get the correct project. 
+Allows SSL Certificate to be ignored for Gitlab RestAPI.
+
+
 Thu Oct 21 11:45:44 2021 Peter B. Robinson
 v1.36.2
 Reviewers: Ben Liu
