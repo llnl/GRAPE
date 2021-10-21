@@ -1,5 +1,12 @@
 
 
+Thu Oct 21 11:45:44 2021 Peter B. Robinson
+v1.36.2
+Reviewers: Ben Liu
+
+Fixes CodeReviewsFactory calls in vine/publish.lpy to consistently use ssh PAT generation.
+
+
 Tue Oct 19 12:20:08 2021 Peter B. Robinson
 v1.36.1
 Reviewers: Ben Liu
