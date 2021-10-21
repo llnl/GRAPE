@@ -89,7 +89,7 @@ class Review(Option, WorkspaceDirHandler):
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
-                                    into a Code Review service's REST API. 
+                                    into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
 
 

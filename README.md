@@ -625,10 +625,12 @@ options are at least listed below.
                          [<CommitMessageFile>]
                          [--remoteMerge]
                          [--quiet]
+                         [--ssh_pat_url=<url>]
+                         [--ssh_pat_port=<int>]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -740,6 +742,12 @@ options are at least listed below.
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
     --remoteMerge           Perform the merge using the Bitbucket REST API.
     --quiet                 Suppress output from custom build and test steps unless there is a failure.
+    --ssh_pat_url=<url>     SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                            REST API.
+                            [default: .grapeconfig.repo.ssh_pat_url]
+    --ssh_pat_port=<int>    Port number to issue ssh command over to generate a Personal Access Token for authentication
+                            into a Code Review service's REST API.
+                            [default: .grapeconfig.repo.ssh_pat_port]
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -985,7 +993,7 @@ options are at least listed below.
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
-                                    into a Code Review service's REST API. 
+                                    into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
 
 

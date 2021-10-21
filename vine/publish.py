@@ -73,10 +73,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [<CommitMessageFile>]
                          [--remoteMerge]
                          [--quiet]
+                         [--ssh_pat_url=<url>]
+                         [--ssh_pat_port=<int>]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -188,6 +190,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             markInProgress, md2, publish, markAsDone, deleteTopic, done]
     --remoteMerge           Perform the merge using the Bitbucket REST API.
     --quiet                 Suppress output from custom build and test steps unless there is a failure.
+    --ssh_pat_url=<url>     SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                            REST API.
+                            [default: .grapeconfig.repo.ssh_pat_url]
+    --ssh_pat_port=<int>    Port number to issue ssh command over to generate a Personal Access Token for authentication
+                            into a Code Review service's REST API.
+                            [default: .grapeconfig.repo.ssh_pat_port]
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -510,7 +518,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequests = repo.pullRequests()
         inProgressRequests = []
@@ -555,7 +564,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         request = repo.getOpenPullRequest(args["--topic"], args["--public"])
         state = "open"
@@ -580,7 +590,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         verified = False
@@ -808,7 +819,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Retrieving pull request description for use as commit message...")
             codeReviews = CodeReviewsFactory.makeCodeReviews(
                 username=args["--user"], url=args["--codeReviewsURL"],
-                verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+                verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+                ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
             repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             if pullRequest:
@@ -878,7 +890,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if not args["--noReview"]:
             codeReviews = CodeReviewsFactory.makeCodeReviews(
                 username=args["--user"], url=args["--codeReviewsURL"],
-                verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+                verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+                ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
             repo = codeReviews.project(args["--project"]).repo(args["--repo"])
             thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
             requestTitle = thisRequest.title()
@@ -1056,7 +1069,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], workspace_dir=self.workspace_dir)
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
                                                         isSubmodule=isSubmodule,
                                                         isNested=isNested)
