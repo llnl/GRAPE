@@ -106,7 +106,6 @@ class GrapeGitlabAdapter:
         return [g.name for g in self._gitlab.groups.list()]
 
     def project(self, name):
-        print(f"searching for {name}")
         group_id = [x.id for x in self._gitlab.groups.list(search=name) if x.path.lower() == name.lower()][0]
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
