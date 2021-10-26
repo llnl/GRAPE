@@ -185,11 +185,16 @@ class Repo:
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+        if reviewers:
+            reviewer_ids = []
+            for r in reviewers:
+                gitlab_reviewer = self.gitlab.users.list(all=True, username=r)[0]
+                reviewer_ids.append(gitlab_reviewer.id)
          mr = self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "title": title,
                                             "description":description,
-                                            "reviewers":reviewers})
+                                            "reviewer_ids":reviewer_ids})
          return PullRequest(mr, self.gitlab)
 
 
