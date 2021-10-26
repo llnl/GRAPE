@@ -103,10 +103,10 @@ class GrapeGitlabAdapter:
 
     # Return list of project names
     def projectlist(self):
-        return [g.name for g in self._gitlab.groups.list()]
+        return [g.name for g in self._gitlab.groups.list(all=True)]
 
     def project(self, name):
-        group_id = [x.id for x in self._gitlab.groups.list(search=name) if x.path.lower() == name.lower()][0]
+        group_id = [x.id for x in self._gitlab.groups.list(all=True, search=name) if x.path.lower() == name.lower()][0]
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
 
@@ -154,10 +154,10 @@ class Project:
         return self.group.name
 
     def repolist(self):
-        return [r.name for r in self.group.projects.list()]
+        return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name):
-        project_id = [x.id for x in self.group.projects.list(search=name) if x.name == name][0]
+        project_id = [x.id for x in self.group.projects.list(all=True, search=name) if x.name == name][0]
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 
@@ -175,7 +175,7 @@ class Repo:
                       "all":"all"
                       }
         state = state_dict[state.lower()]
-        return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(state=state, target_branch=target_branch, source_branch=source_branch) ]
+        return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
 
     def getOpenPullRequest(self, source, target):
         requests = self.pullRequests(state="opened", target_branch=target, source_branch=source)
@@ -223,7 +223,7 @@ class PullRequest:
         Returns [(username,bool(approved),displayname)...]
         """
         approval_rule = None
-        approval_rules = self.mergerequest.approval_rules.list()
+        approval_rules = self.mergerequest.approval_rules.list(all=True)
         for ar in approval_rules:
             if ar.name == GRAPE_GITLAB_APPROVAL_RULE_NAME:
                 approval_rule = ar
@@ -275,7 +275,7 @@ class PullRequest:
         if reviewers:
             reviewer_ids = []
             for r in reviewers:
-                gitlab_reviewer = self.gitlab.users.list(username=r)[0]
+                gitlab_reviewer = self.gitlab.users.list(all=True, username=r)[0]
                 reviewer_ids.append(gitlab_reviewer.id)
             self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
             self.mergerequest.reviewer_ids = reviewer_ids

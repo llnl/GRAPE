@@ -1,5 +1,12 @@
 
 
+Tue Oct 26 12:02:25 2021 Benjamin T. Liu
+v1.36.6
+Reviewers: Peter Robinson
+
+Fix gitlab lookups to search all entries rather than just the first page
+
+
 Tue Oct 26 11:55:17 2021 Peter B. Robinson
 v1.36.5
 Reviewers: Ben Liu
