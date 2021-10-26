@@ -21,6 +21,27 @@ Reviewers: Ben Liu
 mergeback of v1.36.2
 
 
+Tue Oct 26 12:52:40 2021 Peter B. Robinson
+v1.36.7
+Reviewers: Ben Liu
+
+Fixes an issue where you needed to run grape review twice to add reviewers to a gitlab MR.
+
+
+Tue Oct 26 12:02:25 2021 Benjamin T. Liu
+v1.36.6
+Reviewers: Peter Robinson
+
+Fix gitlab lookups to search all entries rather than just the first page
+
+
+Tue Oct 26 11:55:17 2021 Peter B. Robinson
+v1.36.5
+Reviewers: Ben Liu
+
+Ensures Gitlab::reviewers always returns a list.
+
+
 Mon Oct 25 13:15:44 2021 Peter B. Robinson
 v1.36.4
 Reviewers: Ben Liu, Arlie Capps
