@@ -1,5 +1,12 @@
 
 
+Tue Oct 26 11:55:17 2021 Peter B. Robinson
+v1.36.5
+Reviewers: Ben Liu
+
+Ensures Gitlab::reviewers always returns a list.
+
+
 Mon Oct 25 13:15:44 2021 Peter B. Robinson
 v1.36.4
 Reviewers: Ben Liu, Arlie Capps
