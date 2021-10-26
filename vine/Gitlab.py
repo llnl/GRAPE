@@ -185,7 +185,6 @@ class Repo:
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
-         print(f"IN CREATE WITH reviewers {reviewers}")
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "title": title}),
