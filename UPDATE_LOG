@@ -1,5 +1,12 @@
 
 
+Tue Oct 26 12:52:40 2021 Peter B. Robinson
+v1.36.7
+Reviewers: Ben Liu
+
+Fixes an issue where you needed to run grape review twice to add reviewers to a gitlab MR.
+
+
 Tue Oct 26 12:02:25 2021 Benjamin T. Liu
 v1.36.6
 Reviewers: Peter Robinson
