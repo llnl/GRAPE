@@ -12,6 +12,7 @@ from vine import config
 from vine import config_parser_global
 from vine import deleteBranch
 from vine import foreach
+from vine import gitlabAdmin
 from vine import grape_errors
 from vine import writeConfig
 from vine import hooks
@@ -97,7 +98,7 @@ class _Menu(WorkspaceDirHandler):
             review.Review(), test.Test(), updateLocal.UpdateLocal(),
             updateSubproject.UpdateSubproject(), hooks.InstallHooks(),
             hooks.RunHook(), updateView.UpdateView(), version.Version(),
-            walkthrough.Walkthrough(), quit.Quit()
+            walkthrough.Walkthrough(), gitlabAdmin.GitlabAdmin(), quit.Quit()
             ]
 
         self.set_workspace_dir(os.getcwd())
