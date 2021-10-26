@@ -110,7 +110,8 @@ class GrapeGitlabAdapter:
         if matching_ids:
             group_id = matching_ids[0]
         else:
-            logging.info(f"Could not find project {name}.")
+            logging.info(f"Could not find group {name}.")
+            raise SystemExit("Abort")
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
 
@@ -161,7 +162,12 @@ class Project:
         return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name):
-        project_id = [x.id for x in self.group.projects.list(all=True, search=name) if x.name == name][0]
+        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name) if x.name == name]
+        if matching_ids:
+            project_id = matching_ids[0]
+        else:
+            logging.info(f"Could not find project {name}.")
+            raise SystemExit("Abort")
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 
@@ -279,7 +285,12 @@ class PullRequest:
         if reviewers:
             reviewer_ids = []
             for r in reviewers:
-                gitlab_reviewer = self.gitlab.users.list(all=True, username=r)[0]
+                matching_reviewers = self.gitlab.users.list(all=True, username=r)
+                if matching_reviewers:
+                   gitlab_reviewer = matching_reviewers[0]
+                else:
+                   logging.info(f"Could not find reviewer {r}.")
+                   raise SystemExit("Abort")
                 reviewer_ids.append(gitlab_reviewer.id)
             self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
             self.mergerequest.reviewer_ids = reviewer_ids
