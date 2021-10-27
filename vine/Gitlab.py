@@ -79,7 +79,9 @@ class GrapeGitlabAdapter:
                     logging.info("empty list from gitlab project.")
                     raise gitlab.exceptions.GitlabAuthenticationError()
             except gitlab.exceptions.GitlabAuthenticationError as e:
-                logging.debug(e, type(e), f"numAttempts is {numAttempts}")
+                logging.debug(e)
+                logging.debug(type(e))
+                logging.debug(f"numAttempts is {numAttempts}")
                 if numAttempts == 0:
                     logging.info("session expired...")
                     try:
