@@ -1,5 +1,12 @@
 
 
+Wed Oct 27 08:27:24 2021 Benjamin T. Liu
+v1.36.9
+Reviewers: Peter Robinson
+
+Fix debugging exception during personal access token generation
+
+
 Wed Oct 27 08:01:42 2021 Benjamin T. Liu
 v1.36.8
 Reviewers: Peter Robinson
