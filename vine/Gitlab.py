@@ -105,7 +105,7 @@ class GrapeGitlabAdapter:
     def projectlist(self):
         return [g.name for g in self._gitlab.groups.list(all=True)]
 
-    def project(self, name, min_access_level=1):
+    def project(self, name, min_access_level=None):
         matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
         if matching_ids:
             group_id = matching_ids[0]
