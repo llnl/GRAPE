@@ -1,15 +1,40 @@
-from vine.option import Option
-from vine.vine_logging import log_wrapper
+import logging
+import os
+from vine import config_parser_global
 from vine import Gitlab
+from vine import utility
+from vine.option import Option
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.vine_logging import log_wrapper
 
-class GitlabAdmin(Option):
+class GitlabAdmin(Option, WorkspaceDirHandler):
     """
     grape gitlab-admin 
     Perform gitlab administration tasks.
-
     Usage: grape-gitlab-admin [--removeProtectedBranches]
+                              [--user=<userName>]
+                              [--codeReviewsURL=<url>]
+                              [--verifySSL=<bool>]
+                              [--project=<prj>]
+                              [--ssh_pat_url=<url>]
+                              [--ssh_pat_port=<int>]
+
     Options:
         --removeProtectedBranches   Remove protected branches in all subprojects.
+        --user=<userName>           Your Gitlab user name.
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
+                                    [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
+                                    [default: .grapeconfig.project.verifySSL]
+        --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
+                                    https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
+                                    [default: .grapeconfig.project.name]
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_port]
 
     """
     def __init__(self):
@@ -22,32 +47,26 @@ class GitlabAdmin(Option):
 
     @log_wrapper
     def execute(self, args):
-        grape_gitlab = GrapeGitlabAdapter(workspace_dir=os.getcwd())
-        logging.info(f"\nPROJECT:{p}")
-        project = grape_gitlab.project("GRP")
+        config = config_parser_global.grapeConfig()
+        name = args["--user"]
+        if not name:
+            name = utility.getUserName()
+        verify = True if args["--verifySSL"].lower() == "true" else False
+
+        grape_gitlab = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
+                                                 verify=verify,
+                                                 port=int(args["--ssh_pat_port"]),
+                                                 ssh_path = args["--ssh_pat_url"],
+                                                 workspace_dir=self.workspace_dir
+                                                )
+        project = grape_gitlab.project(args["--project"])
         reponames = project.repolist()
         for reponame in reponames:
             logging.info(f" REPONAME{reponame}")
             try:
                 repo = project.repo(reponame)
-                for pull in repo.pullRequests(state="open"):
-                    logging.info(f"  TITLE:     {pull.title()}")
-                    logging.info(f"  STATE:     {pull.state()}")
-                    logging.info(f"  AUTHOR:    {pull.author()}")
-                    logging.info(f"  AUTHORNAME:{pull.authorName()}")
-                    logging.info(f"  DATE:      {pull.date()}")
-                    logging.info(f"  REVIEWERS: {pull.reviewers()}")
-                    logging.info(f"  FROM:      {pull.fromRef()}")
-                    logging.info(f"  TO:        {pull.toRef()}")
-                    logging.info(f"  DESC:      {pull.description()}")
-                    logging.info(f"  APPROVED:  {pull.approved()}")
-                    logging.info(f"  LINK:      {pull.link()}\n")
-                logging.info("GETTING OPEN PULL REQUEST")
-                pull = repo.getOpenPullRequest("feature/probinso/gitlab_support","develop")
-                logging.info(f"  TITLE:     {pull.title()}")
-                logging.info(f"  REVIEWERS: {pull.reviewers()}")
-                logging.info(f"  APPROVED:  {pull.approved()}")
-
+                for branch in repo.getProtectedBranches(state="open"):
+                    logging.info(f"{branch}")
             except:
                 pass
         return True

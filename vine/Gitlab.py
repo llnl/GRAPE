@@ -192,6 +192,9 @@ class Repo:
                                             "reviewers":reviewers})
          return PullRequest(mr, self.gitlab)
 
+    def getProtectedBranches(self):
+        return [x.name for x in self.project.protected_branches.list(all=True)]
+
 
 class PullRequest:
     """
