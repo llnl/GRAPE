@@ -1,5 +1,12 @@
 
 
+Wed Oct 27 08:01:42 2021 Benjamin T. Liu
+v1.36.8
+Reviewers: Peter Robinson
+
+Provide better output for gitlab query failures
+
+
 Tue Oct 26 12:52:40 2021 Peter B. Robinson
 v1.36.7
 Reviewers: Ben Liu
