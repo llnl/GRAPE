@@ -105,8 +105,13 @@ class GrapeGitlabAdapter:
     def projectlist(self):
         return [g.name for g in self._gitlab.groups.list(all=True)]
 
-    def project(self, name):
-        group_id = [x.id for x in self._gitlab.groups.list(all=True, search=name) if x.path.lower() == name.lower()][0]
+    def project(self, name, min_access_level=0):
+        matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
+        if matching_ids:
+            group_id = matching_ids[0]
+        else:
+            logging.info(f"Could not find group {name}.")
+            raise SystemExit("Abort")
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
 
@@ -194,7 +199,11 @@ class Repo:
          return mr
 
     def getProtectedBranches(self):
-        return [x.name for x in self.project.protected_branches.list(all=True)]
+        return [x.name for x in self.project.protectedbranches.list(all=True)]
+
+    def removeProtectedBranches(self):
+        for x in self.project.protectedbranches.list(all=True):
+           self.project.protectedbranches.delete(x.name)
 
 
 class PullRequest:

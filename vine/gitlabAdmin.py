@@ -59,16 +59,20 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                                  ssh_path = args["--ssh_pat_url"],
                                                  workspace_dir=self.workspace_dir
                                                 )
-        project = grape_gitlab.project(args["--project"])
+        projectname = args["--project"]
+        try:
+           # Only allow admin tasks to be performed if access level is maintainer or above
+           project = grape_gitlab.project(projectname, min_access_level=40)
+        except:
+           logging.info(f"Project {projectname} does not exist or you do not have admin privileges!")
+           return False
+           
         reponames = project.repolist()
         for reponame in reponames:
-            logging.info(f" REPONAME{reponame}")
-            try:
-                repo = project.repo(reponame)
-                for branch in repo.getProtectedBranches(state="open"):
-                    logging.info(f"{branch}")
-            except:
-                pass
+            repo = project.repo(reponame)
+            logging.info(f"Repository {reponame}")
+            logging.info(f"Removing branch protection from {repo.getProtectedBranches()}")
+            repo.removeProtectedBranches()
         return True
 
     def setDefaultConfig(self, config):
