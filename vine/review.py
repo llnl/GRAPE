@@ -445,6 +445,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         revList = []
                     reviewers += revList
                 if not reviewers:
+                    print(f"calling reviewers")
                     reviewers = [r[0] for r in request.reviewers()]
                 logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
