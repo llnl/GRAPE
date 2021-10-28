@@ -241,10 +241,14 @@ class PullRequest:
                 approval_rule = ar
                 break
 
-        if approval_rule is None:
-            return []
         ret = {}
-        for approver in ar.eligible_approvers:
+        if approval_rule is None:
+            approvers_ids = self.mergerequest.reviewers_ids;
+            approvers = [self.gitlab.users.list(all=True,extern_uid=x) for x in approver_ids]
+        else:
+            approvers = ar.eligible_approvers
+
+        for approver in approvers:
             ret[approver["username"]] = (approver["username"], False, approver["name"])
 
         approvals = self.mergerequest.approvals.get()
