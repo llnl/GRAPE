@@ -67,12 +67,20 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            logging.info(f"Project {projectname} does not exist or you do not have admin privileges!")
            return False
            
-        reponames = project.repolist()
-        for reponame in reponames:
-            repo = project.repo(reponame)
-            logging.info(f"Repository {reponame}")
-            logging.info(f"Removing branch protection from {repo.getProtectedBranches()}")
-            repo.removeProtectedBranches()
+        task_completed = False
+        if args["--removeProtectedBranches"]:
+           reponames = project.repolist()
+           for reponame in reponames:
+               repo = project.repo(reponame)
+               logging.info(f"Repository {reponame}")
+               logging.info(f"Removing branch protection from {repo.getProtectedBranches()}")
+               repo.removeProtectedBranches()
+           task_completed = True
+
+        if not task_completed:
+           logging.info("No gitlab-admin task specified!")
+           return False
+        
         return True
 
     def setDefaultConfig(self, config):
