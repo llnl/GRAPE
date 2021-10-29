@@ -1216,6 +1216,36 @@ options are at least listed below.
                                     Defaults to the public branch for <b1>.
 
     
+## gitlab-admin
+
+    grape gitlab-admin 
+    Perform gitlab administration tasks.
+    Usage: grape-gitlab-admin [--removeProtectedBranches]
+                              [--user=<userName>]
+                              [--codeReviewsURL=<url>]
+                              [--verifySSL=<bool>]
+                              [--project=<prj>]
+                              [--ssh_pat_url=<url>]
+                              [--ssh_pat_port=<int>]
+
+    Options:
+        --removeProtectedBranches   Remove protected branches in all subprojects.
+        --user=<userName>           Your Gitlab user name.
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
+                                    [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
+                                    [default: .grapeconfig.project.verifySSL]
+        --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
+                                    https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
+                                    [default: .grapeconfig.project.name]
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_port]
+
+    
 ## q
 
     grape q
