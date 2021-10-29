@@ -1,5 +1,12 @@
 
 
+Fri Oct 29 10:22:15 2021 Peter B. Robinson
+v1.36.10
+Reviewers: Ben Liu
+
+GRAPE was only looking at reviewers added by grape, now pays attention to reviewers added through the web interface.
+
+
 Wed Oct 27 08:27:24 2021 Benjamin T. Liu
 v1.36.9
 Reviewers: Peter Robinson
