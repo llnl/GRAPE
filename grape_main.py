@@ -3,6 +3,8 @@ from contextlib import contextmanager
 import os
 import sys
 
+sys.dont_write_bytecode = True
+
 pythonMajorVersion = sys.version_info[0]
 pythonMinorVersion = sys.version_info[1]
 

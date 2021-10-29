@@ -234,17 +234,10 @@ class PullRequest:
         """
         Returns [(username,bool(approved),displayname)...]
         """
-        approval_rule = None
-        approval_rules = self.mergerequest.approval_rules.list(all=True)
-        for ar in approval_rules:
-            if ar.name == GRAPE_GITLAB_APPROVAL_RULE_NAME:
-                approval_rule = ar
-                break
 
-        if approval_rule is None:
-            return []
         ret = {}
-        for approver in ar.eligible_approvers:
+
+        for approver in self.mergerequest.reviewers:
             ret[approver["username"]] = (approver["username"], False, approver["name"])
 
         approvals = self.mergerequest.approvals.get()
