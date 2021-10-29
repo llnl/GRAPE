@@ -79,7 +79,9 @@ class GrapeGitlabAdapter:
                     logging.info("empty list from gitlab project.")
                     raise gitlab.exceptions.GitlabAuthenticationError()
             except gitlab.exceptions.GitlabAuthenticationError as e:
-                logging.debug(e, type(e), f"numAttempts is {numAttempts}")
+                logging.debug(e)
+                logging.debug(type(e))
+                logging.debug(f"numAttempts is {numAttempts}")
                 if numAttempts == 0:
                     logging.info("session expired...")
                     try:
@@ -162,7 +164,12 @@ class Project:
         return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name):
-        project_id = [x.id for x in self.group.projects.list(all=True, search=name) if x.name == name][0]
+        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name) if x.name == name]
+        if matching_ids:
+            project_id = matching_ids[0]
+        else:
+            logging.info(f"Could not find project {name}.")
+            raise SystemExit("Abort")
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
 
@@ -234,17 +241,10 @@ class PullRequest:
         """
         Returns [(username,bool(approved),displayname)...]
         """
-        approval_rule = None
-        approval_rules = self.mergerequest.approval_rules.list(all=True)
-        for ar in approval_rules:
-            if ar.name == GRAPE_GITLAB_APPROVAL_RULE_NAME:
-                approval_rule = ar
-                break
 
-        if approval_rule is None:
-            return []
         ret = {}
-        for approver in ar.eligible_approvers:
+
+        for approver in self.mergerequest.reviewers:
             ret[approver["username"]] = (approver["username"], False, approver["name"])
 
         approvals = self.mergerequest.approvals.get()
@@ -287,7 +287,12 @@ class PullRequest:
         if reviewers:
             reviewer_ids = []
             for r in reviewers:
-                gitlab_reviewer = self.gitlab.users.list(all=True, username=r)[0]
+                matching_reviewers = self.gitlab.users.list(all=True, username=r)
+                if matching_reviewers:
+                   gitlab_reviewer = matching_reviewers[0]
+                else:
+                   logging.info(f"Could not find reviewer {r}.")
+                   raise SystemExit("Abort")
                 reviewer_ids.append(gitlab_reviewer.id)
             self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
             self.mergerequest.reviewer_ids = reviewer_ids
