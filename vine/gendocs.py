@@ -3,6 +3,8 @@ import io
 import os
 import sys
 
+sys.dont_write_bytecode = True
+
 python_major_version = sys.version_info[0]
 python_minor_version = sys.version_info[1]
 if not python_major_version == 3 and python_minor_version >=6:

@@ -8,6 +8,8 @@ import sys
 import tempfile
 import unittest
 
+sys.dont_write_bytecode = True
+
 # Assert tests are ran with Python 3.6 or greater.
 pythonMajorVersion = sys.version_info[0]
 pythonMinorVersion = sys.version_info[1]
