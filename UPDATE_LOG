@@ -1,5 +1,18 @@
 
 
+Mon Nov  1 09:53:52 2021 Benjamin T. Liu
+v1.36.12
+Reviewers: Peter Robinson
+
+Fix path for gitlab review
+
+- Previously incorrect if run from somewhere other than the workspace dir for project with subprojects
+
+Prevent python cache file generation for doc generation and testing
+
+- vine/gendocs.py is directly called during publishing in grape project
+
+
 Fri Oct 29 10:30:30 2021 Benjamin T. Liu
 v1.36.11
 Reviewers: Peter Robinson
