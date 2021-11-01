@@ -11,7 +11,10 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     """
     grape gitlab-admin 
     Perform gitlab administration tasks.
-    Usage: grape-gitlab-admin [--removeProtectedBranches]
+    Usage: grape-gitlab-admin [--dry]
+                              [--removeProtectedBranches]
+                              [--disableLFS]
+                              [--disableSubprojectCI]
                               [--user=<userName>]
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
@@ -20,7 +23,10 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--ssh_pat_port=<int>]
 
     Options:
-        --removeProtectedBranches   Remove protected branches in all subprojects.
+        --dry                       Do not actually perform administration tasks, just perform a dry run.
+        --removeProtectedBranches   Remove protected branches in main project and all subprojects.
+        --disableLFS                Disable LFS in main project and all subprojects.
+        --disableSubprojectCI       Disable CI in all subprojects.
         --user=<userName>           Your Gitlab user name.
         --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
                                     [default: .grapeconfig.project.codeReviewsURL]
@@ -68,14 +74,49 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            return False
            
         task_completed = False
-        if args["--removeProtectedBranches"]:
-           reponames = project.repolist()
-           for reponame in reponames:
-               repo = project.repo(reponame)
-               logging.info(f"Repository {reponame}")
-               logging.info(f"Removing branch protection from {repo.getProtectedBranches()}")
-               repo.removeProtectedBranches()
-           task_completed = True
+
+        reponames = project.repolist()
+        for reponame in reponames:
+            repo = project.repo(reponame)
+            logging.info(f"Repository {reponame}")
+
+            if args["--removeProtectedBranches"]:
+               protectedBranches = repo.getProtectedBranches()
+               if protectedBranches:
+                  logging.info(f"\tRemoving branch protection from {protectedBranches}...")
+                  if args["--dry"]:
+                     logging.info("\t[Dry run]: branch protection not removed")
+                  else:
+                     repo.removeProtectedBranches()
+               else:
+                  logging.info("\tNo protected branches")
+               task_completed = True
+
+            if args["--disableLFS"]:
+               logging.info("\tDisabling LFS...")
+               if repo.project.lfs_enabled:
+                  if args["--dry"]:
+                     logging.info("\t[Dry run]: LFS not disabled")
+                  else:
+                     repo.project.lfs_enabled = False
+                     repo.project.save()
+               else:
+                  logging.info("\tPreviously disabled")
+               task_completed = True
+
+            if args["--disableSubprojectCI"]:
+               topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
+               if repo.project.name != topRepo.project.name:
+                  if repo.project.builds_access_level != "disabled":
+                     logging.info("\tDisabling CI...")
+                     if args["--dry"]:
+                        logging.info("\t[Dry run]: CI not disabled")
+                     else:
+                        repo.project.builds_access_level = "disabled"
+                        repo.project.save()
+                  else:
+                     logging.info("\tPreviously disabled")
+               task_completed = True
 
         if not task_completed:
            logging.info("No gitlab-admin task specified!")
