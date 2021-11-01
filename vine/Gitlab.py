@@ -130,7 +130,7 @@ class GrapeGitlabAdapter:
             # strip off the git extension
             repo_name = '.'.join(repo_name.split('.')[:-1])
         elif isSubmodule:
-            fullpath = os.path.abspath(path)
+            fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
             url =  git.config(f"--get submodule.{proj}.url",
