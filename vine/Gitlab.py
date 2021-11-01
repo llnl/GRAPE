@@ -164,7 +164,7 @@ class Project:
         return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name):
-        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name) if x.name == name]
+        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name) if x.name.lower() == name.lower()]
         if matching_ids:
             project_id = matching_ids[0]
         else:

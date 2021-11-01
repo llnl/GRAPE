@@ -1,4 +1,13 @@
 
+Mon Nov  1 12:59:32 2021 Benjamin T. Liu
+v1.36.13
+Reviewers: Peter Robinson, Paul Tsuji
+
+Fix case sensitivity in gitlab review
+
+- Allows review/publish of subprojects that are not lowercase
+
+
 Mon Nov  1 09:53:52 2021 Benjamin T. Liu
 v1.36.12
 Reviewers: Peter Robinson
