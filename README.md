@@ -1220,7 +1220,10 @@ options are at least listed below.
 
     grape gitlab-admin 
     Perform gitlab administration tasks.
-    Usage: grape-gitlab-admin [--removeProtectedBranches]
+    Usage: grape-gitlab-admin [--dry]
+                              [--removeProtectedBranches]
+                              [--disableLFS]
+                              [--disableSubprojectCI]
                               [--user=<userName>]
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
@@ -1229,7 +1232,10 @@ options are at least listed below.
                               [--ssh_pat_port=<int>]
 
     Options:
-        --removeProtectedBranches   Remove protected branches in all subprojects.
+        --dry                       Do not actually perform administration tasks, just perform a dry run.
+        --removeProtectedBranches   Remove protected branches in main project and all subprojects.
+        --disableLFS                Disable LFS in main project and all subprojects.
+        --disableSubprojectCI       Disable CI in all subprojects.
         --user=<userName>           Your Gitlab user name.
         --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
                                     [default: .grapeconfig.project.codeReviewsURL]
