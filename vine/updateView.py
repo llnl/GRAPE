@@ -133,7 +133,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         # Set the default value for the gui
                         subIsActive = subproject in activeSubprojects
                         included[subproject] = subIsActive
-                        self.uvManager.createEntry(subproject, subIsActive)
+                        bareSubproject = subproject.partition(directory + os.path.sep)[2]
+                        self.uvManager.createEntry(directory, bareSubproject, subIsActive)
                     else:
                         included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                                  'y' if (subproject in activeSubprojects) else 'n')
@@ -144,7 +145,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 # Set the default value for the gui
                 subIsActive = subproject in activeSubprojects
                 included[subproject] = subIsActive
-                self.uvManager.createEntry(subproject, subIsActive)
+                self.uvManager.createEntry("", subproject, subIsActive)
             else:
                 included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                          'y' if (subproject in activeSubprojects) else 'n')
@@ -605,23 +606,23 @@ class UVManager:
         self.currentRow = self.currentRow + 2
 
         index = self.currentProjectIndex
-        activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(activelist, inactivelist,
+        activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(directory, activelist, inactivelist,
                                                                               self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
-        inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(activelist, inactivelist,
+        inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(directory, activelist, inactivelist,
                                                                               self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
 
         activeall = Tk.Button(activepanel, text="activate all", borderwidth=0, foreground="darkblue",
-                              command = lambda : self.activateAll(activelist, inactivelist,
-                                                                   self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                              command = lambda : self.activateAll(directory, activelist, inactivelist,
+                                                                  self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
         activeall.grid(row=1, column=0, columnspan=2)
         inactiveall = Tk.Button(inactivepanel, text="deactivate all", borderwidth=0, foreground="darkblue",
-                                command = lambda : self.deactivateAll(activelist, inactivelist,
-                                                                       self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                command = lambda : self.deactivateAll(directory, activelist, inactivelist,
+                                                                      self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
         inactiveall.grid(row=1, column=0, columnspan=2)
 
 
     # Create an entry for a subproject
-    def createEntry(self, subproject, isActive):
+    def createEntry(self, directory, subproject, isActive):
         if self.activeSets[self.currentProjectIndex] is None:
             self.activeSets[self.currentProjectIndex] = set()
         if self.inactiveSets[self.currentProjectIndex] is None:
@@ -629,55 +630,55 @@ class UVManager:
 
         if isActive:
             self.currentActiveList.insert(Tk.END, subproject)
-            self.activeSets[self.currentProjectIndex].add(subproject)
+            self.activeSets[self.currentProjectIndex].add(os.path.join(directory,subproject))
         else:
             self.currentInactiveList.insert(Tk.END, subproject)
-            self.inactiveSets[self.currentProjectIndex].add(subproject)
+            self.inactiveSets[self.currentProjectIndex].add(os.path.join(directory,subproject))
 
     # Activate selected project
-    def activateProject(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+    def activateProject(self, directory, activelist, inactivelist, activeset, inactiveset, originalactiveset):
         index = inactivelist.index(Tk.ACTIVE)
         entry = inactivelist.get(index)
         inactivelist.delete(index)
-        inactiveset.remove(entry)
+        inactiveset.remove(os.path.join(directory,entry))
         activelist.insert(Tk.END, entry)
-        activeset.add(entry)
+        activeset.add(os.path.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
         self.master.update()
 
     # Deactivate selected project
-    def deactivateProject(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+    def deactivateProject(self, directory, activelist, inactivelist, activeset, inactiveset, originalactiveset):
         index = activelist.index(Tk.ACTIVE)
         entry = activelist.get(index)
         activelist.delete(index)
-        activeset.remove(entry)
+        activeset.remove(os.path.join(directory,entry))
         inactivelist.insert(Tk.END, entry)
-        inactiveset.add(entry)
+        inactiveset.add(os.path.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
         self.master.update()
 
     # Activate all projects in the section
-    def activateAll(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+    def activateAll(self, directory, activelist, inactivelist, activeset, inactiveset, originalactiveset):
         entries = inactivelist.get(0, Tk.END)
         inactivelist.delete(0,Tk.END)
         for entry in entries:
             activelist.insert(Tk.END, entry)
-            activeset.add(entry)
-            inactiveset.remove(entry)
+            activeset.add(os.path.join(directory,entry))
+            inactiveset.remove(os.path.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
         self.master.update()
 
     # Deactivate all projects in the section
-    def deactivateAll(self, activelist, inactivelist, activeset, inactiveset, originalactiveset):
+    def deactivateAll(self, directory, activelist, inactivelist, activeset, inactiveset, originalactiveset):
         entries = activelist.get(0, Tk.END)
         activelist.delete(0,Tk.END)
         for entry in entries:
             inactivelist.insert(Tk.END, entry)
-            inactiveset.add(entry)
-            activeset.remove(entry)
+            inactiveset.add(os.path.join(directory,entry))
+            activeset.remove(os.path.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
         self.master.update()
