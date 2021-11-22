@@ -1,5 +1,14 @@
 
 
+Mon Nov 22 14:39:50 2021 Benjamin T. Liu
+v1.36.15
+Reviewers: Peter Robinson, Al Nichols
+
+Fix project highlighting for changed entries
+
+- Was broken in v4.36.14
+
+
 Mon Nov 22 09:26:49 2021 Benjamin T. Liu
 v1.36.14
 Reviewers: Peter Robinson, Al Nichols
