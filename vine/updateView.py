@@ -643,8 +643,8 @@ class UVManager:
         inactiveset.remove(os.path.join(directory,entry))
         activelist.insert(Tk.END, entry)
         activeset.add(os.path.join(directory,entry))
-        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
 
     # Deactivate selected project
@@ -655,8 +655,8 @@ class UVManager:
         activeset.remove(os.path.join(directory,entry))
         inactivelist.insert(Tk.END, entry)
         inactiveset.add(os.path.join(directory,entry))
-        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
 
     # Activate all projects in the section
@@ -667,8 +667,8 @@ class UVManager:
             activelist.insert(Tk.END, entry)
             activeset.add(os.path.join(directory,entry))
             inactiveset.remove(os.path.join(directory,entry))
-        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
 
     # Deactivate all projects in the section
@@ -679,18 +679,18 @@ class UVManager:
             inactivelist.insert(Tk.END, entry)
             inactiveset.add(os.path.join(directory,entry))
             activeset.remove(os.path.join(directory,entry))
-        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged)
-        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit)
+        self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
+        self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
 
     # Resort and format the list boxes
-    def resortList(self, listbox, originalset = None, inSetColor = None, notInSetColor = None):
+    def resortList(self, listbox, originalset = None, inSetColor = None, notInSetColor = None, directory = ""):
         entries = listbox.get(0, Tk.END)
         listbox.delete(0, Tk.END)
         for entry in sorted(entries):
             listbox.insert(Tk.END, entry)
             if originalset is not None:
-                if entry in originalset:
+                if os.path.join(directory,entry) in originalset:
                     listbox.itemconfig(Tk.END, fg=inSetColor)
                 else:
                     listbox.itemconfig(Tk.END, fg=notInSetColor)
