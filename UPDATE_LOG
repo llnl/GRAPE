@@ -1,4 +1,12 @@
+Mon Nov 22 09:26:49 2021 Benjamin T. Liu
+v1.36.14
+Reviewers: Peter Robinson, Al Nichols
 
+Fixes for grape uv --gui
+
+- Allow widgets to resize
+
+- Remove enclosing directory from list box display
 
 Tue Nov  2 14:15:38 2021 Benjamin T. Liu
 v1.37.8
