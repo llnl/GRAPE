@@ -45,7 +45,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                 a new branch (in repositories where the current branch does not exist).
                                 [default: .grapeconfig.post-checkout.syncWithOrigin]
         --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times.
-        --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
+        --rm=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
         --gui                   Use the graphical user interface to select your view.
     """
     def __init__(self):
