@@ -133,7 +133,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         # Set the default value for the gui
                         subIsActive = subproject in activeSubprojects
                         included[subproject] = subIsActive
-                        bareSubproject = subproject.partition(directory + os.path.sep)[2]
+                        # subproject always uses "/" even on Windows
+                        bareSubproject = subproject.partition(directory + "/")[2]
                         self.uvManager.createEntry(directory, bareSubproject, subIsActive)
                     else:
                         included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
