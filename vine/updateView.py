@@ -547,8 +547,9 @@ class UVManager:
         # save the original state
         for i in [0, 1]:
             self.originalActiveSets[i] = set()
-            for sub in self.activeSets[i]:
-                self.originalActiveSets[i].add(sub)
+            if self.activeSets[i]:
+               for sub in self.activeSets[i]:
+                   self.originalActiveSets[i].add(sub)
 
 
     # Start a new frame for different project type
@@ -570,9 +571,8 @@ class UVManager:
     # Start a new section for a different directory
     def createSection(self, directory):
         # sort the previous section (if any)
-        if self.currentActiveList is not None:
-            self.resortList(self.currentActiveList)
-            self.resortList(self.currentInactiveList)
+        self.resortList(self.currentActiveList)
+        self.resortList(self.currentInactiveList)
 
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory}")
@@ -685,12 +685,13 @@ class UVManager:
 
     # Resort and format the list boxes
     def resortList(self, listbox, originalset = None, inSetColor = None, notInSetColor = None, directory = ""):
-        entries = listbox.get(0, Tk.END)
-        listbox.delete(0, Tk.END)
-        for entry in sorted(entries):
-            listbox.insert(Tk.END, entry)
-            if originalset is not None:
-                if os.path.join(directory,entry) in originalset:
-                    listbox.itemconfig(Tk.END, fg=inSetColor)
-                else:
-                    listbox.itemconfig(Tk.END, fg=notInSetColor)
+        if listbox:
+           entries = listbox.get(0, Tk.END)
+           listbox.delete(0, Tk.END)
+           for entry in sorted(entries):
+               listbox.insert(Tk.END, entry)
+               if originalset is not None:
+                   if os.path.join(directory,entry) in originalset:
+                       listbox.itemconfig(Tk.END, fg=inSetColor)
+                   else:
+                       listbox.itemconfig(Tk.END, fg=notInSetColor)
