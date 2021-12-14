@@ -1,5 +1,18 @@
 
 
+Tue Dec 14 09:53:25 2021 Benjamin T. Liu
+v1.37.10
+Reviewers: Peter Robinson, Al Nichols
+
+Fixes for grape uv
+
+- Fix gui for Windows
+
+- Fix gui for empty subproject lists
+
+- Fix documentation
+
+
 Mon Nov 22 14:51:33 2021 Benjamin T. Liu
 v1.37.9
 Reviewers: Peter Robinson, Al Nichols
