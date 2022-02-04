@@ -27,7 +27,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos
-        --setProtectedBranches      Set and configure protected branches in main project and all subprojects.
+        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --user=<userName>           Your Gitlab user name.
