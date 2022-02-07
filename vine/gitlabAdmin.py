@@ -54,6 +54,61 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     def description(self):
         return "Gitlab administration."
 
+    # Returns a dictionary of repo => list of public branch names
+    # for each repo in the project that is in the grape project
+    def getGrapeReposAndPublicBranches(self, project, verbose):
+        grapeRepos = {}
+
+        config = config_parser_global.grapeConfig()
+
+        # List of repos in gitlab project
+        reponames = project.repolist()
+        projectname = project.name()
+
+        # Figure out the public branches
+        publicbranches = config.getPublicBranchList()
+        branchMapping = config.getMapping("workspace", "submodulepublicmappings")
+        submodule_publicbranches = []
+        for branch in publicbranches:
+           submodule_publicbranches.append(branchMapping[branch])
+
+        # Determine which repos are registered with grape
+        outer = os.path.splitext(os.path.basename(config["repo"]["url"]))[0]
+        try:
+           found = [item.lower() for item in reponames].index(outer.lower())
+           del reponames[found]
+           grapeRepos[outer] = publicbranches
+        except ValueError:
+           if verbose:
+              logging.info(f"Outer level repo {outer} is not in gitlab project {projectname}")
+
+        grapeRepos = {outer : publicbranches}
+        for name in config.getAllNestedSubprojects():
+           url = config[f"nested-{name}"]["url"]
+           grapeReponame = os.path.splitext(os.path.basename(url))[0]
+           try:
+              found = [item.lower() for item in reponames].index(grapeReponame.lower())
+              del reponames[found]
+              grapeRepos[grapeReponame] = publicbranches
+           except ValueError:
+              if verbose:
+                 logging.info(f"Nested subproject {grapeReponame} is not in gitlab project {projectname}")
+              
+        for path,url in git.getAllSubmoduleURLMap(execution_path=self.workspace_dir).items():
+           grapeReponame = os.path.splitext(os.path.basename(url))[0]
+           try:
+              found = [item.lower() for item in reponames].index(grapeReponame.lower())
+              del reponames[found]
+              grapeRepos[grapeReponame] = submodule_publicbranches
+           except ValueError:
+              if verbose:
+                 logging.info(f"Submodule {grapeReponame} is not in gitlab project {projectname}")
+
+        if verbose:
+            logging.info(f"The following repos in gitlab project {projectname} are not registered with grape:\n{reponames}")
+
+        return grapeRepos
+         
     @log_wrapper
     def execute(self, args):
         config = config_parser_global.grapeConfig()
@@ -78,52 +133,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            
         task_completed = False
 
-        # List of repos in gitlab project
-        reponames = project.repolist()
+        grapeRepos = self.getGrapeReposAndPublicBranches(project=project, verbose=args["--verbose"])
 
-        # Figure out the public branches
-        publicbranches = config.getPublicBranchList()
-        branchMapping = config.getMapping("workspace", "submodulepublicmappings")
-        submodule_publicbranches = []
-        for branch in publicbranches:
-           submodule_publicbranches.append(branchMapping[branch])
-
-        # Determine which repos are registered with grape
-        outer = os.path.splitext(os.path.basename(config["repo"]["url"]))[0]
-        grapeRepos = {}
-        try:
-           found = [item.lower() for item in reponames].index(outer.lower())
-           del reponames[found]
-           grapeRepos[outer] = publicbranches
-        except ValueError:
-           if args["--verbose"]:
-              logging.info(f"Outer level repo {outer} is not in gitlab project {projectname}")
-
-        grapeRepos = {outer : publicbranches}
-        for name in config.getAllNestedSubprojects():
-           url = config[f"nested-{name}"]["url"]
-           grapeReponame = os.path.splitext(os.path.basename(url))[0]
-           try:
-              found = [item.lower() for item in reponames].index(grapeReponame.lower())
-              del reponames[found]
-              grapeRepos[grapeReponame] = publicbranches
-           except ValueError:
-              if args["--verbose"]:
-                 logging.info(f"Nested subproject {grapeReponame} is not in gitlab project {projectname}")
-              
-        for path,url in git.getAllSubmoduleURLMap(execution_path=self.workspace_dir).items():
-           grapeReponame = os.path.splitext(os.path.basename(url))[0]
-           try:
-              found = [item.lower() for item in reponames].index(grapeReponame.lower())
-              del reponames[found]
-              grapeRepos[grapeReponame] = submodule_publicbranches
-           except ValueError:
-              if args["--verbose"]:
-                 logging.info(f"Submodule {grapeReponame} is not in gitlab project {projectname}")
-
-        if args["--verbose"]:
-            logging.info(f"The following repos in gitlab project {projectname} are not registered with grape:\n{reponames}")
-            
         for reponame,public in grapeRepos.items():
             repo = project.repo(reponame)
             logging.info(f"Repository {reponame}")
