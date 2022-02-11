@@ -10,13 +10,15 @@ from vine.vine_logging import log_wrapper
 
 class DeleteBranch(Option, WorkspaceDirHandler):
     """ Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify]
+    Usage: grape-db [-D] [<branch>] [--verify] [--local-only | --remote-only]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
                     are trying to delete, this will detach you from the branch and then
                     delete it, issuing a warning that you are in a detached state.
-     --verify       Verifies the delete before performing it.
+    --local-only    Only deletes the local branch.
+    --remote-only   Only deletes the remote branch.
+    --verify        Verifies the delete before performing it.
 
     Arguments:
     <branch>        The branch to delete. Will ask for branch name if not included.
@@ -35,6 +37,9 @@ class DeleteBranch(Option, WorkspaceDirHandler):
     def execute(self, args):
         branch = args["<branch>"]
         force = args["-D"]
+        local_only = args["--local-only"]
+        remote_only = args["--remote-only"]
+
         if not branch:
             branch = utility.userInput("Enter name of branch to delete")
 
@@ -44,9 +49,21 @@ class DeleteBranch(Option, WorkspaceDirHandler):
             if not proceed:
                 return True
 
-        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            deleteBranch, branch=branch, globalArgs=[force],
-            workspace_dir=self.workspace_dir)
+        current_branch = git.currentBranch(execution_path=self.workspace_dir)
+
+        if current_branch == branch and not force:
+            logging.info("Cannot delete the branch you are currntly on.  " +
+                         "Use -D to detach and then delete branch.")
+            return False
+        elif current_branch == branch and force:
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                detachThenForceDeleteBranch, branch=branch, globalArgs=[force],
+                workspace_dir=self.workspace_dir)
+        else:
+            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                deleteBranch, branch=branch, globalArgs=[force],
+                workspace_dir=self.workspace_dir)
+
         try:
             launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as e:
