@@ -10,7 +10,7 @@ from vine.vine_logging import log_wrapper
 
 class DeleteBranch(Option, WorkspaceDirHandler):
     """ Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify] [--local-only | --remote-only]
+    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
@@ -51,23 +51,23 @@ class DeleteBranch(Option, WorkspaceDirHandler):
 
         current_branch = git.currentBranch(execution_path=self.workspace_dir)
 
-        if current_branch == branch and not force:
+        if current_branch == branch and not force and not remote_only:
             logging.info("Cannot delete the branch you are currntly on.  " +
                          "Use -D to detach and then delete branch.")
             return False
-        elif current_branch == branch and force:
+        elif current_branch == branch and force and not remote_only:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                detachThenForceDeleteBranch, branch=branch, globalArgs=[force],
+                detachThenForceDeleteBranch, branch=branch, globalArgs=[local_only, remote_only],
                 workspace_dir=self.workspace_dir)
         else:
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                deleteBranch, branch=branch, globalArgs=[force],
+                deleteBranch, branch=branch, globalArgs=[force, local_only, remote_only],
                 workspace_dir=self.workspace_dir)
 
         try:
             launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as e:
-            handleDeleteBranchMRE(e, force)
+            handleDeleteBranchMRE(e, force, local_only, remote_only)
 
         return True
 
@@ -77,32 +77,49 @@ class DeleteBranch(Option, WorkspaceDirHandler):
 
 def deleteBranch(repo='', branch='master', args=None, *, workspace_dir):
     force = args[0]
-    forceStr = "-D" if force is True else "-d"
-    logging.info(f"deleting {branch} in {repo}...")
-    try:
-        git.branch(f"{forceStr} {branch}", execution_path=repo)
-    except grape_errors.GrapeGitError as e:
-        if "branch" in e.gitOutput and "not found." in e.gitOutput:
-            pass
-        else:
-            raise e
+    local_only = args[1]
+    remote_only = args[2]
 
-    if f"origin/{branch}" in git.branch("-r", execution_path=repo):
+    if not remote_only:
+        forceStr = "-D" if force is True else "-d"
+        logging.info(f"deleting {branch} in {repo}...")
         try:
-            git.push(f"--delete origin {branch}", throwOnFail=True, execution_path=repo)
+            git.branch(f"{forceStr} {branch}", execution_path=repo)
         except grape_errors.GrapeGitError as e:
-            if "remote ref does not exist" in e.gitOutput.lower():
-                pass
+            if "branch" in e.gitOutput and "not found." in e.gitOutput:
+                logging.warning(f"local branch origin/{branch} not found in {repo}")
+            else:
+                raise e
+
+    if not local_only:
+        logging.info(f"deleting origin/{branch} in {repo}...")
+        if f"origin/{branch}" in git.branch("-r", execution_path=repo):
+            try:
+                git.push(f"--delete origin {branch}", throwOnFail=True, execution_path=repo)
+            except grape_errors.GrapeGitError as e:
+                if "remote ref does not exist" in e.gitOutput.lower():
+                    pass
+        else:
+            logging.warning(f"remote branch origin/{branch} not found in {repo}")
 
 
 def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, workspace_dir):
-    logging.warning(
-        f"*** WARNING ***: Detaching in order to delete {branch} in " +
-        f"{repo}. You will be in a headless state.")
-    git.checkout("--detach HEAD", execution_path=repo)
-    git.branch(f"-D {branch}", execution_path=repo)
-    if f"origin/{branch}" in git.remoteBranches(execution_path=repo):
-        git.push(f"--delete origin {branch}", throwOnFail=False, execution_path=repo)
+    local_only = args[0]
+    remote_only = args[1]
+
+    if not remote_only:
+        logging.warning(
+            f"*** WARNING ***: Detaching in order to delete {branch} in " +
+            f"{repo}. You will be in a headless state.")
+        git.checkout("--detach HEAD", execution_path=repo)
+        git.branch(f"-D {branch}", execution_path=repo)
+
+    if not local_only:
+        logging.info(f"deleting origin/{branch} in {repo}...")
+        if f"origin/{branch}" in git.remoteBranches(execution_path=repo):
+            git.push(f"--delete origin {branch}", throwOnFail=False, execution_path=repo)
+        else:
+            logging.warning(f"remote branch origin/{branch} not found in {repo}")
 
 
 def handleDetachThenForceMRE(mre):
@@ -111,7 +128,7 @@ def handleDetachThenForceMRE(mre):
         logging.error(f"{e1} {branch} {repo}")
     raise mre
 
-def handleDeleteBranchMRE(mre, force=False):
+def handleDeleteBranchMRE(mre, force=False, local_only=False, remote_only=False):
     detachTuples = []
     for e1, branch, repo in zip(mre.exceptions(), mre.branches(), mre.repos()):
         try:
@@ -149,6 +166,6 @@ def handleDeleteBranchMRE(mre, force=False):
                 raise e
 
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-        detachThenForceDeleteBranch, listOfRepoBranchArgTuples=detachTuples,
+        detachThenForceDeleteBranch, listOfRepoBranchArgTuples=detachTuples, globalArgs=[local_only, remote_only],
         workspace_dir=mre.workspace_dir)
     launcher.launchFromWorkspaceDir(handleMRE=handleDetachThenForceMRE)
