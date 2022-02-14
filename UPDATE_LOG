@@ -1,5 +1,12 @@
 
 
+Mon Feb 14 15:15:55 2022 Patrick Greene
+v1.37.12
+Reviewers: Peter Robinson, Ben Liu
+
+Added --remote-only and --local-only flags to grape db command
+
+
 Wed Feb  9 07:57:08 2022 Benjamin T. Liu
 v1.37.11
 Reviewers: Peter Robinson
