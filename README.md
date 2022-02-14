@@ -910,13 +910,15 @@ options are at least listed below.
     
 ## db
  Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify]
+    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only]
 
     Options:
     -D              Forces the deletion of unmerged branches. If you are on the branch you
                     are trying to delete, this will detach you from the branch and then
                     delete it, issuing a warning that you are in a detached state.
-     --verify       Verifies the delete before performing it.
+    --local-only    Only deletes the local branch.
+    --remote-only   Only deletes the remote branch.
+    --verify        Verifies the delete before performing it.
 
     Arguments:
     <branch>        The branch to delete. Will ask for branch name if not included.
