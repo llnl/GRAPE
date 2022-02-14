@@ -205,13 +205,17 @@ class Repo:
 
          return mr
 
-    def getProtectedBranches(self):
-        return [x.name for x in self.project.protectedbranches.list(all=True)]
-
-    def removeProtectedBranches(self):
-        for x in self.project.protectedbranches.list(all=True):
-           self.project.protectedbranches.delete(x.name)
-
+    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
+        replaced = False
+        # Remove the old protected branch if it already exists
+        if self.project.protectedbranches.list(all=True, search=name):
+           self.project.protectedbranches.delete(name)
+           replaced = True
+        self.project.protectedbranches.create({"name": name,
+                                               "push_access_level": push_access_level,
+                                               "merge_access_level": merge_access_level,
+                                               "allow_force_push": allow_force_push})
+        return replaced
 
 class PullRequest:
     """

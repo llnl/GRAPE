@@ -1221,7 +1221,8 @@ options are at least listed below.
     grape gitlab-admin 
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
-                              [--removeProtectedBranches]
+                              [--verbose]
+                              [--setProtectedBranches]
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--user=<userName>]
@@ -1233,7 +1234,8 @@ options are at least listed below.
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
-        --removeProtectedBranches   Remove protected branches in main project and all subprojects.
+        --verbose                   Print information about unaffected repos
+        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --user=<userName>           Your Gitlab user name.

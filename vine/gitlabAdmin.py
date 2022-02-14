@@ -2,6 +2,7 @@ import logging
 import os
 from vine import config_parser_global
 from vine import Gitlab
+from vine import grapeGit as git
 from vine import utility
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -12,7 +13,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     grape gitlab-admin 
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
-                              [--removeProtectedBranches]
+                              [--verbose]
+                              [--setProtectedBranches]
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--user=<userName>]
@@ -24,7 +26,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
-        --removeProtectedBranches   Remove protected branches in main project and all subprojects.
+        --verbose                   Print information about unaffected repos
+        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --user=<userName>           Your Gitlab user name.
@@ -51,6 +54,61 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     def description(self):
         return "Gitlab administration."
 
+    # Returns a dictionary of repo => list of public branch names
+    # for each repo in the project that is in the grape project
+    def getGrapeReposAndPublicBranches(self, project, verbose):
+        grapeRepos = {}
+
+        config = config_parser_global.grapeConfig()
+
+        # List of repos in gitlab project
+        reponames = project.repolist()
+        projectname = project.name()
+
+        # Figure out the public branches
+        publicbranches = config.getPublicBranchList()
+        branchMapping = config.getMapping("workspace", "submodulepublicmappings")
+        submodule_publicbranches = []
+        for branch in publicbranches:
+           submodule_publicbranches.append(branchMapping[branch])
+
+        # Determine which repos are registered with grape
+        outer = os.path.splitext(os.path.basename(config["repo"]["url"]))[0]
+        try:
+           found = [item.lower() for item in reponames].index(outer.lower())
+           del reponames[found]
+           grapeRepos[outer] = publicbranches
+        except ValueError:
+           if verbose:
+              logging.info(f"Outer level repo {outer} is not in gitlab project {projectname}")
+
+        grapeRepos = {outer : publicbranches}
+        for name in config.getAllNestedSubprojects():
+           url = config[f"nested-{name}"]["url"]
+           grapeReponame = os.path.splitext(os.path.basename(url))[0]
+           try:
+              found = [item.lower() for item in reponames].index(grapeReponame.lower())
+              del reponames[found]
+              grapeRepos[grapeReponame] = publicbranches
+           except ValueError:
+              if verbose:
+                 logging.info(f"Nested subproject {grapeReponame} is not in gitlab project {projectname}")
+              
+        for path,url in git.getAllSubmoduleURLMap(execution_path=self.workspace_dir).items():
+           grapeReponame = os.path.splitext(os.path.basename(url))[0]
+           try:
+              found = [item.lower() for item in reponames].index(grapeReponame.lower())
+              del reponames[found]
+              grapeRepos[grapeReponame] = submodule_publicbranches
+           except ValueError:
+              if verbose:
+                 logging.info(f"Submodule {grapeReponame} is not in gitlab project {projectname}")
+
+        if verbose:
+            logging.info(f"The following repos in gitlab project {projectname} are not registered with grape:\n{reponames}")
+
+        return grapeRepos
+         
     @log_wrapper
     def execute(self, args):
         config = config_parser_global.grapeConfig()
@@ -75,21 +133,20 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            
         task_completed = False
 
-        reponames = project.repolist()
-        for reponame in reponames:
+        grapeRepos = self.getGrapeReposAndPublicBranches(project=project, verbose=args["--verbose"])
+
+        for reponame,public in grapeRepos.items():
             repo = project.repo(reponame)
             logging.info(f"Repository {reponame}")
 
-            if args["--removeProtectedBranches"]:
-               protectedBranches = repo.getProtectedBranches()
-               if protectedBranches:
-                  logging.info(f"\tRemoving branch protection from {protectedBranches}...")
-                  if args["--dry"]:
-                     logging.info("\t[Dry run]: branch protection not removed")
+            if args["--setProtectedBranches"]:
+               for branch in public:
+                  # Set to allow developers+maintainers to merge and push, but not to force push
+                  replaced = repo.setProtectedBranch(branch, 30, 30, False)
+                  if replaced:
+                     logging.info(f"\tUpdating protected branch {branch}")
                   else:
-                     repo.removeProtectedBranches()
-               else:
-                  logging.info("\tNo protected branches")
+                     logging.info(f"\tProtecting branch {branch}")
                task_completed = True
 
             if args["--disableLFS"]:
