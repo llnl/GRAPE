@@ -52,7 +52,7 @@ class DeleteBranch(Option, WorkspaceDirHandler):
         current_branch = git.currentBranch(execution_path=self.workspace_dir)
 
         if current_branch == branch and not force and delete_local:
-            logging.info("Cannot delete the branch you are currntly on.  " +
+            logging.info("Cannot delete the branch you are currently on.  " +
                          "Use -D to detach and then delete branch.")
             return False
         elif current_branch == branch and force and delete_local:
