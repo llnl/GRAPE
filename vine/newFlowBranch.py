@@ -5,6 +5,7 @@ from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
+from vine import updateView
 from vine import utility
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
@@ -58,9 +59,10 @@ class NewBranchOption(Option, WorkspaceDirHandler):
         if not start:
             start = self._public
 
+        config = config_parser_global.grapeConfig()
 
         # decide whether to recurse
-        recurse = config_parser_global.grapeConfig().get(self.SECTION_WORKSPACE, 'manageSubmodules')
+        recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--noRecurse"]:
@@ -76,7 +78,6 @@ class NewBranchOption(Option, WorkspaceDirHandler):
         if args["--user"] != args["--user"].lower():
             utility.userInput("Converting username to lowercase.  Press any key to continue...")
             args["--user"] = args["--user"].lower()
-
 
         branchName = git.join_list_as_git_path([self._key, args["--user"], args["<descr>"]])
 
@@ -110,6 +111,31 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                 if not cleaned:
                     logging.info(f"Failed to remove old submodule for {sub}.")
                     return False
+
+        # Determine whether the public branch for the current branch is the
+        # same as the public branch for the new branch.
+        checkoutBeforeCreate = True
+        try:
+            currentBranch = git.currentBranch(execution_path=self.workspace_dir)
+            if currentBranch in config.get(Option.SECTION_FLOW, 'publicBranches'):
+               currentPublic = currentBranch
+            else:
+               currentPublic = config.getPublicBranchFor(currentBranch)
+            if currentPublic == start:
+               checkoutBeforeCreate = False
+        except:
+            pass
+
+
+        if checkoutBeforeCreate:
+            logging.info(f"Checking out public branch {start} before branch creation...")
+
+            updateView.safeSwitchWorkspaceToBranch(branch=start, checkoutArgs="", sync=False, workspace_dir=self.workspace_dir)
+            # Re-read the grape config from the new public branch
+            config_parser_global.resetGrapeConfig()
+            config_parser_global.read(workspace_dir=self.workspace_dir)
+            config = config_parser_global.grapeConfig()
+
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(createBranch,
                                                    runInSubmodules=recurse,

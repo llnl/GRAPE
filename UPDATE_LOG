@@ -1,4 +1,11 @@
 
+Wed Feb 16 11:25:02 2022 Benjamin T. Liu
+v1.36.16
+Reviewers: Peter Robinson, Patrick Greene
+
+Checkout the corresponding public branch before creating a new flow branch
+
+- Only do this if the public branch differs from the public branch for the current branch
 
 Mon Feb 14 15:15:55 2022 Patrick Greene
 v1.37.12
@@ -32,6 +39,7 @@ v1.37.9
 Reviewers: Peter Robinson, Al Nichols
 
 Mergeback of v1.36.14/15
+
 Mon Nov 22 14:39:50 2021 Benjamin T. Liu
 v1.36.15
 Reviewers: Peter Robinson, Al Nichols
