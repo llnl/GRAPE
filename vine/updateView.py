@@ -139,7 +139,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                                  'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
-            self.uvManager.createSection("top level")
+            self.uvManager.createSection()
         for subproject in sorted(toplevelSubs, key=lambda v: (v.upper(), v[0].islower())):
             if self.uvManager:
                 # Set the default value for the gui
@@ -568,14 +568,16 @@ class UVManager:
             self.currentProjectIndex = 1
 
     # Start a new section for a different directory
-    def createSection(self, directory):
+    def createSection(self, directory = ""):
+        directory_name = "top level" if directory == "" else directory
+        
         # sort the previous section (if any)
         if self.currentActiveList is not None:
             self.resortList(self.currentActiveList)
             self.resortList(self.currentInactiveList)
 
         activepanel = Tk.Frame()
-        activelabel = Tk.Label(activepanel, text=f"Active in {directory}")
+        activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
         activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
         activescroll.config(command=activelist.yview)
@@ -591,7 +593,7 @@ class UVManager:
         self.currentActiveList = activelist
 
         inactivepanel = Tk.Frame()
-        inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory}")
+        inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory_name}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
         inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
         inactivescroll.config(command=inactivelist.yview)
