@@ -1,5 +1,14 @@
 
 
+Fri Mar 11 08:50:26 2022 Benjamin T. Liu
+v1.36.17
+Reviewers: Peter Robinson, Patrick Greene
+
+Fix grape uv --gui bug for top-level nested subprojects
+
+- Toggling top-level subprojects previously caused grape to crash
+
+
 Wed Feb 16 11:25:02 2022 Benjamin T. Liu
 v1.36.16
 Reviewers: Peter Robinson, Patrick Greene
