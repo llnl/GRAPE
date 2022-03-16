@@ -48,6 +48,16 @@ def parseArgs(docstr, arguments, config):
 # with a 'N' or 'n'.
 def userInput(message, default=None):
     print(f"\n{message}")
+    if 'GITLAB_CI' in os.environ:
+        if not default:
+            return ""
+        elif default.lower()[0] == "y":
+            return True
+        elif default.lower()[0] == "n":
+            return False
+        else:
+            return default
+
     if default == "" or default is None:
         return input('==> ').strip()
     value = input(f"(def: {default}) ==> ").strip()
