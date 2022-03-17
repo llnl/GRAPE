@@ -29,11 +29,13 @@ from vine import workspace_dir_handler
 CLI =  """
 *** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 Calling grape by itself will pull up the grape menu.
-Usage: grape [-v | -q] [--np=<numProcs>] [--version] [<command> <args>...]
+Usage: grape [-v | -q] [-d] [--np=<numProcs>] [--version] [<command> <args>...]
 
 Options:
 -v           Run in verbose mode. This will print out git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
+-d           Defaults proposed by GRAPE used in place of prompting user for input.
+             This non-interactive option is for CI jobs and where users see fit.
 --np=<int>   The number of processes grape should use when performing parallel operations. Values
              less than 1 will use max number of processors available.
              Default value is configurable via the concurrency-control section in the .grapeconfig:
@@ -76,6 +78,10 @@ def startup():
     with open(os.path.join(vine_path, "VERSION"), 'r') as f:
         grapeVersion = f.read().split()[2]   
     args = docopt(CLI, version=grapeVersion, options_first=True )
+
+    # do not prompt user for input
+    if args["-d"]:
+        utility.IS_NON_INTERACTIVE = True
 
     # set the level of concurrency
     if args["--np"]:
