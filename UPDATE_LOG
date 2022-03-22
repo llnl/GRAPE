@@ -1,5 +1,13 @@
 
 
+Tue Mar 22 11:44:08 2022 David Bloss
+v1.37.16
+Reviewers: Peter Robinson, Ben Liu
+
+GRAPE checks environment variables for Gitlab CI variables. \
+If the most basic variable [GITLAB_CI](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html) exists then GRAPE is running from within a Gitlab CI job and will run non-interactively - not asking user for input.
+
+
 Wed Mar 16 10:39:06 2022 Benjamin T. Liu
 v1.37.15
 Reviewers: Peter Robinson
