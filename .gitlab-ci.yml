@@ -1,5 +1,4 @@
 include:
-  - .gitlab/artifacts.yml
   - .gitlab/rules.yml
   - .gitlab/runners.yml
   - .gitlab/test_LC.yml
