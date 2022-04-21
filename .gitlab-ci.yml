@@ -12,10 +12,10 @@ stages:
 
 test-all_rzgenie:
   stage: test
-  timeout: 15 minutes 
+  timeout: 30 minutes 
   variables:
     GIT_STRATEGY: clone
-    GIT_SUBMODULE_STRATEGY: none
+    GIT_DEPTH: "2"
   extends:
     - .run_on_merge_request
     - .run_rzgenie_shell
@@ -24,7 +24,9 @@ test-all_rzgenie:
 
 test-Windows:
   stage: test
-  timeout: 15 minutes
+  timeout: 30 minutes
+  variables:
+    GIT_DEPTH: "2"
   extends:
     - .run_manually
     - .run_ale3d_windows
