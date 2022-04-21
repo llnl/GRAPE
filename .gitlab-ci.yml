@@ -26,6 +26,6 @@ test-Windows:
   stage: test
   timeout: 15 minutes
   extends:
-    - .run_on_merge_request_unapproved_or_grape_commit_manually
+    - .run_manually
     - .test_Windows
   interruptible: false
