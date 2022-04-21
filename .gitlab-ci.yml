@@ -27,5 +27,6 @@ test-Windows:
   timeout: 15 minutes
   extends:
     - .run_manually
+    - .run_ale3d_windows
     - .test_Windows
   interruptible: false
