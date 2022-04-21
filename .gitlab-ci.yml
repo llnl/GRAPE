@@ -17,7 +17,6 @@ test-all_rzgenie:
     GIT_STRATEGY: clone
     GIT_SUBMODULE_STRATEGY: none
   extends:
-    - .cache_linux_build_pull
     - .run_on_merge_request
     - .run_rzgenie_shell
     - .test_linux
@@ -27,7 +26,6 @@ test-Windows:
   stage: test
   timeout: 15 minutes
   extends:
-    - .cache_window_build_pull
     - .run_on_merge_request_unapproved_or_grape_commit_manually
     - .test_Windows
   interruptible: false
