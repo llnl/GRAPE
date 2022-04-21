@@ -1,0 +1,4 @@
+#.artifact_report_test_results:
+#  artifacts:
+#    reports:
+#      junit: $CI_PROJECT_DIR/test/update/run/test_results.xml

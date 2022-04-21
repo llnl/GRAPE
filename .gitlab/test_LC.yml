@@ -1,0 +1,5 @@
+.test_linux
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./grape test
+

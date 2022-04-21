@@ -1,0 +1,4 @@
+.test_Windows
+  script:
+    - cd $CI_PROJECT_DIR
+    - py -3 ./grape_main.py test
