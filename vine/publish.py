@@ -54,6 +54,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
+                         [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
@@ -118,6 +119,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             [default: .grapeconfig.publish.buildDir]
     --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
+    --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
+                            testing during publish. 
+                            [default: .grapeconfig.publish.testCIJob]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
     --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
@@ -241,6 +245,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # test steps
         config.set(self.SECTION_PUBLISH, 'testCmds', '')
         config.set(self.SECTION_PUBLISH, 'testDir', '.')
+        config.set(self.SECTION_PUBLISH, 'testCIJob', '')
         # prepublish steps
         config.set(self.SECTION_PUBLISH, 'prepublishCmds', '')
         config.set(self.SECTION_PUBLISH, 'prepublishDir', '.')
@@ -391,7 +396,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     f"Choose 1 of :\n{self.order}")
                 return False
 
-        steps = {"build": self.performCustomBuildStep,
+        steps = {"checkCI": self.performCICheck,
+                 "build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
                  "prePublish": self.performCustomPrePublishSteps,
                  "tickVersion": self.tickVersion,
@@ -647,6 +653,23 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     f"Please checkout {topic} before publishing. ")
         return ret
 
+    def performCICheck(self, args):
+        ci_jobs = args["testCIJob"]
+        if ci_jobs:
+            ci_jobs = ci_jobs.split(',')
+        
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
+            username=args["--user"], url=args["--codeReviewsURL"],
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
+        repo = codeReviews.project(args["--project"]).repo(args["--repo"])
+        
+        passed = True
+        for job in ci_jobs:
+            passed = passed and repo.checkJobPassed(job)
+        self.progress["CIPassed"] = passed 
+            
+
     def performCustomStep(self, prefix, args):
         if not args[f"--{prefix}Cmds"]:
             return True
@@ -679,10 +702,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return True
 
     def performCustomBuildStep(self, args):
-        return self.performCustomStep("build", args) and self.checkInProgressLock(args)
+        
+        return (self.progress["CIPassed"] or self.performCustomStep("build", args)) and self.checkInProgressLock(args)
 
     def performCustomTestStep(self, args):
-        return self.performCustomStep("test", args) and self.checkInProgressLock(args)
+        return (self.progress["CIPassed"] or self.performCustomStep("test", args)) and self.checkInProgressLock(args)
 
     def performCustomPrePublishSteps(self, args):
         ret = self.performCustomStep("prepublish", args)

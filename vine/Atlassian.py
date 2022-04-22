@@ -209,6 +209,12 @@ class Repo(StashyNode):
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 
+    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
+        return False
+
+    def checkJobPassed(self, name):
+        return False
+
 
 
 

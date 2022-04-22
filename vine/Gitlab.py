@@ -217,6 +217,11 @@ class Repo:
                                                "allow_force_push": allow_force_push})
         return replaced
 
+    def checkJobPassed(self, name):
+        return True
+        
+        
+
 class PullRequest:
     """
     node is the dictionary with the state of the Pull Request.
