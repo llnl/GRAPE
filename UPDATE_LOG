@@ -1,5 +1,12 @@
 
 
+Fri Apr 22 12:24:42 2022 Peter B. Robinson
+v1.37.17
+Reviewers: Ben Liu, Alan Dayton
+
+Adds Gitlab CI integration.
+
+
 Tue Mar 22 11:44:08 2022 David Bloss
 v1.37.16
 Reviewers: Peter Robinson, Ben Liu
