@@ -354,6 +354,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def execute(self, args):
         self.set_progress_file(execution_path=self.workspace_dir)
 
+        # this is needed for all custom actions, ensure it is initialized for all cases here
+        self.progress["CIPassed"] = False
+
         if args["--abort"]:
             self.abort(args)
             return True
@@ -658,6 +661,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
         else:
+            # if there are no jobs to check against, short-circuit
             self.progress["CIPassed"] = False
             return True
         
