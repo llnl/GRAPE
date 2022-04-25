@@ -51,7 +51,7 @@ class GrapeGitlabAdapter:
 
     def generate_personal_access_token(self, port, ssh_url):
         command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api"
-        print(f"Generating token by executing {command}")
+        logging.info(f"Generating token by executing {command}")
         completed_process = subprocess.run(command,
                                            capture_output=True,
                                            shell=True)
@@ -222,7 +222,7 @@ class Repo:
         passed = False
         branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
         for pi in branch_pipelines:
-#            print(f"branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+            logging.debug(f"branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
             for job in pi.jobs.list(all=True, scope="success"):
                if job.name == job_name:
                    if job.commit["id"] == current_sha:
@@ -234,15 +234,15 @@ class Repo:
             merge_request_iid = merge_request.iid()
             merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
             for pi in merge_pipelines:
-#                print(f"merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                logging.debug(f"merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
                 for job in pi.jobs.list(all=True, scope="success"):
                    if job.name == job_name:
                        parents = job.commit["parent_ids"]
                        if current_sha in parents and target_sha in parents:
                            passed = True
-#                           print(f"\t\t{job.__dict__}\n\n")
-#        else:
-#            print(f"MR not found")
+                           logging.debug(f"\t\t{job.__dict__}\n\n")
+        else:
+            logging.debug(f"MR not found")
 
         return passed
         

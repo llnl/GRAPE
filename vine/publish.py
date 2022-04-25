@@ -680,7 +680,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                                     args["--public"]
                                                     )
         self.progress["CIPassed"] = passed 
-        print(f'CI Passed : {self.progress["CIPassed"]}')
+        if passed:
+            logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')
         return True
 
     def performCustomStep(self, prefix, args):
