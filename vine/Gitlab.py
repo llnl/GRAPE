@@ -221,26 +221,38 @@ class Repo:
         # manual jobs will have the branch name as a reference
         passed = False
         branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
+        # if there is a pipeline matching the current branch...
         for pi in branch_pipelines:
             logging.debug(f"branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+            # ... that has a successful job
             for job in pi.jobs.list(all=True, scope="success"):
+               # ... matching the job name the user asked for
                if job.name == job_name:
+                   # ... that ran aginst the current commit on this branch
                    if job.commit["id"] == current_sha:
+                       # then the job passed!
                        passed = True
+                       break
 
         # merge request jobs will have a reference based off the merge request iid
         merge_request = self.getOpenPullRequest(current_branch, target_branch)
         if merge_request:
             merge_request_iid = merge_request.iid()
             merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
+            #if there is a pipeline...
             for pi in merge_pipelines:
                 logging.debug(f"merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                # ... that contains a successful job...
                 for job in pi.jobs.list(all=True, scope="success"):
+                   # ... whose name matches the one the user cares about...
                    if job.name == job_name:
+                       # ... and was actually tested agains the merge of this commit and the target commit...
                        parents = job.commit["parent_ids"]
                        if current_sha in parents and target_sha in parents:
+                           # ...then the job passed!
                            passed = True
                            logging.debug(f"\t\t{job.__dict__}\n\n")
+                           break
         else:
             logging.debug(f"MR not found")
 

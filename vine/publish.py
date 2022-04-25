@@ -657,10 +657,18 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return ret
 
     def performCICheck(self, args):
+        """
+        The purpose of this check is to allow the publish process to use the fact that the result of a
+        merge between this branch and the public branch as they are right now did in fact past testing
+        on the server to skip the test in the local environment.
+        """
         ci_jobs = args["--testCIJob"]
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
         else:
+            # If the user did not explicitly name their CI jobs that count as building and testing,
+            # then this logic just skips the investigation of whether those jobs passed or not, avoiding
+            # unnecessary communication with the Gitlab server.
             # if there are no jobs to check against, short-circuit
             self.progress["CIPassed"] = False
             return True
