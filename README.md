@@ -606,6 +606,7 @@ options are at least listed below.
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>]
                          [--testCmds=<testStr>] [--testDir=<path>]
+                         [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
@@ -670,6 +671,9 @@ options are at least listed below.
                             [default: .grapeconfig.publish.buildDir]
     --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
+    --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
+                            testing during publish. 
+                            [default: .grapeconfig.publish.testCIJob]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
     --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
