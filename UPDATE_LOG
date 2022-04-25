@@ -1,5 +1,16 @@
 
 
+Mon Apr 25 14:46:42 2022 Peter B. Robinson
+v1.37.18
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+
+Adds capability for grape to verify publish build and test steps using successfully run Gitlab CI pipeline jobs.
+
+Configures grape to use test-all_rzgenie to verify it's own publish and test steps using Gitlab CI.
+
+
 Fri Apr 22 12:24:42 2022 Peter B. Robinson
 v1.37.17
 Reviewers: Ben Liu, Alan Dayton
