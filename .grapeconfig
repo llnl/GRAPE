@@ -29,7 +29,7 @@ topicCascadeTick = internal_release:2 ?:1
 [publish]
 buildcmds = 
 builddir = 
-testcijob = 
+testcijob = test-all_rzgenie
 testcmds = ./grape test
 testdir = ./
 prepublishcmds = vine/gendocs.py README.md , git add README.md

@@ -217,8 +217,34 @@ class Repo:
                                                "allow_force_push": allow_force_push})
         return replaced
 
-    def checkJobPassed(self, name):
-        return True
+    def checkJobPassed(self, job_name, current_sha, target_sha, current_branch, target_branch):
+        # manual jobs will have the branch name as a reference
+        passed = False
+        branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
+        for pi in branch_pipelines:
+#            print(f"branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+            for job in pi.jobs.list(all=True, scope="success"):
+               if job.name == job_name:
+                   if job.commit["id"] == current_sha:
+                       passed = True
+
+        # merge request jobs will have a reference based off the merge request iid
+        merge_request = self.getOpenPullRequest(current_branch, target_branch)
+        if merge_request:
+            merge_request_iid = merge_request.iid()
+            merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
+            for pi in merge_pipelines:
+#                print(f"merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                for job in pi.jobs.list(all=True, scope="success"):
+                   if job.name == job_name:
+                       parents = job.commit["parent_ids"]
+                       if current_sha in parents and target_sha in parents:
+                           passed = True
+#                           print(f"\t\t{job.__dict__}\n\n")
+#        else:
+#            print(f"MR not found")
+
+        return passed
         
         
 
@@ -286,6 +312,9 @@ class PullRequest:
     def version(self):
         # gitlab does not seem to have the same concept of a version exposed to the REST API
         return 123
+
+    def iid(self):
+        return self.mergerequest.iid
 
     # reviewers is a list of usernames
     def update(self, ver, title=None, description=None, reviewers=None):

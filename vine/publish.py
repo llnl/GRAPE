@@ -365,7 +365,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
         else:
-            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
+            self.order = ["checkCI", "testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview",
                           "markInProgress", "md2", "tickVersion", "updateLog",
                           "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
@@ -654,7 +654,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return ret
 
     def performCICheck(self, args):
-        ci_jobs = args["testCIJob"]
+        ci_jobs = args["--testCIJob"]
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
         
@@ -666,9 +666,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         
         passed = True
         for job in ci_jobs:
-            passed = passed and repo.checkJobPassed(job)
+            passed = passed and repo.checkJobPassed(job,
+                                                    git.SHA(args["--topic"], execution_path=self.workspace_dir),
+                                                    git.SHA(args["--public"], execution_path=self.workspace_dir),
+                                                    args["--topic"],
+                                                    args["--public"]
+                                                    )
         self.progress["CIPassed"] = passed 
-            
+        print(f'CI Passed : {self.progress["CIPassed"]}')
 
     def performCustomStep(self, prefix, args):
         if not args[f"--{prefix}Cmds"]:
