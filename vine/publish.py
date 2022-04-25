@@ -657,6 +657,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         ci_jobs = args["--testCIJob"]
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
+        else:
+            self.progress["CIPassed"] = False
+            return True
         
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
@@ -674,6 +677,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                                     )
         self.progress["CIPassed"] = passed 
         print(f'CI Passed : {self.progress["CIPassed"]}')
+        return True
 
     def performCustomStep(self, prefix, args):
         if not args[f"--{prefix}Cmds"]:
