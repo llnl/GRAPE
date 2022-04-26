@@ -915,7 +915,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         logFile = args["--updateLog"]
         logDir = args["--updateLogDir"]
         if logDir:
-            logFile = os.path.join(logDir,f"logFile_{self.progress['version']}")
+            logFile = os.path.join(logDir,f"{logFile}_{self.progress['version']}")
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
@@ -927,14 +927,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
             logFilePath = os.path.join(self.workspace_dir,logFile)
+            loglines = []
             if not logDir:
                 with io.open(logFilePath, 'r') as f:
                     loglines = f.readlines()
-                loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
                 updated_or_added  = "updated"
             else:
                 updated_or_added = "added"
-                loglines = commitMsg
+            loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
             git.commit(f"{logFile} -m \"GRAPE publish: {updated_or_added} log file " +
