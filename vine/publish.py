@@ -934,6 +934,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 updated_or_added  = "updated"
             else:
                 updated_or_added = "added"
+                loglines = commitMsg
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
             git.commit(f"{logFile} -m \"GRAPE publish: {updated_or_added} log file " +
