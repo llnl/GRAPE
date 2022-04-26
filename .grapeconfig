@@ -38,6 +38,7 @@ postpublishcmds =
 postpublishdir = 
 tickversion = True
 deletetopic = True
+updatelogdir = UPDATES
 updatelog = UPDATE_LOG
 logskipfirstlines = 0
 logentryheader = <date> <user>\n<version>\nReviewers: <reviewers>\n
