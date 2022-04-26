@@ -57,7 +57,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
-                         [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
+                         [--noUpdateLog | [[--updateLogDir=<dir>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
@@ -135,7 +135,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             [default: .grapeconfig.publish.postpublishDir]
     --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
-    --updateLog=<file>      The log file to update with the commit message for this branch.
+    --updateLogDir=<dir>    Directory to put update log messages.
+                            [default: .grapeconfig.publish.updateLogDir]
+    --updateLog=<file>      The log file to update with the commit message for this branch. If --updateLogDir is defined,
+                            this is the base file name for update message files.
                             [default: .grapeconfig.publish.updateLog]
     --skipFirstLines=<int>  The number of lines to skip in the updateLog file before inserting the commit message.
                             [default: .grapeconfig.publish.logSkipFirstLines]
@@ -909,6 +912,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noUpdateLog"]:
             return True
         logFile = args["--updateLog"]
+        logDir = args["--updateLogDir"]
+        if logDir:
+            logFile = os.path.join(logDir,f"logFile_{self.progress['version']")
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
@@ -920,12 +926,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
             logFilePath = os.path.join(self.workspace_dir,logFile)
-            with io.open(logFilePath, 'r') as f:
-                loglines = f.readlines()
-            loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+            if not logDir:
+                with io.open(logFilePath, 'r') as f:
+                    loglines = f.readlines()
+                loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+                updated_or_added  = "updated"
+            else:
+                updated_or_added = "added"
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
-            git.commit(f"{logFile} -m \"GRAPE publish: updated log file " +
+            git.commit(f"{logFile} -m \"GRAPE publish: {updated_or_added} log file " +
                        f"{logFile}\"", execution_path=self.workspace_dir)
         return self.checkInProgressLock(args)
 
