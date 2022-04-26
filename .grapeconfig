@@ -67,11 +67,14 @@ required = *
 
 [versioning]
 file = vine/VERSION
+fileIsDerived = True
 updatetag = True
 branchslotmappings = ?:3
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v
+mergerequestversionprefix = MR_
+
 
 [pre-push]
 
