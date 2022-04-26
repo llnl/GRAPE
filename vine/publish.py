@@ -937,7 +937,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
-            git.add(f"{logFilePath}")
+            git.add(f"{logFilePath}", execution_path=self.workspace_dir)
             git.commit(f"{logFile} -m \"GRAPE publish: {updated_or_added} log file " +
                        f"{logFile}\"", execution_path=self.workspace_dir)
         return self.checkInProgressLock(args)
