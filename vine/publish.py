@@ -263,6 +263,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
         # log file
         config.set(self.SECTION_PUBLISH, 'updateLog', '.grapepublishlog')
+        config.set(self.SECTION_PUBLISH, 'updateLogDir', '')
         config.set(self.SECTION_PUBLISH, 'logSkipFirstLines', '0')
         config.set(self.SECTION_PUBLISH, 'logEntryHeader', "<date> <user>\\n<version>\\n")
         # email config
