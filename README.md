@@ -609,7 +609,7 @@ options are at least listed below.
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
-                         [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
+                         [--noUpdateLog | [[--updateLogDir=<dir>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
@@ -687,7 +687,10 @@ options are at least listed below.
                             [default: .grapeconfig.publish.postpublishDir]
     --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
-    --updateLog=<file>      The log file to update with the commit message for this branch.
+    --updateLogDir=<dir>    Directory to put update log messages.
+                            [default: .grapeconfig.publish.updateLogDir]
+    --updateLog=<file>      The log file to update with the commit message for this branch. If --updateLogDir is defined,
+                            this is the base file name for update message files.
                             [default: .grapeconfig.publish.updateLog]
     --skipFirstLines=<int>  The number of lines to skip in the updateLog file before inserting the commit message.
                             [default: .grapeconfig.publish.logSkipFirstLines]
