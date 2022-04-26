@@ -914,7 +914,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         logFile = args["--updateLog"]
         logDir = args["--updateLogDir"]
         if logDir:
-            logFile = os.path.join(logDir,f"logFile_{self.progress['version']")
+            logFile = os.path.join(logDir,f"logFile_{self.progress['version']}")
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
