@@ -94,7 +94,6 @@ class Version(Option, WorkspaceDirHandler):
 
    """
 
-   # """
     def __init__(self):
         super(Version, self).__init__()
         self._key = "version"
