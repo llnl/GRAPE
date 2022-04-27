@@ -24,6 +24,7 @@ from vine import utility
 from vine import grapeGit as git
 from vine import vine_logging
 from vine import workspace_dir_handler
+from vine import version
 
 
 CLI =  """
@@ -73,11 +74,7 @@ def startup():
     #TODO - allow addition grape config file to be specified at command line
     #additionalConfigFiles = []
     #grapeConfig.read(additionalConfigFiles)
-    grape_path = os.path.dirname(os.path.realpath(__file__))
-    vine_path = os.path.join(grape_path, 'vine')
-    with open(os.path.join(vine_path, "VERSION"), 'r') as f:
-        grapeVersion = f.read().split()[2]   
-    args = docopt(CLI, version=grapeVersion, options_first=True )
+    args = docopt(CLI, version=version.grapeVersion(), options_first=True )
 
     # do not prompt user for input
     if args["-d"]:

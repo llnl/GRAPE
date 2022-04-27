@@ -4,16 +4,18 @@ import logging
 import os
 import re
 from vine import config_parser_global
+from vine import config_parser_workspace
 from vine import config_parser_user
 from vine import grapeGit as git
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
-
-def get_version_file_path():
-    fileName = os.path.join(os.path.dirname(__file__), 'VERSION')
-    return fileName if os.path.exists(fileName) else False
+def grapeVersion():
+    grape_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"..")
+    grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":''}, workspace_dir=grape_path)
+    grapeVersion = 'v'+'.'.join(grapeVersion)
+    return grapeVersion
 
 
 class Version(Option, WorkspaceDirHandler):
@@ -22,7 +24,7 @@ class Version(Option, WorkspaceDirHandler):
     This command is used for projects that wish to have their version numbers managed by grape.
     The read subcommand is a no-op - it is used internally by other grape/vine modules.
 
-    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
+    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [--suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
                                                       [--fileIsDerived]
            grape-version tick [--major | --minor | --slot=<int>]
@@ -35,17 +37,18 @@ class Version(Option, WorkspaceDirHandler):
                               [--public=<branch>]
                               [--MRPrefix=<prefix>]
                               [--fileIsDerived]
-
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
 
+
+
     Options:
         --file=<file>           The file to store the version number. When used with init, this is mandatory, and
                                 grape will update your .grapeconfig file for future version number lookups.
                                 [default: .grapeconfig.versioning.file]
-        --fileIsDerived=<bool>  Don't commit the versioning file, only produce it as a derived file when needed. Use
+        --fileIsDerived         Don't commit the versioning file, only produce it as a derived file when needed. Use
                                 repository tags to decide what version we are on.
         --matchTo=<matchTo>     The regex to match to before reaching the version descriptor. Grape will look for the
                                 string literals '<prefix>' and '<suffix>' in your regex and substitute your values for
@@ -63,7 +66,7 @@ class Version(Option, WorkspaceDirHandler):
                                 [default: .grapeconfig.versioning.prefix]
         --MRPrefix=<prefix>     The Merge Request Version Prefix. In situations where the version string should be
                                 derived from a Merge Request on the current branch, use this for the version prefix.
-                                The "mr_" in "mr_42".
+                                The 'mr_' in 'mr_42'.
                                 [default: .grapeconfig.versioning.mergeRequestVersionPrefix]
         --suffix=<suffix>       The version number suffix for grape-version to match in <file>, such as the 'm' in
                                 v1.2.3.m.
@@ -89,8 +92,9 @@ class Version(Option, WorkspaceDirHandler):
         --tagNested             Tag any active nested subprojects.
 
 
+   """
 
-    """
+   # """
     def __init__(self):
         super(Version, self).__init__()
         self._key = "version"
@@ -116,50 +120,28 @@ class Version(Option, WorkspaceDirHandler):
         if args["tick"]:
             self.tickVersion(args)
         if args["read"]:
-            if args["--fileIsDerived"]:
-                self.readVersionFromTag(args)
-            else:
-                config = config_parser_global.grapeConfig()
-                fileName = config.get(self.SECTION_VERSIONING, "file")
-                fileName = os.path.join(self.workspace_dir, fileName)
-                try:
-                    with io.open(fileName) as f:
-                        slots = self.readVersion(f, args)
-                        self.ver = self.slotsToString(args, slots)
-                except IOError:
-                    self.ver = ""
+            self.readVersion(args)
         return True
 
     def initializeVersioning(self, args):
-        config = config_parser_global.grapeConfig()
         version = io.StringIO()
         version.write(f"VERSION_ID = {args['<version>']}")
         version.seek(0)
-        version = self.readVersion(version, args)
+        version = self.readVersionFromFile(version, args)
         if args["--file"]:
-            fname = os.path.join(self.workspace_dir, args["--file"])
-            with io.open(fname, 'w+') as f:
-                version = self.writeVersion(f, version, args)
-            self.stageVersionFile(fname, execution_path=self.workspace_dir)
-            config.set("versioning", "file", fname)
+            fname = args["--file"]
+            config = config_parser_global.grapeConfig()
+            config.set("versioning", "file", args["--file"])
             configFile = os.path.join(self.workspace_dir, ".grapeconfig")
             config_parser_global.writeConfig(config, configFile)
-            if not args["--fileIsDerived"]
-                self.stageGrapeconfigFile(configFile, execution_path=self.workspace_dir)
-                if not args["--nocommit"]:
-                    git.commit(f"{fname} {configFile} -m \"GRAPE: added initial version info file {fname}\"",
-                               execution_path=self.workspace_dir)
-            if not args["--nocommit"]:
-                self.tagVersion(version, args, execution_path=self.workspace_dir)
+            self.stageGrapeconfigFile(configFile, execution_path=self.workspace_dir)
+            self.writeVersion(version,args,
+                              f"{fname} {configFile} -m \"GRAPE: added initial version info file {fname}\"",
+                              True)
 
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
-        fileName = config.get(self.SECTION_VERSIONING, "file")
-        fileName = os.path.join(self.workspace_dir, fileName)
-        with io.open(fileName) as f:
-            slots = self.readVersion(f, args)
-            self.ver = self.slotsToString(args, slots)
-
+        slots = self.readVersion(args)
         if not args["--notick"]:
             slot = args["--slot"]
             if not slot:
@@ -182,25 +164,13 @@ class Version(Option, WorkspaceDirHandler):
             while slot < len(slots):
                 slots[slot] = 0
                 slot += 1
-            # write the new version number to the version file.
-            with io.open(fileName, 'r+') as f:
-                self.ver = self.writeVersion(f, slots, args)
-            self.stageVersionFile(fileName, execution_path=self.workspace_dir)
-            if not args["--nocommit"]:
-                git.commit(f"-m \"GRAPE: ticked version to {self.ver}\"",
-                           execution_path=self.workspace_dir)
-
-        if (not args["--nocommit"]) or args["--tag"]:
-            self.tagVersion(self.ver, args, execution_path=self.workspace_dir)
-            if args["--tagNested"]:
-                for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-                    execution_path = os.path.join(self.workspace_dir, subproject)
-                    logging.info(f"tagging {execution_path} with {self.ver}")
-                    self.tagVersion(self.ver, args, execution_path=execution_path)
+        # write version number
+        self.writeVersion(slots,args,f"-m \"GRAPE: ticked version to {self.ver}\"",False)
 
 
     @staticmethod
-    def stageVersionFile(fname, *, execution_path):
+    def stageVersionFile(args, *, execution_path):
+        fname = args["--file"]
         logging.info(f"STAGING {fname}")
         git.add(fname, execution_path=execution_path)
         return True
@@ -238,10 +208,34 @@ class Version(Option, WorkspaceDirHandler):
                     execution_path=execution_path)
         return True
 
-    def readVersionFromTag(self, args):
-            
+    @staticmethod
+    def readVersionFromTag(args, workspace_dir):
+        tagPrefix = args["--tagPrefix"]
+        tagSuffix = args["--tagSuffix"]
+        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
+        slots = []
+        if tagName:
+            if tagPrefix:
+                tagName = tagName.split(tagPrefix)[1]
+            if tagSuffix:
+                tagName = tagName.split(tagSuffix)[0]
+            slots = tagName.split('.')
+        return slots
 
-    def readVersion(self, fileName, args):
+    def readVersion(self,args):
+        if args["--fileIsDerived"]:
+            slots = self.readVersionFromTag(args, self.workspace_dir)
+        else:
+            config = config_parser_global.grapeConfig()
+            fileName = args["--file"]
+            fileName = os.path.join(self.workspace_dir, fileName)
+            with io.open(fileName) as f:
+                slots = self.readVersionFromFile(f, args)
+        # update ver
+        self.ver = self.slotsToString(args, slots)
+        return slots
+
+    def readVersionFromFile(self, f, args):
         config = config_parser_global.grapeConfig()
         prefix = args["--prefix"]
         if args["--suffix"]:
@@ -267,7 +261,7 @@ class Version(Option, WorkspaceDirHandler):
         self.r = re.compile(regex)
 
         VERSION_ID = None
-        for l in fileName:
+        for l in f:
             m1 = self.r.match(l)
             if m1:
                 VERSION_ID = list(map(int, m1.group(3).split(".")))
@@ -293,18 +287,40 @@ class Version(Option, WorkspaceDirHandler):
             string = ''.join(string.strip().split(suffix)[:-1])
         return string.strip().split('.')
 
+    def writeVersion(self, version, args, commitMsg,forceToFile):
+        if forceToFile or not args["--fileIsDerived"]:
+            fname = os.path.join(self.workspace_dir, args["--file"])
+            mode = 'w+' if args["init"] else 'r+'
+            with io.open(fname, mode) as f:
+                version = self.writeVersionToFile(f, version, args)
+                self.ver = version
+            if not args["--fileIsDerived"]:
+                self.stageVersionFile(args, execution_path=self.workspace_dir)
+                if not args["--nocommit"]:
+                    git.commit(commitMsg,
+                               execution_path=self.workspace_dir)
+        if args["--updateTag"]:
+            self.tagVersion(version, args, execution_path=self.workspace_dir)
+            if args["--tagNested"]:
+                for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                    execution_path = os.path.join(self.workspace_dir, subproject)
+                    logging.info(f"tagging {execution_path} with {self.ver}")
+                    self.tagVersion(self.ver, args, execution_path=execution_path)
 
-    def writeVersion(self, fileName, version, args):
-        fileName.seek(0)
+        return version
+
+
+    def writeVersionToFile(self, f, version, args):
+        f.seek(0)
         lines = []
         if args["init"]:
             lines.append(self.versionLine(version))
-        for l in fileName:
+        for l in f:
             if l == self.matchedLine:
                 l = self.versionLine(version)
             lines.append(l)
-        fileName.seek(0)
-        fileName.writelines(lines)
+        f.seek(0)
+        f.writelines(lines)
         return self.slotsToString(args, version)
 
 
