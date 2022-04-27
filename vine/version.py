@@ -35,7 +35,6 @@ class Version(Option, WorkspaceDirHandler):
                               [--notick]
                               [--tagNested]
                               [--public=<branch>]
-                              [--MRPrefix=<prefix>]
                               [--fileIsDerived]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived]
 
@@ -64,10 +63,6 @@ class Version(Option, WorkspaceDirHandler):
         --prefix=<prefix>       The version number prefix for version string to match in <file>, such as the 'v' in
                                 v1.2.3.
                                 [default: .grapeconfig.versioning.prefix]
-        --MRPrefix=<prefix>     The Merge Request Version Prefix. In situations where the version string should be
-                                derived from a Merge Request on the current branch, use this for the version prefix.
-                                The 'mr_' in 'mr_42'.
-                                [default: .grapeconfig.versioning.mergeRequestVersionPrefix]
         --suffix=<suffix>       The version number suffix for grape-version to match in <file>, such as the 'm' in
                                 v1.2.3.m.
                                 [default: ]
@@ -335,7 +330,6 @@ class Version(Option, WorkspaceDirHandler):
         config.set(self.SECTION_VERSIONING, "branchSuffixMappings", "?:")
         config.set(self.SECTION_VERSIONING, "branchTagSuffixMappings", "?:")
         config.set(self.SECTION_VERSIONING, "prefix", "v")
-        config.set(self.SECTION_VERSIONING, "mergeRequestVersionPrefix", "MR_")
         config.set(self.SECTION_VERSIONING, "fileIsDerived", "False")
 
 
