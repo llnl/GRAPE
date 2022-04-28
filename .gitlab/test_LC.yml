@@ -1,7 +1,5 @@
 .test_linux:
   script:
     - cd $CI_PROJECT_DIR
-    - git fetch origin develop:develop
-    - git lg
     - ./grape test
 
