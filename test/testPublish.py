@@ -20,11 +20,10 @@ class TestPublish(testGrape.TestGrape):
         git.add("f2", execution_path=self.repo)
         git.commit("-m \"added f2\"", execution_path=self.repo)
         self.setUpConfig()
-        self._copy_version_file()
+        self._init_version_file()
 
-    def _copy_version_file(self):
+    def _init_version_file(self):
         """Create copy of VERSION file for testing publish operation."""
-        grapeVersion = version.grapeVersion()
         # Get file name of actual VERSION file
         config = config_parser_global.grapeConfig()
         orig_vers_path = config.get(Option.SECTION_VERSIONING, "file")
@@ -36,7 +35,7 @@ class TestPublish(testGrape.TestGrape):
         # Open/close creates an empty file to copy original into.
         version_copy = os.path.join(self.repo, orig_vers_path)
         with open(version_copy, 'a') as f:
-            f.writelines([f"VERSION_ID = {grapeVersion}"])
+            f.writelines([f"VERSION_ID = 0.0.0"])
 
         config.set(Option.SECTION_VERSIONING, "file", version_copy)
         git.add(version_copy, execution_path=self.repo)

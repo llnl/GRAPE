@@ -18,7 +18,7 @@ def grapeVersion():
         grapeVersion = 'v'+'.'.join(grapeVersion)
         return grapeVersion
     except:
-        return "v.1.37.unknown"
+        return "v.1.37"
 
 
 class Version(Option, WorkspaceDirHandler):
