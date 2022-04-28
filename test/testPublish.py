@@ -35,7 +35,7 @@ class TestPublish(testGrape.TestGrape):
         # Open/close creates an empty file to copy original into.
         version_copy = os.path.join(self.repo, orig_vers_path)
         with open(version_copy, 'a') as f:
-            f.writelines([f"VERSION_ID = 0.0.0"])
+            f.writelines([f"VERSION_ID = v0.0.0"])
 
         config.set(Option.SECTION_VERSIONING, "file", version_copy)
         git.add(version_copy, execution_path=self.repo)

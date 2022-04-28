@@ -73,7 +73,6 @@ branchslotmappings = ?:3
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v
-mergerequestversionprefix = MR_
 
 
 [pre-push]
