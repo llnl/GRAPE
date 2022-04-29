@@ -18,6 +18,12 @@
         - UPDATES_1.37/*
       when: never
 
+.run_on_merge_request_changes_to_update_logs:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - UPDATES_1.37/*
+
 .run_on_merge_request_or_nightly:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
