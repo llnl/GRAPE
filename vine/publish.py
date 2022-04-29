@@ -958,7 +958,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             menu.applyMenuChoice("version", versionArgs)
             currentVer = menu.getOption("version").ver
             if currentVer in requestTitle:
-                logging.info("Current Version string already in pull request title. Assuming this is from "
+                logging.info(f"Current Version string '{currentVer}' already in pull request title '{requestTitle}'. Assuming this is from "
                 "a previous call to grape publish. Not ticking version again.")
                 return True
         ret = True
