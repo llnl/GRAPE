@@ -52,6 +52,7 @@ class Version(Option, WorkspaceDirHandler):
                                 [default: .grapeconfig.versioning.file]
         --fileIsDerived         Don't commit the versioning file, only produce it as a derived file when needed. Use
                                 repository tags to decide what version we are on.
+                                [default: .grapeconfig.versioning.fileIsDerived]
         --matchTo=<matchTo>     The regex to match to before reaching the version descriptor. Grape will look for the
                                 string literals '<prefix>' and '<suffix>' in your regex and substitute your values for
                                 <prefix> and <suffix> in their place. Default can be overridden using
