@@ -1136,7 +1136,7 @@ options are at least listed below.
 
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [--suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
-                                                      [--fileIsDerived]
+                                                      [--fileIsDerived=<bool>]
            grape-version tick [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
@@ -1145,8 +1145,8 @@ options are at least listed below.
                               [--notick]
                               [--tagNested]
                               [--public=<branch>]
-                              [--fileIsDerived]
-           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived]
+                              [--fileIsDerived=<bool>]
+           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -1157,8 +1157,9 @@ options are at least listed below.
         --file=<file>           The file to store the version number. When used with init, this is mandatory, and
                                 grape will update your .grapeconfig file for future version number lookups.
                                 [default: .grapeconfig.versioning.file]
-        --fileIsDerived         Don't commit the versioning file, only produce it as a derived file when needed. Use
+        --fileIsDerived=<bool>  Don't commit the versioning file, only produce it as a derived file when needed. Use
                                 repository tags to decide what version we are on.
+                                [default: .grapeconfig.versioning.fileIsDerived]
         --matchTo=<matchTo>     The regex to match to before reaching the version descriptor. Grape will look for the
                                 string literals '<prefix>' and '<suffix>' in your regex and substitute your values for
                                 <prefix> and <suffix> in their place. Default can be overridden using
