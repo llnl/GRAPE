@@ -30,7 +30,7 @@ merge_train:
     GIT_STRATEGY: clone
     GIT_DEPTH: "2"
   extends:
-    - .run_when_grape_queues_in_merge_train
+    - .run_when_grape_queues_in_merge_train_no_approval
     - .run_rzgenie_shell
     - .test_linux
     - .sleep_1_minute

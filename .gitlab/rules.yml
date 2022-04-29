@@ -49,6 +49,12 @@
       changes:
         - UPDATES_*/*
 
+.run_when_grape_queues_in_merge_train_no_approval:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_MESSAGE =~ /GRAPE added log file UPDATES_/'
+      changes:
+        - UPDATES_*/*
+
 .run_on_merge_request_unapproved_or_grape_commit_manually:
   rules:
     - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
