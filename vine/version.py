@@ -109,6 +109,17 @@ class Version(Option, WorkspaceDirHandler):
         if args["--tagSuffix"] is None:
             branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
             args["--tagSuffix"] = branch2suffix[git.currentBranch(execution_path=self.workspace_dir)]
+        # convert to boolean for updateTag
+        doTag = args["--updateTag"].strip().lower() == "true"
+        if doTag:
+            doTag = not args["--notag"]
+        else:
+            doTag = args["--tag"]
+        args["--updateTag"] = doTag
+        # convert to boolean for updateTag
+        derived= args["--fileIsDerived"].strip().lower() == "true"
+        args["--fileIsDerived"] = derived
+
 
     @log_wrapper
     def execute(self, args):
@@ -180,12 +191,7 @@ class Version(Option, WorkspaceDirHandler):
 
     @staticmethod
     def tagVersion(version, args, *, execution_path):
-        doTag = args["--updateTag"].strip().lower() == "true"
-        if doTag:
-            doTag = not args["--notag"]
-        else:
-            doTag = args["--tag"]
-        if doTag:
+        if args["--updateTag"]:
             prefix = args["--prefix"]
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
