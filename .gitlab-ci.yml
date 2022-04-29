@@ -10,16 +10,30 @@ variables:
 stages:
   - test
 
-test-all_rzgenie:
+merge_train_preapproval:
   stage: test
   timeout: 30 minutes 
   variables:
     GIT_STRATEGY: clone
     GIT_DEPTH: "2"
   extends:
+    - .do_not_run_on_merge_request_changes_to_update_logs
     - .run_on_merge_request
     - .run_rzgenie_shell
     - .test_linux
+  interruptible: true
+
+merge_train:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_when_grape_queues_in_merge_train
+    - .run_rzgenie_shell
+    - .test_linux
+    - .sleep_1_minute
   interruptible: true
 
 test-Windows:

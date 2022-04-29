@@ -27,9 +27,10 @@ topicdestinationmappings = internal_release:master public_release:master-cz
 topicCascadeTick = internal_release:2 ?:1
 
 [publish]
+mergetrain = True
 buildcmds = 
 builddir = 
-testcijob = test-all_rzgenie
+testcijob = merge_train_preapproval
 testcmds = ./grape test
 testdir = ./
 prepublishcmds = vine/gendocs.py README.md , git add README.md
