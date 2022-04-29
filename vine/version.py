@@ -29,7 +29,7 @@ class Version(Option, WorkspaceDirHandler):
 
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [--suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
-                                                      [--fileIsDerived]
+                                                      [--fileIsDerived=<bool>]
            grape-version tick [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
@@ -38,8 +38,8 @@ class Version(Option, WorkspaceDirHandler):
                               [--notick]
                               [--tagNested]
                               [--public=<branch>]
-                              [--fileIsDerived]
-           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived]
+                              [--fileIsDerived=<bool>]
+           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
@@ -50,7 +50,7 @@ class Version(Option, WorkspaceDirHandler):
         --file=<file>           The file to store the version number. When used with init, this is mandatory, and
                                 grape will update your .grapeconfig file for future version number lookups.
                                 [default: .grapeconfig.versioning.file]
-        --fileIsDerived         Don't commit the versioning file, only produce it as a derived file when needed. Use
+        --fileIsDerived=<bool>  Don't commit the versioning file, only produce it as a derived file when needed. Use
                                 repository tags to decide what version we are on.
                                 [default: .grapeconfig.versioning.fileIsDerived]
         --matchTo=<matchTo>     The regex to match to before reaching the version descriptor. Grape will look for the
@@ -218,6 +218,8 @@ class Version(Option, WorkspaceDirHandler):
             if tagSuffix:
                 tagName = tagName.split(tagSuffix)[0]
             slots = tagName.split('.')
+            # convert strings to ints
+            slots = list(map(int, slots))
         return slots
 
     def readVersion(self,args):
@@ -290,13 +292,14 @@ class Version(Option, WorkspaceDirHandler):
             fname = os.path.join(self.workspace_dir, args["--file"])
             mode = 'w+' if args["init"] else 'r+'
             with io.open(fname, mode) as f:
-                version = self.writeVersionToFile(f, version, args)
-                self.ver = version
+                self.writeVersionToFile(f, version, args)
             if not args["--fileIsDerived"]:
                 self.stageVersionFile(args, execution_path=self.workspace_dir)
                 if not args["--nocommit"]:
                     git.commit(commitMsg,
                                execution_path=self.workspace_dir)
+        version = self.slotsToString(args, version)
+        self.ver = version
         if args["--updateTag"]:
             self.tagVersion(version, args, execution_path=self.workspace_dir)
             if args["--tagNested"]:
@@ -319,7 +322,7 @@ class Version(Option, WorkspaceDirHandler):
             lines.append(l)
         f.seek(0)
         f.writelines(lines)
-        return self.slotsToString(args, version)
+        return
 
 
     def setDefaultConfig(self, config):
