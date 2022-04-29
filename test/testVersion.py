@@ -62,6 +62,14 @@ class TestVersion(testGrape.TestGrape):
             # test auto extension of version number
             self.menu.applyMenuChoice("version", ["tick", "--slot=4", "--tag"])
             self.assertEqual(git.describe(execution_path=self.repo), "v2.0.2.1")
+
+            # test using manually described version string
+            # test auto extension of version number
+            # this call ensures a commit is done, so tags aren't colliding
+            self.menu.applyMenuChoice("version", ["tick", "--slot=4", "--notag"])
+            self.menu.applyMenuChoice("version", ["tick", "v3.2.1", "--notick", "--tag", "--nocommit"])
+            self.assertEqual(git.describe(execution_path=self.repo), "v3.2.1")
+
         except SystemExit:
             self.fail(f"Unexpected SystemExit\n{self.get_output()}")
         except grape_errors.GrapeGitError as e:

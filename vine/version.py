@@ -153,28 +153,32 @@ class Version(Option, WorkspaceDirHandler):
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
         slots = self.readVersion(args)
-        if not args["--notick"]:
-            slot = args["--slot"]
-            if not slot:
-                slotMappings = config.getMapping(self.SECTION_VERSIONING, "branchSlotMappings")
-                if args["--public"]:
-                    publicBranch = args["--public"]
+        if args["<version>"]:
+            versionString = args["<version>"]
+            slots = self.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], versionString)
+        else:
+            if not args["--notick"]:
+                slot = args["--slot"]
+                if not slot:
+                    slotMappings = config.getMapping(self.SECTION_VERSIONING, "branchSlotMappings")
+                    if args["--public"]:
+                        publicBranch = args["--public"]
+                    else:
+                        publicBranch = config.getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
+                    slot = int(slotMappings[publicBranch])
                 else:
-                    publicBranch = config.getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
-                slot = int(slotMappings[publicBranch])
-            else:
-                slot = int(slot)
-            if args["--minor"]:
-                slot = 2
-            if args["--major"]:
-                slot = 1
-            # extend the version number if slot comes in too large.
-            while len(slots) < slot:
-                slots.append(0)
-            slots[slot - 1] += 1
-            while slot < len(slots):
-                slots[slot] = 0
-                slot += 1
+                    slot = int(slot)
+                if args["--minor"]:
+                    slot = 2
+                if args["--major"]:
+                    slot = 1
+                # extend the version number if slot comes in too large.
+                while len(slots) < slot:
+                    slots.append(0)
+                slots[slot - 1] += 1
+                while slot < len(slots):
+                    slots[slot] = 0
+                    slot += 1
         # write version number
         self.writeVersion(slots,args,f"-m \"GRAPE: ticked version to {self.ver}\"",False)
 
@@ -215,10 +219,7 @@ class Version(Option, WorkspaceDirHandler):
         return True
 
     @staticmethod
-    def readVersionFromTag(args, workspace_dir):
-        tagPrefix = args["--tagPrefix"]
-        tagSuffix = args["--tagSuffix"]
-        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
+    def convertTagStringToSlots(tagPrefix, tagSuffix, tagName):
         slots = []
         if tagName:
             if tagPrefix:
@@ -229,6 +230,13 @@ class Version(Option, WorkspaceDirHandler):
             # convert strings to ints
             slots = list(map(int, slots))
         return slots
+
+    @staticmethod
+    def readVersionFromTag(args, workspace_dir):
+        tagPrefix = args["--tagPrefix"]
+        tagSuffix = args["--tagSuffix"]
+        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
+        return convertTagStringToSlots(tagPrefix, tagSuffix, tagName)
 
     def readVersion(self,args):
         if args["--fileIsDerived"]:
