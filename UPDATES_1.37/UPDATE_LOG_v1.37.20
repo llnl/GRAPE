@@ -1,13 +1,9 @@
 
 
-Thu Apr 28 16:30:06 2022 Peter B. Robinson
+Fri Apr 29 10:04:04 2022 Peter B. Robinson
 v1.37.20
-Reviewers: Ben Liu, Alan Dayton
+Reviewers: Alan Dayton
 
-SUMMARY
+SUMMARY: 
 
-Teaches grape to support using version tags as primary source for version information, treats version file as a generated file.
-
-Configures GRAPE to use version tags as it's primary source for version information - runtime no longer requires vine/VERSION to be present.
-
-Removes vine/VERSION, adds vine/VERSION to .gitignore.
+Debugging publish - version interface issues that were introduced in v1.37.20.
