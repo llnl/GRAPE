@@ -236,7 +236,7 @@ class Version(Option, WorkspaceDirHandler):
         tagPrefix = args["--tagPrefix"]
         tagSuffix = args["--tagSuffix"]
         tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
-        return convertTagStringToSlots(tagPrefix, tagSuffix, tagName)
+        return self.convertTagStringToSlots(tagPrefix, tagSuffix, tagName)
 
     def readVersion(self,args):
         if args["--fileIsDerived"]:
