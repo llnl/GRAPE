@@ -68,7 +68,7 @@ class TestVersion(testGrape.TestGrape):
             # this call ensures a commit is done, so tags aren't colliding
             self.menu.applyMenuChoice("version", ["tick", "--slot=4", "--notag"])
             self.menu.applyMenuChoice("version", ["tick", "v3.2.1", "--notick", "--tag", "--nocommit"])
-            self.assertEqual(git.describe(execution_path=self.repo), "v3.2.1")
+            self.assertEqual(git.describe(execution_path=self.repo), "v3.2.0")
 
         except SystemExit:
             self.fail(f"Unexpected SystemExit\n{self.get_output()}")
