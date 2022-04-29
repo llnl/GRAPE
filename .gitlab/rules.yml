@@ -15,7 +15,7 @@
   rules:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       changes:
-        - UPDATES_*/*
+        - UPDATES_1.37/*
       when: never
 
 .run_on_merge_request_or_nightly:
