@@ -116,7 +116,7 @@ class Version(Option, WorkspaceDirHandler):
         else:
             doTag = args["--tag"]
         args["--updateTag"] = doTag
-        # convert to boolean for updateTag
+        # convert to boolean for fileIsDerived
         derived= args["--fileIsDerived"].strip().lower() == "true"
         args["--fileIsDerived"] = derived
 
