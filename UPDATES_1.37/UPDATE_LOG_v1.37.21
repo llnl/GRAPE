@@ -1,0 +1,9 @@
+
+
+Fri Apr 29 11:12:21 2022 Peter B. Robinson
+v1.37.21
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY: 
+
+Fix publish process in projects that use .grapeconfig.versioning.fileIsDerived.
