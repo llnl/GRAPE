@@ -30,7 +30,8 @@ class Version(Option, WorkspaceDirHandler):
     Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [--suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
                                                       [--fileIsDerived=<bool>]
-           grape-version tick [--major | --minor | --slot=<int>]
+           grape-version tick [<version>]
+                              [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
                               [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
@@ -43,6 +44,7 @@ class Version(Option, WorkspaceDirHandler):
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
+                            Also used by tick to force a particular version number.
 
 
 

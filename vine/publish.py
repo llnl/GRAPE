@@ -972,13 +972,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return ret and self.checkInProgressLock(args)
 
     def tagVersion(self, args):
+        if not self.loadVersion(args):
+            return False
         if not args["--tickVersion"]:
             return True
         if 'workspace_dir' not in args:
             logging.error("Failed to Tag Version. Workspace dir not given.")
             raise Exception
 
-        versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
+        versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
