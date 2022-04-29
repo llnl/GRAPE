@@ -5,5 +5,5 @@
 
 .sleep_1_minute:
   script:
-    - sleep(60)
+    - sleep 60
 
