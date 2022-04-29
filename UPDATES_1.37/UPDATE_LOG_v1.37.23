@@ -1,0 +1,7 @@
+
+
+Fri Apr 29 13:40:00 2022 Peter B. Robinson
+v1.37.23
+Reviewers: Ben Liu
+
+Continued attempts at fixing final tagVersion step of publish process when using tags as primary version info.
