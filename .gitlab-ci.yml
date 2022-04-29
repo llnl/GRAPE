@@ -10,7 +10,7 @@ variables:
 stages:
   - test
 
-merge_train_preapproval:
+merge_train_ticket:
   stage: test
   timeout: 30 minutes 
   variables:
