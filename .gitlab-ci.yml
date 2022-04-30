@@ -17,8 +17,7 @@ merge_train_ticket:
     GIT_STRATEGY: clone
     GIT_DEPTH: "2"
   extends:
-    - .do_not_run_on_merge_request_changes_to_update_logs
-    - .run_on_merge_request
+    - .run_on_merge_request_except_on_changes_to_update_logs
     - .run_rzgenie_shell
     - .test_linux
   interruptible: true
