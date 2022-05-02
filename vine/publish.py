@@ -1025,7 +1025,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             raise Exception
         versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
         if args["--mergeTrain"]:
-            prefix = "MR_"
+            versionArgs.append("--tagPrefix=MR_")
             versionArgs.append("--prefix=MR_")
 
         for arg in args["-T"]:
@@ -1590,6 +1590,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return menu.applyMenuChoice("push")
 
     def mergeOnSuccess(self, args):
+        if not self.loadCommitMessage(args):
+            return False
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             username=args["--user"], url=args["--codeReviewsURL"],
             verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
@@ -1597,5 +1599,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         logging.info("Triggering merge on success of merge train pipeline.")
-        return thisRequest.merge()
+        return thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
+                                 should_remove_source_branch=False,
+                                 merge_when_pipeline_succeeds=True)
 
