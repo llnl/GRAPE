@@ -345,7 +345,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         #whether mergeTrains are enabled
         if args["--mergeTrain"]:
-            args["--mergeTrain"] = args["--mergeTrain"].lower() == "true"
+            doMergeTrain = args["--mergeTrain"].lower() == "true"
+            args["--mergeTrain"] = doMergeTrain
 
 
     def abort(self, args):
@@ -389,9 +390,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
                           "checkCI", "build", "test",
                           "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "mergeOnSuccess", "done"]
-#        elif args["--postMergeTrain"]:
-#            steps to be called by Gitlab CI after pipeline is successfully executed (experimental)
-#            self.order = ["postPublish", "markAsDone", "notify", "done"]
         else:
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview",
@@ -1593,6 +1591,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
-        logging.info("Triggering  merge on success of merge train pipeline.")
+        logging.info("Triggering merge on success of merge train pipeline.")
         return thisRequest.merge()
 
