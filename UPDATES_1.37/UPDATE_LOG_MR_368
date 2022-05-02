@@ -1,0 +1,15 @@
+
+
+Mon May  2 15:19:41 2022 Peter B. Robinson
+MR_368
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+
+Adds a --mergeTrain option to grape publish. 
+
+Details:
+
+New path through grape publish that sets up an Merge Request to be merged by Gitlab CI using Merge Trains.
+
+Configures Grape's publish process to use merge trains by default.
