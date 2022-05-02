@@ -43,6 +43,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
+                         [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
@@ -88,6 +89,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
                             submodule publish policies.
     --merge                 Perform a normal merge.
+    --mergeTrain=<bool>     Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
+                            in an active merge train.
+                            [default: .grapeconfig.publish.mergeTrain]
     -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
                             --rebase.
     --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the
@@ -153,7 +157,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket/Gitlab username.
-    --codeReviewsURL=<url>        Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+    --codeReviewsURL=<url>  Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
                             [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
@@ -164,7 +168,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
     --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --useBitbucket=<bool>   Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                             if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -371,6 +375,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
+        elif args["--mergeTrain"]:
+            # steps for queuing in the merge train
+            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
+                          "checkCI", "build", "test",
+                          "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "mergeOnSuccess", "done"]
+#        elif args["--postMergeTrain"]:
+#            steps to be called by Gitlab CI after pipeline is successfully executed (experimental)
+#            self.order = ["postPublish", "markAsDone", "notify", "done"]
         else:
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview",
@@ -411,6 +424,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                  "tagVersion": self.tagVersion,
                  "performCascades": self.performCascades,
                  "publish": self.publishAllProjects,
+                 "push": self.push,
                  "postPublish": self.performCustomPostPublishSteps,
                  "deleteTopic": self.deleteTopicBranch,
                  "verifyCompletedReview": self.verifyCompletedReview,
@@ -418,6 +432,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                  "testForCleanWorkspace2": self.testForCleanWorkspace,
                  "markInProgress": self.acquireInProgressLock,
                  "markAsDone": self.releaseInProgressLock,
+                 "mergeOnSuccess" : self.mergeOnSuccess,
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
                  "ensureReview": self.ensureReview,
@@ -550,14 +565,25 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if thisRequest == inProgressRequests[0]:
                 logging.info("The pull request for this branch is already in progress. Continuing...")
                 return 2
-            logging.info("The following pull request is already in progress:")
-            logging.info(inProgressRequests[0])
-            return False
+            if not args["--mergeTrain"]:
+                logging.info("The following pull request is already in progress:")
+                logging.info(inProgressRequests[0])
+                return False
         else:
-            logging.error("ERROR: There are multiple pull requests in progress!")
-            for request in inProgressRequests:
-                logging.info(request)
-            return False
+            if not args["--mergeTrain"]:
+                logging.error("ERROR: There are multiple pull requests in progress!")
+                for request in inProgressRequests:
+                    logging.info(request)
+                return False
+            else:
+                thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+                for request in inProgressRequests:
+                    if thisRequest == request:
+                        logging.info("The pull request for this branch is already in progress. Continuing...")
+                        return 2
+                logging.info("This pull request is not yet marked in progress.")
+                return True
+
 
     def acquireInProgressLock(self, args):
         if args["--noReview"]:
@@ -813,10 +839,21 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def loadVersion(self, args):
         if "version" not in self.progress:
-            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            menu.applyMenuChoice("version", ["read"])
-            guess = menu.getOption("version").ver
-            self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
+            if args["--mergeTrain"]:
+                codeReviews = CodeReviewsFactory.makeCodeReviews(
+                    username=args["--user"], url=args["--codeReviewsURL"],
+                    verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+                    ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
+                repo = codeReviews.project(args["--project"]).repo(args["--repo"])
+                thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+                iid = thisRequest.iid()
+                version = f"MR_{iid}"
+                return version
+            else:
+                menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                menu.applyMenuChoice("version", ["read"])
+                guess = menu.getOption("version").ver
+                self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
         return True
 
     def loadCommitMessage(self, args):
@@ -1536,3 +1573,19 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 git.checkout(public, execution_path=self.workspace_dir)
             return True
         return False
+
+    def push(self, args):
+        grape.info("pushing branch to trigger merge train pipeline.")
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        return menu.applyMenuChoice("push"):
+
+    def mergeOnSuccess(self, args):
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
+            username=args["--user"], url=args["--codeReviewsURL"],
+            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
+            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
+        repo = codeReviews.project(args["--project"]).repo(args["--repo"])
+        thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        grape.info("Triggering  merge on success of merge train pipeline.")
+        return thisRequest.merge()
+
