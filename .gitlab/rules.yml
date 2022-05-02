@@ -122,3 +122,7 @@
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY'
       when: delayed
       start_in: 30 minutes
+
+.run_never:
+  rules:
+    - when: never

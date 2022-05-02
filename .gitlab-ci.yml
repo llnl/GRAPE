@@ -35,13 +35,14 @@ merge_train:
     - .sleep_1_minute
   interruptible: true
 
+# deactivated until we have a gitlab windows runner for grape
 test-Windows:
   stage: test
   timeout: 30 minutes
   variables:
     GIT_DEPTH: "2"
   extends:
-    - .run_manually
+    - .run_never
     - .run_ale3d_windows
     - .test_Windows
   interruptible: false
