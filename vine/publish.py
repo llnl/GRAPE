@@ -345,7 +345,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         #whether mergeTrains are enabled
         if args["--mergeTrain"]:
-            if args["--mergeTrain"] is not True or args["--mergeTrain"] is not False:
+            if args["--mergeTrain"] is not True and args["--mergeTrain"] is not False:
                 doMergeTrain = args["--mergeTrain"].lower() == "true"
                 args["--mergeTrain"] = doMergeTrain
 
@@ -1023,8 +1023,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if 'workspace_dir' not in args:
             logging.error("Failed to Tag Version. Workspace dir not given.")
             raise Exception
-
         versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
+        if args["--mergeTrain"]:
+            prefix = "MR_"
+            versionArgs.append("--prefix=MR_")
+
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
