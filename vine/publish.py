@@ -345,8 +345,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         #whether mergeTrains are enabled
         if args["--mergeTrain"]:
-            doMergeTrain = args["--mergeTrain"].lower() == "true"
-            args["--mergeTrain"] = doMergeTrain
+            if args["--mergeTrain"] is not True or args["--mergeTrain"] is not False:
+                doMergeTrain = args["--mergeTrain"].lower() == "true"
+                args["--mergeTrain"] = doMergeTrain
 
 
     def abort(self, args):
