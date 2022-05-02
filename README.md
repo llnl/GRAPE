@@ -595,6 +595,7 @@ options are at least listed below.
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
+                         [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
@@ -640,6 +641,9 @@ options are at least listed below.
                             nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
                             submodule publish policies.
     --merge                 Perform a normal merge.
+    --mergeTrain=<bool>     Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
+                            in an active merge train.
+                            [default: .grapeconfig.publish.mergeTrain]
     -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
                             --rebase.
     --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the
@@ -705,7 +709,7 @@ options are at least listed below.
     -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
                             and defaults. -T can be used multiple times to pass multiple arguments.
     --user=<user>           Your Bitbucket/Gitlab username.
-    --codeReviewsURL=<url>        Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+    --codeReviewsURL=<url>  Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
                             [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
                             [default: .grapeconfig.project.verifySSL]
@@ -716,7 +720,7 @@ options are at least listed below.
     -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                             Type grape review --help for valid options.
     --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --useBitbucket=<bool>   Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
                             by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                             if no option for .grapeconfig.flow.topicDestinationMappings exists.
