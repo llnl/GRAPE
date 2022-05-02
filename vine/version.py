@@ -152,11 +152,12 @@ class Version(Option, WorkspaceDirHandler):
 
     def tickVersion(self, args):
         config = config_parser_global.grapeConfig()
-        slots = self.readVersion(args)
         if args["<version>"]:
             versionString = args["<version>"]
             slots = self.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], versionString)
+            self.ver = args["<version>"]
         else:
+            slots = self.readVersion(args)
             if not args["--notick"]:
                 slot = args["--slot"]
                 if not slot:
