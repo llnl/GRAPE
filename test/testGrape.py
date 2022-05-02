@@ -81,6 +81,7 @@ class TestGrape(unittest.TestCase):
         config.set(Option.SECTION_FLOW, "publicBranches", "master")
         config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
         config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
+        config.set(Option.SECTION_PUBLISH, "mergeTrain", "False")
 
     def setUpLogging(self):
         if self._debug:

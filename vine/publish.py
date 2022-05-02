@@ -243,6 +243,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_WORKSPACE, 'submodulePublishPolicy', '?:merge')
         # publish policy defaults
         config.set(self.SECTION_FLOW, 'publishPolicy', '?:merge')
+        config.set(self.SECTION_PUBLISH, 'mergeTrain', 'False')
         # subtree publish actions
         config.set(self.SECTION_SUBTREES, 'names', '')
         config.set(self.SECTION_SUBTREES, 'pushOnPublish', "False")
@@ -342,6 +343,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if  args["--tickOnCascade"] is None:
             args["--tickOnCascade"] = int(config.getMapping(self.SECTION_FLOW, "topicCascadeTick")[args["--topic"]])
 
+        #whether mergeTrains are enabled
+        if args["--mergeTrain"]:
+            args["--mergeTrain"] = args["--mergeTrain"].lower() == "true"
+
+
     def abort(self, args):
         #undo any commits done since we first started
         super(Publish, self)._resume(args, workspace_dir=self.workspace_dir)
@@ -372,6 +378,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["startingSHA"] = git.SHA("HEAD",
                                                    execution_path=self.workspace_dir)
 
+        self.parseArgs(args)
+
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
@@ -391,7 +399,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                           "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
 
-        self.parseArgs(args)
 
         startPoint = args["--startAt"]
 
@@ -1575,7 +1582,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return False
 
     def push(self, args):
-        grape.info("pushing branch to trigger merge train pipeline.")
+        logging.info("pushing branch to trigger merge train pipeline.")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         return menu.applyMenuChoice("push")
 
@@ -1586,6 +1593,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
-        grape.info("Triggering  merge on success of merge train pipeline.")
+        logging.info("Triggering  merge on success of merge train pipeline.")
         return thisRequest.merge()
 
