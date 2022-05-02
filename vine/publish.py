@@ -1577,7 +1577,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def push(self, args):
         grape.info("pushing branch to trigger merge train pipeline.")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        return menu.applyMenuChoice("push"):
+        return menu.applyMenuChoice("push")
 
     def mergeOnSuccess(self, args):
         codeReviews = CodeReviewsFactory.makeCodeReviews(
