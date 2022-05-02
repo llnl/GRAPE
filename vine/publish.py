@@ -1025,7 +1025,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             raise Exception
         versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
         if args["--mergeTrain"]:
-            versionArgs.append("--tagPrefix=MR_", "--prefix=MR_")
+            versionArgs.append("--tagPrefix=MR_")
+            versionArgs.append("--prefix=MR_")
 
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
