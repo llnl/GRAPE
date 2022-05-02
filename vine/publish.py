@@ -853,7 +853,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
                 iid = thisRequest.iid()
                 version = f"MR_{iid}"
-                return version
+                self.progress["version"] = version
+                return True
             else:
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 menu.applyMenuChoice("version", ["read"])
