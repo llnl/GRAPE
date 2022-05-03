@@ -370,7 +370,7 @@ class PullRequest:
             return True
         except gitlab.exceptions.GitlabMRClosedError as e:
             logging.info(f"GitlabMRClosedError triggered! {e.__dict__}") 
-            return False
+            raise e
 
 
 def testMe():

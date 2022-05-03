@@ -1601,7 +1601,19 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         repo = codeReviews.project(args["--project"]).repo(args["--repo"])
         thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
         logging.info("Triggering merge on success of merge train pipeline.")
-        return thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
+        try:
+            success = thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
                                  should_remove_source_branch=False,
                                  merge_when_pipeline_succeeds=True)
+        except GitlabMRClosedError:
+            time.sleep(5)
+            logging.info("Trying again after initial 405 error...")
+            try:
+                success = thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
+                                     should_remove_source_branch=False,
+                                     merge_when_pipeline_succeeds=True)
+                logging.info("successful...")
+            except GitlabMRClosedError:
+                return False
+        return success
 
