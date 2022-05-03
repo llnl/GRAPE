@@ -575,6 +575,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 logging.info("The following pull request is already in progress:")
                 logging.info(inProgressRequests[0])
                 return False
+            else:
+                return True
         else:
             if not args["--mergeTrain"]:
                 logging.error("ERROR: There are multiple pull requests in progress!")
