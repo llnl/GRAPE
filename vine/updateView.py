@@ -38,6 +38,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         -b                      Automatically creates subproject branches that should be there according to your branching
                                 model.
         --skipTopLevel          Skip top level repository for syncing and checking.
+        --skipSubmodules        Skip all submodules.
         --allSubmodules         Automatically add all submodules to your workspace.
         --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
         --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
