@@ -31,25 +31,26 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
 
     Options:
-        -f                      Force removal of subprojects currently in your view that are taken out of the view as a
-                                result to this call to uv.
-        --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
-                                not go through the 'which submodules do you want' script.
-        -b                      Automatically creates subproject branches that should be there according to your branching
-                                model.
-        --skipTopLevel          Skip top level repository for syncing and checking.
-        --skipSubmodules        Skip all submodules.
-        --allSubmodules         Automatically add all submodules to your workspace.
-        --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
-        --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
-                                either by pushing or pulling the remote tracking branch.
-                                This will also checkout the public branch in a headless state prior to offering to create
-                                a new branch (in repositories where the current branch does not exist).
-                                [default: .grapeconfig.post-checkout.syncWithOrigin]
-        --branchName=<name>     Override the branch name
-        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times.
-        --rm=<project>          Submodule or subproject to remove from the workspace. Can be defined multiple times.
-        --gui                   Use the graphical user interface to select your view.
+        -f                       Force removal of subprojects currently in your view that are taken out of the view as a
+                                 result to this call to uv.
+        --checkSubprojects       Checks for branch model consistency across your submodules and subprojects, but does
+                                 not go through the 'which submodules do you want' script.
+        -b                       Automatically creates subproject branches that should be there according to your branching
+                                 model.
+        --skipTopLevel           Skip top level repository for syncing and checking.
+        --skipSubmodules         Skip all submodules.
+        --allSubmodules          Automatically add all submodules to your workspace.
+        --skipNestedSubprojects  Skip all nested subprojects.
+        --allNestedSubprojects   Automatically add all nested subprojects to your workspace.
+        --sync=<bool>            Take extra steps to ensure the branch you're on is up to date with origin,
+                                 either by pushing or pulling the remote tracking branch.
+                                 This will also checkout the public branch in a headless state prior to offering to create
+                                 a new branch (in repositories where the current branch does not exist).
+                                 [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --branchName=<name>      Override the branch name
+        --add=<project>          Submodule or subproject to add to the workspace. Can be defined multiple times.
+        --rm=<project>           Submodule or subproject to remove from the workspace. Can be defined multiple times.
+        --gui                    Use the graphical user interface to select your view.
     """
     def __init__(self):
         super(UpdateView, self).__init__()
