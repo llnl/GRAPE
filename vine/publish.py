@@ -390,7 +390,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
                           "checkCI", "build", "test",
-                          "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "mergeOnSuccess", "done"]
+                          "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "done"]
         else:
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview",
