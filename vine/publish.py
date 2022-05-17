@@ -576,7 +576,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("No other pull requests are IN PROGRESS...")
             return True
         if len(inProgressRequests) == 1:
-            thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+            thisRequest = self.openPullRequest(args)
             if thisRequest == inProgressRequests[0]:
                 logging.info("The pull request for this branch is already in progress. Continuing...")
                 return 2
