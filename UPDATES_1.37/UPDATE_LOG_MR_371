@@ -1,0 +1,7 @@
+
+
+Tue May 17 15:38:33 2022 Peter B. Robinson
+MR_371
+Reviewers: Ben Liu, Alan Dayton
+
+Adjusts the merge train publish steps to ask users to push the merge train button, as remote merges don't actually queue things in the train
