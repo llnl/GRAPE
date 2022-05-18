@@ -604,7 +604,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     logging.info(request)
                 return False
             else:
-                thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+                thisRequest = self.repo.getOpenPullRequest(args["--topic"], args["--public"])
                 for request in inProgressRequests:
                     if thisRequest == request:
                         logging.info("The pull request for this branch is already in progress. Continuing...")
@@ -628,11 +628,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Release...")
             return True
-        repo = self.repo()
         request = self.openPullRequest()
         state = "open"
         if not request:
-            matchingRequests = repo.getMergedPullRequests(args["--topic"], args["--public"])
+            matchingRequests = self.repo.getMergedPullRequests(args["--topic"], args["--public"])
             state = "merged"
             for r in matchingRequests:
                 if "**IN PROGRESS**" in r.title():
@@ -721,16 +720,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["CIPassed"] = False
             return True
         
-        repo = self.repo()
-        
         passed = True
         for job in ci_jobs:
-            passed = passed and repo.checkJobPassed(job,
-                                                    git.SHA(args["--topic"], execution_path=self.workspace_dir),
-                                                    git.SHA(args["--public"], execution_path=self.workspace_dir),
-                                                    args["--topic"],
-                                                    args["--public"]
-                                                    )
+            passed = passed and self.repo.checkJobPassed(job,
+                                                         git.SHA(args["--topic"], execution_path=self.workspace_dir),
+                                                         git.SHA(args["--public"], execution_path=self.workspace_dir),
+                                                         args["--topic"],
+                                                         args["--public"]
+                                                         )
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')
