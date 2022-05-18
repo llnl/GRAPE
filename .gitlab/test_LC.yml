@@ -10,5 +10,6 @@
 .tick_version:
   script:
     - cd $CI_PROJECT_DIR
+    - git remote set-url origin "ssh://git@rzgitlab.llnl.gov:7999/GRP/grape.git"
     - ./grape version tick --public=$CI_COMMIT_BRANCH --tag --nocommit
     - git push origin --tags
