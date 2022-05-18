@@ -14,8 +14,7 @@ from vine.vine_logging import log_wrapper
 def grapeVersion():
     try:
         grape_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"..")
-        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":''}, workspace_dir=grape_path)
-        grapeVersion = 'v'+'.'.join(grapeVersion)
+        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":''}, workspace_dir=grape_path, asString=True)
         return grapeVersion
     except:
         return "v.1.37.unknown"
@@ -233,11 +232,14 @@ class Version(Option, WorkspaceDirHandler):
         return slots
 
     @staticmethod
-    def readVersionFromTag(args, workspace_dir):
+    def readVersionFromTag(args, workspace_dir, asString=False):
         tagPrefix = args["--tagPrefix"]
         tagSuffix = args["--tagSuffix"]
         tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
-        return Version.convertTagStringToSlots(tagPrefix, tagSuffix, tagName)
+        if asString:
+            return tagName
+        else:
+            return Version.convertTagStringToSlots(tagPrefix, tagSuffix, tagName)
 
     def readVersion(self,args):
         if args["--fileIsDerived"]:
