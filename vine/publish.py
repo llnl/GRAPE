@@ -230,6 +230,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.st_branches = {}
         self.cascadeDict = {}
         self.doDelete = {}
+        self._codeReviews = None
+        self._repo = None
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
@@ -348,6 +350,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if args["--mergeTrain"] is not True and args["--mergeTrain"] is not False:
                 doMergeTrain = args["--mergeTrain"].lower() == "true"
                 args["--mergeTrain"] = doMergeTrain
+        
+        # store the args in self
+        self.args = args
 
 
     def abort(self, args):
@@ -546,27 +551,33 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def ensureReview(self, args):
         return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
-    def codeReviews(self, args):
-        return CodeReviewsFactory.makeCodeReviews(
-            username=args["--user"], url=args["--codeReviewsURL"],
-            verify=args["--verifySSL"], port=int(args["--ssh_pat_port"]),
-            ssh_path = args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
+    @property
+    def codeReviews(self):
+        if self._codeReviews is None:
+            self._codeReviews = CodeReviewsFactory.makeCodeReviews(
+                username=self.args["--user"], url=self.args["--codeReviewsURL"],
+                verify=self.args["--verifySSL"], port=int(self.args["--ssh_pat_port"]),
+                ssh_path = self.args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
+        return  self._codeReviews
 
-    def repo(self, args):
-        return self.codeReviews(args).project(args["--project"]).repo(args["--repo"])
+    @property
+    def repo(self):
+        if self._repo is None:
+            self._repo = self.codeReviews.project(self.args["--project"]).repo(self.args["--repo"])
+        return self._repo
 
-    def pullRequests(self, args):
-        return self.repo(args).pullRequests()
+    def pullRequests(self)
+        return self.repo.pullRequests()
 
-    def openPullRequest(self, args):
-        return self.repo(args).getOpenPullRequest(args["--topic"], args["--public"])
+    def openPullRequest(self):
+        return self.repo.getOpenPullRequest(self.args["--topic"], self.args["--public"])
 
     def checkInProgressLock(self, args):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Check..")
             return True
         inProgressRequests = []
-        for request in self.pullRequests(args):
+        for request in self.pullRequests():
             inProgress = "IN PROGRESS" in request.title()
             if inProgress:
                 doesConflict = request.toRef() == args["--public"]
@@ -576,7 +587,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("No other pull requests are IN PROGRESS...")
             return True
         if len(inProgressRequests) == 1:
-            thisRequest = self.openPullRequest(args)
+            thisRequest = self.openPullRequest()
             if thisRequest == inProgressRequests[0]:
                 logging.info("The pull request for this branch is already in progress. Continuing...")
                 return 2
@@ -617,8 +628,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Release...")
             return True
-        repo = self.repo(args)
-        request = self.openPullRequest(args)
+        repo = self.repo()
+        request = self.openPullRequest()
         state = "open"
         if not request:
             matchingRequests = repo.getMergedPullRequests(args["--topic"], args["--public"])
@@ -639,7 +650,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
             return True
-        pullRequest = self.openPullRequest(args)
+        pullRequest = self.openPullRequest()
         verified = False
         if pullRequest:
             verified = pullRequest.approved()
@@ -710,7 +721,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["CIPassed"] = False
             return True
         
-        repo = self.repo(args)
+        repo = self.repo()
         
         passed = True
         for job in ci_jobs:
@@ -843,7 +854,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             if args["--mergeTrain"]:
-                thisRequest = self.openPullRequest(args)
+                thisRequest = self.openPullRequest()
                 iid = thisRequest.iid()
                 version = f"MR_{iid}"
                 self.progress["version"] = version
@@ -903,7 +914,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                  "and no -m <msg> defined.")
                     return False
             logging.info("Retrieving pull request description for use as commit message...")
-            pullRequest = self.openPullRequest(args)
+            pullRequest = self.openPullRequest()
             if pullRequest:
                 commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
             else:
@@ -978,7 +989,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         if not args["--noReview"]:
-            thisRequest = self.openPullRequest(args)
+            thisRequest = self.openPullRequest()
             requestTitle = thisRequest.title()
             versionArgs = ["read"]
             menu.applyMenuChoice("version", versionArgs)
@@ -1569,7 +1580,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return menu.applyMenuChoice("push")
 
     def requestUserStartMergeTrain(self, args):
-        thisRequest = self.openPullRequest(args)
+        thisRequest = self.openPullRequest()
         logging.info("********************************************************************************")
         logging.info("All changes pushed and ready for being enqueued into merge train.")
         logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
@@ -1582,7 +1593,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def mergeOnSuccess(self, args):
         if not self.loadCommitMessage(args):
             return False
-        thisRequest = self.openPullRequest(args)
+        thisRequest = self.openPullRequest()
         logging.info("Triggering merge on success of merge train pipeline.")
         try:
             success = thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
