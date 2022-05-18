@@ -1576,6 +1576,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         logging.info(thisRequest.link())
         logging.info("and click on the 'Start merge train' button.")
         logging.info("********************************************************************************")
+        return True
 
 
     def mergeOnSuccess(self, args):
