@@ -73,6 +73,10 @@
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push"'
 
+.run_on_push_to_develop_or_master:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH =="develop" || $CI_COMMIT_BRANCH == "master")'
+
 .run_nightly:
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $NIGHTLY'

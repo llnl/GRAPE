@@ -35,6 +35,18 @@ merge_train:
     - .sleep_1_minute
   interruptible: true
 
+tag_pushes_to_develop_or_master:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_push_to_develop_or_master
+    - .run_rzgenie_shell
+    - .tick_version
+  interruptible: false
+
 # deactivated until we have a gitlab windows runner for grape
 test-Windows:
   stage: test
