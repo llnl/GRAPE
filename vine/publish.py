@@ -566,7 +566,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self._repo = self.codeReviews.project(self.args["--project"]).repo(self.args["--repo"])
         return self._repo
 
-    def pullRequests(self)
+    def pullRequests(self):
         return self.repo.pullRequests()
 
     def openPullRequest(self):
