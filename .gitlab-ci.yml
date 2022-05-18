@@ -36,8 +36,8 @@ merge_train:
   interruptible: true
 
 tag_pushes_to_develop_or_master:
-   stage: test
-   timeout: 30 minutes
+  stage: test
+  timeout: 30 minutes
   variables:
     GIT_STRATEGY: clone
     GIT_DEPTH: "2"
