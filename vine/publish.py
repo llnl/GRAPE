@@ -81,7 +81,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --abort
             grape-publish --printSteps
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
-            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [-T <arg>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -208,11 +208,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --ssh_pat_port=<int>    Port number to issue ssh command over to generate a Personal Access Token for authentication
                             into a Code Review service's REST API.
                             [default: .grapeconfig.repo.ssh_pat_port]
+    --mergeUpdateLogs       If you are using a merge train workflow, this command can be used to produce a file that
+                            is a concatenation of merge request update log files, with the merge request version
+                            substituted out for appropriate version tags.
+    --mergedLog=<file>      The file to write the merged update logs to.
+    --startVersion=<ver>    Starting version to search for relevant update message files.
+    --stopVersion=<ver>     Most recent version to search for relevant update message files. Defaults to HEAD.
     --tagPrefix=<str>       The prefix for the git version tags. [default: v]
     --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
                             .grapeconfig.versioning.branchTagSuffixMappings.
-    --startVersion=<ver>    Starting version to search for relevant update message files.
-    --stopVersion=<ver>     Most recent version to search for relevant update message files. Defaults to HEAD.
+
 
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
