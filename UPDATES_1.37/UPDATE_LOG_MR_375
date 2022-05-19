@@ -1,0 +1,7 @@
+
+
+Thu May 19 14:03:56 2022 Peter B. Robinson
+MR_375
+Reviewers: Ben Liu, Alan Dayton
+
+Teaches GRAPE how to produce a merged update log from update files generated during a merge train publish.
