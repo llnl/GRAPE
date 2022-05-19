@@ -81,6 +81,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --abort
             grape-publish --printSteps
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -207,6 +208,17 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --ssh_pat_port=<int>    Port number to issue ssh command over to generate a Personal Access Token for authentication
                             into a Code Review service's REST API.
                             [default: .grapeconfig.repo.ssh_pat_port]
+    --mergeUpdateLogs       If you are using a merge train workflow, this command can be used to produce a file that
+                            is a concatenation of merge request update log files, with the merge request version
+                            substituted out for appropriate version tags.
+    --mergedLog=<file>      The file to write the merged update logs to.
+    --startVersion=<ver>    Starting version to search for relevant update message files.
+    --stopVersion=<ver>     Most recent version to search for relevant update message files. Defaults to HEAD.
+    --tagPrefix=<str>       The prefix for the git version tags. [default: v]
+    --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
+                            .grapeconfig.versioning.branchTagSuffixMappings.
+
+
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -386,6 +398,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                                    execution_path=self.workspace_dir)
 
         self.parseArgs(args)
+
+        if args["--mergeUpdateLogs"]:
+            self.mergeUpdateLogs(args)
+            return True
 
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
@@ -980,6 +996,45 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             git.commit(f"{logFile} -m \"GRAPE publish: {updated_or_added} log file " +
                        f"{logFile}\"", execution_path=self.workspace_dir)
         return self.checkInProgressLock(args)
+
+    def mergeUpdateLogs(self, args):
+        startVer = args["--startVersion"]
+        stopVer = args["--stopVersion"]
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        versionOption = menu.getOption("version")
+        if stopVer is None:
+            versionArgs = ["read"]
+            menu.applyMenuChoice("version", versionArgs)
+            stopVer = menu.getOption("version").ver
+        if args["--tagSuffix"] is None:
+            config = config_parser_global.grapeConfig()
+            branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
+            args["--tagSuffix"] = branch2suffix[git.currentBranch(execution_path=self.workspace_dir)]
+        startSlots = versionOption.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], startVer)
+        stopSlots = versionOption.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], stopVer)
+        # we will only merge update logs over the last slot
+        mergedLogLines =  []
+        slotArgs = {"--prefix":args["--tagPrefix"],"--suffix":args["--tagSuffix"]}
+        while stopSlots[-1] >= startSlots[-1]:
+            ver2 =  versionOption.slotsToString(slotArgs, stopSlots)
+            stopSlots[-1] = stopSlots[-1] - 1
+            ver1 =  versionOption.slotsToString(slotArgs, stopSlots)
+            log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
+            log_files = log_files.split()
+            for lf in log_files:
+                mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split(args["--updateLog"]+'_')[1]
+                with open(lf) as f:
+                    file_lines = f.readlines()
+                for l in file_lines:
+                    if l == f"{mr_ver}\n":
+                        mergedLogLines.append(f"{ver2}\n")
+                    else:
+                        mergedLogLines.append(l)
+        with open(args["--mergedLog"],'w') as f:
+            for l in mergedLogLines:
+                f.write(l)
+        return True
+
 
     def tickVersion(self, args):
         if not args["--tickVersion"]:
