@@ -1,7 +1,11 @@
 .test_linux:
   script:
     - cd $CI_PROJECT_DIR
+    - ./grape uv --generateSHAList
     - ./grape test
+  artifacts:
+    paths:
+      - GRAPE_NESTED_SHA.json
 
 .sleep_1_minute:
   script:
