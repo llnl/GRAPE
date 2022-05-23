@@ -419,6 +419,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
+        config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
 
 
 def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
