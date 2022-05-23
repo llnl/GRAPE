@@ -5,7 +5,7 @@
     - ./grape test
   artifacts:
     paths:
-      - GRAPE_NESTED_SHA.json
+      - GRAPE_PROJECT_SHA.json
 
 .sleep_1_minute:
   script:
