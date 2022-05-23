@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import os
 import re
@@ -738,12 +739,23 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         
         passed = True
         for job in ci_jobs:
-            passed = passed and self.repo.checkJobPassed(job,
+            job_passed, passing_job = self.repo.checkJobPassed(job,
                                                          git.SHA(args["--topic"], execution_path=self.workspace_dir),
                                                          git.SHA(args["--public"], execution_path=self.workspace_dir),
                                                          args["--topic"],
                                                          args["--public"]
                                                          )
+            passed = passed and job_passed
+            config = config_parser_global.grapeConfig()
+            if config.get(self.SECTION_WORKSPACE, "CIRepos"):
+                pipeline_job = self.repo.project.jobs.get(passing_job.job.id)
+                print(f"self.repo {self.repo.project.jobs.get(passing_job.job.id)}")
+                print(f"job {passing_job.job.__dict__}")
+                artifact = pipeline_job.artifact("GRAPE_PROJECT_SHA.json")
+                print(artifact)
+                artifact = json.loads(artifact)
+                print(artifact)
+                exit(1)
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')

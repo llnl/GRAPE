@@ -236,6 +236,7 @@ class Repo:
 
         # merge request jobs will have a reference based off the merge request iid
         merge_request = self.getOpenPullRequest(current_branch, target_branch)
+        passing_job = None
         if merge_request:
             merge_request_iid = merge_request.iid()
             merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
@@ -251,12 +252,26 @@ class Repo:
                        if current_sha in parents and target_sha in parents:
                            # ...then the job passed!
                            passed = True
+                           passing_job = Job(job, self.gitlab)
                            logging.debug(f"\t\t{job.__dict__}\n\n")
                            break
         else:
             logging.debug(f"MR not found")
 
-        return passed
+        return passed, passing_job
+
+    def artifact(self, ref_name, artifact_path, job):
+        return self.project.artifact(ref_name,artifact_path, job)
+
+class Job:
+    def __init__(self, gitlab_job, gitlab):
+        self.job = gitlab_job
+        self.gitlab = gitlab
+    def artifact(self, path):
+        print(self.job)
+        print(self.job.__dict__)
+        return self.job.artifact(path)
+    
         
         
 
