@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import os
 import re
@@ -738,12 +739,26 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         
         passed = True
         for job in ci_jobs:
-            passed = passed and self.repo.checkJobPassed(job,
-                                                         git.SHA(args["--topic"], execution_path=self.workspace_dir),
-                                                         git.SHA(args["--public"], execution_path=self.workspace_dir),
-                                                         args["--topic"],
-                                                         args["--public"]
-                                                         )
+            successful_job = self.repo.getSuccessfulJob(job,
+                                                        git.SHA(args["--topic"], execution_path=self.workspace_dir),
+                                                        git.SHA(args["--public"], execution_path=self.workspace_dir),
+                                                        args["--topic"],
+                                                        args["--public"]
+                                                        )
+            passed = successful_job != None
+            if not passed:
+                logging.info("no successful job found.")
+            # if user has configured a list of CIRepos that need to be active during CI jobs, we verify the
+            # job has produced a GRAPE_PROJECT_SHA.json artifact and that all grape projects (top level and nested)
+            # are consistent with our current workspace
+            config = config_parser_global.grapeConfig()
+            if passed and config.get(self.SECTION_WORKSPACE, "CIRepos"):
+                logging.info("downloading artifact GRAPE_PROJECT_SHA.json from successful job...")
+                artifact = json.loads(successful_job.artifact("GRAPE_PROJECT_SHA.json"))
+                logging.info("...downloaded.")
+                logging.info(f"verifying {artifact} is consistent with current workspace.")
+                menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                passed = menu.getOption("uv").verifySHAList(artifact)
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')

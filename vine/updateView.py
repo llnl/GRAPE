@@ -168,6 +168,23 @@ class UpdateView(Option, WorkspaceDirHandler):
         """
         return self.defineActiveSubprojects(projectType="nested subproject")
 
+
+    def verifySHAList(self, sha_dict):
+        active_nested_subprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+        config = config_parser_global.grapeConfig()
+        CISubprojects = config.get("workspace","CIRepos").split(' ')
+        valid = True
+        for sub in CISubprojects:
+            our_sha = git.SHA(execution_path=os.path.join(self.workspace_dir,sub))
+            if sha_dict[sub] == our_sha:
+                logging.info(f"subproject {sub} matches versions ({sha_dict[sub]})")
+            else:
+                valid = False
+                logging.info(f"subproject {sub} at {our_sha}, expected at {sha_dict[sub]}")
+                break
+        return valid
+
+
     @log_wrapper
     def execute(self, args):
         config = config_parser_global.grapeConfig()
@@ -178,22 +195,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         if args["--verifySHAList"]:
             with open(os.path.join(self.workspace_dir,"GRAPE_PROJECT_SHA.json"),'r') as f:
                 sha_dict = json.load(f)
-            active_nested_subprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
-            CISubprojects = config.get("workspace","CIRepos").split(' ')
-            valid = True
-            for sub in CISubprojects:
-                our_sha = git.SHA(execution_path=os.path.join(self.workspace_dir,sub))
-                if sha_dict[sub] == our_sha:
-                    logging.info(f"subproject {sub} matches versions ({sha_dict[sub]})")
-                else:
-                    valid = False
-                    logging.error(f"subproject {sub} at {our_sha}, expected at {sha_dict[sub]}")
-                    break
-            if valid:
-               valid = git.SHA(execution_path=self.workspace_dir) == sha_dict[config.get("repo","name")]
-               if valid:
-                   logging.info(f"top level repo matches versions {sha_dict[config.get('repo','name')]}")
-            return valid
+            return self.verifySHAList(sha_dict)
 
         sync = args["--sync"].lower().strip() in ["true", "yes"]
         args["--sync"] = sync
@@ -409,7 +411,6 @@ class UpdateView(Option, WorkspaceDirHandler):
             sha_dict = {}
             for sub in nested_subprojects:
                 sha_dict[sub] = git.SHA(execution_path=os.path.join(self.workspace_dir,sub))
-            sha_dict[config.get("repo","name")] = git.SHA(execution_path=self.workspace_dir)
             # write dict in a pickle file
             with open(os.path.join(self.workspace_dir,"GRAPE_PROJECT_SHA.json"),'w') as f:
                 json.dump(sha_dict, f)

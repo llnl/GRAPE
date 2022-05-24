@@ -1,0 +1,7 @@
+
+
+Tue May 24 13:47:20 2022 Peter B. Robinson
+MR_377
+Reviewers: Ben Liu, Alan Dayton
+
+use generated project sha artifacts as an additional check on a valid merge train ticket job.

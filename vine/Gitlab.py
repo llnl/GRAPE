@@ -217,7 +217,7 @@ class Repo:
                                                "allow_force_push": allow_force_push})
         return replaced
 
-    def checkJobPassed(self, job_name, current_sha, target_sha, current_branch, target_branch):
+    def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
         # manual jobs will have the branch name as a reference
         passed = False
         branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
@@ -236,6 +236,7 @@ class Repo:
 
         # merge request jobs will have a reference based off the merge request iid
         merge_request = self.getOpenPullRequest(current_branch, target_branch)
+        successful_job = None
         if merge_request:
             merge_request_iid = merge_request.iid()
             merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
@@ -250,13 +251,23 @@ class Repo:
                        parents = job.commit["parent_ids"]
                        if current_sha in parents and target_sha in parents:
                            # ...then the job passed!
-                           passed = True
-                           logging.debug(f"\t\t{job.__dict__}\n\n")
+                           successful_job = Job(self.project, job.id, self.gitlab)
                            break
         else:
             logging.debug(f"MR not found")
 
-        return passed
+        return successful_job
+
+    def artifact(self, ref_name, artifact_path, job):
+        return self.project.artifact(ref_name,artifact_path, job)
+
+class Job:
+    def __init__(self, gitlab_project, gitlab_job_id, gitlab):
+        self.job = gitlab_project.jobs.get(gitlab_job_id)
+        self.gitlab = gitlab
+    def artifact(self, path):
+        return self.job.artifact(path)
+    
         
         
 
