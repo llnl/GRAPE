@@ -212,10 +212,16 @@ class Repo(StashyNode):
     def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
         return False
 
-    def checkJobPassed(self, name, current_sha, target_sha, current_branch, target_branch):
-        return False
+    def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
+        logging.info("GRAPE does not support CI integration with Atlassian tools.")
+        return None
 
 
+class Job:
+    def __init__(self):
+        pass
+    def artifact(self, path):
+        return b''
 
 
 

@@ -604,7 +604,6 @@ class Project(RefreshMixin, SaveMixin, ObjectDeleteMixin, RepositoryMixin, RESTO
             artifact_path,
             job,
         )
-        print("GITLAB PATH", path)
         result = self.manager.gitlab.http_get(
             path, streamed=streamed, raw=True, **kwargs
         )

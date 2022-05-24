@@ -151,7 +151,6 @@ class ProjectJob(RefreshMixin, RESTObject):
             str: The artifacts if `streamed` is False, None otherwise.
         """
         path = "%s/%s/artifacts/%s" % (self.manager.path, self.get_id(), path)
-        print("JOBS_PATH", path)
         result = self.manager.gitlab.http_get(
             path, streamed=streamed, raw=True, **kwargs
         )
