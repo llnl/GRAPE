@@ -11,7 +11,6 @@ ssh_pat_port = 7999
 managesubmodules = True
 submoduletopicprefixmappings = ?:develop
 submodulepublishpolicy = ?:merge
-CIRepos = grape
 
 [patch]
 tagprefix = bundled
