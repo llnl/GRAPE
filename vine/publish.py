@@ -753,13 +753,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # are consistent with our current workspace
             config = config_parser_global.grapeConfig()
             if passed and config.get(self.SECTION_WORKSPACE, "CIRepos"):
-                logging.info("downloading artifact GRAPE_PROJECT_SHA.json from successful job.")
+                logging.info("downloading artifact GRAPE_PROJECT_SHA.json from successful job...")
                 artifact = json.loads(successful_job.artifact("GRAPE_PROJECT_SHA.json"))
+                logging.info("...downloaded.")
                 logging.info(f"verifying {artifact} is consistent with current workspace.")
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 passed = menu.getOption("uv").verifySHAList(artifact)
-                if not passed:
-                    exit(1)
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')
