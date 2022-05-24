@@ -186,9 +186,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     break
         if valid:
            current_SHA = git.SHA(execution_path=self.workspace_dir)
-           print(f"HERE VALIDATING SHA {current_SHA}, {sha_dict[topLevelName]}")
            valid = git.SHA(execution_path=self.workspace_dir) == sha_dict[topLevelName]
-           print(valid)
            if valid:
                logging.info(f"top level repo matches versions {sha_dict[topLevelName]}")
         return valid
