@@ -1,7 +1,10 @@
 .test_linux:
   script:
     - cd $CI_PROJECT_DIR
-    - ./grape uv --generateSHAList
+    - echo $CI_COMMIT_BRANCH
+    - echo $CI_COMMIT_REF_NAME
+    - echo $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+    - ./grape uv --generateSHAList $CI_COMMIT_BRANCH
     - ./grape test
   artifacts:
     paths:
