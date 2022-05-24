@@ -753,7 +753,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # are consistent with our current workspace
             config = config_parser_global.grapeConfig()
             if passed and config.get(self.SECTION_WORKSPACE, "CIRepos"):
-                logging.info("downloading artifiact GRAPE_PROJECT_SHA.json from successful job.")
+                logging.info("downloading artifact GRAPE_PROJECT_SHA.json from successful job.")
                 artifact = json.loads(successful_job.artifact("GRAPE_PROJECT_SHA.json"))
                 logging.info(f"verifying {artifact} is consistent with current workspace.")
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)

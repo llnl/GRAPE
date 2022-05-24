@@ -1,11 +1,7 @@
 .test_linux:
   script:
     - cd $CI_PROJECT_DIR
-    - ./grape uv --generateSHAList --branchName=$CI_COMMIT_REF_NAME
     - ./grape test
-  artifacts:
-    paths:
-      - GRAPE_PROJECT_SHA.json
 
 .sleep_1_minute:
   script:

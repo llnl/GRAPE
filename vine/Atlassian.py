@@ -218,6 +218,9 @@ class Repo(StashyNode):
 
 
 class Job:
+    """
+    A Job object should never be instantiated for Bitbucket.
+    """
     def __init__(self):
         pass
     def artifact(self, path):
