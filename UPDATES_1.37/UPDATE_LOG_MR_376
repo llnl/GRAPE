@@ -1,0 +1,7 @@
+
+
+Tue May 24 11:50:13 2022 Peter B. Robinson
+MR_376
+Reviewers: David Bloss, Ben Liu
+
+Teaches grape uv how to produce a .json file that contains SHA information of all grape-managed projects, suitable for verifying SHAs across workspaces, esp. in CI.
