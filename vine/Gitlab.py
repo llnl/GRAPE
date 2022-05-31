@@ -219,40 +219,71 @@ class Repo:
 
     def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
         # manual jobs will have the branch name as a reference
-        passed = False
-        branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
+        successful_job = None
+        branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch, status="running")
+        logging.debug(f"BRANCH PIPELINES {branch_pipelines}")
         # if there is a pipeline matching the current branch...
         for pi in branch_pipelines:
-            logging.debug(f"branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+            logging.debug(pi.__dict__)
             # ... that has a successful job
             for job in pi.jobs.list(all=True, scope="success"):
+               logging.debug(f"SUCCESSFUL branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+               logging.debug(f"checking {job.name} against {job_name}")
                # ... matching the job name the user asked for
                if job.name == job_name:
+                   logging.debug(f"checking {job.commit['id']} against {current_sha}")
                    # ... that ran aginst the current commit on this branch
                    if job.commit["id"] == current_sha:
                        # then the job passed!
-                       passed = True
+                       logging.debug(f"creating successful_job")
+                       successful_job = Job(self.project, job.id, self.gitlab)
                        break
 
         # merge request jobs will have a reference based off the merge request iid
         merge_request = self.getOpenPullRequest(current_branch, target_branch)
-        successful_job = None
-        if merge_request:
+        logging.debug(f"open merge request {merge_request}")
+        if merge_request and successful_job == None:
             merge_request_iid = merge_request.iid()
             merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
-            #if there is a pipeline...
+            logging.debug(f"MERGE_PIPELINES {merge_pipelines}")
+            #if there is a pipeline in a repo configured to run merge requests under proposed merges...
             for pi in merge_pipelines:
-                logging.debug(f"merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
                 # ... that contains a successful job...
                 for job in pi.jobs.list(all=True, scope="success"):
+                   logging.debug(f"SUCCESSFUL job in merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                   logging.debug(f"checking {job.name} against {job_name}")
                    # ... whose name matches the one the user cares about...
                    if job.name == job_name:
+                       logging.debug(f"{job.commit}")
                        # ... and was actually tested agains the merge of this commit and the target commit...
                        parents = job.commit["parent_ids"]
+                       logging.debug(f"checking {parents} against {current_sha} and {target_sha}")
                        if current_sha in parents and target_sha in parents:
                            # ...then the job passed!
+                           logging.debug(f"creating successful_job")
                            successful_job = Job(self.project, job.id, self.gitlab)
                            break
+            if successful_job == None:
+                #if there is a pipeline in a repo configured to run merge requests on head..."
+                head_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/head")
+                for pi in head_pipelines:
+                    # ... that contains a successful job...
+                    for job in pi.jobs.list(all=True, scope="success"):
+                       logging.debug(f"SUCCESSFUL job in head_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                       logging.debug(f"checking {job.name} against {job_name}")
+                       # ... whose name matches the one the user cares about...
+                       if job.name == job_name:
+                           logging.debug(f"{job.commit}")
+                           # ... and was actually tested agains the merge of this commit and the target commit...
+                           sha = job.commit["id"]
+                           logging.debug(f"checking {sha} against {current_sha}")
+                           if current_sha ==  sha:
+                               # ...then the job passed!
+                               logging.debug(f"creating successful_job")
+                               successful_job = Job(self.project, job.id, self.gitlab)
+                               break
+
+
         else:
             logging.debug(f"MR not found")
 
