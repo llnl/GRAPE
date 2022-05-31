@@ -1,0 +1,7 @@
+
+
+Tue May 31 11:06:52 2022 Peter B. Robinson
+MR_379
+Reviewers: Ben Liu, Alan Dayton
+
+Fix issue where successful jobs on projects not configured to run CI under merge commits were not being located.
