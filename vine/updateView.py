@@ -435,7 +435,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
             except:
                 logging.error(e.gitOutput)
         else:
-            git.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
+            logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
     if git.currentBranch(execution_path=repo) == branch:
