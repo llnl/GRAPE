@@ -759,8 +759,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 logging.info(f"verifying {artifact} is consistent with current workspace.")
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 passed = menu.getOption("uv").verifySHAList(artifact)
-        if not passed:
-            return False
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')
