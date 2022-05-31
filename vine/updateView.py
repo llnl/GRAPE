@@ -432,8 +432,9 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
         if "refusing to fetch into current branch" in e.gitOutput.lower():
             try:
                 git.pull(f"origin {branch}", execution_path=repo)
-            except:
+            except grape_errors.GrapeGitError as e:
                 logging.error(e.gitOutput)
+                raise e
         else:
             logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
