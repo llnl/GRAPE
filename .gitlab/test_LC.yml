@@ -17,3 +17,7 @@
 .auto_fail:
   script:
     - exit 1
+
+.auto_pass:
+  script:
+    - exit 0

@@ -22,6 +22,18 @@ merge_train_ticket:
     - .test_linux
   interruptible: true
 
+all_aboard_the_merge_train:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: none
+  extends:
+    - .run_on_merge_request_changes_to_update_logs
+    - .run_rzgenie_shell
+    - .auto_pass
+  interruptible: true
+
+
 merge_train:
   stage: test
   timeout: 30 minutes
