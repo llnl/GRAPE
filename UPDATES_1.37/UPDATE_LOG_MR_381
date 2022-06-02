@@ -1,0 +1,7 @@
+
+
+Thu Jun  2 16:42:17 2022 Peter B. Robinson
+MR_381
+Reviewers: Ben Liu, Alan Dayton
+
+Dropping the md in the merge train publish process to give developers more control over when their merge train tickets may be invalidated.
