@@ -409,7 +409,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           "markAsDone", "deleteTopic", "done"]
         elif args["--mergeTrain"]:
             # steps for queuing in the merge train
-            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
+            self.order = ["testForCleanWorkspace1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
                           "checkCI", "build", "test",
                           "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "requestUserStartMergeTrain", "done"]
