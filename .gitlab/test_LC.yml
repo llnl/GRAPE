@@ -21,3 +21,4 @@
 .auto_pass:
   script:
     - exit 0
+
