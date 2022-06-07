@@ -252,6 +252,14 @@ class Version(Option, WorkspaceDirHandler):
                 slots = self.readVersionFromFile(f, args)
         # update ver
         self.ver = self.slotsToString(args, slots)
+        if len(slots) > 0:
+            self.major_ver = slots[0]
+        else:
+            self.major_ver = 0
+        if len(slots) > 1:
+            self.minor_ver = slots[1]
+        else:
+            self.minor_ver = 0
         return slots
 
     def readVersionFromFile(self, f, args):

@@ -692,7 +692,8 @@ options are at least listed below.
                             [default: .grapeconfig.publish.postpublishDir]
     --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
-    --updateLogDir=<dir>    Directory to put update log messages.
+    --updateLogDir=<dir>    Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
+                            a directory named after current development version.
                             [default: .grapeconfig.publish.updateLogDir]
     --updateLog=<file>      The log file to update with the commit message for this branch. If --updateLogDir is defined,
                             this is the base file name for update message files.

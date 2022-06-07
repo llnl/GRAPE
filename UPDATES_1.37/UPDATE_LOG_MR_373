@@ -1,7 +1,0 @@
-
-
-Wed May 18 11:49:05 2022 Peter B. Robinson
-MR_373
-Reviewers: Ben Liu, Alan Dayton
-
-Addresses bug where grape always returned v1.37.unknown as current version.

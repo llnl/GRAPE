@@ -1,7 +1,0 @@
-
-
-Fri Apr 29 12:16:05 2022 Peter B. Robinson
-v1.37.22
-Reviewers: Ben Liu, Alan Dayton
-
-Addresses publish tagVersion step getting wrong version number if tags are being used for primary version information.

@@ -141,7 +141,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             [default: .grapeconfig.publish.postpublishDir]
     --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
     --noUpdateLog           Set to skip the updateLog step.
-    --updateLogDir=<dir>    Directory to put update log messages.
+    --updateLogDir=<dir>    Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
+                            a directory named after current development version.
                             [default: .grapeconfig.publish.updateLogDir]
     --updateLog=<file>      The log file to update with the commit message for this branch. If --updateLogDir is defined,
                             this is the base file name for update message files.
@@ -894,6 +895,21 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
         return True
 
+    def loadMajorAndMinorVersion(self, args):
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu.applyMenuChoice("version", ["read"])
+        self.progress["major_version"] = menu.getOption("version").major_ver
+        self.progress["minor_version"] = menu.getOption("version").minor_ver
+        logDir = args["--updateLogDir"]
+        if "<major_version>" in logDir:
+            logDir = logDir.replace("<major_version>", f"{self.progress['major_version']}")
+        if "<minor_version>" in logDir:
+            logDir = logDir.replace("<minor_version>", f"{self.progress['minor_version']}")
+        args["--updateLogDir"] = logDir
+
+        
+        
+
     def loadCommitMessage(self, args):
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
@@ -983,8 +999,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noUpdateLog"]:
             return True
         logFile = args["--updateLog"]
+        self.loadMajorAndMinorVersion(args)
         logDir = args["--updateLogDir"]
         if logDir:
+            if not os.path.exists(logDir):
+                os.makedirs(logDir)
             logFile = os.path.join(logDir,f"{logFile}_{self.progress['version']}")
         if logFile:
             header = args["--entryHeader"]
@@ -1034,6 +1053,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             ver2 =  versionOption.slotsToString(slotArgs, stopSlots)
             stopSlots[-1] = stopSlots[-1] - 1
             ver1 =  versionOption.slotsToString(slotArgs, stopSlots)
+            self.loadMajorAndMinorVersion(args)
             log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
             log_files = log_files.split()
             for lf in log_files:
