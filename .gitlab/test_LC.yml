@@ -1,0 +1,24 @@
+.test_linux:
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./grape test
+
+.sleep_1_minute:
+  script:
+    - sleep 60
+
+.tick_version:
+  script:
+    - cd $CI_PROJECT_DIR
+    - git remote set-url origin "ssh://git@rzgitlab.llnl.gov:7999/GRP/grape.git"
+    - ./grape version tick --public=$CI_COMMIT_BRANCH --tag --nocommit
+    - git push origin --tags
+
+.auto_fail:
+  script:
+    - exit 1
+
+.auto_pass:
+  script:
+    - exit 0
+

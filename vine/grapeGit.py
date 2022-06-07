@@ -517,6 +517,9 @@ def shortSHA(branchName="HEAD", *, execution_path):
                   f"rev-parse of {branchName} failed!",
                   execution_path=execution_path)
 
+def parentsOfMergeCommit(mergeCommit, *, execution_path):
+    return gitcmd(f"rev-list --parents -n 1 {mergeCommit}")[1:]
+
 def show(argStr, *, execution_path):
     try:
         return gitcmd(f"show {argStr}",

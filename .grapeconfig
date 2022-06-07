@@ -27,8 +27,10 @@ topicdestinationmappings = internal_release:master public_release:master-cz
 topicCascadeTick = internal_release:2 ?:1
 
 [publish]
+mergetrain = True
 buildcmds = 
 builddir = 
+testcijob = merge_train_ticket
 testcmds = ./grape test
 testdir = ./
 prepublishcmds = vine/gendocs.py README.md , git add README.md
@@ -37,6 +39,7 @@ postpublishcmds =
 postpublishdir = 
 tickversion = True
 deletetopic = True
+updatelogdir = UPDATES_<major_version>.<minor_version>
 updatelog = UPDATE_LOG
 logskipfirstlines = 0
 logentryheader = <date> <user>\n<version>\nReviewers: <reviewers>\n
@@ -65,11 +68,13 @@ required = *
 
 [versioning]
 file = vine/VERSION
+fileIsDerived = True
 updatetag = True
 branchslotmappings = ?:3
 branchsuffixmappings = ?:
 branchtagsuffixmappings = ?:
 prefix = v
+
 
 [pre-push]
 

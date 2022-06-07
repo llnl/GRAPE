@@ -51,7 +51,7 @@ class GrapeGitlabAdapter:
 
     def generate_personal_access_token(self, port, ssh_url):
         command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api"
-        print(f"Generating token by executing {command}")
+        logging.info(f"Generating token by executing {command}")
         completed_process = subprocess.run(command,
                                            capture_output=True,
                                            shell=True)
@@ -107,8 +107,8 @@ class GrapeGitlabAdapter:
     def projectlist(self):
         return [g.name for g in self._gitlab.groups.list(all=True)]
 
-    def project(self, name):
-        matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name) if x.path.lower() == name.lower()]
+    def project(self, name, min_access_level=None):
+        matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
         if matching_ids:
             group_id = matching_ids[0]
         else:
@@ -205,6 +205,102 @@ class Repo:
 
          return mr
 
+    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
+        replaced = False
+        # Remove the old protected branch if it already exists
+        if self.project.protectedbranches.list(all=True, search=name):
+           self.project.protectedbranches.delete(name)
+           replaced = True
+        self.project.protectedbranches.create({"name": name,
+                                               "push_access_level": push_access_level,
+                                               "merge_access_level": merge_access_level,
+                                               "allow_force_push": allow_force_push})
+        return replaced
+
+    def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
+        # manual jobs will have the branch name as a reference
+        successful_job = None
+        branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
+        logging.debug(f"BRANCH PIPELINES {branch_pipelines}")
+        # if there is a pipeline matching the current branch...
+        for pi in branch_pipelines:
+            logging.debug(pi.__dict__)
+            # ... that has a successful job
+            for job in pi.jobs.list(all=True, scope="success"):
+               logging.debug(f"SUCCESSFUL branch pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+               logging.debug(f"checking {job.name} against {job_name}")
+               # ... matching the job name the user asked for
+               if job.name == job_name:
+                   logging.debug(f"checking {job.commit['id']} against {current_sha}")
+                   # ... that ran aginst the current commit on this branch
+                   if job.commit["id"] == current_sha:
+                       # then the job passed!
+                       logging.debug(f"creating successful_job")
+                       successful_job = Job(self.project, job.id, self.gitlab)
+                       break
+
+        # merge request jobs will have a reference based off the merge request iid
+        merge_request = self.getOpenPullRequest(current_branch, target_branch)
+        logging.debug(f"open merge request {merge_request}")
+        if merge_request and successful_job == None:
+            merge_request_iid = merge_request.iid()
+            merge_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
+            logging.debug(f"MERGE_PIPELINES {merge_pipelines}")
+            #if there is a pipeline in a repo configured to run merge requests under proposed merges...
+            for pi in merge_pipelines:
+                # ... that contains a successful job...
+                for job in pi.jobs.list(all=True, scope="success"):
+                   logging.debug(f"SUCCESSFUL job in merge_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                   logging.debug(f"checking {job.name} against {job_name}")
+                   # ... whose name matches the one the user cares about...
+                   if job.name == job_name:
+                       logging.debug(f"{job.commit}")
+                       # ... and was actually tested agains the merge of this commit and the target commit...
+                       parents = job.commit["parent_ids"]
+                       logging.debug(f"checking {parents} against {current_sha} and {target_sha}")
+                       if current_sha in parents and target_sha in parents:
+                           # ...then the job passed!
+                           logging.debug(f"creating successful_job")
+                           successful_job = Job(self.project, job.id, self.gitlab)
+                           break
+            if successful_job == None:
+                #if there is a pipeline in a repo configured to run merge requests on head..."
+                head_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/head")
+                for pi in head_pipelines:
+                    # ... that contains a successful job...
+                    for job in pi.jobs.list(all=True, scope="success"):
+                       logging.debug(f"SUCCESSFUL job in head_pipeline : {pi.ref}, {pi.iid}, {pi.sha}\n\n")
+                       logging.debug(f"checking {job.name} against {job_name}")
+                       # ... whose name matches the one the user cares about...
+                       if job.name == job_name:
+                           logging.debug(f"{job.commit}")
+                           # ... and was actually tested agains the merge of this commit and the target commit...
+                           sha = job.commit["id"]
+                           logging.debug(f"checking {sha} against {current_sha}")
+                           if current_sha ==  sha:
+                               # ...then the job passed!
+                               logging.debug(f"creating successful_job")
+                               successful_job = Job(self.project, job.id, self.gitlab)
+                               break
+
+
+        else:
+            logging.debug(f"MR not found")
+
+        return successful_job
+
+    def artifact(self, ref_name, artifact_path, job):
+        return self.project.artifact(ref_name,artifact_path, job)
+
+class Job:
+    def __init__(self, gitlab_project, gitlab_job_id, gitlab):
+        self.job = gitlab_project.jobs.get(gitlab_job_id)
+        self.gitlab = gitlab
+    def artifact(self, path):
+        return self.job.artifact(path)
+    
+        
+        
 
 class PullRequest:
     """
@@ -271,6 +367,9 @@ class PullRequest:
         # gitlab does not seem to have the same concept of a version exposed to the REST API
         return 123
 
+    def iid(self):
+        return self.mergerequest.iid
+
     # reviewers is a list of usernames
     def update(self, ver, title=None, description=None, reviewers=None):
         if title:
@@ -306,12 +405,14 @@ class PullRequest:
                f"Reviewers: {all_reviewers}\n" + \
                f"Description: {self.description()}\n"
 
-    def merge(self):
+    def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
         try:
-            self.mergerequest.merge()
+            self.mergerequest.merge(merge_commit_message=merge_commit_message, should_remove_source_branch=False,
+                                    merge_when_pipeline_succeeds=merge_when_pipeline_succeeds)
             return True
-        except gitlab.exceptions.GitlabMRClosedError:
-            return False
+        except gitlab.exceptions.GitlabMRClosedError as e:
+            logging.info(f"GitlabMRClosedError triggered! {e.__dict__}") 
+            raise e
 
 
 def testMe():

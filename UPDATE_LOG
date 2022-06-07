@@ -1,5 +1,48 @@
 
 
+Tue Apr 26 15:01:45 2022 Peter B. Robinson
+v1.37.19
+Reviewers: David Bloss, Ben Liu, Alan Dayton
+
+SUMMARY:
+
+Support writing update messages to 1 file per merge request.
+
+Configure GRAPE to do the same.
+
+
+Mon Apr 25 14:46:42 2022 Peter B. Robinson
+v1.37.18
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+
+Adds capability for grape to verify publish build and test steps using successfully run Gitlab CI pipeline jobs.
+
+Configures grape to use test-all_rzgenie to verify it's own publish and test steps using Gitlab CI.
+
+
+Fri Apr 22 12:24:42 2022 Peter B. Robinson
+v1.37.17
+Reviewers: Ben Liu, Alan Dayton
+
+Adds Gitlab CI integration.
+
+
+Tue Mar 22 11:44:08 2022 David Bloss
+v1.37.16
+Reviewers: Peter Robinson, Ben Liu
+
+GRAPE checks environment variables for Gitlab CI variables. \
+If the most basic variable [GITLAB_CI](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html) exists then GRAPE is running from within a Gitlab CI job and will run non-interactively - not asking user for input.
+
+
+Wed Mar 16 10:39:06 2022 Benjamin T. Liu
+v1.37.15
+Reviewers: Peter Robinson
+
+Mergeback of v1.36.17
+
 Fri Mar 11 08:50:26 2022 Benjamin T. Liu
 v1.36.17
 Reviewers: Peter Robinson, Patrick Greene
@@ -8,6 +51,20 @@ Fix grape uv --gui bug for top-level nested subprojects
 
 - Toggling top-level subprojects previously caused grape to crash
 
+Thu Feb 17 09:21:20 2022 Benjamin T. Liu
+v1.37.14
+Reviewers: Peter Robinson, Al Nichols
+
+Use separate progress files for different grape operations
+
+- Allows grape md to be continued within a grape publish that is in progress, for example
+
+
+Thu Feb 17 09:16:54 2022 Benjamin T. Liu
+v1.37.13
+Reviewers: Peter Robinson
+
+Mergeback of v4.36.16
 
 Wed Feb 16 11:25:02 2022 Benjamin T. Liu
 v1.36.16
@@ -17,6 +74,38 @@ Checkout the corresponding public branch before creating a new flow branch
 
 - Only do this if the public branch differs from the public branch for the current branch
 
+Mon Feb 14 15:15:55 2022 Patrick Greene
+v1.37.12
+Reviewers: Peter Robinson, Ben Liu
+
+Added --remote-only and --local-only flags to grape db command
+
+
+Wed Feb  9 07:57:08 2022 Benjamin T. Liu
+v1.37.11
+Reviewers: Peter Robinson
+
+Create gitlab admin task to protect public branches from force pushes/deletes (replaces task to remove all protected branches).  Limit admin tasks to grape-configured repos.
+
+
+Tue Dec 14 09:53:25 2021 Benjamin T. Liu
+v1.37.10
+Reviewers: Peter Robinson, Al Nichols
+
+Fixes for grape uv
+
+- Fix gui for Windows
+
+- Fix gui for empty subproject lists
+
+- Fix documentation
+
+
+Mon Nov 22 14:51:33 2021 Benjamin T. Liu
+v1.37.9
+Reviewers: Peter Robinson, Al Nichols
+
+Mergeback of v1.36.14/15
 
 Mon Nov 22 14:39:50 2021 Benjamin T. Liu
 v1.36.15
@@ -37,6 +126,18 @@ Fixes for grape uv --gui
 
 - Remove enclosing directory from list box display
 
+Tue Nov  2 14:15:38 2021 Benjamin T. Liu
+v1.37.8
+Reviewers: Peter Robinson
+
+Add more gitlab admin tasks
+
+
+Mon Nov  1 13:43:58 2021 Benjamin T. Liu
+v1.37.7
+Reviewers: Peter Robinson
+
+Mergeback of v1.36.12/13
 
 Mon Nov  1 12:59:32 2021 Benjamin T. Liu
 v1.36.13
@@ -59,6 +160,18 @@ Prevent python cache file generation for doc generation and testing
 
 - vine/gendocs.py is directly called during publishing in grape project
 
+Fri Oct 29 11:26:27 2021 Benjamin T. Liu
+v1.37.6
+Reviewers: Peter Robinson
+
+Add gitlab admin tasks (removeProtectedBranches implemented)
+
+
+Fri Oct 29 10:58:28 2021 Benjamin T. Liu
+v1.37.5
+Reviewers: Peter Robinson
+
+Mergeback of v1.36.8 and v1.36.9
 
 Fri Oct 29 10:30:30 2021 Benjamin T. Liu
 v1.36.11
@@ -87,6 +200,33 @@ Reviewers: Peter Robinson
 
 Provide better output for gitlab query failures
 
+
+Tue Oct 26 14:00:24 2021 Peter B. Robinson
+v1.37.4
+Reviewers: Ben Liu
+
+Mergeback of 1.36.7
+
+
+Mon Oct 25 13:47:19 2021 Peter B. Robinson
+v1.37.3
+Reviewers: Ben Liu, Arlie Capps
+
+Mergeback of project lookup fix.
+
+
+Thu Oct 21 14:25:30 2021 Peter B. Robinson
+v1.37.2
+Reviewers: Ben Liu
+
+Mergeback of v1.36.3.
+
+
+Thu Oct 21 11:52:05 2021 Peter B. Robinson
+v1.37.1
+Reviewers: Ben Liu
+
+mergeback of v1.36.2
 
 Tue Oct 26 12:52:40 2021 Peter B. Robinson
 v1.36.7

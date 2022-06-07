@@ -13,3 +13,5 @@ build/
 \.idea
 *.egg-info
 *.log
+vine/VERSION
+GRAPE_NESTED_SHA.json

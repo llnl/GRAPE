@@ -12,18 +12,19 @@ class Resumable(ABC):
 
     def __init__(self):
         super(Resumable, self).__init__()
+        self._key = ""
         self.progress = {}
         self.progressFile = None
 
     def set_progress_file(self, *, execution_path):
         try:
             gitDir = str(git.gitDir(execution_path=execution_path))
-            progressFile = os.path.join(gitDir, "grapeProgress")
+            progressFile = os.path.join(gitDir, f"grapeProgress{self._key}")
             self._reset_progress(progressFile)
         except grape_errors.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
             # in the user's $HOME directory
-            progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
+            progressFile = os.path.join(os.path.expanduser('~'), f".grapeProgress{self._key}")
             self._reset_progress(progressFile)
 
     def _reset_progress(self, progress_file_path):

@@ -8,6 +8,7 @@ if sys.platform == 'linux2':
 
 
 GRAPE_CONFIG = '.grapeconfig'
+IS_NON_INTERACTIVE = False
 
 
 def ensure_dir(f):
@@ -48,6 +49,16 @@ def parseArgs(docstr, arguments, config):
 # with a 'N' or 'n'.
 def userInput(message, default=None):
     print(f"\n{message}")
+    if IS_NON_INTERACTIVE:
+        if not default:
+            return ""
+        elif default.lower()[0] == "y":
+            return True
+        elif default.lower()[0] == "n":
+            return False
+        else:
+            return default
+
     if default == "" or default is None:
         return input('==> ').strip()
     value = input(f"(def: {default}) ==> ").strip()
