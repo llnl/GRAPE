@@ -1002,7 +1002,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.loadMajorAndMinorVersion(args)
         logDir = args["--updateLogDir"]
         if logDir:
-            if not path.exists(logDir):
+            if not os.path.exists(logDir):
                 os.makedirs(logDir)
             logFile = os.path.join(logDir,f"{logFile}_{self.progress['version']}")
         if logFile:
