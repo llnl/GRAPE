@@ -67,7 +67,7 @@ class Pull(Resumable, Option, WorkspaceDirHandler):
         from vine import grapeMenu
         merge_down_command = grapeMenu.menu().getOption("md")
         merge_down_command.workspace_dir = self.workspace_dir
-        merge_down_command._resume(args, workspace_dir)
+        merge_down_command._resume(args, workspace_dir=workspace_dir)
         return True
 
     def _saveProgress(self, args):
