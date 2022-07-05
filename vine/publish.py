@@ -777,7 +777,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 passed = menu.getOption("uv").verifySHAList(artifact)
                 if not passed:
-                    logging.info(f"{artifact} is inconsistent with current workspace."
+                    logging.info(f"{artifact} is inconsistent with current workspace.")
 
         self.progress["CIPassed"] = passed 
         if passed:
