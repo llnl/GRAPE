@@ -220,6 +220,7 @@ class Repo:
     def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
         # manual jobs will have the branch name as a reference
         successful_job = None
+        job_name = job_name.strip()
         branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
         logging.debug(f"BRANCH PIPELINES {branch_pipelines}")
         # if there is a pipeline matching the current branch...
