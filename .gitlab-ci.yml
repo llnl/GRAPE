@@ -24,7 +24,7 @@ stages:
 auto_merge_train_ticket:
   extends:
     - ._merge_train_ticket
-    - .run_on_merge_request_except_on_changes_to_update_logs
+    - .run_on_merge_request_changes_to_train_tickets
 
 merge_train_ticket:
   extends:

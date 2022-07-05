@@ -39,6 +39,12 @@
       when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"'
 
+.run_on_merge_request_changes_to_train_tickets:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train"'
+      changes:
+        - .gitlab/train_tickets/*
+
 
 .run_on_merge_request_or_nightly:
   rules:
