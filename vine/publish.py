@@ -734,7 +734,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         ci_jobs = args["--testCIJob"]
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
-            for i in range(len(ci_jobs):
+            for i in range(len(ci_jobs)):
                 ci_jobs[i] = ci_jobs[i].split('|')
 
 
