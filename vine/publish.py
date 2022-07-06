@@ -933,7 +933,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
              
 
     def loadCommitMessage(self, args):
-        if "--sendEmail" in args:
+        if args["--sendEmail"]:
             return self.loadCommitMessageFromRecentMergeRequest(args)
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
