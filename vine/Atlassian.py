@@ -183,7 +183,7 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
-    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN"):
+    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):

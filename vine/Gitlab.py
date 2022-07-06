@@ -179,15 +179,18 @@ class Repo:
         self.gitlab = gitlab
         
     # state can be "all", "merged", "opened", or "closed"
-    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None):
-        # translates from bitbucket to gitlab state types
-        state_dict = {"open":"opened", "opened":"opened",
-                      "merged": "merged",
-                      "declined":"closed", "closed":"closed",
-                      "all":"all"
-                      }
-        state = state_dict[state.lower()]
-        return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
+    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
+        if id == None:
+            # translates from bitbucket to gitlab state types
+            state_dict = {"open":"opened", "opened":"opened",
+                          "merged": "merged",
+                          "declined":"closed", "closed":"closed",
+                          "all":"all"
+                          }
+            state = state_dict[state.lower()]
+            return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
+        else:
+            return [PullRequest(self.project.mergerequests.list(iids=[id])[0], self.gitlab)]
 
     def getOpenPullRequest(self, source, target):
         requests = self.pullRequests(state="opened", target_branch=target, source_branch=source)
