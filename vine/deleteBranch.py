@@ -103,9 +103,8 @@ def deleteBranch(repo='', branch='master', args=None, *, workspace_dir, remote_u
             git.push(f"--delete {remote} {branch}", throwOnFail=True, execution_path=repo)
         except grape_errors.GrapeGitError as e:
             if "remote ref does not exist" in e.gitOutput.lower():
+                logging.warning(f"remote branch origin/{branch} not found in {repo}")
                 pass
-        else:
-            logging.warning(f"remote branch origin/{branch} not found in {repo}")
 
 
 def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, workspace_dir):
