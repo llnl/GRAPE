@@ -125,14 +125,14 @@ class TestNestedSubproject(testGrape.TestGrape):
             # deactivate all nested subprojects
             self.resetMenu(second_space)
             mock_userInput.side_effect = ["n\n"]
-            self.menu.applyMenuChoice("uv", ["-f"])
+            self.menu.applyMenuChoice("uv", ["-f","-F"])
             # update workspace
             git.pull("origin master", execution_path=second_space)
             # activate all nested subprojects
             # reset the menu here to reread the grapeconfig
             self.resetMenu(second_space)
             mock_userInput.side_effect = ["a\n"]
-            self.menu.applyMenuChoice("uv", ["-f"])
+            self.menu.applyMenuChoice("uv", ["-f","-F"])
             # ensure that changes from the main client are picked up
             self.assertFalse(os.path.isdir(os.path.join(second_space, "subs", "subproject1")), "subproject1 should not be present")
             self.assertTrue(os.path.isdir(os.path.join(second_space, "subs", "subproject2")), "subproject2 should be present")

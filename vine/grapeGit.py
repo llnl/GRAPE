@@ -260,6 +260,7 @@ def getAllSubmodules(*, execution_path):
         submodules.append(s.split()[1].split('"')[1])
     return submodules
 
+
 def getAllSubmoduleURLMap(*, execution_path):
     subconfig = configparser.ConfigParser()
     fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
@@ -270,6 +271,20 @@ def getAllSubmoduleURLMap(*, execution_path):
     for s in sections:
         submodules[subconfig.get(s,"path")] = subconfig.get(s, "url")
     return submodules
+
+
+def getInactiveSubmoduleURLMap(*, execution_path):
+    all_urls = getAllSubmoduleURLMap(execution_path=execution_path)
+    active_submodules = getActiveSubmodules(execution_path=execution_path)
+    inactive_urls = {}
+    for sub in all_urls:
+        if sub not in active_submodules:
+            inactive_urls[sub] = all_urls[sub]
+    return inactive_urls
+
+def getInactiveSubmoduleURLs(*, execution_path):
+    url_map = getInactiveSubmoduleURLMap(execution_path=execution_path)
+    return [parseSubprojectRemoteURL(url_map[x], execution_path=execution_path) for x in url_map]
 
 
 def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
@@ -394,6 +409,10 @@ def gitPathToOsPath(path):
     if os.name == "nt":
         return path.replace(os.path.altsep, os.path.sep)
     return path
+
+def lsRemote(args, *, execution_path):
+    return gitcmd(f"ls-remote {args}", "ls-remote failed",
+                  execution_path=execution_path)
 
 
 def merge(args, *, execution_path):

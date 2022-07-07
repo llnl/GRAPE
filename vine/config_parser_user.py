@@ -1,7 +1,9 @@
 import configparser
 import os
+
 from vine import config_parser_base
 from vine import config_parser_global
+from vine import grapeGit as git
 
 
 class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
@@ -58,6 +60,32 @@ def getAllActiveNestedSubprojects(*, workspaceDir):
             userConfig.ensureSection(f"nested-{sub}")
             userConfig.set(f"nested-{sub}", "active", "False")
     return active
+
+def getAllInactiveNestedSubprojects(*, workspaceDir):
+    config = __get_global_grape_config(workspaceDir)
+    allNested = config.getAllNestedSubprojects()
+    userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
+    inactive = []
+    for sub in allNested:
+        try:
+            if not userConfig.getboolean(f"nested-{sub}", "active"):
+                inactive.append(sub)
+        except configparser.Error:
+            userConfig.ensureSection(f"nested-{sub}")
+            userConfig.set(f"nested-{sub}", "active", "False")
+            inactive.append(sub)
+    return inactive
+
+
+def getAllInactiveNestedSubprojectURLs(*, workspaceDir):
+    config = __get_global_grape_config(workspaceDir)
+    userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
+    inactive = getAllInactiveNestedSubprojects(workspaceDir=workspaceDir)
+    inactive_urls = []
+    for sub in inactive:
+        url = config.get(f"nested-{sub}","url")
+        inactive_urls.append(git.parseSubprojectRemoteURL(url, execution_path=workspaceDir))
+    return inactive_urls
 
 
 def getAllActiveNestedSubprojectPrefixes(*, workspaceDir):
