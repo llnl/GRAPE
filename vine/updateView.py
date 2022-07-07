@@ -275,7 +275,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
-                    includedNestedSubprojectPrefixes = {sub:branchFilter(sub) for sub in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)}
+                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):branchFilter(sub) for sub in addedNestedSubprojects})
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
