@@ -163,7 +163,7 @@ class AddSubproject(Option, WorkspaceDirHandler):
         return True
 
     @staticmethod
-    def activateNestedSubproject(subprojectName, userconfig, workspace_dir, branch_filter=None):
+    def activateNestedSubproject(subprojectName, userconfig, workspace_dir):
         config = config_parser_global.grapeConfig()
         prefix = config.get(f"nested-{subprojectName}", "prefix")
         url = config.get(f"nested-{subprojectName}", "url")
@@ -172,12 +172,6 @@ class AddSubproject(Option, WorkspaceDirHandler):
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
         filtered = False
-        if branch_filter:
-            remoteOutput = git.lsRemote(fullurl, execution_path=workspace_dir)
-            logging.info(remoteOutput)
-            if f"refs/heads/{branch_filter}" not in remoteOutput:
-                logging.info("project does not have reference to branch {branch_filter}, skipping activation")
-                return True
         if not currentlyActive:
             destDir = os.path.join(workspace_dir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
