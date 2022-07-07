@@ -171,7 +171,6 @@ class AddSubproject(Option, WorkspaceDirHandler):
         section = f"nested-{subprojectName}"
         userconfig.ensureSection(section)
         currentlyActive = userconfig.getboolean(section, "active")
-        filtered = False
         if not currentlyActive:
             destDir = os.path.join(workspace_dir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):

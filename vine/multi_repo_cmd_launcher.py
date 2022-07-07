@@ -203,6 +203,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
             self.repos = [os.path.join(self.workspace_dir,x[0]) for x in self.launchTuple]
             self.branches = [x[1] for x in self.launchTuple]
             self.perRepoArgs = [x[2] for x in self.launchTuple]
+            self.remote_urls = [None for x in self.launchTuple]
         else:
             if self.runSubprojects:
                 activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
@@ -242,7 +243,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         if noPause:
             # for purely local operations, run them all at once.
             if len(self.repos) > 0:
-                command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos, self.branches, self.perRepoArgs)]
+                command_list = [(repo, branch, self.lmbda, arg, remote_url) for repo, branch, arg, remote_url in zip(self.repos, self.branches, self.perRepoArgs, self.remote_urls)]
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
                 retvals = self.cmd_runner.run_all(self.concurrency)
         else:
