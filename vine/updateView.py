@@ -260,7 +260,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 branchFilter = lambda x : not args["--branchFilter"] or f"refs/heads/{args['--branchFilter']}" in git.lsRemote(git.parseSubprojectRemoteURL(url_map[x], execution_path=self.workspace_dir), execution_path=self.workspace_dir)
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:branchFilter(sub) for sub in allSubmodules}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
+                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"]:
                     includedSubmodules = {sub:branchFilter(sub) for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
                     includedSubmodules.update({sub:branchFilter(sub) for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
