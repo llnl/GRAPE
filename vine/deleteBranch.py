@@ -10,18 +10,19 @@ from vine.vine_logging import log_wrapper
 
 class DeleteBranch(Option, WorkspaceDirHandler):
     """ Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only]
+    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only] [--inactive-repos]
 
     Options:
-    -D              Forces the deletion of unmerged branches. If you are on the branch you
-                    are trying to delete, this will detach you from the branch and then
-                    delete it, issuing a warning that you are in a detached state.
-    --local-only    Only deletes the local branch.
-    --remote-only   Only deletes the remote branch.
-    --verify        Verifies the delete before performing it.
+    -D                Forces the deletion of unmerged branches. If you are on the branch you
+                      are trying to delete, this will detach you from the branch and then
+                      delete it, issuing a warning that you are in a detached state.
+    --local-only      Only deletes the local branch.
+    --remote-only     Only deletes the remote branch.
+    --verify          Verifies the delete before performing it.
+    --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
 
     Arguments:
-    <branch>        The branch to delete. Will ask for branch name if not included.
+    <branch>         The branch to delete. Will ask for branch name if not included.
 
 
     """
@@ -37,8 +38,9 @@ class DeleteBranch(Option, WorkspaceDirHandler):
     def execute(self, args):
         branch = args["<branch>"]
         force = args["-D"]
-        delete_remote = not args["--local-only"]
-        delete_local = not args["--remote-only"]
+        delete_remote = not args["--local-only"] or args["--inactive-repos"]
+        delete_local = not args["--remote-only"] and not args["--inactive-repos"]
+
 
         if not branch:
             branch = utility.userInput("Enter name of branch to delete")
@@ -60,10 +62,10 @@ class DeleteBranch(Option, WorkspaceDirHandler):
                 detachThenForceDeleteBranch, branch=branch, globalArgs=[delete_local, delete_remote],
                 workspace_dir=self.workspace_dir)
         else:
+            inactive = args["--inactive-repos"]
             launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                deleteBranch, branch=branch, globalArgs=[force, delete_local, delete_remote],
-                workspace_dir=self.workspace_dir)
-
+                deleteBranch, runInSubmodules= not inactive, runInOuter= not inactive, runInSubprojects=not inactive, branch=branch, globalArgs=[force, delete_local, delete_remote],
+                workspace_dir=self.workspace_dir, inactive_repos= inactive)
         try:
             launcher.launchFromWorkspaceDir()
         except grape_errors.MultiRepoException as e:
@@ -75,10 +77,14 @@ class DeleteBranch(Option, WorkspaceDirHandler):
         pass
 
 
-def deleteBranch(repo='', branch='master', args=None, *, workspace_dir):
+def deleteBranch(repo='', branch='master', args=None, *, workspace_dir, remote_url):
     force = args[0]
     delete_local = args[1]
     delete_remote = args[2]
+    if remote_url:
+        remote = remote_url
+    else:
+        remote = "origin"
 
     if delete_local:
         forceStr = "-D" if force is True else "-d"
@@ -92,13 +98,12 @@ def deleteBranch(repo='', branch='master', args=None, *, workspace_dir):
                 raise e
 
     if delete_remote:
-        logging.info(f"deleting origin/{branch} in {repo}...")
-        if f"origin/{branch}" in git.branch("-r", execution_path=repo):
-            try:
-                git.push(f"--delete origin {branch}", throwOnFail=True, execution_path=repo)
-            except grape_errors.GrapeGitError as e:
-                if "remote ref does not exist" in e.gitOutput.lower():
-                    pass
+        logging.info(f"deleting {remote}/{branch} in {repo}...")
+        try:
+            git.push(f"--delete {remote} {branch}", throwOnFail=True, execution_path=repo)
+        except grape_errors.GrapeGitError as e:
+            if "remote ref does not exist" in e.gitOutput.lower():
+                pass
         else:
             logging.warning(f"remote branch origin/{branch} not found in {repo}")
 

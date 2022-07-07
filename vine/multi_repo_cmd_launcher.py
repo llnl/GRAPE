@@ -72,7 +72,7 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
         Retrofitting the old 'repoBranchCommandTuple' into an asyncio runnable.
         """
         loop = asyncio.get_running_loop()
-        repo, branch, func, args = cmd_tuple
+        repo, branch, func, args, remote_url = cmd_tuple
         if not callable(func):
             exit(['NOT CALLABLE', func])
 
@@ -84,13 +84,17 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
         if 'repo' not in varnames or 'branch' not in varnames:
             return await loop.run_in_executor(
                 None, functools.partial(func, workspace_dir=self.workspace_dir))
-        elif 'args' in varnames:
+        elif 'args' in varnames and 'remote_url' not in varnames:
             return await loop.run_in_executor(
                 None, functools.partial(func, repo=repo, branch=branch,
                                         args=args,
                                         workspace_dir=self.workspace_dir))
-        return await loop.run_in_executor(None, functools.partial(
-            func, repo=repo, branch=branch, workspace_dir=self.workspace_dir))
+        elif 'remote_url' not in varnames:
+            return await loop.run_in_executor(None, functools.partial(
+                func, repo=repo, branch=branch, workspace_dir=self.workspace_dir))
+        else:
+            return await loop.run_in_executor(None, functools.partial(
+                func, repo=repo, branch=branch, args=args, workspace_dir=self.workspace_dir, remote_url=remote_url))
 
 
     async def _run_commands(self, commands, concurrency):
@@ -111,7 +115,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
 
     def __init__(self, lmbda, runInSubmodules=False, runInSubprojects=True, runInOuter=True, branch="",
                  globalArgs=None, perRepoArgs=[], listOfRepoBranchArgTuples=None, skipSubmodules=False,
-                 outer="", *, workspace_dir):
+                 outer="", *, workspace_dir, inactive_repos=False):
         self.cmd_runner = MultiRepoCommandRunner()
         self.lmbda = lmbda
         self.workspace_dir = workspace_dir
@@ -130,9 +134,11 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         self.perRepoArgs = perRepoArgs
         self.globalArgs = globalArgs
         self.launchTuple = listOfRepoBranchArgTuples
+        self.inactive_repos = inactive_repos
 
         self.repos = []
         self.branches = []
+        self.remote_urls = []
         if outer:
             self.outer = outer
         else:
@@ -202,15 +208,24 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
                 activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
                 self.repos = self.repos + [os.path.join(self.workspace_dir, sub) for sub in activeSubprojects]
                 self.branches = self.branches + [currentBranch for x in activeSubprojects]
+                self.remote_urls = self.remote_urls + [None for x in activeSubprojects]
             if self.runSubmodules:
                 activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
                 self.repos = self.repos + [os.path.join(self.workspace_dir, r) for r in activeSubmodules]
                 subPubMap = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
                 submoduleBranch =  subPubMap[currentBranch] if currentBranch in publicBranches else currentBranch
                 self.branches = self.branches + [ submoduleBranch for x in activeSubmodules ]
+                self.remote_urls = self.remote_urls + [None for x in activeSubmodules]
             if self.runOuter:
                 self.repos.append(self.outer)
                 self.branches.append(currentBranch)
+                self.remote_urls.append(None)
+            if self.inactive_repos:
+                inactiveSubprojects = config_parser_user.getAllInactiveNestedSubprojectURLs(workspaceDir = self.workspace_dir)
+                inactiveSubmodules = git.getInactiveSubmoduleURLs(execution_path = self.workspace_dir)#.values()
+                self.repos = self.repos + [self.workspace_dir for x in inactiveSubprojects+inactiveSubmodules]
+                self.branches = self.branches + [currentBranch for x in inactiveSubprojects+inactiveSubmodules]
+                self.remote_urls = self.remote_urls + inactiveSubprojects + inactiveSubmodules
             if not self.perRepoArgs:
                 if not self.globalArgs:
                     self.perRepoArgs = [[] for x in self.repos]
@@ -233,18 +248,18 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         else:
             # run the first entry first so that things like logging in to the project's server happen up front
             if len(self.repos) > 0:
-                command_list = (self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0])
+                command_list = (self.repos[0], self.branches[0], self.lmbda, self.perRepoArgs[0], self.remote_urls[0])
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
                 retvals = self.cmd_runner.run_all(self.concurrency)
             if len(self.repos) > 1:
-                command_list = [(repo, branch, self.lmbda, arg) for repo, branch, arg in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:])]
+                command_list = [(repo, branch, self.lmbda, arg, remote_url) for repo, branch, arg, remote_url in zip(self.repos[1:], self.branches[1:], self.perRepoArgs[1:], self.remote_urls[1:])]
                 self.cmd_runner.add_cmd_tuple_to_task_queue(command_list)
                 retvals = retvals + self.cmd_runner.run_all(self.concurrency)
 
         MRE = grape_errors.MultiRepoException(workspace_dir=self.workspace_dir)
-        for val in zip(retvals, self.repos, self.branches, self.perRepoArgs):
+        for val in zip(retvals, self.repos, self.branches, self.perRepoArgs, self.remote_urls):
             if isinstance(val[0], Exception):
-                MRE.addException(val[0], val[1], val[2], val[3])
+                MRE.addException(val[0], val[1], val[2], val[3], val[4])
         if MRE.hasException():
             if handleMRE:
                 handleMRE(MRE)
