@@ -635,7 +635,7 @@ options are at least listed below.
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
-                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]]
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch>
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
