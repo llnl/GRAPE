@@ -1,0 +1,8 @@
+
+
+Fri Jul  8 10:38:32 2022 Peter B. Robinson
+MR_388
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+Changes strategy to look up merge request tag to describing first parent of the branch the merge came from.
