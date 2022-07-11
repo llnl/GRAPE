@@ -272,8 +272,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        for line in trainRefsLines:
            sha,ref = line.split()
            # fetch remote refs/merge-requests/<merge_request_id>/train to local merge-requests/<merge_request_id>/train
-           local_branch = ref.split('/')[1]
-           git.fetch(f"origin {ref}:{local_branch}", execution_path=self.workspace_dir)
+           local_branch = '/'.join(ref.split('/')[1:])
+           git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
            # lookup the commit message for the train merge commit
            # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
            # "Merge branch feature/user/foo with refs/merge-requests/1234/train into refs/merge-requests/1235/train"
