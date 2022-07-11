@@ -327,6 +327,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 subPublic = args["--subpublic"]
             else:
                 # default is to merge the submodule branch that is mapped to the public branch
+                config = config_parser_global.grapeConfig()
                 subBranchMappings = config.getMapping(Option.SECTION_WORKSPACE, "submodulePublicMappings")
                 subPublic = subBranchMappings[config.getPublicBranchFor(branch)]
             for submodule in submodules:
