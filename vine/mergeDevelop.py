@@ -99,7 +99,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
         nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
-        if args["--traverseTrainRefs"]:
+        if "--traverseTrainRefs" in args:
             self.traverseTrainRefs(args, nested)
             return True
 
