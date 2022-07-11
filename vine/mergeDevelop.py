@@ -228,7 +228,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             logging.warning("Initial merge failed. Resolve issue and try again. ")
             return False
 
-        if not self.performSubprojectMerges(args, branch, nested, recurse, submodules)
+        if not self.performSubprojectMerges(args, branch, nested, recurse, submodules):
             return False
         
         cleanAfterMerge = continueLocalMerge(args, execution_path=self.workspace_dir)
