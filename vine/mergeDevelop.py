@@ -264,16 +264,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
        if trainRefsLines:
           trainRefsLines = trainRefsLines.split('\n')
-       print(trainRefsLines)
        current_branch_train_ref = None
        public_branch = None
        next_car = {}
        car_branches = {}
 
        for line in trainRefsLines:
-           print(line)
            sha,ref = line.split()
-           print(f"SHA <{sha}> REF <{ref}>")
            # fetch remote refs/merge-requests/<merge_request_id>/train to local merge-requests/<merge_request_id>/train
            local_branch = ref.split('/')[1]
            git.fetch(f"origin {ref}:{local_branch}")
@@ -289,7 +286,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                current_branch_train_ref = current_train_car
            next_car[current_train_car] = next_train_car
            car_branches[current_train_car] = branch
-           # store the public branch wehen we see it
+           # store the public branch when we see it
            next_train_car_toks = next_train_car.split('/')
            if next_train_car_toks[0] == "heads":
                public_branch = next_train_car_toks[1]
