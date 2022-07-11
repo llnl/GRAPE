@@ -449,8 +449,15 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
             logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
-    if git.currentBranch(execution_path=repo) == branch:
-        return
+    try:
+        if git.currentBranch(execution_path=repo) == branch:
+           return
+    except grape_errors.GrapeGitError:
+        # In certain cases, like an interrupted clone, HEAD may not be defined,
+        # so currentBranch() may raise an exception. Ignore that exception, since
+        # it indicates that we are not currently on the correct branch (so we don't
+        # want an early return).
+        pass
 
     if not git.hasBranch(branch, execution_path=repo):
         # switch to corresponding public branch if the branch does not exist
