@@ -882,6 +882,7 @@ options are at least listed below.
                     [--noUpdate]
                     [--noChecks]
                     [--squash]
+                    [--traverseTrainRefs --topic=<branch>]
 
 
     Options:
@@ -903,6 +904,10 @@ options are at least listed below.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
         --noChecks              Skip workspace consistency checks.
         --squash                Perform squash merges.
+        --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
+        --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
+                                behind the --topic branch on the train)
+
 
 
 

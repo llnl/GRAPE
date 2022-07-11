@@ -155,6 +155,22 @@ def commitDescription(committish, *, execution_path):
                 raise e
     return descr
 
+def commitDescriptionShort(committish, *, execution_path):
+    try:
+        descr = gitcmd(f"log --oneline  --format='%s' {committish}^!",
+                       "commitDescription failed",
+                       execution_path=execution_path)
+    # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
+    except grape_errors.GrapeGitError as e:
+        if "unknown revision" in e.gitOutput.lower():
+            try:
+                descr = gitcmd(f"log --oneline --format='%s' {committish}",
+                               "commitDescription failed",
+                               execution_path=execution_path)
+            except grape_errors.GrapeGitError as e:
+                raise e
+    return descr
+
 def config(argstr, arg2=None, *, execution_path):
     if arg2 is not None:
         return gitcmd(f'config {argstr} "{arg2}"', "Config failed",
