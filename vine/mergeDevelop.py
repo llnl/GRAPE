@@ -99,7 +99,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
         nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
-        if "--traverseTrainRefs" in args:
+        if "--traverseTrainRefs" in args and args["--traverseTrainRefs"]:
             self.traverseTrainRefs(args, nested)
             return True
 
@@ -259,7 +259,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
 
     def lookupActiveMergeTrainBranches(self, args):
-       trainRefsLines = git.lsRemote("origin --refs 'refs/merge-requests/*/train'")
+       trainRefsLines = git.lsRemote("origin --refs 'refs/merge-requests/*/train'", execution_path=self.workspace_dir)
 
        if trainRefsLines:
           trainRefsLines = trainRefsLines.split('\n')
