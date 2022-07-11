@@ -918,7 +918,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
-        tag = git.describe(f"{args['--topic']} --first-parent --match=MR_*", execution_path=self.workspace_dir)
+        tag = git.describe(f"origin/{args['--topic']} --first-parent --match=MR_*", execution_path=self.workspace_dir)
         tag = tag.split('-')[0]
         self.progress["MR_tag"] = tag
         pr_id = tag.split("MR_")[1]
