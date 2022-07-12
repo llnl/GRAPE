@@ -33,7 +33,7 @@ class Version(Option, WorkspaceDirHandler):
                               [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<suffix>] [--tagPrefix=<prefix>] [--tagSuffix=<suffix>][--file=<path>]
                               [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
