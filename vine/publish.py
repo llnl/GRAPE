@@ -834,7 +834,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
         try:
-            updatelist = git.diff(f"--name-only {public} {topic}",
+            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                   execution_path=execution_path).split('\n')
         except:
             # Ensure branches are on working tree, then retry diff.
@@ -842,7 +843,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             git.checkout(public, execution_path=execution_path)
             git.checkout(topic, execution_path=execution_path)
             git.checkout(current_branch, execution_path=execution_path)
-            updatelist = git.diff(f"--name-only {public} {topic}",
+            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                   execution_path=execution_path).split('\n')
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
