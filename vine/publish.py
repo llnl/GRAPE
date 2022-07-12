@@ -1208,7 +1208,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if "<<doDelete>>" in self.progress:
             self.doDelete = self.progress["<<doDelete>>"]
         if not self.doDelete:
-            if args["--deleteTopic"].lower() == "true":
+            if args["--deleteTopic"].lower() == "true" and not args["--mergeTrain"]:
                 self.doDelete[args["--topic"]] = utility.userInput(
                     "Once the publish is done, would you like to delete " +
                     f"the branch {args['--topic']} ?\n[y/n]",
