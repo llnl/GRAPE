@@ -442,7 +442,7 @@ def mergeAbort(*, execution_path):
                   execution_path=execution_path)
 
 
-def mergeBase(args, *,k execution_path):
+def mergeBase(args, *, execution_path):
     return gitcmd(f"merge-base {args}", "merge-base failed", execution_path=execution_path)
 
 
