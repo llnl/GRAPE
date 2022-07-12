@@ -28,7 +28,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--noUpdate]
                     [--noChecks]
                     [--squash]
-                    [--traverseTrainRefs --topic=<branch>]
+                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
 
 
     Options:
@@ -53,6 +53,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
         --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
                                 behind the --topic branch on the train)
+        --tagProposedVersion    Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
 
 
 
@@ -306,6 +308,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         branches = self.lookupActiveMergeTrainBranches(args)
         for branch in branches:
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
+        if args["--tagProposedVersion"]:
+            menu.applyMenuChoice(
+                "version", ["tick", "--tag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}",
+                            f"--newTagPrefix=proposed_v"])
+            
 
 
     def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False):
