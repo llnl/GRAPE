@@ -1698,7 +1698,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         logging.info("All changes pushed and ready for being enqueued into merge train.")
         logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
         logging.info(thisRequest.link())
-        logging.info("and click on the 'Start merge train' button.")
+        logging.info("and click on the 'Start merge train' or 'Add to merge train' button.")
         logging.info("********************************************************************************")
         return True
 
