@@ -442,6 +442,10 @@ def mergeAbort(*, execution_path):
                   execution_path=execution_path)
 
 
+def mergeBase(args, *, execution_path):
+    return gitcmd(f"merge-base {args}", "merge-base failed", execution_path=execution_path)
+
+
 def numberCommitsSince(commitStr, *, execution_path):
     strCount = gitcmd(f"rev-list --count {commitStr}..HEAD", "Rev-list failed",
                       execution_path=execution_path)
