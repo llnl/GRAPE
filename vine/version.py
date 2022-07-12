@@ -226,9 +226,9 @@ class Version(Option, WorkspaceDirHandler):
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
-            if "--newTagPrefix" in args:
+            if "--newTagPrefix" in args and args["--newTagPrefix"]:
                 tagPrefix = args["--newTagPrefix"]
-            if "--newTagSuffix" in args:
+            if "--newTagSuffix" in args and args["--newTagSuffix"]:
                 tagSuffix = args["--newTagSuffix"]
 
             if tagPrefix and tagPrefix != prefix:
