@@ -1116,7 +1116,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             nested_dir = os.path.join(args['workspace_dir'], nested)
             git.push(f"--porcelain origin {resulting_tag}", execution_path=nested_dir)
-        git.push("--porcelain origin {resulting_tag}", execution_path=args['workspace_dir'])
+        git.push(f"--porcelain origin {resulting_tag}", execution_path=args['workspace_dir'])
         return ret
 
     def sendNotificationEmail(self, args):
