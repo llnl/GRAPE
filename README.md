@@ -882,7 +882,7 @@ options are at least listed below.
                     [--noUpdate]
                     [--noChecks]
                     [--squash]
-                    [--traverseTrainRefs --topic=<branch>]
+                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
 
 
     Options:
@@ -907,6 +907,8 @@ options are at least listed below.
         --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
         --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
                                 behind the --topic branch on the train)
+        --tagProposedVersion    Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
 
 
 
@@ -1180,12 +1182,16 @@ options are at least listed below.
                               [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<suffix>] [--tagPrefix=<prefix>] [--tagSuffix=<suffix>][--file=<path>]
+                              [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
                               [--fileIsDerived=<bool>]
+                              [--target=<commitish>]
+                              [--useProposed --topic=<branch>]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
@@ -1226,6 +1232,8 @@ options are at least listed below.
         --public=<branch>       The public branch to use for determine the slot to tick. Default based on
                                 .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the
                                 version ticking is consistent with the --public option passed to grape publish.
+        --target=<commit>       The commit to tag.
+                                [default: HEAD]
         --updateTag=<bool>      If true, update the version git annotated tag.
                                 [default: .grapeconfig.versioning.updateTag]
         --tag                   Forces updateTag to be True.
@@ -1233,10 +1241,19 @@ options are at least listed below.
         --tagPrefix=<str>       The prefix for the git version tags. [default: v]
         --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
                                 .grapeconfig.versioning.branchTagSuffixMappings.
+        --newTagPrefix=<str>    The written tag prefix, use if desired to be different from read tag prefix.
+                                Default is value of tagPrefix.
+        --newTagSuffix=<str>    The written tag suffix,  use if desired to be different from read tag suffix.
+                                Default is value of tagSuffix.
         --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                                 version in <file>.
+        --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
+                                [default: 1]
         --tagNested             Tag any active nested subprojects.
+        --useProposed           Select a version based off of a "proposed_*" tag reachable from the first parent of the head
+                                of --topic.
+        --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
    
