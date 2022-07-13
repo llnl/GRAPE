@@ -1,0 +1,7 @@
+
+
+Wed Jul 13 08:53:49 2022 Peter B. Robinson
+MR_395
+Reviewers: Ben Liu, David Dawson
+
+publish only pushes the tags we just created instead of all tags in our local repo.l
