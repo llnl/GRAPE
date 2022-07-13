@@ -310,7 +310,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
         if args["--tagProposedVersion"]:
             menu.applyMenuChoice(
-                "version", ["tick", "--tag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}",
+                "version", ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}",
                             f"--newTagPrefix=proposed_v"])
             
 
