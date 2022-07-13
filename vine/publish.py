@@ -1365,7 +1365,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 menu.applyMenuChoice(
                     "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
-                git.push("--tags origin", execution_path=self.workspace_dir)
+                resulting_tag = git.describe("", execution_path=self.workspace_dir)
+                git.push("--porcelain origin {resulting_tag}", execution_path=self.workspace_dir)
             status[mergeID] = "DONE"
         return True
 
