@@ -40,6 +40,7 @@ class Version(Option, WorkspaceDirHandler):
                               [--public=<branch>]
                               [--fileIsDerived=<bool>]
                               [-f]
+                              [--pushTag]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
@@ -83,7 +84,9 @@ class Version(Option, WorkspaceDirHandler):
         --updateTag=<bool>      If true, update the version git annotated tag.
                                 [default: .grapeconfig.versioning.updateTag]
         --tag                   Forces updateTag to be True.
-        -f                      Forces creation of the tag even if it already exists.
+        -f                      Forces creation of the tag even if it already exists. Force pushes the tag if --pushTag is
+                                set.
+        --pushTag               Push the tags that are created.
         --notag                 Forces updateTag to be False.
         --tagPrefix=<str>       The prefix for the git version tags. [default: v]
         --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
@@ -221,6 +224,8 @@ class Version(Option, WorkspaceDirHandler):
                 force_str = "-f"
             git.tag(f"{force_str} -a {version} -m \"Tagged by grape\"",
                     execution_path=execution_path)
+            if "--pushTag" in args and args["--pushTag"]:
+                git.push(f"{force_str} --porcelain origin {version}", execution_path=execution_path)
         return True
 
     @staticmethod
