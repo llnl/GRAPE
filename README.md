@@ -1192,6 +1192,8 @@ options are at least listed below.
                               [--fileIsDerived=<bool>]
                               [--target=<commitish>]
                               [--useProposed --topic=<branch>]
+                              [-f]
+                              [--pushTag]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
@@ -1237,6 +1239,9 @@ options are at least listed below.
         --updateTag=<bool>      If true, update the version git annotated tag.
                                 [default: .grapeconfig.versioning.updateTag]
         --tag                   Forces updateTag to be True.
+        -f                      Forces creation of the tag even if it already exists. Force pushes the tag if --pushTag is
+                                set.
+        --pushTag               Push the tags that are created.
         --notag                 Forces updateTag to be False.
         --tagPrefix=<str>       The prefix for the git version tags. [default: v]
         --tagSuffix=<str>       The suffix for the git version tags. Default value comes from

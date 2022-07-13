@@ -1131,18 +1131,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             raise Exception
         versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
         if args["--mergeTrain"]:
+            versionArgs.append("-f")
             versionArgs.append("--tagPrefix=MR_")
             versionArgs.append("--prefix=MR_")
+        versionArgs.append("--pushTag")
 
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         ret = menu.applyMenuChoice("version", versionArgs)
-        resulting_tag = git.describe("", execution_path=self.workspace_dir)
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-            nested_dir = os.path.join(args['workspace_dir'], nested)
-            git.push(f"--porcelain origin {resulting_tag}", execution_path=nested_dir)
-        git.push(f"--porcelain origin {resulting_tag}", execution_path=args['workspace_dir'])
         return ret
 
     def sendNotificationEmail(self, args):
@@ -1390,8 +1387,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 menu.applyMenuChoice(
-                    "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
-                git.push("--tags origin", execution_path=self.workspace_dir)
+                    "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}", "--pushTag"])
             status[mergeID] = "DONE"
         return True
 
