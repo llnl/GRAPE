@@ -128,7 +128,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
     --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
-                            testing during publish. 
+                            testing during publish. Each comma-delimited entry may itself be delimited by '|',
+                            to indicate that entry may be satisfied by one of multiple possible jobs.
+                            E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                            passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
                             [default: .grapeconfig.publish.testCIJob]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
@@ -733,6 +736,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         ci_jobs = args["--testCIJob"]
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
+            for i in range(len(ci_jobs)):
+                ci_jobs[i] = ci_jobs[i].split('|')
+
+
         else:
             # If the user did not explicitly name their CI jobs that count as building and testing,
             # then this logic just skips the investigation of whether those jobs passed or not, avoiding
@@ -742,16 +749,24 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         
         passed = True
-        for job in ci_jobs:
-            successful_job = self.repo.getSuccessfulJob(job,
-                                                        git.SHA(args["--topic"], execution_path=self.workspace_dir),
-                                                        git.SHA(args["--public"], execution_path=self.workspace_dir),
-                                                        args["--topic"],
-                                                        args["--public"]
-                                                        )
-            passed = successful_job != None
+        for possible_jobs in ci_jobs:
+            logging.info(f"Checking if one of {possible_jobs} is passing for current commit.")
+            or_pass = False
+            for job in possible_jobs:
+            
+                successful_job = self.repo.getSuccessfulJob(job,
+                                                            git.SHA(args["--topic"], execution_path=self.workspace_dir),
+                                                            git.SHA(args["--public"], execution_path=self.workspace_dir),
+                                                            args["--topic"],
+                                                            args["--public"]
+                                                            )
+                or_passed = successful_job != None
+                if or_passed:
+                    logging.info(f"{job} was successful.")
+                    break
+            passed = passed and or_passed
             if not passed:
-                logging.info("no successful job found.")
+                logging.info(f"no successful job found in one of {possible_jobs}")
             # if user has configured a list of CIRepos that need to be active during CI jobs, we verify the
             # job has produced a GRAPE_PROJECT_SHA.json artifact and that all grape projects (top level and nested)
             # are consistent with our current workspace
@@ -763,6 +778,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 logging.info(f"verifying {artifact} is consistent with current workspace.")
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 passed = menu.getOption("uv").verifySHAList(artifact)
+                if not passed:
+                    logging.info(f"{artifact} is inconsistent with current workspace.")
+
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')

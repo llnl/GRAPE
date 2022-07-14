@@ -1,0 +1,9 @@
+
+
+Thu Jul 14 12:36:15 2022 Peter B. Robinson
+MR_385
+Reviewers: Ben Liu, Alan Dayton
+
+Allows users to define multiple potential jobs to be the merge train ticket. 
+',' is still used as an AND semantic. 
+'|' is used as an OR semantic.
