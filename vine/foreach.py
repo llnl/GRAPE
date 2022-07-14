@@ -64,3 +64,7 @@ def handleForeachMRE(mre):
             logging.error(e.cwd)
             logging.error(e.gitOutput)
             return False
+        except FileNotFoundError as e:
+            logging.warning("File not found - perhaps .grapeuserconfig is out of date?")
+            logging.warning(e)
+            return True
