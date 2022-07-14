@@ -679,7 +679,10 @@ options are at least listed below.
     --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
     --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
-                            testing during publish. 
+                            testing during publish. Each comma-delimited entry may itself be delimited by '|',
+                            to indicate that entry may be satisfied by one of multiple possible jobs.
+                            E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                            passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
                             [default: .grapeconfig.publish.testCIJob]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
