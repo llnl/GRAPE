@@ -311,9 +311,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if args["--tagProposedVersion"]:
             from vine import grapeMenu
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            menu.applyMenuChoice(
-                "version", ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}",
-                            f"--newTagPrefix=proposed_v"])
+            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            logging.info(f"calling grape version {' '.join(versionargs)}")
+            menu.applyMenuChoice("version",versionargs)
             
 
 
