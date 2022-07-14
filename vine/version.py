@@ -229,20 +229,21 @@ class Version(Option, WorkspaceDirHandler):
 
     @staticmethod
     def tagVersion(version, args, *, execution_path):
-        logging.info(f"in tagVersion with {args}")
+        logging.info(f"in tagVersion with {args}, {version}")
         if args["--updateTag"]:
             prefix = args["--prefix"]
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
             if "--newTagPrefix" in args and args["--newTagPrefix"]:
+                logging.info("updating tagPrefix to {args['--newTagPrefix']}")
                 tagPrefix = args["--newTagPrefix"]
             if "--newTagSuffix" in args and args["--newTagSuffix"]:
                 tagSuffix = args["--newTagSuffix"]
 
             if tagPrefix and tagPrefix != prefix:
                 if prefix:
-                    version.replace(prefix,tagPrefix,1)
+                    version = version.replace(prefix,tagPrefix,1)
                 else:
                     version = tagPrefix+version
             if tagSuffix and tagSuffix != suffix:
@@ -259,7 +260,9 @@ class Version(Option, WorkspaceDirHandler):
             git.tag(f"{force_str} -a {version} -m \"Tagged by grape\" {args['--target']}",
                     execution_path=execution_path)
             if "--pushTag" in args and args["--pushTag"]:
-                git.push(f"{force_str} --porcelain origin {version}", execution_path=execution_path)
+                push_args = f"{force_str} --porcelain origin {version}"
+                logging.info(f"Calling git push {push_args} in {execution_path}")
+                git.push(f"pushArgs", execution_path=execution_path)
         return True
 
     @staticmethod
