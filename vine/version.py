@@ -142,8 +142,11 @@ class Version(Option, WorkspaceDirHandler):
         args["--fileIsDerived"] = derived
         # set version based on proposed version number tag in topic branch
         if "--useProposed" in args and args["--useProposed"]:
+            logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
             proposed_tag = git.describe(f"origin/{args['--topic']} --first-parent --match=proposed_*", execution_path=self.workspace_dir)
+            logging.info("found tag {proposed_tag}")
             args["<version>"] = proposed_tag.split("proposed_")[1]
+
         if "--numTicks" in args:
             args["--numTicks"] = int(args["--numTicks"])
         else:
@@ -238,7 +241,7 @@ class Version(Option, WorkspaceDirHandler):
 
             if tagPrefix and tagPrefix != prefix:
                 if prefix:
-                    version.replace(prefix,tagPrefix,1)
+                    version = version.replace(prefix,tagPrefix,1)
                 else:
                     version = tagPrefix+version
             if tagSuffix and tagSuffix != suffix:
@@ -250,10 +253,14 @@ class Version(Option, WorkspaceDirHandler):
             force_str = ""
             if "-f" in args and args["-f"]:
                 force_str = "-f"
+            tag_args = f"{force_str} -a {version} -m \"Tagged by grape\" {args['--target']}"
+            logging.info(f"Calling git tag {tag_args} in {execution_path}")
             git.tag(f"{force_str} -a {version} -m \"Tagged by grape\" {args['--target']}",
                     execution_path=execution_path)
             if "--pushTag" in args and args["--pushTag"]:
-                git.push(f"{force_str} --porcelain origin {version}", execution_path=execution_path)
+                push_args = f"{force_str} --porcelain origin {version}"
+                logging.info(f"Calling git push {push_args} in {execution_path}")
+                git.push(f"{push_args}", execution_path=execution_path)
         return True
 
     @staticmethod

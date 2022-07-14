@@ -135,14 +135,19 @@ class UpdateView(Option, WorkspaceDirHandler):
                 opt = utility.userInput(f"Would you like all, some, or none of the {projectType}s in {directory}?",
                                         default=defaultValue)
 
-            if opt.lower()[0] == "a":
-                for subproject in subprojects:
-                    included[subproject] = True
-
-            if opt.lower()[0] == "n":
+            if opt is False:
                 for subproject in subprojects:
                     included[subproject] = False
-            if opt.lower()[0] == "s":
+            elif opt is True:
+                for subproject in subprojects:
+                    included[subproject] = True
+            elif opt.lower()[0] == "a":
+                for subproject in subprojects:
+                    included[subproject] = True
+            elif opt.lower()[0] == "n":
+                for subproject in subprojects:
+                    included[subproject] = False
+            elif opt.lower()[0] == "s":
                 for subproject in sorted(subprojects, key=lambda v: (v.upper(), v[0].islower())):
                     if self.uvManager:
                         # Set the default value for the gui
