@@ -129,10 +129,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             [default: .grapeconfig.publish.testCmds]
     --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
                             testing during publish. Each comma-delimited entry may itself be delimited by '|',
-                            to incicate that entry may be satisfies by one of multiple possible jobs.
+                            to indicate that entry may be satisfied by one of multiple possible jobs.
                             E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
-                            passing, AND either job2a or job2b is passing.  ',' - delimitation is evaluated
-                            before '|' delimitation.
+                            passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
                             [default: .grapeconfig.publish.testCIJob]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
@@ -750,10 +749,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         
         passed = True
-        for posible_jobs in ci_jobs:
-            logging.info(f"Checking if one of {posible_jobs} is passing for current commit.")
+        for possible_jobs in ci_jobs:
+            logging.info(f"Checking if one of {possible_jobs} is passing for current commit.")
             or_pass = False
-            for job in posible_jobs:
+            for job in possible_jobs:
             
                 successful_job = self.repo.getSuccessfulJob(job,
                                                             git.SHA(args["--topic"], execution_path=self.workspace_dir),
