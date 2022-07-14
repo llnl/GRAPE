@@ -262,7 +262,7 @@ class Version(Option, WorkspaceDirHandler):
             if "--pushTag" in args and args["--pushTag"]:
                 push_args = f"{force_str} --porcelain origin {version}"
                 logging.info(f"Calling git push {push_args} in {execution_path}")
-                git.push(f"{pushArgs}", execution_path=execution_path)
+                git.push(f"{push_args}", execution_path=execution_path)
         return True
 
     @staticmethod
