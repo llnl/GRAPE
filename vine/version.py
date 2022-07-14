@@ -33,12 +33,18 @@ class Version(Option, WorkspaceDirHandler):
                               [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<suffix>] [--tagPrefix=<prefix>] [--tagSuffix=<suffix>][--file=<path>]
+                              [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
                               [--fileIsDerived=<bool>]
+                              [--target=<commitish>]
+                              [--useProposed --topic=<branch>]
+                              [-f]
+                              [--pushTag]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
@@ -79,17 +85,31 @@ class Version(Option, WorkspaceDirHandler):
         --public=<branch>       The public branch to use for determine the slot to tick. Default based on
                                 .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the
                                 version ticking is consistent with the --public option passed to grape publish.
+        --target=<commit>       The commit to tag.
+                                [default: HEAD]
         --updateTag=<bool>      If true, update the version git annotated tag.
                                 [default: .grapeconfig.versioning.updateTag]
         --tag                   Forces updateTag to be True.
+        -f                      Forces creation of the tag even if it already exists. Force pushes the tag if --pushTag is
+                                set.
+        --pushTag               Push the tags that are created.
         --notag                 Forces updateTag to be False.
         --tagPrefix=<str>       The prefix for the git version tags. [default: v]
         --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
                                 .grapeconfig.versioning.branchTagSuffixMappings.
+        --newTagPrefix=<str>    The written tag prefix, use if desired to be different from read tag prefix.
+                                Default is value of tagPrefix.
+        --newTagSuffix=<str>    The written tag suffix,  use if desired to be different from read tag suffix.
+                                Default is value of tagSuffix.
         --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                                 version in <file>.
+        --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
+                                [default: 1]
         --tagNested             Tag any active nested subprojects.
+        --useProposed           Select a version based off of a "proposed_*" tag reachable from the first parent of the head
+                                of --topic.
+        --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
    """
@@ -120,6 +140,14 @@ class Version(Option, WorkspaceDirHandler):
         # convert to boolean for fileIsDerived
         derived= args["--fileIsDerived"].strip().lower() == "true"
         args["--fileIsDerived"] = derived
+        # set version based on proposed version number tag in topic branch
+        if "--useProposed" in args and args["--useProposed"]:
+            proposed_tag = git.describe(f"origin/{args['--topic']} --first-parent --match=proposed_*", execution_path=self.workspace_dir)
+            args["<version>"] = proposed_tag.split("proposed_")[1]
+        if "--numTicks" in args:
+            args["--numTicks"] = int(args["--numTicks"])
+        else:
+            args["--numTicks"] = 1
 
 
     @log_wrapper
@@ -150,6 +178,7 @@ class Version(Option, WorkspaceDirHandler):
                               True)
 
     def tickVersion(self, args):
+        numTicks = args["--numTicks"]
         config = config_parser_global.grapeConfig()
         if args["<version>"]:
             versionString = args["<version>"]
@@ -175,10 +204,10 @@ class Version(Option, WorkspaceDirHandler):
                 # extend the version number if slot comes in too large.
                 while len(slots) < slot:
                     slots.append(0)
-                slots[slot - 1] += 1
+                slots[slot - 1] += numTicks
                 while slot < len(slots):
                     slots[slot] = 0
-                    slot += 1
+                    slot += numTicks
         # write version number
         self.writeVersion(slots,args,f"-m \"GRAPE: ticked version to {self.ver}\"",False)
 
@@ -202,6 +231,10 @@ class Version(Option, WorkspaceDirHandler):
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
+            if "--newTagPrefix" in args and args["--newTagPrefix"]:
+                tagPrefix = args["--newTagPrefix"]
+            if "--newTagSuffix" in args and args["--newTagSuffix"]:
+                tagSuffix = args["--newTagSuffix"]
 
             if tagPrefix and tagPrefix != prefix:
                 if prefix:
@@ -214,8 +247,13 @@ class Version(Option, WorkspaceDirHandler):
                     version = version[0:-l] + version[-l:].replace(suffix, tagSuffix, 1)
                 else:
                     version = version + tagSuffix
-            git.tag(f"-a {version} -m \"Tagged by grape\"",
+            force_str = ""
+            if "-f" in args and args["-f"]:
+                force_str = "-f"
+            git.tag(f"{force_str} -a {version} -m \"Tagged by grape\" {args['--target']}",
                     execution_path=execution_path)
+            if "--pushTag" in args and args["--pushTag"]:
+                git.push(f"{force_str} --porcelain origin {version}", execution_path=execution_path)
         return True
 
     @staticmethod

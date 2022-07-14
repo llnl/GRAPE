@@ -83,6 +83,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --printSteps
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch>
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -412,6 +414,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
+        elif args["--sendEmail"]:
+            self.order = ["notify", "done"]
         elif args["--mergeTrain"]:
             # steps for queuing in the merge train
             self.order = ["testForCleanWorkspace1", "ensureModifiedSubmodulesAreActive",
@@ -424,7 +428,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           "markInProgress", "md2", "checkCI", "tickVersion", "updateLog",
                           "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                           "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
-
 
         startPoint = args["--startAt"]
 
@@ -850,7 +853,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
         try:
-            updatelist = git.diff(f"--name-only {public} {topic}",
+            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                   execution_path=execution_path).split('\n')
         except:
             # Ensure branches are on working tree, then retry diff.
@@ -858,7 +862,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             git.checkout(public, execution_path=execution_path)
             git.checkout(topic, execution_path=execution_path)
             git.checkout(current_branch, execution_path=execution_path)
-            updatelist = git.diff(f"--name-only {public} {topic}",
+            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                   execution_path=execution_path).split('\n')
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
@@ -867,13 +872,17 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
             return True
+
         public = args["--public"]
-        topic = args["--topic"]
-        if git.SHA(public, execution_path=self.workspace_dir) == \
-                git.SHA(topic, execution_path=self.workspace_dir):
-            public = utility.userInput(
-                "Please enter the branch name or SHA of the commit to diff " +
-                f"against {topic} for the modified file list.")
+        if args["--sendEmail"]:
+            topic = self.progress["MR_tag"]
+        else:
+            topic = args["--topic"]
+            if git.SHA(public, execution_path=self.workspace_dir) == \
+                    git.SHA(topic, execution_path=self.workspace_dir):
+                public = utility.userInput(
+                    "Please enter the branch name or SHA of the commit to diff " +
+                    f"against {topic} for the modified file list.")
 
         self.progress["modifiedFiles"] = []
 
@@ -882,6 +891,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             public, topic, args, execution_path=self.workspace_dir)
 
         # Get list of modified files in submodules
+        # TODO: figure out how to get modified submodule files during post-push CI workflow
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
             submodules = git.getModifiedSubmodules(
@@ -901,7 +911,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def loadVersion(self, args):
         if "version" not in self.progress:
-            if args["--mergeTrain"]:
+            if args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
                 iid = thisRequest.iid()
                 version = f"MR_{iid}"
@@ -912,6 +922,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 menu.applyMenuChoice("version", ["read"])
                 guess = menu.getOption("version").ver
                 self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
+                logging.info(f"version is {self.progress['version']}")
         return True
 
     def loadMajorAndMinorVersion(self, args):
@@ -927,9 +938,24 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         args["--updateLogDir"] = logDir
 
         
-        
+    def loadCommitMessageFromRecentMergeRequest(self, args):
+        tag = git.describe(f"origin/{args['--topic']} --first-parent --match=MR_*", execution_path=self.workspace_dir)
+        tag = tag.split('-')[0]
+        self.progress["MR_tag"] = tag
+        pr_id = tag.split("MR_")[1]
+        pull_request = self.repo.pullRequests(id=pr_id)[0]
+        escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
+        escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
+        escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+        self.progress["commitMsg"] = escapedCommitMsg
+        self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
+        args["-m"] = escapedCommitMsg
+        return True
+             
 
     def loadCommitMessage(self, args):
+        if args["--sendEmail"]:
+            return self.loadCommitMessageFromRecentMergeRequest(args)
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
             self.verifyCompletedReview(args)
@@ -1124,17 +1150,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             raise Exception
         versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
         if args["--mergeTrain"]:
+            versionArgs.append("-f")
             versionArgs.append("--tagPrefix=MR_")
             versionArgs.append("--prefix=MR_")
+        versionArgs.append("--pushTag")
 
         for arg in args["-T"]:
             versionArgs += [arg.strip()]
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         ret = menu.applyMenuChoice("version", versionArgs)
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-            nested_dir = os.path.join(args['workspace_dir'], nested)
-            git.push("--tags origin", execution_path=nested_dir)
-        git.push("--tags origin", execution_path=args['workspace_dir'])
         return ret
 
     def sendNotificationEmail(self, args):
@@ -1227,7 +1251,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if "<<doDelete>>" in self.progress:
             self.doDelete = self.progress["<<doDelete>>"]
         if not self.doDelete:
-            if args["--deleteTopic"].lower() == "true":
+            if args["--deleteTopic"].lower() == "true" and not args["--mergeTrain"]:
                 self.doDelete[args["--topic"]] = utility.userInput(
                     "Once the publish is done, would you like to delete " +
                     f"the branch {args['--topic']} ?\n[y/n]",
@@ -1382,8 +1406,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 menu.applyMenuChoice(
-                    "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}"])
-                git.push("--tags origin", execution_path=self.workspace_dir)
+                    "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}", "--pushTag"])
             status[mergeID] = "DONE"
         return True
 
@@ -1691,7 +1714,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         logging.info("All changes pushed and ready for being enqueued into merge train.")
         logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
         logging.info(thisRequest.link())
-        logging.info("and click on the 'Start merge train' button.")
+        logging.info("and click on the 'Start merge train' or 'Add to merge train' button.")
         logging.info("********************************************************************************")
         return True
 

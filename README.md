@@ -634,6 +634,8 @@ options are at least listed below.
             grape-publish --printSteps
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch>
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -880,6 +882,7 @@ options are at least listed below.
                     [--noUpdate]
                     [--noChecks]
                     [--squash]
+                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
 
 
     Options:
@@ -901,6 +904,12 @@ options are at least listed below.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
         --noChecks              Skip workspace consistency checks.
         --squash                Perform squash merges.
+        --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
+        --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
+                                behind the --topic branch on the train)
+        --tagProposedVersion    Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
+
 
 
 
@@ -934,18 +943,19 @@ options are at least listed below.
     
 ## db
  Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only]
+    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only] [--inactive-repos]
 
     Options:
-    -D              Forces the deletion of unmerged branches. If you are on the branch you
-                    are trying to delete, this will detach you from the branch and then
-                    delete it, issuing a warning that you are in a detached state.
-    --local-only    Only deletes the local branch.
-    --remote-only   Only deletes the remote branch.
-    --verify        Verifies the delete before performing it.
+    -D                Forces the deletion of unmerged branches. If you are on the branch you
+                      are trying to delete, this will detach you from the branch and then
+                      delete it, issuing a warning that you are in a detached state.
+    --local-only      Only deletes the local branch.
+    --remote-only     Only deletes the remote branch.
+    --verify          Verifies the delete before performing it.
+    --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
 
     Arguments:
-    <branch>        The branch to delete. Will ask for branch name if not included.
+    <branch>         The branch to delete. Will ask for branch name if not included.
 
 
     
@@ -1123,13 +1133,16 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f] [--checkSubprojects] [-b] [--skipTopLevel] [--skipSubmodules] [--allSubmodules] [--gui]
+    Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--skipTopLevel] [--skipSubmodules] [--allSubmodules] [--gui]
                     [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
+                    [--branchFilter=<branch>]
 
     Options:
-        -f                       Force removal of subprojects currently in your view that are taken out of the view as a
+        -f                       Force removal of submodules currently in your view that are taken out of the view as a
+                                 result to this call to uv.
+        -F                       Force removal of nested subprojects currently in your view that are taken out of the view as a
                                  result to this call to uv.
         --checkSubprojects       Checks for branch model consistency across your submodules and subprojects, but does
                                  not go through the 'which submodules do you want' script.
@@ -1152,6 +1165,9 @@ options are at least listed below.
         --generateSHAList        Dump current nested subproject and topLevel repo SHAs to GRAPE_PROJECT_SHA.json.
         --verifySHAList          Verify current state is consistent with state in a file generated by --gnerateSHAList.
         --ensureCIReposPresent   Ensure any repos listed in .grapeconfig.workspace.CIRepos are present in the workspace
+        --branchFilter=<branch>  Clone every repo that currently has a branch matching branch, removing or deactivating
+                                 repositories that do not have the branch stored on their remote.
+
     
 ## version
 
@@ -1166,12 +1182,18 @@ options are at least listed below.
                               [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<suffix>] [--tagPrefix=<prefix>] [--tagSuffix=<suffix>][--file=<path>]
+                              [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
                               [--fileIsDerived=<bool>]
+                              [--target=<commitish>]
+                              [--useProposed --topic=<branch>]
+                              [-f]
+                              [--pushTag]
            grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
@@ -1212,17 +1234,31 @@ options are at least listed below.
         --public=<branch>       The public branch to use for determine the slot to tick. Default based on
                                 .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the
                                 version ticking is consistent with the --public option passed to grape publish.
+        --target=<commit>       The commit to tag.
+                                [default: HEAD]
         --updateTag=<bool>      If true, update the version git annotated tag.
                                 [default: .grapeconfig.versioning.updateTag]
         --tag                   Forces updateTag to be True.
+        -f                      Forces creation of the tag even if it already exists. Force pushes the tag if --pushTag is
+                                set.
+        --pushTag               Push the tags that are created.
         --notag                 Forces updateTag to be False.
         --tagPrefix=<str>       The prefix for the git version tags. [default: v]
         --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
                                 .grapeconfig.versioning.branchTagSuffixMappings.
+        --newTagPrefix=<str>    The written tag prefix, use if desired to be different from read tag prefix.
+                                Default is value of tagPrefix.
+        --newTagSuffix=<str>    The written tag suffix,  use if desired to be different from read tag suffix.
+                                Default is value of tagSuffix.
         --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                                 version in <file>.
+        --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
+                                [default: 1]
         --tagNested             Tag any active nested subprojects.
+        --useProposed           Select a version based off of a "proposed_*" tag reachable from the first parent of the head
+                                of --topic.
+        --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
    
