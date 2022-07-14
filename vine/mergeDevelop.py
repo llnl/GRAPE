@@ -309,6 +309,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         for branch in branches:
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
         if args["--tagProposedVersion"]:
+            from vine import grapeMenu
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
             menu.applyMenuChoice(
                 "version", ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}",
