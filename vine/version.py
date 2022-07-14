@@ -229,14 +229,12 @@ class Version(Option, WorkspaceDirHandler):
 
     @staticmethod
     def tagVersion(version, args, *, execution_path):
-        logging.info(f"in tagVersion with {args}, {version}")
         if args["--updateTag"]:
             prefix = args["--prefix"]
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
             if "--newTagPrefix" in args and args["--newTagPrefix"]:
-                logging.info("updating tagPrefix to {args['--newTagPrefix']}")
                 tagPrefix = args["--newTagPrefix"]
             if "--newTagSuffix" in args and args["--newTagSuffix"]:
                 tagSuffix = args["--newTagSuffix"]
