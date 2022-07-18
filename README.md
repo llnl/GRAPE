@@ -1058,6 +1058,7 @@ options are at least listed below.
     Usage: grape-up [--public=<branch> ]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
+                    [--noTopLevel]
 
 
     Options:
@@ -1069,6 +1070,7 @@ options are at least listed below.
     --wd=<working dir>      Working directory which should be updated.
                             Top level workspace will be updated if this is unspecified.
     --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
+    --noTopLevel            Do nothing in the top level repo.
 
 
     
