@@ -310,6 +310,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        branches = [f"{public_branch}"] + branches
        return branches
 
+    def numberOfMergesSinceMostRecentTag(self, args, branch):
+        numMerges = 0
+        tagPrefix = 'v*'
+        while '-' not in git.describe(f"--match={tagPrefix} branch", execution_path=self.workspace_dir):
+            numMerges = numMerges+1
+            branch = git.parentsOfMergeCommit(branch, execution_path=self.workspace_dir)[0]
+        return numMerges
+
 
     def traverseTrainRefs(self, args, nested):
         branches = self.lookupActiveMergeTrainBranches(args)
@@ -318,7 +326,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if args["--tagProposedVersion"]:
             from vine import grapeMenu
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            numMerges = numberOfMergesSinceMostRecentTag(self,args,f"heads/{branches[0]}")
+            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
             
