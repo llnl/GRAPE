@@ -277,7 +277,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            local_branch = '/'.join(ref.split('/')[1:])
            try:
               fetch_args = f"origin +{ref}:{local_branch}"
-              logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
+              logging.info(f"Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
               git.fetch(fetch_args, execution_path=self.workspace_dir)
            except grape_errors.GrapeGitError as e:
               if "cannot lock ref"  in e.gitOutput and "'refs/heads/merge-requests' exists" in e.gitOutput:
