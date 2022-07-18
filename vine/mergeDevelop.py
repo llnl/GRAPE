@@ -287,6 +287,15 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                  fetch_args = f"origin +{ref}:{local_branch}"
                  logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
                  git.fetch(fetch_args, execution_path=self.workspace_dir)
+              if "unable to append to" in e.gitOutput and ".git/logs/refs/heads/merge-requests" in e.gitOutput:
+                 logging.info(f"Stale merge-requests log head, removing and retrying fetch of +{ref}:{local_branch}")
+                 os.remove(os.path.join(e.cwd,".git/logs/refs/heads/merge-requests"))
+                 fetch_args = f"origin +{ref}:{local_branch}"
+                 logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
+                 git.fetch(fetch_args, execution_path=self.workspace_dir)
+              else:
+                  raise e
+
            # lookup the commit message for the train merge commit
            # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
            # "Merge branch feature/user/foo with refs/merge-requests/1234/train into refs/merge-requests/1235/train"
