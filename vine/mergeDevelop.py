@@ -331,12 +331,12 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         branches = self.lookupActiveMergeTrainBranches(args)
         logging.info(f"Merge Train Branches: {branches}")
         logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         menu.applyMenuChoice('up', ['up', f'--public={branches[0]}','--noTopLevel'])
         for branch in branches:
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
         if args["--tagProposedVersion"]:
             from vine import grapeMenu
-            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
             logging.info(f"numMerges = {numMerges}")
             versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
