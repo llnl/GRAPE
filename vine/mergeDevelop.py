@@ -314,7 +314,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     def numberOfMergesSinceMostRecentTag(self, args, branch):
         numMerges = 0
         tagPrefix = 'v*'
-        while '-' not in git.describe(f"--match={tagPrefix} branch", execution_path=self.workspace_dir):
+        while '-' not in git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir):
             numMerges = numMerges+1
             branch = git.parentsOfMergeCommit(branch, execution_path=self.workspace_dir)[0]
         return numMerges
