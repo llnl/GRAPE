@@ -17,6 +17,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     Usage: grape-up [--public=<branch> ]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
+                    [--noTopLevel]
 
 
     Options:
@@ -28,6 +29,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     --wd=<working dir>      Working directory which should be updated.
                             Top level workspace will be updated if this is unspecified.
     --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
+    --noTopLevel            Do nothing in the top level repo.
 
 
     """
@@ -53,10 +55,12 @@ class UpdateLocal(Option, WorkspaceDirHandler):
         recurseNestedSubprojects = not args["--noRecurse"] or args["--recurseSubprojects"]
         publicBranches = [x.strip() for x in args["--public"].split()]
         launchers = []
+        runInOuter = "--noTopLevel" not in args or not args["--noToplevel"]
         for branch in publicBranches:
             new_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 fetchLocal, runInSubmodules=recurseSubmodules,
-                runInSubprojects=recurseNestedSubprojects, branch=branch,
+                runInSubprojects=recurseNestedSubprojects,
+                runInOuter=runInOuter, branch=branch,
                 listOfRepoBranchArgTuples=None, skipSubmodules=skipSubmodules,
                 outer=workspace_dir, workspace_dir=workspace_dir)
             launchers.append(new_launcher)

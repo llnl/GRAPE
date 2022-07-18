@@ -330,6 +330,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     def traverseTrainRefs(self, args, nested):
         branches = self.lookupActiveMergeTrainBranches(args)
         logging.info(f"Merge Train Branches: {branches}")
+        logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
+        menu.applyMenuChoice('up', ['up', f'--public={branches[0]}','--noTopLevel'])
         for branch in branches:
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
         if args["--tagProposedVersion"]:
