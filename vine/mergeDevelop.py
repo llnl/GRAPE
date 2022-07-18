@@ -275,7 +275,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            sha,ref = line.split()
            # fetch remote refs/merge-requests/<merge_request_id>/train to local merge-requests/<merge_request_id>/train
            local_branch = '/'.join(ref.split('/')[1:])
-           git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
+           try:
+              git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
+           except grape_errors.GrapeGitError as e:
+              if "cannot lock ref"  in e.gitOutput and "'refs/heads/merge-requests' exists" in e.gitOutput:
+                 logging.info(f"Stale merge-requests head, removing and retrying fetch of +{ref}:{local_branch}")
+                 os.remove(os.path.join(e.cwd,".git/refs/heads/merge-requests"))
+                 git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
            # lookup the commit message for the train merge commit
            # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
            # "Merge branch feature/user/foo with refs/merge-requests/1234/train into refs/merge-requests/1235/train"
@@ -298,6 +304,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        branches = []
        #starting from the current train car, identify branches for all train cars leading to the public branch merge
        while next_car[current_branch_train_ref] != f"heads/{public_branch}":
+           logging.info(f"looking up {current_branch_train_ref} in next_car ({next_car})\n car_branches: {car_branches}")
            branches = [car_branches[next_car[current_branch_train_ref]]] + branches
            current_branch_train_ref = next_car[current_branch_train_ref]
        branches = [f"{public_branch}"] + branches
