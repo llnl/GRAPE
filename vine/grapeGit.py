@@ -557,7 +557,7 @@ def shortSHA(branchName="HEAD", *, execution_path):
                   execution_path=execution_path)
 
 def parentsOfMergeCommit(mergeCommit, *, execution_path):
-    return gitcmd(f"rev-list --parents -n 1 {mergeCommit}")[1:]
+    return gitcmd(f"rev-list --parents -n 1 {mergeCommit}", "rev-list failed", execution_path=execution_path).split()[1:]
 
 def show(argStr, *, execution_path):
     try:
