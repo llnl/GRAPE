@@ -55,7 +55,9 @@ class UpdateLocal(Option, WorkspaceDirHandler):
         recurseNestedSubprojects = not args["--noRecurse"] or args["--recurseSubprojects"]
         publicBranches = [x.strip() for x in args["--public"].split()]
         launchers = []
-        runInOuter = "--noTopLevel" not in args or not args["--noToplevel"]
+        runInOuter=True
+        if "--noTopLevel" in args and args["--noTopLevel"]:
+            runInOuter = False
         for branch in publicBranches:
             new_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 fetchLocal, runInSubmodules=recurseSubmodules,
