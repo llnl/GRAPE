@@ -281,6 +281,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               if "cannot lock ref"  in e.gitOutput and "'refs/heads/merge-requests' exists" in e.gitOutput:
                  logging.info(f"Stale merge-requests head, removing and retrying fetch of +{ref}:{local_branch}")
                  os.remove(os.path.join(e.cwd,".git/refs/heads/merge-requests"))
+                 os.remove(os.path.join(e.cwd,".git/logs/refs/heads/merge-requests"))
                  git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
            # lookup the commit message for the train merge commit
            # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
