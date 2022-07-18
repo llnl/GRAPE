@@ -328,6 +328,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
 
     def traverseTrainRefs(self, args, nested):
+        from vine import grapeMenu
         branches = self.lookupActiveMergeTrainBranches(args)
         logging.info(f"Merge Train Branches: {branches}")
         logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
@@ -336,7 +337,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         for branch in branches:
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
         if args["--tagProposedVersion"]:
-            from vine import grapeMenu
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
             logging.info(f"numMerges = {numMerges}")
             versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
