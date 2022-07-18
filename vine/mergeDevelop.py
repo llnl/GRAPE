@@ -276,13 +276,17 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            # fetch remote refs/merge-requests/<merge_request_id>/train to local merge-requests/<merge_request_id>/train
            local_branch = '/'.join(ref.split('/')[1:])
            try:
-              git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
+              fetch_args = f"origin +{ref}:{local_branch}"
+              logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
+              git.fetch(fetch_args, execution_path=self.workspace_dir)
            except grape_errors.GrapeGitError as e:
               if "cannot lock ref"  in e.gitOutput and "'refs/heads/merge-requests' exists" in e.gitOutput:
                  logging.info(f"Stale merge-requests head, removing and retrying fetch of +{ref}:{local_branch}")
                  os.remove(os.path.join(e.cwd,".git/refs/heads/merge-requests"))
                  os.remove(os.path.join(e.cwd,".git/logs/refs/heads/merge-requests"))
-                 git.fetch(f"origin +{ref}:{local_branch}", execution_path=self.workspace_dir)
+                 fetch_args = f"origin +{ref}:{local_branch}"
+                 logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
+                 git.fetch(fetch_args, execution_path=self.workspace_dir)
            # lookup the commit message for the train merge commit
            # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
            # "Merge branch feature/user/foo with refs/merge-requests/1234/train into refs/merge-requests/1235/train"
@@ -327,8 +331,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if args["--tagProposedVersion"]:
             from vine import grapeMenu
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"heads/{branches[0]}")
-            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
+            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
             
