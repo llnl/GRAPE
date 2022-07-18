@@ -327,7 +327,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if args["--tagProposedVersion"]:
             from vine import grapeMenu
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            numMerges = self.numberOfMergesSinceMostRecentTag(self,args,f"heads/{branches[0]}")
+            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"heads/{branches[0]}")
             versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=heads/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
