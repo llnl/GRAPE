@@ -192,7 +192,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             <date>: the current timestamp.
                             <version>: The version of the project, so long as grape is managing your versioning.
                             <public>: The branch to publish to.
-                            <breanch>: The branch to publish from.
+                            <branch>: The branch to publish from.
                             [default: .grapeconfig.publish.emailNotification]
     --emailHeader=<header>  The email header. See above.
                             [default: .grapeconfig.publish.emailHeader]
