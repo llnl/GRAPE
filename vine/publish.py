@@ -874,7 +874,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         public = args["--public"]
         if args["--sendEmail"]:
-            topic = f'origin/args["--topic"]'
+            topic = f'origin/{args["--topic"]}'
         else:
             topic = args["--topic"]
             if git.SHA(public, execution_path=self.workspace_dir) == \
