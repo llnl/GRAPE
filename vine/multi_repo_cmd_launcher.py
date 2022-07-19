@@ -11,6 +11,7 @@ from vine.option import Option
 from vine import grape_errors
 from vine.vine_logging import log_wrapper
 from vine.gendocs import Section
+from vine import grapeGit as git
 
 SECTION_CONCURRENCY_CONTROL = "concurrency-control"
 
@@ -234,11 +235,24 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
                     self.perRepoArgs = [self.globalArgs for x in self.repos]
 
     @log_wrapper
-    def launchFromWorkspaceDir(self, handleMRE=None, noPause=False):
+    def launchFromWorkspaceDir(self, handleMRE=None, noPause=None):
         self.initializeCommands()
         retvals = []
 
         self.cmd_runner.workspace_dir = self.workspace_dir
+
+        if noPause is None:
+            try:
+                logging.debug("setting no Pause based on whether origin is an SSH URL.")
+                origin_url =  git.remote("get-url origin", execution_path=self.workspace_dir)[0:4]
+                noPause = "ssh:" in origin_url
+                if noPause:
+                    logging.debug("in SSH repo, noPause set to True.")
+                else:
+                    logging.debug("in non-SSH repo, noPause set to False.")
+            except Exception as e:
+                logging.debug(e)
+                pass
 
         if noPause:
             # for purely local operations, run them all at once.

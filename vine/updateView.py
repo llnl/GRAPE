@@ -402,6 +402,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                                     "not been pushed, or ignored files will be lost.  Proceed?" +
                                                     "(use -F to force removal without this prompt)", 'n')
                         if proceed:
+                            logging.info(f"removing {subproject}...")
                             def force_rm(func, path, excinfo):
                                 os.chmod(path, stat.S_IWRITE)
                                 func(path)
