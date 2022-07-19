@@ -946,7 +946,7 @@ options are at least listed below.
     
 ## db
  Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only] [--inactive-repos]
+    Usage: grape-db [-D] [<branch>...] [--verify] [--local-only|--remote-only] [--inactive-repos]
 
     Options:
     -D                Forces the deletion of unmerged branches. If you are on the branch you
@@ -958,7 +958,7 @@ options are at least listed below.
     --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
 
     Arguments:
-    <branch>         The branch to delete. Will ask for branch name if not included.
+    <branch>         The branches to delete. Will ask for branch name if not included.
 
 
     
