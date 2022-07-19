@@ -10,7 +10,7 @@ from vine.vine_logging import log_wrapper
 
 class DeleteBranch(Option, WorkspaceDirHandler):
     """ Deletes a topic branch both locally and on origin for all projects in this workspace.
-    Usage: grape-db [-D] [<branch>] [--verify] [--local-only|--remote-only] [--inactive-repos]
+    Usage: grape-db [-D] [<branch>...] [--verify] [--local-only|--remote-only] [--inactive-repos]
 
     Options:
     -D                Forces the deletion of unmerged branches. If you are on the branch you
@@ -22,7 +22,7 @@ class DeleteBranch(Option, WorkspaceDirHandler):
     --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
 
     Arguments:
-    <branch>         The branch to delete. Will ask for branch name if not included.
+    <branch>         The branches to delete. Will ask for branch name if not included.
 
 
     """
@@ -36,14 +36,14 @@ class DeleteBranch(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
-        branch = args["<branch>"]
+        branches = args["<branch>"]
         force = args["-D"]
         delete_remote = not args["--local-only"] or args["--inactive-repos"]
         delete_local = not args["--remote-only"] and not args["--inactive-repos"]
 
 
-        if not branch:
-            branch = utility.userInput("Enter name of branch to delete")
+        if not branches:
+            branches = [utility.userInput("Enter name of branch to delete")]
 
         if args["--verify"]:
             proceed = utility.userInput("Would you like to delete the " +
@@ -51,25 +51,27 @@ class DeleteBranch(Option, WorkspaceDirHandler):
             if not proceed:
                 return True
 
-        current_branch = git.currentBranch(execution_path=self.workspace_dir)
+        for branch in branches:
 
-        if current_branch == branch and not force and delete_local:
-            logging.info("Cannot delete the branch you are currently on.  " +
-                         "Use -D to detach and then delete branch.")
-            return False
-        elif current_branch == branch and force and delete_local:
-            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                detachThenForceDeleteBranch, branch=branch, globalArgs=[delete_local, delete_remote],
-                workspace_dir=self.workspace_dir)
-        else:
-            inactive = args["--inactive-repos"]
-            launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-                deleteBranch, runInSubmodules= not inactive, runInOuter= not inactive, runInSubprojects=not inactive, branch=branch, globalArgs=[force, delete_local, delete_remote],
-                workspace_dir=self.workspace_dir, inactive_repos= inactive)
-        try:
-            launcher.launchFromWorkspaceDir()
-        except grape_errors.MultiRepoException as e:
-            handleDeleteBranchMRE(e, force, delete_local, delete_remote)
+            current_branch = git.currentBranch(execution_path=self.workspace_dir)
+
+            if current_branch == branch and not force and delete_local:
+                logging.info("Cannot delete the branch you are currently on.  " +
+                             "Use -D to detach and then delete branch.")
+                return False
+            elif current_branch == branch and force and delete_local:
+                launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                    detachThenForceDeleteBranch, branch=branch, globalArgs=[delete_local, delete_remote],
+                    workspace_dir=self.workspace_dir)
+            else:
+                inactive = args["--inactive-repos"]
+                launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                    deleteBranch, runInSubmodules= not inactive, runInOuter= not inactive, runInSubprojects=not inactive, branch=branch, globalArgs=[force, delete_local, delete_remote],
+                    workspace_dir=self.workspace_dir, inactive_repos= inactive)
+            try:
+                launcher.launchFromWorkspaceDir()
+            except grape_errors.MultiRepoException as e:
+                handleDeleteBranchMRE(e, force, delete_local, delete_remote)
 
         return True
 
