@@ -287,7 +287,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                  fetch_args = f"origin +{ref}:{local_branch}"
                  logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
                  git.fetch(fetch_args, execution_path=self.workspace_dir)
-              else if "unable to append to" in e.gitOutput and ".git/logs/refs/heads/merge-requests" in e.gitOutput:
+              elif "unable to append to" in e.gitOutput and ".git/logs/refs/heads/merge-requests" in e.gitOutput:
                  logging.info(f"Stale merge-requests log head, removing and retrying fetch of +{ref}:{local_branch}")
                  os.remove(os.path.join(e.cwd,".git/logs/refs/heads/merge-requests"))
                  fetch_args = f"origin +{ref}:{local_branch}"
