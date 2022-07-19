@@ -66,6 +66,9 @@ def allBranches(*, execution_path):
 def remoteBranches(*, execution_path):
     return branch("-r", execution_path=execution_path).replace(" ", '').split()
 
+def remote(argstr="", *, execution_path):
+    return gitcmd(f"remote {argstr}", "git remote failed", execution_path=execution_path)
+
 def branch(argstr="", *, execution_path):
     return gitcmd(f"branch {argstr}",
                   "Could not execute git branch command",

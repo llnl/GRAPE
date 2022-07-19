@@ -373,6 +373,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                 reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
                 userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir, read_global=False)
                 updatedActiveList = []
+                toActivate_args = []
+                toRemove = []
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
                     section = f"nested-{subprojectName}"
@@ -385,10 +387,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        logging.info(f"Activating Nested Subproject {subproject}")
-                        if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, self.workspace_dir):
-                            logging.info(f"Can't activate {subprojectName}. Exiting...")
-                            return False
+                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -403,10 +402,21 @@ class UpdateView(Option, WorkspaceDirHandler):
                                                     "not been pushed, or ignored files will be lost.  Proceed?" +
                                                     "(use -F to force removal without this prompt)", 'n')
                         if proceed:
+                            logging.info(f"removing {subproject}...")
                             def force_rm(func, path, excinfo):
                                 os.chmod(path, stat.S_IWRITE)
                                 func(path)
                             shutil.rmtree(subprojectdir, onerror=force_rm)
+
+                # activate nested subprojects in parallel
+                activate_project_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(activateSubproject,
+                                                                                             listOfRepoBranchArgTuples=toActivate_args,
+                                                                                             workspace_dir=self.workspace_dir)
+                retvals = activate_project_launcher.launchFromWorkspaceDir(handleMRE=handleActivateSubprojectMRE)
+                if False in retvals:
+                    return False
+                                                                                                 
+                    
                 userConfig.setActiveNestedSubprojects(updatedActiveList)
                 config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
 
@@ -436,6 +446,22 @@ class UpdateView(Option, WorkspaceDirHandler):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
+
+def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
+    userConfig = args["userConfig"]
+    subprojectName = args["subprojectName"]
+    logging.info(f"Activating Nested Subproject {subprojectName}")
+    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, workspace_dir):
+        logging.info(f"Can't activate {subprojectName}. Exiting...")
+        return False
+    logging.info(f"Nested Subproject {subprojectName} activated.")
+    return True
+
+def handleActivateSubprojectMRE(mre):
+    for e1 in mre.exceptions():
+        raise e1
+
+    
 
 
 def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
