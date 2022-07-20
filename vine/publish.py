@@ -84,7 +84,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
-                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch>
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--recurse | --noRecurse]
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -857,7 +857,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         try:
             mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
             updatelist = git.diff(f"--name-only {mergeBase} {topic}",
-                                  execution_path=execution_path).split('\n')
+                                  execution_path=execution_path).split()
         except:
             # Ensure branches are on working tree, then retry diff.
             current_branch = git.currentBranch(execution_path=execution_path)
@@ -866,7 +866,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             git.checkout(current_branch, execution_path=execution_path)
             mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
             updatelist = git.diff(f"--name-only {mergeBase} {topic}",
-                                  execution_path=execution_path).split('\n')
+                                  execution_path=execution_path).split()
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
@@ -878,8 +878,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         public = args["--public"]
         if args["--sendEmail"]:
             topic = f'origin/{args["--topic"]}'
+            topLevelPublic = git.parentsOfMergeCommit(f'origin/{public}',execution_path=self.workspace_dir)[0]
         else:
             topic = args["--topic"]
+            topLevelPublic = public
             if git.SHA(public, execution_path=self.workspace_dir) == \
                     git.SHA(topic, execution_path=self.workspace_dir):
                 public = utility.userInput(
@@ -890,19 +892,22 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         # Get list of modified files in main repo
         self.progress["modifiedFiles"] += self.getModifiedFileList(
-            public, topic, args, execution_path=self.workspace_dir)
+            topLevelPublic, topic, args, execution_path=self.workspace_dir)
 
         # Get list of modified files in submodules
-        # TODO: figure out how to get modified submodule files during post-push CI workflow
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
+            if args["--sendEmail"]:
+                submodulePublic = f"{args['--submodulePublic']}"+"@{1}"
             submodules = git.getModifiedSubmodules(
-                self.workspace_dir, public, topic, includeAdded=True)
+                self.workspace_dir, topLevelPublic, topic, includeAdded=True)
             for sub in submodules:
+                self.progress["modifiedFiles"].remove(sub)
                 execution_path = os.path.join(self.workspace_dir, sub)
                 self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
 
         # Get list of modified files in nested subprojects
+        # TODO: figure out how to get modified nested subproject files during post-push CI workflow
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             execution_path = os.path.join(self.workspace_dir, nested)
             modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
@@ -1165,7 +1170,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def sendNotificationEmail(self, args):
 
-        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadModifiedFiles(args)):
+        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadPublishTargets(args) and self.loadModifiedFiles(args)):
             return False
         # Write the contents of the mail file out to a temporary file
         mailfile = os.path.realpath(tempfile.mktemp())
@@ -1505,30 +1510,31 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 submodulePublic = submapping[self.branchPrefix]
                 args["--submodulePublic"] = submodulePublic
 
-        # deal with subtrees
-        push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
-        push_subtrees = push_subtrees and not args["--noPushSubtrees"]
-        args["--pushSubtrees"] = push_subtrees
-        if push_subtrees:
-            allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
-            self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
-            for st in allsubtrees:
-                prefix = config.get(f'subtree-{st}', 'prefix')
-                if git.diff(f"--name-only {public} {topic} -- " +
-                            f"{os.path.join(self.workspace_dir, prefix)}",
-                            execution_path=self.workspace_dir):
-                    self.modifiedSubtrees.add(st)
-            for st in self.modifiedSubtrees:
-                self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
-                self.st_remotes[st] = git.parseSubprojectRemoteURL(
-                    config.get(f'subtree-{st}', 'remote'),
-                    execution_path=self.workspace_dir)
-                self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
+        if not args["--sendEmail"]:
+            # deal with subtrees
+            push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
+            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+            args["--pushSubtrees"] = push_subtrees
+            if push_subtrees:
+                allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
+                self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
+                for st in allsubtrees:
+                    prefix = config.get(f'subtree-{st}', 'prefix')
+                    if git.diff(f"--name-only {public} {topic} -- " +
+                                f"{os.path.join(self.workspace_dir, prefix)}",
+                                execution_path=self.workspace_dir):
+                        self.modifiedSubtrees.add(st)
+                for st in self.modifiedSubtrees:
+                    self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
+                    self.st_remotes[st] = git.parseSubprojectRemoteURL(
+                        config.get(f'subtree-{st}', 'remote'),
+                        execution_path=self.workspace_dir)
+                    self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
 
-        # deal with nested subprojects. 'workspaceDir' is None on purpose.
-        self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+            # deal with nested subprojects. 'workspaceDir' is None on purpose.
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
-        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
+            self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
 
         return True
 
