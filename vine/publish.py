@@ -907,7 +907,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # TODO: figure out how to get modified nested subproject files during post-push CI workflow
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             execution_path = os.path.join(self.workspace_dir, nested)
-            modified = self.getModifiedFileList(nestedPublic, topic, args, execution_path=execution_path)
+            modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
             if len(modified) > 0:
                 self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
 
