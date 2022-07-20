@@ -260,68 +260,41 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         self.progress = {}
         return True
 
+    def lookUpInfoFromMergeTrainCommitDescription(self, local_branch):
+        logging.info(f"CALL with {local_branch}")
+        commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
+        logging.info(commit_msg)
+        # parse the commit message into branch, next_train_car, current_train_car
+        commit_msg = commit_msg.split(" with ")
+        branch = commit_msg[0]
+        logging.info(branch)
+        commit_msg = commit_msg[1].split(" into ")
+        logging.info(commit_msg)
+        next_train_car = commit_msg[0].split("refs/")[1]
+        current_train_car = commit_msg[1].split("refs/")[1]
+        return branch,next_train_car,current_train_car
+
 
     def lookupActiveMergeTrainBranches(self, args):
-       trainRefsLines = git.lsRemote("origin --refs 'refs/merge-requests/*/train'", execution_path=self.workspace_dir)
-
-       if trainRefsLines:
-          trainRefsLines = trainRefsLines.split('\n')
-       current_branch_train_ref = None
-       public_branch = None
-       next_car = {}
-       car_branches = {}
-
-       for line in trainRefsLines:
-           sha,ref = line.split()
-           # fetch remote refs/merge-requests/<merge_request_id>/train to local merge-requests/<merge_request_id>/train
-           local_branch = '/'.join(ref.split('/')[1:])
-           try:
-              fetch_args = f"origin +{ref}:{local_branch}"
-              logging.info(f"Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
-              git.fetch(fetch_args, execution_path=self.workspace_dir)
-           except grape_errors.GrapeGitError as e:
-              if "cannot lock ref"  in e.gitOutput and "'refs/heads/merge-requests' exists" in e.gitOutput:
-                 logging.info(f"Stale merge-requests head, removing and retrying fetch of +{ref}:{local_branch}")
-                 os.remove(os.path.join(e.cwd,".git/refs/heads/merge-requests"))
-                 os.remove(os.path.join(e.cwd,".git/logs/refs/heads/merge-requests"))
-                 fetch_args = f"origin +{ref}:{local_branch}"
-                 logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
-                 git.fetch(fetch_args, execution_path=self.workspace_dir)
-              elif "unable to append to" in e.gitOutput and ".git/logs/refs/heads/merge-requests" in e.gitOutput:
-                 logging.info(f"Stale merge-requests log head, removing and retrying fetch of +{ref}:{local_branch}")
-                 os.remove(os.path.join(e.cwd,".git/logs/refs/heads/merge-requests"))
-                 fetch_args = f"origin +{ref}:{local_branch}"
-                 logging.info("Calling git.fetch({fetch_args},execution_path={self.workspace_dir})")
-                 git.fetch(fetch_args, execution_path=self.workspace_dir)
-              else:
-                 raise e
-
-           # lookup the commit message for the train merge commit
-           # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
-           # "Merge branch feature/user/foo with refs/merge-requests/1234/train into refs/merge-requests/1235/train"
-           commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
-           # parse the commit message into branch, next_train_car, current_train_car
-           commit_msg = commit_msg.split(" with ")
-           branch = commit_msg[0]
-           commit_msg = commit_msg[1].split(" into ")
-           next_train_car = commit_msg[0].split("refs/")[1]
-           current_train_car = commit_msg[1].split("refs/")[1]
-           if args["--topic"] == branch:
-               current_branch_train_ref = current_train_car
-           next_car[current_train_car] = next_train_car
-           car_branches[current_train_car] = branch
-           # store the public branch when we see it
-           next_train_car_toks = next_train_car.split('/')
-           if next_train_car_toks[0] == "heads":
-               public_branch = next_train_car_toks[1]
-       train_ref = current_branch_train_ref
+       local_branch = "HEAD"
+       branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+       head_encountered = False
        branches = []
-       #starting from the current train car, identify branches for all train cars leading to the public branch merge
-       while next_car[current_branch_train_ref] != f"heads/{public_branch}":
-           logging.info(f"looking up {current_branch_train_ref} in next_car ({next_car})\n car_branches: {car_branches}")
-           branches = [car_branches[next_car[current_branch_train_ref]]] + branches
-           current_branch_train_ref = next_car[current_branch_train_ref]
-       branches = [f"{public_branch}"] + branches
+       while not head_encountered:
+          # test to see if this is the head of the train by looking for a merge from heasds/{public_branch}
+          next_train_car_toks = next_train_car.split('/')
+          logging.info(next_train_car_toks)
+          if next_train_car_toks[0] == "heads":
+              head_encountered = True
+              public_branch = next_train_car_toks[1]
+              # first branch to merge is the public branch
+              branches = [f"{public_branch}"] + branches
+              continue
+          # keep traversing down the merge history
+          local_branch = git.parentsOfMergeCommit(local_branch, execution_path=self.workspace_dir)[0]
+          branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+          # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
+          branches = [branch] + branches
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
