@@ -85,6 +85,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
                                      --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--recurse | --noRecurse]
+            grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -225,6 +226,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --tagPrefix=<str>       The prefix for the git version tags. [default: v]
     --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
                             .grapeconfig.versioning.branchTagSuffixMappings.
+    --markMRWithVersion     Update a merge request title with the given version string.
 
 
     Optional Arguments:
@@ -410,7 +412,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--mergeUpdateLogs"]:
             self.mergeUpdateLogs(args)
             return True
-
+        if args["--markMRWithVersion"]:
+            return self.markReviewWithVersionNumber(args)
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
@@ -568,6 +571,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                                                                 "as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
+        self.loadVersion(args)
         version = self.progress["version"]
         logging.info(f"Prepending pull request title with {version}")
         return self.markReview(args, [f"--title={version} :", "--prepend"],
@@ -918,7 +922,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def loadVersion(self, args):
         if "version" not in self.progress:
-            if args["--mergeTrain"] and not args["--sendEmail"]:
+            if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
+                tag = git.describe(f"origin/{args['--topic']} --first-parent --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+                tag = tag.split('-')[0]
+                self.progress["version"] = tag.split(args["--tagPrefix"])[1]
+            elif args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
                 iid = thisRequest.iid()
                 version = f"MR_{iid}"
