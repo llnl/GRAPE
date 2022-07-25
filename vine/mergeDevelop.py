@@ -262,6 +262,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def lookUpInfoFromMergeTrainCommitDescription(self, local_branch):
         logging.info(f"CALL with {local_branch}")
+        # lookup the commit message for the train merge commit
+        # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
         commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
         logging.info(commit_msg)
         # parse the commit message into branch, next_train_car, current_train_car
@@ -281,7 +283,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        head_encountered = False
        branches = []
        while not head_encountered:
-          # test to see if this is the head of the train by looking for a merge from heasds/{public_branch}
+          # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
           next_train_car_toks = next_train_car.split('/')
           logging.info(next_train_car_toks)
           if next_train_car_toks[0] == "heads":
