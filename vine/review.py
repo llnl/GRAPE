@@ -41,6 +41,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
+                        [--noPush]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -91,6 +92,7 @@ class Review(Option, WorkspaceDirHandler):
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
+        --noPush                    Do not perform any pushes of the topic branch.
 
 
 
@@ -165,8 +167,9 @@ class Review(Option, WorkspaceDirHandler):
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
-        logging.info(f"Pushing {branch} to {codeReviews.url}...")
-        git.push(f"origin {branch}", execution_path=self.workspace_dir)
+        if "--noPush" not in args or ("--noPush" in args and not args["--noPush"]):
+            logging.info(f"Pushing {branch} to {codeReviews.url}...")
+            git.push(f"origin {branch}", execution_path=self.workspace_dir)
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
@@ -329,8 +332,9 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     reviewers = kwargs["reviewers"]
 
     # push branch
-    logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
-    git.push(f"origin {branch}", execution_path=repo)
+    if "--noPush" not in args or ("--noPush" in args and not args["--noPush"]):
+        logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
+        git.push(f"origin {branch}", execution_path=repo)
     codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
 
     #amend the subproject pull request description with the link to the outer pull request
