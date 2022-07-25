@@ -605,8 +605,8 @@ options are at least listed below.
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
-                         [--buildCmds=<buildStr>] [--buildDir=<path>]
-                         [--testCmds=<testStr>] [--testDir=<path>]
+                         [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuild | --noSkipBuild]
+                         [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
@@ -676,16 +676,24 @@ options are at least listed below.
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
                             [default: .grapeconfig.publish.buildDir]
+    --skipBuild             Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
+                            if mergeTrain is enabled, otherwise default is False.
+    --noSkipBuild           Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
+                            enabled. Default behavior is to not skip builds.
     --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
+    --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
+                            [default: .grapeconfig.publish.testDir]
+    --skipTest             Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
+                            if mergeTrain is enabled, otherwise default is False.
+    --noSkipTests           Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
+                            enabled. Default behavior is to not skip tests.
     --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
-                            testing during publish. Each comma-delimited entry may itself be delimited by '|',
+                            builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
                             to indicate that entry may be satisfied by one of multiple possible jobs.
                             E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
                             passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
                             [default: .grapeconfig.publish.testCIJob]
-    --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
-                            [default: .grapeconfig.publish.testDir]
     --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
                             [default: .grapeconfig.publish.prepublishCmds]
     --prepublishDir=<str>   The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
