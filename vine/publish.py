@@ -54,8 +54,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
-                         [--buildCmds=<buildStr>] [--buildDir=<path>]
-                         [--testCmds=<testStr>] [--testDir=<path>]
+                         [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuilds | --noSkipBuilds]
+                         [--testCmds=<testStr>] [--testDir=<path>] [--skipTests | --noSkipTests]
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
@@ -123,13 +123,24 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             [default: .grapeconfig.publish.buildCmds]
     --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
                             [default: .grapeconfig.publish.buildDir]
+    --skipBuilds            Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildsOnTrain
+                            if mergeTrain is enabled, otherwise default is False.
+    --noSkipBuilds          Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildsOnTrain is
+                            enabled. Default behavior is to not skip builds.
     --testCmds=<testStr>    The comma-delimited list of test commands to execute.
                             [default: .grapeconfig.publish.testCmds]
-    --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
-                            testing during publish. 
-                            [default: .grapeconfig.publish.testCIJob]
     --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
                             [default: .grapeconfig.publish.testDir]
+    --skipTests             Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestsOnTrain
+                            if mergeTrain is enabled, otherwise default is False.
+    --noSkipTests           Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestsOnTrain is
+                            enabled. Default behavior is to not skip tests.
+    --testCIJob=<jobStr>    The comma-delimited list of required passing CI jobs that allows short circuiting of
+                            builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
+                            to indicate that entry may be satisfied by one of multiple possible jobs.
+                            E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                            passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
+                            [default: .grapeconfig.publish.testCIJob]
     --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
                             [default: .grapeconfig.publish.prepublishCmds]
     --prepublishDir=<str>   The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
@@ -262,10 +273,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'mergeTrain', 'False')
         # subtree publish actions
         config.set(self.SECTION_SUBTREES, 'names', '')
-        config.set(self.SECTION_SUBTREES, 'pushOnPublish', "False")
+        config.set(self.SECTION_SUBTREES, 'pushOnPublish', 'False')
         # build steps
         config.set(self.SECTION_PUBLISH, 'buildCmds', '')
         config.set(self.SECTION_PUBLISH, 'buildDir', '.')
+        config.set(self.SECTION_PUBLISH, 'skipBuildsOnTrain', 'False')
+        config.set(self.SECTION_PUBLISH, 'skipTestsOnTrain', 'False')
         # test steps
         config.set(self.SECTION_PUBLISH, 'testCmds', '')
         config.set(self.SECTION_PUBLISH, 'testDir', '.')
@@ -365,6 +378,19 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 doMergeTrain = args["--mergeTrain"].lower() == "true"
                 args["--mergeTrain"] = doMergeTrain
         
+        # resolve skip[Builds|Tests}OnTrain grapeconfig option with skip[Builds|Tests] command line option
+        if args["--mergeTrain"]:
+            if "--skipBuilds" in args and not args["--skipBuilds"]:
+                if config.get(self.SECTION_PUBLISH, 'skipBuildsOnTrain').lower() == "true":
+                    args["--skipBuilds"] = True
+            if "--noSkipBuilds" in args and args["--noSkipBuilds"]:
+                args["--skipBuilds"] = False
+            if "--skipTests" in args and not args["--skipTests"]:
+                if config.get(self.SECTION_PUBLISH, 'skipTestsOnTrain').lower() == "true":
+                    args["--skipTests"] = True
+            if "--noSkipTests" in args and args["--noSkipTests"]:
+                args["--skipTests"] = False
+
         # store the args in self
         self.args = args
 
@@ -766,6 +792,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return True
 
     def performCustomStep(self, prefix, args):
+        if args[f'--skip{prefix.capitalize()}']:
+            return True
         if not args[f"--{prefix}Cmds"]:
             return True
         if args[f"--{prefix}Dir"]:
