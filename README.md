@@ -995,6 +995,7 @@ options are at least listed below.
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
+                        [--noLocal]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -1045,6 +1046,9 @@ options are at least listed below.
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
+        --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
+                                    of the local branch in the local workspace. Branches must still exist on the codeReviews
+                                    (Bitbucket, Gitlab) server.
 
 
 

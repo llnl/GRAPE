@@ -41,7 +41,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noPush]
+                        [--noLocal]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -92,7 +92,9 @@ class Review(Option, WorkspaceDirHandler):
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
-        --noPush                    Do not perform any pushes of the topic branch.
+        --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
+                                    of the local branch in the local workspace. Branches must still exist on the codeReviews
+                                    (Bitbucket, Gitlab) server.
 
 
 
@@ -167,7 +169,7 @@ class Review(Option, WorkspaceDirHandler):
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
-        if "--noPush" not in args or ("--noPush" in args and not args["--noPush"]):
+        if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
             logging.info(f"Pushing {branch} to {codeReviews.url}...")
             git.push(f"origin {branch}", execution_path=self.workspace_dir)
         #target branch for outer level repo
@@ -268,16 +270,19 @@ class Review(Option, WorkspaceDirHandler):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
-            if not git.hasBranch(branch, execution_path=self.workspace_dir):
-                logging.info(
-                    f"Top level repository does not have a branch {branch}," +
-                    " not generating a Pull Request")
-                return True
-            if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
-                logging.info(
-                    f"{target_branch} up to date with {branch}," +
-                    " not generating a Pull Request in Top Level repo")
-                return True
+            if "--noLocal" in args and args["--noLocal"]:
+                pass
+            else:
+                if not git.hasBranch(branch, execution_path=self.workspace_dir):
+                    logging.info(
+                        f"Top level repository does not have a branch {branch}," +
+                        " not generating a Pull Request")
+                    return True
+                if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
+                    logging.info(
+                        f"{target_branch} up to date with {branch}," +
+                        " not generating a Pull Request in Top Level repo")
+                    return True
 
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
@@ -332,7 +337,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     reviewers = kwargs["reviewers"]
 
     # push branch
-    if "--noPush" not in args or ("--noPush" in args and not args["--noPush"]):
+    if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
         logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
         git.push(f"origin {branch}", execution_path=repo)
     codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
