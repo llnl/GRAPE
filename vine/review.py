@@ -270,16 +270,19 @@ class Review(Option, WorkspaceDirHandler):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
-            if not args["--noLocal"] and not git.hasBranch(branch, execution_path=self.workspace_dir):
-                logging.info(
-                    f"Top level repository does not have a branch {branch}," +
-                    " not generating a Pull Request")
-                return True
-            if not args["--noLocal"] and not git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
-                logging.info(
-                    f"{target_branch} up to date with {branch}," +
-                    " not generating a Pull Request in Top Level repo")
-                return True
+            if "--noLocal" in args and args["--noLocal"]:
+                pass
+            else:
+                if not git.hasBranch(branch, execution_path=self.workspace_dir):
+                    logging.info(
+                        f"Top level repository does not have a branch {branch}," +
+                        " not generating a Pull Request")
+                    return True
+                if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
+                    logging.info(
+                        f"{target_branch} up to date with {branch}," +
+                        " not generating a Pull Request in Top Level repo")
+                    return True
 
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
