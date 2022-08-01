@@ -744,11 +744,12 @@ options are at least listed below.
                             the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
                             and will be CC'd to the user.
                             For the email subject, header and footer, the string literals
-                            '<user>', '<date>', '<version>', and '<public>' with the following:
+                            '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
                             <user>: the result of git config --get user.name
                             <date>: the current timestamp.
                             <version>: The version of the project, so long as grape is managing your versioning.
                             <public>: The branch to publish to.
+                            <branch>: The branch to publish from.
                             [default: .grapeconfig.publish.emailNotification]
     --emailHeader=<header>  The email header. See above.
                             [default: .grapeconfig.publish.emailHeader]
