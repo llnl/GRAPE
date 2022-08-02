@@ -1149,15 +1149,25 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.loadMajorAndMinorVersion(args)
             log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
             log_files = log_files.split()
+            if not log_files:
+                logging.info(f"No log file found for version {ver2}")
             for lf in log_files:
-                mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split(args["--updateLog"]+'_')[1]
-                with open(lf) as f:
-                    file_lines = f.readlines()
-                for l in file_lines:
-                    if l == f"{mr_ver}\n":
-                        mergedLogLines.append(f"{ver2}\n")
-                    else:
-                        mergedLogLines.append(l)
+                logging.info(f"concatenating {lf} as version {ver2}")
+                try:
+                    mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split(args["--updateLog"]+'_')[1]
+                except IndexError as e:
+                    mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split("UPDATE_LOG_")[1]
+                try:
+                    with open(lf) as f:
+                        file_lines = f.readlines()
+                    for l in file_lines:
+                        if l == f"{mr_ver}\n":
+                            mergedLogLines.append(f"{ver2}\n")
+                        else:
+                            mergedLogLines.append(l)
+                except FileNotFoundError as e:
+                    logging.info(f"{lf} no longer in repo, skipping")
+                    pass
         with open(args["--mergedLog"],'w') as f:
             for l in mergedLogLines:
                 f.write(l)
