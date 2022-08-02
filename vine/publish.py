@@ -939,9 +939,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             submodules = git.getModifiedSubmodules(
                 self.workspace_dir, topLevelPublic, topic, includeAdded=True)
             for sub in submodules:
-                self.progress["modifiedFiles"].remove(sub)
-                execution_path = os.path.join(self.workspace_dir, sub)
-                self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
+                try:
+                    self.progress["modifiedFiles"].remove(sub)
+                    execution_path = os.path.join(self.workspace_dir, sub)
+                    self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
+                except ValueError as e:
+                    pass
 
         # Get list of modified files in nested subprojects
         # TODO: figure out how to get modified nested subproject files during post-push CI workflow
