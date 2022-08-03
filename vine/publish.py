@@ -897,13 +897,17 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                   execution_path=execution_path).split()
         except:
             # Ensure branches are on working tree, then retry diff.
-            current_branch = git.currentBranch(execution_path=execution_path)
-            git.checkout(public, execution_path=execution_path)
-            git.checkout(topic, execution_path=execution_path)
-            git.checkout(current_branch, execution_path=execution_path)
-            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
-            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
-                                  execution_path=execution_path).split()
+            try:
+               current_branch = git.currentBranch(execution_path=execution_path)
+               git.checkout(public, execution_path=execution_path)
+               git.checkout(topic, execution_path=execution_path)
+               git.checkout(current_branch, execution_path=execution_path)
+               mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+               updatelist = git.diff(f"--name-only {mergeBase} {topic}",
+                                     execution_path=execution_path).split()
+            except grape_errors.GrapeGitError:
+               logging.error(e.message)
+               updatelist = ["[ Failed to get diff ]"]
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
