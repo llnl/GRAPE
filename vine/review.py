@@ -337,7 +337,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     reviewers = kwargs["reviewers"]
 
     # push branch
-    if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
+    if "--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"]):
         logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
         git.push(f"origin {branch}", execution_path=repo)
     codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
