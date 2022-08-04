@@ -1039,7 +1039,7 @@ options are at least listed below.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
-                                    arising
+                                    arising in the top level repo.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
