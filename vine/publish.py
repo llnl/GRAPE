@@ -605,7 +605,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.loadVersion(args)
         version = self.progress["version"]
         logging.info(f"Prepending pull request title with {version}")
-        return self.markReview(args, [f"--title={version} :", "--prepend", "--noLocal", "--norecurse"],
+        return self.markReview(args, [f"--title={version} :", "--prepend", "--noLocal", "--noRecurse", "--noRecurseSubprojects"],
                               "Skipping marking pull request with version number")
 
     def ensureReview(self, args):

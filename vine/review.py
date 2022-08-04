@@ -35,7 +35,8 @@ class Review(Option, WorkspaceDirHandler):
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
-                        [--norecurse]
+                        [--noRecurse]
+                        [--noRecurseSubprojects]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -73,11 +74,12 @@ class Review(Option, WorkspaceDirHandler):
         --repo=<repo>               The repo name part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
-        --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
+        --recurse                   If set, adds a pull request for each modified submodule.
                                     The pull request for the outer level repo will have a description with links to the
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true.
-        --norecurse                 Disables adding pull requests to submodules and subprojects.
+        --noRecurse                 Disables adding pull requests to submodules.
+        --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
@@ -213,7 +215,7 @@ class Review(Option, WorkspaceDirHandler):
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
         ##  Submodule Repos
-        runInSubmodules = not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
+        runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
         if runInSubmodules:
             missing = utility.getModifiedInactiveSubmodules(
                 target_branch, branch, includeAdded=True, workspace_dir=self.workspace_dir)
@@ -245,23 +247,24 @@ class Review(Option, WorkspaceDirHandler):
                                                                      "reviewers": reviewers}]))
 
         ## NESTED SUBPROJECT REPOS
-        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-            target_branch, workspaceDir=self.workspace_dir)
-        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-            target_branch, workspaceDir=self.workspace_dir)
+        if not args["--noRecurseSubprojects"]:
+           nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
+               target_branch, workspaceDir=self.workspace_dir)
+           nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
+               target_branch, workspaceDir=self.workspace_dir)
 
-        for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            prefix_path = os.path.join(self.workspace_dir, prefix)
-            listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
-                                                                 "isSubmodule": False,
-                                                                 "isNested": True,
-                                                                 "args": args,
-                                                                 "target_branch": target_branch,
-                                                                 "descr": descr,
-                                                                 "title": title,
-                                                                 "proj": proj,
-                                                                 "outerLevelURL": outerLevelURL,
-                                                                 "reviewers": reviewers}]))
+           for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+               prefix_path = os.path.join(self.workspace_dir, prefix)
+               listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
+                                                                    "isSubmodule": False,
+                                                                    "isNested": True,
+                                                                    "args": args,
+                                                                    "target_branch": target_branch,
+                                                                    "descr": descr,
+                                                                    "title": title,
+                                                                    "proj": proj,
+                                                                    "outerLevelURL": outerLevelURL,
+                                                                    "reviewers": reviewers}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
