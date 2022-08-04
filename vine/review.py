@@ -245,7 +245,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                      "reviewers": reviewers}]))
 
         ## NESTED SUBPROJECT REPOS
-        if args["--norecurse"] and args["--recurse"]:
+        if not args["--norecurse"]:
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
                target_branch, workspaceDir=self.workspace_dir)
            nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
