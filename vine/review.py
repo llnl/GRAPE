@@ -245,23 +245,24 @@ class Review(Option, WorkspaceDirHandler):
                                                                      "reviewers": reviewers}]))
 
         ## NESTED SUBPROJECT REPOS
-        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-            target_branch, workspaceDir=self.workspace_dir)
-        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-            target_branch, workspaceDir=self.workspace_dir)
+        if args["--norecurse"] and args["--recurse"]:
+           nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
+               target_branch, workspaceDir=self.workspace_dir)
+           nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
+               target_branch, workspaceDir=self.workspace_dir)
 
-        for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            prefix_path = os.path.join(self.workspace_dir, prefix)
-            listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
-                                                                 "isSubmodule": False,
-                                                                 "isNested": True,
-                                                                 "args": args,
-                                                                 "target_branch": target_branch,
-                                                                 "descr": descr,
-                                                                 "title": title,
-                                                                 "proj": proj,
-                                                                 "outerLevelURL": outerLevelURL,
-                                                                 "reviewers": reviewers}]))
+           for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+               prefix_path = os.path.join(self.workspace_dir, prefix)
+               listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
+                                                                    "isSubmodule": False,
+                                                                    "isNested": True,
+                                                                    "args": args,
+                                                                    "target_branch": target_branch,
+                                                                    "descr": descr,
+                                                                    "title": title,
+                                                                    "proj": proj,
+                                                                    "outerLevelURL": outerLevelURL,
+                                                                    "reviewers": reviewers}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
