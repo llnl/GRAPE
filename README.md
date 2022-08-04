@@ -989,7 +989,8 @@ options are at least listed below.
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
-                        [--norecurse]
+                        [--noRecurse]
+                        [--noRecurseSubprojects]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -1027,11 +1028,12 @@ options are at least listed below.
         --repo=<repo>               The repo name part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
-        --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
+        --recurse                   If set, adds a pull request for each modified submodule.
                                     The pull request for the outer level repo will have a description with links to the
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true.
-        --norecurse                 Disables adding pull requests to submodules and subprojects.
+        --noRecurse                 Disables adding pull requests to submodules.
+        --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
