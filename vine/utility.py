@@ -52,9 +52,9 @@ def userInput(message, default=None):
     if IS_NON_INTERACTIVE:
         if not default:
             return ""
-        elif default.lower()[0] == "y":
+        elif default.lower() == "y":
             return True
-        elif default.lower()[0] == "n":
+        elif default.lower() == "n":
             return False
         else:
             return default
