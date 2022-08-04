@@ -79,7 +79,7 @@ class Review(Option, WorkspaceDirHandler):
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true.
         --noRecurse                 Disables adding pull requests to submodules.
-        --noRecurseSubproject       Disables adding pull requests to nested subprojects.
+        --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
