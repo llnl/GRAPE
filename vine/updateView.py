@@ -31,7 +31,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
-                    [--branchFilter=<branch>]
+                    [--branchFilter=<branch> | --branchChanged=<branch>]
 
     Options:
         -f                       Force removal of submodules currently in your view that are taken out of the view as a
@@ -61,6 +61,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         --ensureCIReposPresent   Ensure any repos listed in .grapeconfig.workspace.CIRepos are present in the workspace
         --branchFilter=<branch>  Clone every repo that currently has a branch matching branch, removing or deactivating
                                  repositories that do not have the branch stored on their remote.
+        --branchChanged=<branch> Clone every repo that currently has a branch matching branch and that branch differs
+                                 from the public branch, removing or deactivating repositories that do not.
 
     """
     def __init__(self):
@@ -195,6 +197,22 @@ class UpdateView(Option, WorkspaceDirHandler):
                 break
         return valid
 
+    # Return true if the subproject at url includes the branch and it differs from public
+    @staticmethod
+    def branchFilterChanged(branch, url, public, workspace_dir):
+        branchHead = f"refs/heads/{branch}"
+        publicHead = f"refs/heads/{public}"
+        remotes = git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url, execution_path=workspace_dir), execution_path=workspace_dir)
+        branchSHA = None
+        publicSHA = None
+        for entry in remotes.splitlines():
+            if entry:
+                SHA_and_ref = entry.split()
+                if SHA_and_ref[1] == branchHead:
+                    branchSHA = SHA_and_ref[0]
+                elif SHA_and_ref[1] == publicHead:
+                    publicSHA = SHA_and_ref[0]
+        return branchSHA and branchSHA != publicSHA
 
     @log_wrapper
     def execute(self, args):
@@ -262,7 +280,17 @@ class UpdateView(Option, WorkspaceDirHandler):
             # get submodules to update
             if hasSubmodules:
                 url_map = git.getAllSubmoduleURLMap(execution_path = self.workspace_dir)
-                branchFilter = lambda x : not args["--branchFilter"] or f"refs/heads/{args['--branchFilter']}" in git.lsRemote(git.parseSubprojectRemoteURL(url_map[x], execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+
+                if args["--branchFilter"]:
+                    branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url_map[x], execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                elif args["--branchChanged"]:
+                    branchChanged = args["--branchChanged"]
+                    public = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(branchChanged)
+                    subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
+                    branchFilter = lambda x : self.branchFilterChanged(branchChanged, url_map[x], subpublic, self.workspace_dir)
+                else:
+                    branchFilter = lambda x : True
+
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:branchFilter(sub) for sub in allSubmodules}
                 elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"]:
@@ -274,9 +302,17 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             # get subprojects to update
             if not args["--skipNestedSubprojects"]:
-
                 nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
-                branchFilter = lambda x : not args["--branchFilter"] or f"refs/heads/{args['--branchFilter']}" in git.lsRemote(git.parseSubprojectRemoteURL(config.get(f"nested-{x}", "url"), execution_path=self.workspace_dir),execution_path=self.workspace_dir)
+
+                if args["--branchFilter"]:
+                    branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(config.get(f"nested-{x}", "url"), execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                elif args["--branchChanged"]:
+                    branchChanged = args["--branchChanged"]
+                    public = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(branchChanged)
+                    branchFilter = lambda x : self.branchFilterChanged(branchChanged, config.get(f"nested-{x}", "url"), public, self.workspace_dir)
+                else:
+                    branchFilter = lambda x : True
+
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in allNestedSubprojects}
                 elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:

@@ -1159,7 +1159,7 @@ options are at least listed below.
                     [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
-                    [--branchFilter=<branch>]
+                    [--branchFilter=<branch> | --branchChanged=<branch>]
 
     Options:
         -f                       Force removal of submodules currently in your view that are taken out of the view as a
@@ -1189,6 +1189,8 @@ options are at least listed below.
         --ensureCIReposPresent   Ensure any repos listed in .grapeconfig.workspace.CIRepos are present in the workspace
         --branchFilter=<branch>  Clone every repo that currently has a branch matching branch, removing or deactivating
                                  repositories that do not have the branch stored on their remote.
+        --branchChanged=<branch> Clone every repo that currently has a branch matching branch and that branch differs
+                                 from the public branch, removing or deactivating repositories that do not.
 
     
 ## version
