@@ -65,7 +65,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      changed relative to the public branch, removing or deactivating repositories that are
                                      not changed.
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
-                                     if it the SHA corresponds to a tag that matches the public branches tag pattern.
+                                     if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
+                                     matches the tag of the public branch (except for the final version slot).
 
     """
     def __init__(self):
