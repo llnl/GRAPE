@@ -32,6 +32,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
+                    [--updateRemoteProtocol]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -67,6 +68,9 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
                                      if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
                                      matches the tag of the public branch (except for the final version slot).
+        --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
+                                     repository. These subprojects are updated by recloning using the protocol of the outer
+                                     level repo.
 
     """
     def __init__(self):
@@ -245,6 +249,24 @@ class UpdateView(Option, WorkspaceDirHandler):
                     tagSHA.append(SHA_and_ref[0])
         return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
 
+    @staticmethod
+    def force_rm(func, path, excinfo):
+        os.chmod(path, stat.S_IWRITE)
+        func(path)
+
+    def rmNestedSubproject(self, subproject, args):
+        subprojectdir = os.path.join(self.workspace_dir, subproject)
+        proceed = args["-F"] or \
+                  utility.userInput(f"About to delete all contents in {subproject}. " +
+                                    "Any uncommitted changes, committed changes that have " +
+                                    "not been pushed, or ignored files will be lost.  Proceed?" +
+                                    " (use -F to force removal without this prompt)", 'n')
+        if proceed:
+            logging.info(f"removing {subproject}...")
+            shutil.rmtree(subprojectdir, onerror=self.force_rm)
+            return True
+        return False
+
     @log_wrapper
     def execute(self, args):
         config = config_parser_global.grapeConfig()
@@ -373,6 +395,11 @@ class UpdateView(Option, WorkspaceDirHandler):
                 except:
                     pass
 
+            remoteProtocolSubmodules = []
+            delayedMessages = []
+            if args["--updateRemoteProtocol"]:
+                remoteProtocol = git.remote("get-url origin", execution_path=self.workspace_dir).split(":")[0]
+
             if hasSubmodules:
                 initStr = ""
                 deinitStr = ""
@@ -381,6 +408,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
+                        if args["--updateRemoteProtocol"]:
+                            subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
+                            if subRemoteProtocol != remoteProtocol:
+                               logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}://, reinitializing with {remoteProtocol}://...")
+                               remoteProtocolSubmodules.append(submodule)
+                               deinitStr += f' {submodule}'
+                               rmCachedStr += f' {submodule}'
+                               resetStr += f' {submodule}'
                     else:
                         deinitStr += f' {submodule}'
                         rmCachedStr += f' {submodule}'
@@ -389,9 +424,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                     deinitStr = "-f"+deinitStr
 
                 logging.info("Configuring submodules...")
-                logging.info("Initializing submodules...")
-                git.submodule(f"init {initStr.strip()}",
-                              execution_path=self.workspace_dir)
                 if deinitStr:
                     logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
                     done = False
@@ -407,6 +439,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                     "A submodule that you wanted to remove " +
                                     "has local modifications. " +
                                     "Use grape uv -f to force removal.")
+                                if remoteProtocolSubmodules:
+                                    logging.error(f"Remote protocol not changed for {' '.join(remoteProtocolSubmodules)}!")
                                 return False
                             elif "use 'rm -rf' if you really want to remove it including all of its history" in e.gitOutput.lower():
                                 if not args["-f"]:
@@ -430,6 +464,12 @@ class UpdateView(Option, WorkspaceDirHandler):
                            execution_path=self.workspace_dir)
                     git.reset(f" {resetStr}", execution_path=self.workspace_dir)
 
+                for submodule in remoteProtocolSubmodules:
+                    shutil.rmtree(os.path.join(self.workspace_dir, ".git", "modules", submodule), onerror=self.force_rm)
+
+                logging.info("Initializing submodules...")
+                git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
+
                 if initStr:
                     logging.info(f"Updating active submodules...({initStr})")
                     git.submodule("update", execution_path=self.workspace_dir)
@@ -450,6 +490,19 @@ class UpdateView(Option, WorkspaceDirHandler):
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(self.workspace_dir, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
                     if nowActive and previouslyActive:
+                        if args["--updateRemoteProtocol"]:
+                            subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)).split(":")[0]
+                            if subRemoteProtocol != remoteProtocol:
+                                logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
+                                if self.rmNestedSubproject(subproject, args):
+                                    toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
+                                    section = f"nested-{subprojectName}"
+                                    userConfig.ensureSection(section)
+                                    userConfig.set(section, "active", "False")
+                                    config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
+                                else:
+                                    delayedMessages.append(f"Remote protocol for nested subproject {subproject} was not changed!")
+
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
@@ -462,17 +515,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     if not nowActive and previouslyActive:
                         #remove the subproject
                         subprojectdir = os.path.join(self.workspace_dir, subproject)
-                        proceed = args["-F"] or \
-                                  utility.userInput(f"About to delete all contents in {subproject}. " +
-                                                    "Any uncommitted changes, committed changes that have " +
-                                                    "not been pushed, or ignored files will be lost.  Proceed?" +
-                                                    "(use -F to force removal without this prompt)", 'n')
-                        if proceed:
-                            logging.info(f"removing {subproject}...")
-                            def force_rm(func, path, excinfo):
-                                os.chmod(path, stat.S_IWRITE)
-                                func(path)
-                            shutil.rmtree(subprojectdir, onerror=force_rm)
+                        self.rmNestedSubproject(subproject, args)
 
                 # activate nested subprojects in parallel
                 activate_project_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(activateSubproject,
@@ -480,6 +523,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                                                                              workspace_dir=self.workspace_dir)
                 retvals = activate_project_launcher.launchFromWorkspaceDir(handleMRE=handleActivateSubprojectMRE)
                 if False in retvals:
+                    for msg in delayedMessages:
+                        logging.info(msg)
                     return False
                                                                                                  
                     
@@ -506,6 +551,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             with open(os.path.join(self.workspace_dir,"GRAPE_PROJECT_SHA.json"),'w') as f:
                 json.dump(sha_dict, f)
 
+        for msg in delayedMessages:
+            logging.info(msg)
         return True
 
     def setDefaultConfig(self, config):
