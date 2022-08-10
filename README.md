@@ -1160,6 +1160,7 @@ options are at least listed below.
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
+                    [--updateRemoteProtocol]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -1195,6 +1196,9 @@ options are at least listed below.
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
                                      if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
                                      matches the tag of the public branch (except for the final version slot).
+        --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
+                                     repository. These subprojects are updated by recloning using the protocol of the outer
+                                     level repo.
 
     
 ## version
