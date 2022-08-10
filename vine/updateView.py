@@ -323,6 +323,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.info(f"\"{','.join(notFound)}\" not found in submodules {','.join(allSubmodules)} \nor\n nested subprojects {','.join(allNestedSubprojects)}")
             return False
 
+        delayedMessages = []
+
         if not args["--checkSubprojects"]:
             root = None
             if args["--gui"]:
@@ -396,7 +398,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                     pass
 
             remoteProtocolSubmodules = []
-            delayedMessages = []
             if args["--updateRemoteProtocol"]:
                 remoteProtocol = git.remote("get-url origin", execution_path=self.workspace_dir).split(":")[0]
 
