@@ -286,10 +286,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                # The git remote command output may include X11 forwarding output, so only consider lines with refs/heads
                for remote in remotes:
                   if "refs/heads" in remote:
-                     # Get the SHAs for each submodule from the gitlink
-                     # ls-files -s should give an entry in the form
-                     #   <mode> <SHA> <stage number> <submodule>
-                     SHA = git.gitcmd(f"ls-files -s {submodule}", "ls-files failed", execution_path=self.workspace_dir).split()[1]
+                     # Get the SHAs for each submodule
+                     SHA = git.SHA(f"origin/{branch}:{submodule}")
                      if SHA not in remote:
                         logging.info(f"Branch {branch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
                         submodulesConsistent = False
