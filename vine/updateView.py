@@ -273,8 +273,10 @@ class UpdateView(Option, WorkspaceDirHandler):
     @log_wrapper
     def execute(self, args):
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
+        hasSubmodules = len(git.getAllSubmodules(execution_path=self.workspace_dir)) > 0 and not args["--skipSubmodules"]
         allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
-        url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+        if hasSubmodules:
+           url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
@@ -311,7 +313,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         base = git.baseDir(execution_path=self.workspace_dir)
         if base == "":
             return False
-        hasSubmodules = len(git.getAllSubmodules(execution_path=self.workspace_dir)) > 0 and not args["--skipSubmodules"]
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
 
