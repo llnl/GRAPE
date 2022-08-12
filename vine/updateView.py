@@ -280,19 +280,16 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
-            # Get the SHAs for each submodule
-            submoduleSHAmap = {}
-            for entry in git.submodule(f"status", execution_path=self.workspace_dir).splitlines():
-               # the status entry should be [+-U]<SHA> <submodule>
-               values = entry.split()
-               submoduleSHAmap[values[1]] = values[0].strip("+-U")
             for submodule in allSubmodules:
                remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
                remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{branch}", execution_path=self.workspace_dir).splitlines()
                # The git remote command output may include X11 forwarding output, so only consider lines with refs/heads
                for remote in remotes:
                   if "refs/heads" in remote:
-                     SHA = submoduleSHAmap[submodule]
+                     # Get the SHAs for each submodule from the gitlink
+                     # ls-files -s should give an entry in the form
+                     #   <mode> <SHA> <stage number> <submodule>
+                     SHA = git.gitcmd(f"ls-files -s {submodule}", "ls-files failed", execution_path=self.workspace_dir).split()[1]
                      if SHA not in remote:
                         logging.info(f"Branch {branch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
                         submodulesConsistent = False
