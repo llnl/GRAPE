@@ -33,6 +33,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
+           grape-uv --checkRemoteSubmodules [--branchName=<name>]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -41,6 +42,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      view as a result to this call to uv.
         --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
                                      not go through the 'which submodules do you want' script.
+        --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
+                                     remote submodule repos.
         -b                           Automatically creates subproject branches that should be there according to your
                                      branching model.
         --skipTopLevel               Skip top level repository for syncing and checking.
@@ -269,6 +272,30 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
+        branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
+        allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
+        url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+
+        if args["--checkRemoteSubmodules"]:
+            submodulesConsistent = True
+            # Get the SHAs for each submodule
+            submoduleSHAmap = {}
+            for entry in git.submodule(f"status", execution_path=self.workspace_dir).splitlines():
+               # the status entry should be [+-U]<SHA> <submodule>
+               values = entry.split()
+               submoduleSHAmap[values[1]] = values[0].strip("+-U")
+            for submodule in allSubmodules:
+               remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
+               remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{branch}", execution_path=self.workspace_dir).splitlines()
+               # The git remote command output may include X11 forwarding output, so only consider lines with refs/heads
+               for remote in remotes:
+                  if "refs/heads" in remote:
+                     SHA = submoduleSHAmap[submodule]
+                     if SHA not in remote:
+                        logging.info(f"Branch {branch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
+                        submodulesConsistent = False
+            return submodulesConsistent
+
         config = config_parser_global.grapeConfig()
         if args["--gui"] and TkinterImportError:
             logging.error("grape uv --gui requires Tkinter.\n  The following error was raised during the import:\n\n%s\n" % TkinterImportError)
@@ -288,7 +315,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
 
-        allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
         allNestedSubprojects = config.getAllNestedSubprojects()
 
         addedSubmodules = []
@@ -334,8 +360,6 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             # get submodules to update
             if hasSubmodules:
-                url_map = git.getAllSubmoduleURLMap(execution_path = self.workspace_dir)
-
                 if args["--branchFilter"]:
                     branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url_map[x], execution_path=self.workspace_dir), execution_path=self.workspace_dir)
                 elif args["--branchChanged"]:
@@ -533,7 +557,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                 config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
 
         checkoutArgs = "-b" if args["-b"] else ""
-        branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
 
         safeSwitchWorkspaceToBranch(
             branch, checkoutArgs, sync,
