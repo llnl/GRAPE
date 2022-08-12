@@ -287,7 +287,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                for remote in remotes:
                   if "refs/heads" in remote:
                      # Get the SHAs for each submodule
-                     SHA = git.SHA(f"origin/{branch}:{submodule}")
+                     SHA = git.SHA(f"origin/{branch}:{submodule}", execution_path=self.workspace_dir)
                      if SHA not in remote:
                         logging.info(f"Branch {branch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
                         submodulesConsistent = False
