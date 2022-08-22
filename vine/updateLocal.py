@@ -14,7 +14,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     """
     grape up
     Updates the current branch and any public branches.
-    Usage: grape-up [--public=<branch> ]
+    Usage: grape-up [--public=<branch> ] [--force]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     [--noTopLevel]
@@ -24,6 +24,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
+    --force                 Force update of public branches.
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated.
@@ -64,6 +65,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
                 runInSubprojects=recurseNestedSubprojects,
                 runInOuter=runInOuter, branch=branch,
                 listOfRepoBranchArgTuples=None, skipSubmodules=skipSubmodules,
+                globalArgs=args,
                 outer=workspace_dir, workspace_dir=workspace_dir)
             launchers.append(new_launcher)
         if launchers:
@@ -71,7 +73,9 @@ class UpdateLocal(Option, WorkspaceDirHandler):
             for l in launchers[1:]:
                 launcher.MergeLaunchSet(l)
             launcher.collapseLaunchSetBranches()
-            launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+            retvals = launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
+            if False in retvals:
+                return False
 
         return True
 
@@ -83,13 +87,14 @@ def fetchLocalHandler(mre):
         logging.error(repr(e.gitOutput))
     raise mre
 
-def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
+def fetchLocal(repo='unknown', branch=[], args=[], *, workspace_dir):
     # the execution path we actually care about is in repo
     execution_path = repo
     # branch is actually the list of branches
     branches = branch
     if not branches:
-        return
+        logging.error("branches not specified")
+        return False
 
     currentBranch = git.currentBranch(execution_path=execution_path)
 
@@ -98,6 +103,8 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
+            if args["--force"]:
+                fetchArgs += "+"
             if b == currentBranch:
                 mergeRequired = True
                 fetchArgs += f"{b} "
@@ -105,7 +112,7 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
                 fetchArgs += f"{b}:{b} "
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
-        git.fetch(fetchArgs, execution_path=execution_path)
+        git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=True)
     except grape_errors.GrapeGitError as e:
         # let non-fast-forward fetches slide
         if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
@@ -115,14 +122,15 @@ def fetchLocal(repo='unknown', branch=[], *, workspace_dir):
                             f" {','.join(branches)} in {execution_path} has local " +
                             "commits! Did you forget to create a topic " +
                             "branch?")
-        elif "refusing to fetch into current branch" in e.gitOutput.lower():
-            logging.error(e.gitOutput)
         else:
-            raise e
+            logging.error(e.gitOutput)
+            return False
     if mergeRequired:
         try:
             logging.debug( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
-            raise e
+            return False
+
+    return True
