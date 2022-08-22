@@ -46,7 +46,7 @@ class ForEach(Option, WorkspaceDirHandler):
             workspace_dir=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleForeachMRE)
         for retval in retvals:
-            if not retval or isinstance(retval, grape_errors.GrapeGitError):
+            if isinstance(retval, grape_errors.GrapeGitError):
                 return False
         return True
 
@@ -63,21 +63,16 @@ def foreach(repo='', branch='', args={}, *, workspace_dir):
         raise grape_errors.GrapeGitError(
             f"Error: foreach failed in {repo}", completed_process.returncode, process_output,
             cmd, cwd=repo)
-    else:
-        return True
 
 def handleForeachMRE(mre):
-    retCode = True
     for e1 in mre.exceptions():
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            logging.error("Foreach failed.")
-            logging.error(e.gitCommand)
-            logging.error(e.cwd)
-            logging.error(e.gitOutput)
-            retCode = False
+            logging.warning(f"GRAPE: Foreach failed in {e.cwd}.")
+            logging.warning(f"GRAPE: Command `{e.gitCommand}' with the following output:")
+            logging.warning(e.gitOutput)
+            logging.warning(f"GRAPE: exited with error code {e.code}.")
         except FileNotFoundError as e:
             logging.warning("File not found - perhaps .grapeuserconfig is out of date?")
             logging.warning(e)
-    return retCode
