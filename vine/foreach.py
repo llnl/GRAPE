@@ -51,8 +51,8 @@ class ForEach(Option, WorkspaceDirHandler):
 
 def foreach(repo='', branch='', args={}, *, workspace_dir):
     cmd = args["<cmd>"]
-    vine_subprocess.executeSubProcess(cmd, working_dir=repo)
-    return True
+    completed_process = vine_subprocess.executeSubProcess(cmd, working_dir=repo)
+    return completed_process.returncode == 0
 
 def handleForeachMRE(mre):
     for e1 in mre.exceptions():
