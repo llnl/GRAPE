@@ -14,7 +14,8 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --ask | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --ask | --askAll]
+                   [--continue] [--noRecurse] [--forceUpdate | --noUpdate] [--squash]
 
     Options:
         --am            Use git's default merge.
@@ -27,6 +28,7 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch>
                         will be called to handle submodule and nested project merges.
         --continue      Resume your previous merge after resolving conflicts.
+        --forceUpdate   Force update local versions of <branch> from the remote before attempting merges.
         --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
                         the merge.
         --squash        Perform squash merges.
@@ -81,6 +83,7 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         mdArgs["--noRecurse"] = args["--noRecurse"]
         mdArgs["--continue"] = args["--continue"]
         mdArgs["<<cmd>>"] = args["<<cmd>>"]
+        mdArgs["--forceUpdate"] = args["--forceUpdate"]
         mdArgs["--noUpdate"] = args["--noUpdate"]
         mdArgs["--noChecks"] = False
         mdArgs["--squash"] = args["--squash"]

@@ -74,8 +74,10 @@ class UpdateLocal(Option, WorkspaceDirHandler):
                 launcher.MergeLaunchSet(l)
             launcher.collapseLaunchSetBranches()
             retvals = launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
-            if False in retvals:
-                return False
+            for retval in retvals:
+                if isinstance(retval, grape_errors.GrapeGitError):
+                    #return False
+                    pass
 
         return True
 
@@ -87,7 +89,7 @@ def fetchLocalHandler(mre):
         logging.error(repr(e.gitOutput))
     raise mre
 
-def fetchLocal(repo='unknown', branch=[], args=[], *, workspace_dir):
+def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     # the execution path we actually care about is in repo
     execution_path = repo
     # branch is actually the list of branches
@@ -122,9 +124,10 @@ def fetchLocal(repo='unknown', branch=[], args=[], *, workspace_dir):
                             f" {','.join(branches)} in {execution_path} has local " +
                             "commits! Did you forget to create a topic " +
                             "branch?")
+        elif "refusing to fetch into current branch" in e.gitOutput.lower():
+            logging.error(f"GRAPE: ERROR: {execution_path}:\n{e.gitOutput}")
         else:
-            logging.error(e.gitOutput)
-            return False
+            raise e
     if mergeRequired:
         try:
             logging.debug( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
