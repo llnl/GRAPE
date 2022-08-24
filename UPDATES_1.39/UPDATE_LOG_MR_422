@@ -1,0 +1,9 @@
+
+
+Wed Aug 24 08:58:10 2022 Benjamin T. Liu
+MR_422
+Reviewers: Peter Robinson, David Dawson
+
+- Check origin/<public> rather than <public> when looking up tags for grape uv --branchChanged=<branch>~
+
+- Add grape uv --checkRemoteSubmodules option
