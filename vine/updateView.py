@@ -348,9 +348,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:branchFilter(sub) for sub in allSubmodules}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"]:
+                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"] or args["--branchChanged"]:
                     includedSubmodules = {sub:branchFilter(sub) for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
-                    includedSubmodules.update({sub:branchFilter(sub) for sub in addedSubmodules})
+                    includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
                 else:
                     includedSubmodules = self.defineActiveSubprojects()
@@ -369,9 +369,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in allNestedSubprojects}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
+                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"] or args["--branchChanged"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
-                    includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):branchFilter(sub) for sub in addedNestedSubprojects})
+                    includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()
