@@ -1161,6 +1161,7 @@ options are at least listed below.
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
+           grape-uv --checkRemoteSubmodules [--branchName=<name>]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -1169,6 +1170,8 @@ options are at least listed below.
                                      view as a result to this call to uv.
         --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
                                      not go through the 'which submodules do you want' script.
+        --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
+                                     remote submodule repos.
         -b                           Automatically creates subproject branches that should be there according to your
                                      branching model.
         --skipTopLevel               Skip top level repository for syncing and checking.
