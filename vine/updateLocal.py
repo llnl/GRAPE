@@ -76,8 +76,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
             retvals = launcher.launchFromWorkspaceDir(handleMRE=fetchLocalHandler)
             for retval in retvals:
                 if isinstance(retval, grape_errors.GrapeGitError):
-                    #return False
-                    pass
+                    return False
 
         return True
 
