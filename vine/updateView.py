@@ -368,8 +368,10 @@ class UpdateView(Option, WorkspaceDirHandler):
 
                 if args["--allSubmodules"]:
                     includedSubmodules = {sub:branchFilter(sub) for sub in allSubmodules}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"] or args["--branchChanged"]:
+                else:
                     includedSubmodules = {sub:branchFilter(sub) for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
+
+                if args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
                     includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
                 else:
@@ -389,8 +391,10 @@ class UpdateView(Option, WorkspaceDirHandler):
 
                 if args["--allNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in allNestedSubprojects}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"] or args["--branchFilter"] or args["--branchChanged"]:
+                else:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
+
+                if args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):True for sub in addedNestedSubprojects})
                     includedNestedSubprojectPrefixes.update({nestedPrefixLookup(sub):False for sub in rmNestedSubprojects})
                 else:
