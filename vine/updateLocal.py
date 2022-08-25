@@ -14,7 +14,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     """
     grape up
     Updates the current branch and any public branches.
-    Usage: grape-up [--public=<branch> ] [--force]
+    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     [--noTopLevel]
@@ -24,7 +24,8 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
-    --force                 Force update of public branches.
+    --noForce               Do not force update of public branches.
+    --ignoreCommError       Ignore communications errors.
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
     --wd=<working dir>      Working directory which should be updated.
@@ -104,7 +105,7 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
-            if args["--force"]:
+            if not args["--noForce"]:
                 fetchArgs += "+"
             if b == currentBranch:
                 mergeRequired = True
@@ -113,7 +114,7 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
                 fetchArgs += f"{b}:{b} "
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
-        git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=True)
+        git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=(not args["--ignoreCommError"]))
     except grape_errors.GrapeGitError as e:
         # let non-fast-forward fetches slide
         if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
@@ -133,6 +134,6 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
-            return False
+            raise e
 
     return True

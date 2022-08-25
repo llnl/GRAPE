@@ -97,6 +97,7 @@ class MergeRemote(Option, WorkspaceDirHandler):
         # we've handled the update, we don't want m or md to update the local branch.
         args["--noUpdate"] = True
         args["--forceUpdate"] = False
+        args["--ensureCleanUpdate"] = False
         # if mr is called by the user, need to initialize the --continue argument.
         # if it is called by md, it will be set already.
         if "--continue" not in args:

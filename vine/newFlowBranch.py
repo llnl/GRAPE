@@ -151,7 +151,10 @@ class NewBranchOption(Option, WorkspaceDirHandler):
         proceed = utility.userInput("Proceed? [y/n]", default="y")
         if proceed:
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            menu.applyMenuChoice('up', ['up', f'--public={start}'])
+            upToDate = menu.applyMenuChoice('up', ['up', f'--public={start}', '--noForce', '--ignoreCommError'])
+            if not upToDate:
+                logging.info("Failed to update local branches.")
+                return False
             launcher.launchFromWorkspaceDir()
         else:
             logging.info("branches not created")
