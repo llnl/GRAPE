@@ -172,8 +172,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             # make sure public branches are to date in outer level repo.
             logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
             upCmd = ['up', f'--public={args["--public"]}']
-            if args["--forceUpdate"]:
-                upCmd.append("--force")
+            if not args["--forceUpdate"]:
+                upCmd.append("--noForce")
             ret = menu.applyMenuChoice('up', upCmd)
             if args["--ensureCleanUpdate"] and ret is False:
                 logging.error("Failed to update public branches! Please address above issues (or run with --noUpdate) and try again.")
