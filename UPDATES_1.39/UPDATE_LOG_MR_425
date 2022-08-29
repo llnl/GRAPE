@@ -1,0 +1,19 @@
+
+
+Mon Aug 29 11:52:25 2022 Benjamin T. Liu
+MR_425
+Reviewers: Peter Robinson
+
+Updates to grape uv and up
+
+- Default to force update and error on communications errors for up
+
+- Add --noForce and --ignoreCommError options to up to replicate previous behavior
+
+- Fail publish if up fails (including communication error)
+
+- Fail newFlowBranch if up fails (but ignore communication error)
+
+- Add --forceUpdate and --ensureCleanUpdate options to control up options and error checking for md
+
+- Allow multi repo launcher to merge arguments, but only if they are all the same
