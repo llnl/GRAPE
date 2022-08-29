@@ -14,22 +14,25 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
     """
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --ask | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --ask | --askAll]
+                   [--continue] [--noRecurse] [--forceUpdate | --noUpdate | --ensureCleanUpdate] [--squash]
 
     Options:
-        --am            Use git's default merge.
-        --as            Do a safe merge - force git to issue conflicts for files that
-                        are touched by both branches.
-        --at            Git accept their changes in any file touched by both branches (the branch you're merging from)
-        --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
-        --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
-        --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
-        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch>
-                        will be called to handle submodule and nested project merges.
-        --continue      Resume your previous merge after resolving conflicts.
-        --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
-                        the merge.
-        --squash        Perform squash merges.
+        --am                 Use git's default merge.
+        --as                 Do a safe merge - force git to issue conflicts for files that
+                             are touched by both branches.
+        --at                 Git accept their changes in any file touched by both branches (the branch you're merging from)
+        --aT                 Git accept their changes in the event of a conflict (the branch you're merging from)
+        --ay                 Git will accept your changes in any file touched by both branches (the branch you're currently on)
+        --aY                 Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --noRecurse          Perform the merge in the current repository only. Otherwise, grape md --public=<branch>
+                             will be called to handle submodule and nested project merges.
+        --continue           Resume your previous merge after resolving conflicts.
+        --forceUpdate        Force update local versions of <branch> from the remote before attempting merges.
+        --noUpdate           Don't perform an update of your local version of <branch> from the remote before attempting
+                             the merge.
+        --ensureCleanUpdate  Return failure if update of local versions fails.
+        --squash             Perform squash merges.
 
     Arguments:
         <branch>        The branch you want to merge in.
@@ -81,7 +84,9 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         mdArgs["--noRecurse"] = args["--noRecurse"]
         mdArgs["--continue"] = args["--continue"]
         mdArgs["<<cmd>>"] = args["<<cmd>>"]
+        mdArgs["--forceUpdate"] = args["--forceUpdate"]
         mdArgs["--noUpdate"] = args["--noUpdate"]
+        mdArgs["--ensureCleanUpdate"] = args["--ensureCleanUpdate"]
         mdArgs["--noChecks"] = False
         mdArgs["--squash"] = args["--squash"]
 

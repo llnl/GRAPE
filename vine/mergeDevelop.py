@@ -25,7 +25,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--am | --as | --at | --aT | --ay | --aY ]
                     [--continue]
                     [--recurse | --noRecurse]
-                    [--noUpdate]
+                    [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
                     [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
@@ -47,7 +47,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
+        --forceUpdate           Force update local versions of the public branch before attempting merges.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
+        --ensureCleanUpdate     Return failure if update of local versions fails.
         --noChecks              Skip workspace consistency checks.
         --squash                Perform squash merges.
         --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
@@ -169,7 +171,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
-            menu.applyMenuChoice('up', ['up', f'--public={args["--public"]}'])
+            upCmd = ['up', f'--public={args["--public"]}']
+            if not args["--forceUpdate"]:
+                upCmd.append("--noForce")
+            ret = menu.applyMenuChoice('up', upCmd)
+            if args["--ensureCleanUpdate"] and ret is False:
+                logging.error("Failed to update public branches! Please address above issues (or run with --noUpdate) and try again.")
+                return False
             self.progress["updateLocalDone"] = True
 
         # "utility.userInput" is a function

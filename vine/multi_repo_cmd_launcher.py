@@ -149,10 +149,14 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
     def MergeLaunchSet(self, otherMRCL):
         self.initializeCommands()
         otherMRCL.initializeCommands()
-        for args in self.perRepoArgs + otherMRCL.perRepoArgs:
+        commonArgs = []
+        allArgs = self.perRepoArgs + otherMRCL.perRepoArgs
+        if len(allArgs):
+            commonArgs = allArgs[0]
+        for args in allArgs:
             if args:
-                logging.warning("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
-                break
+                if args != commonArgs:
+                    logging.warning("WARNING: IGNORING PER REPO ARGS, likely badness will happen if needed")
 
         reducedSet = list(set(zip(self.branches+otherMRCL.branches, self.repos+otherMRCL.repos)))
         self.branches = []
@@ -161,7 +165,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         for t in reducedSet:
             self.branches.append(t[0])
             self.repos.append(t[1])
-            self.perRepoArgs.append([])
+            self.perRepoArgs.append(commonArgs)
 
     @log_wrapper
     def collapseLaunchSetBranches(self):

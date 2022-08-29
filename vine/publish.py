@@ -1660,7 +1660,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
 
         # make sure public branch is up to date.
-        grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={public}'])
+        upToDate = grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={public}', '--noForce'])
+        if not upToDate:
+            logging.info("Failed to update local branches.")
+            return False
 
         # set any CL defined publish policy
         policy = None

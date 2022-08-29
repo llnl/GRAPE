@@ -18,7 +18,7 @@ class MergeRemote(Option, WorkspaceDirHandler):
     then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY ] [--continue] [--noRecurse] [--noUpdate] [--squash]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY ] [--continue] [--noRecurse] [--squash]
 
 
     Options:
@@ -96,6 +96,8 @@ class MergeRemote(Option, WorkspaceDirHandler):
         args["<branch>"] = otherBranch if updateLocal else git.join_list_as_git_path(['origin', otherBranch])
         # we've handled the update, we don't want m or md to update the local branch.
         args["--noUpdate"] = True
+        args["--forceUpdate"] = False
+        args["--ensureCleanUpdate"] = False
         # if mr is called by the user, need to initialize the --continue argument.
         # if it is called by md, it will be set already.
         if "--continue" not in args:
