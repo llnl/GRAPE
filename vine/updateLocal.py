@@ -101,7 +101,7 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     currentBranch = git.currentBranch(execution_path=execution_path)
 
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
-    fetchArgs = "--recurse-submodules=no --prune origin '+refs/tags/*:refs/tags/*' 'refs/heads/*:refs/remotes/origin/*' "
+    fetchArgs = "--recurse-submodules=no --prune origin '+refs/tags/*:refs/tags/*' "
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
@@ -112,6 +112,7 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
                 fetchArgs += f"{b} "
             else:
                 fetchArgs += f"{b}:{b} "
+            fetchArgs += f"refs/heads/{b}:refs/remotes/origin/{b} "
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
         git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=(not args["--ignoreCommError"]))
