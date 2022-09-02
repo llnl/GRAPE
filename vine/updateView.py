@@ -726,6 +726,8 @@ class UVManager:
         width  = kwargs.get('width', 0)
 
         # Saved lists of active subprojects (None if not saved)
+        # '/'.join() is used instead of os.path.join() so that the subproject
+        # names use the Linux slash convention used in the .grapeconfig.
         self.includedSubmodules = None
         self.includedNestedSubprojects = None
         self.saved = False
@@ -877,19 +879,19 @@ class UVManager:
 
         if isActive:
             self.currentActiveList.insert(Tk.END, subproject)
-            self.activeSets[self.currentProjectIndex].add(os.path.join(directory,subproject))
+            self.activeSets[self.currentProjectIndex].add('/'.join(directory,subproject))
         else:
             self.currentInactiveList.insert(Tk.END, subproject)
-            self.inactiveSets[self.currentProjectIndex].add(os.path.join(directory,subproject))
+            self.inactiveSets[self.currentProjectIndex].add('/'.join(directory,subproject))
 
     # Activate selected project
     def activateProject(self, directory, activelist, inactivelist, activeset, inactiveset, originalactiveset):
         index = inactivelist.index(Tk.ACTIVE)
         entry = inactivelist.get(index)
         inactivelist.delete(index)
-        inactiveset.remove(os.path.join(directory,entry))
+        inactiveset.remove('/'.join(directory,entry))
         activelist.insert(Tk.END, entry)
-        activeset.add(os.path.join(directory,entry))
+        activeset.add('/'.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -899,9 +901,9 @@ class UVManager:
         index = activelist.index(Tk.ACTIVE)
         entry = activelist.get(index)
         activelist.delete(index)
-        activeset.remove(os.path.join(directory,entry))
+        activeset.remove('/'.join(directory,entry))
         inactivelist.insert(Tk.END, entry)
-        inactiveset.add(os.path.join(directory,entry))
+        inactiveset.add('/'.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -912,8 +914,8 @@ class UVManager:
         inactivelist.delete(0,Tk.END)
         for entry in entries:
             activelist.insert(Tk.END, entry)
-            activeset.add(os.path.join(directory,entry))
-            inactiveset.remove(os.path.join(directory,entry))
+            activeset.add('/'.join(directory,entry))
+            inactiveset.remove('/'.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -924,8 +926,8 @@ class UVManager:
         activelist.delete(0,Tk.END)
         for entry in entries:
             inactivelist.insert(Tk.END, entry)
-            inactiveset.add(os.path.join(directory,entry))
-            activeset.remove(os.path.join(directory,entry))
+            inactiveset.add('/'.join(directory,entry))
+            activeset.remove('/'.join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -938,7 +940,7 @@ class UVManager:
            for entry in sorted(entries):
                listbox.insert(Tk.END, entry)
                if originalset is not None:
-                   if os.path.join(directory,entry) in originalset:
+                   if '/'.join(directory,entry) in originalset:
                        listbox.itemconfig(Tk.END, fg=inSetColor)
                    else:
                        listbox.itemconfig(Tk.END, fg=notInSetColor)
