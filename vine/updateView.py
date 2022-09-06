@@ -726,6 +726,8 @@ class UVManager:
         width  = kwargs.get('width', 0)
 
         # Saved lists of active subprojects (None if not saved)
+        # subproject_join is used instead of os.path.join() so that the subproject
+        # names use the Linux slash convention used in the .grapeconfig.
         self.includedSubmodules = None
         self.includedNestedSubprojects = None
         self.saved = False
@@ -764,6 +766,14 @@ class UVManager:
         cancelbutton = Tk.Button(controlpanel, text="Cancel", command = self.master.destroy)
         cancelbutton.grid(row=0, column=1)
         controlpanel.grid(row=0, column=0)
+
+    # Return Linux formatted joined path for subproject
+    @staticmethod
+    def subproject_join(directory, subproject):
+        if directory:
+            return '/'.join([directory, subproject])
+        else:
+            return subproject
 
     # Save changes and exit
     def saveChanges(self):
@@ -877,19 +887,19 @@ class UVManager:
 
         if isActive:
             self.currentActiveList.insert(Tk.END, subproject)
-            self.activeSets[self.currentProjectIndex].add(os.path.join(directory,subproject))
+            self.activeSets[self.currentProjectIndex].add(self.subproject_join(directory,subproject))
         else:
             self.currentInactiveList.insert(Tk.END, subproject)
-            self.inactiveSets[self.currentProjectIndex].add(os.path.join(directory,subproject))
+            self.inactiveSets[self.currentProjectIndex].add(self.subproject_join(directory,subproject))
 
     # Activate selected project
     def activateProject(self, directory, activelist, inactivelist, activeset, inactiveset, originalactiveset):
         index = inactivelist.index(Tk.ACTIVE)
         entry = inactivelist.get(index)
         inactivelist.delete(index)
-        inactiveset.remove(os.path.join(directory,entry))
+        inactiveset.remove(self.subproject_join(directory,entry))
         activelist.insert(Tk.END, entry)
-        activeset.add(os.path.join(directory,entry))
+        activeset.add(self.subproject_join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -899,9 +909,9 @@ class UVManager:
         index = activelist.index(Tk.ACTIVE)
         entry = activelist.get(index)
         activelist.delete(index)
-        activeset.remove(os.path.join(directory,entry))
+        activeset.remove(self.subproject_join(directory,entry))
         inactivelist.insert(Tk.END, entry)
-        inactiveset.add(os.path.join(directory,entry))
+        inactiveset.add(self.subproject_join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -912,8 +922,8 @@ class UVManager:
         inactivelist.delete(0,Tk.END)
         for entry in entries:
             activelist.insert(Tk.END, entry)
-            activeset.add(os.path.join(directory,entry))
-            inactiveset.remove(os.path.join(directory,entry))
+            activeset.add(self.subproject_join(directory,entry))
+            inactiveset.remove(self.subproject_join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -924,8 +934,8 @@ class UVManager:
         activelist.delete(0,Tk.END)
         for entry in entries:
             inactivelist.insert(Tk.END, entry)
-            inactiveset.add(os.path.join(directory,entry))
-            activeset.remove(os.path.join(directory,entry))
+            inactiveset.add(self.subproject_join(directory,entry))
+            activeset.remove(self.subproject_join(directory,entry))
         self.resortList(activelist, originalactiveset, self.fginit, self.fgchanged, directory)
         self.resortList(inactivelist, originalactiveset, self.fgchanged, self.fginit, directory)
         self.master.update()
@@ -938,7 +948,7 @@ class UVManager:
            for entry in sorted(entries):
                listbox.insert(Tk.END, entry)
                if originalset is not None:
-                   if os.path.join(directory,entry) in originalset:
+                   if self.subproject_join(directory,entry) in originalset:
                        listbox.itemconfig(Tk.END, fg=inSetColor)
                    else:
                        listbox.itemconfig(Tk.END, fg=notInSetColor)
