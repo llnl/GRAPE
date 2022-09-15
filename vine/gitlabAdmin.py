@@ -147,22 +147,20 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                                  workspace_dir=self.workspace_dir
                                                 )
         projectname = args["--project"]
-        admin = False
+
         try:
-           project = grape_gitlab.project(projectname, min_access_level=40)
-           admin = True
+           project = grape_gitlab.project(projectname)
         except:
-           try:
-              project = grape_gitlab.project(projectname)
-           except:
-              logging.info(f"Failed to access project {projectname}!")
-              return False
+           logging.info(f"Failed to access project {projectname}!")
+           return False
            
         task_completed = False
 
         if args["--setProtectedBranches"] or args["--disableLFS"] or args["--disableSubprojectCI"]:
-           if not admin:
+           try:
               # Only allow admin tasks to be performed if access level is maintainer or above
+              project = grape_gitlab.project(projectname, min_access_level=40)
+           except:
               logging.info(f"You do not have admin privileges for project {projectname}!")
               return False
 
