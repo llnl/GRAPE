@@ -17,6 +17,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--setProtectedBranches]
                               [--disableLFS]
                               [--disableSubprojectCI]
+                              [--scheduledPipelines=[list|add|delete|take|update]
+                               [--pid=<id>] [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--user=<userName>]
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
@@ -30,6 +32,22 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
+        --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
+                                       list   : List scheduled pipelines
+                                       add    : Add a new scheduled pipeline
+                                       delete : Delete an existing scheduled pipeline that you own
+                                       update : Update an existing scheduled pipeline that you own
+                                       take   : Take ownership of an existing scheduled pipeline
+                                    Note: scheduled pipeline variables do not appear to be exposed properly through the REST API
+                                    (https://gitlab.com/gitlab-org/gitlab/-/issues/250850).
+        --pid=<id>                  Identifier for scheduled pipeline. Required, and only allowed when <op> is 'delete','take', or 'update'.
+        --desc=<description>        New description for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+        --cron=<cron>               New cron entry for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+        --timezone=<timezone>       New cron timezone for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+                                    e.g. 'America/Los_Angeles', 'Etc/UTC'
+        --ref=<ref>                 Branch reference for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+                                    e.g. 'develop', 'refs/heads/bugfix/mybranch'
+        --active=<bool>             Whether the scheduled pipeline should be active. Only allowed when <op> is 'add' or 'update'.
         --user=<userName>           Your Gitlab user name.
         --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
                                     [default: .grapeconfig.project.codeReviewsURL]
@@ -112,6 +130,11 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     @log_wrapper
     def execute(self, args):
         config = config_parser_global.grapeConfig()
+
+        if "gitlab" not in args["--codeReviewsURL"]:
+            logging.info("gitlab-admin should only be used with GitLab.")
+            return False
+
         name = args["--user"]
         if not name:
             name = utility.getUserName()
@@ -133,47 +156,100 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            
         task_completed = False
 
-        grapeRepos = self.getGrapeReposAndPublicBranches(project=project, verbose=args["--verbose"])
+        if args["--setProtectedBranches"] or args["--disableLFS"] or args["--disableSubprojectCI"]:
+           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, verbose=args["--verbose"])
 
-        for reponame,public in grapeRepos.items():
-            repo = project.repo(reponame)
-            logging.info(f"Repository {reponame}")
+           for reponame,public in grapeRepos.items():
+               repo = project.repo(reponame)
+               logging.info(f"Repository {reponame}")
 
-            if args["--setProtectedBranches"]:
-               for branch in public:
-                  # Set to allow developers+maintainers to merge and push, but not to force push
-                  replaced = repo.setProtectedBranch(branch, 30, 30, False)
-                  if replaced:
-                     logging.info(f"\tUpdating protected branch {branch}")
-                  else:
-                     logging.info(f"\tProtecting branch {branch}")
-               task_completed = True
-
-            if args["--disableLFS"]:
-               logging.info("\tDisabling LFS...")
-               if repo.project.lfs_enabled:
-                  if args["--dry"]:
-                     logging.info("\t[Dry run]: LFS not disabled")
-                  else:
-                     repo.project.lfs_enabled = False
-                     repo.project.save()
-               else:
-                  logging.info("\tPreviously disabled")
-               task_completed = True
-
-            if args["--disableSubprojectCI"]:
-               topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
-               if repo.project.name != topRepo.project.name:
-                  if repo.project.builds_access_level != "disabled":
-                     logging.info("\tDisabling CI...")
-                     if args["--dry"]:
-                        logging.info("\t[Dry run]: CI not disabled")
+               if args["--setProtectedBranches"]:
+                  for branch in public:
+                     # Set to allow developers+maintainers to merge and push, but not to force push
+                     replaced = repo.setProtectedBranch(branch, 30, 30, False)
+                     if replaced:
+                        logging.info(f"\tUpdating protected branch {branch}")
                      else:
-                        repo.project.builds_access_level = "disabled"
+                        logging.info(f"\tProtecting branch {branch}")
+                  task_completed = True
+
+               if args["--disableLFS"]:
+                  logging.info("\tDisabling LFS...")
+                  if repo.project.lfs_enabled:
+                     if args["--dry"]:
+                        logging.info("\t[Dry run]: LFS not disabled")
+                     else:
+                        repo.project.lfs_enabled = False
                         repo.project.save()
                   else:
                      logging.info("\tPreviously disabled")
-               task_completed = True
+                  task_completed = True
+
+               if args["--disableSubprojectCI"]:
+                  topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
+                  if repo.project.name != topRepo.project.name:
+                     if repo.project.builds_access_level != "disabled":
+                        logging.info("\tDisabling CI...")
+                        if args["--dry"]:
+                           logging.info("\t[Dry run]: CI not disabled")
+                        else:
+                           repo.project.builds_access_level = "disabled"
+                           repo.project.save()
+                     else:
+                        logging.info("\tPreviously disabled")
+                  task_completed = True
+
+        if args["--scheduledPipelines"]:
+           topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
+           argsOk = True
+           if args["--scheduledPipelines"] == 'list':
+              if args["--pid"]:
+                 logging.info(f"--pid is not allowed for --scheduledPipelines={args['--scheduledPipelines']}")
+                 argsOk = False 
+           else:
+              if not args["--scheduledPipelines"] == 'add' and not args["--pid"]:
+                 logging.info(f"--pid is required for --scheduledPipelines={args['--scheduledPipelines']}")
+                 argsOk = False 
+              if args["--scheduledPipelines"] == 'delete' or args["--scheduledPipelines"] == 'take':
+                 if args["--ref"]:
+                    logging.info(f"--ref is not allowed for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+                 if args["--desc"]:
+                    logging.info(f"--desc is not allowed for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+                 if args["--cron"]:
+                    logging.info(f"--cron is not allowed for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+                 if args["--timezone"]:
+                    logging.info(f"--timezone is not allowed for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+                 if args["--active"]:
+                    logging.info(f"--active is not allowed for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+              elif args["--scheduledPipelines"] == 'add':
+                 if not args["--ref"]:
+                    logging.info(f"--ref is required for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+                 if not args["--desc"]:
+                    logging.info(f"--desc is required for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+                 if not args["--cron"]:
+                    logging.info(f"--cron is required for --scheduledPipelines={args['--scheduledPipelines']}")
+                    argsOk = False 
+
+           if argsOk:
+              if args["--scheduledPipelines"] == 'add':
+                 topRepo.addScheduledPipeline(args["--ref"], args["--desc"], args["--cron"], args["--timezone"], args["--active"])
+              elif args["--scheduledPipelines"] == 'delete':
+                 topRepo.deleteScheduledPipeline(args["--pid"])
+              elif args["--scheduledPipelines"] == 'list':
+                 topRepo.listScheduledPipelines()
+              elif args["--scheduledPipelines"] == 'take':
+                 topRepo.takeScheduledPipeline(args["--pid"])
+              elif args["--scheduledPipelines"] == 'update':
+                 topRepo.updateScheduledPipeline(args["--pid"], args["--ref"], args["--desc"], args["--cron"], args["--timezone"], args["--active"])
+           
+           task_completed = True
 
         if not task_completed:
            logging.info("No gitlab-admin task specified!")

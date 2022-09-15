@@ -209,9 +209,6 @@ class Repo(StashyNode):
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 
-    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
-        return False
-
     def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
         logging.info("GRAPE does not support CI integration with Atlassian tools.")
         return None
