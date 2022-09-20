@@ -235,16 +235,17 @@ class Review(Option, WorkspaceDirHandler):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
-                listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
-                                                                     "isSubmodule": True,
-                                                                     "isNested": False,
-                                                                     "args": args,
-                                                                     "target_branch": sub_target_branch,
-                                                                     "descr": descr,
-                                                                     "title": title,
-                                                                     "proj": submodule,
-                                                                     "outerLevelURL": outerLevelURL,
-                                                                     "reviewers": reviewers}]))
+                if not git.branchUpToDateWith(sub_target_branch, branch, execution_path=os.path.join(self.workspace_dir, submodule)):
+                    listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
+                                                                         "isSubmodule": True,
+                                                                         "isNested": False,
+                                                                         "args": args,
+                                                                         "target_branch": sub_target_branch,
+                                                                         "descr": descr,
+                                                                         "title": title,
+                                                                         "proj": submodule,
+                                                                         "outerLevelURL": outerLevelURL,
+                                                                         "reviewers": reviewers}]))
 
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
@@ -255,16 +256,17 @@ class Review(Option, WorkspaceDirHandler):
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
                prefix_path = os.path.join(self.workspace_dir, prefix)
-               listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
-                                                                    "isSubmodule": False,
-                                                                    "isNested": True,
-                                                                    "args": args,
-                                                                    "target_branch": target_branch,
-                                                                    "descr": descr,
-                                                                    "title": title,
-                                                                    "proj": proj,
-                                                                    "outerLevelURL": outerLevelURL,
-                                                                    "reviewers": reviewers}]))
+               if not git.branchUpToDateWith(target_branch, branch, execution_path=os.path.join(self.workspace_dir, prefix_path)):
+                  listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
+                                                                       "isSubmodule": False,
+                                                                       "isNested": True,
+                                                                       "args": args,
+                                                                       "target_branch": target_branch,
+                                                                       "descr": descr,
+                                                                       "title": title,
+                                                                       "proj": proj,
+                                                                       "outerLevelURL": outerLevelURL,
+                                                                       "reviewers": reviewers}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
