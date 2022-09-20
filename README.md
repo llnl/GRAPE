@@ -1349,6 +1349,8 @@ options are at least listed below.
                               [--setProtectedBranches]
                               [--disableLFS]
                               [--disableSubprojectCI]
+                              [--scheduledPipelines=[list|add|delete|take|update]
+                               [--pid=<id>] [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--user=<userName>]
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
@@ -1362,6 +1364,22 @@ options are at least listed below.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
+        --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
+                                       list   : List scheduled pipelines
+                                       add    : Add a new scheduled pipeline
+                                       delete : Delete an existing scheduled pipeline that you own
+                                       update : Update an existing scheduled pipeline that you own
+                                       take   : Take ownership of an existing scheduled pipeline
+                                    Note: scheduled pipeline variables do not appear to be exposed properly through the REST API
+                                    (https://gitlab.com/gitlab-org/gitlab/-/issues/250850).
+        --pid=<id>                  Identifier for scheduled pipeline. Required, and only allowed when <op> is 'delete','take', or 'update'.
+        --desc=<description>        New description for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+        --cron=<cron>               New cron entry for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+        --timezone=<timezone>       New cron timezone for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+                                    e.g. 'America/Los_Angeles', 'Etc/UTC'
+        --ref=<ref>                 Branch reference for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+                                    e.g. 'develop', 'refs/heads/bugfix/mybranch'
+        --active=<bool>             Whether the scheduled pipeline should be active. Only allowed when <op> is 'add' or 'update'.
         --user=<userName>           Your Gitlab user name.
         --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
                                     [default: .grapeconfig.project.codeReviewsURL]
