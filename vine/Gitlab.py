@@ -220,6 +220,90 @@ class Repo:
                                                "allow_force_push": allow_force_push})
         return replaced
 
+    @staticmethod
+    def printScheduledPipeline(pipeline):
+        active = "Active" if pipeline.active else "Inactive"
+        print(f"{pipeline.description} ({active})")
+        print(f"  id: {pipeline.id}  ref: {pipeline.ref}")
+        print(f"  owner: {pipeline.owner['username']} ({pipeline.owner['name']})")
+        print(f"  cron: {pipeline.cron}  timezone: {pipeline.cron_timezone}")
+        print()
+
+    def getScheduledPipeline(self, pid):
+        scheduled_pipelines = self.project.pipelineschedules.list(all=True)
+        for pipeline in scheduled_pipelines:
+            if pipeline.id == int(pid):
+               return pipeline
+        return None
+
+    def listScheduledPipelines(self):
+        scheduled_pipelines = self.project.pipelineschedules.list(all=True)
+        print()
+        for pipeline in scheduled_pipelines:
+            self.printScheduledPipeline(pipeline)
+
+    def addScheduledPipeline(self, ref, desc, cron, timezone, active):
+        args = { "ref": ref, "description": desc, "cron": cron }
+        if timezone:
+            args["cron_timezone"] = timezone
+        if active is not None:
+            args["active"] = active
+        try:
+           pipeline = self.project.pipelineschedules.create(args)
+           logging.info("*** Created new pipeline ***")
+           self.printScheduledPipeline(pipeline)
+        except Exception as e:
+            logging.info(f"Failed to create pipeline with {args}.\n{e}")
+
+    def deleteScheduledPipeline(self, pid):
+        pipeline = self.getScheduledPipeline(pid)
+        logging.info("*** Deleting ***")
+        self.printScheduledPipeline(pipeline)
+        try:
+           self.project.pipelineschedules.delete(pid)
+           logging.info("*** Done ***")
+        except Exception as e:
+           logging.info(f"Failed to delete pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
+
+    def takeScheduledPipeline(self, pid):
+        pipeline = self.getScheduledPipeline(pid)
+        logging.info("*** Taking ownership of pipeline ***")
+        self.printScheduledPipeline(pipeline)
+        try:
+           pipeline.take_ownership()
+           logging.info("*** Done ***")
+        except Exception as e:
+           logging.info(f"Failed to take ownership of pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
+
+    def updateScheduledPipeline(self, pid, ref, desc, cron, timezone, active):
+        pipeline = self.getScheduledPipeline(pid)
+        if not pipeline:
+           logging.info(f"No scheduled pipeline with pid {pipelineid} found! Use grape gitlab-admin --scheduledPipelines=list to list pipelines")
+        else:
+           logging.info("*** Original ***")
+           self.printScheduledPipeline(pipeline)
+           orig = [pipeline.ref, pipeline.description, pipeline.cron, pipeline.cron, pipeline.cron_timezone, pipeline.active]
+           if ref:
+               pipeline.ref = ref
+           if desc:
+               pipeline.description = desc
+           if cron:
+               pipeline.cron = cron
+           if timezone:
+               pipeline.cron_timezone = timezone
+           if active is not None:
+               pipeline.active = active
+           try:
+               pipeline.save()
+               pipeline._get_updated_data()
+               if orig == [pipeline.ref, pipeline.description, pipeline.cron, pipeline.cron, pipeline.cron_timezone, pipeline.active]:
+                  logging.info("*** No change ***")
+               else:
+                  logging.info("*** Updated ***")
+                  self.printScheduledPipeline(pipeline)
+           except Exception as e:
+               logging.info(f"Failed to update pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
+
     def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
         # manual jobs will have the branch name as a reference
         successful_job = None
