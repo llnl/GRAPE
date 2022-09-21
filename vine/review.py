@@ -10,6 +10,7 @@ from vine import Atlassian
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
+from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
@@ -212,6 +213,12 @@ class Review(Option, WorkspaceDirHandler):
             descr = self.parseDescriptionArgs(args)
             reviewers = self.parseReviewerArgs(args)
 
+        # ensure remote tracking branches (origin/) for target branch are up-to-date
+        upToDate = grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={target_branch}', '--updateRemoteOnly'])
+        if not upToDate:
+            logging.info("Failed to update local branches.")
+            return False
+
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
         ##  Submodule Repos
@@ -235,7 +242,7 @@ class Review(Option, WorkspaceDirHandler):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
-                if not git.branchUpToDateWith(sub_target_branch, branch, execution_path=os.path.join(self.workspace_dir, submodule)):
+                if git.log(f"--oneline origin/{sub_target_branch}..{branch}", execution_path=os.path.join(self.workspace_dir, submodule)):
                     listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
                                                                          "isSubmodule": True,
                                                                          "isNested": False,
@@ -250,23 +257,22 @@ class Review(Option, WorkspaceDirHandler):
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-               target_branch, workspaceDir=self.workspace_dir)
+               "origin/"+target_branch, workspaceDir=self.workspace_dir)
            nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-               target_branch, workspaceDir=self.workspace_dir)
+               "origin/"+target_branch, workspaceDir=self.workspace_dir)
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
                prefix_path = os.path.join(self.workspace_dir, prefix)
-               if not git.branchUpToDateWith(target_branch, branch, execution_path=os.path.join(self.workspace_dir, prefix_path)):
-                  listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
-                                                                       "isSubmodule": False,
-                                                                       "isNested": True,
-                                                                       "args": args,
-                                                                       "target_branch": target_branch,
-                                                                       "descr": descr,
-                                                                       "title": title,
-                                                                       "proj": proj,
-                                                                       "outerLevelURL": outerLevelURL,
-                                                                       "reviewers": reviewers}]))
+               listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
+                                                                    "isSubmodule": False,
+                                                                    "isNested": True,
+                                                                    "args": args,
+                                                                    "target_branch": target_branch,
+                                                                    "descr": descr,
+                                                                    "title": title,
+                                                                    "proj": proj,
+                                                                    "outerLevelURL": outerLevelURL,
+                                                                    "reviewers": reviewers}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
@@ -509,5 +515,4 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
 
 
 if __name__ == "__main__":
-    from vine import grapeMenu
     grapeMenu.menu().applyMenuChoice("review",[])

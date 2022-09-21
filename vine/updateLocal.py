@@ -14,7 +14,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     """
     grape up
     Updates the current branch and any public branches.
-    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError]
+    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError] [--updateRemoteOnly]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     [--noTopLevel]
@@ -25,6 +25,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --noForce               Do not force update of public branches.
+    --updateRemoteOnly      Only fetch the remote tracking branches, do not update the local branches
     --ignoreCommError       Ignore communications errors.
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
@@ -107,11 +108,14 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
             if not args["--noForce"]:
                 fetchArgs += "+"
-            if b == currentBranch:
-                mergeRequired = True
-                fetchArgs += f"{b} "
+            if not args["--updateRemoteOnly"]:
+                if b == currentBranch:
+                   mergeRequired = True
+                   fetchArgs += f"{b} "
+                else:
+                   fetchArgs += f"{b}:{b} "
             else:
-                fetchArgs += f"{b}:{b} "
+                fetchArgs += f"{b} "
             fetchArgs += f"refs/heads/{b}:refs/remotes/origin/{b} "
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
