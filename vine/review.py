@@ -214,6 +214,7 @@ class Review(Option, WorkspaceDirHandler):
             reviewers = self.parseReviewerArgs(args)
 
         # ensure remote tracking branches (origin/) for target branch are up-to-date
+        logging.info(f"Updating remote tracking branches for {target_branch}...")
         upToDate = grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={target_branch}', '--updateRemoteOnly'])
         if not upToDate:
             logging.info("Failed to update local branches.")
@@ -292,6 +293,11 @@ class Review(Option, WorkspaceDirHandler):
                 if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
                     logging.info(
                         f"{target_branch} up to date with {branch}," +
+                        " not generating a Pull Request in Top Level repo")
+                    return True
+                if not git.log(f"--oneline origin/{target_branch}..{branch}", execution_path=self.workspace_dir):
+                    logging.info(
+                        f"{branch} is in the history of {target_branch}," +
                         " not generating a Pull Request in Top Level repo")
                     return True
 
