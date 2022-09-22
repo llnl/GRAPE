@@ -449,6 +449,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                     deinitStr = "-f"+deinitStr
 
                 logging.info("Configuring submodules...")
+                if not remoteProtocolSubmodules:
+                    logging.info("Initializing submodules...")
+                    git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
+
                 if deinitStr:
                     logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
                     done = False
@@ -489,11 +493,15 @@ class UpdateView(Option, WorkspaceDirHandler):
                            execution_path=self.workspace_dir)
                     git.reset(f" {resetStr}", execution_path=self.workspace_dir)
 
-                for submodule in remoteProtocolSubmodules:
-                    shutil.rmtree(os.path.join(self.workspace_dir, ".git", "modules", submodule), onerror=self.force_rm)
+                if remoteProtocolSubmodules:
+                   for submodule in remoteProtocolSubmodules:
+                       shutil.rmtree(os.path.join(self.workspace_dir, ".git", "modules", submodule), onerror=self.force_rm)
 
-                logging.info("Initializing submodules...")
-                git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
+                   logging.info("Initializing submodules after updating remote protocols...")
+                   git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
+
+                   if deinitStr:
+                      logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
 
                 if initStr:
                     logging.info(f"Updating active submodules...({initStr})")
