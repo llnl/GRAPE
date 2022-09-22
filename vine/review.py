@@ -213,25 +213,21 @@ class Review(Option, WorkspaceDirHandler):
             descr = self.parseDescriptionArgs(args)
             reviewers = self.parseReviewerArgs(args)
 
-        # ensure remote tracking branches (origin/) for target branch are up-to-date,
-        # but only if the top level repo has not be updated (the up operation can be very slow).
-        remoteUpToDate = True
-        SHA = git.SHA(f"origin/{target_branch}", execution_path=self.workspace_dir)
-        remote_url = git.remote("get-url origin", execution_path=self.workspace_dir)
-        remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{target_branch}", execution_path=self.workspace_dir).splitlines()
-        # The git remote command output may include X11 forwarding output, so only consider lines with refs/heads
-        for remote in remotes:
-           if "refs/heads" in remote:
-               # Get the SHAs for each submodule
-               if SHA not in remote:
-                   remoteUpToDate = False
+        logging.info(f"Updating remote tracking branches for {target_branch}...")
+
+        # Fetch the remote tracking branch for the target branch
+        git.fetch(f"origin {target_branch}", execution_path=self.workspace_dir)
+        # Skip fetching of remote tracking branch in submodules if no gitlink changes were fetched
+        submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
                      
-        if not remoteUpToDate:
-           logging.info(f"Updating remote tracking branches for {target_branch}...")
-           upToDate = grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={target_branch}', '--updateRemoteOnly'])
-           if not upToDate:
-               logging.info("Failed to update local branches.")
-               return False
+        upArgs = ['up', f'--public={target_branch}', '--updateRemoteOnly']
+        if not submodulesModifiedInOrigin:
+           upArgs.extend(['--noRecurse', '--recurseSubprojects'])
+
+        upToDate = grapeMenu.menu().applyMenuChoice('up', upArgs)
+        if not upToDate:
+            logging.info("Failed to update local branches.")
+            return False
 
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
