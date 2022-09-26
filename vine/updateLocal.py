@@ -14,7 +14,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
     """
     grape up
     Updates the current branch and any public branches.
-    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError]
+    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError] [--updateRemoteOnly]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     [--noTopLevel]
@@ -25,6 +25,7 @@ class UpdateLocal(Option, WorkspaceDirHandler):
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --noForce               Do not force update of public branches.
+    --updateRemoteOnly      Only fetch the remote tracking branches, do not update the local branches
     --ignoreCommError       Ignore communications errors.
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
@@ -101,18 +102,23 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     currentBranch = git.currentBranch(execution_path=execution_path)
 
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
-    fetchArgs = "--recurse-submodules=no --prune origin '+refs/tags/*:refs/tags/*' "
+    fetchArgs = "--recurse-submodules=no origin "
+    if not args["--updateRemoteOnly"]:
+        fetchArgs += "--prune '+refs/tags/*:refs/tags/*' "
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
             if not args["--noForce"]:
                 fetchArgs += "+"
-            if b == currentBranch:
-                mergeRequired = True
-                fetchArgs += f"{b} "
+            if not args["--updateRemoteOnly"]:
+                if b == currentBranch:
+                   mergeRequired = True
+                   fetchArgs += f"{b} "
+                else:
+                   fetchArgs += f"{b}:{b} "
+                fetchArgs += f"refs/heads/{b}:refs/remotes/origin/{b} "
             else:
-                fetchArgs += f"{b}:{b} "
-            fetchArgs += f"refs/heads/{b}:refs/remotes/origin/{b} "
+                fetchArgs += f"{b} "
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
         git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=(not args["--ignoreCommError"]))

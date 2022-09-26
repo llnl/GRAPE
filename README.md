@@ -1078,7 +1078,7 @@ options are at least listed below.
 
     grape up
     Updates the current branch and any public branches.
-    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError]
+    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError] [--updateRemoteOnly]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
                     [--noTopLevel]
@@ -1089,6 +1089,7 @@ options are at least listed below.
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
     --noForce               Do not force update of public branches.
+    --updateRemoteOnly      Only fetch the remote tracking branches, do not update the local branches
     --ignoreCommError       Ignore communications errors.
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
