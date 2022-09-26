@@ -1,0 +1,13 @@
+
+
+Mon Sep 26 07:57:06 2022 Benjamin T. Liu
+MR_430
+Reviewers: Peter Robinson
+
+Prevent creation of spurious merge requests when branch is in the history of the public branch
+
+- Add --updateRemoteOnly option for grape up
+
+- Update remote tracking branches for public branches before calling grape review
+
+- Prevent merge requests when branch is in history of public branch (origin)
