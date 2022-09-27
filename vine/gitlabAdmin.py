@@ -18,7 +18,10 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--scheduledPipelines=[list|add|delete|take|update]
-                               [--pid=<id>] [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
+                               [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
+                              [--runJob=<jobName> | --startJob=<jobName>]
+                              [--pid=<id>]
+                              [--checkJob=<jobName>]
                               [--user=<userName>]
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
@@ -40,7 +43,14 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                        take   : Take ownership of an existing scheduled pipeline
                                     Note: scheduled pipeline variables do not appear to be exposed properly through the REST API
                                     (https://gitlab.com/gitlab-org/gitlab/-/issues/250850).
-        --pid=<id>                  Identifier for scheduled pipeline. Required, and only allowed when <op> is 'delete','take', or 'update'.
+        --runJob=<jobName>          Run job with given name.
+                                    Pipeline identifier must be specified using --pid.
+        --startJob=<jobName>        Run job with given name. Will not run job if already succeeded.
+                                    Pipeline identifier must be specified using --pid.
+        --checkJob=<jobName>        Check most recently finished jobs with given name. Returns list of pipeline identifiers
+                                    corresponding to --pid.
+        --pid=<id>                  Identifier for pipeline. Required, and only allowed for
+                                    --scheduledPipelines when <op> is 'delete','take', or 'update' or --runPipelineJob.
         --desc=<description>        New description for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
         --cron=<cron>               New cron entry for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
         --timezone=<timezone>       New cron timezone for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
@@ -257,6 +267,19 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                  topRepo.updateScheduledPipeline(args["--pid"], args["--ref"], args["--desc"], args["--cron"], args["--timezone"], args["--active"])
            
            task_completed = True
+
+        if args["--checkJob"]:
+           topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
+           topRepo.listLastSuccessfulPipelines(args["--checkJob"])
+           task_completed = True
+
+        if args["--runJob"] or args["--startJob"]:
+           if not args["--pid"]: 
+              logging.info("--pid is required for --runJob/--startJob")
+           else:
+              topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
+              topRepo.runJob(args["--runJob"] if args["--runJob"] else args["--startJob"], args["--pid"], args["--runJob"])
+              task_completed = True
 
         if not task_completed:
            logging.info("No gitlab-admin task specified!")
