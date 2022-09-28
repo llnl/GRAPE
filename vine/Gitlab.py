@@ -304,6 +304,61 @@ class Repo:
            except Exception as e:
                logging.info(f"Failed to update pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
 
+    # Get the pipeline ID corresponding to the last successful job on each merge request
+    def listLastSuccessfulPipelines(self, job_name):
+        open_merge_requests = self.project.mergerequests.list(all=True, state='opened')
+        rows = []
+        for mr in open_merge_requests:
+           merge_request_iid = mr.iid
+           # The pipelines are listed (by default) by creation date in descending order (newest first)
+           branch_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
+           for pi in branch_pipelines:
+               found = False
+               for job in pi.jobs.list(all=True, scope="success"):
+                  if job.name == job_name:
+                     rows.append(f"{pi.id}\t{pi.ref}")
+                     found = True
+                     break
+               if found:
+                  # Only consider the successful job on the newest pipeline
+                  break
+        if rows:
+           print(f"Last successful runs of {job_name}:")
+           print("PID\tREF") 
+           for row in rows:
+               print(row)
+        else:
+           print(f"No successful runs of {job_name}")
+
+    # Run named job on specified pipeline
+    def runJob(self, job_name, pid, allow_rerun):
+        branch_pipelines = self.project.pipelines.list(all=True)
+        foundPipe = False
+        foundJob = False
+        for pi in branch_pipelines:
+            if pi.id == int(pid):
+               foundPipe = True
+               for pipeline_job in pi.jobs.list(all=True):
+                  if pipeline_job.name == job_name:
+                     foundJob = True
+                     print(f"Found job {job_name} on pipeline for {pi.ref}")
+                     job = self.project.jobs.get(pipeline_job.id, lazy=True)
+                     if allow_rerun or pipeline_job.status != 'success':
+                        print(f"Previous status: {pipeline_job.status}")
+                        try:
+                           print(f"Running {job_name}...")
+                           job.play()
+                           print("Done")
+                        except Exception as e:
+                           logging.info(f"Failed to run job {job_name} on pipeline {pid}\n{e}")
+                     else:
+                        print("Job already succeeded, not running")
+                     break
+        if not foundPipe:
+            logging.info(f"Failed to find pipeline {pid}")
+        elif not foundJob:
+            logging.info(f"Failed to find job {job_name} on pipeline {pid}")
+
     def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
         # manual jobs will have the branch name as a reference
         successful_job = None
