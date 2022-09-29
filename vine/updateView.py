@@ -83,6 +83,13 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
 
+        If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
+        --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
+        non-interactive mode, the operations are applied in the following order:
+            1) --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects
+            2) --branchFilter/--branchChanged
+            3) --add, --rm, --ensureCIReposPresent
+
     """
     def __init__(self):
         super(UpdateView, self).__init__()
@@ -321,6 +328,12 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         allNestedSubprojects = config.getAllNestedSubprojects()
 
+        nonInteractive = args["--allSubmodules"] or args["--noSubmodules"] or args["--allNestedSubprojects"] or args["--noNestedSubprojects"] or args["--branchFilter"] or args["--branchChanged"] or args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]
+
+        if args["--gui"] and nonInteractive:
+            logging.error("grape uv --gui cannot be used in non-interactive mode")
+            return True
+
         addedSubmodules = []
         addedNestedSubprojects = []
         addedProjects = args["--add"]
@@ -378,7 +391,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     includedSubmodules = {sub:branchFilter(sub) for sub in allSubmodules}
                 elif args["--noSubmodules"]:
                     includedSubmodules = {sub:False for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
+                elif nonInteractive:
                     includedSubmodules = {sub:branchFilter(sub) for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
                 else:
                     includedSubmodules = self.defineActiveSubprojects()
@@ -403,7 +416,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in allNestedSubprojects}
                 elif args["--noNestedSubprojects"]:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):False for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
-                elif args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]:
+                elif nonInteractive:
                     includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()
