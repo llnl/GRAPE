@@ -53,10 +53,13 @@ def userInput(message, default=None):
         if not default:
             return ""
         elif default.lower() == "y":
+            print(default)
             return True
         elif default.lower() == "n":
+            print(default)
             return False
         else:
+            print(default)
             return default
 
     if default == "" or default is None:
