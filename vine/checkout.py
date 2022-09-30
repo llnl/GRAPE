@@ -129,6 +129,12 @@ def handleCheckoutMRE(mre):
             workspace_dir=mre.workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=createNewBranchesMREHandler)
 
+def handleCheckoutSkipBranchCreationMRE(mre):
+    global _skipBranchCreation
+    _skipBranchCreation = True
+    handleCheckoutMRE(mre)
+    _skipBranchCreation = False
+
 def createNewBranches(repo='', branch='', args={}, *, workspace_dir):
     #workspace_dir ignored
     checkoutargs = args["checkout"]

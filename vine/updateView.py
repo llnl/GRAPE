@@ -28,7 +28,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--skipTopLevel] [--skipSubmodules] [--allSubmodules] [--gui]
-                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--branchName=<branchName>]
+                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -56,6 +56,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
         --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.
@@ -573,6 +574,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             runInOuter=not args["--skipTopLevel"],
             skipSubmodules=args["--skipSubmodules"],
             runInSubprojects=not args["--skipNestedSubprojects"],
+            skipBranchCreation=args["--skipBranchCreation"],
             workspace_dir=self.workspace_dir)
 
 
@@ -712,7 +714,7 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
@@ -726,7 +728,10 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
         checkout.handledCheckout, branch=branch,
         runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
         globalArgs=[checkoutArgs, False], workspace_dir=workspace_dir)
-    launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
+    if skipBranchCreation:
+       launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutSkipBranchCreationMRE)
+    else:
+       launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
 
 # Class for selecting subprojects in a workspace
