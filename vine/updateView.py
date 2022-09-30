@@ -30,7 +30,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--branchName=<branchName>]
+                    [--sync=<bool>] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -64,6 +64,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
         --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.
@@ -297,14 +298,16 @@ class UpdateView(Option, WorkspaceDirHandler):
             submodulesConsistent = True
             for submodule in allSubmodules:
                remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
-               remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{branch}", execution_path=self.workspace_dir).splitlines()
+               subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
+               subbranch = subpublicmapping[branch] if branch in subpublicmapping else branch
+               remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{subbranch}", execution_path=self.workspace_dir).splitlines()
                # The git remote command output may include X11 forwarding output, so only consider lines with refs/heads
                for remote in remotes:
                   if "refs/heads" in remote:
-                     # Get the SHAs for each submodule
+                     # Get the SHAs for gitlink of each submodule
                      SHA = git.SHA(f"origin/{branch}:{submodule}", execution_path=self.workspace_dir)
                      if SHA not in remote:
-                        logging.info(f"Branch {branch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
+                        logging.info(f"Branch {subbranch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
                         submodulesConsistent = False
             return submodulesConsistent
 
@@ -596,6 +599,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             runInOuter=not args["--skipTopLevel"],
             skipSubmodules=args["--skipSubmodules"],
             runInSubprojects=not args["--skipNestedSubprojects"],
+            skipBranchCreation=args["--skipBranchCreation"],
             workspace_dir=self.workspace_dir)
 
 
@@ -735,7 +739,7 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
@@ -749,7 +753,10 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
         checkout.handledCheckout, branch=branch,
         runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
         globalArgs=[checkoutArgs, False], workspace_dir=workspace_dir)
-    launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
+    if skipBranchCreation:
+       launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutSkipBranchCreationMRE)
+    else:
+       launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
 
 # Class for selecting subprojects in a workspace

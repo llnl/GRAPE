@@ -1165,7 +1165,7 @@ options are at least listed below.
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--skipTopLevel] [--skipSubmodules] [--allSubmodules] [--gui]
-                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--branchName=<branchName>]
+                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -1193,6 +1193,7 @@ options are at least listed below.
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
         --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.
