@@ -282,14 +282,16 @@ class UpdateView(Option, WorkspaceDirHandler):
             submodulesConsistent = True
             for submodule in allSubmodules:
                remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
-               remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{branch}", execution_path=self.workspace_dir).splitlines()
+               subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
+               subbranch = subpublicmapping[branch] if branch in subpublicmapping else branch
+               remotes = git.lsRemote(f"--heads {remote_url} refs/heads/{subbranch}", execution_path=self.workspace_dir).splitlines()
                # The git remote command output may include X11 forwarding output, so only consider lines with refs/heads
                for remote in remotes:
                   if "refs/heads" in remote:
-                     # Get the SHAs for each submodule
+                     # Get the SHAs for gitlink of each submodule
                      SHA = git.SHA(f"origin/{branch}:{submodule}", execution_path=self.workspace_dir)
                      if SHA not in remote:
-                        logging.info(f"Branch {branch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
+                        logging.info(f"Branch {subbranch} in submodule {submodule} at {remote.split()[0]}, expected {SHA}")
                         submodulesConsistent = False
             return submodulesConsistent
 
