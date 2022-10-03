@@ -333,9 +333,8 @@ class Repo:
     def listRunningJobs(self, name):
         for pi in self.project.pipelines.list(all=True, scope='running'):
             for job in pi.jobs.list(all=True):
-               if job.status in ['created', 'waiting_for_resource', 'preparing', 'pending', 'running'] and job.user['username'] == name:
-                  print(f"{pipeline_job.name} {pipeline_job.status} {pipeline_job.started_at}")
-                  print(f"{pipeline_job.__dict__}")
+               if job.status in ['waiting_for_resource', 'preparing', 'pending', 'running'] and job.user['username'] == name:
+                  print(f"{job.id} {job.status} {job.name} {job.ref} {job.runner['description'] if job.runner else ''} {job.started_at if job.started_at else ''}")
 
     # Run named job on specified pipeline
     def runJob(self, job_name, pid, allow_rerun):
