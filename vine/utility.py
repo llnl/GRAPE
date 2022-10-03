@@ -3,6 +3,7 @@ import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
+from vine import vine_logging
 if sys.platform == 'linux2':
     import readline
 
@@ -53,13 +54,13 @@ def userInput(message, default=None):
         if not default:
             return ""
         elif default.lower() == "y":
-            print(default)
+            logging.info(default)
             return True
         elif default.lower() == "n":
-            print(default)
+            logging.info(default)
             return False
         else:
-            print(default)
+            logging.info(default)
             return default
 
     if default == "" or default is None:
