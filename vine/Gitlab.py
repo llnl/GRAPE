@@ -330,6 +330,13 @@ class Repo:
         else:
            print(f"No successful runs of {job_name}")
 
+    def listRunningJobs(self, name):
+        for pi in self.project.pipelines.list(all=True, scope='running'):
+            for job in pi.jobs.list(all=True):
+               if job.status in ['created', 'waiting_for_resource', 'preparing', 'pending', 'running'] and job.user['username'] == name:
+                  print(f"{pipeline_job.name} {pipeline_job.status} {pipeline_job.started_at}")
+                  print(f"{pipeline_job.__dict__}")
+
     # Run named job on specified pipeline
     def runJob(self, job_name, pid, allow_rerun):
         branch_pipelines = self.project.pipelines.list(all=True)
