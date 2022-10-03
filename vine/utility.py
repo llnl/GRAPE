@@ -1,9 +1,9 @@
 """GRAPE's git utility logic across multiple repositories."""
+import logging
 import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
-from vine import vine_logging
 if sys.platform == 'linux2':
     import readline
 
