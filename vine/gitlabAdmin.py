@@ -22,7 +22,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--runJob=<jobName> | --startJob=<jobName>]
                               [--pid=<id>]
                               [--checkJob=<jobName>]
-                              [--listRunningJobs]
+                              [--runningJobs=[list|log]]
                               [--user=<userName>]
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
@@ -50,7 +50,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                     Pipeline identifier must be specified using --pid.
         --checkJob=<jobName>        Check most recently finished jobs with given name. Returns list of pipeline identifiers
                                     corresponding to --pid.
-        --listRunningJobs           List running jobs that you own.
+        --runningJobs=<op>          Show running jobs that you own.  <op> is one of
+                                       list   : List running jobs
+                                       log    : Show logs for running jobs
         --pid=<id>                  Identifier for pipeline. Required, and only allowed for
                                     --scheduledPipelines when <op> is 'delete','take', or 'update' or --runPipelineJob.
         --desc=<description>        New description for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
@@ -275,9 +277,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            topRepo.listLastSuccessfulPipelines(args["--checkJob"])
            task_completed = True
 
-        if args["--listRunningJobs"]:
+        if args["--runningJobs"]:
            topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
-           topRepo.listRunningJobs(name)
+           topRepo.listRunningJobs(name, args["--runningJobs"])
            task_completed = True
 
         if args["--runJob"] or args["--startJob"]:
