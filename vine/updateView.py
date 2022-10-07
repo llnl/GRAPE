@@ -528,9 +528,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                    logging.info("Initializing submodules after updating remote protocols...")
                    git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
 
-                   if deinitStr:
-                      logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
-
                 if initStr:
                     logging.info(f"Updating active submodules...({initStr})")
                     git.submodule("update", execution_path=self.workspace_dir)
