@@ -601,6 +601,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             skipSubmodules=args["--skipSubmodules"],
             runInSubprojects=not args["--skipNestedSubprojects"],
             skipBranchCreation=args["--skipBranchCreation"],
+            skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
             workspace_dir=self.workspace_dir)
 
 
@@ -639,7 +640,8 @@ def handleActivateSubprojectMRE(mre):
     
 
 
-def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
+def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspace_dir):
+    skipSubmoduleSwitch = args[0]
     logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
@@ -672,6 +674,9 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', *, workspace_dir):
         relpath = os.path.relpath(repo, workspace_dir)
         # if this is a submodule, get the appropriate public mapping
         if utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys():
+            if skipSubmoduleSwitch:
+               logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
+               return
             public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
         logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
@@ -740,13 +745,13 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipSubmoduleSwitch=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-            globalArgs=[checkoutArgs], workspace_dir=workspace_dir)
+            globalArgs=[skipSubmoduleSwitch], workspace_dir=workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
