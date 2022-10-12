@@ -555,7 +555,7 @@ class PullRequest:
                f"From: {self.fromRef()}\n" + \
                f"To: {self.toRef()}\n" + \
                f"Reviewers: {all_reviewers}\n" + \
-               f"Description: {self.description()}\n"
+               f"Description: {self.description().decode('utf-8')}\n"
 
     def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
         try:
