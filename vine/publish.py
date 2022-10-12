@@ -1304,8 +1304,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         sendto = args["--emailSendTo"]
         msg['Subject'] = mailsubj
         msg['From'] = myemail
-        msg['To'] = "liu15@llnl.gov"
-        #msg['To'] = sendto
+        msg['To'] = sendto
         msg['CC'] = myemail
 
         # Send the message via the configured SMTP server (don't know if this
