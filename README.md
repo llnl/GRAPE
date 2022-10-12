@@ -1167,7 +1167,7 @@ options are at least listed below.
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -1201,6 +1201,7 @@ options are at least listed below.
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
