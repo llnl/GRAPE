@@ -701,6 +701,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noReview"]:
             logging.info("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
             return True
         pullRequest = self.openPullRequest()
         verified = False
@@ -730,6 +732,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 if args["--user"] != pullRequest.author():
                     reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
+            self.progress["author"] = pullRequest.authorName()
+            self.progress["author_username"] = pullRequest.author()
         else:
             url = git.join_list_as_git_path([codeReviews.url, "projects",
                                             args["--project"], "repos",
@@ -738,6 +742,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 "There is no pull request for your current branch.\n" +
                 f"Start one using grape review or by visiting {url}")
             self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
         return verified
 
     def testForCleanWorkspace(self, args):
@@ -1049,6 +1055,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             header = header.replace("<date>", time.asctime())
             header = header.replace("<user>", git.config(
                 "--get user.name", execution_path=self.workspace_dir))
+            header = header.replace("<author>", self.progress["author"])
+            header = header.replace("<author_username>", self.progress["author_username"])
             header = header.replace("<version>", self.progress["version"])
             header = header.replace("<reviewers>", self.progress["reviewers"])
             header = ["\n"]+header.split("\\n")
@@ -1167,6 +1175,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             emailHeader = args["--emailHeader"]
             emailHeader = emailHeader.replace(
                 "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+            emailHeader = emailHeader.replace("<author>", self.progress["author"])
+            emailHeader = emailHeader.replace("<author_username>", self.progress["author_username"])
             emailHeader = emailHeader.replace("<date>", date)
             emailHeader = emailHeader.replace("<version>", self.progress["version"])
             emailHeader = emailHeader.replace("<reviewers>", self.progress["reviewers"])
@@ -1185,6 +1195,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             emailFooter = args["--emailFooter"]
             emailFooter = emailFooter.replace(
                 "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+            emailFooter = emailFooter.replace("<author>", self.progress["author"])
+            emailFooter = emailFooter.replace("<author_username>", self.progress["author_username"])
             emailFooter = emailFooter.replace("<date>", date)
             emailFooter = emailFooter.replace("<version>", self.progress["version"])
             emailFooter = emailFooter.replace("<reviewers>", self.progress["reviewers"])
@@ -1212,6 +1224,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         mailsubj = args["--emailSubject"]
         mailsubj = mailsubj.replace(
             "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+        mailsubj = mailsubj.replace("<author>", self.progress["author"])
+        mailsubj = mailsubj.replace("<author_username>", self.progress["author_username"])
         mailsubj = mailsubj.replace("<public>", args["--public"])
         mailsubj = mailsubj.replace("<branch>", args["--topic"])
         mailsubj = mailsubj.replace("<version>", self.progress["version"])
