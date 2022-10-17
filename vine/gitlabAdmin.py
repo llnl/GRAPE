@@ -27,6 +27,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
                               [--project=<prj>]
+                              [--repo=<repo>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
 
@@ -70,6 +71,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
+        --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
+                                    https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
+                                    [default: .grapeconfig.repo.name]
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
@@ -160,12 +164,19 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                                  ssh_path = args["--ssh_pat_url"],
                                                  workspace_dir=self.workspace_dir
                                                 )
-        projectname = args["--project"]
-
+        projectname = utility.userInput("Group name:", default=args["--project"])
+        topreponame = utility.userInput("Outer level repo name:", default=args["--repo"])
+        
         try:
            project = grape_gitlab.project(projectname)
         except:
            logging.info(f"Failed to access project {projectname}!")
+           return False
+
+        try:
+           topRepo = project.repo(topreponame)
+        except:
+           logging.info(f"Failed to access repo {topreponame}!")
            return False
            
         task_completed = False
@@ -207,7 +218,6 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                   task_completed = True
 
                if args["--disableSubprojectCI"]:
-                  topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
                   if repo.project.name != topRepo.project.name:
                      if repo.project.builds_access_level != "disabled":
                         logging.info("\tDisabling CI...")
@@ -221,7 +231,6 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                   task_completed = True
 
         if args["--scheduledPipelines"]:
-           topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
            argsOk = True
            if args["--scheduledPipelines"] == 'list':
               if args["--pid"]:
@@ -273,12 +282,10 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            task_completed = True
 
         if args["--checkJob"]:
-           topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
            topRepo.listLastSuccessfulPipelines(args["--checkJob"])
            task_completed = True
 
         if args["--runningJobs"]:
-           topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
            topRepo.listRunningJobs(name, args["--runningJobs"])
            task_completed = True
 
@@ -286,7 +293,6 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            if not args["--pid"]: 
               logging.info("--pid is required for --runJob/--startJob")
            else:
-              topRepo = project.repo(config.get(Option.SECTION_REPO, "name"))
               topRepo.runJob(args["--runJob"] if args["--runJob"] else args["--startJob"], args["--pid"], args["--runJob"])
               task_completed = True
 
@@ -303,3 +309,4 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         config.set(self.SECTION_PROJECT, "name", "My unnamed project")
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
+        config.set(self.SECTION_REPO, "name", "My unnamed repo")
