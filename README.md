@@ -1377,6 +1377,7 @@ options are at least listed below.
                               [--codeReviewsURL=<url>]
                               [--verifySSL=<bool>]
                               [--project=<prj>]
+                              [--repo=<repo>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
 
@@ -1420,6 +1421,9 @@ options are at least listed below.
         --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
+        --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
+                                    https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
+                                    [default: .grapeconfig.repo.name]
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
