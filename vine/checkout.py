@@ -36,7 +36,7 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
             git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
         if "index.lock" in e.gitOutput:
             logging.info(f"waiting for 3 seconds in {branch} in {repo} due to index.lock detection")
-            time.wait(3)
+            time.sleep(3)
             logging.info(f"retrying checkout out of {branch} in {repo}")
             git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
         else:
