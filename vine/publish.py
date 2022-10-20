@@ -909,7 +909,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
                updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                      execution_path=execution_path).split()
-            except grape_errors.GrapeGitError:
+            except grape_errors.GrapeGitError as e:
                logging.error(e.message)
                updatelist = ["[ Failed to get diff ]"]
         if len(updatelist) > int(emailMaxFiles):
