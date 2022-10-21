@@ -1,3 +1,4 @@
+import configparser
 import logging
 import os
 from vine import config_parser_global
@@ -199,11 +200,22 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
                if args["--setProtectedBranches"]:
                   for branch in public:
-                     if reponame == topreponame:
+                     # If this is the top level repository and merge trains are enabled,
+                     # disable all pushes if merge trains are enabled for the branch.
+                     disablePush = False
+                     if reponame == topreponame and repo.project.merge_trains_enabled:
+                         parser = configparser.ConfigParser()
+                         grapeConfig = git.show(f"{branch}:.grapeconfig", execution_path=self.workspace_dir)
+                         parser.read_string(grapeConfig)
+                         try:
+                             if parser.get('publish','mergetrain'):
+                                 disablePush = True
+                         except:
+                             pass
+                     if disablePush:
                          # Set to allow developers+maintainers to merge, but not to push or force push
-                         #replaced = repo.setProtectedBranch(branch, 0, 30, False)
-                         # Skip until release and dev branches consistent
-                         continue
+                         replaced = repo.setProtectedBranch(branch, 0, 30, False)
+                         logging.info(f"\tDisabling push for {branch}")
                      else:
                          # Set to allow developers+maintainers to merge and push, but not to force push
                          replaced = repo.setProtectedBranch(branch, 30, 30, False)
