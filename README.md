@@ -1365,6 +1365,7 @@ options are at least listed below.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
                               [--setProtectedBranches]
+                              [--setKeepMRApprovals]
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--scheduledPipelines=[list|add|delete|take|update]
@@ -1383,8 +1384,9 @@ options are at least listed below.
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
-        --verbose                   Print information about unaffected repos
-        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
+        --verbose                   Print information about unaffected repos.
+        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
+        --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of

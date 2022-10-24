@@ -1,3 +1,4 @@
+import configparser
 import logging
 import os
 from vine import config_parser_global
@@ -15,6 +16,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
                               [--setProtectedBranches]
+                              [--setKeepMRApprovals]
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--scheduledPipelines=[list|add|delete|take|update]
@@ -33,8 +35,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
-        --verbose                   Print information about unaffected repos
-        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections)
+        --verbose                   Print information about unaffected repos.
+        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
+        --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
@@ -181,7 +184,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            
         task_completed = False
 
-        if args["--setProtectedBranches"] or args["--disableLFS"] or args["--disableSubprojectCI"]:
+        if args["--setProtectedBranches"] or args["--setKeepMRApprovals"] or args["--disableLFS"] or args["--disableSubprojectCI"]:
            try:
               # Only allow admin tasks to be performed if access level is maintainer or above
               project = grape_gitlab.project(projectname, min_access_level=40)
@@ -197,12 +200,42 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
                if args["--setProtectedBranches"]:
                   for branch in public:
-                     # Set to allow developers+maintainers to merge and push, but not to force push
-                     replaced = repo.setProtectedBranch(branch, 30, 30, False)
+                     # If this is the top level repository and merge trains are enabled,
+                     # disable all pushes if merge trains are enabled for the branch.
+                     disablePush = False
+                     if reponame == topreponame and repo.project.merge_trains_enabled:
+                         parser = configparser.ConfigParser()
+                         grapeConfig = git.show(f"{branch}:.grapeconfig", execution_path=self.workspace_dir)
+                         parser.read_string(grapeConfig)
+                         try:
+                             if parser.get('publish','mergetrain'):
+                                 disablePush = True
+                         except:
+                             pass
+                     if disablePush:
+                         # Set to allow developers+maintainers to merge, but not to push or force push
+                         replaced = repo.setProtectedBranch(branch, 0, 30, False)
+                         logging.info(f"\tDisabling push for {branch}")
+                     else:
+                         # Set to allow developers+maintainers to merge and push, but not to force push
+                         replaced = repo.setProtectedBranch(branch, 30, 30, False)
                      if replaced:
                         logging.info(f"\tUpdating protected branch {branch}")
                      else:
                         logging.info(f"\tProtecting branch {branch}")
+                  task_completed = True
+
+               if args["--setKeepMRApprovals"]:
+                  logging.info("\tSetting Keep MR Approvals...")
+                  approvals = repo.project.approvals.get()
+                  if approvals.reset_approvals_on_push:
+                     if args["--dry"]:
+                        logging.info("\t[Dry run]: Keep MR Approvals not set")
+                     else:
+                        approvals.reset_approvals_on_push = False
+                        approvals.save()
+                  else:
+                     logging.info("\tPreviously disabled")
                   task_completed = True
 
                if args["--disableLFS"]:
