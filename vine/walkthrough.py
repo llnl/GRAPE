@@ -585,4 +585,4 @@ class DiffManager(ProjectManager):
             git.gitcmd(cmd, "Failed to launch difftool",
                        execution_path=execution_path)
         except grape_errors.GrapeGitError as e:
-            logging.error(f"{e.msg} (return code {e.code})\n{e.gitOutput}")
+            logging.error(f"{e.message} (return code {e.code})\n{e.gitOutput}")

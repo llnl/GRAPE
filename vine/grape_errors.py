@@ -8,7 +8,7 @@ class GrapeGitError(Exception):
                  cwd=os.getcwd()):
         """Arguments must be kept as keywords to allow pickling"""
         super(GrapeGitError, self).__init__()
-        self.msg = errmsg
+        self.message = errmsg
         self.code = returnCode
         if isinstance(gitOutput, bytes):
             gitOutput = gitOutput.decode()
@@ -33,7 +33,7 @@ class GrapeGitError(Exception):
     def __str__(self):
         return f"\nWORKING DIR: {self.cwd}\nCODE: {self.code}\n" + \
                f"CMD: {self.gitCommand}\nOUTPUT: {self.gitOutput}\n" + \
-               f"STDERR: {self.msg}"
+               f"STDERR: {self.message}"
 
     def __repr__(self):
         return self.__str__()
