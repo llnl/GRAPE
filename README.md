@@ -1368,6 +1368,7 @@ options are at least listed below.
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--disableSubprojectCI]
+                              [--requirePipelineSuccess]
                               [--scheduledPipelines=[list|add|delete|take|update]
                                [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--runJob=<jobName> | --startJob=<jobName>]
@@ -1389,6 +1390,7 @@ options are at least listed below.
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
+        --requirePipelineSuccess    Require pipeline success for merge button.
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
                                        list   : List scheduled pipelines
                                        add    : Add a new scheduled pipeline

@@ -19,6 +19,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--disableSubprojectCI]
+                              [--requirePipelineSuccess]
                               [--scheduledPipelines=[list|add|delete|take|update]
                                [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--runJob=<jobName> | --startJob=<jobName>]
@@ -40,6 +41,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
+        --requirePipelineSuccess    Require pipeline success for merge button.
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
                                        list   : List scheduled pipelines
                                        add    : Add a new scheduled pipeline
@@ -184,7 +186,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            
         task_completed = False
 
-        if args["--setProtectedBranches"] or args["--setKeepMRApprovals"] or args["--disableLFS"] or args["--disableSubprojectCI"]:
+        if args["--setProtectedBranches"] or args["--setKeepMRApprovals"] or args["--disableLFS"] or args["--disableSubprojectCI"] or args["--requirePipelineSuccess"]:
            try:
               # Only allow admin tasks to be performed if access level is maintainer or above
               project = grape_gitlab.project(projectname, min_access_level=40)
@@ -261,6 +263,18 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                            repo.project.save()
                      else:
                         logging.info("\tPreviously disabled")
+                  task_completed = True
+
+               if args["--requirePipelineSuccess"]:
+                  logging.info("\tRequiring pipeline success for merge...")
+                  if not repo.project.only_allow_merge_if_pipeline_succeeds:
+                     if args["--dry"]:
+                        logging.info("\t[Dry run]: Not requiring pipeline success")
+                     else:
+                        repo.project.only_allow_merge_if_pipeline_succeeds = True
+                        repo.project.save()
+                  else:
+                     logging.info("\tPreviously required")
                   task_completed = True
 
         if args["--scheduledPipelines"]:
