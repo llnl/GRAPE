@@ -141,7 +141,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                                                    runInSubprojects=recurse,
                                                    runInOuter=True,
                                                    branch=start,
-                                                   globalArgs=[branchName,args[--nopush]],
+                                                   globalArgs=[branchName,args["--nopush"]],
                                                    workspace_dir=self.workspace_dir)
         launcher.initializeCommands()
         logging.info("About to create the following branches:")
