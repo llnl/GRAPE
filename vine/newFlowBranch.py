@@ -18,16 +18,15 @@ class NewBranchOption(Option, WorkspaceDirHandler):
     Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>]
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
 
     Options:
     --user=<username>       The user developing this branch. Asks by default.
     --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch.
-                            This disables the verification.
-    --recurse               Create the branch in submodules.
+    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+    --recurse               Create the branch in submodules/nested subprojects.
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules/nested subprojects.
 
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
@@ -142,7 +141,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                                                    runInSubprojects=recurse,
                                                    runInOuter=True,
                                                    branch=start,
-                                                   globalArgs=branchName,
+                                                   globalArgs=[branchName,args["--nopush"]],
                                                    workspace_dir=self.workspace_dir)
         launcher.initializeCommands()
         logging.info("About to create the following branches:")
@@ -193,21 +192,24 @@ class NewBranchOptionFactory:
 
 def createBranch(repo="unknown", branch="master", args=[], *, workspace_dir):
     branchPoint = branch
-    fullBranch = args
+    fullBranch = args[0]
+    nopush = args[1]
     logging.info(f"creating and switching to {fullBranch} in {repo}")
     try:
         git.checkout(f"-b {fullBranch} {branchPoint} ",
                      execution_path=repo)
     except grape_errors.GrapeGitError as e:
         logging.error(f"{repo}:{e.gitOutput}")
-        logging.warning(f"WARNING: {fullBranch} in {repo}" +
-                        " will not be pushed.")
+        if not nopush:
+           logging.warning(f"WARNING: {fullBranch} in {repo}" +
+                           " will not be pushed.")
         return
-    logging.info(f"pushing {fullBranch} to origin in {repo}")
-    try:
-        git.push(f"-u origin {fullBranch}", execution_path=repo)
-    except grape_errors.GrapeGitError as e:
-        logging.error("{repo}:  {e.gitOutput}")
+    if not nopush:
+       logging.info(f"pushing {fullBranch} to origin in {repo}")
+       try:
+           git.push(f"-u origin {fullBranch}", execution_path=repo)
+       except grape_errors.GrapeGitError as e:
+           logging.error("{repo}:  {e.gitOutput}")
 
 
 if __name__ == "__main__":
