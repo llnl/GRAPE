@@ -143,6 +143,9 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                                                    branch=start,
                                                    globalArgs=[branchName,args["--nopush"]],
                                                    workspace_dir=self.workspace_dir)
+        if branchName == "HEAD":
+            logging.error("Cannot create branch named HEAD.")
+            return False
         launcher.initializeCommands()
         logging.info("About to create the following branches:")
         for repo, branch in zip(launcher.repos, launcher.branches):

@@ -295,6 +295,10 @@ class Checkout(Option, WorkspaceDirHandler):
         args["--sync"] = sync
         branch = args["<branch>"]
 
+        if branch == "HEAD":
+           logging.error("<branch> cannot be specified as HEAD")
+           return False
+
         currentSHA = str(git.shortSHA(branchName="HEAD", execution_path=self.workspace_dir))
 
         addedModules = []

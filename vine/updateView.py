@@ -292,6 +292,9 @@ class UpdateView(Option, WorkspaceDirHandler):
     @log_wrapper
     def execute(self, args):
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
+        if branch == "HEAD":
+           logging.error("grape uv cannot check out HEAD, you must specify --branchName or get out of the detached HEAD state!")
+           return False
         hasSubmodules = len(git.getAllSubmodules(execution_path=self.workspace_dir)) > 0 and not args["--skipSubmodules"]
         allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
         if hasSubmodules:
