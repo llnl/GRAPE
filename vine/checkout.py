@@ -173,7 +173,7 @@ def branchAlreadyExists(branch, workspace_dir):
 
 def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                               changedURLModules, *, workspace_dir):
-    submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch}", execution_path=workspace_dir)
+    submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
     if submoduleListWillChange:
         output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules", execution_path=workspace_dir)
         currentSubmodule = False
