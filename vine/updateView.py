@@ -229,6 +229,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         branchChangedArg = args["--branchChanged"]
         if branchChangedArg.endswith('~'):
             branchChanged = branchChangedArg[:-1]
+        else:
+            branchChanged = branchChangedArg
         public = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(branchChanged)
         tagPrefix= None
 
