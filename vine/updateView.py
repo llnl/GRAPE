@@ -35,7 +35,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
-           grape-uv --checkRemoteSubmodules [--branchName=<name>]
+           grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -45,7 +45,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
                                      not go through the 'which submodules do you want' script.
         --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
-                                     remote submodule repos.
+                                     remote submodule repos. Only submodules in the workspace are checked
+                                     unless --allSubmodules is specified, 
         -b                           Automatically creates subproject branches that should be there according to your
                                      branching model.
         --skipTopLevel               Skip top level repository for syncing and checking.
@@ -302,7 +303,12 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
-            for submodule in allSubmodules:
+            if args["--allSubmodules"]:
+               checkedSubmodules = allSubmodules
+            else:
+               checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+
+            for submodule in checkedSubmodules:
                remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
                subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
                subbranch = subpublicmapping[branch] if branch in subpublicmapping else branch
