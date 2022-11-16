@@ -7,6 +7,7 @@ from stashy import errors as stashy_errors
 from requests import adapters
 from vine import CodeReviewsFactory
 from vine import Atlassian
+from vine import Gitlab
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
@@ -17,7 +18,6 @@ from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
-
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
@@ -435,6 +435,21 @@ def targetBranchMissing(errorMessage):
 
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path):
+    # 
+    config = config_parser_global.grapeConfig()
+    projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
+    reviewer_list_name = None
+    reviewer_list = None
+    reviewer_list_min_reviewers = None
+    repo_name = repo.project.name
+    if repo_name in projects_with_reviewer_lists:
+        reviewer_list_name = config.get(f"{repo_name}-reviewers","reviewer_list_name")
+        reviewer_list = config.get(f"{repo_name}-reviewers","reviewer_list").split()
+        reviewer_list_min_reviewers = config.get(f"{repo_name}-reviewers","min_reviewers")
+        reviewer_list_add_to_top_level= config.getboolean(f"{repo_name}-reviewers","add_to_top_level")
+
+
+    projects_with_reviewer_lists = projects_with_reviewer_lists.split()
     # get the open pull requests outgoing from our public branch
     logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
@@ -511,7 +526,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
-                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
+                    request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
+                                                                                              reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
+                                                                                              })
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:
