@@ -442,11 +442,14 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
     reviewer_list = None
     reviewer_list_min_reviewers = None
     repo_name = repo.project.name
+    reviewer_suffix = ""
     if repo_name in projects_with_reviewer_lists:
         reviewer_list_name = config.get(f"{repo_name}-reviewers","reviewer_list_name")
         reviewer_list = config.get(f"{repo_name}-reviewers","reviewer_list").split()
         reviewer_list_min_reviewers = config.get(f"{repo_name}-reviewers","min_reviewers")
         reviewer_list_add_to_top_level= config.getboolean(f"{repo_name}-reviewers","add_to_top_level")
+        reviewer_suffix = config.get(f"{repo_name}-reviewers", "description_suffix")
+
 
 
     projects_with_reviewer_lists = projects_with_reviewer_lists.split()
@@ -526,7 +529,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
-                    request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
+                    request = request.update(ver, title=title,  description=f"{descr}\n{reviewer_suffix}", reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
                                                                                               reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
                                                                                               })
                     url = request.link()
