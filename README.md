@@ -573,11 +573,12 @@ options are at least listed below.
     
 ## commit
 
-    Usage: grape-commit [-m <message>] [-a | <filetree>...]
+    Usage: grape-commit [-m <message>] [--failIfNoCommit] [-a | <filetree>...]
 
     Options:
-    -m <message>    The commit message.
-    -a              Commit modified files that have not been staged.
+    -m <message>      The commit message.
+    -a                Commit modified files that have not been staged.
+    --failIfNoCommit  Exit with failure if no files were committed.
 
 
     Arguments:
