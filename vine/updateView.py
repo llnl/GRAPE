@@ -256,7 +256,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         if subprojectPrefix in subprojectPrefixList:
            if git.hasBranch(branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
               if checkChanged:
-                  if git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+                  if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
                       return True
               else:
                   return True
