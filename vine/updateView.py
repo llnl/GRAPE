@@ -253,11 +253,16 @@ class UpdateView(Option, WorkspaceDirHandler):
     @staticmethod
     def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None):
         # If the branch exists locally, check there first
+        print(subprojectPrefix)
         if subprojectPrefix in subprojectPrefixList:
+           print("ACTIVE")
            if git.hasBranch(branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+              print(f"HAVE {branch}")
               if checkChanged:
                   if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+                      print(f"CHANGED VS {public}")
                       return True
+                  print(f"UNCHANGED VS {public}")
               else:
                   return True
 
