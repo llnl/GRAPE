@@ -256,6 +256,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         print(subprojectPrefix)
         if subprojectPrefix in subprojectPrefixList:
            print("ACTIVE")
+           print(f"Looking for {branch}")
+           print(git.branch(execution_path=os.path.join(workspace_dir,subprojectPrefix)))
            if git.hasBranch(branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
               print(f"HAVE {branch}")
               if checkChanged:
