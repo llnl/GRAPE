@@ -281,8 +281,12 @@ def getAllSubmodules(*, execution_path):
 
 
 def getAllSubmoduleURLMap(*, execution_path):
+    try:
+       fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
+    except FileNotFoundError:
+       # No submodules are present
+       return {}
     subconfig = configparser.ConfigParser()
-    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
     subconfig.read_file(fp)
     fp.close()
     sections = subconfig.sections()
