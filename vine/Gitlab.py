@@ -8,6 +8,7 @@ import time
 import keyring
 import gitlab
 from vine import config_parser_global
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
 from vine.option import Option
@@ -133,8 +134,21 @@ class GrapeGitlabAdapter:
             fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config(f"--get submodule.{proj}.url",
-                              execution_path=self.workspace_dir).split('/')
+            try:
+               url = git.config(f"--get submodule.{proj}.url",
+                                execution_path=self.workspace_dir).split('/')
+            except grape_errors.GrapeGitError as e:
+               if "Config failed" in e.message:
+                  # if the submodule is inactive, reconstruct the project and repo from the url map
+                  url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+                  url = url_map[proj].split('/')
+                  if url[-2] == '..':
+                     # replace relative path with the top repo project
+                     topProjectURL = config.get(f"repo", "url").split('/')
+                     url[-2] = topProjectURL[-2]
+               else:
+                  raise e
+ 
             proj = url[-2]
             repo_name = url[-1]
 

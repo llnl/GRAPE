@@ -235,15 +235,17 @@ class Review(Option, WorkspaceDirHandler):
         runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
         if runInSubmodules:
             missing = utility.getModifiedInactiveSubmodules(
-                target_branch, branch, includeAdded=True, workspace_dir=self.workspace_dir)
+                f"origin/{target_branch}", branch, includeAdded=True, workspace_dir=self.workspace_dir)
             if missing:
                 logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
                                  "You should activate them using grape uv  and then call grape review again. If you haven't modified "
                                  "these submodules, you may need to do a grape md to proceed.")
                 logging.info(','.join(missing))
-                return False
+                #return False
 
-            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, branch, includeAdded=True)
+            activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, f"origin/{target_branch}", branch, includeAdded=True)
             # update target branch based off of branch prefix
             submoduleBranchMappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
             # determine branch prefix
@@ -252,7 +254,31 @@ class Review(Option, WorkspaceDirHandler):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
-                if git.log(f"--oneline origin/{sub_target_branch}..{branch}", execution_path=os.path.join(self.workspace_dir, submodule)):
+                changed = False
+                if submodule in activeSubmodules:
+                    if git.log(f"--oneline origin/{sub_target_branch}..{branch}", execution_path=os.path.join(self.workspace_dir, submodule)):
+                        changed = True
+                else:
+                    url = url_map[submodule]
+                    remotes = git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url, execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                    targetHead = f"refs/heads/{sub_target_branch}"
+                    branchHead = f"refs/heads/{branch}"
+                    targetSHA = None
+                    branchSHA = None
+        
+                    for entry in remotes.splitlines():
+                       if entry:
+                          SHA_and_ref = entry.split()
+                          if SHA_and_ref[1] == targetHead:
+                             targetSHA = SHA_and_ref[0]
+                          elif SHA_and_ref[1] == branchHead:
+                             branchSHA = SHA_and_ref[0]
+                          if branchSHA and targetSHA:
+                             break
+                    if targetSHA and branchSHA and targetSHA != branchSHA:
+                       changed = True 
+
+                if changed:
                     listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
                                                                          "isSubmodule": True,
                                                                          "isNested": False,
@@ -262,14 +288,16 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "title": title,
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
-                                                                         "reviewers": reviewers}]))
+                                                                         "reviewers": reviewers,
+                                                                         "active": submodule in activeSubmodules }]))
 
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
+           activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-               "origin/"+target_branch, workspaceDir=self.workspace_dir)
+               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
            nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-               "origin/"+target_branch, workspaceDir=self.workspace_dir)
+               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
                prefix_path = os.path.join(self.workspace_dir, prefix)
@@ -282,7 +310,8 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "title": title,
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
-                                                                    "reviewers": reviewers}]))
+                                                                    "reviewers": reviewers,
+                                                                    "active": proj in activeNestedSubprojects}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
@@ -361,9 +390,10 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     proj = kwargs["proj"]
     outerLevelURL = kwargs["outerLevelURL"]
     reviewers = kwargs["reviewers"]
+    active = kwargs["active"]
 
     # push branch
-    if "--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"]):
+    if active and ("--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"])):
         logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
         git.push(f"origin {branch}", execution_path=repo)
     codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
