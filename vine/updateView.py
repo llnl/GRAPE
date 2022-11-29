@@ -254,12 +254,16 @@ class UpdateView(Option, WorkspaceDirHandler):
     def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None):
         # If the branch exists locally, check there first
         if subprojectPrefix in subprojectPrefixList:
-           if git.hasBranch(branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
-              if checkChanged:
-                  if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
-                      return True
-              else:
-                  return True
+           subpath = os.path.join(workspace_dir,subprojectPrefix)
+           # subprojectPrefixList should filter by the active subprojects, but for nested subprojects some of the
+           # "active" subprojects may not exist in a clean workspace.
+           if os.path.exists(subpath):
+              if git.hasBranch(branch, execution_path=subpath):
+                 if checkChanged:
+                     if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+                         return True
+                 else:
+                     return True
 
         # Otherwise, look up from the remote
         branchHead = f"refs/heads/{branch}"
