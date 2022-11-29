@@ -246,17 +246,28 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         return (branchChanged, public, tagPrefix)
 
-    # Return true if the subproject at url includes the branch and it differs from public.
+    # Return true if the subproject at url includes the branch (and it differs from public
+    # if checkChanged is set).
     # If tagPrefix is provides, tags matching that pattern are considered as part of the
     # history of public (so if the branch matches the tag it is not considered different).
     @staticmethod
-    def branchFilterChanged(branch, url, public, tagPrefix, workspace_dir):
+    def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None):
+        # If the branch exists locally, check there first
+        if subprojectPrefix in subprojectPrefixList:
+           if git.hasBranch(branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+              if checkChanged:
+                  if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+                      return True
+              else:
+                  return True
+
+        # Otherwise, look up from the remote
         branchHead = f"refs/heads/{branch}"
-        publicHead = f"refs/heads/{public}"
         lsRemoteFlags = "--heads"
         if tagPrefix:
             lsRemoteFlags = lsRemoteFlags + " --tags"
         remotes = git.lsRemote(lsRemoteFlags+" "+git.parseSubprojectRemoteURL(url, execution_path=workspace_dir), execution_path=workspace_dir)
+
         branchSHA = None
         publicSHA = None
         tagSHA = []
@@ -266,11 +277,15 @@ class UpdateView(Option, WorkspaceDirHandler):
                 SHA_and_ref = entry.split()
                 if SHA_and_ref[1] == branchHead:
                     branchSHA = SHA_and_ref[0]
-                elif SHA_and_ref[1] == publicHead:
+                elif public and SHA_and_ref[1] == f"refs/heads/{public}":
                     publicSHA = SHA_and_ref[0]
                 elif tagPrefix and SHA_and_ref[1].startswith(f"refs/tags/{tagPrefix}"):
                     tagSHA.append(SHA_and_ref[0])
-        return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+
+        if checkChanged:
+           return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+        else:
+           return branchSHA != None
 
     @staticmethod
     def force_rm(func, path, excinfo):
@@ -393,12 +408,12 @@ class UpdateView(Option, WorkspaceDirHandler):
             # get submodules to update
             if hasSubmodules:
                 if args["--branchFilter"]:
-                    branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url_map[x], execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir))
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
                     # version tags are not used in submodules, so we don't pass the tagPrefix
-                    branchFilter = lambda x : self.branchFilterChanged(branchChanged, url_map[x], subpublic, None, self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, tagPrefix=None)
                 else:
                     branchFilter = lambda x : True
 
@@ -420,10 +435,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                 nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
 
                 if args["--branchFilter"]:
-                    branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(config.get(f"nested-{x}", "url"), execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
-                    branchFilter = lambda x : self.branchFilterChanged(branchChanged, config.get(f"nested-{x}", "url"), public, tagPrefix, self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir), checkChanged = True, public=public, tagPrefix=tagPrefix)
                 else:
                     branchFilter = lambda x : True
 
