@@ -409,10 +409,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     if newRequest:
         return (newRequest.link(), True)
     else:
-        # if a pull request could not be generated, just add a link to browse the branch
-        url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
-        return(f"{codeReviews.url}{codeReview_repo.repo.url().replace('api/1.0','')}/browse?at={url_}", False)
-
+        return ("", True)
 
 def addLinkToDescription(descr, link, isPullRequest):
     if descr is not None and link is not None:
@@ -480,8 +477,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     f" for branch {branch} targeting {target_branch}. ")
                 logging.info(f"reviewers: {reviewers}")
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
-                url = request.link()
-                logging.info(f"Pull request created at {url} .")
+                if request:
+                   url = request.link()
+                   logging.info(f"Pull request created at {url} .")
             except stashy_errors.GenericException as e:
                 logging.error(f"BITBUCKET: {e.data['errors'][0]['message']}")
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):

@@ -214,8 +214,12 @@ class Repo:
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
-         diff_result = self.project.repository_compare(target_branch, branch, per_page=1)
+         # GitLab can create merge requests with no commits, but we don't want those,
+         # in the case that the branch is behind the target branch.
+         # Check that the branch actually has new commits compared to the target.
+         diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
          if diff_result and not diff_result["commits"]:
+            logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
             return None
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
