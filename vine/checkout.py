@@ -173,7 +173,15 @@ def branchAlreadyExists(branch, workspace_dir):
 
 def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                               changedURLModules, *, workspace_dir):
-    submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch}", execution_path=workspace_dir)
+    try:
+        submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
+    except grape_errors.GrapeGitError as e:
+        if f"bad revision '{branch}'" in e.gitOutput:
+            logging.info(f"Fetching {branch} in {workspace_dir}")
+            git.fetch("origin", f"{branch}:{branch}", execution_path=workspace_dir)
+            submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
+        else:
+            raise e
     if submoduleListWillChange:
         output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules", execution_path=workspace_dir)
         currentSubmodule = False
@@ -294,6 +302,10 @@ class Checkout(Option, WorkspaceDirHandler):
         sync = args["--sync"].lower().strip() in ['true', 'yes']
         args["--sync"] = sync
         branch = args["<branch>"]
+
+        if branch == "HEAD":
+           logging.error("<branch> cannot be specified as HEAD")
+           return False
 
         currentSHA = str(git.shortSHA(branchName="HEAD", execution_path=self.workspace_dir))
 

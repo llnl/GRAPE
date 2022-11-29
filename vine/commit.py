@@ -11,11 +11,12 @@ from vine.vine_logging import log_wrapper
 
 class Commit(Option, WorkspaceDirHandler):
     """
-    Usage: grape-commit [-m <message>] [-a | <filetree>...]
+    Usage: grape-commit [-m <message>] [--failIfNoCommit] [-a | <filetree>...]
 
     Options:
-    -m <message>    The commit message.
-    -a              Commit modified files that have not been staged.
+    -m <message>      The commit message.
+    -a                Commit modified files that have not been staged.
+    --failIfNoCommit  Exit with failure if no files were committed.
 
 
     Arguments:
@@ -50,6 +51,7 @@ class Commit(Option, WorkspaceDirHandler):
         if not args['-m']:
             args["-m"] = utility.userInput("Please enter commit message:")
 
+        filesCommitted = False
         commitargs += f" -m \"{args['-m']}\""
 
         submodules = [(True, x ) for x in git.getModifiedSubmodules(self.workspace_dir)]
@@ -62,7 +64,8 @@ class Commit(Option, WorkspaceDirHandler):
                     relpath = os.path.relpath(f,sub_path)
                     if ".." not in relpath:
                         logging.info(f"Committing {relpath} in {sub}...")
-                        self.commit(commitargs + f" {relpath}", sub_path)
+                        if self.commit(commitargs + f" {relpath}", sub_path):
+                           filesCommitted = True
                         filetrees[f] = True
                         if stage:
                             logging.info(f"Staging committed change in {sub}...")
@@ -72,9 +75,11 @@ class Commit(Option, WorkspaceDirHandler):
                 subStatus = git.status("--porcelain -uno", execution_path=sub_path)
                 if subStatus:
                     logging.info(f"Committing in {sub}...")
-                    if self.commit(commitargs, sub_path) and stage:
-                        logging.info(f"Staging committed change in {sub}...")
-                        git.add(sub, execution_path=self.workspace_dir)
+                    if self.commit(commitargs, sub_path):
+                        filesCommitted = True
+                        if stage:
+                           logging.info(f"Staging committed change in {sub}...")
+                           git.add(sub, execution_path=self.workspace_dir)
 
         remaining_filetrees = ''
         if filetrees:
@@ -83,8 +88,13 @@ class Commit(Option, WorkspaceDirHandler):
         if submodules or git.status("--porcelain", execution_path=self.workspace_dir) or remaining_filetrees:
 
             logging.info(f"Committing {remaining_filetrees} in {self.workspace_dir} ...")
-            self.commit(commitargs + ' ' + remaining_filetrees, self.workspace_dir)
-        return True
+            if self.commit(commitargs + ' ' + remaining_filetrees, self.workspace_dir):
+                filesCommitted = True
+
+        if args['--failIfNoCommit']:
+            return filesCommitted
+        else:
+            return True
 
     def setDefaultConfig(self,config):
         pass

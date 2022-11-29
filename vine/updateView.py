@@ -35,7 +35,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
-           grape-uv --checkRemoteSubmodules [--branchName=<name>]
+           grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -45,7 +45,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
                                      not go through the 'which submodules do you want' script.
         --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
-                                     remote submodule repos.
+                                     remote submodule repos. Only submodules in the workspace are checked
+                                     unless --allSubmodules is specified, 
         -b                           Automatically creates subproject branches that should be there according to your
                                      branching model.
         --skipTopLevel               Skip top level repository for syncing and checking.
@@ -245,17 +246,32 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         return (branchChanged, public, tagPrefix)
 
-    # Return true if the subproject at url includes the branch and it differs from public.
+    # Return true if the subproject at url includes the branch (and it differs from public
+    # if checkChanged is set).
     # If tagPrefix is provides, tags matching that pattern are considered as part of the
     # history of public (so if the branch matches the tag it is not considered different).
     @staticmethod
-    def branchFilterChanged(branch, url, public, tagPrefix, workspace_dir):
+    def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None):
+        # If the branch exists locally, check there first
+        if subprojectPrefix in subprojectPrefixList:
+           subpath = os.path.join(workspace_dir,subprojectPrefix)
+           # subprojectPrefixList should filter by the active subprojects, but for nested subprojects some of the
+           # "active" subprojects may not exist in a clean workspace.
+           if os.path.exists(subpath):
+              if git.hasBranch(branch, execution_path=subpath):
+                 if checkChanged:
+                     if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+                         return True
+                 else:
+                     return True
+
+        # Otherwise, look up from the remote
         branchHead = f"refs/heads/{branch}"
-        publicHead = f"refs/heads/{public}"
         lsRemoteFlags = "--heads"
         if tagPrefix:
             lsRemoteFlags = lsRemoteFlags + " --tags"
         remotes = git.lsRemote(lsRemoteFlags+" "+git.parseSubprojectRemoteURL(url, execution_path=workspace_dir), execution_path=workspace_dir)
+
         branchSHA = None
         publicSHA = None
         tagSHA = []
@@ -265,11 +281,15 @@ class UpdateView(Option, WorkspaceDirHandler):
                 SHA_and_ref = entry.split()
                 if SHA_and_ref[1] == branchHead:
                     branchSHA = SHA_and_ref[0]
-                elif SHA_and_ref[1] == publicHead:
+                elif public and SHA_and_ref[1] == f"refs/heads/{public}":
                     publicSHA = SHA_and_ref[0]
                 elif tagPrefix and SHA_and_ref[1].startswith(f"refs/tags/{tagPrefix}"):
                     tagSHA.append(SHA_and_ref[0])
-        return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+
+        if checkChanged:
+           return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+        else:
+           return branchSHA != None
 
     @staticmethod
     def force_rm(func, path, excinfo):
@@ -292,6 +312,9 @@ class UpdateView(Option, WorkspaceDirHandler):
     @log_wrapper
     def execute(self, args):
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
+        if branch == "HEAD":
+           logging.error("grape uv cannot check out HEAD, you must specify --branchName or get out of the detached HEAD state!")
+           return False
         hasSubmodules = len(git.getAllSubmodules(execution_path=self.workspace_dir)) > 0 and not args["--skipSubmodules"]
         allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
         if hasSubmodules:
@@ -299,7 +322,12 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
-            for submodule in allSubmodules:
+            if args["--allSubmodules"]:
+               checkedSubmodules = allSubmodules
+            else:
+               checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+
+            for submodule in checkedSubmodules:
                remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
                subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
                subbranch = subpublicmapping[branch] if branch in subpublicmapping else branch
@@ -384,12 +412,12 @@ class UpdateView(Option, WorkspaceDirHandler):
             # get submodules to update
             if hasSubmodules:
                 if args["--branchFilter"]:
-                    branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url_map[x], execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir))
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
                     # version tags are not used in submodules, so we don't pass the tagPrefix
-                    branchFilter = lambda x : self.branchFilterChanged(branchChanged, url_map[x], subpublic, None, self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, tagPrefix=None)
                 else:
                     branchFilter = lambda x : True
 
@@ -411,10 +439,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                 nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
 
                 if args["--branchFilter"]:
-                    branchFilter = lambda x : f"refs/heads/{args['--branchFilter']}" in git.lsRemote("--heads "+git.parseSubprojectRemoteURL(config.get(f"nested-{x}", "url"), execution_path=self.workspace_dir), execution_path=self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
-                    branchFilter = lambda x : self.branchFilterChanged(branchChanged, config.get(f"nested-{x}", "url"), public, tagPrefix, self.workspace_dir)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir), checkChanged = True, public=public, tagPrefix=tagPrefix)
                 else:
                     branchFilter = lambda x : True
 

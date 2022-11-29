@@ -573,11 +573,12 @@ options are at least listed below.
     
 ## commit
 
-    Usage: grape-commit [-m <message>] [-a | <filetree>...]
+    Usage: grape-commit [-m <message>] [--failIfNoCommit] [-a | <filetree>...]
 
     Options:
-    -m <message>    The commit message.
-    -a              Commit modified files that have not been staged.
+    -m <message>      The commit message.
+    -a                Commit modified files that have not been staged.
+    --failIfNoCommit  Exit with failure if no files were committed.
 
 
     Arguments:
@@ -1172,7 +1173,7 @@ options are at least listed below.
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
-           grape-uv --checkRemoteSubmodules [--branchName=<name>]
+           grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
         -f                           Force removal of submodules currently in your view that are taken out of the view
@@ -1182,7 +1183,8 @@ options are at least listed below.
         --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
                                      not go through the 'which submodules do you want' script.
         --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
-                                     remote submodule repos.
+                                     remote submodule repos. Only submodules in the workspace are checked
+                                     unless --allSubmodules is specified, 
         -b                           Automatically creates subproject branches that should be there according to your
                                      branching model.
         --skipTopLevel               Skip top level repository for syncing and checking.
