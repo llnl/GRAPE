@@ -425,7 +425,7 @@ def addLinkToDescription(descr, link, isPullRequest):
                 descr += f"\nThis merge request is related to "
                 descr += f"the merge request at: {link}"
             else:
-                descr += f"\nThis merg request is related to "
+                descr += f"\nThis merge request is related to "
                 descr += f"the branch at: {link}"
     return descr
 
