@@ -348,7 +348,7 @@ class Review(Option, WorkspaceDirHandler):
                 updatedDescription = updatedDescription.decode("utf-8")
 
             for link in pullRequestLinks:
-                updatedDescription = addLinkToDescription(updatedDescription, link[0], link[1])
+                updatedDescription = addLinkToDescription(updatedDescription, link)
 
             pre_update_description = request.description()
             if isinstance(pre_update_description, bytes):
@@ -400,30 +400,26 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
 
     #amend the subproject pull request description with the link to the outer pull request
     getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)
-    subDescr = addLinkToDescription(descr, outerLevelURL, True)
+    subDescr = addLinkToDescription(descr, outerLevelURL)
     if review_args["--prepend"] or review_args["--append"]:
         subDescr = descr
     descr = subDescr
 
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, review_args, repo)
     if newRequest:
-        return (newRequest.link(), True)
+        return newRequest.link()
     else:
-        return ("", True)
+        return ""
 
-def addLinkToDescription(descr, link, isPullRequest):
-    if descr is not None and link is not None:
+def addLinkToDescription(descr, link):
+    if descr is not None and link:
         if not isinstance(link, str):
             link = link.decode("utf-8")
         if not isinstance(descr, str):
             descr = descr.decode("utf-8")
         if link not in descr:
-            if isPullRequest:
-                descr += f"\nThis pull request is related to "
-                descr += f"the pull request at: {link}"
-            else:
-                descr += f"\nThis pull request is related to "
-                descr += f"the branch at: {link}"
+            descr += f"\nThis pull request is related to "
+            descr += f"the pull request at: {link}"
     return descr
 
 
