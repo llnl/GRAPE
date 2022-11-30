@@ -234,15 +234,6 @@ class Review(Option, WorkspaceDirHandler):
         ##  Submodule Repos
         runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
         if runInSubmodules:
-            missing = utility.getModifiedInactiveSubmodules(
-                f"origin/{target_branch}", branch, includeAdded=True, workspace_dir=self.workspace_dir)
-            if missing:
-                logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
-                                 "You should activate them using grape uv  and then call grape review again. If you haven't modified "
-                                 "these submodules, you may need to do a grape md to proceed.")
-                logging.info(','.join(missing))
-                #return False
-
             activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
             url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
             modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, f"origin/{target_branch}", branch, includeAdded=True)
