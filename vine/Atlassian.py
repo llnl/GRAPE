@@ -98,8 +98,12 @@ class Atlassian:
             fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config(f"--get submodule.{proj}.url",
-                              execution_path=self.workspace_dir).split('/')
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            url = url_map[proj].split('/')
+            if url[-2] == '..':
+               # replace relative path with the top repo project
+               topProjectURL = config.get(f"repo", "url").split('/')
+               url[-2] = topProjectURL[-2]
             proj = url[-2]
             repo_name = url[-1]
 
