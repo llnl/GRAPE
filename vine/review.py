@@ -287,8 +287,7 @@ class Review(Option, WorkspaceDirHandler):
            activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
                "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
-           nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
+           nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
                prefix_path = os.path.join(self.workspace_dir, prefix)
