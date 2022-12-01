@@ -251,9 +251,9 @@ class Review(Option, WorkspaceDirHandler):
                         changed = True
                 else:
                     url = url_map[submodule]
-                    remotes = git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url, execution_path=self.workspace_dir), execution_path=self.workspace_dir)
                     targetHead = f"refs/heads/{sub_target_branch}"
                     branchHead = f"refs/heads/{branch}"
+                    remotes = git.lsRemote(f"--heads {git.parseSubprojectRemoteURL(url, execution_path=self.workspace_dir)} {targetHead} {branchHead}", execution_path=self.workspace_dir)
                     targetSHA = None
                     branchSHA = None
         
