@@ -273,7 +273,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             refs = f"{refs} refs/heads/{public}"
         if tagPrefix:
             lsRemoteFlags = lsRemoteFlags + " --tags"
-            refs = f"{refs} refs/heads/{tagPrefix}*"
+            refs = f"{refs} refs/tags/{tagPrefix}*"
         remotes = git.lsRemote(f"{lsRemoteFlags} {git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)} {refs}", execution_path=workspace_dir)
 
         branchSHA = None
