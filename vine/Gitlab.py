@@ -8,6 +8,7 @@ import time
 import keyring
 import gitlab
 from vine import config_parser_global
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
 from vine.option import Option
@@ -133,8 +134,12 @@ class GrapeGitlabAdapter:
             fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config(f"--get submodule.{proj}.url",
-                              execution_path=self.workspace_dir).split('/')
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            url = url_map[proj].split('/')
+            if url[-2] == '..':
+               # replace relative path with the top repo project
+               topProjectURL = config.get(f"repo", "url").split('/')
+               url[-2] = topProjectURL[-2]
             proj = url[-2]
             repo_name = url[-1]
 
@@ -200,6 +205,13 @@ class Repo:
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+         # GitLab can create merge requests with no commits, but we don't want those,
+         # in the case that the branch is behind the target branch.
+         # Check that the branch actually has new commits compared to the target.
+         diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
+         if diff_result and not diff_result["commits"]:
+            logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
+            return None
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "title": title}),
