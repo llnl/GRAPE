@@ -214,6 +214,7 @@ class Repo:
             return None
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
+                                            "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
          mr.update(title, description=description, reviewers=reviewers)
