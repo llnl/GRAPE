@@ -7,6 +7,7 @@ from stashy import errors as stashy_errors
 from requests import adapters
 from vine import CodeReviewsFactory
 from vine import Atlassian
+from vine import Gitlab
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
@@ -17,7 +18,6 @@ from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
-
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
@@ -201,6 +201,10 @@ class Review(Option, WorkspaceDirHandler):
             if isinstance(pr_description, bytes):
                 pr_description = pr_description.decode("utf-8")
             descr = pr_description
+        
+        # list of description suffixes
+        projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
+        description_suffixes = []
 
         # determine pull request reviewers
         reviewers = self.parseReviewerArgs(args)
@@ -229,14 +233,41 @@ class Review(Option, WorkspaceDirHandler):
             logging.info("Failed to update local branches.")
             return False
 
-        # assemble arguments for parallel execution of code reviews
-        listOfRepoBranchArgTuples=[]
-        ##  Submodule Repos
         runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
+        # assemble description suffixes from any projects with reviewer lists
         if runInSubmodules:
             activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
             url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
             modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, f"origin/{target_branch}", branch, includeAdded=True)
+            for submodule in modifiedSubmodules:
+                if not submodule:
+                    continue
+                if submodule in projects_with_reviewer_lists:
+                    description_suffix = config.get(f"{submodule}-reviewers", "description_suffix")
+                    description_suffix_name = config.get(f"{submodule}-reviewers", "description_suffix_name")
+                    description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
+        if not args["--noRecurseSubprojects"]:
+           nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
+               "origin/"+target_branch, workspaceDir=self.workspace_dir)
+           for proj in nestedProjects:
+                if proj in projects_with_reviewer_lists:
+                    description_suffix = config.get(f"{proj}-reviewers", "description_suffix")
+                    description_suffix_name = config.get(f"{proj}-reviewers", "description_suffix_name")
+                    description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
+        
+        # append the description suffixes that aren't already present in the description to the description
+        if description_suffixes:
+            for suffix in description_suffixes:
+                suffix_name = suffix["name"]
+                suffix_body = suffix["body"]
+                if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
+                    descr = f"{descr}\n--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+
+        # assemble arguments for parallel execution of code reviews
+        listOfRepoBranchArgTuples=[]
+        ##  Submodule Repos
+        if runInSubmodules:
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, branch, includeAdded=True)
             # update target branch based off of branch prefix
             submoduleBranchMappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
             # determine branch prefix
@@ -408,8 +439,8 @@ def addLinkToDescription(descr, link):
         if not isinstance(descr, str):
             descr = descr.decode("utf-8")
         if link not in descr:
-            descr += f"\nThis pull request is related to "
-            descr += f"the pull request at: {link}"
+            descr += f"\nThis merge request is related to "
+            descr += f"the merge request at: {link}"
     return descr
 
 
@@ -448,6 +479,20 @@ def targetBranchMissing(errorMessage):
 
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path):
+    config = config_parser_global.grapeConfig()
+    projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
+    reviewer_list_name = None
+    reviewer_list = None
+    reviewer_list_min_reviewers = None
+    repo_name = repo.project.name
+    if repo_name in projects_with_reviewer_lists:
+        reviewer_list_name = config.get(f"{repo_name}-reviewers","reviewer_list_name")
+        reviewer_list = config.get(f"{repo_name}-reviewers","reviewer_list").split()
+        reviewer_list_min_reviewers = config.get(f"{repo_name}-reviewers","min_reviewers")
+
+
+
+    projects_with_reviewer_lists = projects_with_reviewer_lists.split()
     # get the open pull requests outgoing from our public branch
     logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
@@ -525,7 +570,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
-                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
+                    request = request.update(ver, title=title,  description=f"{descr}", reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
+                                                                                              reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
+                                                                                              })
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:
