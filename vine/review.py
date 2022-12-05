@@ -282,9 +282,9 @@ class Review(Option, WorkspaceDirHandler):
                         changed = True
                 else:
                     url = url_map[submodule]
-                    remotes = git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url, execution_path=self.workspace_dir), execution_path=self.workspace_dir)
                     targetHead = f"refs/heads/{sub_target_branch}"
                     branchHead = f"refs/heads/{branch}"
+                    remotes = git.lsRemote(f"--heads {git.parseSubprojectRemoteURL(url, execution_path=self.workspace_dir)} {targetHead} {branchHead}", execution_path=self.workspace_dir)
                     targetSHA = None
                     branchSHA = None
         
@@ -318,8 +318,7 @@ class Review(Option, WorkspaceDirHandler):
            activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
                "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
-           nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
+           nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
                prefix_path = os.path.join(self.workspace_dir, prefix)

@@ -134,9 +134,9 @@ def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir, checkRem
                   raise e
         else:
            url =  config.get(f"nested-{repo}", "url")  
-           remotes = git.lsRemote("--heads "+git.parseSubprojectRemoteURL(url, execution_path=workspaceDir), execution_path=workspaceDir)
            sinceHead = f"refs/heads/{originPrefix.sub('', since)}"
            nowHead = f"refs/heads/{originPrefix.sub('', now)}"
+           remotes = git.lsRemote(f"--heads {git.parseSubprojectRemoteURL(url, execution_path=workspaceDir)} {sinceHead} {nowHead}", execution_path=workspaceDir)
            sinceSHA = None
            nowSHA = None
         
