@@ -35,7 +35,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
-                    [--spackEnv]
+                    [--spackEnv=<file>]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
@@ -646,6 +646,26 @@ class UpdateView(Option, WorkspaceDirHandler):
         for msg in delayedMessages:
             logging.info(msg)
         return True
+
+    # Spack Environment Option 
+    def createSpackEnvironment(self):
+    """
+    Creates a Spack Environment for a collection of submodules
+    grape uv --spackEnv=<file>
+    spack env activate <path/to/file>
+    spack concretize
+    spack install
+    """
+    # read list of spack projects from configuration
+        projects = config.get("spackProjects", "submodules")
+    # create a string that can be written to a file that spack can read
+        # <fill in details here>
+    # at some point there will be per project info to add to the spack environment
+        for p in projects:
+            version = git.SHA(execution_path=os.path.join(self.workspace_dir, p))
+            # < add version information to spack environment >
+            # < point path to local checkout, or say that publicly installed version of library satisfies 
+            # the requirement if the submodule is not active >
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
