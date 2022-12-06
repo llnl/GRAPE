@@ -214,9 +214,10 @@ class Repo:
             return None
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
+                                            "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description, reviewers=reviewers)
+         mr.update(title, description=description, reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers))})
 
          return mr
 
@@ -534,24 +535,27 @@ class PullRequest:
     def iid(self):
         return self.mergerequest.iid
 
-    # reviewers is a list of usernames
+    # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
     def update(self, ver, title=None, description=None, reviewers=None):
         if title:
             self.mergerequest.title = title
         if description:
             self.mergerequest.description = description
         if reviewers:
-            reviewer_ids = []
-            for r in reviewers:
-                matching_reviewers = self.gitlab.users.list(all=True, username=r)
-                if matching_reviewers:
-                   gitlab_reviewer = matching_reviewers[0]
-                else:
-                   logging.info(f"Could not find reviewer {r}.")
-                   raise SystemExit("Abort")
-                reviewer_ids.append(gitlab_reviewer.id)
-            self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
-            self.mergerequest.reviewer_ids = reviewer_ids
+            for approval_rule_name in reviewers:
+                (users,numRequired) = reviewers[approval_rule_name]
+                if users:
+                    reviewer_ids = []
+                    for r in users:
+                        matching_reviewers = self.gitlab.users.list(all=True, username=r)
+                        if matching_reviewers:
+                           gitlab_reviewer = matching_reviewers[0]
+                        else:
+                           logging.info(f"Could not find reviewer {r}.")
+                           raise SystemExit("Abort")
+                        reviewer_ids.append(gitlab_reviewer.id)
+                    self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    self.mergerequest.reviewer_ids = reviewer_ids
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
