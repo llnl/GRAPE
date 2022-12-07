@@ -681,26 +681,31 @@ class UpdateView(Option, WorkspaceDirHandler):
           }
         }
         spackEnv = yaml.load(spack_yaml)
-
+        logging.info("Preparing Spack Environment file...")
         with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
             yaml.dump(spackEnv, f)
-            logging.info(f"Writing Spack Environmnet file")
+            logging.info(f"Writing Spack Environmnet file...")
 
         # yaml.dump(spackEnv, sys.stdout)
     # at some point there will be per project info to add to the spack environment
         # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
             # spack_Env = yaml.safe_load(f)
+        version  = {}
         for p in projects:
-            version = git.SHA(execution_path=os.path.join(self.workspace_dir, p))
+            version[p] = git.SHA(execution_path=os.path.join(self.workspace_dir, p))
             # < add version information to spack environment >
+            with open(os.path.join(self.workspace_dir,"SPACK_PROJECT_SHA.json"),'w') as f:
+                json.dump(version, f)
             # < point path to local checkout, or say that publicly installed version of library satisfies 
             # the requirement if the submodule is not active >
         
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
+        config.ensureSection(self.SECTION_SPACKPROJECTS)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
+        config.set(self.SECTION_SPACKPROJECTS, "submodules", " ")
 
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
