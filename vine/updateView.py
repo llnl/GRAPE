@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import stat
+from ruamel.yaml import YAML
 from vine import addSubproject
 from vine import checkout
 from vine import config_parser_global
@@ -652,24 +653,49 @@ class UpdateView(Option, WorkspaceDirHandler):
         return True
 
     # Spack Environment Option 
-    def createSpackEnvironment(self):
+    def createSpackEnvironment(self, args):
     """
-    Creates a Spack Environment for a collection of submodules
+    Creates a Spack Environment file for a collection of submodules
     grape uv --spackEnv=<file>
     spack env activate <path/to/file>
     spack concretize
     spack install
     """
+        if args["--spackEnv"]:
     # read list of spack projects from configuration
-        projects = config.get("spackProjects", "submodules")
+            projects = config.get("spackProjects", "submodules")
     # create a string that can be written to a file that spack can read
-        # <fill in details here>
+        spack_yaml = {
+          'spack': {
+            'specs': [ 
+              'zlib@1.2.11'
+            ],
+            'view': 'true',
+            'concretizer': {
+              'unifiy': 'false'
+              },
+            'repos': [
+              '/usr/WS1/fermaint/ale3dSpack/spack_packages',
+              '/usr/WS1/fermaint/spack/var/spack/repos/builtin'
+            ] 
+          }
+        }
+        spackEnv = yaml.load(spack_yaml)
+
+        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
+            yaml.dump(spackEnv, f)
+            logging.info(f"Writing Spack Environmnet file")
+
+        # yaml.dump(spackEnv, sys.stdout)
     # at some point there will be per project info to add to the spack environment
+        # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
+            # spack_Env = yaml.safe_load(f)
         for p in projects:
             version = git.SHA(execution_path=os.path.join(self.workspace_dir, p))
             # < add version information to spack environment >
             # < point path to local checkout, or say that publicly installed version of library satisfies 
             # the requirement if the submodule is not active >
+        
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
