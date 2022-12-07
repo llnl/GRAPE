@@ -482,6 +482,14 @@ class PullRequest:
     def authorName(self):
         return self.mergerequest.author["name"]
 
+    def authorName(self):
+        return self.mergerequest.author["name"]
+
+    def authorEmail(self):
+        authorID = self.mergerequest.author["id"]
+        # This will only return a non-empty value if the public email has been set
+        return self.gitlab.users.get(authorID).public_email
+
     def description(self):
         if self.mergerequest.description != None:
             return self.mergerequest.description.encode('ascii', 'ignore')
