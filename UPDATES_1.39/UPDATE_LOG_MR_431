@@ -1,0 +1,13 @@
+
+
+Mon Sep 26 07:55:40 2022 Benjamin T. Liu
+MR_431
+Reviewers: Peter Robinson, Patrick Greene, David Dawson
+
+Fix bug in updateView refactoring that causes submodules to be unintentionally inited
+
+- Bug introduced v4.39.62
+
+- Revert semantics when remotes are not being updated
+
+- Add additional deinitialization if remotes are updates

@@ -1,4 +1,5 @@
 """GRAPE's git utility logic across multiple repositories."""
+import logging
 import os
 import sys
 from docopt.docopt import docopt
@@ -52,11 +53,14 @@ def userInput(message, default=None):
     if IS_NON_INTERACTIVE:
         if not default:
             return ""
-        elif default.lower()[0] == "y":
+        elif default.lower() == "y":
+            logging.info(default)
             return True
-        elif default.lower()[0] == "n":
+        elif default.lower() == "n":
+            logging.info(default)
             return False
         else:
+            logging.info(default)
             return default
 
     if default == "" or default is None:

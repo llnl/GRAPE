@@ -270,5 +270,5 @@ class TestGrapeGit(TestGrape):
 
     def handleGitError(self, error):
         self.fail(f"When executing\n{error.gitCommand}\n" +
-                  f"Error {error.code} caught: {error.msg}\n" +
+                  f"Error {error.code} caught: {error.message}\n" +
                   f"{error.gitOutput} ")

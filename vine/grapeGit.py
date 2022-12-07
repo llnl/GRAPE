@@ -66,6 +66,9 @@ def allBranches(*, execution_path):
 def remoteBranches(*, execution_path):
     return branch("-r", execution_path=execution_path).replace(" ", '').split()
 
+def remote(argstr="", *, execution_path):
+    return gitcmd(f"remote {argstr}", "git remote failed", execution_path=execution_path)
+
 def branch(argstr="", *, execution_path):
     return gitcmd(f"branch {argstr}",
                   "Could not execute git branch command",
@@ -149,6 +152,22 @@ def commitDescription(committish, *, execution_path):
         if "unknown revision" in e.gitOutput.lower():
             try:
                 descr = gitcmd(f"log --oneline {committish}",
+                               "commitDescription failed",
+                               execution_path=execution_path)
+            except grape_errors.GrapeGitError as e:
+                raise e
+    return descr
+
+def commitDescriptionShort(committish, *, execution_path):
+    try:
+        descr = gitcmd(f"log --oneline  --format='%s' {committish}^!",
+                       "commitDescription failed",
+                       execution_path=execution_path)
+    # handle the case when this is called on a 1-commit-long history (occurs mostly in unit testing)
+    except grape_errors.GrapeGitError as e:
+        if "unknown revision" in e.gitOutput.lower():
+            try:
+                descr = gitcmd(f"log --oneline --format='%s' {committish}",
                                "commitDescription failed",
                                execution_path=execution_path)
             except grape_errors.GrapeGitError as e:
@@ -260,9 +279,14 @@ def getAllSubmodules(*, execution_path):
         submodules.append(s.split()[1].split('"')[1])
     return submodules
 
+
 def getAllSubmoduleURLMap(*, execution_path):
+    try:
+       fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
+    except FileNotFoundError:
+       # No submodules are present
+       return {}
     subconfig = configparser.ConfigParser()
-    fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
     subconfig.read_file(fp)
     fp.close()
     sections = subconfig.sections()
@@ -270,6 +294,20 @@ def getAllSubmoduleURLMap(*, execution_path):
     for s in sections:
         submodules[subconfig.get(s,"path")] = subconfig.get(s, "url")
     return submodules
+
+
+def getInactiveSubmoduleURLMap(*, execution_path):
+    all_urls = getAllSubmoduleURLMap(execution_path=execution_path)
+    active_submodules = getActiveSubmodules(execution_path=execution_path)
+    inactive_urls = {}
+    for sub in all_urls:
+        if sub not in active_submodules:
+            inactive_urls[sub] = all_urls[sub]
+    return inactive_urls
+
+def getInactiveSubmoduleURLs(*, execution_path):
+    url_map = getInactiveSubmoduleURLMap(execution_path=execution_path)
+    return [parseSubprojectRemoteURL(url_map[x], execution_path=execution_path) for x in url_map]
 
 
 def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
@@ -395,6 +433,10 @@ def gitPathToOsPath(path):
         return path.replace(os.path.altsep, os.path.sep)
     return path
 
+def lsRemote(args, *, execution_path):
+    return gitcmd(f"ls-remote {args}", "ls-remote failed",
+                  execution_path=execution_path)
+
 
 def merge(args, *, execution_path):
     return gitcmd(f"merge {args}", "merge failed",
@@ -405,6 +447,10 @@ def mergeAbort(*, execution_path):
     return gitcmd("merge --abort",
                   "Could not determine top level git directory.",
                   execution_path=execution_path)
+
+
+def mergeBase(args, *, execution_path):
+    return gitcmd(f"merge-base {args}", "merge-base failed", execution_path=execution_path)
 
 
 def numberCommitsSince(commitStr, *, execution_path):
@@ -518,7 +564,7 @@ def shortSHA(branchName="HEAD", *, execution_path):
                   execution_path=execution_path)
 
 def parentsOfMergeCommit(mergeCommit, *, execution_path):
-    return gitcmd(f"rev-list --parents -n 1 {mergeCommit}")[1:]
+    return gitcmd(f"rev-list --parents -n 1 {mergeCommit}", "rev-list failed", execution_path=execution_path).split()[1:]
 
 def show(argStr, *, execution_path):
     try:

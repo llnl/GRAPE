@@ -1,0 +1,7 @@
+
+
+Mon Jul 25 10:56:17 2022 Peter B. Robinson
+MR_407
+Reviewers: Arlie Capps, Ben Liu
+
+Change traverseTrainRefs to be based off of commit messages instead of remote train refs, removes potential race conditions in the workflow.

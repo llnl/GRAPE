@@ -25,9 +25,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--am | --as | --at | --aT | --ay | --aY ]
                     [--continue]
                     [--recurse | --noRecurse]
-                    [--noUpdate]
+                    [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
+                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
 
 
     Options:
@@ -46,9 +47,17 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                 results of submodule merges.
         --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
         --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
+        --forceUpdate           Force update local versions of the public branch before attempting merges.
         --noUpdate              Do not update local versions of the public branch before attempting merges.
+        --ensureCleanUpdate     Return failure if update of local versions fails.
         --noChecks              Skip workspace consistency checks.
         --squash                Perform squash merges.
+        --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
+        --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
+                                behind the --topic branch on the train)
+        --tagProposedVersion    Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
+
 
 
 
@@ -93,6 +102,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     def execute(self, args):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
+        nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
+        if "--traverseTrainRefs" in args and args["--traverseTrainRefs"]:
+            self.traverseTrainRefs(args, nested)
+            return True
 
         self.set_progress_file(execution_path=self.workspace_dir)
 
@@ -130,7 +143,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
             submodules = [sub for sub in modifiedSubmodules if sub in activeSubmodules]
 
-        nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
 
         config = config_parser_global.grapeConfig()
         recurse = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
@@ -159,7 +171,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
             logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
-            menu.applyMenuChoice('up', ['up', f'--public={args["--public"]}'])
+            upCmd = ['up', f'--public={args["--public"]}']
+            if not args["--forceUpdate"]:
+                upCmd.append("--noForce")
+            ret = menu.applyMenuChoice('up', upCmd)
+            if args["--ensureCleanUpdate"] and ret is False:
+                logging.error("Failed to update public branches! Please address above issues (or run with --noUpdate) and try again.")
+                return False
             self.progress["updateLocalDone"] = True
 
         # "utility.userInput" is a function
@@ -219,13 +237,114 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if conflictedFiles is False:
             logging.warning("Initial merge failed. Resolve issue and try again. ")
             return False
+
+        if not self.performSubprojectMerges(args, branch, nested, recurse, submodules):
+            return False
         
+        cleanAfterMerge = continueLocalMerge(args, execution_path=self.workspace_dir)
+        if not cleanAfterMerge:
+            conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
+            if len(conflictedFiles) != 0:
+                self.progress["stopPoint"] = "resolve conflicts"
+                self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool " +
+                                        f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
+                return False
+
+        original_workspace_dir = menu.workspace_dir
+        menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
+        menu.set_workspace_dir(original_workspace_dir)
+
+        # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
+        if self.progress["allActive"]:
+            activeSubmodulesCheck1 = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
+                logging.info("Updating new submodules using grape uv --allSubmodules")
+                original_workspace_dir = menu.workspace_dir
+                menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
+                menu.set_workspace_dir(original_workspace_dir)
+
+        # clear out the progress now that we're done so that when we are called a second time during a publish
+        # we don't just skip the md
+        self.progress = {}
+        return True
+
+    def lookUpInfoFromMergeTrainCommitDescription(self, local_branch):
+        logging.info(f"CALL with {local_branch}")
+        # lookup the commit message for the train merge commit
+        # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
+        commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
+        logging.info(commit_msg)
+        # parse the commit message into branch, next_train_car, current_train_car
+        commit_msg = commit_msg.split(" with ")
+        branch = commit_msg[0]
+        logging.info(branch)
+        commit_msg = commit_msg[1].split(" into ")
+        logging.info(commit_msg)
+        next_train_car = commit_msg[0].split("refs/")[1]
+        current_train_car = commit_msg[1].split("refs/")[1]
+        return branch,next_train_car,current_train_car
+
+
+    def lookupActiveMergeTrainBranches(self, args):
+       local_branch = "HEAD"
+       branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+       head_encountered = False
+       branches = []
+       while not head_encountered:
+          # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
+          next_train_car_toks = next_train_car.split('/')
+          logging.info(next_train_car_toks)
+          if next_train_car_toks[0] == "heads":
+              head_encountered = True
+              public_branch = next_train_car_toks[1]
+              # first branch to merge is the public branch
+              branches = [f"{public_branch}"] + branches
+              continue
+          # keep traversing down the merge history
+          local_branch = git.parentsOfMergeCommit(local_branch, execution_path=self.workspace_dir)[0]
+          branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+          # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
+          branches = [branch] + branches
+       return branches
+
+    def numberOfMergesSinceMostRecentTag(self, args, branch):
+        numMerges = 0
+        tagPrefix = 'v*'
+        description = git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir)
+        while '-' in description:
+            numMerges = numMerges+1
+            logging.info(f"branch {branch} is {description}, ticked numMerges to {numMerges}")
+            branch = git.parentsOfMergeCommit(branch, execution_path=self.workspace_dir)[0]
+            description = git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir)
+            logging.info(f"branch {branch} is {description}")
+        return numMerges
+
+
+    def traverseTrainRefs(self, args, nested):
+        from vine import grapeMenu
+        branches = self.lookupActiveMergeTrainBranches(args)
+        logging.info(f"Merge Train Branches: {branches}")
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        for branch in branches:
+            logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
+            self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
+        if args["--tagProposedVersion"]:
+            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
+            logging.info(f"numMerges = {numMerges}")
+            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            logging.info(f"calling grape version {' '.join(versionargs)}")
+            menu.applyMenuChoice("version",versionargs)
+            
+
+
+    def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False):
         listOfRepoBranchArgTuples = [] 
         # queue merges for nested subprojects
         for subproject in nested:
             # if we did this merge in a previous run, don't do it again
             key = f"Subproject: {subproject}"
-            if key in self.progress and self.progress[key] == "finished":
+            if not ignoreInProgress and key in self.progress and self.progress[key] == "finished":
                logging.info(f"merge in {subproject} already completed")
                continue 
             listOfRepoBranchArgTuples.append((subproject,branch,[args,False]))
@@ -237,6 +356,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 subPublic = args["--subpublic"]
             else:
                 # default is to merge the submodule branch that is mapped to the public branch
+                config = config_parser_global.grapeConfig()
                 subBranchMappings = config.getMapping(Option.SECTION_WORKSPACE, "submodulePublicMappings")
                 subPublic = subBranchMappings[config.getPublicBranchFor(branch)]
             for submodule in submodules:
@@ -272,34 +392,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             self.progress["stopPoint"] = "subproject merge"
             self.dumpProgress(args)
             return False
-
-        cleanAfterMerge = continueLocalMerge(args, execution_path=self.workspace_dir)
-        if not cleanAfterMerge:
-            conflictedFiles = git.conflictedFiles(execution_path=self.workspace_dir)
-            if len(conflictedFiles) != 0:
-                self.progress["stopPoint"] = "resolve conflicts"
-                self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool " +
-                                        f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
-                return False
-
-        original_workspace_dir = menu.workspace_dir
-        menu.applyMenuChoice("runHook", ["post-merge", '0', "--noExit"])
-        menu.set_workspace_dir(original_workspace_dir)
-
-        # ensure all submodules are currently present in WS if all submodules were present at the beginning of merge
-        if self.progress["allActive"]:
-            activeSubmodulesCheck1 = git.getActiveSubmodules(execution_path=self.workspace_dir)
-            if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
-                logging.info("Updating new submodules using grape uv --allSubmodules")
-                original_workspace_dir = menu.workspace_dir
-                menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
-                menu.set_workspace_dir(original_workspace_dir)
-
-        # clear out the progress now that we're done so that when we are called a second time during a publish
-        # we don't just skip the md
-        self.progress = {}
         return True
-
 
 
     def outerLevelMerge(self, args, branch):

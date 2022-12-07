@@ -8,7 +8,7 @@ class GrapeGitError(Exception):
                  cwd=os.getcwd()):
         """Arguments must be kept as keywords to allow pickling"""
         super(GrapeGitError, self).__init__()
-        self.msg = errmsg
+        self.message = errmsg
         self.code = returnCode
         if isinstance(gitOutput, bytes):
             gitOutput = gitOutput.decode()
@@ -33,7 +33,7 @@ class GrapeGitError(Exception):
     def __str__(self):
         return f"\nWORKING DIR: {self.cwd}\nCODE: {self.code}\n" + \
                f"CMD: {self.gitCommand}\nOUTPUT: {self.gitOutput}\n" + \
-               f"STDERR: {self.msg}"
+               f"STDERR: {self.message}"
 
     def __repr__(self):
         return self.__str__()
@@ -53,14 +53,16 @@ class MultiRepoException(Exception):
         self._repos = []
         self._branches = []
         self._args = []
+        self._remote_urls = []
         self.workspace_dir = workspace_dir
         logging.debug(repr(self))
 
-    def addException(self, e, repo, branch, args):
+    def addException(self, e, repo, branch, args, remote_url):
         self._exceptions.append(e)
         self._repos.append(repo)
         self._branches.append(branch)
         self._args.append(args)
+        self._remote_urls.append(remote_url)
 
     def __getitem__(self, pos):
         return self._exceptions[pos]
@@ -80,10 +82,13 @@ class MultiRepoException(Exception):
     def hasException(self):
         return len(self._exceptions) > 0
 
+    def remote_urls(self):
+        return self._remote_urls
+
     def __repr__(self):
         return f"MRE with\n exceptions: {self._exceptions}\n repos: " + \
                f"{self._repos}\n branches: {self._branches}\n args: " + \
-               f"{self._args}"
+               f"{self._args} \n remote_urls: {self._remote_urls}"
 
 
 class NoWorkspaceDirException(Exception):

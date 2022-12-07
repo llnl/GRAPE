@@ -7,16 +7,17 @@ from stashy import errors as stashy_errors
 from requests import adapters
 from vine import CodeReviewsFactory
 from vine import Atlassian
+from vine import Gitlab
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
+from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine import utility
 from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
-
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
@@ -35,12 +36,14 @@ class Review(Option, WorkspaceDirHandler):
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
-                        [--norecurse]
+                        [--noRecurse]
+                        [--noRecurseSubprojects]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
+                        [--noLocal]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -72,11 +75,12 @@ class Review(Option, WorkspaceDirHandler):
         --repo=<repo>               The repo name part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
-        --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
+        --recurse                   If set, adds a pull request for each modified submodule.
                                     The pull request for the outer level repo will have a description with links to the
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
                                     is set to true.
-        --norecurse                 Disables adding pull requests to submodules and subprojects.
+        --noRecurse                 Disables adding pull requests to submodules.
+        --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
@@ -84,13 +88,16 @@ class Review(Option, WorkspaceDirHandler):
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
-                                    arising
+                                    arising in the top level repo.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
+        --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
+                                    of the local branch in the local workspace. Branches must still exist on the codeReviews
+                                    (Bitbucket, Gitlab) server.
 
 
 
@@ -165,8 +172,9 @@ class Review(Option, WorkspaceDirHandler):
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
-        logging.info(f"Pushing {branch} to {codeReviews.url}...")
-        git.push(f"origin {branch}", execution_path=self.workspace_dir)
+        if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
+            logging.info(f"Pushing {branch} to {codeReviews.url}...")
+            git.push(f"origin {branch}", execution_path=self.workspace_dir)
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
@@ -193,6 +201,10 @@ class Review(Option, WorkspaceDirHandler):
             if isinstance(pr_description, bytes):
                 pr_description = pr_description.decode("utf-8")
             descr = pr_description
+        
+        # list of description suffixes
+        projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
+        description_suffixes = []
 
         # determine pull request reviewers
         reviewers = self.parseReviewerArgs(args)
@@ -205,20 +217,56 @@ class Review(Option, WorkspaceDirHandler):
             descr = self.parseDescriptionArgs(args)
             reviewers = self.parseReviewerArgs(args)
 
+        logging.info(f"Updating remote tracking branches for {target_branch}...")
+
+        # Fetch the remote tracking branch for the target branch
+        git.fetch(f"origin {target_branch}", execution_path=self.workspace_dir)
+        # Skip fetching of remote tracking branch in submodules if no gitlink changes were fetched
+        submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
+                     
+        upArgs = ['up', f'--public={target_branch}', '--updateRemoteOnly']
+        if not submodulesModifiedInOrigin:
+           upArgs.extend(['--noRecurse', '--recurseSubprojects'])
+
+        upToDate = grapeMenu.menu().applyMenuChoice('up', upArgs)
+        if not upToDate:
+            logging.info("Failed to update local branches.")
+            return False
+
+        runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
+        # assemble description suffixes from any projects with reviewer lists
+        if runInSubmodules:
+            activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, f"origin/{target_branch}", branch, includeAdded=True)
+            for submodule in modifiedSubmodules:
+                if not submodule:
+                    continue
+                if submodule in projects_with_reviewer_lists:
+                    description_suffix = config.get(f"{submodule}-reviewers", "description_suffix")
+                    description_suffix_name = config.get(f"{submodule}-reviewers", "description_suffix_name")
+                    description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
+        if not args["--noRecurseSubprojects"]:
+           nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
+               "origin/"+target_branch, workspaceDir=self.workspace_dir)
+           for proj in nestedProjects:
+                if proj in projects_with_reviewer_lists:
+                    description_suffix = config.get(f"{proj}-reviewers", "description_suffix")
+                    description_suffix_name = config.get(f"{proj}-reviewers", "description_suffix_name")
+                    description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
+        
+        # append the description suffixes that aren't already present in the description to the description
+        if description_suffixes:
+            for suffix in description_suffixes:
+                suffix_name = suffix["name"]
+                suffix_body = suffix["body"]
+                if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
+                    descr = f"{descr}\n--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
         ##  Submodule Repos
-        runInSubmodules = not args["--norecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
         if runInSubmodules:
-            missing = utility.getModifiedInactiveSubmodules(
-                target_branch, branch, includeAdded=True, workspace_dir=self.workspace_dir)
-            if missing:
-                logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
-                                 "You should activate them using grape uv  and then call grape review again. If you haven't modified "
-                                 "these submodules, you may need to do a grape md to proceed.")
-                logging.info(','.join(missing))
-                return False
-
             modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, branch, includeAdded=True)
             # update target branch based off of branch prefix
             submoduleBranchMappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
@@ -228,35 +276,63 @@ class Review(Option, WorkspaceDirHandler):
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
-                listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
-                                                                     "isSubmodule": True,
-                                                                     "isNested": False,
-                                                                     "args": args,
-                                                                     "target_branch": sub_target_branch,
-                                                                     "descr": descr,
-                                                                     "title": title,
-                                                                     "proj": submodule,
-                                                                     "outerLevelURL": outerLevelURL,
-                                                                     "reviewers": reviewers}]))
+                changed = False
+                if submodule in activeSubmodules:
+                    if git.log(f"--oneline origin/{sub_target_branch}..{branch}", execution_path=os.path.join(self.workspace_dir, submodule)):
+                        changed = True
+                else:
+                    url = url_map[submodule]
+                    targetHead = f"refs/heads/{sub_target_branch}"
+                    branchHead = f"refs/heads/{branch}"
+                    remotes = git.lsRemote(f"--heads {git.parseSubprojectRemoteURL(url, execution_path=self.workspace_dir)} {targetHead} {branchHead}", execution_path=self.workspace_dir)
+                    targetSHA = None
+                    branchSHA = None
+        
+                    for entry in remotes.splitlines():
+                       if entry:
+                          SHA_and_ref = entry.split()
+                          if SHA_and_ref[1] == targetHead:
+                             targetSHA = SHA_and_ref[0]
+                          elif SHA_and_ref[1] == branchHead:
+                             branchSHA = SHA_and_ref[0]
+                          if branchSHA and targetSHA:
+                             break
+                    if targetSHA and branchSHA and targetSHA != branchSHA:
+                       changed = True 
+
+                if changed:
+                    listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
+                                                                         "isSubmodule": True,
+                                                                         "isNested": False,
+                                                                         "args": args,
+                                                                         "target_branch": sub_target_branch,
+                                                                         "descr": descr,
+                                                                         "title": title,
+                                                                         "proj": submodule,
+                                                                         "outerLevelURL": outerLevelURL,
+                                                                         "reviewers": reviewers,
+                                                                         "active": submodule in activeSubmodules }]))
 
         ## NESTED SUBPROJECT REPOS
-        nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-            target_branch, workspaceDir=self.workspace_dir)
-        nestedProjectPrefixes = config_parser_user.getAllModifiedNestedSubprojectPrefixes(
-            target_branch, workspaceDir=self.workspace_dir)
+        if not args["--noRecurseSubprojects"]:
+           activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+           nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
+               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
+           nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
-        for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-            prefix_path = os.path.join(self.workspace_dir, prefix)
-            listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
-                                                                 "isSubmodule": False,
-                                                                 "isNested": True,
-                                                                 "args": args,
-                                                                 "target_branch": target_branch,
-                                                                 "descr": descr,
-                                                                 "title": title,
-                                                                 "proj": proj,
-                                                                 "outerLevelURL": outerLevelURL,
-                                                                 "reviewers": reviewers}]))
+           for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+               prefix_path = os.path.join(self.workspace_dir, prefix)
+               listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
+                                                                    "isSubmodule": False,
+                                                                    "isNested": True,
+                                                                    "args": args,
+                                                                    "target_branch": target_branch,
+                                                                    "descr": descr,
+                                                                    "title": title,
+                                                                    "proj": proj,
+                                                                    "outerLevelURL": outerLevelURL,
+                                                                    "reviewers": reviewers,
+                                                                    "active": proj in activeNestedSubprojects}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
@@ -265,16 +341,24 @@ class Review(Option, WorkspaceDirHandler):
         ## OUTER LEVEL REPO
         # load the repo level REST resource
         if not args["--subprojectsOnly"]:
-            if not git.hasBranch(branch, execution_path=self.workspace_dir):
-                logging.info(
-                    f"Top level repository does not have a branch {branch}," +
-                    " not generating a Pull Request")
-                return True
-            if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
-                logging.info(
-                    f"{target_branch} up to date with {branch}," +
-                    " not generating a Pull Request in Top Level repo")
-                return True
+            if "--noLocal" in args and args["--noLocal"]:
+                pass
+            else:
+                if not git.hasBranch(branch, execution_path=self.workspace_dir):
+                    logging.info(
+                        f"Top level repository does not have a branch {branch}," +
+                        " not generating a Pull Request")
+                    return True
+                if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
+                    logging.info(
+                        f"{target_branch} up to date with {branch}," +
+                        " not generating a Pull Request in Top Level repo")
+                    return True
+                if not git.log(f"--oneline origin/{target_branch}..{branch}", execution_path=self.workspace_dir):
+                    logging.info(
+                        f"{branch} is in the history of {target_branch}," +
+                        " not generating a Pull Request in Top Level repo")
+                    return True
 
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
@@ -285,7 +369,7 @@ class Review(Option, WorkspaceDirHandler):
                 updatedDescription = updatedDescription.decode("utf-8")
 
             for link in pullRequestLinks:
-                updatedDescription = addLinkToDescription(updatedDescription, link[0], link[1])
+                updatedDescription = addLinkToDescription(updatedDescription, link)
 
             pre_update_description = request.description()
             if isinstance(pre_update_description, bytes):
@@ -327,41 +411,36 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     proj = kwargs["proj"]
     outerLevelURL = kwargs["outerLevelURL"]
     reviewers = kwargs["reviewers"]
+    active = kwargs["active"]
 
     # push branch
-    logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
-    git.push(f"origin {branch}", execution_path=repo)
+    if active and ("--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"])):
+        logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
+        git.push(f"origin {branch}", execution_path=repo)
     codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
 
     #amend the subproject pull request description with the link to the outer pull request
     getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)
-    subDescr = addLinkToDescription(descr, outerLevelURL, True)
+    subDescr = addLinkToDescription(descr, outerLevelURL)
     if review_args["--prepend"] or review_args["--append"]:
         subDescr = descr
     descr = subDescr
 
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, review_args, repo)
     if newRequest:
-        return (newRequest.link(), True)
+        return newRequest.link()
     else:
-        # if a pull request could not be generated, just add a link to browse the branch
-        url_ = urllib.parse.quote_plus(f"refs/heads/{branch}")
-        return(f"{codeReviews.url}{codeReview_repo.repo.url().replace('api/1.0','')}/browse?at={url_}", False)
+        return ""
 
-
-def addLinkToDescription(descr, link, isPullRequest):
-    if descr is not None and link is not None:
+def addLinkToDescription(descr, link):
+    if descr is not None and link:
         if not isinstance(link, str):
             link = link.decode("utf-8")
         if not isinstance(descr, str):
             descr = descr.decode("utf-8")
         if link not in descr:
-            if isPullRequest:
-                descr += f"\nThis pull request is related to "
-                descr += f"the pull request at: {link}"
-            else:
-                descr += f"\nThis pull request is related to "
-                descr += f"the branch at: {link}"
+            descr += f"\nThis merge request is related to "
+            descr += f"the merge request at: {link}"
     return descr
 
 
@@ -400,6 +479,20 @@ def targetBranchMissing(errorMessage):
 
 
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path):
+    config = config_parser_global.grapeConfig()
+    projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
+    reviewer_list_name = None
+    reviewer_list = None
+    reviewer_list_min_reviewers = None
+    repo_name = repo.project.name
+    if repo_name in projects_with_reviewer_lists:
+        reviewer_list_name = config.get(f"{repo_name}-reviewers","reviewer_list_name")
+        reviewer_list = config.get(f"{repo_name}-reviewers","reviewer_list").split()
+        reviewer_list_min_reviewers = config.get(f"{repo_name}-reviewers","min_reviewers")
+
+
+
+    projects_with_reviewer_lists = projects_with_reviewer_lists.split()
     # get the open pull requests outgoing from our public branch
     logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
@@ -415,8 +508,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     f" for branch {branch} targeting {target_branch}. ")
                 logging.info(f"reviewers: {reviewers}")
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
-                url = request.link()
-                logging.info(f"Pull request created at {url} .")
+                if request:
+                   url = request.link()
+                   logging.info(f"Pull request created at {url} .")
             except stashy_errors.GenericException as e:
                 logging.error(f"BITBUCKET: {e.data['errors'][0]['message']}")
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
@@ -476,7 +570,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
-                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
+                    request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
+                                                                                              reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
+                                                                                              })
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:
@@ -495,5 +591,4 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
 
 
 if __name__ == "__main__":
-    from vine import grapeMenu
     grapeMenu.menu().applyMenuChoice("review",[])

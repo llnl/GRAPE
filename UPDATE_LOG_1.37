@@ -144,3 +144,4 @@ Teaches grape to support using version tags as primary source for version inform
 Configures GRAPE to use version tags as it's primary source for version information - runtime no longer requires vine/VERSION to be present.
 
 Removes vine/VERSION, adds vine/VERSION to .gitignore.
+

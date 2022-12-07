@@ -98,8 +98,12 @@ class Atlassian:
             fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config(f"--get submodule.{proj}.url",
-                              execution_path=self.workspace_dir).split('/')
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            url = url_map[proj].split('/')
+            if url[-2] == '..':
+               # replace relative path with the top repo project
+               topProjectURL = config.get(f"repo", "url").split('/')
+               url[-2] = topProjectURL[-2]
             proj = url[-2]
             repo_name = url[-1]
 
@@ -183,7 +187,7 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
-    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN"):
+    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):
@@ -208,9 +212,6 @@ class Repo(StashyNode):
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
-
-    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
-        return False
 
     def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
         logging.info("GRAPE does not support CI integration with Atlassian tools.")

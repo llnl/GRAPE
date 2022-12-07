@@ -8,6 +8,7 @@ import time
 import keyring
 import gitlab
 from vine import config_parser_global
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
 from vine.option import Option
@@ -133,8 +134,12 @@ class GrapeGitlabAdapter:
             fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
             wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config(f"--get submodule.{proj}.url",
-                              execution_path=self.workspace_dir).split('/')
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            url = url_map[proj].split('/')
+            if url[-2] == '..':
+               # replace relative path with the top repo project
+               topProjectURL = config.get(f"repo", "url").split('/')
+               url[-2] = topProjectURL[-2]
             proj = url[-2]
             repo_name = url[-1]
 
@@ -179,15 +184,18 @@ class Repo:
         self.gitlab = gitlab
         
     # state can be "all", "merged", "opened", or "closed"
-    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None):
-        # translates from bitbucket to gitlab state types
-        state_dict = {"open":"opened", "opened":"opened",
-                      "merged": "merged",
-                      "declined":"closed", "closed":"closed",
-                      "all":"all"
-                      }
-        state = state_dict[state.lower()]
-        return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
+    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
+        if id == None:
+            # translates from bitbucket to gitlab state types
+            state_dict = {"open":"opened", "opened":"opened",
+                          "merged": "merged",
+                          "declined":"closed", "closed":"closed",
+                          "all":"all"
+                          }
+            state = state_dict[state.lower()]
+            return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
+        else:
+            return [PullRequest(self.project.mergerequests.list(iids=[id])[0], self.gitlab)]
 
     def getOpenPullRequest(self, source, target):
         requests = self.pullRequests(state="opened", target_branch=target, source_branch=source)
@@ -197,11 +205,19 @@ class Repo:
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
     def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+         # GitLab can create merge requests with no commits, but we don't want those,
+         # in the case that the branch is behind the target branch.
+         # Check that the branch actually has new commits compared to the target.
+         diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
+         if diff_result and not diff_result["commits"]:
+            logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
+            return None
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
+                                            "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description, reviewers=reviewers)
+         mr.update(title, description=description, reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers))})
 
          return mr
 
@@ -217,9 +233,158 @@ class Repo:
                                                "allow_force_push": allow_force_push})
         return replaced
 
+    @staticmethod
+    def printScheduledPipeline(pipeline):
+        active = "Active" if pipeline.active else "Inactive"
+        print(f"{pipeline.description} ({active})")
+        print(f"  id: {pipeline.id}  ref: {pipeline.ref}")
+        print(f"  owner: {pipeline.owner['username']} ({pipeline.owner['name']})")
+        print(f"  cron: {pipeline.cron}  timezone: {pipeline.cron_timezone}")
+        print()
+
+    def getScheduledPipeline(self, pid):
+        scheduled_pipelines = self.project.pipelineschedules.list(all=True)
+        for pipeline in scheduled_pipelines:
+            if pipeline.id == int(pid):
+               return pipeline
+        return None
+
+    def listScheduledPipelines(self):
+        scheduled_pipelines = self.project.pipelineschedules.list(all=True)
+        print()
+        for pipeline in scheduled_pipelines:
+            self.printScheduledPipeline(pipeline)
+
+    def addScheduledPipeline(self, ref, desc, cron, timezone, active):
+        args = { "ref": ref, "description": desc, "cron": cron }
+        if timezone:
+            args["cron_timezone"] = timezone
+        if active is not None:
+            args["active"] = active
+        try:
+           pipeline = self.project.pipelineschedules.create(args)
+           logging.info("*** Created new pipeline ***")
+           self.printScheduledPipeline(pipeline)
+        except Exception as e:
+            logging.info(f"Failed to create pipeline with {args}.\n{e}")
+
+    def deleteScheduledPipeline(self, pid):
+        pipeline = self.getScheduledPipeline(pid)
+        logging.info("*** Deleting ***")
+        self.printScheduledPipeline(pipeline)
+        try:
+           self.project.pipelineschedules.delete(pid)
+           logging.info("*** Done ***")
+        except Exception as e:
+           logging.info(f"Failed to delete pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
+
+    def takeScheduledPipeline(self, pid):
+        pipeline = self.getScheduledPipeline(pid)
+        logging.info("*** Taking ownership of pipeline ***")
+        self.printScheduledPipeline(pipeline)
+        try:
+           pipeline.take_ownership()
+           logging.info("*** Done ***")
+        except Exception as e:
+           logging.info(f"Failed to take ownership of pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
+
+    def updateScheduledPipeline(self, pid, ref, desc, cron, timezone, active):
+        pipeline = self.getScheduledPipeline(pid)
+        if not pipeline:
+           logging.info(f"No scheduled pipeline with pid {pipelineid} found! Use grape gitlab-admin --scheduledPipelines=list to list pipelines")
+        else:
+           logging.info("*** Original ***")
+           self.printScheduledPipeline(pipeline)
+           orig = [pipeline.ref, pipeline.description, pipeline.cron, pipeline.cron, pipeline.cron_timezone, pipeline.active]
+           if ref:
+               pipeline.ref = ref
+           if desc:
+               pipeline.description = desc
+           if cron:
+               pipeline.cron = cron
+           if timezone:
+               pipeline.cron_timezone = timezone
+           if active is not None:
+               pipeline.active = active
+           try:
+               pipeline.save()
+               pipeline._get_updated_data()
+               if orig == [pipeline.ref, pipeline.description, pipeline.cron, pipeline.cron, pipeline.cron_timezone, pipeline.active]:
+                  logging.info("*** No change ***")
+               else:
+                  logging.info("*** Updated ***")
+                  self.printScheduledPipeline(pipeline)
+           except Exception as e:
+               logging.info(f"Failed to update pipeline {pid} owned by {pipeline.owner['username']}.\n{e}")
+
+    # Get the pipeline ID corresponding to the last successful job on each merge request
+    def listLastSuccessfulPipelines(self, job_name):
+        open_merge_requests = self.project.mergerequests.list(all=True, state='opened')
+        rows = []
+        for mr in open_merge_requests:
+           merge_request_iid = mr.iid
+           # The pipelines are listed (by default) by creation date in descending order (newest first)
+           branch_pipelines = self.project.pipelines.list(all=True, ref=f"refs/merge-requests/{merge_request_iid}/merge")
+           for pi in branch_pipelines:
+               found = False
+               for job in pi.jobs.list(all=True, scope="success"):
+                  if job.name == job_name:
+                     rows.append(f"{pi.id}\t{pi.ref}")
+                     found = True
+                     break
+               if found:
+                  # Only consider the successful job on the newest pipeline
+                  break
+        if rows:
+           print(f"Last successful runs of {job_name}:")
+           print("PID\tREF") 
+           for row in rows:
+               print(row)
+        else:
+           print(f"No successful runs of {job_name}")
+
+    def listRunningJobs(self, name, op):
+        for pi in self.project.pipelines.list(all=True, scope='running'):
+            for job in pi.jobs.list(all=True):
+               if job.status in ['waiting_for_resource', 'preparing', 'pending', 'running'] and job.user['username'] == name:
+                  print(f"#{job.id} {job.status} {job.name} {job.ref} {job.runner['description'] if job.runner else ''} {job.started_at if job.started_at else ''}")
+                  if op == 'log':
+                     pjob = self.project.jobs.get(job.id)
+                     print(pjob.trace().decode())
+
+    # Run named job on specified pipeline
+    def runJob(self, job_name, pid, allow_rerun):
+        branch_pipelines = self.project.pipelines.list(all=True)
+        foundPipe = False
+        foundJob = False
+        for pi in branch_pipelines:
+            if pi.id == int(pid):
+               foundPipe = True
+               for pipeline_job in pi.jobs.list(all=True):
+                  if pipeline_job.name == job_name:
+                     foundJob = True
+                     print(f"Found job {job_name} on pipeline for {pi.ref}")
+                     job = self.project.jobs.get(pipeline_job.id, lazy=True)
+                     if allow_rerun or pipeline_job.status != 'success':
+                        print(f"Previous status: {pipeline_job.status}")
+                        try:
+                           print(f"Running {job_name}...")
+                           job.play()
+                           print("Done")
+                        except Exception as e:
+                           logging.info(f"Failed to run job {job_name} on pipeline {pid}\n{e}")
+                     else:
+                        print("Job already succeeded, not running")
+                     break
+        if not foundPipe:
+            logging.info(f"Failed to find pipeline {pid}")
+        elif not foundJob:
+            logging.info(f"Failed to find job {job_name} on pipeline {pid}")
+
     def getSuccessfulJob(self, job_name, current_sha, target_sha, current_branch, target_branch):
         # manual jobs will have the branch name as a reference
         successful_job = None
+        job_name = job_name.strip()
         branch_pipelines = self.project.pipelines.list(all=True, ref=current_branch)
         logging.debug(f"BRANCH PIPELINES {branch_pipelines}")
         # if there is a pipeline matching the current branch...
@@ -370,24 +535,27 @@ class PullRequest:
     def iid(self):
         return self.mergerequest.iid
 
-    # reviewers is a list of usernames
+    # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
     def update(self, ver, title=None, description=None, reviewers=None):
         if title:
             self.mergerequest.title = title
         if description:
             self.mergerequest.description = description
         if reviewers:
-            reviewer_ids = []
-            for r in reviewers:
-                matching_reviewers = self.gitlab.users.list(all=True, username=r)
-                if matching_reviewers:
-                   gitlab_reviewer = matching_reviewers[0]
-                else:
-                   logging.info(f"Could not find reviewer {r}.")
-                   raise SystemExit("Abort")
-                reviewer_ids.append(gitlab_reviewer.id)
-            self.mergerequest.approvals.set_approvers(len(reviewers),approver_ids=reviewer_ids, approval_rule_name=GRAPE_GITLAB_APPROVAL_RULE_NAME)
-            self.mergerequest.reviewer_ids = reviewer_ids
+            for approval_rule_name in reviewers:
+                (users,numRequired) = reviewers[approval_rule_name]
+                if users:
+                    reviewer_ids = []
+                    for r in users:
+                        matching_reviewers = self.gitlab.users.list(all=True, username=r)
+                        if matching_reviewers:
+                           gitlab_reviewer = matching_reviewers[0]
+                        else:
+                           logging.info(f"Could not find reviewer {r}.")
+                           raise SystemExit("Abort")
+                        reviewer_ids.append(gitlab_reviewer.id)
+                    self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    self.mergerequest.reviewer_ids = reviewer_ids
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
@@ -403,7 +571,7 @@ class PullRequest:
                f"From: {self.fromRef()}\n" + \
                f"To: {self.toRef()}\n" + \
                f"Reviewers: {all_reviewers}\n" + \
-               f"Description: {self.description()}\n"
+               f"Description: {self.description().decode('utf-8')}\n"
 
     def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
         try:

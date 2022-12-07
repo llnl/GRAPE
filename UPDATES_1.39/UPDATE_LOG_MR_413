@@ -1,0 +1,7 @@
+
+
+Tue Aug  2 10:27:58 2022 Peter B. Robinson
+MR_413
+Reviewers: Ben Liu, Alan Dayton
+
+Fixes some crashes for grape publish --mergeUpdateLogs

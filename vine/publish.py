@@ -83,6 +83,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --printSteps
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--recurse | --noRecurse]
+            grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
     --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
@@ -231,6 +234,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --tagPrefix=<str>       The prefix for the git version tags. [default: v]
     --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
                             .grapeconfig.versioning.branchTagSuffixMappings.
+    --markMRWithVersion     Update a merge request title with the given version string.
 
 
     Optional Arguments:
@@ -311,6 +315,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'emailMaxFiles', '100')
         # tick on cascade behavior
         config.set(self.SECTION_FLOW, "topicCascadeTick","?:0")
+        # reviewer lists
+        config.set(self.SECTION_PUBLISH, 'projects_with_reviewer_lists', '')
 
     def description(self):
         try:
@@ -439,13 +445,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--mergeUpdateLogs"]:
             self.mergeUpdateLogs(args)
             return True
-
+        if args["--markMRWithVersion"]:
+            return self.markReviewWithVersionNumber(args)
         if args["--quick"]:
             self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
                           "markAsDone", "deleteTopic", "done"]
+        elif args["--sendEmail"]:
+            self.order = ["notify", "done"]
         elif args["--mergeTrain"]:
             # steps for queuing in the merge train
-            self.order = ["testForCleanWorkspace1", "ensureModifiedSubmodulesAreActive",
+            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
                           "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
                           "checkCI", "build", "test",
                           "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "requestUserStartMergeTrain", "done"]
@@ -455,7 +464,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           "markInProgress", "md2", "checkCI", "tickVersion", "updateLog",
                           "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                           "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
-
 
         startPoint = args["--startAt"]
 
@@ -596,9 +604,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                                                                 "as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
+        self.loadVersion(args)
         version = self.progress["version"]
         logging.info(f"Prepending pull request title with {version}")
-        return self.markReview(args, [f"--title={version} :", "--prepend"],
+        return self.markReview(args, [f"--title={version} :", "--prepend", "--noLocal", "--noRecurse", "--noRecurseSubprojects"],
                               "Skipping marking pull request with version number")
 
     def ensureReview(self, args):
@@ -729,8 +738,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         self.progress["reviewers"] = "No reviewers"
             else:
                 logging.info("All reviewers have approved your request.")
-                if args["--user"] != pullRequest.author():
-                    reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
@@ -771,6 +778,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         ci_jobs = args["--testCIJob"]
         if ci_jobs:
             ci_jobs = ci_jobs.split(',')
+            for i in range(len(ci_jobs)):
+                ci_jobs[i] = ci_jobs[i].split('|')
+
+
         else:
             # If the user did not explicitly name their CI jobs that count as building and testing,
             # then this logic just skips the investigation of whether those jobs passed or not, avoiding
@@ -780,16 +791,24 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
         
         passed = True
-        for job in ci_jobs:
-            successful_job = self.repo.getSuccessfulJob(job,
-                                                        git.SHA(args["--topic"], execution_path=self.workspace_dir),
-                                                        git.SHA(args["--public"], execution_path=self.workspace_dir),
-                                                        args["--topic"],
-                                                        args["--public"]
-                                                        )
-            passed = successful_job != None
+        for possible_jobs in ci_jobs:
+            logging.info(f"Checking if one of {possible_jobs} is passing for current commit.")
+            or_pass = False
+            for job in possible_jobs:
+            
+                successful_job = self.repo.getSuccessfulJob(job,
+                                                            git.SHA(args["--topic"], execution_path=self.workspace_dir),
+                                                            git.SHA(args["--public"], execution_path=self.workspace_dir),
+                                                            args["--topic"],
+                                                            args["--public"]
+                                                            )
+                or_passed = successful_job != None
+                if or_passed:
+                    logging.info(f"{job} was successful.")
+                    break
+            passed = passed and or_passed
             if not passed:
-                logging.info("no successful job found.")
+                logging.info(f"no successful job found in one of {possible_jobs}")
             # if user has configured a list of CIRepos that need to be active during CI jobs, we verify the
             # job has produced a GRAPE_PROJECT_SHA.json artifact and that all grape projects (top level and nested)
             # are consistent with our current workspace
@@ -801,6 +820,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 logging.info(f"verifying {artifact} is consistent with current workspace.")
                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                 passed = menu.getOption("uv").verifySHAList(artifact)
+                if not passed:
+                    logging.info(f"{artifact} is inconsistent with current workspace.")
+
         self.progress["CIPassed"] = passed 
         if passed:
             logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')
@@ -876,16 +898,22 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
         try:
-            updatelist = git.diff(f"--name-only {public} {topic}",
-                                  execution_path=execution_path).split('\n')
+            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
+                                  execution_path=execution_path).split()
         except:
             # Ensure branches are on working tree, then retry diff.
-            current_branch = git.currentBranch(execution_path=execution_path)
-            git.checkout(public, execution_path=execution_path)
-            git.checkout(topic, execution_path=execution_path)
-            git.checkout(current_branch, execution_path=execution_path)
-            updatelist = git.diff(f"--name-only {public} {topic}",
-                                  execution_path=execution_path).split('\n')
+            try:
+               current_branch = git.currentBranch(execution_path=execution_path)
+               git.checkout(public, execution_path=execution_path)
+               git.checkout(topic, execution_path=execution_path)
+               git.checkout(current_branch, execution_path=execution_path)
+               mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+               updatelist = git.diff(f"--name-only {mergeBase} {topic}",
+                                     execution_path=execution_path).split()
+            except grape_errors.GrapeGitError as e:
+               logging.error(e.message)
+               updatelist = ["[ Failed to get diff ]"]
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
@@ -893,30 +921,43 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
             return True
+
         public = args["--public"]
-        topic = args["--topic"]
-        if git.SHA(public, execution_path=self.workspace_dir) == \
-                git.SHA(topic, execution_path=self.workspace_dir):
-            public = utility.userInput(
-                "Please enter the branch name or SHA of the commit to diff " +
-                f"against {topic} for the modified file list.")
+        if args["--sendEmail"]:
+            topic = f'origin/{args["--topic"]}'
+            topLevelPublic = git.parentsOfMergeCommit(f'origin/{public}',execution_path=self.workspace_dir)[0]
+        else:
+            topic = args["--topic"]
+            topLevelPublic = public
+            if git.SHA(public, execution_path=self.workspace_dir) == \
+                    git.SHA(topic, execution_path=self.workspace_dir):
+                public = utility.userInput(
+                    "Please enter the branch name or SHA of the commit to diff " +
+                    f"against {topic} for the modified file list.")
 
         self.progress["modifiedFiles"] = []
 
         # Get list of modified files in main repo
         self.progress["modifiedFiles"] += self.getModifiedFileList(
-            public, topic, args, execution_path=self.workspace_dir)
+            topLevelPublic, topic, args, execution_path=self.workspace_dir)
 
         # Get list of modified files in submodules
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
+            if args["--sendEmail"]:
+                submodulePublic = f"{args['--submodulePublic']}"+"@{1}"
             submodules = git.getModifiedSubmodules(
-                self.workspace_dir, public, topic, includeAdded=True)
+                self.workspace_dir, topLevelPublic, topic, includeAdded=True)
             for sub in submodules:
-                execution_path = os.path.join(self.workspace_dir, sub)
-                self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
+                try:
+                    self.progress["modifiedFiles"].remove(sub)
+                    execution_path = os.path.join(self.workspace_dir, sub)
+                    self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
+                except ValueError as e:
+                    pass
 
         # Get list of modified files in nested subprojects
+        # TODO: figure out how to get modified nested subproject files during post-push CI workflow
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             execution_path = os.path.join(self.workspace_dir, nested)
             modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
@@ -927,7 +968,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def loadVersion(self, args):
         if "version" not in self.progress:
-            if args["--mergeTrain"]:
+            if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
+                tag = git.describe(f"origin/{args['--topic']} --first-parent --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+                tag = tag.split('-')[0]
+                self.progress["version"] = tag.split(args["--tagPrefix"])[1]
+            elif args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
                 iid = thisRequest.iid()
                 version = f"MR_{iid}"
@@ -938,6 +983,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 menu.applyMenuChoice("version", ["read"])
                 guess = menu.getOption("version").ver
                 self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
+                logging.info(f"version is {self.progress['version']}")
         return True
 
     def loadMajorAndMinorVersion(self, args):
@@ -953,9 +999,26 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         args["--updateLogDir"] = logDir
 
         
-        
+    def loadCommitMessageFromRecentMergeRequest(self, args):
+        tag = git.describe(f"origin/{args['--topic']} --first-parent --match=MR_*", execution_path=self.workspace_dir)
+        tag = tag.split('-')[0]
+        self.progress["MR_tag"] = tag
+        pr_id = tag.split("MR_")[1]
+        pull_request = self.repo.pullRequests(id=pr_id)[0]
+        escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
+        escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
+        escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+        self.progress["commitMsg"] = escapedCommitMsg
+        self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
+        self.progress["author"] = pull_request.authorName()
+        self.progress["author_username"] = pull_request.author()
+        args["-m"] = escapedCommitMsg
+        return True
+             
 
     def loadCommitMessage(self, args):
+        if args["--sendEmail"]:
+            return self.loadCommitMessageFromRecentMergeRequest(args)
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
             self.verifyCompletedReview(args)
@@ -1103,15 +1166,25 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.loadMajorAndMinorVersion(args)
             log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
             log_files = log_files.split()
+            if not log_files:
+                logging.info(f"No log file found for version {ver2}")
             for lf in log_files:
-                mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split(args["--updateLog"]+'_')[1]
-                with open(lf) as f:
-                    file_lines = f.readlines()
-                for l in file_lines:
-                    if l == f"{mr_ver}\n":
-                        mergedLogLines.append(f"{ver2}\n")
-                    else:
-                        mergedLogLines.append(l)
+                logging.info(f"concatenating {lf} as version {ver2}")
+                try:
+                    mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split(args["--updateLog"]+'_')[1]
+                except IndexError as e:
+                    mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split("UPDATE_LOG_")[1]
+                try:
+                    with open(lf) as f:
+                        file_lines = f.readlines()
+                    for l in file_lines:
+                        if l == f"{mr_ver}\n":
+                            mergedLogLines.append(f"{ver2}\n")
+                        else:
+                            mergedLogLines.append(l)
+                except FileNotFoundError as e:
+                    logging.info(f"{lf} no longer in repo, skipping")
+                    pass
         with open(args["--mergedLog"],'w') as f:
             for l in mergedLogLines:
                 f.write(l)
@@ -1165,7 +1238,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def sendNotificationEmail(self, args):
 
-        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadModifiedFiles(args)):
+        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadPublishTargets(args) and self.loadModifiedFiles(args)):
             return False
         # Write the contents of the mail file out to a temporary file
         mailfile = os.path.realpath(tempfile.mktemp())
@@ -1511,30 +1584,31 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 submodulePublic = submapping[self.branchPrefix]
                 args["--submodulePublic"] = submodulePublic
 
-        # deal with subtrees
-        push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
-        push_subtrees = push_subtrees and not args["--noPushSubtrees"]
-        args["--pushSubtrees"] = push_subtrees
-        if push_subtrees:
-            allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
-            self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
-            for st in allsubtrees:
-                prefix = config.get(f'subtree-{st}', 'prefix')
-                if git.diff(f"--name-only {public} {topic} -- " +
-                            f"{os.path.join(self.workspace_dir, prefix)}",
-                            execution_path=self.workspace_dir):
-                    self.modifiedSubtrees.add(st)
-            for st in self.modifiedSubtrees:
-                self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
-                self.st_remotes[st] = git.parseSubprojectRemoteURL(
-                    config.get(f'subtree-{st}', 'remote'),
-                    execution_path=self.workspace_dir)
-                self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
+        if not args["--sendEmail"]:
+            # deal with subtrees
+            push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
+            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+            args["--pushSubtrees"] = push_subtrees
+            if push_subtrees:
+                allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
+                self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
+                for st in allsubtrees:
+                    prefix = config.get(f'subtree-{st}', 'prefix')
+                    if git.diff(f"--name-only {public} {topic} -- " +
+                                f"{os.path.join(self.workspace_dir, prefix)}",
+                                execution_path=self.workspace_dir):
+                        self.modifiedSubtrees.add(st)
+                for st in self.modifiedSubtrees:
+                    self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
+                    self.st_remotes[st] = git.parseSubprojectRemoteURL(
+                        config.get(f'subtree-{st}', 'remote'),
+                        execution_path=self.workspace_dir)
+                    self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
 
-        # deal with nested subprojects. 'workspaceDir' is None on purpose.
-        self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+            # deal with nested subprojects. 'workspaceDir' is None on purpose.
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
-        self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
+            self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
 
         return True
 
@@ -1602,7 +1676,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
 
         # make sure public branch is up to date.
-        grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={public}'])
+        upToDate = grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={public}', '--noForce'])
+        if not upToDate:
+            logging.info("Failed to update local branches.")
+            return False
 
         # set any CL defined publish policy
         policy = None
