@@ -10,7 +10,6 @@ class Option(ABC):
     SECTION_PROJECT = 'project'
     SECTION_PUBLISH = 'publish'
     SECTION_REPO = 'repo'
-    SECTION_SPACKPROJECTS = 'spackProjects'
     SECTION_SUBTREES = 'subtrees'
     SECTION_VERSIONING = 'versioning'
     SECTION_WORKSPACE = 'workspace'

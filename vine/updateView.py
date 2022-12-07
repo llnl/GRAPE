@@ -702,10 +702,10 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
-        config.ensureSection(self.SECTION_SPACKPROJECTS)
+        config.ensureSection("spackProjects")
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
-        config.set(self.SECTION_SPACKPROJECTS, "submodules", " ")
+        config.set("spackProjects", "submodules", " ")
 
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
