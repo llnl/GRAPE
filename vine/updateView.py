@@ -654,13 +654,13 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     # Spack Environment Option 
     def createSpackEnvironment(self, args):
-    """
-    Creates a Spack Environment file for a collection of submodules
-    grape uv --spackEnv=<file>
-    spack env activate <path/to/file>
-    spack concretize
-    spack install
-    """
+        """
+        Creates a Spack Environment file for a collection of submodules
+        grape uv --spackEnv=<file>
+        spack env activate <path/to/file>
+        spack concretize
+        spack install
+        """
         if args["--spackEnv"]:
     # read list of spack projects from configuration
             projects = config.get("spackProjects", "submodules")
