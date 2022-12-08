@@ -315,7 +315,7 @@ class Review(Option, WorkspaceDirHandler):
 
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
-           activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+           activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
                "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
