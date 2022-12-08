@@ -570,9 +570,12 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
-                    request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
-                                                                                              reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
-                                                                                              })
+                    if "gitlab" in args["--codeReviewsURL"]:
+                       request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0),
+                                                                                                 reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
+                                                                                                 })
+                    else:
+                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:
