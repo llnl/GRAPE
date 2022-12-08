@@ -712,6 +712,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
             return True
         pullRequest = self.openPullRequest()
         verified = False
@@ -741,6 +742,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
         else:
             url = git.join_list_as_git_path([codeReviews.url, "projects",
                                             args["--project"], "repos",
@@ -751,6 +753,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
         return verified
 
     def testForCleanWorkspace(self, args):
@@ -1012,6 +1015,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
         self.progress["author"] = pull_request.authorName()
         self.progress["author_username"] = pull_request.author()
+        self.progress["author_email"] = pull_request.authorEmail()
         args["-m"] = escapedCommitMsg
         return True
              
@@ -1294,6 +1298,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # Use their email address from their git user profile.
         myemail = git.config("--get user.email",
                              execution_path=self.workspace_dir)
+        # If the author email is available, send as the author
+        author_email = self.progress["author_email"]
+        if author_email:
+            myemail = author_email
+
         mailsubj = args["--emailSubject"]
         mailsubj = mailsubj.replace(
             "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
