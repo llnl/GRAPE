@@ -1,6 +1,7 @@
 """GRAPE's git utility logic across multiple repositories."""
 import logging
 import os
+import re
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
@@ -35,8 +36,11 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
 
 def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
+    # Look for strings that match ".grapeconfig.<section>.<keyword>"
+    grapeConfigRe = re.compile(GRAPE_CONFIG+"(\.[\w]+){2}$")
     for key in args:
-        if isinstance(args[key], str) and GRAPE_CONFIG in args[key] and config is not None:
+        # Use config file to substitute for grape config default strings
+        if isinstance(args[key], str) and grapeConfigRe.match(args[key]) and config is not None:
             tokens = args[key].split('.')
             args[key] = config.get(tokens[2].strip(), tokens[3].strip())
     return args
