@@ -37,7 +37,7 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
 def parseArgs(docstr, arguments, config):
     args = docopt(docstr, argv=arguments)
     # Look for strings that match ".grapeconfig.<section>.<keyword>"
-    grapeConfigRe = re.compile(GRAPE_CONFIG+"(\.[\w]+){2}$")
+    grapeConfigRe = re.compile(GRAPE_CONFIG+"(\.[\w\-]+){2}$")
     for key in args:
         # Use config file to substitute for grape config default strings
         if isinstance(args[key], str) and grapeConfigRe.match(args[key]) and config is not None:
