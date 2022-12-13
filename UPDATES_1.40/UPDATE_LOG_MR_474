@@ -1,0 +1,9 @@
+
+
+Tue Dec 13 15:36:52 2022 Benjamin T. Liu
+MR_474
+Reviewers: Peter Robinson, Alan Dayton
+
+Account for possible hyphens in grape config keys
+
+- Fix for bug in 1.40.6
