@@ -948,6 +948,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
             if args["--sendEmail"]:
+                # This assumes that we are in the same workspace that published the changes in the submodule
                 submodulePublic = f"{args['--submodulePublic']}"+"@{1}"
             submodules = git.getModifiedSubmodules(
                 self.workspace_dir, topLevelPublic, topic, includeAdded=True)
@@ -960,7 +961,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     pass
 
         # Get list of modified files in nested subprojects
-        # TODO: figure out how to get modified nested subproject files during post-push CI workflow
+        if args["--sendEmail"]:
+            # This assumes that we are in the same workspace that published the changes in the nested subproject
+            public = f"{args['--public']}"+"@{1}"
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             execution_path = os.path.join(self.workspace_dir, nested)
             modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
