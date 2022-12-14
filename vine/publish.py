@@ -915,8 +915,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                      execution_path=execution_path).split()
             except grape_errors.GrapeGitError as e:
-               logging.error(e.message)
-               updatelist = ["[ Failed to get diff ]"]
+               if '@' in public:               
+                  basepublic = public.split('@')[0]
+               else:
+                  basepublic = public
+               if git.SHA(basepublic) != git.SHA(topic):
+                  logging.error(e.message)
+                  updatelist = ["[ Failed to get diff ]"]
+               else:
+                  updatelist = []
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
