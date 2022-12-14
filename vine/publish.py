@@ -915,15 +915,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                      execution_path=execution_path).split()
             except grape_errors.GrapeGitError as e:
-               if '@' in public:               
-                  basepublic = public.split('@')[0]
+               # If a nested subproject was unchanged, the @{1} argument may be invalid,
+               # but we don't want an error message in this case.
+               if 'only has 1 entries' in e.message:
+                  updatelist = []
                else:
-                  basepublic = public
-               if git.SHA(basepublic) != git.SHA(topic):
                   logging.error(e.message)
                   updatelist = ["[ Failed to get diff ]"]
-               else:
-                  updatelist = []
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
