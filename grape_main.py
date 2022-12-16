@@ -30,11 +30,11 @@ from vine import version
 CLI =  """
 *** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 Calling grape by itself will pull up the grape menu.
-Usage: grape [-v | -w | -q] [-d] [--np=<numProcs>] [--version] [<command> <args>...]
+Usage: grape [-v | --vv | -q] [-d] [--np=<numProcs>] [--version] [<command> <args>...]
 
 Options:
 -v           Run in verbose mode. This will print out most git output as git commands complete.
--w           Run in very verbose mode. This will print out all git output as git commands complete.
+--vv         Run in very verbose mode. This will print out all git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
 -d           Defaults proposed by GRAPE used in place of prompting user for input.
              This non-interactive option is for CI jobs and where users see fit.
@@ -156,9 +156,9 @@ def set_verbosity(logger, args, choice=None):
 
     logger.log_to_stderr()
     logger.log_to_stdout()
-    if args['-v'] or args['-w']:
+    if args['-v'] or args['--vv']:
         logger.log_to_stdout_debug()
-        if args['-w']:
+        if args['--vv']:
            git.GIT_VERY_VERBOSE = True
 
 
