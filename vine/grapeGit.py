@@ -216,7 +216,7 @@ def fetch(repo="", branchArg="", recurseSubmodules="no", raiseOnCommError=False,
           warnOnCommError=False, *, execution_path):
     try:
         return gitcmd(f"fetch --recurse-submodules={recurseSubmodules} {repo} {branchArg}", "Fetch failed",
-                      execution_path=execution_path)
+                      execution_path=execution_path, debug_log_stdout = GIT_VERY_VERBOSE)
     except grape_errors.GrapeGitError as e:
         if e.commError:
             # fetch can sometimes hang up when it can't find the remote, resulting in
