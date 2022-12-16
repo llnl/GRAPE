@@ -12,11 +12,12 @@ from vine import vine_subprocess
 
 
 GRAPE_CONFIG = '.grapeconfig'
+GIT_VERY_VERBOSE = False
 
 
 # Note that if capture_output is None, the return code and
 # any errors are ignored.
-def gitcmd(cmd, errmsg, *, execution_path, capture_output=True):
+def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout=True):
     from vine import config_parser_global
 
     cnfg = config_parser_global.grapeConfig()
@@ -31,7 +32,7 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True):
         _cmd = f"git {cmd}"
 
     completed_process = vine_subprocess.executeSubProcess(
-        _cmd, working_dir=execution_path, capture_output=capture_output)
+        _cmd, working_dir=execution_path, capture_output=capture_output, debug_log_stdout=debug_log_stdout)
 
     if not capture_output:
         return
@@ -70,9 +71,16 @@ def remote(argstr="", *, execution_path):
     return gitcmd(f"remote {argstr}", "git remote failed", execution_path=execution_path)
 
 def branch(argstr="", *, execution_path):
+    # If all the arguments to branch are flags, only display output in very verbose mode
+    debug_log_stdout = GIT_VERY_VERBOSE
+    if not debug_log_stdout:
+       for arg in argstr.strip().split(' '):
+          if not arg.startswith('-'):
+             debug_log_stdout = True
+             break
     return gitcmd(f"branch {argstr}",
                   "Could not execute git branch command",
-                  execution_path=execution_path)
+                  execution_path=execution_path, debug_log_stdout=debug_log_stdout)
 
 
 def branchPrefix(branchName):
