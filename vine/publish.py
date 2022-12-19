@@ -917,7 +917,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             except grape_errors.GrapeGitError as e:
                # If a nested subproject was unchanged, the @{1} argument may be invalid,
                # but we don't want an error message in this case.
-               if 'only has 1 entries' in e.message:
+               if 'only has 1 entries' in e.gitOutput:
                   updatelist = []
                else:
                   logging.error(e.message)
