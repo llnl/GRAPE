@@ -330,7 +330,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
             menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
-            uniqueMergeTrainRefs.add(git.SHA(branch, executable_path=self.workspace_dir))
+            uniqueMergeTrainRefs.add(git.SHA(branch, execution_path=self.workspace_dir))
         if args["--tagProposedVersion"]:
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
             logging.info(f"numMerges = {numMerges}")
