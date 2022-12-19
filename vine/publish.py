@@ -915,8 +915,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                      execution_path=execution_path).split()
             except grape_errors.GrapeGitError as e:
-               logging.error(e.message)
-               updatelist = ["[ Failed to get diff ]"]
+               # If a nested subproject was unchanged, the @{1} argument may be invalid,
+               # but we don't want an error message in this case.
+               if 'only has 1 entries' in e.gitOutput:
+                  updatelist = []
+               else:
+                  logging.error(e.message)
+                  updatelist = ["[ Failed to get diff ]"]
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist

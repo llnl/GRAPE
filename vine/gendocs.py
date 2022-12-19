@@ -51,6 +51,20 @@ class Section:
 
 class Tutorial(Section):
     """
+## Contributing to GRAPE
+    <section under development>
+
+# Forking a new version number for grape.
+
+Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+
+Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
+
+Push the new tag.
+
+Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
+push both the new tag and the new commit directly to develop.
+
 ## Introducing the `.grapeconfig` file
 
 To write a sample .grapeconfig file with the settings for grape in your current environment:
