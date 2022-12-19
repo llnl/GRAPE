@@ -1,0 +1,12 @@
+
+
+Mon Dec 19 12:00:00 2022 David M. Dawson
+MR_473
+Reviewers: Peter Robinson, Ben Liu
+
+Mergeback of MR !476
+
+
+Handles the case where a suffix block is to be added but the MR description doesn't exist yet.  
+
+If it does not exist and a suffix block is to be added, then grape will initialize the description with the suffix block(s).
