@@ -260,8 +260,12 @@ class Review(Option, WorkspaceDirHandler):
             for suffix in description_suffixes:
                 suffix_name = suffix["name"]
                 suffix_body = suffix["body"]
-                if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
-                    descr = f"{descr}\n--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+                suffix_string = f"--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+                if descr:
+                    if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
+                        descr = f"{descr}\n{suffix_string}"
+                else:
+                    descr = suffix_string
 
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
