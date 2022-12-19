@@ -325,14 +325,16 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         branches = self.lookupActiveMergeTrainBranches(args)
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        uniqueMergeTrainRefs = set()
         for branch in branches:
             logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
             menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
+            uniqueMergeTrainRefs.add(git.SHA(branch), executable_path=self.workspace_dir)
         if args["--tagProposedVersion"]:
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
             logging.info(f"numMerges = {numMerges}")
-            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(uniqueMergeTrainRefs)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
             
