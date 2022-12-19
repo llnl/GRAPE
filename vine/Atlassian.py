@@ -245,6 +245,9 @@ class PullRequest(StashyNode):
     def authorName(self):
         return self.node["author"]["user"]["displayName"]
 
+    def authorEmail(self):
+        return self.node["author"]["user"]["email"]
+
     def description(self):
         try:
             return self.node["description"].encode('ascii', 'ignore')
