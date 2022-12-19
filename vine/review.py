@@ -205,6 +205,7 @@ class Review(Option, WorkspaceDirHandler):
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
+        project_reviewer_lists = {}
 
         # determine pull request reviewers
         reviewers = self.parseReviewerArgs(args)
@@ -305,6 +306,12 @@ class Review(Option, WorkspaceDirHandler):
                        changed = True 
 
                 if changed:
+                    reviewer_list = {}
+                    if submodule in projects_with_reviewer_lists:
+                        reviewer_list_name = config.get(f"{submodule}-reviewers","reviewer_list_name")
+                        reviewer_list_reviewers = config.get(f"{submodule}-reviewers","reviewer_list").split()
+                        reviewer_list_min_reviewers = config.get(f"{submodule}-reviewers","min_reviewers")
+                        reviewer_list = {reviewer_list_name: (reviewer_list_reviewers, reviewer_list_min_reviewers)}
                     listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
                                                                          "isSubmodule": True,
                                                                          "isNested": False,
@@ -315,7 +322,9 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
                                                                          "reviewers": reviewers,
+                                                                         "reviewer_list" : reviewer_list,
                                                                          "active": submodule in activeSubmodules }]))
+                    project_reviewer_lists.update(reviewer_list)
 
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
@@ -325,6 +334,12 @@ class Review(Option, WorkspaceDirHandler):
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+              reviewer_list = {}
+              if proj in projects_with_reviewer_lists:
+                  reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
+                  reviewer_list_reviewers = config.get(f"{proj}-reviewers","reviewer_list").split()
+                  reviewer_list_min_reviewers = config.get(f"{proj}-reviewers","min_reviewers")
+                  reviewer_list = {reviewer_list_name: (reviewer_list_reviewers, reviewer_list_min_reviewers)}
                prefix_path = os.path.join(self.workspace_dir, prefix)
                listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
                                                                     "isSubmodule": False,
@@ -336,7 +351,10 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
                                                                     "reviewers": reviewers,
+                                                                    "reviewer_list" : reviewer_list,
                                                                     "active": proj in activeNestedSubprojects}]))
+               project_reviewer_lists.update(reviewer_list)
+
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
@@ -382,6 +400,7 @@ class Review(Option, WorkspaceDirHandler):
                 request = postPullRequest(repo, title, branch, target_branch,
                                          updatedDescription,
                                          reviewers,
+                                         project_reviewer_lists,
                                          args,
                                          self.workspace_dir)
 
@@ -415,6 +434,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     proj = kwargs["proj"]
     outerLevelURL = kwargs["outerLevelURL"]
     reviewers = kwargs["reviewers"]
+    reviewer_list  = kwargs["reviewer_list"]
     active = kwargs["active"]
 
     # push branch
@@ -430,7 +450,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
         subDescr = descr
     descr = subDescr
 
-    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, review_args, repo)
+    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, review_args, repo)
     if newRequest:
         return newRequest.link()
     else:
@@ -482,21 +502,11 @@ def targetBranchMissing(errorMessage):
     return False
 
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path):
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path):
     config = config_parser_global.grapeConfig()
-    projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
-    reviewer_list_name = None
-    reviewer_list = None
-    reviewer_list_min_reviewers = None
     repo_name = repo.project.name
-    if repo_name in projects_with_reviewer_lists:
-        reviewer_list_name = config.get(f"{repo_name}-reviewers","reviewer_list_name")
-        reviewer_list = config.get(f"{repo_name}-reviewers","reviewer_list").split()
-        reviewer_list_min_reviewers = config.get(f"{repo_name}-reviewers","min_reviewers")
 
 
-
-    projects_with_reviewer_lists = projects_with_reviewer_lists.split()
     # get the open pull requests outgoing from our public branch
     logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
@@ -525,7 +535,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
                         git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
                         git.push(f"origin {target_branch}", execution_path=git_execution_path)
-                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path)
+                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path)
         else:
             logging.info(
                 f"No pull request from {branch} to {target_branch} to update")
@@ -575,9 +585,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
                     if "gitlab" in args["--codeReviewsURL"]:
-                       request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0),
-                                                                                                 reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
-                                                                                                 })
+                       combined_reviewers = {Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0)}
+                       combined_reviewers.update(reviewer_list)
+                       request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers )
                     else:
                        request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
