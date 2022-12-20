@@ -36,7 +36,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
-                    [--spackEnv=<file>]
+                    [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
