@@ -653,48 +653,37 @@ class UpdateView(Option, WorkspaceDirHandler):
         return True
 
     # Spack Environment Option 
-    def createSpackEnvironment(self, args):
+    def createSpackEnvironment(self, projectType="spackProjects", args):
         """
-        Creates a Spack Environment file for a collection of submodules
+        Reads from a Spack Environment file for a collection of submodules
         grape uv --spackEnv=<file>
         spack env activate <path/to/file>
         spack concretize
         spack install
+
         """
+        if projectType == "spackProjects":
+            config = config_parser_global.grapeConfig()
+            allSpackProjectNames = config.getAllSpackProjects()
+            allSpackProjects = []
+            for project in allSpackProjectNames:
+                allSpackProjects.append(config.get(f"spack-{project}", "prefix"))
+
+
         if args["--spackEnv"]:
     # read list of spack projects from configuration
             projects = config.get("spackProjects", "submodules")
-    # create a string that can be written to a file that spack can read
-        spack_yaml = {
-          'spack': {
-            'specs': [ 
-              'zlib@1.2.11'
-            ],
-            'view': 'true',
-            'concretizer': {
-              'unifiy': 'false'
-              },
-            'repos': [
-              '/usr/WS1/fermaint/ale3dSpack/spack_packages',
-              '/usr/WS1/fermaint/spack/var/spack/repos/builtin'
-            ] 
-          }
-        }
-        spackEnv = yaml.load(spack_yaml)
-        logging.info("Preparing Spack Environment file...")
-        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
-            yaml.dump(spackEnv, f)
-            logging.info(f"Writing Spack Environmnet file...")
+    # read a spack environment file to load
+        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
+            spack_Env = yaml.safe_load(f)
+            logging.info(f"Reading Spack Environmnet file...")
 
-        # yaml.dump(spackEnv, sys.stdout)
     # at some point there will be per project info to add to the spack environment
-        # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
-            # spack_Env = yaml.safe_load(f)
         version  = {}
         for p in projects:
             version[p] = git.SHA(execution_path=os.path.join(self.workspace_dir, p))
             # < add version information to spack environment >
-            with open(os.path.join(self.workspace_dir,"SPACK_PROJECT_SHA.json"),'w') as f:
+            with open(os.path.join(self.workspace_dir,"SPACK_PROJECT_VER.json"),'w') as f:
                 json.dump(version, f)
             # < point path to local checkout, or say that publicly installed version of library satisfies 
             # the requirement if the submodule is not active >
@@ -702,10 +691,10 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
-        config.ensureSection("spackProjects")
+        config.ensureSection(self.SECTION_SPACK_PROJECTS)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
-        config.set("spackProjects", "submodules", " ")
+        config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ")
 
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
