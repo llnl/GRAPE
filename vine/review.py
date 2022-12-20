@@ -334,12 +334,12 @@ class Review(Option, WorkspaceDirHandler):
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-              reviewer_list = {}
-              if proj in projects_with_reviewer_lists:
-                  reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
-                  reviewer_list_reviewers = config.get(f"{proj}-reviewers","reviewer_list").split()
-                  reviewer_list_min_reviewers = config.get(f"{proj}-reviewers","min_reviewers")
-                  reviewer_list = {reviewer_list_name: (reviewer_list_reviewers, reviewer_list_min_reviewers)}
+               reviewer_list = {}
+               if proj in projects_with_reviewer_lists:
+                   reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
+                   reviewer_list_reviewers = config.get(f"{proj}-reviewers","reviewer_list").split()
+                   reviewer_list_min_reviewers = config.get(f"{proj}-reviewers","min_reviewers")
+                   reviewer_list = {reviewer_list_name: (reviewer_list_reviewers, reviewer_list_min_reviewers)}
                prefix_path = os.path.join(self.workspace_dir, prefix)
                listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
                                                                     "isSubmodule": False,
@@ -385,7 +385,7 @@ class Review(Option, WorkspaceDirHandler):
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, self.workspace_dir)
+            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir)
             updatedDescription = request.description()
             if isinstance(updatedDescription, bytes):
                 updatedDescription = updatedDescription.decode("utf-8")
