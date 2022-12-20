@@ -712,6 +712,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
             return True
         pullRequest = self.openPullRequest()
         verified = False
@@ -741,6 +742,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
         else:
             url = git.join_list_as_git_path([codeReviews.url, "projects",
                                             args["--project"], "repos",
@@ -751,6 +753,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
         return verified
 
     def testForCleanWorkspace(self, args):
@@ -912,8 +915,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                updatelist = git.diff(f"--name-only {mergeBase} {topic}",
                                      execution_path=execution_path).split()
             except grape_errors.GrapeGitError as e:
-               logging.error(e.message)
-               updatelist = ["[ Failed to get diff ]"]
+               # If a nested subproject was unchanged, the @{1} argument may be invalid,
+               # but we don't want an error message in this case.
+               if 'only has 1 entries' in e.gitOutput:
+                  updatelist = []
+               else:
+                  logging.error(e.message)
+                  updatelist = ["[ Failed to get diff ]"]
         if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
@@ -945,6 +953,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
             if args["--sendEmail"]:
+                # This assumes that we are in the same workspace that published the changes in the submodule
                 submodulePublic = f"{args['--submodulePublic']}"+"@{1}"
             submodules = git.getModifiedSubmodules(
                 self.workspace_dir, topLevelPublic, topic, includeAdded=True)
@@ -957,7 +966,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     pass
 
         # Get list of modified files in nested subprojects
-        # TODO: figure out how to get modified nested subproject files during post-push CI workflow
+        if args["--sendEmail"]:
+            # This assumes that we are in the same workspace that published the changes in the nested subproject
+            public = f"{args['--public']}"+"@{1}"
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
             execution_path = os.path.join(self.workspace_dir, nested)
             modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
@@ -1012,6 +1023,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
         self.progress["author"] = pull_request.authorName()
         self.progress["author_username"] = pull_request.author()
+        self.progress["author_email"] = pull_request.authorEmail()
         args["-m"] = escapedCommitMsg
         return True
              
@@ -1294,6 +1306,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # Use their email address from their git user profile.
         myemail = git.config("--get user.email",
                              execution_path=self.workspace_dir)
+        # If the author email is available, send as the author
+        author_email = self.progress["author_email"]
+        if author_email:
+            myemail = author_email
+
         mailsubj = args["--emailSubject"]
         mailsubj = mailsubj.replace(
             "<user>", git.config("--get user.name", execution_path=self.workspace_dir))

@@ -3,7 +3,7 @@ import os
 import subprocess
 
 
-def executeSubProcess(command, working_dir=os.getcwd(), capture_output=True):
+def executeSubProcess(command, working_dir=os.getcwd(), capture_output=True, debug_log_stdout=True):
 
     logging.debug(f"Executing: \'{command}\'\n\t" +
                   f"Working Directory: {working_dir}")
@@ -15,7 +15,7 @@ def executeSubProcess(command, working_dir=os.getcwd(), capture_output=True):
     if capture_output:
         stdout_msg = completed_process.stdout.decode().strip()
         stderr_msg = completed_process.stderr.decode().strip()
-        if stdout_msg:
+        if stdout_msg and debug_log_stdout:
             logging.debug(stdout_msg)
         if stderr_msg:
             logging.debug(stderr_msg)

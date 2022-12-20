@@ -260,8 +260,12 @@ class Review(Option, WorkspaceDirHandler):
             for suffix in description_suffixes:
                 suffix_name = suffix["name"]
                 suffix_body = suffix["body"]
-                if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
-                    descr = f"{descr}\n--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+                suffix_string = f"--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+                if descr:
+                    if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
+                        descr = f"{descr}\n{suffix_string}"
+                else:
+                    descr = suffix_string
 
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
@@ -315,7 +319,7 @@ class Review(Option, WorkspaceDirHandler):
 
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
-           activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+           activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
                "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
@@ -570,9 +574,12 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}")
-                    request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers)),
-                                                                                              reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
-                                                                                              })
+                    if "gitlab" in args["--codeReviewsURL"]:
+                       request = request.update(ver, title=title,  description=descr, reviewers={Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0),
+                                                                                                 reviewer_list_name:(reviewer_list, reviewer_list_min_reviewers)
+                                                                                                 })
+                    else:
+                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:

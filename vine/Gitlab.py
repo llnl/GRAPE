@@ -217,7 +217,7 @@ class Repo:
                                             "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description, reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers))})
+         mr.update(title, description=description, reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)})
 
          return mr
 
@@ -481,6 +481,14 @@ class PullRequest:
 
     def authorName(self):
         return self.mergerequest.author["name"]
+
+    def authorName(self):
+        return self.mergerequest.author["name"]
+
+    def authorEmail(self):
+        authorID = self.mergerequest.author["id"]
+        # This will only return a non-empty value if the public email has been set
+        return self.gitlab.users.get(authorID).public_email
 
     def description(self):
         if self.mergerequest.description != None:
