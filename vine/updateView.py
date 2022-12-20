@@ -126,6 +126,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                 allSubprojects.append(config.get(f"nested-{project}", "prefix"))
             activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
 
+        if projectType == "spackProjects":
+            config = config_parser_global.grapeConfig()
+            allSpackProjectNames = config.getAllSpackProjects()
+            allSpackProjects = []
+            for project in allSpackProjectNames:
+                allSpackProjects.append(config.get(f"spack-{project}", "prefix"))
+            #activeSpackProjects = config_parser_user.getAllActiveSpackProjectPrefixes(workspaceDir=self.workspace_dir)
+
         toplevelDirs = {}
         toplevelActiveDirs = {}
         toplevelSubs = []
@@ -653,7 +661,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         return True
 
     # Spack Environment Option 
-    def createSpackEnvironment(self, projectType="spackProjects", args):
+    def createSpackEnvironment(self, args):
         """
         Reads from a Spack Environment file for a collection of submodules
         grape uv --spackEnv=<file>
@@ -662,14 +670,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         spack install
 
         """
-        if projectType == "spackProjects":
-            config = config_parser_global.grapeConfig()
-            allSpackProjectNames = config.getAllSpackProjects()
-            allSpackProjects = []
-            for project in allSpackProjectNames:
-                allSpackProjects.append(config.get(f"spack-{project}", "prefix"))
-
-
         if args["--spackEnv"]:
     # read list of spack projects from configuration
             projects = config.get("spackProjects", "submodules")
@@ -679,12 +679,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.info(f"Reading Spack Environmnet file...")
 
     # at some point there will be per project info to add to the spack environment
-        version  = {}
-        for p in projects:
-            version[p] = git.SHA(execution_path=os.path.join(self.workspace_dir, p))
+        
             # < add version information to spack environment >
-            with open(os.path.join(self.workspace_dir,"SPACK_PROJECT_VER.json"),'w') as f:
-                json.dump(version, f)
             # < point path to local checkout, or say that publicly installed version of library satisfies 
             # the requirement if the submodule is not active >
         
