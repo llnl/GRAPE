@@ -52,7 +52,7 @@ class GrapeConfigParserBase(ConfigParser):
     def getAllSpackProjects(self):
         list_ = []
         try:
-            list_ = self.getList(Option.SECTION_SPACK_PROJECTS, "names")
+            list_ = self.getList(Option.SECTION_SPACK_PROJECTS, "submodules")
         except:
             pass
         finally:
