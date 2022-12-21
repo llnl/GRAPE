@@ -325,16 +325,25 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         branches = self.lookupActiveMergeTrainBranches(args)
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        uniqueMergeTrainRefs = set()
+        # The first branch is always the target branch
+        targetBranch = branches[0]
+        unmergedTrainBranches = []
         for branch in branches:
             logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
             menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
-            uniqueMergeTrainRefs.add(git.SHA(f"origin/{branch}", execution_path=self.workspace_dir))
+            if branch == targetBranch:
+               # Always include the target branch
+               unmergedTrainBranches.append(branch)
+            else:
+               # Only include other branches in the merge train if they are not contained by the target branch
+               containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
+               if f"origin/{targetBranch}" not in containingBranches:
+                  unmergedTrainBranches.append(branch)
         if args["--tagProposedVersion"]:
-            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
+            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{targetBranch}")
             logging.info(f"numMerges = {numMerges}")
-            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(uniqueMergeTrainRefs)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{targetBranch}", f"--numTicks={len(unmergedTrainBranches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
             
