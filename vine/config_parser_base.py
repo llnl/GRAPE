@@ -35,7 +35,7 @@ class GrapeConfigParserBase(ConfigParser):
             self.add_section(section)
             if "nested-" in section:
                 self.set(section,"active", "False")
-            elif "spack" in section:
+            elif "spack-" in section:
                 self.set(section,"active", "False")
         except DuplicateSectionError:
             pass
@@ -52,7 +52,7 @@ class GrapeConfigParserBase(ConfigParser):
     def getAllSpackProjects(self):
         list_ = []
         try:
-            list_ = self.getList(Option.SECTION_SPACK_PROJECTS, "names")
+            list_ = self.getList(Option.SECTION_SPACK_PROJECTS, "submodules")
         except:
             pass
         finally:
