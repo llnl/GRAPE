@@ -719,22 +719,23 @@ class UpdateView(Option, WorkspaceDirHandler):
                 os.system("cd ../")
                 spack_setup = ". spack/share/spack/setup-env.sh"
                 os.system(spack_setup)
-                env = utility.userInput("Would you like to activate the Spack" +
-                                        " environment now? [y/n]", 'y')
-
-                if str(env).lower()[0] == 'y':
-                    _skipEnvAct = False
-                    spacktivate = "spack env activate -p %s" % (os.getcwd())
-                    os.system(spacktivate)
-                    logging.info("You are in Aled3d Spack Environment.") 
-                    concretize = "spack concretize"
-                    os.system(concretize)
-                    install = "spack install"
-                    os.system(install)
-                else:
-                    logging.info("Skipping Environment Activation...")
             else:
                 logging.info("Skipping Spack installation...")
+
+            env = utility.userInput("Would you like to activate the Spack" +
+                                    " environment now? [y/n]", 'y')
+
+            if str(env).lower()[0] == 'y':
+                _skipEnvAct = False
+                spacktivate = "spack env activate -p %s" % (os.getcwd())
+                os.system(spacktivate)
+                logging.info("You are in Aled3d Spack Environment.") 
+                concretize = "spack concretize"
+                os.system(concretize)
+                install = "spack install"
+                os.system(install)
+            else:
+                logging.info("Skipping Environment Activation...")
             # os.system(despacktivate)
 
         # at some point there will be per project info to add to the spack environment
