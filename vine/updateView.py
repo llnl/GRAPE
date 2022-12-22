@@ -132,7 +132,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             allSpackProjects = []
             for project in allSpackProjectNames:
                 allSpackProjects.append(config.get(f"spack-{project}", "prefix"))
-            #activeSpackProjects = config_parser_user.getAllActiveSpackProjectPrefixes(workspaceDir=self.workspace_dir)
+            activeSpackProjects = config_parser_user.getAllActiveSpackProjectPrefixes(workspaceDir=self.workspace_dir)
 
         toplevelDirs = {}
         toplevelActiveDirs = {}
@@ -374,8 +374,10 @@ class UpdateView(Option, WorkspaceDirHandler):
             return False
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
+        includedSpackProjectsPrefixes = {}
 
         allNestedSubprojects = config.getAllNestedSubprojects()
+        allSpackProjects = config.getAllSpackProjects()
 
         nonInteractive = args["--allSubmodules"] or args["--noSubmodules"] or args["--allNestedSubprojects"] or args["--noNestedSubprojects"] or args["--branchFilter"] or args["--branchChanged"] or args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]
 
@@ -385,6 +387,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         addedSubmodules = []
         addedNestedSubprojects = []
+        addedSpackProjects = []
         addedProjects = args["--add"]
         if args["--ensureCIReposPresent"]:
             CIRepos = config.get("workspace","CIRepos").split(' ')
@@ -396,11 +399,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                 addedSubmodules.append(proj)
             elif proj in allNestedSubprojects:
                 addedNestedSubprojects.append(proj)
+            elif proj in allSpackProjects:
+                addedSpackProjects.append(proj)
             else:
                 notFound.append(proj)
 
         rmSubmodules = []
         rmNestedSubprojects = []
+        rmSpackProjects = []
         rmProjects = args["--rm"]
 
         for proj in rmProjects:
@@ -408,6 +414,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                 rmSubmodules.append(proj)
             elif proj in allNestedSubprojects:
                 rmNestedSubprojects.append(proj)
+            elif proj in allSpackProjects:
+                rmSpackProjects.append(proj)
             else:
                 notFound.append(proj)
 
@@ -656,12 +664,18 @@ class UpdateView(Option, WorkspaceDirHandler):
             with open(os.path.join(self.workspace_dir,"GRAPE_PROJECT_SHA.json"),'w') as f:
                 json.dump(sha_dict, f)
 
+
+        if args["--spackEnv"]:
+            # create a Spack Environmnet for a collection of submodules
+            self.createSpackEnvironment()
+
+
         for msg in delayedMessages:
             logging.info(msg)
         return True
 
     # Spack Environment Option 
-    def createSpackEnvironment(self, args):
+    def createSpackEnvironment(self):
         """
         Reads from a Spack Environment file for a collection of submodules
         grape uv --spackEnv
@@ -672,77 +686,76 @@ class UpdateView(Option, WorkspaceDirHandler):
         """
         _skipInstall = True
         _skipEnvAct = True
-        if args["--spackEnv"]:
-            # read list of spack projects from configuration
-            projects = config.get("spackProjects", "submodules")
+        # read list of spack projects from configuration
+        projects = config.get("spackProjects", "submodules")
 
-            # create a string that can be written to a file that spack can read
-            spack_yaml = {
-              'spack': {
-                'specs': [ 
-                  'zlib@1.2.11'
-                ],
-                'view': 'false',
-                'concretizer': {
-                  'unifiy': 'false'
-                },
-                'repos': [
-                  './spack_packages',
-                  './spack/var/spack/repos/builtin'
-                ] 
-              }
-            }
-            spackEnv = yaml.load(spack_yaml)
-            logging.info("Preparing Spack Environment file...")
-            with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
-                yaml.dump(spackEnv, f)
-                logging.info("Writing Spack Environmnet file...")
-            # read a spack environment file to load
-            # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
-            #     spack_Env = yaml.safe_load(f)
-            #     logging.info("Reading Spack Environmnet file...")
+        # create a string that can be written to a file that spack can read
+        spack_yaml = {
+          'spack': {
+            'specs': [ 
+              'zlib@1.2.11'
+            ],
+            'view': 'false',
+            'concretizer': {
+              'unifiy': 'false'
+            },
+            'repos': [
+              './spack_packages',
+              './spack/var/spack/repos/builtin'
+            ] 
+          }
+        }
+        spackEnv = yaml.load(spack_yaml)
+        logging.info("Preparing Spack Environment file...")
+        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
+            yaml.dump(spackEnv, f)
+            logging.info("Writing Spack Environmnet file...")
+        # read a spack environment file to load
+        # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
+        #     spack_Env = yaml.safe_load(f)
+        #     logging.info("Reading Spack Environmnet file...")
 
-            getSpack = utility.userInput(f"Would you like to install Spack in" + 
-                                         " {branch}? [y/n]", 'y')
+        getSpack = utility.userInput(f"Would you like to install Spack in" + 
+                                      " {branch}? [y/n]", 'y')
 
-            if str(getSpack).lower()[0] == 'y':
-                _skipInstall = False
-                logging.info("Installing Spack in %s/spack..." % (os.getcwd()))
-                spack_install = "git clone https://github.com/spack/spack"
-                os.system(spack_install)
-                logging.info("Spack installation complete, " + 
-                               "checking out version 19...")
-                os.system("cd spack/")
-                spack_version = "git checkout releases/v0.19"
-                os.system(spack_version)
-                logging.info("Spack version 19 checkedout")
-                os.system("cd ../")
-                spack_setup = ". spack/share/spack/setup-env.sh"
-                os.system(spack_setup)
-            else:
-                logging.info("Skipping Spack installation...")
+        if str(getSpack).lower()[0] == 'y':
+            _skipInstall = False
+            logging.info("Installing Spack in %s/spack..." % (os.getcwd()))
+            spack_install = "git clone https://github.com/spack/spack"
+            os.system(spack_install)
+            logging.info("Spack installation complete, " + 
+                         "checking out version 19...")
+            os.system("cd spack/")
+            spack_version = "git checkout releases/v0.19"
+            os.system(spack_version)
+            logging.info("Spack version 19 checkedout")
+            os.system("cd ../")
+            spack_setup = ". spack/share/spack/setup-env.sh"
+            os.system(spack_setup)
+        else:
+            logging.info("Skipping Spack installation...")
 
-            env = utility.userInput("Would you like to activate the Spack" +
-                                    " environment now? [y/n]", 'y')
+        env = utility.userInput("Would you like to activate the Spack" +
+                                " environment now? [y/n]", 'y')
 
-            if str(env).lower()[0] == 'y':
-                _skipEnvAct = False
-                spacktivate = "spack env activate -p %s" % (os.getcwd())
-                os.system(spacktivate)
-                logging.info("You are in Aled3d Spack Environment.") 
-                concretize = "spack concretize"
-                os.system(concretize)
-                install = "spack install"
-                os.system(install)
-            else:
-                logging.info("Skipping Environment Activation...")
-            # os.system(despacktivate)
+        if str(env).lower()[0] == 'y':
+            _skipEnvAct = False
+            spacktivate = "spack env activate -p %s" % (os.getcwd())
+            os.system(spacktivate)
+            logging.info("You are in Aled3d Spack Environment.") 
+            concretize = "spack concretize"
+            os.system(concretize)
+            install = "spack install"
+            os.system(install)
+        else:
+            logging.info("Skipping Environment Activation...")
+        # os.system(despacktivate)
 
         # at some point there will be per project info to add to the spack environment
         
-            # < add version information to spack environment >
-            # < point path to local checkout, or say that publicly installed version of library satisfies 
-            # the requirement if the submodule is not active >
+        # < add version information to spack environment >
+        # < point path to local checkout, or say that publicly installed version of library satisfies 
+        # the requirement if the submodule is not active >
         
 
     def setDefaultConfig(self, config):
