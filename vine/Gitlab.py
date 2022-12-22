@@ -567,6 +567,12 @@ class PullRequest:
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
+        # Disable removal of source branch on merge (if this merge request was created by hand).
+        # This should only affect merging by clicking the merge button (grape manually disables the removal when
+        # when merging the merge request). The merge button should be disabled by disabling CI and requiring pipelines
+        # to succeed, but disabling it here provides another layer of protection (removing the branch early can
+        # adversely affect tagging and notification steps in multi-repo projects).
+        self.mergerequest.remove_source_branch = False
         self.mergerequest.save()
         return self
 
