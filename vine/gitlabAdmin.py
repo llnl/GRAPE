@@ -15,7 +15,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
-                              [--createRepo=<name> --repoType=[empty|submodule|nestedSubproject]]
+                              [--createRepo=<name> --initializeRepo=[empty|submodule|nestedSubproject]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
@@ -41,8 +41,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --verbose                   Print information about unaffected repos.
         --createRepo=<name>         Create new repo in project with given name. All relevant repo settings will be
                                     set for the new repo (per --allRepoSettings). Protected branches will not be
-                                    set if the repoType is empty.
-        --repoType=<type>           Type of initialization for newly created repo:
+                                    set if initializeRepo is 'empty'.
+        --initializeRepo=<type>     Type of initialization for newly created repo:
                                        empty            : no branch creation
                                        submodule        : create branches for a submodule
                                        nestedSubproject : create branches for a nested subproject
@@ -234,11 +234,11 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
             publicbranches = config.getPublicBranchList()
             repo_publicbranches = []
 
-            if args["--repoType"].lower() == 'submodule':
+            if args["--initializeRepo"].lower() == 'submodule':
                branchMapping = config.getMapping("workspace", "submodulepublicmappings")
                for branch in publicbranches:
                   repo_publicbranches.append(branchMapping[branch])
-            elif args["--repoType"].lower() == 'nestedsubproject':
+            elif args["--initializeRepo"].lower() == 'nestedsubproject':
                repo_publicbranches = publicbranches
             
             initialBranch = None
