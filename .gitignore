@@ -15,3 +15,6 @@ build/
 *.log
 vine/VERSION
 GRAPE_NESTED_SHA.json
+spack/
+.spack-env
+spack.yaml
