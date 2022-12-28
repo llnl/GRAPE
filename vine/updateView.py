@@ -667,7 +667,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if args["--spackEnv"]:
             # create a Spack Environmnet for a collection of submodules
-            self.createSpackEnvironment()
+            self.createSpackEnvironment(args)
 
 
         for msg in delayedMessages:
@@ -675,7 +675,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         return True
 
     # Spack Environment Option 
-    def createSpackEnvironment(self):
+    def createSpackEnvironment(self, args):
         """
         Reads from a Spack Environment file for a collection of submodules
         grape uv --spackEnv
@@ -687,6 +687,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         _skipInstall = True
         _skipEnvAct = True
         # read list of spack projects from configuration
+        config = config_parser_global.grapeconfig()
         projects = config.get("spackProjects", "submodules")
 
         # create a string that can be written to a file that spack can read
@@ -752,7 +753,12 @@ class UpdateView(Option, WorkspaceDirHandler):
         # os.system(despacktivate)
 
         # at some point there will be per project info to add to the spack environment
-        
+        version = {}
+        for proj in projects:
+            version[proj] = git.SHA(execution_path=os.path.join(self.workspace_dir,proj))
+        # write version information
+        with open(os.path.join(self.workspace_dir,"SPACK_PROJECT_SHA.yaml"),'w') as f:
+            yaml.dump(version, f)
         # < add version information to spack environment >
         # < point path to local checkout, or say that publicly installed version of library satisfies 
         # the requirement if the submodule is not active >
