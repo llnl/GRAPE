@@ -15,11 +15,13 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
+                              [--createRepo=<name> --initializeRepo=[empty|submodule|nestedSubproject]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--requirePipelineSuccess]
+                              [--allRepoSettings]
                               [--scheduledPipelines=[list|add|delete|take|update]
                                [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--runJob=<jobName> | --startJob=<jobName>]
@@ -37,11 +39,24 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos.
+        --createRepo=<name>         Create new repo in project with given name. All relevant repo settings will be
+                                    set for the new repo (per --allRepoSettings). Protected branches will not be
+                                    set if initializeRepo is 'empty'.
+        --initializeRepo=<type>     Type of initialization for newly created repo:
+                                       empty            : no branch creation
+                                       submodule        : create branches for a submodule
+                                       nestedSubproject : create branches for a nested subproject
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --requirePipelineSuccess    Require pipeline success for merge button.
+        --allRepoSettings           Set all administrative repo settings. This includes:
+                                       setProtectedBranches
+                                       setKeepMRApprovals
+                                       disableLFS
+                                       disableSubprojectCI
+                                       requirePipelineSuccess
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
                                        list   : List scheduled pipelines
                                        add    : Add a new scheduled pipeline
@@ -171,7 +186,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                                 )
         projectname = utility.userInput("Group name:", default=args["--project"])
         topreponame = utility.userInput("Outer level repo name:", default=args["--repo"])
-        
+
         try:
            project = grape_gitlab.project(projectname)
         except:
@@ -186,7 +201,77 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            
         task_completed = False
 
-        if args["--setProtectedBranches"] or args["--setKeepMRApprovals"] or args["--disableLFS"] or args["--disableSubprojectCI"] or args["--requirePipelineSuccess"]:
+        if args["--createRepo"]:
+            try:
+               # Only allow admin tasks to be performed if access level is maintainer or above
+               project = grape_gitlab.project(projectname, min_access_level=40)
+            except:
+               logging.info(f"You do not have admin privileges for project {projectname}!")
+               return False
+            if projectname.lower() != config.get("project", "name").lower() or topreponame.lower() != config.get("repo", "name").lower():
+               logging.info("gitlab-admin --createRepo can only be run from the workspace in which you want to create the repo.")
+               return False
+
+            newRepoName = args["--createRepo"]
+
+            # Create the repository with appropriate defaults
+            newRepo = grape_gitlab._gitlab.projects.create({ 'name': newRepoName,
+                                                             'namespace_id': project.group.id,
+                                                             'initialized_with_readme': False,
+                                                             'only_allow_merge_if_pipeline_succeeds': True,
+                                                             # We still need to use the deprecated API for creation
+                                                             'jobs_enabled': False,
+                                                             #'builds_access_level': 'disabled',
+                                                             'lfs_enabled': False})
+            logging.info(f"Created repository {newRepoName}.")
+
+            # Disable reset of approvals on push
+            approvals = newRepo.approvals.get()
+            approvals.reset_approvals_on_push = False
+            approvals.save()
+
+            # Initialize with public branches, if requested, and set as protected branches
+            publicbranches = config.getPublicBranchList()
+            repo_publicbranches = []
+
+            if args["--initializeRepo"].lower() == 'submodule':
+               branchMapping = config.getMapping("workspace", "submodulepublicmappings")
+               for branch in publicbranches:
+                  repo_publicbranches.append(branchMapping[branch])
+            elif args["--initializeRepo"].lower() == 'nestedsubproject':
+               repo_publicbranches = publicbranches
+            
+            initialBranch = None
+            for branch in repo_publicbranches:
+               if not initialBranch:
+                  # Create an initial commit so we can create the branch
+                  newRepo.commits.create({ 'branch': branch,
+                                           'commit_message': 'Initial commit',
+                                           'actions': [ { 'action': 'create', 'file_path':'README', 'content': 'Initial commit' } ] })
+                  # Remove the initial file so the repo is empty
+                  newRepo.commits.create({ 'branch': branch,
+                                           'commit_message': 'Delete initial file',
+                                           'actions': [ { 'action': 'delete', 'file_path': 'README' } ] })
+                  initialBranch = branch
+               else:
+                  newRepo.branches.create({'branch': branch, 'ref': initialBranch})
+
+               # Protect branch to allow developers+maintainers to merge and push, but not to force push.
+               # Delete any default protections from the creation of the first branch.
+               if newRepo.protectedbranches.list(all=True, search=branch):
+                  newRepo.protectedbranches.delete(branch)
+               newRepo.protectedbranches.create({"name": branch,
+                                                 "push_access_level": 30,
+                                                 "merge_access_level": 30,
+                                                 "allow_force_push": False})
+
+        setProtectedBranches = args["--setProtectedBranches"] or args["--allRepoSettings"]
+        setKeepMRApprovals = args["--setKeepMRApprovals"] or args["--allRepoSettings"]
+        disableLFS = args["--disableLFS"] or args["--allRepoSettings"]
+        disableSubprojectCI = args["--disableSubprojectCI"] or args["--allRepoSettings"]
+        requirePipelineSuccess = args["--requirePipelineSuccess"] or args["--allRepoSettings"]
+      
+        if setProtectedBranches or setKeepMRApprovals or disableLFS or disableSubprojectCI or requirePipelineSuccess:
            try:
               # Only allow admin tasks to be performed if access level is maintainer or above
               project = grape_gitlab.project(projectname, min_access_level=40)
@@ -200,7 +285,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                repo = project.repo(reponame)
                logging.info(f"Repository {reponame}")
 
-               if args["--setProtectedBranches"]:
+               if setProtectedBranches:
                   for branch in public:
                      # If this is the top level repository and merge trains are enabled,
                      # disable all pushes if merge trains are enabled for the branch.
@@ -227,7 +312,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                         logging.info(f"\tProtecting branch {branch}")
                   task_completed = True
 
-               if args["--setKeepMRApprovals"]:
+               if setKeepMRApprovals:
                   logging.info("\tSetting Keep MR Approvals...")
                   approvals = repo.project.approvals.get()
                   if approvals.reset_approvals_on_push:
@@ -240,7 +325,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      logging.info("\tPreviously disabled")
                   task_completed = True
 
-               if args["--disableLFS"]:
+               if disableLFS:
                   logging.info("\tDisabling LFS...")
                   if repo.project.lfs_enabled:
                      if args["--dry"]:
@@ -252,7 +337,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      logging.info("\tPreviously disabled")
                   task_completed = True
 
-               if args["--disableSubprojectCI"]:
+               if disableSubprojectCI:
                   if repo.project.name != topRepo.project.name:
                      if repo.project.builds_access_level != "disabled":
                         logging.info("\tDisabling CI...")
@@ -265,7 +350,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                         logging.info("\tPreviously disabled")
                   task_completed = True
 
-               if args["--requirePipelineSuccess"]:
+               if requirePipelineSuccess:
                   logging.info("\tRequiring pipeline success for merge...")
                   if not repo.project.only_allow_merge_if_pipeline_succeeds:
                      if args["--dry"]:
