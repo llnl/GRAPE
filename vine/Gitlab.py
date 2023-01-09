@@ -208,10 +208,15 @@ class Repo:
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
-         diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
-         if diff_result and not diff_result["commits"]:
-            logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
-            return None
+         try:
+            diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
+            if diff_result and not diff_result["commits"]:
+               logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
+               return None
+         except gitlab.exceptions.GitlabGetError:
+            # If the diff is too big, this comparison can throw an exception.
+            # In this case, just create the merge request.
+            pass
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "remove_source_branch": False,
