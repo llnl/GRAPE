@@ -677,7 +677,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     # Spack Environment Option 
     def createSpackEnvironment(self, branch):
         """
-        Reads from a Spack Environment file for a collection of submodules
+        Writes a Spack Environment file for a collection of submodules
         grape uv --spackEnv
         spack env activate <path/to/file>
         spack concretize
@@ -689,27 +689,41 @@ class UpdateView(Option, WorkspaceDirHandler):
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
         projects = config.get("spackProjects", "submodules")
-
+        logging.info(f"Available Spack projects = {projects}")
         # create a string that can be written to a file that spack can read
         spack_yaml = {
           'spack': {
-            'specs': [ 
-              'zlib@1.2.11'
-            ],
-            'view': 'false',
-            'concretizer': {
-              'unifiy': 'false'
+            'specs': ['ale3d'],
+            'develop': {
+              'ale3d': {
+                'spec': 'ale3d@develop',
+                'path': '.'}
             },
+            'view': False,
+            'concretizer': {
+              'unify': False
+            },   
             'repos': [
               './spack_packages',
-              './spack/var/spack/repos/builtin'
-            ] 
-          }
-        }
-        #spackEnv = yaml.load(spack_yaml)
+              '$spack/var/spack/repos/builtin'
+            ]    
+          }    
+        } 
+
+        # adding Spack Projects from .grapeconfig [spackProjects] submodules
+        # to the spack.yaml environment file
+        try:
+            for p in projects.split(' '):
+                name = p.split('/')[1]
+                spack_yaml['spack']['develop'].update({f'{name}': {
+                                                      'spec':'ale3d@develop', 
+                                                      'path':p}}) 
+        except:
+            logging.info("There are no available Spack Projects...") 
+
         logging.info("Preparing Spack Environment file...")
         with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
-            yaml.dump(spack_yaml, f)
+            yaml.dump(spack_yaml, f, default_flow_style=False)
             logging.info("Writing Spack Environmnet file...")
         # read a spack environment file to load
         # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
