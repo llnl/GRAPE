@@ -1380,11 +1380,13 @@ options are at least listed below.
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
+                              [--createRepo=<name> --initializeRepo=[empty|submodule|nestedSubproject]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--disableSubprojectCI]
                               [--requirePipelineSuccess]
+                              [--allRepoSettings]
                               [--scheduledPipelines=[list|add|delete|take|update]
                                [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--runJob=<jobName> | --startJob=<jobName>]
@@ -1402,11 +1404,24 @@ options are at least listed below.
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos.
+        --createRepo=<name>         Create new repo in project with given name. All relevant repo settings will be
+                                    set for the new repo (per --allRepoSettings). Protected branches will not be
+                                    set if initializeRepo is 'empty'.
+        --initializeRepo=<type>     Type of initialization for newly created repo:
+                                       empty            : no branch creation
+                                       submodule        : create branches for a submodule
+                                       nestedSubproject : create branches for a nested subproject
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --disableSubprojectCI       Disable CI in all subprojects.
         --requirePipelineSuccess    Require pipeline success for merge button.
+        --allRepoSettings           Set all administrative repo settings. This includes:
+                                       setProtectedBranches
+                                       setKeepMRApprovals
+                                       disableLFS
+                                       disableSubprojectCI
+                                       requirePipelineSuccess
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
                                        list   : List scheduled pipelines
                                        add    : Add a new scheduled pipeline
