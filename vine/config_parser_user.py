@@ -18,7 +18,7 @@ class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
         # strip out everything except the relevant user configs
         old_sections = self.sections()
         for section in old_sections:
-           if section.startswith("nested-") or section.startswith("spack-"):
+           if section.startswith("nested-"):
                for option in self.options(section):
                   if option != "active":
                      self.remove_option(section, option)
@@ -48,23 +48,6 @@ class GrapeConfigParserUser(config_parser_base.GrapeConfigParserBase):
             self.ensureSection(section)
             self.set(section, "active", "True" if active[proj] is True else "False")
 
-    def setActiveSpackProjects(self, listOfActiveSpackProjects):
-        # clear out any old spack project sections
-        old_sections = self.sections()
-        for section in old_sections:
-           if section.startswith("spack-"):
-              self.remove_section(section)
-
-        allSpackProjects = config_parser_global.grapeConfig().getAllSpackProjects()
-        active = {}
-        for proj in allSpackProjects:
-            active[proj] = False
-        for proj in listOfActiveSpackProjects:
-            active[proj] = True
-        for proj in active:
-            section = f"spack-{proj}"
-            self.ensureSection(section)
-            self.set(section, "active", "True" if active[proj] is True else "False")
 
 def getAllActiveNestedSubprojects(*, workspaceDir):
     config = __get_global_grape_config(workspaceDir)
@@ -102,27 +85,12 @@ def getAllActiveSpackProjects(*, workspaceDir):
     active = []
     for project in allSpackProjects:
         try:
-            if userConfig.getboolean(f"spack-{project}", "active"):
-                active.append(project)
+            active.append(project)
         except configparser.Error:
-            userConfig.ensureSection(f"spack-{project}")
-            userConfig.set(f"spack-{project}", "active", "False")
+            userConfig.ensureSection(self.SECTION_SPACK_PROJECTS)
+            config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ") 
     return active
 
-def getAllInactiveSpackProjects(*, workspaceDir):
-    config = __get_global_grape_config(workspaceDir)
-    allSpackProjects = config.getAllSpackProjects()
-    userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
-    inactive = []
-    for project in allSpackProjects:
-        try:
-            if not userConfig.getboolean(f"spack-{project}", "active"):
-                inactive.append(project)
-        except configparser.Error:
-            userConfig.ensureSection(f"spack-{project}")
-            userConfig.set(f"spack-{project}", "active", "False")
-            inactive.append(project)
-    return inactive
 
 def getAllInactiveNestedSubprojectURLs(*, workspaceDir):
     config = __get_global_grape_config(workspaceDir)
@@ -141,13 +109,6 @@ def getAllActiveNestedSubprojectPrefixes(*, workspaceDir):
     else:
         config = __get_global_grape_config(workspaceDir)
     return [config.get(f"nested-{name}", "prefix") for name in getAllActiveNestedSubprojects(workspaceDir=workspaceDir)]
-
-def getAllActiveSpackProjectPrefixes(*, workspaceDir):
-    if workspaceDir is None:
-        config = config_parser_global.grapeConfig()
-    else:
-        config = __get_global_grape_config(workspaceDir)
-    return [config.get(f"spack-{submodule}", "prefix") for submodule in getAllActiveSpackProjects(workspaceDir=workspaceDir)]
 
 
 def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir, checkRemote=False):
