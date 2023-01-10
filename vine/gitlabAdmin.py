@@ -3,6 +3,7 @@ import logging
 import os
 from vine import config_parser_base
 from vine import config_parser_global
+from vine import config_parser_workspace
 from vine import Gitlab
 from vine import grapeGit as git
 from vine import utility
@@ -34,6 +35,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--verifySSL=<bool>]
                               [--project=<prj>]
                               [--repo=<repo>]
+                              [--branch=<branch>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
 
@@ -89,7 +91,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
         --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-        --branch=<branch>           Branch in top level repo for looking up subprojects.
+        --branch=<branch>           Branch in top level repo for checking .grapeconfig.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
@@ -108,11 +110,11 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
     # Returns a dictionary of repo => list of public branch names
     # for each repo in the project that is in the grape project
-    def getGrapeReposAndPublicBranches(self, project, topreponame, verbose):
+    def getGrapeReposAndPublicBranches(self, project, topreponame, initialbranch, verbose):
         grapeRepos = {}
 
         toprepo = project.repo(topreponame, min_access_level=40)
-        grapeConfig = toprepo.project.files.raw(file_path=".grapeconfig", ref="HEAD").decode('utf-8')
+        grapeConfig = toprepo.project.files.raw(file_path=".grapeconfig", ref=initialbranch).decode('utf-8')
         config = config_parser_base.GrapeConfigParserBase(configString=grapeConfig)
 
         # List of repos in gitlab project
@@ -183,6 +185,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
         projectname = args["--project"]
         topreponame = args["--repo"]
+        initialbranch = args["--branch"]
 
         # Get defaults from current workspace
         grape_config = config_parser_global.grapeConfig()
@@ -190,6 +193,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            projectname = utility.userInput("Project (group) name:", default=grape_config.get("project", "name"))
         if not topreponame:
            topreponame = utility.userInput("Outer level repo (project) name:", default=grape_config.get("repo", "name"))
+        if not initialbranch:
+           initialpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
+           initialbranch = utility.userInput("Branch for outer level repo .grapeconfig:", default=initialpublic)
 
         try:
            project = grape_gitlab.project(projectname)
@@ -250,7 +256,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
       
         if setProtectedBranches or setKeepMRApprovals or disableLFS or disableSubprojectCI or requirePipelineSuccess:
            project = grape_gitlab.project(projectname)
-           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, verbose=args["--verbose"])
+           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, initialbranch=topbranch, verbose=args["--verbose"])
 
            for reponame,public in grapeRepos.items():
                logging.info(f"Repository {reponame}")
