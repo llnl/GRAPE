@@ -35,8 +35,6 @@ class GrapeConfigParserBase(ConfigParser):
             self.add_section(section)
             if "nested-" in section:
                 self.set(section,"active", "False")
-            elif "spack-" in section:
-                self.set(section,"active", "False")
         except DuplicateSectionError:
             pass
 
