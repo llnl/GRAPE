@@ -1,0 +1,17 @@
+
+
+Tue Jan 10 16:01:57 2023 Benjamin T. Liu
+MR_494
+Reviewers: Peter Robinson, Alan Dayton
+
+Improvements for grape gitlab-admin
+
+- Allow administration tasks for any repos with sufficient access
+
+- Skip project/repo query if specified on command line
+
+- Fixes to allow running admin tasks from another workspace (query .grapeconfig from server)
+
+- Do not create initial branch for --createRepo
+
+- Optionally grant ownership privileges when creating repo
