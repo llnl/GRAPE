@@ -168,8 +168,8 @@ class Project:
     def repolist(self):
         return [r.name for r in self.group.projects.list(all=True)]
 
-    def repo(self, name):
-        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name) if x.name.lower() == name.lower()]
+    def repo(self, name, min_access_level=None):
+        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
         if matching_ids:
             project_id = matching_ids[0]
         else:
