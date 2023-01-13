@@ -81,7 +81,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      that are not changed.
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
                                      if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
-                                     matches the tag of the public branch (except for the final version slot).
+                                     matches the tag of the public branch (except for the final version slot) or in a submodule
+                                     if the SHA of hte branch is in the history of the gitlink.
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
@@ -230,8 +231,10 @@ class UpdateView(Option, WorkspaceDirHandler):
         branchChangedArg = args["--branchChanged"]
         if branchChangedArg.endswith('~'):
             branchChanged = branchChangedArg[:-1]
+            checkSubmoduleHistory = True
         else:
             branchChanged = branchChangedArg
+            checkSubmoduleHistory = False
         public = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(branchChanged)
         tagPrefix= None
 
@@ -244,15 +247,16 @@ class UpdateView(Option, WorkspaceDirHandler):
                branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
 
-        return (branchChanged, public, tagPrefix)
+        return (branchChanged, public, tagPrefix, checkSubmoduleHistory)
 
     # Return true if the subproject at url includes the branch (and it differs from public
     # if checkChanged is set).
     # If tagPrefix is provides, tags matching that pattern are considered as part of the
     # history of public (so if the branch matches the tag it is not considered different).
     @staticmethod
-    def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None):
-        # If the branch exists locally, check there first
+    def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None, checkSubmoduleHistory = None):
+        # If the branch exists locally, check there first (this will only detect if the branch exists and/or is changed,
+        # not that it is unchanged).
         if subprojectPrefix in subprojectPrefixList:
            subpath = os.path.join(workspace_dir,subprojectPrefix)
            # subprojectPrefixList should filter by the active subprojects, but for nested subprojects some of the
@@ -291,7 +295,22 @@ class UpdateView(Option, WorkspaceDirHandler):
                     tagSHA.append(SHA_and_ref[0])
 
         if checkChanged:
-           return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+           changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+           # Only check the submodule history if the submodule appears 
+           if changed and checkSubmoduleHistory:
+               # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
+               revListCmd = f"rev-list {public} {subprojectPrefix}"
+               gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
+               for outerSHA in gitLinkCommits.splitlines():
+                  # Retrieve the gitlink metadata:
+                  # [mode] [type] [SHA] [path]
+                  lsTreeCmd = f"ls-tree {outerSHA} {subprojectPrefix}"
+                  gitLinkInfo = git.gitcmd(lsTreeCmd, f"Could not run '{lsTreeCmd}'", execution_path=workspace_dir)
+                  SHA = gitLinkInfo.split()[2]
+                  if SHA == branchSHA:
+                     changed = False
+                     break
+           return changed
         else:
            return branchSHA != None
 
@@ -418,10 +437,9 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if args["--branchFilter"]:
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir))
                 elif args["--branchChanged"]:
-                    (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
+                    (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
-                    # version tags are not used in submodules, so we don't pass the tagPrefix
-                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, tagPrefix=None)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, checkSubmoduleHistory=checkSubmoduleHistory)
                 else:
                     branchFilter = lambda x : True
 
@@ -445,7 +463,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if args["--branchFilter"]:
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
                 elif args["--branchChanged"]:
-                    (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
+                    (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
                     branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir), checkChanged = True, public=public, tagPrefix=tagPrefix)
                 else:
                     branchFilter = lambda x : True
