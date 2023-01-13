@@ -387,7 +387,7 @@ class Review(Option, WorkspaceDirHandler):
             add_labels = []
             remove_labels = []
             try:
-               changedfilelabelmapping = config.getMapping("review", "changedfilelabelmapping")
+               changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
                if changedfilelabelmapping:
                    for path,label in changedfilelabelmapping.items():
                        try:
