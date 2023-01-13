@@ -424,6 +424,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                            execution_path=self.workspace_dir)
         # release IN PROGRESS LOCK
         logging.info("Releasing In Progress Lock")
+        self.args = args
         self.releaseInProgressLock(args)
 
     @log_wrapper
