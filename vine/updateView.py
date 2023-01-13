@@ -149,7 +149,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         if self.uvManager:
             self.uvManager.createFrame(projectType)
 
-        for directory, subprojects in toplevelDirs.items():
+        for directory, subprojects in sorted(toplevelDirs.items()):
 
             activeDir = toplevelActiveDirs[directory]
             if len(activeDir) == 0:
@@ -161,7 +161,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             if self.uvManager:
                 opt = "s"
-                self.uvManager.createSection(directory)
+                self.uvManager.createSection(directory = directory, size = len(subprojects))
             else:
                 opt = utility.userInput(f"Would you like all, some, or none of the {projectType}s in {directory}?",
                                         default=defaultValue)
@@ -191,7 +191,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                                  'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
-            self.uvManager.createSection()
+            self.uvManager.createSection(size = len(toplevelSubs))
         for subproject in sorted(toplevelSubs, key=lambda v: (v.upper(), v[0].islower())):
             if self.uvManager:
                 # Set the default value for the gui
@@ -901,17 +901,19 @@ class UVManager:
             self.currentProjectIndex = 1
 
     # Start a new section for a different directory
-    def createSection(self, directory = ""):
+    def createSection(self, directory = "", size = 1):
         directory_name = "top level" if directory == "" else directory
         
         # sort the previous section (if any)
         self.resortList(self.currentActiveList)
         self.resortList(self.currentInactiveList)
 
+        height = min(size, 10)
+
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
-        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
+        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height)
         activescroll.config(command=activelist.yview)
         activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         activelabel.grid(row=0, column=0, columnspan=2)
@@ -927,7 +929,7 @@ class UVManager:
         inactivepanel = Tk.Frame()
         inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory_name}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
-        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
+        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height)
         inactivescroll.config(command=inactivelist.yview)
         inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         inactivelabel.grid(row=0, column=0, columnspan=2)
