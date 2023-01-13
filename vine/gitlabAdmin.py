@@ -1,7 +1,9 @@
 import configparser
 import logging
 import os
+from vine import config_parser_base
 from vine import config_parser_global
+from vine import config_parser_workspace
 from vine import Gitlab
 from vine import grapeGit as git
 from vine import utility
@@ -15,7 +17,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
-                              [--createRepo=<name> --initializeRepo=[empty|submodule|nestedSubproject]]
+                              [--createRepo=<name> [--owner=<user>]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
@@ -33,19 +35,16 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--verifySSL=<bool>]
                               [--project=<prj>]
                               [--repo=<repo>]
+                              [--branch=<branch>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos.
-        --createRepo=<name>         Create new repo in project with given name. All relevant repo settings will be
-                                    set for the new repo (per --allRepoSettings). Protected branches will not be
-                                    set if initializeRepo is 'empty'.
-        --initializeRepo=<type>     Type of initialization for newly created repo:
-                                       empty            : no branch creation
-                                       submodule        : create branches for a submodule
-                                       nestedSubproject : create branches for a nested subproject
+        --createRepo=<name>         Create new empty repo in project with given name. All relevant repo settings will be
+                                    set for the new repo (per --allRepoSettings) except protected branches will not be set.
+        --owner=<user>              Add user as owner of newly created repo.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
@@ -90,10 +89,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                     [default: .grapeconfig.project.verifySSL]
         --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-                                    [default: .grapeconfig.project.name]
         --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-                                    [default: .grapeconfig.repo.name]
+        --branch=<branch>           Branch in top level repo for checking .grapeconfig.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
@@ -112,10 +110,12 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
     # Returns a dictionary of repo => list of public branch names
     # for each repo in the project that is in the grape project
-    def getGrapeReposAndPublicBranches(self, project, verbose):
+    def getGrapeReposAndPublicBranches(self, project, topreponame, initialbranch, verbose):
         grapeRepos = {}
 
-        config = config_parser_global.grapeConfig()
+        toprepo = project.repo(topreponame, min_access_level=40)
+        grapeConfig = toprepo.project.files.raw(file_path=".grapeconfig", ref=initialbranch).decode('utf-8')
+        config = config_parser_base.GrapeConfigParserBase(configString=grapeConfig)
 
         # List of repos in gitlab project
         reponames = project.repolist()
@@ -167,8 +167,6 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
          
     @log_wrapper
     def execute(self, args):
-        config = config_parser_global.grapeConfig()
-
         if "gitlab" not in args["--codeReviewsURL"]:
             logging.info("gitlab-admin should only be used with GitLab.")
             return False
@@ -184,8 +182,20 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                                  ssh_path = args["--ssh_pat_url"],
                                                  workspace_dir=self.workspace_dir
                                                 )
-        projectname = utility.userInput("Group name:", default=args["--project"])
-        topreponame = utility.userInput("Outer level repo name:", default=args["--repo"])
+
+        projectname = args["--project"]
+        topreponame = args["--repo"]
+        initialbranch = args["--branch"]
+
+        # Get defaults from current workspace
+        grape_config = config_parser_global.grapeConfig()
+        if not projectname:
+           projectname = utility.userInput("Project (group) name:", default=grape_config.get("project", "name"))
+        if not topreponame:
+           topreponame = utility.userInput("Outer level repo (project) name:", default=grape_config.get("repo", "name"))
+        if not initialbranch:
+           initialpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
+           initialbranch = utility.userInput("Branch for outer level repo .grapeconfig:", default=initialpublic)
 
         try:
            project = grape_gitlab.project(projectname)
@@ -208,9 +218,6 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
             except:
                logging.info(f"You do not have admin privileges for project {projectname}!")
                return False
-            if projectname.lower() != config.get("project", "name").lower() or topreponame.lower() != config.get("repo", "name").lower():
-               logging.info("gitlab-admin --createRepo can only be run from the workspace in which you want to create the repo.")
-               return False
 
             newRepoName = args["--createRepo"]
 
@@ -230,40 +237,16 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
             approvals.reset_approvals_on_push = False
             approvals.save()
 
-            # Initialize with public branches, if requested, and set as protected branches
-            publicbranches = config.getPublicBranchList()
-            repo_publicbranches = []
-
-            if args["--initializeRepo"].lower() == 'submodule':
-               branchMapping = config.getMapping("workspace", "submodulepublicmappings")
-               for branch in publicbranches:
-                  repo_publicbranches.append(branchMapping[branch])
-            elif args["--initializeRepo"].lower() == 'nestedsubproject':
-               repo_publicbranches = publicbranches
-            
-            initialBranch = None
-            for branch in repo_publicbranches:
-               if not initialBranch:
-                  # Create an initial commit so we can create the branch
-                  newRepo.commits.create({ 'branch': branch,
-                                           'commit_message': 'Initial commit',
-                                           'actions': [ { 'action': 'create', 'file_path':'README', 'content': 'Initial commit' } ] })
-                  # Remove the initial file so the repo is empty
-                  newRepo.commits.create({ 'branch': branch,
-                                           'commit_message': 'Delete initial file',
-                                           'actions': [ { 'action': 'delete', 'file_path': 'README' } ] })
-                  initialBranch = branch
+            if args["--owner"]:
+               matching_users = grape_gitlab._gitlab.users.list(all=True, username=args["--owner"])
+               if matching_users:
+                  user_id = matching_users[0].id
+                  newRepo.members.create({'user_id': user_id, 'access_level': 50})
                else:
-                  newRepo.branches.create({'branch': branch, 'ref': initialBranch})
+                  logging.info(f"Owner username {args['--owner']} not found.")
 
-               # Protect branch to allow developers+maintainers to merge and push, but not to force push.
-               # Delete any default protections from the creation of the first branch.
-               if newRepo.protectedbranches.list(all=True, search=branch):
-                  newRepo.protectedbranches.delete(branch)
-               newRepo.protectedbranches.create({"name": branch,
-                                                 "push_access_level": 30,
-                                                 "merge_access_level": 30,
-                                                 "allow_force_push": False})
+            logging.info(f"Please run `grape gitlab-admin --setProtectedBranches' after public branches are pushed.")
+            task_completed = True
 
         setProtectedBranches = args["--setProtectedBranches"] or args["--allRepoSettings"]
         setKeepMRApprovals = args["--setKeepMRApprovals"] or args["--allRepoSettings"]
@@ -272,18 +255,15 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         requirePipelineSuccess = args["--requirePipelineSuccess"] or args["--allRepoSettings"]
       
         if setProtectedBranches or setKeepMRApprovals or disableLFS or disableSubprojectCI or requirePipelineSuccess:
-           try:
-              # Only allow admin tasks to be performed if access level is maintainer or above
-              project = grape_gitlab.project(projectname, min_access_level=40)
-           except:
-              logging.info(f"You do not have admin privileges for project {projectname}!")
-              return False
-
-           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, verbose=args["--verbose"])
+           project = grape_gitlab.project(projectname)
+           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, initialbranch=topbranch, verbose=args["--verbose"])
 
            for reponame,public in grapeRepos.items():
-               repo = project.repo(reponame)
                logging.info(f"Repository {reponame}")
+               try:
+                  repo = project.repo(reponame, min_access_level=40)
+               except:
+                  logging.info("Skipped. Perhaps you are not an owner or maintainer")
 
                if setProtectedBranches:
                   for branch in public:
@@ -292,7 +272,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      disablePush = False
                      if reponame == topreponame and repo.project.merge_trains_enabled:
                          parser = configparser.ConfigParser()
-                         grapeConfig = git.show(f"{branch}:.grapeconfig", execution_path=self.workspace_dir)
+                         grapeConfig = repo.project.files.raw(file_path=".grapeconfig", ref=branch).decode('utf-8')
                          parser.read_string(grapeConfig)
                          try:
                              if parser.get('publish','mergetrain'):

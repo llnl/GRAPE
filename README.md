@@ -1380,7 +1380,7 @@ options are at least listed below.
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
-                              [--createRepo=<name> --initializeRepo=[empty|submodule|nestedSubproject]]
+                              [--createRepo=<name> [--owner=<user>]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
@@ -1398,19 +1398,16 @@ options are at least listed below.
                               [--verifySSL=<bool>]
                               [--project=<prj>]
                               [--repo=<repo>]
+                              [--branch=<branch>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos.
-        --createRepo=<name>         Create new repo in project with given name. All relevant repo settings will be
-                                    set for the new repo (per --allRepoSettings). Protected branches will not be
-                                    set if initializeRepo is 'empty'.
-        --initializeRepo=<type>     Type of initialization for newly created repo:
-                                       empty            : no branch creation
-                                       submodule        : create branches for a submodule
-                                       nestedSubproject : create branches for a nested subproject
+        --createRepo=<name>         Create new empty repo in project with given name. All relevant repo settings will be
+                                    set for the new repo (per --allRepoSettings) except protected branches will not be set.
+        --owner=<user>              Add user as owner of newly created repo.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
@@ -1455,10 +1452,9 @@ options are at least listed below.
                                     [default: .grapeconfig.project.verifySSL]
         --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-                                    [default: .grapeconfig.project.name]
         --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-                                    [default: .grapeconfig.repo.name]
+        --branch=<branch>           Branch in top level repo for checking .grapeconfig.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
