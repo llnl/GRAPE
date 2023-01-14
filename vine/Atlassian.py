@@ -332,6 +332,8 @@ class PullRequest(StashyNode):
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
         return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewers), self._stashy_pull_requests)
 
+    def regeneratePipeline(self):
+        pass
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())

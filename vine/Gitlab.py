@@ -593,6 +593,10 @@ class PullRequest:
         self.mergerequest.save()
         return self
 
+    def regeneratePipeline(self):
+        # Create a new pipeline to reflect any changes in labels
+        self.mergerequest.pipelines.create()
+
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
 

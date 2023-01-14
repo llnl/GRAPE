@@ -686,6 +686,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if inprogresslabel:
            request = self.openPullRequest()
            request.update(request.version(), add_labels=[inprogresslabel])
+           # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
+           request.regeneratePipeline()
 
         retcode = self.checkInProgressLock(args)
         if retcode:
@@ -713,6 +715,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
             if inprogresslabel:
                request.update(request.version(), remove_labels=[inprogresslabel])
+               # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
+               request.regeneratePipeline()
             return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")

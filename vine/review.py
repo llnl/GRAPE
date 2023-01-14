@@ -604,7 +604,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                             f"{request.author()} is the author of the pull" +
                             " request and cannot be a reviewer")
                     subReviewers.remove(request.author())
-                if title is not None or descr is not None or subReviewers:
+                if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}, add_labels={add_labels}, remove_labels={remove_labels}")
@@ -614,6 +614,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                        request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers, add_labels=add_labels, remove_labels=remove_labels)
                     else:
                        request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+                    if add_labels or remove_labels:
+                       request.regeneratePipeline()
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:
