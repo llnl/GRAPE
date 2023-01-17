@@ -82,7 +82,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
                                      if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
                                      matches the tag of the public branch (except for the final version slot) or in a submodule
-                                     if the SHA of hte branch is in the history of the gitlink.
+                                     if the SHA of the branch is in the history of the gitlink.
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
@@ -296,7 +296,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if checkChanged:
            changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
-           # Only check the submodule history if the submodule appears 
+           # Only check the submodule history if the submodule appears to be changed
            if changed and checkSubmoduleHistory:
                # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
                revListCmd = f"rev-list {public} {subprojectPrefix}"
