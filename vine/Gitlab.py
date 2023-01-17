@@ -204,7 +204,7 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
@@ -222,7 +222,9 @@ class Repo:
                                             "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description, reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)})
+         mr.update(title, description=description,
+                   reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)},
+                   add_labels=labels)
 
          return mr
 
@@ -549,7 +551,7 @@ class PullRequest:
         return self.mergerequest.iid
 
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None):
+    def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
         if description:
@@ -572,6 +574,16 @@ class PullRequest:
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
+
+        labels = set(self.mergerequest.labels)
+        for label in add_labels:
+            labels.add(label)
+        for label in remove_labels:
+            try:
+               labels.remove(label)
+            except KeyError:
+               pass
+        self.mergerequest.labels = list(labels)
         # Disable removal of source branch on merge (if this merge request was created by hand).
         # This should only affect merging by clicking the merge button (grape manually disables the removal when
         # when merging the merge request). The merge button should be disabled by disabling CI and requiring pipelines
@@ -580,6 +592,10 @@ class PullRequest:
         self.mergerequest.remove_source_branch = False
         self.mergerequest.save()
         return self
+
+    def regeneratePipeline(self):
+        # Create a new pipeline to reflect any changes in labels
+        self.mergerequest.pipelines.create()
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
