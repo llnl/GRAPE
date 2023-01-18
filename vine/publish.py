@@ -424,6 +424,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                            execution_path=self.workspace_dir)
         # release IN PROGRESS LOCK
         logging.info("Releasing In Progress Lock")
+        self.args = args
         self.releaseInProgressLock(args)
 
     @log_wrapper
@@ -666,7 +667,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     logging.info(request)
                 return False
             else:
-                thisRequest = self.repo.getOpenPullRequest(args["--topic"], args["--public"])
+                thisRequest = self.openPullRequest()
                 for request in inProgressRequests:
                     if thisRequest == request:
                         logging.info("The pull request for this branch is already in progress. Continuing...")
@@ -679,6 +680,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Check..")
             return True
+        
+        config = config_parser_global.grapeConfig()
+        inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+        if inprogresslabel:
+           request = self.openPullRequest()
+           request.update(request.version(), add_labels=[inprogresslabel])
+           # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
+           request.regeneratePipeline()
+
         retcode = self.checkInProgressLock(args)
         if retcode:
             # the 2 means we are already marked as in progress
@@ -701,6 +711,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     break
         if request:
             title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
+            config = config_parser_global.grapeConfig()
+            inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+            if inprogresslabel:
+               request.update(request.version(), remove_labels=[inprogresslabel])
+               # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
+               request.regeneratePipeline()
             return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
