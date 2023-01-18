@@ -909,11 +909,12 @@ class UVManager:
         self.resortList(self.currentInactiveList)
 
         height = min(size, 8)
+        width = 30
 
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
-        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height)
+        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         activescroll.config(command=activelist.yview)
         activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         activelabel.grid(row=0, column=0, columnspan=2)
@@ -930,7 +931,7 @@ class UVManager:
         inactivepanel = Tk.Frame()
         inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory_name}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
-        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height)
+        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         inactivescroll.config(command=inactivelist.yview)
         inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         inactivelabel.grid(row=0, column=0, columnspan=2)
