@@ -891,7 +891,7 @@ class UVManager:
         frame = Tk.Frame()
         label = Tk.Label(frame, text=f"Select {projectType}s")
         label.grid()
-        self.master.grid_rowconfigure(self.currentRow, weight=1)
+        self.master.grid_rowconfigure(self.currentRow, weight=1, minsize=70)
         self.master.grid_columnconfigure(self.currentColumn, weight=1)
         self.master.grid_columnconfigure(self.currentColumn+1, weight=1)
         frame.grid(row=1, column=self.currentColumn, columnspan=2, sticky="nsew")
@@ -908,7 +908,7 @@ class UVManager:
         self.resortList(self.currentActiveList)
         self.resortList(self.currentInactiveList)
 
-        height = min(size, 10)
+        height = min(size, 8)
 
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
@@ -919,6 +919,7 @@ class UVManager:
         activelabel.grid(row=0, column=0, columnspan=2)
         activelist.grid(row=2, column=1)
         activepanel.grid(row=self.currentRow, column=self.currentColumn)
+        activepanel.grid_rowconfigure(self.currentRow, minsize=20)
 
         activepanel.grid_rowconfigure(2, weight=1)
         activepanel.grid_columnconfigure(1, weight=1)
@@ -937,6 +938,7 @@ class UVManager:
         inactivepanel.grid_columnconfigure(1, weight=1)
         inactivelist.grid(row=2, column=1, sticky="nsew")
         inactivepanel.grid(row=self.currentRow, column=self.currentColumn+1, sticky="nsew")
+        inactivepanel.grid_rowconfigure(self.currentRow, minsize=20)
         self.currentInactiveList = inactivelist
 
         self.currentRow = self.currentRow + 2
