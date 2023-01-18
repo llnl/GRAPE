@@ -149,7 +149,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         if self.uvManager:
             self.uvManager.createFrame(projectType)
 
-        for directory, subprojects in toplevelDirs.items():
+        for directory, subprojects in sorted(toplevelDirs.items()):
 
             activeDir = toplevelActiveDirs[directory]
             if len(activeDir) == 0:
@@ -161,7 +161,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             if self.uvManager:
                 opt = "s"
-                self.uvManager.createSection(directory)
+                self.uvManager.createSection(directory = directory, size = len(subprojects))
             else:
                 opt = utility.userInput(f"Would you like all, some, or none of the {projectType}s in {directory}?",
                                         default=defaultValue)
@@ -191,7 +191,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                                  'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
-            self.uvManager.createSection()
+            self.uvManager.createSection(size = len(toplevelSubs))
         for subproject in sorted(toplevelSubs, key=lambda v: (v.upper(), v[0].islower())):
             if self.uvManager:
                 # Set the default value for the gui
@@ -891,7 +891,7 @@ class UVManager:
         frame = Tk.Frame()
         label = Tk.Label(frame, text=f"Select {projectType}s")
         label.grid()
-        self.master.grid_rowconfigure(self.currentRow, weight=1)
+        self.master.grid_rowconfigure(self.currentRow, weight=1, minsize=70)
         self.master.grid_columnconfigure(self.currentColumn, weight=1)
         self.master.grid_columnconfigure(self.currentColumn+1, weight=1)
         frame.grid(row=1, column=self.currentColumn, columnspan=2, sticky="nsew")
@@ -901,22 +901,28 @@ class UVManager:
             self.currentProjectIndex = 1
 
     # Start a new section for a different directory
-    def createSection(self, directory = ""):
+    def createSection(self, directory = "", size = 1):
         directory_name = "top level" if directory == "" else directory
         
         # sort the previous section (if any)
         self.resortList(self.currentActiveList)
         self.resortList(self.currentInactiveList)
 
+        height = min(size, 8)
+        width = 30
+
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
-        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
+        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit,
+                                selectbackground=self.bgselected, selectforeground=self.fgselected,
+                                yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         activescroll.config(command=activelist.yview)
         activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         activelabel.grid(row=0, column=0, columnspan=2)
         activelist.grid(row=2, column=1)
         activepanel.grid(row=self.currentRow, column=self.currentColumn)
+        activepanel.grid_rowconfigure(self.currentRow, minsize=20)
 
         activepanel.grid_rowconfigure(2, weight=1)
         activepanel.grid_columnconfigure(1, weight=1)
@@ -927,7 +933,9 @@ class UVManager:
         inactivepanel = Tk.Frame()
         inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory_name}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
-        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
+        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit,
+                                  selectbackground=self.bgselected, selectforeground=self.fgselected,
+                                  yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         inactivescroll.config(command=inactivelist.yview)
         inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         inactivelabel.grid(row=0, column=0, columnspan=2)
@@ -935,23 +943,28 @@ class UVManager:
         inactivepanel.grid_columnconfigure(1, weight=1)
         inactivelist.grid(row=2, column=1, sticky="nsew")
         inactivepanel.grid(row=self.currentRow, column=self.currentColumn+1, sticky="nsew")
+        inactivepanel.grid_rowconfigure(self.currentRow, minsize=20)
         self.currentInactiveList = inactivelist
 
         self.currentRow = self.currentRow + 2
 
         index = self.currentProjectIndex
         activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(directory, activelist, inactivelist,
-                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                              self.activeSets[index], self.inactiveSets[index],
+                                                                              self.originalActiveSets[index]))
         inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(directory, activelist, inactivelist,
-                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                              self.activeSets[index], self.inactiveSets[index],
+                                                                              self.originalActiveSets[index]))
 
         activeall = Tk.Button(activepanel, text="activate all", borderwidth=0, foreground="darkblue",
                               command = lambda : self.activateAll(directory, activelist, inactivelist,
-                                                                  self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                  self.activeSets[index], self.inactiveSets[index],
+                                                                  self.originalActiveSets[index]))
         activeall.grid(row=1, column=0, columnspan=2)
         inactiveall = Tk.Button(inactivepanel, text="deactivate all", borderwidth=0, foreground="darkblue",
                                 command = lambda : self.deactivateAll(directory, activelist, inactivelist,
-                                                                      self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                      self.activeSets[index], self.inactiveSets[index],
+                                                                      self.originalActiveSets[index]))
         inactiveall.grid(row=1, column=0, columnspan=2)
 
 
