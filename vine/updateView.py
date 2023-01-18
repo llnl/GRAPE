@@ -914,7 +914,9 @@ class UVManager:
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
-        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
+        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit,
+                                selectbackground=self.bgselected, selectforeground=self.fgselected,
+                                yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         activescroll.config(command=activelist.yview)
         activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         activelabel.grid(row=0, column=0, columnspan=2)
@@ -931,7 +933,9 @@ class UVManager:
         inactivepanel = Tk.Frame()
         inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory_name}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
-        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
+        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit,
+                                  selectbackground=self.bgselected, selectforeground=self.fgselected,
+                                  yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         inactivescroll.config(command=inactivelist.yview)
         inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         inactivelabel.grid(row=0, column=0, columnspan=2)
@@ -946,17 +950,21 @@ class UVManager:
 
         index = self.currentProjectIndex
         activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(directory, activelist, inactivelist,
-                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                              self.activeSets[index], self.inactiveSets[index],
+                                                                              self.originalActiveSets[index]))
         inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(directory, activelist, inactivelist,
-                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                              self.activeSets[index], self.inactiveSets[index],
+                                                                              self.originalActiveSets[index]))
 
         activeall = Tk.Button(activepanel, text="activate all", borderwidth=0, foreground="darkblue",
                               command = lambda : self.activateAll(directory, activelist, inactivelist,
-                                                                  self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                  self.activeSets[index], self.inactiveSets[index],
+                                                                  self.originalActiveSets[index]))
         activeall.grid(row=1, column=0, columnspan=2)
         inactiveall = Tk.Button(inactivepanel, text="deactivate all", borderwidth=0, foreground="darkblue",
                                 command = lambda : self.deactivateAll(directory, activelist, inactivelist,
-                                                                      self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                      self.activeSets[index], self.inactiveSets[index],
+                                                                      self.originalActiveSets[index]))
         inactiveall.grid(row=1, column=0, columnspan=2)
 
 
