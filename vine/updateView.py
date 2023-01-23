@@ -298,8 +298,9 @@ class UpdateView(Option, WorkspaceDirHandler):
            changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
            # Only check the submodule history if the submodule appears to be changed
            if changed and checkSubmoduleHistory:
+               toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
                # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
-               revListCmd = f"rev-list {public} {subprojectPrefix}"
+               revListCmd = f"rev-list {toppublic} {subprojectPrefix}"
                gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
                for outerSHA in gitLinkCommits.splitlines():
                   # Retrieve the gitlink metadata:
