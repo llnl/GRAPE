@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 import stat
-import yaml 
+import subprocess
 from vine import addSubproject
 from vine import checkout
 from vine import config_parser_global
@@ -87,7 +87,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
-        --spackEnv                   Spack Environment build option 
+        --spackEnv                   Spack Develop Environment build option 
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -125,7 +125,6 @@ class UpdateView(Option, WorkspaceDirHandler):
             for project in allSubprojectNames:
                 allSubprojects.append(config.get(f"nested-{project}", "prefix"))
             activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
-
 
         toplevelDirs = {}
         toplevelActiveDirs = {}
@@ -659,7 +658,8 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if args["--spackEnv"]:
             # create a Spack Environmnet for a collection of submodules
-            self.createSpackEnvironment(branch)
+            # to develop
+            self.spackDevelopEnvironment(branch)
 
 
         for msg in delayedMessages:
@@ -667,88 +667,31 @@ class UpdateView(Option, WorkspaceDirHandler):
         return True
 
     # Spack Environment Option 
-    def createSpackEnvironment(self, branch):
+    def spackDevelopEnvironment(self, branch):
         """
-        Reads a Spack Environment file for a collection of submodules
+        spack env activate -p <path/to/file>
         grape uv --spackEnv
-        spack env activate <path/to/file>
         spack concretize
         spack install
 
         """
-        _skipInstall = False
         _skipEnvAct = False
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
         projects = config.get("spackProjects", "submodules")
         logging.info(f"Available Spack projects = {projects}")
-        # create a string that can be written to a file that spack can read
 
-        # adding Spack Projects from .grapeconfig [spackProjects] submodules
-        # to the spack.yaml environment file
+        # passing Spack Projects from .grapeconfig [spackProjects] submodules
+        # to the spack script to get versions and path of libraries
+        libs = ""
+        for p in projects:
+            libs += p.replace(' ', ',')
+
         try:
-            for p in projects.split(' '):
-                name = os.path.split(p)[1]
-                spack_yaml['spack']['develop'].update({f'{name}': {
-                                                      'spec':'ale3d@develop', 
-                                                      'path':p}}) 
+            logging.info("Spack Develop Calls...")
+            os.system(f"python update_spack_develop_environment.py {libs}")
         except:
-            logging.info("There are no available Spack Projects...") 
-
-        logging.info("Preparing Spack Environment file...")
-        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
-             spack_Env = yaml.safe_load(f)
-             logging.info("Reading Spack Environmnet file...")
-
-        getSpack = utility.userInput("Would you like to install Spack in" + 
-                                     f" {branch}? [y/n]", 'n')
-
-        if getSpack == True:
-            _skipInstall = False
-            getSpack = True
-            logging.info("Installing Spack in %s/spack..." % (os.getcwd()))
-            spack_install = "git clone https://github.com/spack/spack"
-            os.system(spack_install)
-            logging.info("Spack installation complete, " + 
-                         "checking out version 19...")
-            os.system("cd spack/")
-            spack_version = "git checkout releases/v0.19"
-            os.system(spack_version)
-            logging.info("Spack version 19 checkedout")
-            os.system("cd ../")
-            spack_setup = ". spack/share/spack/setup-env.sh"
-            os.system(spack_setup)
-        else:
-            logging.info("Skipping Spack installation...")
-
-        env = utility.userInput("Would you like to activate the Spack" +
-                                " environment now? [y/n]", 'n')
-
-        if env == True:
-            _skipEnvAct = False
-            env = True
-            spacktivate = "spack env activate -p %s" % (os.getcwd())
-            #os.system(spacktivate)
-            #logging.info("You are in Aled3d Spack Environment.") 
-            #concretize = "spack concretize"
-            #os.system(concretize)
-            #install = "spack install"
-            #os.system(install)
-        else:
-            logging.info("Skipping Environment Activation...")
-        # os.system(despacktivate)
-
-        # at some point there will be per project info to add to the spack environment
-        # version = {}
-        # for proj in projects:
-        #     version = git.SHA(execution_path=os.path.join(self.workspace_dir,proj))
-        # write version information
-        # with open(os.path.join(self.workspace_dir,"SPACK_PROJECT_SHA.yaml"),'w') as f:
-        #     yaml.dump(version, f)
-        # < add version information to spack environment >
-        # < point path to local checkout, or say that publicly installed version of library satisfies 
-        # the requirement if the submodule is not active >
-        
+            logging.info("Unable to find script...")
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
