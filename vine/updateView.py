@@ -3,7 +3,6 @@ import logging
 import os
 import shutil
 import stat
-import subprocess
 from vine import addSubproject
 from vine import checkout
 from vine import config_parser_global
