@@ -256,7 +256,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
       
         if setProtectedBranches or setKeepMRApprovals or disableLFS or disableSubprojectCI or requirePipelineSuccess:
            project = grape_gitlab.project(projectname)
-           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, initialbranch=topbranch, verbose=args["--verbose"])
+           grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, initialbranch=initialbranch, verbose=args["--verbose"])
 
            for reponame,public in grapeRepos.items():
                logging.info(f"Repository {reponame}")
