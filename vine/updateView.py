@@ -126,13 +126,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                 allSubprojects.append(config.get(f"nested-{project}", "prefix"))
             activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
 
-        if projectType == "spackProjects":
-            config = config_parser_global.grapeConfig()
-            allSpackProjectNames = config.getAllSpackProjects()
-            allSpackProjects = []
-            for project in allSpackProjectNames:
-                allSpackProjects.append(config.get(f"spack-{project}", "prefix"))
-            activeSpackProjects = config_parser_user.getAllActiveSpackProjectPrefixes(workspaceDir=self.workspace_dir)
 
         toplevelDirs = {}
         toplevelActiveDirs = {}
@@ -374,7 +367,6 @@ class UpdateView(Option, WorkspaceDirHandler):
             return False
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
-        includedSpackProjectsPrefixes = {}
 
         allNestedSubprojects = config.getAllNestedSubprojects()
         allSpackProjects = config.getAllSpackProjects()
@@ -677,7 +669,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     # Spack Environment Option 
     def createSpackEnvironment(self, branch):
         """
-        Writes a Spack Environment file for a collection of submodules
+        Reads a Spack Environment file for a collection of submodules
         grape uv --spackEnv
         spack env activate <path/to/file>
         spack concretize
@@ -691,30 +683,12 @@ class UpdateView(Option, WorkspaceDirHandler):
         projects = config.get("spackProjects", "submodules")
         logging.info(f"Available Spack projects = {projects}")
         # create a string that can be written to a file that spack can read
-        spack_yaml = {
-          'spack': {
-            'specs': ['ale3d'],
-            'develop': {
-              'ale3d': {
-                'spec': 'ale3d@develop',
-                'path': '.'}
-            },
-            'view': False,
-            'concretizer': {
-              'unify': False
-            },   
-            'repos': [
-              './spack_packages',
-              '$spack/var/spack/repos/builtin'
-            ]    
-          }    
-        } 
 
         # adding Spack Projects from .grapeconfig [spackProjects] submodules
         # to the spack.yaml environment file
         try:
             for p in projects.split(' '):
-                name = p.split('/')[1]
+                name = os.path.split(p)[1]
                 spack_yaml['spack']['develop'].update({f'{name}': {
                                                       'spec':'ale3d@develop', 
                                                       'path':p}}) 
@@ -722,13 +696,9 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.info("There are no available Spack Projects...") 
 
         logging.info("Preparing Spack Environment file...")
-        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'w') as f:
-            yaml.dump(spack_yaml, f, default_flow_style=False)
-            logging.info("Writing Spack Environmnet file...")
-        # read a spack environment file to load
-        # with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
-        #     spack_Env = yaml.safe_load(f)
-        #     logging.info("Reading Spack Environmnet file...")
+        with open(os.path.join(self.workspace_dir,'spack.yaml'), 'r') as f:
+             spack_Env = yaml.safe_load(f)
+             logging.info("Reading Spack Environmnet file...")
 
         getSpack = utility.userInput("Would you like to install Spack in" + 
                                      f" {branch}? [y/n]", 'n')
@@ -758,12 +728,12 @@ class UpdateView(Option, WorkspaceDirHandler):
             _skipEnvAct = False
             env = True
             spacktivate = "spack env activate -p %s" % (os.getcwd())
-            os.system(spacktivate)
-            logging.info("You are in Aled3d Spack Environment.") 
-            concretize = "spack concretize"
-            os.system(concretize)
-            install = "spack install"
-            os.system(install)
+            #os.system(spacktivate)
+            #logging.info("You are in Aled3d Spack Environment.") 
+            #concretize = "spack concretize"
+            #os.system(concretize)
+            #install = "spack install"
+            #os.system(install)
         else:
             logging.info("Skipping Environment Activation...")
         # os.system(despacktivate)
