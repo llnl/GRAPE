@@ -1233,7 +1233,8 @@ options are at least listed below.
                                      that are not changed.
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
                                      if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
-                                     matches the tag of the public branch (except for the final version slot).
+                                     matches the tag of the public branch (except for the final version slot) or in a submodule
+                                     if the SHA of the branch is in the history of the gitlink.
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
