@@ -297,20 +297,24 @@ class UpdateView(Option, WorkspaceDirHandler):
         if checkChanged:
            changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
            # Only check the submodule history if the submodule appears to be changed
-           #if changed and checkSubmoduleHistory:
-           #    toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
-           #    # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
-           #    revListCmd = f"rev-list origin/{toppublic} {subprojectPrefix}"
-           #    gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
-           #    for outerSHA in gitLinkCommits.splitlines():
-           #       # Retrieve the gitlink metadata:
-           #       # [mode] [type] [SHA] [path]
-           #       lsTreeCmd = f"ls-tree {outerSHA} {subprojectPrefix}"
-           #       gitLinkInfo = git.gitcmd(lsTreeCmd, f"Could not run '{lsTreeCmd}'", execution_path=workspace_dir)
-           #       SHA = gitLinkInfo.split()[2]
-           #       if SHA == branchSHA:
-           #          changed = False
-           #          break
+           if changed and checkSubmoduleHistory:
+               toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+               # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
+               revListCmd = f"rev-list origin/{toppublic} {subprojectPrefix}"
+               gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
+               for outerSHA in gitLinkCommits.splitlines():
+                  # Retrieve the gitlink metadata:
+                  # [mode] [type] [SHA] [path]
+                  lsTreeCmd = f"ls-tree {outerSHA} {subprojectPrefix}"
+                  gitLinkInfo = git.gitcmd(lsTreeCmd, f"Could not run '{lsTreeCmd}'", execution_path=workspace_dir)
+                  SHA = gitLinkInfo.split()[2]
+                  # Skip the SHA in the history if it corresponds to the latest public SHA in the submodule,
+                  # the gitlink may have been merged in before the branch is merged in the submodule.
+                  if SHA != publicSHA:
+                     # If the SHA is otherwise in the gitlink history, consider the branch unchanged.
+                     if SHA == branchSHA:
+                        changed = False
+                        break
            return changed
         else:
            return branchSHA != None
