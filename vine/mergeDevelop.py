@@ -122,6 +122,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
         if "--nestedSubprojectsOnly" in args and args["--nestedSubprojectsOnly"]:
             logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
+            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
             menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
             return True
