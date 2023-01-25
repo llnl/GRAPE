@@ -302,19 +302,23 @@ class UpdateView(Option, WorkspaceDirHandler):
                # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
                revListCmd = f"rev-list origin/{toppublic} {subprojectPrefix}"
                gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
+               first = True
                for outerSHA in gitLinkCommits.splitlines():
+                  # Skip first SHA in the history, as the gitlink may have been merged
+                  # in before the branch is merged in the submodule.
+                  if first:
+                     first = False
+                     continue
+
                   # Retrieve the gitlink metadata:
                   # [mode] [type] [SHA] [path]
                   lsTreeCmd = f"ls-tree {outerSHA} {subprojectPrefix}"
                   gitLinkInfo = git.gitcmd(lsTreeCmd, f"Could not run '{lsTreeCmd}'", execution_path=workspace_dir)
                   SHA = gitLinkInfo.split()[2]
-                  # Skip the SHA in the history if it corresponds to the latest public SHA in the submodule,
-                  # the gitlink may have been merged in before the branch is merged in the submodule.
-                  if SHA != publicSHA:
-                     # If the SHA is otherwise in the gitlink history, consider the branch unchanged.
-                     if SHA == branchSHA:
-                        changed = False
-                        break
+                  # If the SHA is otherwise in the gitlink history, consider the branch unchanged.
+                  if SHA == branchSHA:
+                     changed = False
+                     break
            return changed
         else:
            return branchSHA != None
