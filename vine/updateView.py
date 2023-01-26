@@ -714,7 +714,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             libs += p.replace(' ', ',')
         if 'update_spack_develop_environment.py' in os.listdir():
             logging.info("Spack Develop Calls...")
-            os.system(f"python update_spack_develop_environment.py {libs}")
+            os.system(f"python update_spack_develop_environment.py -l {libs}")
         else:
             logging.info("Unable to find script...")
 
