@@ -395,7 +395,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         includedNestedSubprojectPrefixes = {}
 
         allNestedSubprojects = config.getAllNestedSubprojects()
-        allSpackProjects = config.getAllSpackProjects()
 
         nonInteractive = args["--allSubmodules"] or args["--noSubmodules"] or args["--allNestedSubprojects"] or args["--noNestedSubprojects"] or args["--branchFilter"] or args["--branchChanged"] or args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]
 
@@ -405,7 +404,6 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         addedSubmodules = []
         addedNestedSubprojects = []
-        addedSpackProjects = []
         addedProjects = args["--add"]
         if args["--ensureCIReposPresent"]:
             CIRepos = config.get("workspace","CIRepos").split(' ')
@@ -417,14 +415,11 @@ class UpdateView(Option, WorkspaceDirHandler):
                 addedSubmodules.append(proj)
             elif proj in allNestedSubprojects:
                 addedNestedSubprojects.append(proj)
-            elif proj in allSpackProjects:
-                addedSpackProjects.append(proj)
             else:
                 notFound.append(proj)
 
         rmSubmodules = []
         rmNestedSubprojects = []
-        rmSpackProjects = []
         rmProjects = args["--rm"]
 
         for proj in rmProjects:
@@ -432,8 +427,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                 rmSubmodules.append(proj)
             elif proj in allNestedSubprojects:
                 rmNestedSubprojects.append(proj)
-            elif proj in allSpackProjects:
-                rmSpackProjects.append(proj)
             else:
                 notFound.append(proj)
 
