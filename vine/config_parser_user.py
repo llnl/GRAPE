@@ -78,20 +78,6 @@ def getAllInactiveNestedSubprojects(*, workspaceDir):
             inactive.append(sub)
     return inactive
 
-def getAllActiveSpackProjects(*, workspaceDir):
-    config = __get_global_grape_config(workspaceDir)
-    allSpackProjects = config.getAllSpackProjects()
-    userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
-    active = []
-    for project in allSpackProjects:
-        try:
-            active.append(project)
-        except configparser.Error:
-            userConfig.ensureSection(self.SECTION_SPACK_PROJECTS)
-            config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ") 
-    return active
-
-
 def getAllInactiveNestedSubprojectURLs(*, workspaceDir):
     config = __get_global_grape_config(workspaceDir)
     userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
