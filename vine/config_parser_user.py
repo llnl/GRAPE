@@ -78,6 +78,7 @@ def getAllInactiveNestedSubprojects(*, workspaceDir):
             inactive.append(sub)
     return inactive
 
+
 def getAllInactiveNestedSubprojectURLs(*, workspaceDir):
     config = __get_global_grape_config(workspaceDir)
     userConfig = GrapeConfigParserUser(workspace_dir=workspaceDir)
