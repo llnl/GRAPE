@@ -686,7 +686,9 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.info(msg)
         return True
 
-    # Spack Environment Option 
+    # Spack Develop Environment Option call a script to gather
+    # name and versions of currently checkedout libraries
+    # to make the correct spack develop calls
     def spackDevelopEnvironment(self):
         """
         spack env activate -p <path/to/file>
@@ -711,8 +713,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                     libs += p.replace(' ', ',')
 
         if script:
-            cmd(f"python {script} -l {libs}")
-            vine_subprocess(cmd, self.workspace_dir)
+            cmd = f"python {script} -l {libs}"
+            vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
         else:
             logging.info("Unable to find script...")
 
