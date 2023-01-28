@@ -12,6 +12,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import vine_subprocess
 from vine.vine_logging import log_wrapper
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
@@ -678,7 +679,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         if args["--spackEnv"]:
             # create a Spack Environmnet for a collection of submodules
             # to develop
-            self.spackDevelopEnvironment(branch)
+            self.spackDevelopEnvironment()
 
 
         for msg in delayedMessages:
@@ -686,7 +687,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         return True
 
     # Spack Environment Option 
-    def spackDevelopEnvironment(self, branch):
+    def spackDevelopEnvironment(self):
         """
         spack env activate -p <path/to/file>
         grape uv --spackEnv
@@ -694,20 +695,24 @@ class UpdateView(Option, WorkspaceDirHandler):
         spack install
 
         """
-        _skipEnvAct = False
+        checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
         projects = config.get("spackProjects", "submodules")
+        script = config.get("spackProjects", "script")
         logging.info(f"Available Spack projects = {projects}")
 
         # passing Spack Projects from .grapeconfig [spackProjects] submodules
         # to the spack script to get versions and path of libraries
         libs = ""
-        for p in projects:
-            libs += p.replace(' ', ',')
-        if 'update_spack_develop_environment.py' in os.listdir():
-            logging.info("Spack Develop Calls...")
-            os.system(f"python update_spack_develop_environment.py -l {libs}")
+        for submodule in checkedSubmodules:
+            for p in projects:
+                if p == submodule:
+                    libs += p.replace(' ', ',')
+
+        if script:
+            cmd(f"python {script} -l {libs}")
+            vine_subprocess(cmd, self.workspace_dir)
         else:
             logging.info("Unable to find script...")
 
