@@ -37,6 +37,7 @@ class Version(Option, WorkspaceDirHandler):
                               [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--tagBase=<branch>]
                               [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
@@ -104,6 +105,7 @@ class Version(Option, WorkspaceDirHandler):
         --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                                 version in <file>.
+        --tagBase               Branch or reference from which to look for version tags. [default: HEAD]
         --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
                                 [default: 1]
         --tagNested             Tag any active nested subprojects.
@@ -280,7 +282,8 @@ class Version(Option, WorkspaceDirHandler):
     def readVersionFromTag(args, workspace_dir, asString=False):
         tagPrefix = args["--tagPrefix"]
         tagSuffix = args["--tagSuffix"]
-        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
+        tagBase = args["--tagBase"]
+        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix} {tagBase}", execution_path=workspace_dir)
         if asString:
             return tagName
         else:
