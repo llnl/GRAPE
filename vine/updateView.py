@@ -708,9 +708,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         # to the spack script to get versions and path of libraries
         libs = ""
         for submodule in checkedSubmodules:
-            for p in projects:
-                if p == submodule:
-                    libs += p.replace(' ', ',')
+            if submodule in projects:
+                libs += submodule.replace(' ', ',')
 
         if script:
             cmd = f"python {script} -l {libs}"
@@ -724,6 +723,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
         config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ")
+        config.set(self.SECTION_SPACK_PROJECTS, "script", " ")
 
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
