@@ -911,7 +911,7 @@ options are at least listed below.
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
                     [--am | --as | --at | --aT | --ay | --aY ]
                     [--continue]
-                    [--recurse | --noRecurse]
+                    [--recurse | --noRecurse | --nestedSubprojectsOnly]
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
@@ -919,31 +919,33 @@ options are at least listed below.
 
 
     Options:
-        --public=<branch>       Overrides the public branch to merge from.
-                                Default behavior is to merge according to
-                                .grapeconfig.flow.topicPrefixMappings.
-        --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
-                                according to .grapeconfig.flow.submoduleTopicPrefixMappings.
-        --am                    Perform the merge using git's default strategy. (default)
-        --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge using the public branch's version for any file modified by both branches.
-        --aT                    Perform the merge resolving conficts using the public branch's version.
-        --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
-        --aY                    Perform the merge resolving conflicts using your topic branch's version.
-        --recurse               Perform merges in submodules first, then merge in the outer level keeping the
-                                results of submodule merges.
-        --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
-        --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
-        --forceUpdate           Force update local versions of the public branch before attempting merges.
-        --noUpdate              Do not update local versions of the public branch before attempting merges.
-        --ensureCleanUpdate     Return failure if update of local versions fails.
-        --noChecks              Skip workspace consistency checks.
-        --squash                Perform squash merges.
-        --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
-        --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
-                                behind the --topic branch on the train)
-        --tagProposedVersion    Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
-                                of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
+        --public=<branch>        Overrides the public branch to merge from.
+                                 Default behavior is to merge according to
+                                 .grapeconfig.flow.topicPrefixMappings.
+        --subpublic=<branch>     Overrides the submodules' public branch to merge from. Default behavior is to merge
+                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings.
+        --am                     Perform the merge using git's default strategy. (default)
+        --as                     Perform the merge issuing conflicts on any file modified by both branches.
+        --at                     Perform the merge using the public branch's version for any file modified by both branches.
+        --aT                     Perform the merge resolving conficts using the public branch's version.
+        --ay                     Perform the merge using the your topic branch's version for any file modified by both branches.
+        --aY                     Perform the merge resolving conflicts using your topic branch's version.
+        --recurse                Perform merges in submodules first, then merge in the outer level keeping the
+                                 results of submodule merges. Nested subprojects are also merged.
+        --noRecurse              Do not perform merges in submodules, just attempt to merge the gitlinks.
+                                 Nested subprojects are also merged.
+        --nestedSubprojectsOnly  Do not perform merges in outer level or submodules, just nested subprojects.
+        --continue               Resume the most recent call to grape md that issued conflicts in this workspace.
+        --forceUpdate            Force update local versions of the public branch before attempting merges.
+        --noUpdate               Do not update local versions of the public branch before attempting merges.
+        --ensureCleanUpdate      Return failure if update of local versions fails.
+        --noChecks               Skip workspace consistency checks.
+        --squash                 Perform squash merges.
+        --traverseTrainRefs      Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
+        --topic=<branch>         Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
+                                 behind the --topic branch on the train)
+        --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                 of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
 
 
 
