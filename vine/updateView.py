@@ -697,7 +697,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         spack install
 
         """
-        activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
         projects = config.get("spackProjects", "submodules")
@@ -707,20 +707,21 @@ class UpdateView(Option, WorkspaceDirHandler):
         # passing Spack Projects from .grapeconfig [spackProjects] submodules
         # to the spack script to get versions and path of libraries
         libs = ""
-        for submodule in activeSubmodules:
-            if submodule in projects:
-                libs += submodule.replace(' ', ',')
         undevelop = ""
-        for submodule in libs:
-            if submodule not in activeSubmodules and submodule in projects:
-                undevelop += submodule.replace(' ', ',')
 
         if script:
+            for submodule in checkedSubmodules:
+                if submodule in projects:
+                    libs += submodule.replace(' ', ',')
             if libs: 
                 cmd = f"python {script} -l {libs}"
                 vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
-            elif undevelop:
-                cmd = f"python {script} -u {libs}"
+
+            for submodule in libs.replace(',', ' '):
+                if submodule not in checkedSubmodules and submodule in projects:
+                    undevelop += submodule.replace(' ', ',')
+            if undevelop:
+                cmd = f"python {script} -u {undevelop}"
                 vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
         else:
             logging.info("Unable to find script...")
