@@ -46,6 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
                         [--noLocal]
+                        [--skiplabels]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -100,7 +101,7 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-
+        --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
     """
@@ -225,7 +226,10 @@ class Review(Option, WorkspaceDirHandler):
         # Fetch the remote tracking branch for the target branch
         git.fetch(f"origin {target_branch}", execution_path=self.workspace_dir)
         # Skip fetching of remote tracking branch in submodules if no gitlink changes were fetched
-        submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
+        if "--noLocal" in args and args["--noLocal"]:
+           submodulesModifiedInOrigin = False
+        else:
+           submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
                      
         upArgs = ['up', f'--public={target_branch}', '--updateRemoteOnly']
         if not submodulesModifiedInOrigin:
@@ -386,21 +390,22 @@ class Review(Option, WorkspaceDirHandler):
 
             add_labels = []
             remove_labels = []
-            try:
-               changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
-               if changedfilelabelmapping:
-                   for path,label in changedfilelabelmapping.items():
-                       try:
-                          if git.diff(f"--name-only {branch} {target_branch} {path}", execution_path=self.workspace_dir):
-                              add_labels.append(label)
-                          else:
-                              remove_labels.append(label)
-                       except grape_errors.GrapeGitError:
-                          logging.warning(f"GRAPE: WARNING: .grapeconfig [review] changedfilelabelmapping, '{path}' not found, ignoring...")
-            except NoSectionError:
-               pass
-            except NoOptionError:
-               pass
+            if not args["--skiplabels"]:
+               try:
+                  changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
+                  if changedfilelabelmapping:
+                      for path,label in changedfilelabelmapping.items():
+                          try:
+                             if git.diff(f"--name-only {branch} {target_branch} {path}", execution_path=self.workspace_dir):
+                                 add_labels.append(label)
+                             else:
+                                 remove_labels.append(label)
+                          except grape_errors.GrapeGitError:
+                             logging.warning(f"GRAPE: WARNING: .grapeconfig [review] changedfilelabelmapping, '{path}' not found, ignoring...")
+               except NoSectionError:
+                  pass
+               except NoOptionError:
+                  pass
 
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
