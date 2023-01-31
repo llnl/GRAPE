@@ -12,6 +12,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import vine_subprocess
 from vine.vine_logging import log_wrapper
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
@@ -35,6 +36,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
+                    [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
@@ -86,6 +88,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
+        --spackEnv                   Spack Develop Environment build option 
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -672,14 +675,55 @@ class UpdateView(Option, WorkspaceDirHandler):
             with open(os.path.join(self.workspace_dir,"GRAPE_PROJECT_SHA.json"),'w') as f:
                 json.dump(sha_dict, f)
 
+
+        if args["--spackEnv"]:
+            # create a Spack Environmnet for a collection of submodules
+            # to develop
+            self.spackDevelopEnvironment()
+
+
         for msg in delayedMessages:
             logging.info(msg)
         return True
 
+    # Spack Develop Environment Option call a script to gather
+    # name and versions of currently checkedout libraries
+    # to make the correct spack develop calls
+    def spackDevelopEnvironment(self):
+        """
+        spack env activate -p <path/to/file>
+        grape uv --spackEnv
+        spack concretize
+        spack install
+
+        """
+        checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        # read list of spack projects from configuration
+        config = config_parser_global.grapeConfig()
+        projects = config.get("spackProjects", "submodules")
+        script = config.get("spackProjects", "script")
+        logging.info(f"Available Spack projects = {projects}")
+
+        # passing Spack Projects from .grapeconfig [spackProjects] submodules
+        # to the spack script to get versions and path of libraries
+        libs = ""
+        for submodule in checkedSubmodules:
+            if submodule in projects:
+                libs += submodule.replace(' ', ',')
+
+        if script:
+            cmd = f"python {script} -l {libs}"
+            vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+        else:
+            logging.info("Unable to find script...")
+
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
+        config.ensureSection(self.SECTION_SPACK_PROJECTS)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
+        config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ")
+        config.set(self.SECTION_SPACK_PROJECTS, "script", " ")
 
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
