@@ -1020,6 +1020,7 @@ options are at least listed below.
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
                         [--noLocal]
+                        [--skiplabels]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -1074,7 +1075,7 @@ options are at least listed below.
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-
+        --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
     
