@@ -1266,6 +1266,7 @@ options are at least listed below.
                               [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--tagBase=<ref>]
                               [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
@@ -1333,6 +1334,7 @@ options are at least listed below.
         --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                                 version in <file>.
+        --tagBase=<ref>         Branch or reference from which to look for version tags. [default: HEAD]
         --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
                                 [default: 1]
         --tagNested             Tag any active nested subprojects.
