@@ -1189,6 +1189,7 @@ options are at least listed below.
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
+                    [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
@@ -1240,6 +1241,7 @@ options are at least listed below.
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
+        --spackEnv                   Spack Develop Environment build option 
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
