@@ -352,7 +352,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if args["--tagProposedVersion"]:
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{targetBranch}")
             logging.info(f"numMerges = {numMerges}")
-            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{targetBranch}", f"--numTicks={len(unmergedTrainBranches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            versionargs =  ["tick", "--tag", "-f", "--pushTag",
+                            f"--public=origin/{targetBranch}",
+                            f"--tagBase=origin/{targetBranch}",
+                            f"--numTicks={len(unmergedTrainBranches)+numMerges}",
+                            f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
             
