@@ -18,6 +18,7 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
+from vine import review
 from vine import utility
 from vine import vine_subprocess
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -1104,10 +1105,40 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
 
-        if escapedCommitMsg:
-            args["-m"] = escapedCommitMsg
-        else:
-            logging.warning("WARNING: Commit message is empty. ")
+        haveLink = False
+        haveBlock = False
+        skipBlock = False
+        empty = True
+        for line in escapedCommitMsg.splitlines():
+            line = line.strip()
+            if line:
+               if line.startswith(review.MRLinkText()):
+                  # Skip links to other merge requests
+                  haveLink = True
+                  continue
+               elif line.startswith(review.MRBlockDelimiter()):
+                  # Skip review blocks
+                  if line.endswith(f"START{review.MRBlockDelimiter()}"):
+                     haveBlock = True
+                     skipBlock = True
+                  if line.endswith(f"STOP{review.MRBlockDelimiter()}"):
+                     skipBlock = False
+                     continue
+               if skipBlock:
+                  continue
+               empty = False
+               break
+
+        if empty:
+            errMsg = "The commit message must be non-empty!"
+            if haveLink:
+               errMsg += f"\n- Lines starting with '{review.MRLinkText()}' are ignored."
+            if haveBlock:
+               errMsg += "\n- Lines in reviewer blocks are ignored."
+            logging.error(errMsg)
+            return False
+
+        args["-m"] = escapedCommitMsg
 
         logging.info("The following commit message will be used for email notification, merge commits, etc.\n"
                          "======================================================================")
