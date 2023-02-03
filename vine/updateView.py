@@ -697,34 +697,33 @@ class UpdateView(Option, WorkspaceDirHandler):
         spack install
 
         """
-        checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
-        projects = config.get("spackProjects", "submodules")
+        spack_projects = config.get("spackProjects", "submodules").split()
         script = config.get("spackProjects", "script")
-        logging.info(f"Available Spack projects = {projects}")
+        logging.info(f"Available Spack projects = {spack_projects}")
 
         # passing Spack Projects from .grapeconfig [spackProjects] submodules
         # to the spack script to get versions and path of libraries
-        libs = ""
-        undevelop = ""
+        develop_libs = ""
+        undevelop_libs = ""
 
         if script:
-            for submodule in checkedSubmodules:
-                if submodule in projects:
-                    libs += submodule.replace(' ', ',')
-            if libs: 
-                cmd = f"python {script} -l {libs}"
+            for submodule in spack_projects:
+                if submodule in activeSubmodules:
+                    develop_libs = ','.join(spack_projects)
+                if submodule not in activeSubmodules and submodule in spack_projects:
+                    undevelop_libs = ','.join(spack_projects)
+            if develop_libs:
+                cmd = f"python3 {script} -l {develop_libs}"
                 vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+                logging.info(f"Develop libs = {develop_libs}")
+            if undevelop_libs:
+                cmd = f"python3 {script} -u {undevelop_libs}"
+                vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+                logging.info(f"Undevelop libs = {undevelop_libs}")
 
-            for submodule in libs.replace(',', ' '):
-                if submodule not in checkedSubmodules and submodule in projects:
-                    undevelop += submodule.replace(' ', ',')
-            if undevelop:
-                cmd = f"python {script} -u {undevelop}"
-                vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
-        else:
-            logging.info("Unable to find script...")
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
