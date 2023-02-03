@@ -14,7 +14,7 @@ from vine.vine_logging import log_wrapper
 def grapeVersion():
     try:
         grape_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"..")
-        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":''}, workspace_dir=grape_path, asString=True)
+        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":'',"--tagBase":'HEAD'}, workspace_dir=grape_path, asString=True)
         return grapeVersion
     except:
         return "v.1.37.unknown"

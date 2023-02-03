@@ -267,7 +267,7 @@ class Review(Option, WorkspaceDirHandler):
             for suffix in description_suffixes:
                 suffix_name = suffix["name"]
                 suffix_body = suffix["body"]
-                suffix_string = f"--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+                suffix_string = f"{MRBlockDelimiter()}{suffix_name} START{MRBlockDelimiter()}\n{suffix_body}\n{MRBlockDelimiter()}{suffix_name} STOP{MRBlockDelimiter()}"
                 if descr:
                     if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
                         descr = f"{descr}\n{suffix_string}"
@@ -443,6 +443,12 @@ class Review(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
 
 
+def MRLinkText():
+    return "This merge request is related to the merge request at: "
+
+def MRBlockDelimiter():
+    return "--------------------"
+
 def HandlePostPullRequestForRepoMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         raise e
@@ -489,8 +495,7 @@ def addLinkToDescription(descr, link):
         if not isinstance(descr, str):
             descr = descr.decode("utf-8")
         if link not in descr:
-            descr += f"\nThis merge request is related to "
-            descr += f"the merge request at: {link}"
+            descr += f"\n{MRLinkText()}{link}"
     return descr
 
 
