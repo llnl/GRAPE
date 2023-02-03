@@ -997,8 +997,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
-                tag = git.describe(f"origin/{args['--topic']} --first-parent --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
-                tag = tag.split('-')[0]
+                tag = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
                 self.progress["version"] = tag.split(args["--tagPrefix"])[1]
             elif args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
@@ -1028,7 +1027,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
-        tag = git.describe(f"origin/{args['--topic']} --first-parent --match=MR_*", execution_path=self.workspace_dir)
+        last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+        branch_log = git.log(f"--oneline --decorate origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+        for line in branch_log:
+           match = re.search("tag: (MR_[^),]+)", line)
+           if match:
+              tag = match.group(1)
+              break
         tag = tag.split('-')[0]
         self.progress["MR_tag"] = tag
         pr_id = tag.split("MR_")[1]

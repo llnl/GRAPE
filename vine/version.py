@@ -109,8 +109,8 @@ class Version(Option, WorkspaceDirHandler):
         --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
                                 [default: 1]
         --tagNested             Tag any active nested subprojects.
-        --useProposed           Select a version based off of a "proposed_*" tag reachable from the first parent of the head
-                                of --topic.
+        --useProposed           Select a version based off of the first "proposed_*" tag reachable from the head
+                                of --topic but not tagged with an actual version.
         --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
@@ -145,8 +145,14 @@ class Version(Option, WorkspaceDirHandler):
         # set version based on proposed version number tag in topic branch
         if "--useProposed" in args and args["--useProposed"]:
             logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
-            proposed_tag = git.describe(f"origin/{args['--topic']} --first-parent --match=proposed_*", execution_path=self.workspace_dir)
-            logging.info("found tag {proposed_tag}")
+            last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+            branch_log = git.log(f"--oneline --decorate origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+            for line in branch_log:
+               match = re.search("tag: (proposed_[^),]+)", line)
+               if match:
+                  proposed_tag = match.group(1)
+                  break
+            logging.info(f"found tag {proposed_tag}")
             args["<version>"] = proposed_tag.split("proposed_")[1]
 
         if "--numTicks" in args:
