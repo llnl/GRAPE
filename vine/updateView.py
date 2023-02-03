@@ -317,11 +317,15 @@ class UpdateView(Option, WorkspaceDirHandler):
                   # [mode] [type] [SHA] [path]
                   lsTreeCmd = f"ls-tree {outerSHA} {subprojectPrefix}"
                   gitLinkInfo = git.gitcmd(lsTreeCmd, f"Could not run '{lsTreeCmd}'", execution_path=workspace_dir)
-                  SHA = gitLinkInfo.split()[2]
-                  # If the SHA is otherwise in the gitlink history, consider the branch unchanged.
-                  if SHA == branchSHA:
-                     changed = False
-                     break
+                  gitLinkEntries = gitLinkInfo.split()
+                  if len(gitLinkEntries) > 1:
+                     SHA = gitLinkEntries[2]
+                     # If the SHA is otherwise in the gitlink history, consider the branch unchanged.
+                     if SHA == branchSHA:
+                        changed = False
+                        break
+                  else:
+                     logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitlinkInfo}")
            return changed
         else:
            return branchSHA != None
