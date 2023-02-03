@@ -325,7 +325,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         changed = False
                         break
                   else:
-                     logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitlinkInfo}")
+                     logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitLinkInfo}")
            return changed
         else:
            return branchSHA != None
