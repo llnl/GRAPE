@@ -147,15 +147,14 @@ class Version(Option, WorkspaceDirHandler):
             logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
             last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
             proposed_tags = []
-            branch_log = git.log(f"--oneline --decorate origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+            branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
             for line in branch_log:
                match = re.search(f"tag: (proposed_[^),]+)", line)
                if match:
+                  logging.debug(match.group(1))
                   proposed_tags.append(match.group(1))
-            print(proposed_tags)
             # Sort the proposed tags by version number
             proposed_tags.sort(key=lambda s: list(map(int, re.search("[0-9]+(\.[0-9]+)+",s).group(0).split('.'))))
-            print(proposed_tags)
             # Use the latest version tag
             proposed_tag = proposed_tags[-1]
             if len(proposed_tags) > 1:
