@@ -152,8 +152,10 @@ class Version(Option, WorkspaceDirHandler):
                match = re.search(f"tag: (proposed_[^),]+)", line)
                if match:
                   proposed_tags.append(match.group(1))
+            print(proposed_tags)
             # Sort the proposed tags by version number
             proposed_tags.sort(key=lambda s: list(map(int, re.search("[0-9]+(\.[0-9]+)+",s).group(0).split('.'))))
+            print(proposed_tags)
             # Use the latest version tag
             proposed_tag = proposed_tags[-1]
             if len(proposed_tags) > 1:
