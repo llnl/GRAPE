@@ -148,7 +148,7 @@ class Version(Option, WorkspaceDirHandler):
             last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
             proposed_tags = []
             branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
-            for line in branch_log:
+            for line in branch_log.splitlines():
                match = re.search(f"tag: (proposed_[^),]+)", line)
                if match:
                   logging.debug(match.group(1))
