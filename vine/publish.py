@@ -997,8 +997,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
-                tag = git.describe(f"origin/{args['--topic']} --first-parent --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
-                tag = tag.split('-')[0]
+                tag = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
                 self.progress["version"] = tag.split(args["--tagPrefix"])[1]
             elif args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
@@ -1028,20 +1027,37 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
-        tag = git.describe(f"origin/{args['--topic']} --first-parent --match=MR_*", execution_path=self.workspace_dir)
-        tag = tag.split('-')[0]
-        self.progress["MR_tag"] = tag
-        pr_id = tag.split("MR_")[1]
-        pull_request = self.repo.pullRequests(id=pr_id)[0]
-        escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
-        escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
-        escapedCommitMsg = escapedCommitMsg.replace("`", "'")
-        self.progress["commitMsg"] = escapedCommitMsg
-        self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
-        self.progress["author"] = pull_request.authorName()
-        self.progress["author_username"] = pull_request.author()
-        self.progress["author_email"] = pull_request.authorEmail()
-        args["-m"] = escapedCommitMsg
+        last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+        branch_log = git.log(f"--oneline --decorate origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+        tags = []
+        for line in branch_log:
+           match = re.search("tag: (MR_[^),]+)", line)
+           if match:
+              tags.append(match.group(1))
+        # This step occurs during grape publish --sendEmail, which should follow grape version tick,
+        # so it cannot easily be rerun as part of the same job (as the version tick will fail on rerun).
+        if len(tags) == 0:
+           self.progress["commitMsg"] = "No MR_ tag was found on this branch, so the merge request details could not be determined."
+           self.progress["reviewers"] = "unknown"
+           self.progress["author"] = "unknown"
+           self.progress["author_username"] = "unknown"
+           self.progress["author_email"] = ""
+        else:
+           tag = tags[0] 
+           self.progress["MR_tag"] = tag
+           pr_id = tag.split("MR_")[1]
+           pull_request = self.repo.pullRequests(id=pr_id)[0]
+           escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
+           if len(tags) > 1:
+              escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag}.\n")
+           escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
+           escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+           self.progress["commitMsg"] = escapedCommitMsg
+           self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
+           self.progress["author"] = pull_request.authorName()
+           self.progress["author_username"] = pull_request.author()
+           self.progress["author_email"] = pull_request.authorEmail()
+           args["-m"] = escapedCommitMsg
         return True
              
 

@@ -1341,8 +1341,8 @@ options are at least listed below.
         --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
                                 [default: 1]
         --tagNested             Tag any active nested subprojects.
-        --useProposed           Select a version based off of a "proposed_*" tag reachable from the first parent of the head
-                                of --topic.
+        --useProposed           Select a version based off of the first "proposed_*" tag reachable from the head
+                                of --topic but not tagged with an actual version.
         --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
