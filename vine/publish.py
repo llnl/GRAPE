@@ -1030,7 +1030,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
         branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []
-        for line in branch_log:
+        for line in branch_log.splitlines():
            match = re.search("tag: (MR_[^),]+)", line)
            if match:
               logging.debug(match.group(1))
