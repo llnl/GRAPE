@@ -1028,11 +1028,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
         last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
-        branch_log = git.log(f"--oneline --decorate origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+        branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []
         for line in branch_log:
            match = re.search("tag: (MR_[^),]+)", line)
            if match:
+              logging.debug(match.group(1))
               tags.append(match.group(1))
         # This step occurs during grape publish --sendEmail, which should follow grape version tick,
         # so it cannot easily be rerun as part of the same job (as the version tick will fail on rerun).
