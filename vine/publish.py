@@ -1049,7 +1049,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            pull_request = self.repo.pullRequests(id=pr_id)[0]
            escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
            if len(tags) > 1:
-              escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag}.")
+              escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag}.\n")
            escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
            escapedCommitMsg = escapedCommitMsg.replace("`", "'")
            self.progress["commitMsg"] = escapedCommitMsg
