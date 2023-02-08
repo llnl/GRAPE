@@ -718,6 +718,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                     develop_libs.append(submodule)
                 else:
                     undevelop_libs.append(submodule)
+            # if there are libs to develop or undevelop then they will get passed
+            # into the cmd f string to do a single call to the script
             if develop_libs or undevelop_libs:
                 cmd = f"python3 {script} --libs {','.join(develop_libs)} --undevelop {','.join(undevelop_libs)}"
                 vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
