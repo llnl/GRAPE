@@ -692,13 +692,12 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     # Spack Develop Environment Option call a script to gather
     # name and versions of currently checkedout libraries
-    # to make the correct spack develop calls
+    # to make the correct spack develop or undevelop calls
     def spackDevelopEnvironment(self):
         """
+        User needs to be in an active Spack environmnet.
         spack env activate -p <path/to/file>
         grape uv --spackEnv
-        spack concretize
-        spack install
 
         """
         activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
@@ -710,23 +709,28 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         # passing Spack Projects from .grapeconfig [spackProjects] submodules
         # to the spack script to get versions and path of libraries
-        develop_libs = ""
-        undevelop_libs = ""
+        develop_libs = []
+        undevelop_libs = []
 
         if script:
             for submodule in spack_projects:
                 if submodule in activeSubmodules:
-                    develop_libs = ','.join(spack_projects)
-                if submodule not in activeSubmodules and submodule in spack_projects:
-                    undevelop_libs = ','.join(spack_projects)
+                    develop_libs.append(submodule)
+                else:
+                    undevelop_libs.append(submodule)
             if develop_libs:
-                cmd = f"python3 {script} -l {develop_libs}"
+                logging.info("Updating develop libs...")
+                logging.info(f"Calling script at {os.path.join(self.workspace_dir, script)}")   
+                logging.info(f"spack develop for the following libs ({' '.join(develop_libs)})")
+                cmd = f"python3 {script} -l {','.join(develop_libs)}"
                 vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
-                logging.info(f"Develop libs = {develop_libs}")
             if undevelop_libs:
-                cmd = f"python3 {script} -u {undevelop_libs}"
+                logging.info("Updating undevelop libs...")
+                logging.info(f"Calling script at {os.path.join(self.workspace_dir, script)}")  
+                logging.info(f"spack undevelop for the following libs ({' '.join(undevelop_libs)})")
+                cmd = f"python3 {script} -u {','.join(undevelop_libs)}"
                 vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
-                logging.info(f"Undevelop libs = {undevelop_libs}")
+            logging.info(f"Spack develop environment at {self.workspace_dir} has been updated")
 
 
     def setDefaultConfig(self, config):
