@@ -722,14 +722,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                 logging.info("Updating develop libs...")
                 logging.info(f"Calling script at {os.path.join(self.workspace_dir, script)}")   
                 logging.info(f"spack develop for the following libs ({' '.join(develop_libs)})")
-                cmd = f"python3 {script} -l {','.join(develop_libs)}"
-                vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+                dev_cmd = f"python3 {script} --libs {','.join(develop_libs)}"
+                vine_subprocess.executeSubProcess(dev_cmd, self.workspace_dir)
             if undevelop_libs:
                 logging.info("Updating undevelop libs...")
                 logging.info(f"Calling script at {os.path.join(self.workspace_dir, script)}")  
                 logging.info(f"spack undevelop for the following libs ({' '.join(undevelop_libs)})")
-                cmd = f"python3 {script} -u {','.join(undevelop_libs)}"
-                vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+                undev_cmd = f"python3 {script} --undevelop {','.join(undevelop_libs)}"
+                vine_subprocess.executeSubProcess(undev_cmd, self.workspace_dir)
             logging.info(f"Spack develop environment at {self.workspace_dir} has been updated")
 
 
