@@ -692,34 +692,43 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     # Spack Develop Environment Option call a script to gather
     # name and versions of currently checkedout libraries
-    # to make the correct spack develop calls
+    # to make the correct spack develop or undevelop calls
     def spackDevelopEnvironment(self):
         """
+        User needs to be in an active Spack environmnet.
         spack env activate -p <path/to/file>
         grape uv --spackEnv
-        spack concretize
-        spack install
 
         """
-        checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
-        projects = config.get("spackProjects", "submodules")
+        spack_projects = config.get("spackProjects", "submodules").split()
         script = config.get("spackProjects", "script")
-        logging.info(f"Available Spack projects = {projects}")
+        logging.info(f"Available Spack projects = {spack_projects}")
 
         # passing Spack Projects from .grapeconfig [spackProjects] submodules
         # to the spack script to get versions and path of libraries
-        libs = ""
-        for submodule in checkedSubmodules:
-            if submodule in projects:
-                libs += submodule.replace(' ', ',')
+        develop_libs = []
+        undevelop_libs = []
 
         if script:
-            cmd = f"python {script} -l {libs}"
+            for submodule in spack_projects:
+                if submodule in activeSubmodules:
+                    develop_libs.append(submodule)
+                else:
+                    undevelop_libs.append(submodule)
+            # cmd f string to built up by develop and undevelop libs to do a single call to the script
+            cmd = f"python3 {script}"
+            # if there are libs to develop or undevelop then they will get concatenated to cmd
+            if develop_libs:
+                cmd += f" --libs {','.join(develop_libs)}"
+            if undevelop_libs:
+                cmd += f" --undevelop {','.join(undevelop_libs)}"
+
             vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
-        else:
-            logging.info("Unable to find script...")
+            logging.info(f"Spack develop environment at {self.workspace_dir} has been updated")
+
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
