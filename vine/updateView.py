@@ -718,12 +718,16 @@ class UpdateView(Option, WorkspaceDirHandler):
                     develop_libs.append(submodule)
                 else:
                     undevelop_libs.append(submodule)
-            # if there are libs to develop or undevelop then they will get passed
-            # into the cmd f string to do a single call to the script
-            if develop_libs or undevelop_libs:
-                cmd = f"python3 {script} --libs {','.join(develop_libs)} --undevelop {','.join(undevelop_libs)}"
-                vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
-                logging.info(f"Spack develop environment at {self.workspace_dir} has been updated")
+            # cmd f string to built up by develop and undevelop libs to do a single call to the script
+            cmd = f"python3 {script}"
+            # if there are libs to develop or undevelop then they will get concatenated to cmd
+            if develop_libs:
+                cmd += f" --libs {','.join(develop_libs)}"
+            if undevelop_libs:
+                cmd += f" --undevelop {','.join(undevelop_libs)}"
+
+            vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+            logging.info(f"Spack develop environment at {self.workspace_dir} has been updated")
 
 
     def setDefaultConfig(self, config):
