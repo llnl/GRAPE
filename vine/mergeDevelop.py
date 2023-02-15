@@ -29,6 +29,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--noChecks]
                     [--squash]
                     [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
+                    [--traverseMergedResult]
 
 
     Options:
@@ -59,6 +60,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                  behind the --topic branch on the train)
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
+        --traverseMergedResult   Do the necessary merges to merge all nested subprojects up to the point of the merged result in the top level.
 
 
 
@@ -106,8 +108,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         from vine import grapeMenu
         nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
         if "--traverseTrainRefs" in args and args["--traverseTrainRefs"]:
-            self.traverseTrainRefs(args, nested)
-            return True
+            return self.traverseTrainRefs(args, nested)
+        if "--traverseMergedResult" in args and args["--traverseMergedResult"]:
+            return self.traverseMergedResult(args, nested)
 
         self.set_progress_file(execution_path=self.workspace_dir)
 
@@ -121,9 +124,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         args["--public"] = branch
 
         if "--nestedSubprojectsOnly" in args and args["--nestedSubprojectsOnly"]:
-            logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
+            logging.info(f"Calling grape up --public={branch} --noTopLevel --recurseSubprojects to ensure local reference to branch exists.")
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--recurseSubprojects'])
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
             return True
 
@@ -318,7 +321,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
         numMerges = 0
-        tagPrefix = 'v*'
+
+        config = config_parser_global.grapeConfig()
+        prefix = config.get(self.SECTION_VERSIONING, "prefix")
+        tagPrefix = f"{prefix}*"
+
         description = git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir)
         while '-' in description:
             numMerges = numMerges+1
@@ -338,8 +345,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         targetBranch = branches[0]
         unmergedTrainBranches = []
         for branch in branches:
-            logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
-            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
+            logging.info(f"Calling grape up --public={branch} --noTopLevel --recurseSubprojects to ensure local reference to branch exists.")
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--recurseSubprojects'])
+            # TODO detect conflicts
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
             if branch == targetBranch:
                # Always include the target branch
@@ -359,10 +367,24 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                             f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
+        return True
             
 
+    def traverseMergedResult(self, args, nested):
+        # Get the latest version tag for the merge result
+        config = config_parser_global.grapeConfig()
+        prefix = config.get(self.SECTION_VERSIONING, "prefix")
+        tagPrefix = f"{prefix}*"
+        versionTag = git.describe(f"--abbrev=0 --match={tagPrefix}", execution_path=self.workspace_dir)
+        self.performSubprojectMerges(args, versionTag, nested, False, [], ignoreInProgress=False, mergeLatestTag=tagPrefix)
+        return True
 
-    def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False):
+
+    def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False, mergeLatestTag=None):
+        if mergeLatestTag:
+            if recurse:
+                logging.warning("performSubprojectMerges cannot be called with both recurse and mergeLatestTag!")
+                return False
         listOfRepoBranchArgTuples = [] 
         # queue merges for nested subprojects
         for subproject in nested:
@@ -371,6 +393,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             if not ignoreInProgress and key in self.progress and self.progress[key] == "finished":
                logging.info(f"merge in {subproject} already completed")
                continue 
+            if mergeLatestTag:
+               pass
             listOfRepoBranchArgTuples.append((subproject,branch,[args,False]))
         
         # queue merges for submodules
