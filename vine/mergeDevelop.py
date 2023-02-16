@@ -28,8 +28,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
-                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
-                    [--traverseMergedResult]
+           grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+           grape-md --traverseMergedResult --topic=<branch>
 
 
     Options:
@@ -56,11 +56,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         --noChecks               Skip workspace consistency checks.
         --squash                 Perform squash merges.
         --traverseTrainRefs      Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
-        --topic=<branch>         Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
-                                 behind the --topic branch on the train)
+        --traverseMergedResult   Do the necessary merges to merge all nested subprojects up to the point of the merged result in the top level.
+        --topic=<branch>         Topic branch we are merging into. This is defined explicitly with --traverseTrainRefs/--traverseMergedResult
+                                 to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-        --traverseMergedResult   Do the necessary merges to merge all nested subprojects up to the point of the merged result in the top level.
 
 
 
@@ -371,22 +371,26 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             
 
     def traverseMergedResult(self, args, nested):
-        # Get the latest version tag for the merge result
+        # Make sure we have all tags
+        git.fetch("origin 'refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
-        git.fetch("origin 'refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         tagPrefix = f"{prefix}*"
-        versionTag = git.describe(f"--abbrev=0 --match={tagPrefix}", execution_path=self.workspace_dir)
-        if not self.performSubprojectMerges(args, versionTag, nested, False, [], ignoreInProgress=False, mergeLatestTag=tagPrefix):
-            return False
+        # Get the version of the branch
+        versionTag = git.describe(f"--abbrev=0 --match={tagPrefix} origin/{args['--topic']}", execution_path=self.workspace_dir)
+        # Get the version of the merged result
+        mergedVersionTag = git.describe(f"--abbrev=0 --match={tagPrefix}", execution_path=self.workspace_dir)
+        if versionTag == mergedVersionTag:
+            logging.info(f"No versions to merge, already at {versionTag}.")
+            return True
+        versions = git.tag(f"-l {tagPrefix} --sort=v:refname --contains=origin/{args['--topic']}")
+        for version in versions.splitlines():
+           if not self.performSubprojectMerges(args, version.strip(), nested, False, [], ignoreInProgress=False):
+               return False
         return True
 
 
-    def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False, mergeLatestTag=None):
-        if mergeLatestTag:
-            if recurse:
-                logging.warning("performSubprojectMerges cannot be called with both recurse and mergeLatestTag!")
-                return False
+    def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False):
         listOfRepoBranchArgTuples = [] 
         # queue merges for nested subprojects
         for subproject in nested:
@@ -395,8 +399,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             if not ignoreInProgress and key in self.progress and self.progress[key] == "finished":
                logging.info(f"merge in {subproject} already completed")
                continue 
-            if mergeLatestTag:
-               pass
             listOfRepoBranchArgTuples.append((subproject,branch,[args,False]))
         
         # queue merges for submodules
