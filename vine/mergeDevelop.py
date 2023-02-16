@@ -383,7 +383,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if versionTag == mergedVersionTag:
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True
-        versions = git.tag(f"-l {tagPrefix} --sort=v:refname --contains=origin/{args['--topic']}")
+        versions = git.tag(f"-l {tagPrefix} --sort=v:refname --contains=origin/{args['--topic']}", execution_path=self.workspace_dir)
         print(versions)
         for version in versions.splitlines():
            print(version)
