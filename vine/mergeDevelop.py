@@ -455,7 +455,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                   if args['--skipConflicted']:
                      logging.info(f"Merge conflict detected merging {branch} in {repo}, reverting...")
                      git.merge("--abort", execution_path=repo)
-                     git.reset("--hard", execution_path=repo)
                   else:
                      all_good = False
         if not all_good:
