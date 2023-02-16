@@ -374,9 +374,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         # Get the latest version tag for the merge result
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
+        git.fetch("origin 'refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         tagPrefix = f"{prefix}*"
         versionTag = git.describe(f"--abbrev=0 --match={tagPrefix}", execution_path=self.workspace_dir)
-        self.performSubprojectMerges(args, versionTag, nested, False, [], ignoreInProgress=False, mergeLatestTag=tagPrefix)
+        if not self.performSubprojectMerges(args, versionTag, nested, False, [], ignoreInProgress=False, mergeLatestTag=tagPrefix):
+            return False
         return True
 
 
