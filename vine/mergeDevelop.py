@@ -30,7 +30,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--noChecks]
                     [--squash]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
-           grape-md --traverseMergedResult --topic=<branch>
+           grape-md --traverseMergedResult --topic=<branch> [--skipConflicted]
 
 
     Options:
@@ -62,6 +62,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                  to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
+        --skipConflicted         When running grape md --traverseMergedResult, a conflict normally causes a failure. If this is set,
+                                 instead revert the merge and proceed.
 
 
 
@@ -450,7 +452,12 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 if "Unable to merge subproject" in info:
                    self.progress[f"Subproject: {repo}"] = "finished"
                 else:
-                   all_good = False
+                  if args['--skipConflicted']:
+                     logging.info(f"Merge conflict detected merging {branch} in {repo}, reverting...")
+                     git.merge("--abort", execution_path=repo)
+                     git.reset("--hard", execution_path=repo)
+                  else:
+                     all_good = False
         if not all_good:
             self.progress["stopPoint"] = "subproject merge"
             self.dumpProgress(args)
