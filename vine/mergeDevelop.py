@@ -384,7 +384,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True
         versions = git.tag(f"-l {tagPrefix} --sort=v:refname --contains=origin/{args['--topic']}")
+        print(versions)
         for version in versions.splitlines():
+           print(version)
            if not self.performSubprojectMerges(args, version.strip(), nested, False, [], ignoreInProgress=False):
                return False
         return True
