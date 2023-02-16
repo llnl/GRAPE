@@ -2,6 +2,7 @@ import configparser
 import io
 import logging
 import os
+import re
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
@@ -347,8 +348,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         for branch in branches:
             logging.info(f"Calling grape up --public={branch} --noTopLevel --recurseSubprojects to ensure local reference to branch exists.")
             menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--recurseSubprojects'])
-            # TODO detect conflicts
-            self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
+            if not self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True):
+               # Fail if conflict detected
+               return False
             if branch == targetBranch:
                # Always include the target branch
                unmergedTrainBranches.append(branch)
@@ -383,12 +385,16 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if versionTag == mergedVersionTag:
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True
-        versions = git.tag(f"-l {tagPrefix} --sort=v:refname --contains=origin/{args['--topic']}", execution_path=self.workspace_dir)
-        print(versions)
-        for version in versions.splitlines():
-           print(version)
-           if not self.performSubprojectMerges(args, version.strip(), nested, False, [], ignoreInProgress=False):
-               return False
+        # Get all the version tags after the tagged version, oldest first
+        branch_log = git.log(f"--oneline --decorate --reverse --no-color HEAD --not {versionTag}", execution_path=self.workspace_dir)
+        for line in branch_log.splitlines():
+           match = re.search(f"tag: ({prefix}[^),]+)", line)
+           if match:
+              version = match.group(1)
+              # Attempt to merge each version (this will be a no-op if the tag is not found)
+              if not self.performSubprojectMerges(args, version, nested, False, [], ignoreInProgress=False):
+                  # Fail if conflict detected
+                  return False
         return True
 
 
@@ -441,7 +447,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 self.progress[f"Subproject: {repo}"] = "finished"
             else:
                 logging.info(info)
-                all_good = False
+                if "Unable to merge subproject" in info:
+                   self.progress[f"Subproject: {repo}"] = "finished"
+                else:
+                   all_good = False
         if not all_good:
             self.progress["stopPoint"] = "subproject merge"
             self.dumpProgress(args)
@@ -653,8 +662,7 @@ def mergeSubproject(branch, repo, args, *, workspace_dir):
     # skip nested subprojects that fail to merge
     info = ''
     if not ret and not isSubmodule and not git.conflictedFiles(execution_path=repo):
-        info = f"Unable to merge subproject {repo}, skipping..."
-        ret = True
+        return f"Unable to merge subproject {repo}, skipping..."
     conflict = not ret
     if conflict:
         subprojectKey = "submodules" if isSubmodule else "nested"
