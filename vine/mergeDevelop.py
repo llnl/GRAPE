@@ -124,9 +124,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         args["--public"] = branch
 
         if "--nestedSubprojectsOnly" in args and args["--nestedSubprojectsOnly"]:
-            logging.info(f"Calling grape up --public={branch} --noTopLevel --recurseSubprojects to ensure local reference to branch exists.")
+            logging.info(f"Calling grape up --public={branch} --noTopLevel --noRecurse --recurseSubprojects to ensure local reference to branch exists.")
             menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--recurseSubprojects'])
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--noRecurse','--recurseSubprojects'])
             self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
             return True
 
@@ -345,8 +345,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         targetBranch = branches[0]
         unmergedTrainBranches = []
         for branch in branches:
-            logging.info(f"Calling grape up --public={branch} --noTopLevel --recurseSubprojects to ensure local reference to branch exists.")
-            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--recurseSubprojects'])
+            logging.info(f"Calling grape up --public={branch} --noTopLevel --noRecurse --recurseSubprojects to ensure local reference to branch exists.")
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--noRecurse','--recurseSubprojects'])
             if not self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True):
                # Fail if conflict detected
                return False
@@ -391,10 +391,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            match = re.search(f"tag: ({prefix}[^),]+)", line)
            if match:
               if not tagsFetched:
-                 logging.info(f"Calling grape up --noTopLevel --recurseSubprojects to ensure tags are fetched.")
+                 logging.info(f"Calling grape up --noTopLevel --noRecurse --recurseSubprojects to ensure tags are fetched.")
                  from vine import grapeMenu
                  menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-                 menu.applyMenuChoice('up', ['up','--noTopLevel','--recurseSubprojects'])
+                 menu.applyMenuChoice('up', ['up','--noTopLevel','--noRecurse','--recurseSubprojects'])
                  tagsFetched = True
               # Attempt to merge each version (this will be a no-op if the tag is not found)
               version = match.group(1)
