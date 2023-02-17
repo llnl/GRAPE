@@ -349,6 +349,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--noRecurse','--recurseSubprojects'])
             if not self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True):
                # Fail if conflict detected
+               logging.info("Failed subproject merge!")
                return False
             if branch == targetBranch:
                # Always include the target branch
@@ -400,6 +401,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               version = match.group(1)
               if not self.performSubprojectMerges(args, version, nested, False, [], ignoreInProgress=True):
                   # Fail if conflict detected
+                  logging.info("Failed subproject merge!")
                   return False
         return True
 
@@ -679,16 +681,23 @@ def mergeSubproject(branch, repo, args, *, workspace_dir):
             else:
                 typeStr = "nested subproject"
 
-            info = f"Merge in {typeStr} {repo} from {subPublic} to " \
-                   f"{git.currentBranch(execution_path=repo)} issued conflicts. Resolve and " \
-                   "commit those changes \nusing git mergetool and git " \
-                   f"commit in the {typeStr}, then continue using grape\n" \
-                   f"{mergeArgs['<<cmd>>']} --continue"
+            if "<<cmd>>" in args:
+               info = f"Merge in {typeStr} {repo} from {subPublic} to " \
+                      f"{git.currentBranch(execution_path=repo)} issued conflicts. Resolve and " \
+                      "commit those changes \nusing git mergetool and git " \
+                      f"commit in the {typeStr}, then continue using grape\n" \
+                      f"{mergeArgs['<<cmd>>']} --continue"
+            else:
+               info = f"Merge in {typeStr} {repo} from {subPublic} to " \
+                      f"{git.currentBranch(execution_path=repo)} issued conflicts"
         else:
-            info = f"Merge in {repo} failed for an unhandled " \
-                   "reason. You may need to stash / commit your current\n" \
-                   "changes before doing the merge. Inspect git output " \
-                   "above to troubleshoot. Continue using\ngrape " \
-                   f"{mergeArgs['<<cmd>>']} --continue."
+            if "<<cmd>>" in args:
+               info = f"Merge in {repo} failed for an unhandled " \
+                      "reason. You may need to stash / commit your current\n" \
+                      "changes before doing the merge. Inspect git output " \
+                      "above to troubleshoot. Continue using\ngrape " \
+                      f"{mergeArgs['<<cmd>>']} --continue."
+            else:
+               info = f"Merge in {repo} failed for an unhandled reason"
         return info
     return True
