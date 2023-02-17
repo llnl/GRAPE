@@ -398,7 +398,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                  tagsFetched = True
               # Attempt to merge each version (this will be a no-op if the tag is not found)
               version = match.group(1)
-              if not self.performSubprojectMerges(args, version, nested, False, [], ignoreInProgress=False):
+              if not self.performSubprojectMerges(args, version, nested, False, [], ignoreInProgress=True):
                   # Fail if conflict detected
                   return False
         return True
