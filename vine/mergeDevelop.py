@@ -392,6 +392,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            if match:
               if not tagsFetched:
                  logging.info(f"Calling grape up --noTopLevel --recurseSubprojects to ensure tags are fetched.")
+                 from vine import grapeMenu
                  menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
                  menu.applyMenuChoice('up', ['up','--noTopLevel','--recurseSubprojects'])
                  tagsFetched = True
