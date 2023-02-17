@@ -386,11 +386,16 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             return True
         # Get all the version tags after the tagged version, oldest first
         branch_log = git.log(f"--oneline --decorate --reverse --no-color HEAD --not {versionTag}", execution_path=self.workspace_dir)
+        tagsFetched = False
         for line in branch_log.splitlines():
            match = re.search(f"tag: ({prefix}[^),]+)", line)
            if match:
-              version = match.group(1)
+              if not tagsFetched:
+                 logging.info(f"Calling grape up --noTopLevel --recurseSubprojects to ensure tags are fetched.")
+                 menu.applyMenuChoice('up', ['up','--noTopLevel','--recurseSubprojects'])
+                 tagsFetched = True
               # Attempt to merge each version (this will be a no-op if the tag is not found)
+              version = match.group(1)
               if not self.performSubprojectMerges(args, version, nested, False, [], ignoreInProgress=False):
                   # Fail if conflict detected
                   return False
