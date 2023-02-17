@@ -460,8 +460,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 else:
                    all_good = False
         if not all_good:
-            self.progress["stopPoint"] = "subproject merge"
-            self.dumpProgress(args)
+            if not ignoreInProgress:
+               self.progress["stopPoint"] = "subproject merge"
+               self.dumpProgress(args)
             return False
         return True
 
