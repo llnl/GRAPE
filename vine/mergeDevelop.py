@@ -543,10 +543,13 @@ def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
                     return False
             else:
                 if warnOnConflict:
-                    logging.warning(
-                        "Conflicts generated. Resolve using git mergetool," +
-                        f" then continue with grape {args['<<cmd>>']} " +
-                        "--continue. ")
+                    if "<<cmd>>" in args:
+                       logging.warning(
+                           "Conflicts generated. Resolve using git mergetool," +
+                           f" then continue with grape {args['<<cmd>>']} " +
+                           "--continue. ")
+                    else:
+                       logging.warning("Conflicts generated.")
                 return False
         else:
             logging.error(f"Merge command {error.gitCommand} failed." +
