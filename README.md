@@ -915,7 +915,8 @@ options are at least listed below.
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
-                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
+           grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+           grape-md --traverseMergedResult --topic=<branch>
 
 
     Options:
@@ -942,11 +943,11 @@ options are at least listed below.
         --noChecks               Skip workspace consistency checks.
         --squash                 Perform squash merges.
         --traverseTrainRefs      Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
-        --topic=<branch>         Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
-                                 behind the --topic branch on the train)
+        --traverseMergedResult   Do the necessary merges to merge all nested subprojects up to the point of the merged result in the top level.
+        --topic=<branch>         Topic branch we are merging into. This is defined explicitly with --traverseTrainRefs/--traverseMergedResult
+                                 to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-
 
 
 
