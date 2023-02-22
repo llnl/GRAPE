@@ -682,6 +682,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Skipping In Progress Lock Check..")
             return True
 
+        if not args["--mergeTrain"]:
+            thisRequest = self.openPullRequest()
+            config = config_parser_global.grapeConfig()
+            inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+            if inprogresslabel:
+               thisRequest = self.openPullRequest()
+               thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
+               # Regenerate the pipeline now with new label
+               thisRequest.regeneratePipeline()
+
         retcode = self.checkInProgressLock(args)
         if retcode:
             # the 2 means we are already marked as in progress
