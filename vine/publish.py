@@ -51,7 +51,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush]
+                         [--nopush] [--noUpdateMD]
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
@@ -109,6 +109,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --topic=<branch>        The branch to publish. Defaults to the current branch.
     --noverify              Set to skip interactive verification of publish commands.
     --nopush                Set to skip the push of commits generated during the publish procedure.
+    --noUpdateMD            Set to skip update of local public branches during md steps.
     --pushSubtrees          Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
                             public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                             Set by default if .grapeconfig.subtrees.pushOnPublish is True.
@@ -572,7 +573,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def mergePublic(self, args):
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
-        if  menu.applyMenuChoice("md", ["--am", f"--public={args['--public']}"]):
+        mdArgs = ["--am", f"--public={args['--public']}"]
+        if args["--noUpdateMD"]:
+            mdArgs.append = "--noUpdate"
+        if  menu.applyMenuChoice("md", mdArgs):
             # update the startingSHA to be after any merges as they cause all sorts of problems for git revert in the
             # event of a grape publish --abort
             self.progress["startingSHA"] = git.SHA("HEAD", execution_path=self.workspace_dir)
