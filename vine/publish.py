@@ -60,7 +60,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
-                         [--noUpdateLog | [[--updateLogDir=<dir>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
+                         [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
@@ -83,7 +83,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --abort
             grape-publish --printSteps
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
-            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
                                      --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--recurse | --noRecurse]
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
@@ -159,6 +159,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --updateLogDir=<dir>    Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
                             a directory named after current development version.
                             [default: .grapeconfig.publish.updateLogDir]
+    --updateLogCmds=<cmds>  The comma-delimited list of commands to execute as part of the update log construction.
+                            [default: .grapeconfig.publish.updateLogCmds]
     --updateLog=<file>      The log file to update with the commit message for this branch. If --updateLogDir is defined,
                             this is the base file name for update message files.
                             [default: .grapeconfig.publish.updateLog]
@@ -303,6 +305,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
         # log file
         config.set(self.SECTION_PUBLISH, 'updateLog', '.grapepublishlog')
+        config.set(self.SECTION_PUBLISH, 'updateLogCmds', '')
         config.set(self.SECTION_PUBLISH, 'updateLogDir', '')
         config.set(self.SECTION_PUBLISH, 'logSkipFirstLines', '0')
         config.set(self.SECTION_PUBLISH, 'logEntryHeader', "<date> <user>\\n<version>\\n")
@@ -1210,6 +1213,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             else:
                 updated_or_added = "added"
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+            if args["--updateLogCmds"]:
+                cmds = args[f"--updateLogCmds"].split(',')
+                logging.info("GRAPE PUBLISH - PERFORMING CUSTOM UPDATELOG STEP")
+                for cmd in cmds:
+                    if "<update_log>" in cmd:
+                        cmd = cmd.replace("<update_log>",loglines)
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
             git.add(f"{logFilePath}", execution_path=self.workspace_dir)
