@@ -1218,7 +1218,24 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 logging.info("GRAPE PUBLISH - PERFORMING CUSTOM UPDATELOG STEP")
                 for cmd in cmds:
                     if "<update_log>" in cmd:
-                        cmd = cmd.replace("<update_log>",loglines)
+                        print('cmd: %s' % cmd)
+                        print('loglines: %s' % loglines)
+                        loglinestring = ''.join(loglines)
+                        loglinestring = loglinestring.replace('\n',r'\n')
+                        print('loglinestring: %s' % loglinestring)
+                        cmd = cmd.replace("<update_log>",loglinestring)
+                        print('cmd: %s' % cmd)
+                    capture_output = args["--quiet"]
+                    process_result = vine_subprocess.executeSubProcess(
+                        cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
+                    logging.info(process_result.returncode)
+                    if process_result.returncode != 0:
+                        if process_result.stdout:
+                            logging.info(process_result.stdout.decode().strip())
+                        if process_result.stderr:
+                            logging.error(process_result.stderr.decode().strip())
+                        return False
+                    exit(1)
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
             git.add(f"{logFilePath}", execution_path=self.workspace_dir)
