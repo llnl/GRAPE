@@ -578,7 +578,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         mdArgs = ["--am", f"--public={args['--public']}"]
         if args["--noUpdateMD"]:
-            mdArgs.append = "--noUpdate"
+            mdArgs.append("--noUpdate")
         if  menu.applyMenuChoice("md", mdArgs):
             # update the startingSHA to be after any merges as they cause all sorts of problems for git revert in the
             # event of a grape publish --abort
