@@ -688,14 +688,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noReview"]:
             logging.info("Skipping In Progress Lock Check..")
             return True
-        
-        config = config_parser_global.grapeConfig()
-        inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
-        if inprogresslabel:
-           request = self.openPullRequest()
-           request.update(request.version(), add_labels=[inprogresslabel])
-           # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
-           request.regeneratePipeline()
+
+        if not args["--mergeTrain"]:
+            thisRequest = self.openPullRequest()
+            config = config_parser_global.grapeConfig()
+            inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+            if inprogresslabel:
+               thisRequest = self.openPullRequest()
+               thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
+               # Regenerate the pipeline now with new label
+               thisRequest.regeneratePipeline()
 
         retcode = self.checkInProgressLock(args)
         if retcode:
@@ -1895,6 +1897,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def requestUserStartMergeTrain(self, args):
         thisRequest = self.openPullRequest()
+        config = config_parser_global.grapeConfig()
+        inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+        if inprogresslabel:
+           thisRequest = self.openPullRequest()
+           thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
+           # Regenerate the pipeline now with new label
+           thisRequest.regeneratePipeline()
         logging.info("********************************************************************************")
         logging.info("All changes pushed and ready for being enqueued into merge train.")
         logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
