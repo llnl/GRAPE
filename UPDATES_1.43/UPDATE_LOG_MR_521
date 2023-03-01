@@ -1,0 +1,7 @@
+
+
+Wed Mar  1 08:56:58 2023 Benjamin T. Liu
+MR_521
+Reviewers: Peter Robinson
+
+Force fetch of tags during md --traverseMergedResult
