@@ -374,7 +374,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def traverseMergedResult(self, args, nested):
         # Make sure we have all tags
-        git.fetch("origin 'refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
+        git.fetch("origin '+refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
         tagPrefix = f"{prefix}*"
