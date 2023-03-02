@@ -247,7 +247,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             slots = int(slotMappings[public])
             if slots > 1:
                prefix = config.get(self.SECTION_VERSIONING, "prefix")
-               git.fetch("origin", f"--tags {public}", execution_path=self.workspace_dir)
+               git.fetch("origin", f"--force --tags {public}", execution_path=self.workspace_dir)
                branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
 
