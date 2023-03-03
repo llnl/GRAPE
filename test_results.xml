@@ -561,14 +561,5 @@
     <testcase classname="zhang" name="zhang_001" time="17" status="PASSED">
     </testcase>
   </testsuite>
-  <properties>
-    <property name='ale3d_path' value="R:\src\Win32\x64\ParRelease\ale3d.exe"/>
-    <property name='ale3d_version' value="4.35.1016-2"/>
-    <property name='host_config' value="Unknown"/>
-    <property name='machine' value="winParallel"/>
-    <property name='WARNING' value="No baselines found"/>
-    <property name='directory' value="R:\test\update\run"/>
-    <property name='suite' value="Update"/>
-  </properties>
 </testsuites>
 
