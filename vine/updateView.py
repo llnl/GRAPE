@@ -250,6 +250,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                git.fetch("origin", f"--force --tags {public}", execution_path=self.workspace_dir)
                branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
+        else:
+            git.fetch("origin", f"--force {public}", execution_path=self.workspace_dir)
 
         return (branchChanged, public, tagPrefix, checkSubmoduleHistory)
 
