@@ -230,7 +230,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 break
         return valid
 
-    def getBranchChangedArgs(self, args, isSubmodule = False):
+    def getBranchChangedArgs(self, args):
         branchChangedArg = args["--branchChanged"]
         if branchChangedArg.endswith('~'):
             branchChanged = branchChangedArg[:-1]
@@ -247,11 +247,9 @@ class UpdateView(Option, WorkspaceDirHandler):
             slots = int(slotMappings[public])
             if slots > 1:
                prefix = config.get(self.SECTION_VERSIONING, "prefix")
-               git.fetch("origin", f"--force --tags {public}:{public}", execution_path=self.workspace_dir)
+               git.fetch("origin", f"--force --tags {public}", execution_path=self.workspace_dir)
                branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
-        else:
-            git.fetch("origin", f"--force {public}:{public}", execution_path=self.workspace_dir)
 
         return (branchChanged, public, tagPrefix, checkSubmoduleHistory)
 
