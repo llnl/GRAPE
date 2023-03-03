@@ -773,6 +773,17 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
             logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
+    # Get the public branch
+    public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+    # figure out if this is a submodule
+    relpath = os.path.relpath(repo, workspace_dir)
+    # if this is a submodule, get the appropriate public mapping
+    isSubmodule = utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys()
+    if isSubmodule:
+        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
+
+    git.fetch("origin", f"--force {public}:{public}", execution_path=repo)
+
     try:
         if git.currentBranch(execution_path=repo) == branch:
            return
@@ -785,15 +796,10 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
 
     if not git.hasBranch(branch, execution_path=repo):
         # switch to corresponding public branch if the branch does not exist
-        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
-        # figure out if this is a submodule
-        relpath = os.path.relpath(repo, workspace_dir)
-        # if this is a submodule, get the appropriate public mapping
-        if utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys():
+        if isSubmodule:
             if skipSubmoduleSwitch:
                logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
                return
-            public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
         logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
         git.pull(f"origin {public}", execution_path=repo)
