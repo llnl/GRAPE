@@ -230,7 +230,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 break
         return valid
 
-    def getBranchChangedArgs(self, args):
+    def getBranchChangedArgs(self, args, isSubmodule = False):
         branchChangedArg = args["--branchChanged"]
         if branchChangedArg.endswith('~'):
             branchChanged = branchChangedArg[:-1]
@@ -239,6 +239,10 @@ class UpdateView(Option, WorkspaceDirHandler):
             branchChanged = branchChangedArg
             checkSubmoduleHistory = False
         public = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(branchChanged)
+        if isSubmodule:
+            subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
+        else:
+            subpublic = public
         tagPrefix= None
 
         if branchChangedArg.endswith('~'):
@@ -247,11 +251,11 @@ class UpdateView(Option, WorkspaceDirHandler):
             slots = int(slotMappings[public])
             if slots > 1:
                prefix = config.get(self.SECTION_VERSIONING, "prefix")
-               git.fetch("origin", f"--force --tags {public}", execution_path=self.workspace_dir)
-               branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
+               git.fetch("origin", f"--force --tags {subpublic}:{subpublic}", execution_path=self.workspace_dir)
+               branchTags = git.describe(f"origin/{subpublic} --match={prefix}*", execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
         else:
-            git.fetch("origin", f"--force {public}", execution_path=self.workspace_dir)
+            git.fetch("origin", f"--force {subpublic}:{subpublic}", execution_path=self.workspace_dir)
 
         return (branchChanged, public, tagPrefix, checkSubmoduleHistory)
 
@@ -456,7 +460,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if args["--branchFilter"]:
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir))
                 elif args["--branchChanged"]:
-                    (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
+                    (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args, True)
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
                     branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, checkSubmoduleHistory=checkSubmoduleHistory)
                 else:
