@@ -101,12 +101,6 @@ class GrapeLogger(metaclass=Singleton):
                 return True
         return False
 
-    def _remove_logging_to_stream(self, logging_level):
-        for handler in self.manager.root.handlers:
-            if isinstance(handler, logging.StreamHandler):
-                if logging_level == handler.level:
-                    self.manager.removeHandler(handler)
-
     def log_to_file(self, log_file):
         self.log_file = log_file
         file_handler = logging.FileHandler(log_file)
@@ -142,10 +136,6 @@ class GrapeLogger(metaclass=Singleton):
             logging.debug("Debugging logging to stdout already set up.")
             return
         self._set_up_log_to_stream(StreamHandlerFactory.DEBUG)
-
-    def remove_logging_to_stream_debug(self):
-        """Remove logging.debug() handler."""
-        self_remove_logging_to_stream(logging.DEBUG)
 
     def _set_up_log_to_stream(self, stream_type):
         stream_handler_factory = StreamHandlerFactory()
