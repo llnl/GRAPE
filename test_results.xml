@@ -4,8 +4,6 @@
     </testcase>
     <testcase classname="matprop" name="matpropb_001" time="8" status="FAILRUN">
        <failure message="FAILRUN" type="0">Fail run</failure>
-       <system-out>"FAILRUN"</system-out>
-       <system-out>"FAILRUN"</system-out>
     </testcase>
   </testsuite>
 </testsuites>
