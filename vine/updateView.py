@@ -762,6 +762,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     # attempt to fetch the requested branch
     try:
         print(git.gitcmd("remote -v", "Failed", execution_path=repo))
+        from vine import vine_logging
         logger = vine_logging.GrapeLogger()
         logger.log_to_stdout_debug()
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
