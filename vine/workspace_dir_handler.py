@@ -22,7 +22,9 @@ class WorkspaceDirHandler:
     @workspace_dir.setter
     def workspace_dir(self, workspace_dir):
         _base_dir = workspace_dir
+        print(self.SYS_INDEPENDENT_ROOT_DIR)
         while _base_dir and _base_dir != self.SYS_INDEPENDENT_ROOT_DIR:
+            print(_base_dir)
             if os.path.exists(os.path.join(_base_dir, '.git')):
                 self._workspace_dir = _base_dir
             _base_dir = os.path.dirname(_base_dir)
