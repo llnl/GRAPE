@@ -16,6 +16,7 @@ class WorkspaceDirHandler:
     def workspace_dir(self):
         if self._workspace_dir:
             return self._workspace_dir
+        print("ERROR")
         logging.error(f'GRAPE needs to be called from within a git repo.')
         exit(1)
 
@@ -23,6 +24,7 @@ class WorkspaceDirHandler:
     def workspace_dir(self, workspace_dir):
         _base_dir = workspace_dir
         print(f"TOP {self.SYS_INDEPENDENT_ROOT_DIR}")
+        print(_base_dir)
         while _base_dir and _base_dir != self.SYS_INDEPENDENT_ROOT_DIR:
             print(f"{_base_dir}")
             with os.scandir(_base_dir) as it:
