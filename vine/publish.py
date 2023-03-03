@@ -1213,6 +1213,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             else:
                 updated_or_added = "added"
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
+
+            # Execute any custom commands before writing the update log
             if args["--updateLogCmds"]:
                 cmds = args[f"--updateLogCmds"].split(',')
                 logging.info("GRAPE PUBLISH - PERFORMING CUSTOM UPDATELOG STEP")
@@ -1231,7 +1233,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         if process_result.stderr:
                             logging.error(process_result.stderr.decode().strip())
                         return False
-                    exit(1)
             with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
             git.add(f"{logFilePath}", execution_path=self.workspace_dir)
