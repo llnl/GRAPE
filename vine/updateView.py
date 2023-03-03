@@ -761,6 +761,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
+        print(git.gitcmd("remote -v", "Failed", execution_path=repo))
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
         if "refusing to fetch into current branch" in e.gitOutput.lower():
