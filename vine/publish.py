@@ -1218,13 +1218,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 logging.info("GRAPE PUBLISH - PERFORMING CUSTOM UPDATELOG STEP")
                 for cmd in cmds:
                     if "<update_log>" in cmd:
-                        print('cmd: %s' % cmd)
-                        print('loglines: %s' % loglines)
                         loglinestring = ''.join(loglines)
                         loglinestring = loglinestring.replace('\n',r'\n')
-                        print('loglinestring: %s' % loglinestring)
                         cmd = cmd.replace("<update_log>",loglinestring)
-                        print('cmd: %s' % cmd)
                     capture_output = args["--quiet"]
                     process_result = vine_subprocess.executeSubProcess(
                         cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
