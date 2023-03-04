@@ -782,7 +782,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     if isSubmodule:
         public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
 
-    git.fetch("origin", f"--force {public}:{public}", execution_path=repo)
+    if branch != public:
+        git.fetch("origin", f"--force {public}:{public}", execution_path=repo)
 
     try:
         if git.currentBranch(execution_path=repo) == branch:
