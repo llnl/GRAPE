@@ -22,6 +22,8 @@ class GrapeGitlabAdapter:
     defaultURL = "https://your.host.org/gitlab"
     defaultPort = 7999
     defaultSSH_Path= "git@gitlab.your.host.org"
+    # default token expiration
+    defaultExpiration = 29
 
     def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, *, workspace_dir):
 
@@ -50,8 +52,8 @@ class GrapeGitlabAdapter:
             self._gitlab= None
             logging.info("Could not connect to Gitlab...")
 
-    def generate_personal_access_token(self, port, ssh_url):
-        command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api"
+    def generate_personal_access_token(self, port, ssh_url, expires = defaultExpiration):
+        command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api {expires}"
         logging.info(f"Generating token by executing {command}")
         completed_process = subprocess.run(command,
                                            capture_output=True,
