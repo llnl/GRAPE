@@ -31,7 +31,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -62,11 +62,17 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      modified by --branchFilter, --branchChanged, or --rm.
         --noNestedSubprojects        Remove all nested subprojects from your workspace. This can be subsequently
                                      modified by --add or --ensureCIReposPresent.
-        --sync=<bool>                Take extra steps to ensure the branch you're on is up to date with origin,
+        --sync=<bool>                Take extra steps to ensure the branch you're on is up-to-date with origin,
                                      either by pushing or pulling the remote tracking branch.
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --syncPublic                 Ensure the public branch for the branch you are on is up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
+        --forceSyncPublic            Force the public branch for the branch you are on to be up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
@@ -668,6 +674,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             runInSubprojects=not args["--skipNestedSubprojects"],
             skipBranchCreation=args["--skipBranchCreation"],
             skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
+            fetchPublic=args["--syncPublic"] or args["--forceSyncPublic"],
+            forcePublic=args["--forceSyncPublic"],
             workspace_dir=self.workspace_dir)
 
 
@@ -758,6 +766,8 @@ def handleActivateSubprojectMRE(mre):
 
 def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspace_dir):
     skipSubmoduleSwitch = args[0]
+    fetchPublic = args[1]
+    forcePublic = args[2]
     logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
@@ -773,6 +783,20 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
             logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
+    # Get the public branch
+    public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+    # figure out if this is a submodule
+    relpath = os.path.relpath(repo, workspace_dir)
+    # if this is a submodule, get the appropriate public mapping
+    isSubmodule = utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys()
+    if isSubmodule:
+        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
+
+        
+    if fetchPublic and branch != public:
+        forceArg = "--force" if forcePublic else ""
+        git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
+
     try:
         if git.currentBranch(execution_path=repo) == branch:
            return
@@ -785,15 +809,10 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
 
     if not git.hasBranch(branch, execution_path=repo):
         # switch to corresponding public branch if the branch does not exist
-        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
-        # figure out if this is a submodule
-        relpath = os.path.relpath(repo, workspace_dir)
-        # if this is a submodule, get the appropriate public mapping
-        if utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys():
+        if isSubmodule:
             if skipSubmoduleSwitch:
                logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
                return
-            public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
         logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
         git.pull(f"origin {public}", execution_path=repo)
@@ -861,13 +880,13 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipSubmoduleSwitch=False ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-            globalArgs=[skipSubmoduleSwitch], workspace_dir=workspace_dir)
+            globalArgs=[skipSubmoduleSwitch, fetchPublic, forcePublic], workspace_dir=workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch

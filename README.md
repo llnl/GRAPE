@@ -1190,7 +1190,7 @@ options are at least listed below.
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -1221,11 +1221,17 @@ options are at least listed below.
                                      modified by --branchFilter, --branchChanged, or --rm.
         --noNestedSubprojects        Remove all nested subprojects from your workspace. This can be subsequently
                                      modified by --add or --ensureCIReposPresent.
-        --sync=<bool>                Take extra steps to ensure the branch you're on is up to date with origin,
+        --sync=<bool>                Take extra steps to ensure the branch you're on is up-to-date with origin,
                                      either by pushing or pulling the remote tracking branch.
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --syncPublic                 Ensure the public branch for the branch you are on is up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
+        --forceSyncPublic            Force the public branch for the branch you are on to be up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
