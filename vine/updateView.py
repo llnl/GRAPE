@@ -31,7 +31,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--syncPublic | --forceSynPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -70,7 +70,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         --syncPublic                 Ensure the public branch for the branch you are on is up-to-date with origin.
                                      This will only have an effect if --sync is set to True and the current branch
                                      is not a public branch.
-        --syncForcePublic            Force the public branch for the branch you are on to be up-to-date with origin.
+        --forceSyncPublic            Force the public branch for the branch you are on to be up-to-date with origin.
                                      This will only have an effect if --sync is set to True and the current branch
                                      is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
