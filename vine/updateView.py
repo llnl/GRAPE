@@ -795,7 +795,18 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
         
     if fetchPublic and branch != public:
         forceArg = "--force" if forcePublic else ""
-        git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
+        try:
+           git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
+        except grape_errors.GrapeGitError as e:
+           if "refusing to fetch into current branch" in e.gitOutput.lower():
+               # A subproject may be on the public branch even though a different branch is specified.
+               try:
+                   git.pull(f"origin {public}", execution_path=repo)
+               except grape_errors.GrapeGitError as e:
+                   logging.error(e.gitOutput)
+                   raise e
+           else:
+               logging.info(f"Fetch to update {public} in {repo} failed : {e.gitOutput}\n\tContinuing...")
 
     try:
         if git.currentBranch(execution_path=repo) == branch:
