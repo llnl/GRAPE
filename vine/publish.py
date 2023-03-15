@@ -770,7 +770,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_username"] = pullRequest.author()
             self.progress["author_email"] = pullRequest.authorEmail()
         else:
-            url = git.join_list_as_git_path([codeReviews.url, "projects",
+            url = git.join_list_as_git_path([self.args["--codeReviewsURL"], "projects",
                                             args["--project"], "repos",
                                             args["--repo"], "pull-requests"])
             logging.info(
