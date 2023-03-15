@@ -770,17 +770,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_username"] = pullRequest.author()
             self.progress["author_email"] = pullRequest.authorEmail()
         else:
-            if "gitlab" in args["--codeReviewsURL"]:
-                 url = git.join_list_as_git_path([self.args["--codeReviewsURL"],
-                                                 args["--project"],
-                                                 args["--repo"], "merge_requests"])
-            else:
-                 url = git.join_list_as_git_path([self.args["--codeReviewsURL"], "projects",
-                                                 args["--project"], "repos",
-                                                 args["--repo"], "pull-requests"])
-            logging.info(
-                "There is no pull request for your current branch.\n" +
-                f"Start one using grape review or by visiting {url}")
+            logging.info("There is no pull request for your current branch.\nStart one using grape review.")
             self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
