@@ -350,8 +350,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if not topic:
             topic = git.currentBranch(execution_path=self.workspace_dir)
         if topic != git.currentBranch(execution_path=self.workspace_dir) and \
-                args['--startAt'] and self.order in args['--startAt'] and \
-                'publish' in args["--startAt"]:
+                args['--startAt'] == 'publish' and args["--startAt"] in self.order:
             git.checkout(topic, execution_path=self.workspace_dir)
         args["--topic"] = topic
 
