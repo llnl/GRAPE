@@ -350,8 +350,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if not topic:
             topic = git.currentBranch(execution_path=self.workspace_dir)
         if topic != git.currentBranch(execution_path=self.workspace_dir) and \
-                args['--startAt'] and self.order in args['--startAt'] and \
-                'publish' in args["--startAt"]:
+                args['--startAt'] == 'publish' and args["--startAt"] in self.order:
             git.checkout(topic, execution_path=self.workspace_dir)
         args["--topic"] = topic
 
@@ -770,12 +769,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_username"] = pullRequest.author()
             self.progress["author_email"] = pullRequest.authorEmail()
         else:
-            url = git.join_list_as_git_path([codeReviews.url, "projects",
-                                            args["--project"], "repos",
-                                            args["--repo"], "pull-requests"])
-            logging.info(
-                "There is no pull request for your current branch.\n" +
-                f"Start one using grape review or by visiting {url}")
+            logging.info("There is no pull request for your current branch.\nStart one using grape review.")
             self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
