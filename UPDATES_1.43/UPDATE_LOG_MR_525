@@ -1,0 +1,7 @@
+
+
+Fri Mar 10 10:32:49 2023 Benjamin T. Liu
+MR_525
+Reviewers: Alan Dayton
+
+Fix uv --syncPublic/--forceSyncPublic for case where subproject is already on public branch

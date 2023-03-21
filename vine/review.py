@@ -394,9 +394,12 @@ class Review(Option, WorkspaceDirHandler):
                try:
                   changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
                   if changedfilelabelmapping:
+                      # find the common ancestor between the current branch and the target branch
+                      mergeBase = git.mergeBase(f"{target_branch} {branch}", execution_path=self.workspace_dir)
                       for path,label in changedfilelabelmapping.items():
                           try:
-                             if git.diff(f"--name-only {branch} {target_branch} {path}", execution_path=self.workspace_dir):
+                             # check if the file has changes from the ancestor
+                             if git.diff(f"--name-only {branch} {mergeBase} {path}", execution_path=self.workspace_dir):
                                  add_labels.append(label)
                              else:
                                  remove_labels.append(label)
