@@ -1,6 +1,8 @@
 import configparser
+import keyring
 import logging
 import os
+import subprocess
 from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_workspace
@@ -21,7 +23,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
-                              [--disableSubprojectCI]
+                              [--addSubprojectCIAccess]
                               [--requirePipelineSuccess]
                               [--allRepoSettings]
                               [--scheduledPipelines=[list|add|delete|take|update]
@@ -38,6 +40,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--branch=<branch>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
+                              [--curl=<path>]
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
@@ -48,13 +51,13 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
-        --disableSubprojectCI       Disable CI in all subprojects.
+        --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
         --requirePipelineSuccess    Require pipeline success for merge button.
         --allRepoSettings           Set all administrative repo settings. This includes:
                                        setProtectedBranches
                                        setKeepMRApprovals
                                        disableLFS
-                                       disableSubprojectCI
+                                       addSubprojectCIAccess
                                        requirePipelineSuccess
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
                                        list   : List scheduled pipelines
@@ -98,6 +101,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
+        --curl=<path>               Path to curl executable
+                                    [default: .grapeconfig.repo.curl]
 
     """
     def __init__(self):
@@ -254,11 +259,11 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         setProtectedBranches = args["--setProtectedBranches"] or args["--allRepoSettings"]
         setKeepMRApprovals = args["--setKeepMRApprovals"] or args["--allRepoSettings"]
         disableLFS = args["--disableLFS"] or args["--allRepoSettings"]
-        disableSubprojectCI = args["--disableSubprojectCI"] or args["--allRepoSettings"]
+        addSubprojectCIAccess = args["--addSubprojectCIAccess"] or args["--allRepoSettings"]
         requirePipelineSuccess = args["--requirePipelineSuccess"] or args["--allRepoSettings"]
       
         warnings = []
-        if setProtectedBranches or setKeepMRApprovals or disableLFS or disableSubprojectCI or requirePipelineSuccess:
+        if setProtectedBranches or setKeepMRApprovals or disableLFS or addSubprojectCIAccess or requirePipelineSuccess:
            project = grape_gitlab.project(projectname)
            grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, initialbranch=initialbranch, verbose=args["--verbose"])
 
@@ -331,20 +336,36 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      warnings.append(f"Failed disabling LFS in {reponame}")
                   task_completed = True
 
-               if disableSubprojectCI:
+               if addSubprojectCIAccess:
                   if repo.project.name != topRepo.project.name:
-                     logging.info("\tDisabling CI...")
+                     fake_yml = "ci-disabled-by-grape.yml"
+                     logging.info("\tAdding subproject CI access...")
+                     logging.info("\t  Ensuring CI is enabled but inactive...")
                      try:
-                        if repo.project.builds_access_level != "disabled":
+                        if repo.project.builds_access_level != "enabled" or repo.project.ci_config_path != fake_yml:
                            if args["--dry"]:
-                              logging.info("\t[Dry run]: CI not disabled")
+                              logging.info("\t[Dry run]: CI not enabled or deactivated")
                            else:
-                              repo.project.builds_access_level = "disabled"
+                              repo.project.builds_access_level = "enabled"
+                              repo.project.ci_config_path = fake_yml
                               repo.project.save()
                         else:
-                           logging.info("\tPreviously disabled")
+                           logging.info("\tPreviously enabled and inactive")
                      except:
-                        warnings.append(f"Failed disabling subproject CI in {reponame}")
+                        warnings.append(f"Failed to enable subproject CI (for adding subproject CI access) in {reponame}")
+                     logging.info("\t  Enabling token access...")
+                     # ci_job_access allowlist is accessed through GraphQL API calls, so we have to use curl
+                     token = keyring.get_password(grape_gitlab._service, grape_gitlab._userName)
+                     graphqlurl = f'{args["--codeReviewsURL"]}/api/graphql'
+                     command = f'{args["--curl"]} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary \'{{"query": "mutation {{ ciJobTokenScopeAddProject(input: {{ projectPath: \\\"{repo.project.path_with_namespace}\\\",  targetProjectPath: \\\"{projectname}/{topRepo.project.name}\\\", direction: INBOUND }}) {{ errors }} projectCiCdSettingsUpdate(input: {{ fullPath: \\\"{repo.project.path_with_namespace}\\\", inboundJobTokenScopeEnabled: true}}) {{ errors }} }}" }} \''
+                     if args["--dry"]:
+                        logging.info(f"\t[Dry run]: {command}")
+                     else:
+                        completed_process = subprocess.run(command, capture_output=True, shell=True)
+                        output = completed_process.stdout.decode().strip()
+                        if "rejected" in output:
+                           print(command)
+                        print(output)
                   task_completed = True
 
                if requirePipelineSuccess:
@@ -446,4 +467,5 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         config.set(self.SECTION_PROJECT, "name", "My unnamed project")
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
+        config.set(self.SECTION_REPO, "curl", "/usr/bin/curl")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
