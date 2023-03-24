@@ -1,5 +1,6 @@
 import configparser
 import keyring
+import json
 import logging
 import os
 import subprocess
@@ -357,15 +358,38 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      # ci_job_access allowlist is accessed through GraphQL API calls, so we have to use curl
                      token = keyring.get_password(grape_gitlab._service, grape_gitlab._userName)
                      graphqlurl = f'{args["--codeReviewsURL"]}/api/graphql'
-                     command = f'{args["--curl"]} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary \'{{"query": "mutation {{ ciJobTokenScopeAddProject(input: {{ projectPath: \\\"{repo.project.path_with_namespace}\\\",  targetProjectPath: \\\"{projectname}/{topRepo.project.name}\\\", direction: INBOUND }}) {{ errors }} projectCiCdSettingsUpdate(input: {{ fullPath: \\\"{repo.project.path_with_namespace}\\\", inboundJobTokenScopeEnabled: true}}) {{ errors }} }}" }} \''
+                     # enable inbound allowlist and add top level repo to list
+                     #command = f'{args["--curl"]} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary \'{{"query": "mutation {{ ciJobTokenScopeAddProject(input: {{ projectPath: \\\"{repo.project.path_with_namespace}\\\",  targetProjectPath: \\\"{projectname}/{topRepo.project.name}\\\", direction: INBOUND }}) {{ errors }} projectCiCdSettingsUpdate(input: {{ fullPath: \\\"{repo.project.path_with_namespace}\\\", inboundJobTokenScopeEnabled: true}}) {{ errors }} }}" }} \''
+                     query = ''' \'{
+                        "query": "mutation {
+                           ciJobTokenScopeAddProject(input: {
+                              projectPath: \\\"%s\\\", targetProjectPath: \\\"%s/%s\\\", direction: INBOUND
+                           }) {
+                              errors
+                           }
+                           projectCiCdSettingsUpdate(input: {
+                              fullPath: \\\"%s\\\", inboundJobTokenScopeEnabled: true}) {
+                              errors
+                           }
+                        }"
+                     } \' ''' % (repo.project.path_with_namespace, projectname, topRepo.project.name, repo.project.path_with_namespace)
+                     # strip newlines from query
+                     query = query.replace("\n"," ")
+                     command = f'{args["--curl"]} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary ' + query
                      if args["--dry"]:
                         logging.info(f"\t[Dry run]: {command}")
                      else:
                         completed_process = subprocess.run(command, capture_output=True, shell=True)
                         output = completed_process.stdout.decode().strip()
                         if "rejected" in output:
-                           print(command)
-                        print(output)
+                           logging.info(f"\t  > {command}")
+                        try:
+                           output_json = json.loads(output)
+                           for key, value in output_json["data"].items():
+                              if value['errors']:
+                                 logging.info(f"\t    {key}: {value['errors']}")
+                        except:
+                           logging.info(output)
                   task_completed = True
 
                if requirePipelineSuccess:
