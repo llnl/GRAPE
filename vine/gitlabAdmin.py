@@ -359,7 +359,6 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      token = keyring.get_password(grape_gitlab._service, grape_gitlab._userName)
                      graphqlurl = f'{args["--codeReviewsURL"]}/api/graphql'
                      # enable inbound allowlist and add top level repo to list
-                     #command = f'{args["--curl"]} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary \'{{"query": "mutation {{ ciJobTokenScopeAddProject(input: {{ projectPath: \\\"{repo.project.path_with_namespace}\\\",  targetProjectPath: \\\"{projectname}/{topRepo.project.name}\\\", direction: INBOUND }}) {{ errors }} projectCiCdSettingsUpdate(input: {{ fullPath: \\\"{repo.project.path_with_namespace}\\\", inboundJobTokenScopeEnabled: true}}) {{ errors }} }}" }} \''
                      query = ''' \'{
                         "query": "mutation {
                            ciJobTokenScopeAddProject(input: {
