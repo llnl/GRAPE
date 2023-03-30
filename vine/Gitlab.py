@@ -22,10 +22,11 @@ class GrapeGitlabAdapter:
     defaultURL = "https://your.host.org/gitlab"
     defaultPort = 7999
     defaultSSH_Path= "git@gitlab.your.host.org"
+    defaultCurl = "/usr/bin/curl"
     # default token expiration
     defaultExpiration = 29
 
-    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, *, workspace_dir):
+    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, *, workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -43,6 +44,7 @@ class GrapeGitlabAdapter:
         self.keyring = keyring.get_keyring()
 
         self._service = url
+        self._curl = curl
         password = keyring.get_password(self._service, self._userName)
 
         if self.auth(self._service, self._userName, password, port, ssh_path, verify=verify):
@@ -105,6 +107,21 @@ class GrapeGitlabAdapter:
                 numAttempts += 1
 
         return success
+
+    def graphQL_query(self, query, dryRun=False):
+        token = keyring.get_password(self._service, self._userName)
+        graphqlurl = f'{self._service}/api/graphql'
+        # enable inbound allowlist and add top level repo to list
+        data = '\'{ "query": "' + query.replace('"', '\\"') + '" } \''
+        # strip newlines from query
+        data = re.sub(' +', ' ', data.replace("\n"," "))
+        command = f'{self._curl} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary ' + data
+        if not dryRun:
+            completed_process = subprocess.run(command, capture_output=True, shell=True)
+            output = completed_process.stdout.decode().strip()
+            return output
+        else:
+            return command
 
     # Return list of project names
     def projectlist(self):

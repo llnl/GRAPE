@@ -355,33 +355,25 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                      except:
                         warnings.append(f"Failed to enable subproject CI (for adding subproject CI access) in {reponame}")
                      logging.info("\t  Enabling token access...")
-                     # ci_job_access allowlist is accessed through GraphQL API calls, so we have to use curl
-                     token = keyring.get_password(grape_gitlab._service, grape_gitlab._userName)
-                     graphqlurl = f'{args["--codeReviewsURL"]}/api/graphql'
+                     # ci_job_access allowlist is accessed through GraphQL API calls
                      # enable inbound allowlist and add top level repo to list
-                     query = ''' \'{
-                        "query": "mutation {
-                           ciJobTokenScopeAddProject(input: {
-                              projectPath: \\\"%s\\\", targetProjectPath: \\\"%s/%s\\\", direction: INBOUND
-                           }) {
-                              errors
-                           }
-                           projectCiCdSettingsUpdate(input: {
-                              fullPath: \\\"%s\\\", inboundJobTokenScopeEnabled: true}) {
-                              errors
-                           }
-                        }"
-                     } \' ''' % (repo.project.path_with_namespace, projectname, topRepo.project.name, repo.project.path_with_namespace)
-                     # strip newlines from query
-                     query = query.replace("\n"," ")
-                     command = f'{args["--curl"]} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary ' + query
+                     query = '''mutation {
+                                      ciJobTokenScopeAddProject(input: {
+                                         projectPath: "%s", targetProjectPath: "%s/%s", direction: INBOUND
+                                      }) {
+                                         errors
+                                      }
+                                      projectCiCdSettingsUpdate(input: {
+                                         fullPath: "%s", inboundJobTokenScopeEnabled: true}) {
+                                         errors
+                                      }
+                                   } ''' % (repo.project.path_with_namespace, projectname, topRepo.project.name, repo.project.path_with_namespace)
+                     output = grape_gitlab.graphQL_query(query, dryRun=args["--dry"])
                      if args["--dry"]:
-                        logging.info(f"\t[Dry run]: {command}")
+                        logging.info(f"\t[Dry run]: {output}")
                      else:
-                        completed_process = subprocess.run(command, capture_output=True, shell=True)
-                        output = completed_process.stdout.decode().strip()
                         if "rejected" in output:
-                           logging.info(f"\t  > {command}")
+                           logging.info("\t  > " + grape_gitlab.graphQL_query(query, dryRun=True))
                         try:
                            output_json = json.loads(output)
                            for key, value in output_json["data"].items():
