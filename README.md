@@ -1405,7 +1405,7 @@ options are at least listed below.
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
                               [--disableLFS]
-                              [--disableSubprojectCI]
+                              [--addSubprojectCIAccess]
                               [--requirePipelineSuccess]
                               [--allRepoSettings]
                               [--scheduledPipelines=[list|add|delete|take|update]
@@ -1422,6 +1422,7 @@ options are at least listed below.
                               [--branch=<branch>]
                               [--ssh_pat_url=<url>]
                               [--ssh_pat_port=<int>]
+                              [--curl=<path>]
 
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
@@ -1432,13 +1433,13 @@ options are at least listed below.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
-        --disableSubprojectCI       Disable CI in all subprojects.
+        --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
         --requirePipelineSuccess    Require pipeline success for merge button.
         --allRepoSettings           Set all administrative repo settings. This includes:
                                        setProtectedBranches
                                        setKeepMRApprovals
                                        disableLFS
-                                       disableSubprojectCI
+                                       addSubprojectCIAccess
                                        requirePipelineSuccess
         --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
                                        list   : List scheduled pipelines
@@ -1482,6 +1483,8 @@ options are at least listed below.
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
+        --curl=<path>               Path to curl executable
+                                    [default: .grapeconfig.repo.curl]
 
     
 ## q
