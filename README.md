@@ -11,8 +11,8 @@ Delete the tag created by the CI, and replace it with an appropriate one (e.g. v
 
 Push the new tag.
 
-Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
-push both the new tag and the new commit directly to develop.
+Check out develop and merge in master. Create a new commit (after the merge) directly on develop of some kind,
+tag that commit as v1.43.0, push both the new tag and the new commit directly to develop.
 
 ## Introducing the `.grapeconfig` file
 
