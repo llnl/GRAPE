@@ -47,6 +47,15 @@ class GrapeConfigParserBase(ConfigParser):
         finally:
             return list_
 
+    def getAllSpackProjects(self):
+        list_ = []
+        try:
+            list_ = self.getList(Option.SECTION_SPACK_PROJECTS, "submodules")
+        except:
+            pass
+        finally:
+            return list_
+
     def getList(self, section, cfgOption, raw=False, cfgVars=None):
         return self.get(section, cfgOption, raw=raw, vars=cfgVars).split()
 

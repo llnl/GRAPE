@@ -22,8 +22,11 @@ class GrapeGitlabAdapter:
     defaultURL = "https://your.host.org/gitlab"
     defaultPort = 7999
     defaultSSH_Path= "git@gitlab.your.host.org"
+    defaultCurl = "/usr/bin/curl"
+    # default token expiration
+    defaultExpiration = 29
 
-    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, *, workspace_dir):
+    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, *, workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -41,6 +44,7 @@ class GrapeGitlabAdapter:
         self.keyring = keyring.get_keyring()
 
         self._service = url
+        self._curl = curl
         password = keyring.get_password(self._service, self._userName)
 
         if self.auth(self._service, self._userName, password, port, ssh_path, verify=verify):
@@ -50,8 +54,8 @@ class GrapeGitlabAdapter:
             self._gitlab= None
             logging.info("Could not connect to Gitlab...")
 
-    def generate_personal_access_token(self, port, ssh_url):
-        command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api"
+    def generate_personal_access_token(self, port, ssh_url, expires = defaultExpiration):
+        command = f"ssh -p {port} {ssh_url} personal_access_token grape_review api {expires}"
         logging.info(f"Generating token by executing {command}")
         completed_process = subprocess.run(command,
                                            capture_output=True,
@@ -103,6 +107,21 @@ class GrapeGitlabAdapter:
                 numAttempts += 1
 
         return success
+
+    def graphQL_query(self, query, dryRun=False):
+        token = keyring.get_password(self._service, self._userName)
+        graphqlurl = f'{self._service}/api/graphql'
+        # enable inbound allowlist and add top level repo to list
+        data = '\'{ "query": "' + query.replace('"', '\\"') + '" } \''
+        # strip newlines from query
+        data = re.sub(' +', ' ', data.replace("\n"," "))
+        command = f'{self._curl} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary ' + data
+        if not dryRun:
+            completed_process = subprocess.run(command, capture_output=True, shell=True)
+            output = completed_process.stdout.decode().strip()
+            return output
+        else:
+            return command
 
     # Return list of project names
     def projectlist(self):
@@ -168,8 +187,8 @@ class Project:
     def repolist(self):
         return [r.name for r in self.group.projects.list(all=True)]
 
-    def repo(self, name):
-        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name) if x.name.lower() == name.lower()]
+    def repo(self, name, min_access_level=None):
+        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
         if matching_ids:
             project_id = matching_ids[0]
         else:
@@ -204,20 +223,27 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
-         diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
-         if diff_result and not diff_result["commits"]:
-            logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
-            return None
+         try:
+            diff_result = self.project.repository_compare(target_branch, branch, straight=True, per_page=1)
+            if diff_result and not diff_result["commits"]:
+               logging.info(f"Not creating merge request for {self.project.name}: {target_branch}..{branch} has no commits.")
+               return None
+         except gitlab.exceptions.GitlabGetError:
+            # If the diff is too big, this comparison can throw an exception.
+            # In this case, just create the merge request.
+            pass
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description, reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)})
+         mr.update(title, description=description,
+                   reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)},
+                   add_labels=labels)
 
          return mr
 
@@ -544,7 +570,7 @@ class PullRequest:
         return self.mergerequest.iid
 
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None):
+    def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
         if description:
@@ -567,8 +593,28 @@ class PullRequest:
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
+
+        labels = set(self.mergerequest.labels)
+        for label in add_labels:
+            labels.add(label)
+        for label in remove_labels:
+            try:
+               labels.remove(label)
+            except KeyError:
+               pass
+        self.mergerequest.labels = list(labels)
+        # Disable removal of source branch on merge (if this merge request was created by hand).
+        # This should only affect merging by clicking the merge button (grape manually disables the removal when
+        # when merging the merge request). The merge button should be disabled by disabling CI and requiring pipelines
+        # to succeed, but disabling it here provides another layer of protection (removing the branch early can
+        # adversely affect tagging and notification steps in multi-repo projects).
+        self.mergerequest.remove_source_branch = False
         self.mergerequest.save()
         return self
+
+    def regeneratePipeline(self):
+        # Create a new pipeline to reflect any changes in labels
+        self.mergerequest.pipelines.create()
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())

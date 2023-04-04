@@ -14,7 +14,7 @@ from vine.vine_logging import log_wrapper
 def grapeVersion():
     try:
         grape_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"..")
-        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":''}, workspace_dir=grape_path, asString=True)
+        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":'',"--tagBase":'HEAD'}, workspace_dir=grape_path, asString=True)
         return grapeVersion
     except:
         return "v.1.37.unknown"
@@ -37,6 +37,7 @@ class Version(Option, WorkspaceDirHandler):
                               [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--tagBase=<ref>]
                               [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
@@ -104,11 +105,12 @@ class Version(Option, WorkspaceDirHandler):
         --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
         --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
                                 version in <file>.
+        --tagBase=<ref>         Branch or reference from which to look for version tags. [default: HEAD]
         --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
                                 [default: 1]
         --tagNested             Tag any active nested subprojects.
-        --useProposed           Select a version based off of a "proposed_*" tag reachable from the first parent of the head
-                                of --topic.
+        --useProposed           Select a version based off of the first "proposed_*" tag reachable from the head
+                                of --topic but not tagged with an actual version.
         --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
@@ -143,8 +145,21 @@ class Version(Option, WorkspaceDirHandler):
         # set version based on proposed version number tag in topic branch
         if "--useProposed" in args and args["--useProposed"]:
             logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
-            proposed_tag = git.describe(f"origin/{args['--topic']} --first-parent --match=proposed_*", execution_path=self.workspace_dir)
-            logging.info("found tag {proposed_tag}")
+            last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+            proposed_tags = []
+            branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+            for line in branch_log.splitlines():
+               match = re.search(f"tag: (proposed_[^),]+)", line)
+               if match:
+                  logging.debug(match.group(1))
+                  proposed_tags.append(match.group(1))
+            # Sort the proposed tags by version number
+            proposed_tags.sort(key=lambda s: list(map(int, re.search("[0-9]+(\.[0-9]+)+",s).group(0).split('.'))))
+            # Use the latest version tag
+            proposed_tag = proposed_tags[-1]
+            if len(proposed_tags) > 1:
+               logging.info(f"found multiple tags: {proposed_tags}")
+            logging.info(f"using tag {proposed_tag}")
             args["<version>"] = proposed_tag.split("proposed_")[1]
 
         if "--numTicks" in args:
@@ -280,7 +295,8 @@ class Version(Option, WorkspaceDirHandler):
     def readVersionFromTag(args, workspace_dir, asString=False):
         tagPrefix = args["--tagPrefix"]
         tagSuffix = args["--tagSuffix"]
-        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix}", execution_path=workspace_dir)
+        tagBase = args["--tagBase"]
+        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix} {tagBase}", execution_path=workspace_dir)
         if asString:
             return tagName
         else:

@@ -12,6 +12,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import vine_subprocess
 from vine.vine_logging import log_wrapper
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
@@ -30,11 +31,12 @@ class UpdateView(Option, WorkspaceDirHandler):
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
                     [--updateRemoteProtocol]
+                    [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
@@ -60,11 +62,17 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      modified by --branchFilter, --branchChanged, or --rm.
         --noNestedSubprojects        Remove all nested subprojects from your workspace. This can be subsequently
                                      modified by --add or --ensureCIReposPresent.
-        --sync=<bool>                Take extra steps to ensure the branch you're on is up to date with origin,
+        --sync=<bool>                Take extra steps to ensure the branch you're on is up-to-date with origin,
                                      either by pushing or pulling the remote tracking branch.
                                      This will also checkout the public branch in a headless state prior to offering to
                                      create a new branch (in repositories where the current branch does not exist).
                                      [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --syncPublic                 Ensure the public branch for the branch you are on is up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
+        --forceSyncPublic            Force the public branch for the branch you are on to be up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
         --branchName=<name>          Override the branch name
@@ -81,10 +89,12 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      that are not changed.
                                      If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
                                      if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
-                                     matches the tag of the public branch (except for the final version slot).
+                                     matches the tag of the public branch (except for the final version slot) or in a submodule
+                                     if the SHA of the branch is in the history of the gitlink.
         --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
+        --spackEnv                   Spack Develop Environment build option 
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -149,7 +159,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         if self.uvManager:
             self.uvManager.createFrame(projectType)
 
-        for directory, subprojects in toplevelDirs.items():
+        for directory, subprojects in sorted(toplevelDirs.items()):
 
             activeDir = toplevelActiveDirs[directory]
             if len(activeDir) == 0:
@@ -161,7 +171,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             if self.uvManager:
                 opt = "s"
-                self.uvManager.createSection(directory)
+                self.uvManager.createSection(directory = directory, size = len(subprojects))
             else:
                 opt = utility.userInput(f"Would you like all, some, or none of the {projectType}s in {directory}?",
                                         default=defaultValue)
@@ -191,7 +201,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         included[subproject] = utility.userInput(f"Would you like {projectType} {subproject}? [y/n]",
                                                                  'y' if (subproject in activeSubprojects) else 'n')
         if self.uvManager and toplevelSubs:
-            self.uvManager.createSection()
+            self.uvManager.createSection(size = len(toplevelSubs))
         for subproject in sorted(toplevelSubs, key=lambda v: (v.upper(), v[0].islower())):
             if self.uvManager:
                 # Set the default value for the gui
@@ -230,8 +240,10 @@ class UpdateView(Option, WorkspaceDirHandler):
         branchChangedArg = args["--branchChanged"]
         if branchChangedArg.endswith('~'):
             branchChanged = branchChangedArg[:-1]
+            checkSubmoduleHistory = True
         else:
             branchChanged = branchChangedArg
+            checkSubmoduleHistory = False
         public = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(branchChanged)
         tagPrefix= None
 
@@ -241,18 +253,20 @@ class UpdateView(Option, WorkspaceDirHandler):
             slots = int(slotMappings[public])
             if slots > 1:
                prefix = config.get(self.SECTION_VERSIONING, "prefix")
+               git.fetch("origin", f"--force --tags {public}", execution_path=self.workspace_dir)
                branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
 
-        return (branchChanged, public, tagPrefix)
+        return (branchChanged, public, tagPrefix, checkSubmoduleHistory)
 
     # Return true if the subproject at url includes the branch (and it differs from public
     # if checkChanged is set).
     # If tagPrefix is provides, tags matching that pattern are considered as part of the
     # history of public (so if the branch matches the tag it is not considered different).
     @staticmethod
-    def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None):
-        # If the branch exists locally, check there first
+    def branchFilter(branch, subprojectPrefix, url, workspace_dir, subprojectPrefixList, checkChanged = False, public = None, tagPrefix = None, checkSubmoduleHistory = None):
+        # If the branch exists locally, check there first (this will only detect if the branch exists and/or is changed,
+        # not that it is unchanged).
         if subprojectPrefix in subprojectPrefixList:
            subpath = os.path.join(workspace_dir,subprojectPrefix)
            # subprojectPrefixList should filter by the active subprojects, but for nested subprojects some of the
@@ -291,7 +305,35 @@ class UpdateView(Option, WorkspaceDirHandler):
                     tagSHA.append(SHA_and_ref[0])
 
         if checkChanged:
-           return branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+           changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+           # Only check the submodule history if the submodule appears to be changed
+           if changed and checkSubmoduleHistory:
+               toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+               # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
+               revListCmd = f"rev-list origin/{toppublic} {subprojectPrefix}"
+               gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
+               first = True
+               for outerSHA in gitLinkCommits.splitlines():
+                  # Skip first SHA in the history, as the gitlink may have been merged
+                  # in before the branch is merged in the submodule.
+                  if first:
+                     first = False
+                     continue
+
+                  # Retrieve the gitlink metadata:
+                  # [mode] [type] [SHA] [path]
+                  lsTreeCmd = f"ls-tree {outerSHA} {subprojectPrefix}"
+                  gitLinkInfo = git.gitcmd(lsTreeCmd, f"Could not run '{lsTreeCmd}'", execution_path=workspace_dir)
+                  gitLinkEntries = gitLinkInfo.split()
+                  if len(gitLinkEntries) > 1:
+                     SHA = gitLinkEntries[2]
+                     # If the SHA is otherwise in the gitlink history, consider the branch unchanged.
+                     if SHA == branchSHA:
+                        changed = False
+                        break
+                  else:
+                     logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitLinkInfo}")
+           return changed
         else:
            return branchSHA != None
 
@@ -418,10 +460,9 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if args["--branchFilter"]:
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir))
                 elif args["--branchChanged"]:
-                    (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
+                    (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
-                    # version tags are not used in submodules, so we don't pass the tagPrefix
-                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, tagPrefix=None)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, checkSubmoduleHistory=checkSubmoduleHistory)
                 else:
                     branchFilter = lambda x : True
 
@@ -445,7 +486,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if args["--branchFilter"]:
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
                 elif args["--branchChanged"]:
-                    (branchChanged, public, tagPrefix) = self.getBranchChangedArgs(args)
+                    (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
                     branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir), checkChanged = True, public=public, tagPrefix=tagPrefix)
                 else:
                     branchFilter = lambda x : True
@@ -633,6 +674,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             runInSubprojects=not args["--skipNestedSubprojects"],
             skipBranchCreation=args["--skipBranchCreation"],
             skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
+            fetchPublic=args["--syncPublic"] or args["--forceSyncPublic"],
+            forcePublic=args["--forceSyncPublic"],
             workspace_dir=self.workspace_dir)
 
 
@@ -645,14 +688,64 @@ class UpdateView(Option, WorkspaceDirHandler):
             with open(os.path.join(self.workspace_dir,"GRAPE_PROJECT_SHA.json"),'w') as f:
                 json.dump(sha_dict, f)
 
+
+        if args["--spackEnv"]:
+            # create a Spack Environmnet for a collection of submodules
+            # to develop
+            self.spackDevelopEnvironment()
+
+
         for msg in delayedMessages:
             logging.info(msg)
         return True
 
+    # Spack Develop Environment Option call a script to gather
+    # name and versions of currently checkedout libraries
+    # to make the correct spack develop or undevelop calls
+    def spackDevelopEnvironment(self):
+        """
+        User needs to be in an active Spack environmnet.
+        spack env activate -p <path/to/file>
+        grape uv --spackEnv
+
+        """
+        activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        # read list of spack projects from configuration
+        config = config_parser_global.grapeConfig()
+        spack_projects = config.get("spackProjects", "submodules").split()
+        script = config.get("spackProjects", "script")
+        logging.info(f"Available Spack projects = {spack_projects}")
+
+        # passing Spack Projects from .grapeconfig [spackProjects] submodules
+        # to the spack script to get versions and path of libraries
+        develop_libs = []
+        undevelop_libs = []
+
+        if script:
+            for submodule in spack_projects:
+                if submodule in activeSubmodules:
+                    develop_libs.append(submodule)
+                else:
+                    undevelop_libs.append(submodule)
+            # cmd f string to built up by develop and undevelop libs to do a single call to the script
+            cmd = f"python3 {script}"
+            # if there are libs to develop or undevelop then they will get concatenated to cmd
+            if develop_libs:
+                cmd += f" --libs {','.join(develop_libs)}"
+            if undevelop_libs:
+                cmd += f" --undevelop {','.join(undevelop_libs)}"
+
+            vine_subprocess.executeSubProcess(cmd, self.workspace_dir)
+            logging.info(f"Spack develop environment at {self.workspace_dir} has been updated")
+
+
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
+        config.ensureSection(self.SECTION_SPACK_PROJECTS)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
+        config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ")
+        config.set(self.SECTION_SPACK_PROJECTS, "script", " ")
 
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
@@ -673,6 +766,8 @@ def handleActivateSubprojectMRE(mre):
 
 def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspace_dir):
     skipSubmoduleSwitch = args[0]
+    fetchPublic = args[1]
+    forcePublic = args[2]
     logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
@@ -688,6 +783,31 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
             logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
+    # Get the public branch
+    public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+    # figure out if this is a submodule
+    relpath = os.path.relpath(repo, workspace_dir)
+    # if this is a submodule, get the appropriate public mapping
+    isSubmodule = utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys()
+    if isSubmodule:
+        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
+
+        
+    if fetchPublic and branch != public:
+        forceArg = "--force" if forcePublic else ""
+        try:
+           git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
+        except grape_errors.GrapeGitError as e:
+           if "refusing to fetch into current branch" in e.gitOutput.lower():
+               # A subproject may be on the public branch even though a different branch is specified.
+               try:
+                   git.pull(f"origin {public}", execution_path=repo)
+               except grape_errors.GrapeGitError as e:
+                   logging.error(e.gitOutput)
+                   raise e
+           else:
+               logging.info(f"Fetch to update {public} in {repo} failed : {e.gitOutput}\n\tContinuing...")
+
     try:
         if git.currentBranch(execution_path=repo) == branch:
            return
@@ -700,15 +820,10 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
 
     if not git.hasBranch(branch, execution_path=repo):
         # switch to corresponding public branch if the branch does not exist
-        public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
-        # figure out if this is a submodule
-        relpath = os.path.relpath(repo, workspace_dir)
-        # if this is a submodule, get the appropriate public mapping
-        if utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys():
+        if isSubmodule:
             if skipSubmoduleSwitch:
                logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
                return
-            public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
         logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
         git.pull(f"origin {public}", execution_path=repo)
@@ -776,13 +891,13 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipSubmoduleSwitch=False ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-            globalArgs=[skipSubmoduleSwitch], workspace_dir=workspace_dir)
+            globalArgs=[skipSubmoduleSwitch, fetchPublic, forcePublic], workspace_dir=workspace_dir)
         launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
@@ -891,7 +1006,7 @@ class UVManager:
         frame = Tk.Frame()
         label = Tk.Label(frame, text=f"Select {projectType}s")
         label.grid()
-        self.master.grid_rowconfigure(self.currentRow, weight=1)
+        self.master.grid_rowconfigure(self.currentRow, weight=1, minsize=70)
         self.master.grid_columnconfigure(self.currentColumn, weight=1)
         self.master.grid_columnconfigure(self.currentColumn+1, weight=1)
         frame.grid(row=1, column=self.currentColumn, columnspan=2, sticky="nsew")
@@ -901,22 +1016,28 @@ class UVManager:
             self.currentProjectIndex = 1
 
     # Start a new section for a different directory
-    def createSection(self, directory = ""):
+    def createSection(self, directory = "", size = 1):
         directory_name = "top level" if directory == "" else directory
         
         # sort the previous section (if any)
         self.resortList(self.currentActiveList)
         self.resortList(self.currentInactiveList)
 
+        height = min(size, 8)
+        width = 30
+
         activepanel = Tk.Frame()
         activelabel = Tk.Label(activepanel, text=f"Active in {directory_name}")
         activescroll = Tk.Scrollbar(activepanel, width=10)
-        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=activescroll.set, selectmode=Tk.SINGLE)
+        activelist = Tk.Listbox(activepanel, background=self.bginit, foreground=self.fginit,
+                                selectbackground=self.bgselected, selectforeground=self.fgselected,
+                                yscrollcommand=activescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         activescroll.config(command=activelist.yview)
         activescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         activelabel.grid(row=0, column=0, columnspan=2)
         activelist.grid(row=2, column=1)
         activepanel.grid(row=self.currentRow, column=self.currentColumn)
+        activepanel.grid_rowconfigure(self.currentRow, minsize=20)
 
         activepanel.grid_rowconfigure(2, weight=1)
         activepanel.grid_columnconfigure(1, weight=1)
@@ -927,7 +1048,9 @@ class UVManager:
         inactivepanel = Tk.Frame()
         inactivelabel = Tk.Label(inactivepanel, text=f"Inactive in {directory_name}")
         inactivescroll = Tk.Scrollbar(inactivepanel, width=10)
-        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE)
+        inactivelist = Tk.Listbox(inactivepanel, background=self.bginit, foreground=self.fginit,
+                                  selectbackground=self.bgselected, selectforeground=self.fgselected,
+                                  yscrollcommand=inactivescroll.set, selectmode=Tk.SINGLE, height=height, width=width)
         inactivescroll.config(command=inactivelist.yview)
         inactivescroll.grid(row=2, column=0, sticky=Tk.N+Tk.S)
         inactivelabel.grid(row=0, column=0, columnspan=2)
@@ -935,23 +1058,28 @@ class UVManager:
         inactivepanel.grid_columnconfigure(1, weight=1)
         inactivelist.grid(row=2, column=1, sticky="nsew")
         inactivepanel.grid(row=self.currentRow, column=self.currentColumn+1, sticky="nsew")
+        inactivepanel.grid_rowconfigure(self.currentRow, minsize=20)
         self.currentInactiveList = inactivelist
 
         self.currentRow = self.currentRow + 2
 
         index = self.currentProjectIndex
         activelist.bind("<Double-Button-1>", lambda e: self.deactivateProject(directory, activelist, inactivelist,
-                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                              self.activeSets[index], self.inactiveSets[index],
+                                                                              self.originalActiveSets[index]))
         inactivelist.bind("<Double-Button-1>", lambda e: self.activateProject(directory, activelist, inactivelist,
-                                                                              self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                              self.activeSets[index], self.inactiveSets[index],
+                                                                              self.originalActiveSets[index]))
 
         activeall = Tk.Button(activepanel, text="activate all", borderwidth=0, foreground="darkblue",
                               command = lambda : self.activateAll(directory, activelist, inactivelist,
-                                                                  self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                  self.activeSets[index], self.inactiveSets[index],
+                                                                  self.originalActiveSets[index]))
         activeall.grid(row=1, column=0, columnspan=2)
         inactiveall = Tk.Button(inactivepanel, text="deactivate all", borderwidth=0, foreground="darkblue",
                                 command = lambda : self.deactivateAll(directory, activelist, inactivelist,
-                                                                      self.activeSets[index], self.inactiveSets[index], self.originalActiveSets[index]))
+                                                                      self.activeSets[index], self.inactiveSets[index],
+                                                                      self.originalActiveSets[index]))
         inactiveall.grid(row=1, column=0, columnspan=2)
 
 

@@ -2,6 +2,7 @@ import configparser
 import io
 import logging
 import os
+import re
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
@@ -24,40 +25,43 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
                     [--am | --as | --at | --aT | --ay | --aY ]
                     [--continue]
-                    [--recurse | --noRecurse]
+                    [--recurse | --noRecurse | --nestedSubprojectsOnly]
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
-                    [--traverseTrainRefs --topic=<branch> [--tagProposedVersion]]
+           grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+           grape-md --traverseMergedResult --topic=<branch>
 
 
     Options:
-        --public=<branch>       Overrides the public branch to merge from.
-                                Default behavior is to merge according to
-                                .grapeconfig.flow.topicPrefixMappings.
-        --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
-                                according to .grapeconfig.flow.submoduleTopicPrefixMappings.
-        --am                    Perform the merge using git's default strategy. (default)
-        --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge using the public branch's version for any file modified by both branches.
-        --aT                    Perform the merge resolving conficts using the public branch's version.
-        --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
-        --aY                    Perform the merge resolving conflicts using your topic branch's version.
-        --recurse               Perform merges in submodules first, then merge in the outer level keeping the
-                                results of submodule merges.
-        --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
-        --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
-        --forceUpdate           Force update local versions of the public branch before attempting merges.
-        --noUpdate              Do not update local versions of the public branch before attempting merges.
-        --ensureCleanUpdate     Return failure if update of local versions fails.
-        --noChecks              Skip workspace consistency checks.
-        --squash                Perform squash merges.
-        --traverseTrainRefs     Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
-        --topic=<branch>        Topic branch we are merging into (defined explicitly with --traverseTrainRefs to ensure we don't merge something
-                                behind the --topic branch on the train)
-        --tagProposedVersion    Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
-                                of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-
+        --public=<branch>        Overrides the public branch to merge from.
+                                 Default behavior is to merge according to
+                                 .grapeconfig.flow.topicPrefixMappings.
+        --subpublic=<branch>     Overrides the submodules' public branch to merge from. Default behavior is to merge
+                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings.
+        --am                     Perform the merge using git's default strategy. (default)
+        --as                     Perform the merge issuing conflicts on any file modified by both branches.
+        --at                     Perform the merge using the public branch's version for any file modified by both branches.
+        --aT                     Perform the merge resolving conficts using the public branch's version.
+        --ay                     Perform the merge using the your topic branch's version for any file modified by both branches.
+        --aY                     Perform the merge resolving conflicts using your topic branch's version.
+        --recurse                Perform merges in submodules first, then merge in the outer level keeping the
+                                 results of submodule merges. Nested subprojects are also merged.
+        --noRecurse              Do not perform merges in submodules, just attempt to merge the gitlinks.
+                                 Nested subprojects are also merged.
+        --nestedSubprojectsOnly  Do not perform merges in outer level or submodules, just nested subprojects.
+        --continue               Resume the most recent call to grape md that issued conflicts in this workspace.
+        --forceUpdate            Force update local versions of the public branch before attempting merges.
+        --noUpdate               Do not update local versions of the public branch before attempting merges.
+        --ensureCleanUpdate      Return failure if update of local versions fails.
+        --noChecks               Skip workspace consistency checks.
+        --squash                 Perform squash merges.
+        --traverseTrainRefs      Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
+        --traverseMergedResult   Do the necessary merges to merge all nested subprojects up to the point of the merged result in the top level.
+        --topic=<branch>         Topic branch we are merging into. This is defined explicitly with --traverseTrainRefs/--traverseMergedResult
+                                 to define the starting point (this ensures we don't merge something behind the --topic branch).
+        --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                 of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
 
 
 
@@ -104,8 +108,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         from vine import grapeMenu
         nested = getattr(self.progress, 'nested', config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
         if "--traverseTrainRefs" in args and args["--traverseTrainRefs"]:
-            self.traverseTrainRefs(args, nested)
-            return True
+            return self.traverseTrainRefs(args, nested)
+        if "--traverseMergedResult" in args and args["--traverseMergedResult"]:
+            return self.traverseMergedResult(args, nested)
 
         self.set_progress_file(execution_path=self.workspace_dir)
 
@@ -117,6 +122,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             if not branch:
                 logging.error("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
+
+        if "--nestedSubprojectsOnly" in args and args["--nestedSubprojectsOnly"]:
+            logging.info(f"Calling grape up --public={branch} --noTopLevel --noRecurse --recurseSubprojects to ensure local reference to branch exists.")
+            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--noRecurse','--recurseSubprojects'])
+            self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
+            return True
 
         # check to see if we already have the branch
         try:
@@ -309,7 +321,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
         numMerges = 0
-        tagPrefix = 'v*'
+
+        config = config_parser_global.grapeConfig()
+        prefix = config.get(self.SECTION_VERSIONING, "prefix")
+        tagPrefix = f"{prefix}*"
+
         description = git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir)
         while '-' in description:
             numMerges = numMerges+1
@@ -325,17 +341,69 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         branches = self.lookupActiveMergeTrainBranches(args)
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        # The first branch is always the target branch
+        targetBranch = branches[0]
+        unmergedTrainBranches = []
         for branch in branches:
-            logging.info(f"Calling grape up --public={branch} --noTopLevel to ensure local reference to branch exists.")
-            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel'])
-            self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True)
+            logging.info(f"Calling grape up --public={branch} --noTopLevel --noRecurse --recurseSubprojects to ensure local reference to branch exists.")
+            menu.applyMenuChoice('up', ['up', f'--public={branch}','--noTopLevel','--noRecurse','--recurseSubprojects'])
+            if not self.performSubprojectMerges(args, branch, nested, False, [], ignoreInProgress=True):
+               # Fail if conflict detected
+               logging.info("Failed subproject merge!")
+               return False
+            if branch == targetBranch:
+               # Always include the target branch
+               unmergedTrainBranches.append(branch)
+            else:
+               # Only include other branches in the merge train if they are not contained by the target branch
+               containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
+               if f"origin/{targetBranch}" not in containingBranches:
+                  unmergedTrainBranches.append(branch)
         if args["--tagProposedVersion"]:
-            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{branches[0]}")
+            numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{targetBranch}")
             logging.info(f"numMerges = {numMerges}")
-            versionargs =  ["tick", "--tag", "-f", "--pushTag", f"--public=origin/{branches[0]}", f"--numTicks={len(branches)+numMerges}", f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
+            versionargs =  ["tick", "--tag", "-f", "--pushTag",
+                            f"--public=origin/{targetBranch}",
+                            f"--tagBase=origin/{targetBranch}",
+                            f"--numTicks={len(unmergedTrainBranches)+numMerges}",
+                            f"--target=origin/{args['--topic']}","--newTagPrefix=proposed_v"]
             logging.info(f"calling grape version {' '.join(versionargs)}")
             menu.applyMenuChoice("version",versionargs)
+        return True
             
+
+    def traverseMergedResult(self, args, nested):
+        # Make sure we have all tags
+        git.fetch("origin '+refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
+        config = config_parser_global.grapeConfig()
+        prefix = config.get(self.SECTION_VERSIONING, "prefix")
+        tagPrefix = f"{prefix}*"
+        # Get the version of the branch
+        versionTag = git.describe(f"--abbrev=0 --match={tagPrefix} origin/{args['--topic']}", execution_path=self.workspace_dir)
+        # Get the version of the merged result
+        mergedVersionTag = git.describe(f"--abbrev=0 --match={tagPrefix}", execution_path=self.workspace_dir)
+        if versionTag == mergedVersionTag:
+            logging.info(f"No versions to merge, already at {versionTag}.")
+            return True
+        # Get all the version tags after the tagged version, oldest first
+        branch_log = git.log(f"--oneline --decorate --reverse --no-color HEAD --not {versionTag}", execution_path=self.workspace_dir)
+        tagsFetched = False
+        for line in branch_log.splitlines():
+           match = re.search(f"tag: ({prefix}[^),]+)", line)
+           if match:
+              if not tagsFetched:
+                 logging.info(f"Calling grape up --noTopLevel --noRecurse --recurseSubprojects to ensure tags are fetched.")
+                 from vine import grapeMenu
+                 menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                 menu.applyMenuChoice('up', ['up','--noTopLevel','--noRecurse','--recurseSubprojects'])
+                 tagsFetched = True
+              # Attempt to merge each version (this will be a no-op if the tag is not found)
+              version = match.group(1)
+              if not self.performSubprojectMerges(args, version, nested, False, [], ignoreInProgress=True):
+                  # Fail if conflict detected
+                  logging.info("Failed subproject merge!")
+                  return False
+        return True
 
 
     def performSubprojectMerges(self, args, branch, nested, recurse, submodules, ignoreInProgress=False):
@@ -387,10 +455,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                 self.progress[f"Subproject: {repo}"] = "finished"
             else:
                 logging.info(info)
-                all_good = False
+                if "Unable to merge subproject" in info:
+                   self.progress[f"Subproject: {repo}"] = "finished"
+                else:
+                   all_good = False
         if not all_good:
-            self.progress["stopPoint"] = "subproject merge"
-            self.dumpProgress(args)
+            if not ignoreInProgress:
+               self.progress["stopPoint"] = "subproject merge"
+               self.dumpProgress(args)
             return False
         return True
 
@@ -472,10 +544,13 @@ def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
                     return False
             else:
                 if warnOnConflict:
-                    logging.warning(
-                        "Conflicts generated. Resolve using git mergetool," +
-                        f" then continue with grape {args['<<cmd>>']} " +
-                        "--continue. ")
+                    if "<<cmd>>" in args:
+                       logging.warning(
+                           "Conflicts generated. Resolve using git mergetool," +
+                           f" then continue with grape {args['<<cmd>>']} " +
+                           "--continue. ")
+                    else:
+                       logging.warning("Conflicts generated.")
                 return False
         else:
             logging.error(f"Merge command {error.gitCommand} failed." +
@@ -599,8 +674,7 @@ def mergeSubproject(branch, repo, args, *, workspace_dir):
     # skip nested subprojects that fail to merge
     info = ''
     if not ret and not isSubmodule and not git.conflictedFiles(execution_path=repo):
-        info = f"Unable to merge subproject {repo}, skipping..."
-        ret = True
+        return f"Unable to merge subproject {repo}, skipping..."
     conflict = not ret
     if conflict:
         subprojectKey = "submodules" if isSubmodule else "nested"
@@ -611,16 +685,23 @@ def mergeSubproject(branch, repo, args, *, workspace_dir):
             else:
                 typeStr = "nested subproject"
 
-            info = f"Merge in {typeStr} {repo} from {subPublic} to " \
-                   f"{git.currentBranch(execution_path=repo)} issued conflicts. Resolve and " \
-                   "commit those changes \nusing git mergetool and git " \
-                   f"commit in the {typeStr}, then continue using grape\n" \
-                   f"{mergeArgs['<<cmd>>']} --continue"
+            if "<<cmd>>" in args:
+               info = f"Merge in {typeStr} {repo} from {subPublic} to " \
+                      f"{git.currentBranch(execution_path=repo)} issued conflicts. Resolve and " \
+                      "commit those changes \nusing git mergetool and git " \
+                      f"commit in the {typeStr}, then continue using grape\n" \
+                      f"{mergeArgs['<<cmd>>']} --continue"
+            else:
+               info = f"Merge in {typeStr} {repo} from {subPublic} to " \
+                      f"{git.currentBranch(execution_path=repo)} issued conflicts"
         else:
-            info = f"Merge in {repo} failed for an unhandled " \
-                   "reason. You may need to stash / commit your current\n" \
-                   "changes before doing the merge. Inspect git output " \
-                   "above to troubleshoot. Continue using\ngrape " \
-                   f"{mergeArgs['<<cmd>>']} --continue."
+            if "<<cmd>>" in args:
+               info = f"Merge in {repo} failed for an unhandled " \
+                      "reason. You may need to stash / commit your current\n" \
+                      "changes before doing the merge. Inspect git output " \
+                      "above to troubleshoot. Continue using\ngrape " \
+                      f"{mergeArgs['<<cmd>>']} --continue."
+            else:
+               info = f"Merge in {repo} failed for an unhandled reason"
         return info
     return True

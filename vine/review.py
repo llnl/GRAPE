@@ -3,6 +3,7 @@ import os
 import logging
 import re
 import urllib
+from configparser import NoSectionError, NoOptionError
 from stashy import errors as stashy_errors
 from requests import adapters
 from vine import CodeReviewsFactory
@@ -10,6 +11,7 @@ from vine import Atlassian
 from vine import Gitlab
 from vine import config_parser_global
 from vine import config_parser_user
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
@@ -44,6 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
                         [--noLocal]
+                        [--skiplabels]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -98,7 +101,7 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-
+        --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
     """
@@ -223,7 +226,10 @@ class Review(Option, WorkspaceDirHandler):
         # Fetch the remote tracking branch for the target branch
         git.fetch(f"origin {target_branch}", execution_path=self.workspace_dir)
         # Skip fetching of remote tracking branch in submodules if no gitlink changes were fetched
-        submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
+        if "--noLocal" in args and args["--noLocal"]:
+           submodulesModifiedInOrigin = False
+        else:
+           submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
                      
         upArgs = ['up', f'--public={target_branch}', '--updateRemoteOnly']
         if not submodulesModifiedInOrigin:
@@ -261,7 +267,7 @@ class Review(Option, WorkspaceDirHandler):
             for suffix in description_suffixes:
                 suffix_name = suffix["name"]
                 suffix_body = suffix["body"]
-                suffix_string = f"--------------------{suffix_name} START--------------------\n{suffix_body}\n--------------------{suffix_name} STOP--------------------"
+                suffix_string = f"{MRBlockDelimiter()}{suffix_name} START{MRBlockDelimiter()}\n{suffix_body}\n{MRBlockDelimiter()}{suffix_name} STOP{MRBlockDelimiter()}"
                 if descr:
                     if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
                         descr = f"{descr}\n{suffix_string}"
@@ -382,10 +388,32 @@ class Review(Option, WorkspaceDirHandler):
                         " not generating a Pull Request in Top Level repo")
                     return True
 
+            add_labels = []
+            remove_labels = []
+            if not args["--skiplabels"]:
+               try:
+                  changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
+                  if changedfilelabelmapping:
+                      # find the common ancestor between the current branch and the target branch
+                      mergeBase = git.mergeBase(f"{target_branch} {branch}", execution_path=self.workspace_dir)
+                      for path,label in changedfilelabelmapping.items():
+                          try:
+                             # check if the file has changes from the ancestor
+                             if git.diff(f"--name-only {branch} {mergeBase} {path}", execution_path=self.workspace_dir):
+                                 add_labels.append(label)
+                             else:
+                                 remove_labels.append(label)
+                          except grape_errors.GrapeGitError:
+                             logging.warning(f"GRAPE: WARNING: .grapeconfig [review] changedfilelabelmapping, '{path}' not found, ignoring...")
+               except NoSectionError:
+                  pass
+               except NoOptionError:
+                  pass
+
             repo_name = args["--repo"]
             repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir)
+            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
             updatedDescription = request.description()
             if isinstance(updatedDescription, bytes):
                 updatedDescription = updatedDescription.decode("utf-8")
@@ -398,11 +426,12 @@ class Review(Option, WorkspaceDirHandler):
                 pre_update_description = pre_update_description.decode("utf-8")
             if updatedDescription != pre_update_description:
                 request = postPullRequest(repo, title, branch, target_branch,
-                                         updatedDescription,
-                                         reviewers,
-                                         project_reviewer_lists,
-                                         args,
-                                         self.workspace_dir)
+                                          updatedDescription,
+                                          reviewers,
+                                          project_reviewer_lists,
+                                          args,
+                                          self.workspace_dir,
+                                          add_labels=add_labels, remove_labels=remove_labels)
 
             logging.info(f"Request generated/updated:\n\n{request}")
         return True
@@ -416,6 +445,12 @@ class Review(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
 
+
+def MRLinkText():
+    return "This merge request is related to the merge request at: "
+
+def MRBlockDelimiter():
+    return "--------------------"
 
 def HandlePostPullRequestForRepoMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
@@ -463,8 +498,7 @@ def addLinkToDescription(descr, link):
         if not isinstance(descr, str):
             descr = descr.decode("utf-8")
         if link not in descr:
-            descr += f"\nThis merge request is related to "
-            descr += f"the merge request at: {link}"
+            descr += f"\n{MRLinkText()}{link}"
     return descr
 
 
@@ -502,7 +536,8 @@ def targetBranchMissing(errorMessage):
     return False
 
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path):
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path,
+                    add_labels=[], remove_labels=[]):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
 
@@ -520,8 +555,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                 logging.info(
                     f"Creating new pull request titled '{title}' " + "\n" +
                     f" for branch {branch} targeting {target_branch}. ")
-                logging.info(f"reviewers: {reviewers}")
-                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers)
+                logging.info(f"reviewers: {reviewers}, labels={add_labels}")
+                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers,
+                                                 labels=add_labels)
                 if request:
                    url = request.link()
                    logging.info(f"Pull request created at {url} .")
@@ -535,7 +571,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
                         git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
                         git.push(f"origin {target_branch}", execution_path=git_execution_path)
-                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path)
+                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path,
+                                        add_labels=add_labels, remove_labels=remove_labels)
         else:
             logging.info(
                 f"No pull request from {branch} to {target_branch} to update")
@@ -580,16 +617,18 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                             f"{request.author()} is the author of the pull" +
                             " request and cannot be a reviewer")
                     subReviewers.remove(request.author())
-                if title is not None or descr is not None or subReviewers:
+                if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     logging.info(
                         f"updating request with title={title}, " +
-                        f"description={descr}, reviewers={subReviewers}")
+                        f"description={descr}, reviewers={subReviewers}, add_labels={add_labels}, remove_labels={remove_labels}")
                     if "gitlab" in args["--codeReviewsURL"]:
                        combined_reviewers = {Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0)}
                        combined_reviewers.update(reviewer_list)
-                       request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers )
+                       request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers, add_labels=add_labels, remove_labels=remove_labels)
                     else:
-                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers)
+                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+                    if add_labels or remove_labels:
+                       request.regeneratePipeline()
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:

@@ -1,0 +1,9 @@
+
+
+Thu Feb  9 13:16:21 2023 Jean Paul Fermaint Hernandez
+MR_504
+Reviewers: Peter Robinson, Arlie Capps
+
+- adding a call to the script to update the spack environment and doing the necessary calls 'spack undevelop spec@version'
+
+- the calls to develop or undevelop are done based on the active submodules and spack packages available
