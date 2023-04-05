@@ -21,7 +21,7 @@ branchmappings = develop:develop master:master  master-cz:master-cz
 [flow]
 #publishpolicy = ?:merge master:cascade->develop master-cz:cascade->master
 publishpolicy = ?:merge
-publicbranches = master develop release bugfix/benliu/hooks
+publicbranches = master develop release 
 topicprefixmappings = hotfix:master feature:develop bugfix:develop internal_release:develop public_release:develop ?:develop
 topicdestinationmappings = internal_release:master public_release:master-cz
 topicCascadeTick = internal_release:2 ?:1
