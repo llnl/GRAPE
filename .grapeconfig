@@ -50,7 +50,7 @@ emailsendto = robinson96@llnl.gov
 emailsubject = <public> updated to <version>
 
 [post-commit]
-autopush = True
+autopush = Topic
 #cascade = master:develop
 
 [post-rebase]
