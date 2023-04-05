@@ -83,7 +83,9 @@ class RunHook(Option, WorkspaceDirHandler):
            grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
-        --autopush=<autopush>       autopushes commits to origin (True|False|Topic)
+        --autopush=<autopush>       autopushes commits to origin.
+                                    "False" disables autopush, "Topic" pushes non-public branches, any other value
+                                    pushes any branch.
                                     [default: .grapeconfig.post-commit.autopush]
         --cascade=<pairs>           performs a post commit cascade
                                     [default: .grapeconfig.post-commit.cascade]
@@ -164,13 +166,13 @@ class RunHook(Option, WorkspaceDirHandler):
     def postCommit(self, args):
         #applies the autoPush hook
         autoPush = args["--autopush"].lower().strip()
-        if autoPush == "true":
-            autoPush = True
-        elif autoPush == "topic":
+        if autoPush == "topic":
             if git.currentBranch(execution_path=self.workspace_dir) in config_parser_global.grapeConfig().getPublicBranchList():
                 autoPush = False
             else:
                 autoPush = True
+        elif autoPush != "False":
+            autoPush = True
         else:
             autoPush = False
 
