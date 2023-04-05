@@ -171,7 +171,7 @@ class RunHook(Option, WorkspaceDirHandler):
                 autoPush = False
             else:
                 autoPush = True
-        elif autoPush != "False":
+        elif autoPush != "false":
             autoPush = True
         else:
             autoPush = False
