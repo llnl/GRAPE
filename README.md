@@ -11,8 +11,8 @@ Delete the tag created by the CI, and replace it with an appropriate one (e.g. v
 
 Push the new tag.
 
-Check out develop and merge in master. Create a new commit (after the merge) directly on develop of some kind,
-tag that commit as v1.43.0, push both the new tag and the new commit directly to develop.
+Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
+push both the new tag and the new commit directly to develop.
 
 ## Introducing the `.grapeconfig` file
 
@@ -1160,13 +1160,15 @@ options are at least listed below.
            grape-runHook pre-commit [--noExit]
            grape-runHook pre-push <dest> <url> [--noExit]
            grape-runHook pre-rebase <basebranch> [<rebasebranch>] [--noExit]
-           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>] [--noExit]
+           grape-runHook post-commit [--autopush=<autopush>] [--cascade=<pairs>] [--noExit]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>] [--noExit]
            grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>] [--noExit]
            grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
-        --autopush=<bool>           autopushes commits to origin
+        --autopush=<autopush>       autopushes commits to origin.
+                                    "False" disables autopush, "Topic" pushes non-public branches, any other value
+                                    pushes any branch.
                                     [default: .grapeconfig.post-commit.autopush]
         --cascade=<pairs>           performs a post commit cascade
                                     [default: .grapeconfig.post-commit.cascade]
