@@ -21,6 +21,7 @@ from vine import grapeMenu
 from vine import review
 from vine import utility
 from vine import vine_subprocess
+from vine import version
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
@@ -1012,7 +1013,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
-                tag = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+                tag = version.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
                 self.progress["version"] = tag.split(args["--tagPrefix"])[1]
             elif args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
@@ -1042,7 +1043,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
-        last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+        last_version = version.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
         branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []
         for line in branch_log.splitlines():
