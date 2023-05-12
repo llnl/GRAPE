@@ -1013,6 +1013,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
+                # TODO should this have tagSuffix?
                 tag = version.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
                 self.progress["version"] = tag.split(args["--tagPrefix"])[1]
             elif args["--mergeTrain"] and not args["--sendEmail"]:
@@ -1043,6 +1044,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
+        # TODO should this have tagSuffix?
         last_version = version.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
         branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []

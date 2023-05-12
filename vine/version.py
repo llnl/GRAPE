@@ -164,6 +164,7 @@ class Version(Option, WorkspaceDirHandler):
         # set version based on proposed version number tag in topic branch
         if "--useProposed" in args and args["--useProposed"]:
             logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
+            # TODO should this have tagSuffix?
             last_version = describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
             proposed_tags = []
             branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)

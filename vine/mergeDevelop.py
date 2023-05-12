@@ -326,6 +326,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
 
+        # TODO should these have suffix?
         description = version.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
         while '-' in description:
             numMerges = numMerges+1
@@ -378,6 +379,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
         # Get the version of the branch
+        # TODO should these have suffix?
         versionTag = version.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=prefix, execution_path=self.workspace_dir)
         # Get the version of the merged result
         mergedVersionTag = version.describeLastVersion("--abbrev=0", branch="", tagPrefix=prefix, execution_path=self.workspace_dir)
