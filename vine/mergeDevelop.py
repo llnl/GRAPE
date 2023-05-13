@@ -10,7 +10,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
-from vine import version
+from vine import version as grapeVersion
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
@@ -327,12 +327,12 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
 
         # TODO should these have suffix?
-        description = version.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
+        description = grapeVersion.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
         while '-' in description:
             numMerges = numMerges+1
             logging.info(f"branch {branch} is {description}, ticked numMerges to {numMerges}")
             branch = git.parentsOfMergeCommit(branch, execution_path=self.workspace_dir)[0]
-            description = version.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
+            description = grapeVersion.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
             logging.info(f"branch {branch} is {description}")
         return numMerges
 
@@ -380,9 +380,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
         # Get the version of the branch
         # TODO should these have suffix?
-        versionTag = version.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=prefix, execution_path=self.workspace_dir)
+        versionTag = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=prefix, execution_path=self.workspace_dir)
         # Get the version of the merged result
-        mergedVersionTag = version.describeLastVersion("--abbrev=0", branch="", tagPrefix=prefix, execution_path=self.workspace_dir)
+        mergedVersionTag = grapeVersion.describeLastVersion("--abbrev=0", branch="", tagPrefix=prefix, execution_path=self.workspace_dir)
         if versionTag == mergedVersionTag:
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True
