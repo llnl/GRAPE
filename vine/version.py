@@ -6,6 +6,7 @@ import re
 from vine import config_parser_global
 from vine import config_parser_workspace
 from vine import config_parser_user
+from vine import grape_errors
 from vine import grapeGit as git
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -18,6 +19,24 @@ def grapeVersion():
         return grapeVersion
     except:
         return "v.1.37.unknown"
+
+def describeLastVersion(args, *, branch, tagPrefix, tagSuffix='', execution_path):
+    description = git.describe(f"{branch} {args} --match={tagPrefix}*{tagSuffix}", execution_path=execution_path)
+    # In certain cases, the description of mergeback branches will describe the prior version rather than the current one.
+    # For those cases, we check for a match against the next minor version and use that if it exists.
+    versions = description.split('.')
+    if len(versions) > 1 and versions[1].isdigit():
+        next_minor_version = int(versions[1]) + 1
+        try:
+            next_description = git.describe(f"{branch} {args} --match={versions[0]}.{next_minor_version}.*{tagSuffix}", execution_path=execution_path)
+            description = next_description
+        except grape_errors.GrapeGitError as e:
+            if "could not describe commit" in e.message:
+                pass
+            else:
+                raise(e)
+
+    return description
 
 
 class Version(Option, WorkspaceDirHandler):
@@ -145,7 +164,8 @@ class Version(Option, WorkspaceDirHandler):
         # set version based on proposed version number tag in topic branch
         if "--useProposed" in args and args["--useProposed"]:
             logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
-            last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+            # TODO should this have tagSuffix?
+            last_version = describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
             proposed_tags = []
             branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
             for line in branch_log.splitlines():
@@ -296,7 +316,7 @@ class Version(Option, WorkspaceDirHandler):
         tagPrefix = args["--tagPrefix"]
         tagSuffix = args["--tagSuffix"]
         tagBase = args["--tagBase"]
-        tagName = git.describe(f"--abbrev=0 --match={tagPrefix}*{tagSuffix} {tagBase}", execution_path=workspace_dir)
+        tagName = describeLastVersion("--abbrev=0", branch=tagBase, tagPrefix=tagPrefix, tagSuffix=tagSuffix, execution_path=workspace_dir)
         if asString:
             return tagName
         else:

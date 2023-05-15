@@ -12,6 +12,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import version as grapeVersion
 from vine import vine_subprocess
 from vine.vine_logging import log_wrapper
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -254,7 +255,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             if slots > 1:
                prefix = config.get(self.SECTION_VERSIONING, "prefix")
                git.fetch("origin", f"--force --tags {public}", execution_path=self.workspace_dir)
-               branchTags = git.describe(f"origin/{public} --match={prefix}*", execution_path=self.workspace_dir).split('.')
+               branchTags = grapeVersion.describeLastVersion("", branch=f"origin/{public}", tagPrefix=prefix, execution_path=self.workspace_dir).split('.')
                tagPrefix = '.'.join(branchTags[:slots-1]) + '.'
 
         return (branchChanged, public, tagPrefix, checkSubmoduleHistory)
