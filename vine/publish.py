@@ -729,7 +729,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if inprogresslabel:
                request.update(request.version(), remove_labels=[inprogresslabel])
                # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
-               request.regeneratePipeline()
+               try:
+                  request.regeneratePipeline()
+               except:
+                  # In certain cases, the merge request is already closed and the pipeline cannot be regenerated
+                  pass
             return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
