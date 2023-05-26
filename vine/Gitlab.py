@@ -612,9 +612,13 @@ class PullRequest:
         self.mergerequest.save()
         return self
 
-    def regeneratePipeline(self):
+    def regeneratePipeline(self, raiseOnFailure=True):
         # Create a new pipeline to reflect any changes in labels
-        self.mergerequest.pipelines.create()
+        try:
+            self.mergerequest.pipelines.create()
+        except gitlab.exceptions.GitlabCreateError as e:
+            if raiseOnFailure:
+                raise(e)
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
