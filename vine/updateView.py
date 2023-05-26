@@ -352,7 +352,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                                     " (use -F to force removal without this prompt)", 'n')
         if proceed:
             logging.info(f"removing {subproject}...")
-            shutil.rmtree(subprojectdir, onerror=self.force_rm)
+            try:
+                shutil.rmtree(subprojectdir, onerror=self.force_rm)
+            except OSError as e:
+                logging.warning(f"WARNING: Failed to remove {subproject}!\n{e}")
             return True
         return False
 
