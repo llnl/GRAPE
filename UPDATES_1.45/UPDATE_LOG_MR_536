@@ -1,0 +1,13 @@
+
+
+Mon Jun 12 08:08:13 2023 Benjamin T. Liu
+MR_536
+Reviewers: Peter Robinson
+
+Allow regeneration of pipeline to fail when removing progress locks
+
+- this can occur during manual publish when the merge request is closed before this point
+
+Give warning instead of failing if removal of subproject fails
+
+- failure can result in empty subproject MRs being created in auto-rebaselining (due to inconsistent state)
