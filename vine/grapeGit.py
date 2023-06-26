@@ -288,15 +288,23 @@ def getAllSubmodules(*, execution_path):
     return submodules
 
 
-def getAllSubmoduleURLMap(*, execution_path):
-    try:
-       fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
-    except FileNotFoundError:
-       # No submodules are present
-       return {}
-    subconfig = configparser.ConfigParser()
-    subconfig.read_file(fp)
-    fp.close()
+def getAllSubmoduleURLMap(*, execution_path = None, gitmodules_string=None):
+    if (gitmodules_string and execution_path) or (not gitmodules_string and not execution_path):
+        logging.warning("WARNING: exactly one of execution_path and gitmodules_string should be set")
+        
+    if gitmodules_string:
+        from vine import config_parser_base
+        subconfig = config_parser_base.GrapeConfigParserBase(configString=gitmodules_string)
+    else:
+        try:
+           fp = io.StringIO('\n'.join(line.strip() for line in io.open(os.path.join(execution_path, ".gitmodules"))))
+        except FileNotFoundError:
+           # No submodules are present
+           return {}
+        subconfig = configparser.ConfigParser()
+        subconfig.read_file(fp)
+        fp.close()
+
     sections = subconfig.sections()
     submodules = {}
     for s in sections:
