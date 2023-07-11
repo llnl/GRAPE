@@ -628,6 +628,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     else:
                        request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
                     if add_labels or remove_labels:
+                       logging.info("Regenerating pipeline...")
                        request.regeneratePipeline()
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
