@@ -700,6 +700,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                thisRequest = self.openPullRequest()
                thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
                # Regenerate the pipeline now with new label
+               logging.info(f"Regenerating pipeline with {inprogresslabel} label for in-progress lock...")
                thisRequest.regeneratePipeline()
 
         retcode = self.checkInProgressLock(args)
@@ -730,6 +731,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                request.update(request.version(), remove_labels=[inprogresslabel])
                # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
                # In certain cases, the merge request is already closed and the pipeline cannot be regenerated
+               logging.info(f"Regenerating pipeline without {inprogresslabel} label to release in-progress lock...")
                request.regeneratePipeline(raiseOnFailure=False)
             return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
@@ -1924,6 +1926,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            thisRequest = self.openPullRequest()
            thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
            # Regenerate the pipeline now with new label
+           logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
         logging.info("********************************************************************************")
         logging.info("All changes pushed and ready for being enqueued into merge train.")
