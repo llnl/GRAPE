@@ -1932,7 +1932,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         while numTries > 0:
             try:
                 logging.info("***  waiting for 10 seconds before adding to the merge train ****")
-                time.sleep(10)
+                time.sleep(60)
                 logging.info("***  adding to the Merge Train ****")
                 result = self.repo.addToMergeTrain(thisRequest)
                 numTries = 0
