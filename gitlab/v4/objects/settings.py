@@ -1,7 +1,10 @@
+from typing import Any, cast, Dict, Optional, Union
+
 from gitlab import exceptions as exc
 from gitlab import types
-from gitlab.base import RequiredOptional, RESTManager, RESTObject
+from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import GetWithoutIdMixin, SaveMixin, UpdateMixin
+from gitlab.types import RequiredOptional
 
 __all__ = [
     "ApplicationSettings",
@@ -78,16 +81,21 @@ class ApplicationSettingsManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
         ),
     )
     _types = {
-        "asset_proxy_allowlist": types.ListAttribute,
-        "disabled_oauth_sign_in_sources": types.ListAttribute,
-        "domain_allowlist": types.ListAttribute,
-        "domain_denylist": types.ListAttribute,
-        "import_sources": types.ListAttribute,
-        "restricted_visibility_levels": types.ListAttribute,
+        "asset_proxy_allowlist": types.ArrayAttribute,
+        "disabled_oauth_sign_in_sources": types.ArrayAttribute,
+        "domain_allowlist": types.ArrayAttribute,
+        "domain_denylist": types.ArrayAttribute,
+        "import_sources": types.ArrayAttribute,
+        "restricted_visibility_levels": types.ArrayAttribute,
     }
 
     @exc.on_http_error(exc.GitlabUpdateError)
-    def update(self, id=None, new_data=None, **kwargs):
+    def update(
+        self,
+        id: Optional[Union[str, int]] = None,
+        new_data: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> Dict[str, Any]:
         """Update an object on the server.
 
         Args:
@@ -96,7 +104,7 @@ class ApplicationSettingsManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
             **kwargs: Extra options to send to the server (e.g. sudo)
 
         Returns:
-            dict: The new object data (*not* a RESTObject)
+            The new object data (*not* a RESTObject)
 
         Raises:
             GitlabAuthenticationError: If authentication is not correct
@@ -106,4 +114,7 @@ class ApplicationSettingsManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
         data = new_data.copy()
         if "domain_whitelist" in data and data["domain_whitelist"] is None:
             data.pop("domain_whitelist")
-        super(ApplicationSettingsManager, self).update(id, data, **kwargs)
+        return super().update(id, data, **kwargs)
+
+    def get(self, **kwargs: Any) -> ApplicationSettings:
+        return cast(ApplicationSettings, super().get(**kwargs))

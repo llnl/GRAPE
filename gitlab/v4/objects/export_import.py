@@ -1,5 +1,8 @@
-from gitlab.base import RequiredOptional, RESTManager, RESTObject
+from typing import Any, cast
+
+from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import CreateMixin, DownloadMixin, GetWithoutIdMixin, RefreshMixin
+from gitlab.types import RequiredOptional
 
 __all__ = [
     "GroupExport",
@@ -18,9 +21,12 @@ class GroupExport(DownloadMixin, RESTObject):
 
 
 class GroupExportManager(GetWithoutIdMixin, CreateMixin, RESTManager):
-    _path = "/groups/%(group_id)s/export"
+    _path = "/groups/{group_id}/export"
     _obj_cls = GroupExport
     _from_parent_attrs = {"group_id": "id"}
+
+    def get(self, **kwargs: Any) -> GroupExport:
+        return cast(GroupExport, super().get(**kwargs))
 
 
 class GroupImport(RESTObject):
@@ -28,9 +34,12 @@ class GroupImport(RESTObject):
 
 
 class GroupImportManager(GetWithoutIdMixin, RESTManager):
-    _path = "/groups/%(group_id)s/import"
+    _path = "/groups/{group_id}/import"
     _obj_cls = GroupImport
     _from_parent_attrs = {"group_id": "id"}
+
+    def get(self, **kwargs: Any) -> GroupImport:
+        return cast(GroupImport, super().get(**kwargs))
 
 
 class ProjectExport(DownloadMixin, RefreshMixin, RESTObject):
@@ -38,10 +47,13 @@ class ProjectExport(DownloadMixin, RefreshMixin, RESTObject):
 
 
 class ProjectExportManager(GetWithoutIdMixin, CreateMixin, RESTManager):
-    _path = "/projects/%(project_id)s/export"
+    _path = "/projects/{project_id}/export"
     _obj_cls = ProjectExport
     _from_parent_attrs = {"project_id": "id"}
     _create_attrs = RequiredOptional(optional=("description",))
+
+    def get(self, **kwargs: Any) -> ProjectExport:
+        return cast(ProjectExport, super().get(**kwargs))
 
 
 class ProjectImport(RefreshMixin, RESTObject):
@@ -49,6 +61,9 @@ class ProjectImport(RefreshMixin, RESTObject):
 
 
 class ProjectImportManager(GetWithoutIdMixin, RESTManager):
-    _path = "/projects/%(project_id)s/import"
+    _path = "/projects/{project_id}/import"
     _obj_cls = ProjectImport
     _from_parent_attrs = {"project_id": "id"}
+
+    def get(self, **kwargs: Any) -> ProjectImport:
+        return cast(ProjectImport, super().get(**kwargs))

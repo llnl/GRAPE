@@ -1,20 +1,3 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2013-2017 Gauvain Pocentek <gauvain@pocentek.net>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU Lesser General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU Lesser General Public License for more details.
-#
-# You should have received a copy of the GNU Lesser General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import functools
 from typing import Any, Callable, cast, Optional, Type, TYPE_CHECKING, TypeVar, Union
 
@@ -26,7 +9,6 @@ class GitlabError(Exception):
         response_code: Optional[int] = None,
         response_body: Optional[bytes] = None,
     ) -> None:
-
         Exception.__init__(self, error_message)
         # Http status code
         self.response_code = response_code
@@ -46,9 +28,8 @@ class GitlabError(Exception):
 
     def __str__(self) -> str:
         if self.response_code is not None:
-            return "{0}: {1}".format(self.response_code, self.error_message)
-        else:
-            return "{0}".format(self.error_message)
+            return f"{self.response_code}: {self.error_message}"
+        return f"{self.error_message}"
 
 
 class GitlabAuthenticationError(GitlabError):
@@ -60,6 +41,10 @@ class RedirectError(GitlabError):
 
 
 class GitlabParsingError(GitlabError):
+    pass
+
+
+class GitlabCiLintError(GitlabError):
     pass
 
 
@@ -80,6 +65,10 @@ class GitlabListError(GitlabOperationError):
 
 
 class GitlabGetError(GitlabOperationError):
+    pass
+
+
+class GitlabHeadError(GitlabOperationError):
     pass
 
 
@@ -107,7 +96,15 @@ class GitlabTransferProjectError(GitlabOperationError):
     pass
 
 
+class GitlabGroupTransferError(GitlabOperationError):
+    pass
+
+
 class GitlabProjectDeployKeyError(GitlabOperationError):
+    pass
+
+
+class GitlabPromoteError(GitlabOperationError):
     pass
 
 
@@ -179,6 +176,14 @@ class GitlabActivateError(GitlabOperationError):
     pass
 
 
+class GitlabBanError(GitlabOperationError):
+    pass
+
+
+class GitlabUnbanError(GitlabOperationError):
+    pass
+
+
 class GitlabSubscribeError(GitlabOperationError):
     pass
 
@@ -199,6 +204,10 @@ class GitlabMRRebaseError(GitlabOperationError):
     pass
 
 
+class GitlabMRResetApprovalError(GitlabOperationError):
+    pass
+
+
 class GitlabMRClosedError(GitlabOperationError):
     pass
 
@@ -208,6 +217,10 @@ class GitlabMROnBuildSuccessError(GitlabOperationError):
 
 
 class GitlabTodoError(GitlabOperationError):
+    pass
+
+
+class GitlabTopicMergeError(GitlabOperationError):
     pass
 
 
@@ -224,6 +237,10 @@ class GitlabAttachFileError(GitlabOperationError):
 
 
 class GitlabImportError(GitlabOperationError):
+    pass
+
+
+class GitlabInvitationError(GitlabOperationError):
     pass
 
 
@@ -263,6 +280,10 @@ class GitlabRepairError(GitlabOperationError):
     pass
 
 
+class GitlabRestoreError(GitlabOperationError):
+    pass
+
+
 class GitlabRevertError(GitlabOperationError):
     pass
 
@@ -276,6 +297,18 @@ class GitlabFollowError(GitlabOperationError):
 
 
 class GitlabUnfollowError(GitlabOperationError):
+    pass
+
+
+class GitlabUserApproveError(GitlabOperationError):
+    pass
+
+
+class GitlabUserRejectError(GitlabOperationError):
+    pass
+
+
+class GitlabDeploymentApprovalError(GitlabOperationError):
     pass
 
 
@@ -293,8 +326,7 @@ def on_http_error(error: Type[Exception]) -> Callable[[__F], __F]:
     raise specialized exceptions instead.
 
     Args:
-        error(Exception): The exception type to raise -- must inherit from
-            GitlabError
+        The exception type to raise -- must inherit from GitlabError
     """
 
     def wrap(f: __F) -> __F:
@@ -308,3 +340,6 @@ def on_http_error(error: Type[Exception]) -> Callable[[__F], __F]:
         return cast(__F, wrapped_f)
 
     return wrap
+
+
+__all__ = [name for name in dir() if name.endswith("Error")]

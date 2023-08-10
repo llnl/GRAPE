@@ -1928,12 +1928,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            # Regenerate the pipeline now with new label
            logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
+        result = self.repo.addToMergeTrain(thisRequest)
         logging.info("********************************************************************************")
-        logging.info("All changes pushed and ready for being enqueued into merge train.")
-        logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
-        logging.info(thisRequest.link())
-        logging.info("and click on the 'Start merge train', 'Add to merge train',")
-        logging.info("or 'Merge (Add to merge train)' button.")
+        logging.info(f"Merge Request added to Merge Train {result}")
         logging.info("********************************************************************************")
         return True
 

@@ -1,5 +1,11 @@
+"""
+GitLab API:
+https://docs.gitlab.com/ee/api/packages.html
+https://docs.gitlab.com/ee/user/packages/generic_packages/
+"""
+
 from pathlib import Path
-from typing import Any, Callable, Optional, TYPE_CHECKING, Union
+from typing import Any, Callable, cast, Iterator, Optional, TYPE_CHECKING, Union
 
 import requests
 
@@ -26,7 +32,7 @@ class GenericPackage(RESTObject):
 
 
 class GenericPackageManager(RESTManager):
-    _path = "/projects/%(project_id)s/packages/generic"
+    _path = "/projects/{project_id}/packages/generic"
     _obj_cls = GenericPackage
     _from_parent_attrs = {"project_id": "id"}
 
@@ -41,17 +47,17 @@ class GenericPackageManager(RESTManager):
         package_version: str,
         file_name: str,
         path: Union[str, Path],
-        **kwargs,
+        **kwargs: Any,
     ) -> GenericPackage:
         """Upload a file as a generic package.
 
         Args:
-            package_name (str): The package name. Must follow generic package
+            package_name: The package name. Must follow generic package
                                 name regex rules
-            package_version (str): The package version. Must follow semantic
+            package_version: The package version. Must follow semantic
                                 version regex rules
-            file_name (str): The name of the file as uploaded in the registry
-            path (str): The path to a local file to upload
+            file_name: The name of the file as uploaded in the registry
+            path: The path to a local file to upload
 
         Raises:
             GitlabConnectionError: If the server cannot be reached
@@ -59,17 +65,21 @@ class GenericPackageManager(RESTManager):
             GitlabUploadError: If ``filepath`` cannot be read
 
         Returns:
-            GenericPackage: An object storing the metadata of the uploaded package.
+            An object storing the metadata of the uploaded package.
+
+        https://docs.gitlab.com/ee/user/packages/generic_packages/
         """
 
         try:
             with open(path, "rb") as f:
                 file_data = f.read()
-        except OSError:
-            raise exc.GitlabUploadError(f"Failed to read package file {path}")
+        except OSError as e:
+            raise exc.GitlabUploadError(f"Failed to read package file {path}") from e
 
         url = f"{self._computed_path}/{package_name}/{package_version}/{file_name}"
         server_data = self.gitlab.http_put(url, post_data=file_data, raw=True, **kwargs)
+        if TYPE_CHECKING:
+            assert isinstance(server_data, dict)
 
         return self._obj_cls(
             self,
@@ -93,22 +103,26 @@ class GenericPackageManager(RESTManager):
         package_version: str,
         file_name: str,
         streamed: bool = False,
-        action: Optional[Callable] = None,
+        action: Optional[Callable[[bytes], None]] = None,
         chunk_size: int = 1024,
+        *,
+        iterator: bool = False,
         **kwargs: Any,
-    ) -> Optional[bytes]:
+    ) -> Optional[Union[bytes, Iterator[Any]]]:
         """Download a generic package.
 
         Args:
-            package_name (str): The package name.
-            package_version (str): The package version.
-            file_name (str): The name of the file in the registry
-            streamed (bool): If True the data will be processed by chunks of
+            package_name: The package name.
+            package_version: The package version.
+            file_name: The name of the file in the registry
+            streamed: If True the data will be processed by chunks of
                 `chunk_size` and each chunk is passed to `action` for
                 treatment
-            action (callable): Callable responsible of dealing with chunk of
+            iterator: If True directly return the underlying response
+                iterator
+            action: Callable responsible of dealing with chunk of
                 data
-            chunk_size (int): Size of each chunk
+            chunk_size: Size of each chunk
             **kwargs: Extra options to send to the server (e.g. sudo)
 
         Raises:
@@ -116,13 +130,15 @@ class GenericPackageManager(RESTManager):
             GitlabGetError: If the server failed to perform the request
 
         Returns:
-            str: The package content if streamed is False, None otherwise
+            The package content if streamed is False, None otherwise
         """
         path = f"{self._computed_path}/{package_name}/{package_version}/{file_name}"
         result = self.gitlab.http_get(path, streamed=streamed, raw=True, **kwargs)
         if TYPE_CHECKING:
             assert isinstance(result, requests.Response)
-        return utils.response_content(result, streamed, action, chunk_size)
+        return utils.response_content(
+            result, streamed, action, chunk_size, iterator=iterator
+        )
 
 
 class GroupPackage(RESTObject):
@@ -130,7 +146,7 @@ class GroupPackage(RESTObject):
 
 
 class GroupPackageManager(ListMixin, RESTManager):
-    _path = "/groups/%(group_id)s/packages"
+    _path = "/groups/{group_id}/packages"
     _obj_cls = GroupPackage
     _from_parent_attrs = {"group_id": "id"}
     _list_filters = (
@@ -147,7 +163,7 @@ class ProjectPackage(ObjectDeleteMixin, RESTObject):
 
 
 class ProjectPackageManager(ListMixin, GetMixin, DeleteMixin, RESTManager):
-    _path = "/projects/%(project_id)s/packages"
+    _path = "/projects/{project_id}/packages"
     _obj_cls = ProjectPackage
     _from_parent_attrs = {"project_id": "id"}
     _list_filters = (
@@ -157,12 +173,17 @@ class ProjectPackageManager(ListMixin, GetMixin, DeleteMixin, RESTManager):
         "package_name",
     )
 
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> ProjectPackage:
+        return cast(ProjectPackage, super().get(id=id, lazy=lazy, **kwargs))
 
-class ProjectPackageFile(RESTObject):
+
+class ProjectPackageFile(ObjectDeleteMixin, RESTObject):
     pass
 
 
-class ProjectPackageFileManager(ListMixin, RESTManager):
-    _path = "/projects/%(project_id)s/packages/%(package_id)s/package_files"
+class ProjectPackageFileManager(DeleteMixin, ListMixin, RESTManager):
+    _path = "/projects/{project_id}/packages/{package_id}/package_files"
     _obj_cls = ProjectPackageFile
     _from_parent_attrs = {"project_id": "project_id", "package_id": "id"}
