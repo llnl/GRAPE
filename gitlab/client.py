@@ -722,7 +722,7 @@ class Gitlab:
         cur_retries = 0
         while True:
             try:
-                print(f"in http request with url {url}\n\n{send_data.json}\n\n{send_data.data}\n\n{params}")
+                print(f"in http request with mehtod {verb}\n\n url {url}\n\n{send_data.json}\n\n{send_data.data}\n\n{params}\n\nopts {opts}")
                 result = self._backend.http_request(
                     method=verb,
                     url=url,
