@@ -505,7 +505,7 @@ class PullRequest:
         self.mergerequest = gitlab_mergerequest
         self.gitlab = gitlab
 
-        print(f"Pull Requestion construction with {self.mergerequest.url}, gitlab {self.gitlab.url}")
+        print(f"Pull Requestion construction with {self.mergerequest.__dict__}, gitlab {self.gitlab.__dict__}")
 
     def author(self):
         return self.mergerequest.author["username"]
