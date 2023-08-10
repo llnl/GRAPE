@@ -591,7 +591,12 @@ class PullRequest:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
-                    self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    print(f"calling set_approvers with {reviewer_ids}, {approval_rule_name}")
+                    try:
+                        self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    except gitlab.exceptions.GitlabUpdateError as e:
+                        print(f"{e.__dict__}")
+                        exit(1)
                     self.mergerequest.reviewer_ids = reviewer_ids
 
         if self.mergerequest.description:
