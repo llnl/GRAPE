@@ -484,7 +484,7 @@ class Repo:
         return self.project.artifact(ref_name,artifact_path, job)
 
     def addToMergeTrain(self, pull_request):
-        return self.project.merge_trains_merge_request.add(pull_request.iid(), when_pipeline_succeeds=True)
+        return self.project.merge_trains_merge_request.add(pull_request.iid())
 
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
