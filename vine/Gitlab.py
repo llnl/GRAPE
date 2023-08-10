@@ -505,8 +505,6 @@ class PullRequest:
         self.mergerequest = gitlab_mergerequest
         self.gitlab = gitlab
 
-        print(f"Pull Requestion construction with {self.mergerequest.__dict__}, gitlab {self.gitlab.__dict__}")
-
     def author(self):
         return self.mergerequest.author["username"]
 
@@ -593,7 +591,6 @@ class PullRequest:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
-                    print(f"calling set_approvers with {reviewer_ids}, {approval_rule_name}")
                     self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
                     self.mergerequest.reviewer_ids = reviewer_ids
 
