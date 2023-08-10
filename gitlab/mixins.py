@@ -365,7 +365,6 @@ class UpdateMixin(_RestManagerBase):
         )
 
         http_method = self._get_update_method()
-        print(f"path = {path}, post_data={new_data}, files = {files}, kwargs = {kwargs}")
         result = http_method(path, post_data=new_data, files=files, **kwargs)
         if TYPE_CHECKING:
             assert not isinstance(result, requests.Response)
