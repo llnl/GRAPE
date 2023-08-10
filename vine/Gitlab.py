@@ -483,6 +483,9 @@ class Repo:
     def artifact(self, ref_name, artifact_path, job):
         return self.project.artifact(ref_name,artifact_path, job)
 
+    def addToMergeTrain(self, pull_request, sha):
+        return self.project.merge_trains_merge_request.add(pull_request.iid(), sha=sha)
+
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
         self.job = gitlab_project.jobs.get(gitlab_job_id)
@@ -639,7 +642,6 @@ class PullRequest:
         except gitlab.exceptions.GitlabMRClosedError as e:
             logging.info(f"GitlabMRClosedError triggered! {e.__dict__}") 
             raise e
-
 
 def testMe():
     grape_gitlab = GrapeGitlabAdapter(workspace_dir=os.getcwd())

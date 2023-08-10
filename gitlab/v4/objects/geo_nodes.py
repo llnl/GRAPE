@@ -1,6 +1,8 @@
+from typing import Any, cast, Dict, List, TYPE_CHECKING, Union
+
 from gitlab import cli
 from gitlab import exceptions as exc
-from gitlab.base import RequiredOptional, RESTManager, RESTObject
+from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import (
     DeleteMixin,
     ObjectDeleteMixin,
@@ -8,6 +10,7 @@ from gitlab.mixins import (
     SaveMixin,
     UpdateMixin,
 )
+from gitlab.types import RequiredOptional
 
 __all__ = [
     "GeoNode",
@@ -18,7 +21,7 @@ __all__ = [
 class GeoNode(SaveMixin, ObjectDeleteMixin, RESTObject):
     @cli.register_custom_action("GeoNode")
     @exc.on_http_error(exc.GitlabRepairError)
-    def repair(self, **kwargs):
+    def repair(self, **kwargs: Any) -> None:
         """Repair the OAuth authentication of the geo node.
 
         Args:
@@ -28,13 +31,15 @@ class GeoNode(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabAuthenticationError: If authentication is not correct
             GitlabRepairError: If the server failed to perform the request
         """
-        path = "/geo_nodes/%s/repair" % self.get_id()
+        path = f"/geo_nodes/{self.encoded_id}/repair"
         server_data = self.manager.gitlab.http_post(path, **kwargs)
+        if TYPE_CHECKING:
+            assert isinstance(server_data, dict)
         self._update_attrs(server_data)
 
     @cli.register_custom_action("GeoNode")
     @exc.on_http_error(exc.GitlabGetError)
-    def status(self, **kwargs):
+    def status(self, **kwargs: Any) -> Dict[str, Any]:
         """Get the status of the geo node.
 
         Args:
@@ -45,10 +50,13 @@ class GeoNode(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabGetError: If the server failed to perform the request
 
         Returns:
-            dict: The status of the geo node
+            The status of the geo node
         """
-        path = "/geo_nodes/%s/status" % self.get_id()
-        return self.manager.gitlab.http_get(path, **kwargs)
+        path = f"/geo_nodes/{self.encoded_id}/status"
+        result = self.manager.gitlab.http_get(path, **kwargs)
+        if TYPE_CHECKING:
+            assert isinstance(result, dict)
+        return result
 
 
 class GeoNodeManager(RetrieveMixin, UpdateMixin, DeleteMixin, RESTManager):
@@ -58,9 +66,12 @@ class GeoNodeManager(RetrieveMixin, UpdateMixin, DeleteMixin, RESTManager):
         optional=("enabled", "url", "files_max_capacity", "repos_max_capacity"),
     )
 
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> GeoNode:
+        return cast(GeoNode, super().get(id=id, lazy=lazy, **kwargs))
+
     @cli.register_custom_action("GeoNodeManager")
     @exc.on_http_error(exc.GitlabGetError)
-    def status(self, **kwargs):
+    def status(self, **kwargs: Any) -> List[Dict[str, Any]]:
         """Get the status of all the geo nodes.
 
         Args:
@@ -71,13 +82,16 @@ class GeoNodeManager(RetrieveMixin, UpdateMixin, DeleteMixin, RESTManager):
             GitlabGetError: If the server failed to perform the request
 
         Returns:
-            list: The status of all the geo nodes
+            The status of all the geo nodes
         """
-        return self.gitlab.http_list("/geo_nodes/status", **kwargs)
+        result = self.gitlab.http_list("/geo_nodes/status", **kwargs)
+        if TYPE_CHECKING:
+            assert isinstance(result, list)
+        return result
 
     @cli.register_custom_action("GeoNodeManager")
     @exc.on_http_error(exc.GitlabGetError)
-    def current_failures(self, **kwargs):
+    def current_failures(self, **kwargs: Any) -> List[Dict[str, Any]]:
         """Get the list of failures on the current geo node.
 
         Args:
@@ -88,6 +102,9 @@ class GeoNodeManager(RetrieveMixin, UpdateMixin, DeleteMixin, RESTManager):
             GitlabGetError: If the server failed to perform the request
 
         Returns:
-            list: The list of failures
+            The list of failures
         """
-        return self.gitlab.http_list("/geo_nodes/current/failures", **kwargs)
+        result = self.gitlab.http_list("/geo_nodes/current/failures", **kwargs)
+        if TYPE_CHECKING:
+            assert isinstance(result, list)
+        return result

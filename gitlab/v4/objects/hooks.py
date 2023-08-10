@@ -1,5 +1,8 @@
-from gitlab.base import RequiredOptional, RESTManager, RESTObject
+from typing import Any, cast, Union
+
+from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import CRUDMixin, NoUpdateMixin, ObjectDeleteMixin, SaveMixin
+from gitlab.types import RequiredOptional
 
 __all__ = [
     "Hook",
@@ -13,7 +16,7 @@ __all__ = [
 
 class Hook(ObjectDeleteMixin, RESTObject):
     _url = "/hooks"
-    _short_print_attr = "url"
+    _repr_attr = "url"
 
 
 class HookManager(NoUpdateMixin, RESTManager):
@@ -21,13 +24,16 @@ class HookManager(NoUpdateMixin, RESTManager):
     _obj_cls = Hook
     _create_attrs = RequiredOptional(required=("url",))
 
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> Hook:
+        return cast(Hook, super().get(id=id, lazy=lazy, **kwargs))
+
 
 class ProjectHook(SaveMixin, ObjectDeleteMixin, RESTObject):
-    _short_print_attr = "url"
+    _repr_attr = "url"
 
 
 class ProjectHookManager(CRUDMixin, RESTManager):
-    _path = "/projects/%(project_id)s/hooks"
+    _path = "/projects/{project_id}/hooks"
     _obj_cls = ProjectHook
     _from_parent_attrs = {"project_id": "id"}
     _create_attrs = RequiredOptional(
@@ -63,13 +69,18 @@ class ProjectHookManager(CRUDMixin, RESTManager):
         ),
     )
 
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> ProjectHook:
+        return cast(ProjectHook, super().get(id=id, lazy=lazy, **kwargs))
+
 
 class GroupHook(SaveMixin, ObjectDeleteMixin, RESTObject):
-    _short_print_attr = "url"
+    _repr_attr = "url"
 
 
 class GroupHookManager(CRUDMixin, RESTManager):
-    _path = "/groups/%(group_id)s/hooks"
+    _path = "/groups/{group_id}/hooks"
     _obj_cls = GroupHook
     _from_parent_attrs = {"group_id": "id"}
     _create_attrs = RequiredOptional(
@@ -112,3 +123,6 @@ class GroupHookManager(CRUDMixin, RESTManager):
             "token",
         ),
     )
+
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> GroupHook:
+        return cast(GroupHook, super().get(id=id, lazy=lazy, **kwargs))

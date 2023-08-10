@@ -18,7 +18,7 @@ merge_train_ticket:
     GIT_DEPTH: "2"
   extends:
     - .run_on_merge_request_except_on_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .test_linux
   interruptible: true
 
@@ -29,7 +29,7 @@ all_aboard_the_merge_train:
     GIT_STRATEGY: none
   extends:
     - .run_on_merge_request_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .auto_pass
   interruptible: true
 
@@ -42,7 +42,7 @@ merge_train:
     GIT_DEPTH: "2"
   extends:
     - .run_on_merge_train_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .test_linux
   interruptible: true
 
@@ -53,7 +53,7 @@ tag_pushes_to_develop_or_master:
     GIT_STRATEGY: clone
   extends:
     - .run_on_push_to_develop_or_master
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .tick_version
   interruptible: false
 
@@ -64,7 +64,7 @@ do_not_push_the_button_before_grape_publish:
     GIT_STRATEGY: none
   extends:
     - .run_on_merge_train_if_no_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .auto_fail
   interruptible: true
 

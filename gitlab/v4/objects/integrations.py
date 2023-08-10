@@ -1,3 +1,10 @@
+"""
+GitLab API:
+https://docs.gitlab.com/ee/api/integrations.html
+"""
+
+from typing import Any, cast, List, Union
+
 from gitlab import cli
 from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import (
@@ -10,19 +17,23 @@ from gitlab.mixins import (
 )
 
 __all__ = [
+    "ProjectIntegration",
+    "ProjectIntegrationManager",
     "ProjectService",
     "ProjectServiceManager",
 ]
 
 
-class ProjectService(SaveMixin, ObjectDeleteMixin, RESTObject):
-    pass
+class ProjectIntegration(SaveMixin, ObjectDeleteMixin, RESTObject):
+    _id_attr = "slug"
 
 
-class ProjectServiceManager(GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTManager):
-    _path = "/projects/%(project_id)s/services"
+class ProjectIntegrationManager(
+    GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTManager
+):
+    _path = "/projects/{project_id}/integrations"
     _from_parent_attrs = {"project_id": "id"}
-    _obj_cls = ProjectService
+    _obj_cls = ProjectIntegration
 
     _service_attrs = {
         "asana": (("api_key",), ("restrict_to_branch", "push_events")),
@@ -89,7 +100,7 @@ class ProjectServiceManager(GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTM
                 "pipeline_events",
             ),
         ),
-        "external-wiki": (("external_wiki_url",), tuple()),
+        "external-wiki": (("external_wiki_url",), ()),
         "flowdock": (("token",), ("push_events",)),
         "github": (("token", "repository_url"), ("static_context",)),
         "hangouts-chat": (
@@ -152,7 +163,7 @@ class ProjectServiceManager(GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTM
                 "comment_on_event_enabled",
             ),
         ),
-        "slack-slash-commands": (("token",), tuple()),
+        "slack-slash-commands": (("token",), ()),
         "mattermost-slash-commands": (("token",), ("username",)),
         "packagist": (
             ("username", "token"),
@@ -177,7 +188,8 @@ class ProjectServiceManager(GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTM
                 "wiki_page_events",
                 "push_channel",
                 "issue_channel",
-                "confidential_issue_channel" "merge_request_channel",
+                "confidential_issue_channel",
+                "merge_request_channel",
                 "note_channel",
                 "confidential_note_channel",
                 "tag_push_channel",
@@ -186,7 +198,7 @@ class ProjectServiceManager(GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTM
             ),
         ),
         "pivotaltracker": (("token",), ("restrict_to_branch", "push_events")),
-        "prometheus": (("api_url",), tuple()),
+        "prometheus": (("api_url",), ()),
         "pushover": (
             ("api_key", "user_key", "priority"),
             ("device", "sound", "push_events"),
@@ -249,55 +261,33 @@ class ProjectServiceManager(GetMixin, UpdateMixin, DeleteMixin, ListMixin, RESTM
             ("push_events",),
         ),
         "jenkins": (("jenkins_url", "project_name"), ("username", "password")),
-        "mock-ci": (("mock_service_url",), tuple()),
+        "mock-ci": (("mock_service_url",), ()),
         "youtrack": (("issues_url", "project_url"), ("description", "push_events")),
     }
 
-    def get(self, id, **kwargs):
-        """Retrieve a single object.
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> ProjectIntegration:
+        return cast(ProjectIntegration, super().get(id=id, lazy=lazy, **kwargs))
 
-        Args:
-            id (int or str): ID of the object to retrieve
-            lazy (bool): If True, don't request the server, but create a
-                         shallow object giving access to the managers. This is
-                         useful if you want to avoid useless calls to the API.
-            **kwargs: Extra options to send to the server (e.g. sudo)
-
-        Returns:
-            object: The generated RESTObject.
-
-        Raises:
-            GitlabAuthenticationError: If authentication is not correct
-            GitlabGetError: If the server cannot perform the request
-        """
-        obj = super(ProjectServiceManager, self).get(id, **kwargs)
-        obj.id = id
-        return obj
-
-    def update(self, id=None, new_data=None, **kwargs):
-        """Update an object on the server.
-
-        Args:
-            id: ID of the object to update (can be None if not required)
-            new_data: the update data for the object
-            **kwargs: Extra options to send to the server (e.g. sudo)
-
-        Returns:
-            dict: The new object data (*not* a RESTObject)
-
-        Raises:
-            GitlabAuthenticationError: If authentication is not correct
-            GitlabUpdateError: If the server cannot perform the request
-        """
-        new_data = new_data or {}
-        super(ProjectServiceManager, self).update(id, new_data, **kwargs)
-        self.id = id
-
-    @cli.register_custom_action("ProjectServiceManager")
-    def available(self, **kwargs):
+    @cli.register_custom_action(("ProjectIntegrationManager", "ProjectServiceManager"))
+    def available(self) -> List[str]:
         """List the services known by python-gitlab.
 
         Returns:
-            list (str): The list of service code names.
+            The list of service code names.
         """
         return list(self._service_attrs.keys())
+
+
+class ProjectService(ProjectIntegration):
+    pass
+
+
+class ProjectServiceManager(ProjectIntegrationManager):
+    _obj_cls = ProjectService
+
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> ProjectService:
+        return cast(ProjectService, super().get(id=id, lazy=lazy, **kwargs))

@@ -1,20 +1,26 @@
+from typing import Any, cast, List, Optional, Union
+
 from gitlab import cli
 from gitlab import exceptions as exc
 from gitlab import types
-from gitlab.base import RequiredOptional, RESTManager, RESTObject
+from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import (
+    CreateMixin,
     CRUDMixin,
+    DeleteMixin,
     ListMixin,
-    NoUpdateMixin,
     ObjectDeleteMixin,
     SaveMixin,
 )
+from gitlab.types import RequiredOptional
 
 __all__ = [
     "RunnerJob",
     "RunnerJobManager",
     "Runner",
     "RunnerManager",
+    "RunnerAll",
+    "RunnerAllManager",
     "GroupRunner",
     "GroupRunnerManager",
     "ProjectRunner",
@@ -27,7 +33,7 @@ class RunnerJob(RESTObject):
 
 
 class RunnerJobManager(ListMixin, RESTManager):
-    _path = "/runners/%(runner_id)s/jobs"
+    _path = "/runners/{runner_id}/jobs"
     _obj_cls = RunnerJob
     _from_parent_attrs = {"runner_id": "id"}
     _list_filters = ("status",)
@@ -35,6 +41,7 @@ class RunnerJobManager(ListMixin, RESTManager):
 
 class Runner(SaveMixin, ObjectDeleteMixin, RESTObject):
     jobs: RunnerJobManager
+    _repr_attr = "description"
 
 
 class RunnerManager(CRUDMixin, RESTManager):
@@ -64,21 +71,21 @@ class RunnerManager(CRUDMixin, RESTManager):
             "maximum_timeout",
         ),
     )
-    _list_filters = ("scope", "tag_list")
-    _types = {"tag_list": types.ListAttribute}
+    _list_filters = ("scope", "type", "status", "paused", "tag_list")
+    _types = {"tag_list": types.CommaSeparatedListAttribute}
 
-    @cli.register_custom_action("RunnerManager", tuple(), ("scope",))
+    @cli.register_custom_action("RunnerManager", (), ("scope",))
     @exc.on_http_error(exc.GitlabListError)
-    def all(self, scope=None, **kwargs):
+    def all(self, scope: Optional[str] = None, **kwargs: Any) -> List[Runner]:
         """List all the runners.
 
         Args:
-            scope (str): The scope of runners to show, one of: specific,
+            scope: The scope of runners to show, one of: specific,
                 shared, active, paused, online
-            all (bool): If True, return all the items, without pagination
-            per_page (int): Number of items to retrieve per request
-            page (int): ID of the page to return (starts with page 1)
-            as_list (bool): If set to False and no pagination option is
+            all: If True, return all the items, without pagination
+            per_page: Number of items to retrieve per request
+            page: ID of the page to return (starts with page 1)
+            iterator: If set to True and no pagination option is
                 defined, return a generator instead of a list
             **kwargs: Extra options to send to the server (e.g. sudo)
 
@@ -87,7 +94,7 @@ class RunnerManager(CRUDMixin, RESTManager):
             GitlabListError: If the server failed to perform the request
 
         Returns:
-            list(Runner): a list of runners matching the scope.
+            A list of runners matching the scope.
         """
         path = "/runners/all"
         query_data = {}
@@ -98,11 +105,11 @@ class RunnerManager(CRUDMixin, RESTManager):
 
     @cli.register_custom_action("RunnerManager", ("token",))
     @exc.on_http_error(exc.GitlabVerifyError)
-    def verify(self, token, **kwargs):
+    def verify(self, token: str, **kwargs: Any) -> None:
         """Validates authentication credentials for a registered Runner.
 
         Args:
-            token (str): The runner's authentication token
+            token: The runner's authentication token
             **kwargs: Extra options to send to the server (e.g. sudo)
 
         Raises:
@@ -113,28 +120,42 @@ class RunnerManager(CRUDMixin, RESTManager):
         post_data = {"token": token}
         self.gitlab.http_post(path, post_data=post_data, **kwargs)
 
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> Runner:
+        return cast(Runner, super().get(id=id, lazy=lazy, **kwargs))
 
-class GroupRunner(ObjectDeleteMixin, RESTObject):
+
+class RunnerAll(RESTObject):
+    _repr_attr = "description"
+
+
+class RunnerAllManager(ListMixin, RESTManager):
+    _path = "/runners/all"
+    _obj_cls = RunnerAll
+    _list_filters = ("scope", "type", "status", "paused", "tag_list")
+    _types = {"tag_list": types.CommaSeparatedListAttribute}
+
+
+class GroupRunner(RESTObject):
     pass
 
 
-class GroupRunnerManager(NoUpdateMixin, RESTManager):
-    _path = "/groups/%(group_id)s/runners"
+class GroupRunnerManager(ListMixin, RESTManager):
+    _path = "/groups/{group_id}/runners"
     _obj_cls = GroupRunner
     _from_parent_attrs = {"group_id": "id"}
     _create_attrs = RequiredOptional(required=("runner_id",))
     _list_filters = ("scope", "tag_list")
-    _types = {"tag_list": types.ListAttribute}
+    _types = {"tag_list": types.CommaSeparatedListAttribute}
 
 
 class ProjectRunner(ObjectDeleteMixin, RESTObject):
     pass
 
 
-class ProjectRunnerManager(NoUpdateMixin, RESTManager):
-    _path = "/projects/%(project_id)s/runners"
+class ProjectRunnerManager(CreateMixin, DeleteMixin, ListMixin, RESTManager):
+    _path = "/projects/{project_id}/runners"
     _obj_cls = ProjectRunner
     _from_parent_attrs = {"project_id": "id"}
     _create_attrs = RequiredOptional(required=("runner_id",))
     _list_filters = ("scope", "tag_list")
-    _types = {"tag_list": types.ListAttribute}
+    _types = {"tag_list": types.CommaSeparatedListAttribute}

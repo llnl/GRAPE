@@ -28,9 +28,9 @@ topicCascadeTick = internal_release:2 ?:1
 
 [publish]
 mergetrain = True
+skiptestontrain = True
 buildcmds = 
 builddir = 
-testcijob = merge_train_ticket
 testcmds = ./grape test
 testdir = ./
 prepublishcmds = vine/gendocs.py README.md , git add README.md

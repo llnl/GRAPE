@@ -1,6 +1,9 @@
+from typing import Any, cast, Dict, Optional, Union
+
 from gitlab import exceptions as exc
-from gitlab.base import RequiredOptional, RESTManager, RESTObject
+from gitlab.base import RESTManager, RESTObject
 from gitlab.mixins import GetWithoutIdMixin, SaveMixin, UpdateMixin
+from gitlab.types import RequiredOptional
 
 __all__ = [
     "ApplicationAppearance",
@@ -32,7 +35,12 @@ class ApplicationAppearanceManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
     )
 
     @exc.on_http_error(exc.GitlabUpdateError)
-    def update(self, id=None, new_data=None, **kwargs):
+    def update(
+        self,
+        id: Optional[Union[str, int]] = None,
+        new_data: Optional[Dict[str, Any]] = None,
+        **kwargs: Any
+    ) -> Dict[str, Any]:
         """Update an object on the server.
 
         Args:
@@ -41,7 +49,7 @@ class ApplicationAppearanceManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
             **kwargs: Extra options to send to the server (e.g. sudo)
 
         Returns:
-            dict: The new object data (*not* a RESTObject)
+            The new object data (*not* a RESTObject)
 
         Raises:
             GitlabAuthenticationError: If authentication is not correct
@@ -49,4 +57,7 @@ class ApplicationAppearanceManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
         """
         new_data = new_data or {}
         data = new_data.copy()
-        super(ApplicationAppearanceManager, self).update(id, data, **kwargs)
+        return super().update(id, data, **kwargs)
+
+    def get(self, **kwargs: Any) -> ApplicationAppearance:
+        return cast(ApplicationAppearance, super().get(**kwargs))

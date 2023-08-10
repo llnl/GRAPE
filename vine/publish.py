@@ -1928,12 +1928,19 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            # Regenerate the pipeline now with new label
            logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
+        numTries = 3
+        while numTries > 0:
+            try:
+                logging.info("***  waiting for 30 seconds before adding to the merge train ****")
+                time.sleep(30)
+                logging.info("***  adding to the Merge Train ****")
+                result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
+                numTries = 0
+            except:
+                logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
+                numTries = numTries - 1
         logging.info("********************************************************************************")
-        logging.info("All changes pushed and ready for being enqueued into merge train.")
-        logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
-        logging.info(thisRequest.link())
-        logging.info("and click on the 'Start merge train', 'Add to merge train',")
-        logging.info("or 'Merge (Add to merge train)' button.")
+        logging.info(f"Merge Request added to Merge Train")
         logging.info("********************************************************************************")
         return True
 

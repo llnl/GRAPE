@@ -1,0 +1,13 @@
+
+
+Thu Aug 10 15:18:42 2023 Peter B. Robinson
+MR_540
+Reviewers: Ben Liu
+
+Summary
+
+Publish process now adds your merge request to the merge train instead of asking you to click the button.
+
+Details
+
+updates python-gitlab from https://github.com/python-gitlab/python-gitlab/pull/2552.
