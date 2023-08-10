@@ -123,6 +123,7 @@ class ProjectMergeRequestApprovalManager(GetWithoutIdMixin, UpdateMixin, RESTMan
                 ar.user_ids = data["user_ids"]
                 ar.approvals_required = data["approvals_required"]
                 ar.group_ids = data["group_ids"]
+                print(ar.__dict__())
                 ar.save()
                 return ar
         # if there was no rule matching the rule name, create a new one
