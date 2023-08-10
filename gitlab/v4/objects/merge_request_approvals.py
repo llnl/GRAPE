@@ -63,7 +63,7 @@ class ProjectApprovalRuleManager(
     _from_parent_attrs = {"project_id": "id"}
     _create_attrs = RequiredOptional(
         required=("name", "approvals_required"),
-        optional=("user_ids", "group_ids", "protected_branch_ids"),
+        optional=("user_ids", "group_ids", "protected_branch_ids", "usernames"),
     )
 
 
@@ -123,7 +123,6 @@ class ProjectMergeRequestApprovalManager(GetWithoutIdMixin, UpdateMixin, RESTMan
                 ar.user_ids = data["user_ids"]
                 ar.approvals_required = data["approvals_required"]
                 ar.group_ids = data["group_ids"]
-                print(ar.__dict__)
                 ar.save()
                 return ar
         # if there was no rule matching the rule name, create a new one
@@ -154,7 +153,6 @@ class ProjectMergeRequestApprovalRule(SaveMixin, ObjectDeleteMixin, RESTObject):
         self.approval_rule_id = self.id
         self.merge_request_iid = self._parent_attrs["mr_iid"]
         self.id = self._parent_attrs["project_id"]
-        print(f"{self.__dict__}, manager: {self.manager.__dict__}")
         # save will update self.id with the result from the server, so no need
         # to overwrite with what it was before we overwrote it.
         SaveMixin.save(self, **kwargs)
