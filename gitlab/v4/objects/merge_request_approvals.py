@@ -118,16 +118,13 @@ class ProjectMergeRequestApprovalManager(GetWithoutIdMixin, UpdateMixin, RESTMan
         )
         # update any existing approval rule matching the name
         existing_approval_rules = approval_rules.list()
-        print(f"iterating approval rules with {self.__dict__}\n\n\n")
         for ar in existing_approval_rules:
-            print(f"{ar.__dict__}")
             if ar.name == approval_rule_name:
                 ar.user_ids = data["user_ids"]
                 ar.approvals_required = data["approvals_required"]
                 ar.group_ids = data["group_ids"]
                 ar.save()
                 return ar
-        print("\n\n\nDONE iterating approval rules with {self.__dict__}")
         # if there was no rule matching the rule name, create a new one
         return approval_rules.create(data=data, **kwargs)
 
@@ -157,7 +154,6 @@ class ProjectMergeRequestApprovalRule(SaveMixin, ObjectDeleteMixin, RESTObject):
         self.approval_rule_id = self.id
         self.merge_request_iid = self._parent_attrs["mr_iid"]
         self.id = self._parent_attrs["project_id"]
-        print(f"{self.__dict__} SAVE MANAGER {self.manager.__dict__}")
         # save will update self.id with the result from the server, so no need
         # to overwrite with what it was before we overwrote it.
         SaveMixin.save(self, **kwargs)
