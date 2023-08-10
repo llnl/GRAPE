@@ -118,9 +118,9 @@ class ProjectMergeRequestApprovalManager(GetWithoutIdMixin, UpdateMixin, RESTMan
         )
         # update any existing approval rule matching the name
         existing_approval_rules = approval_rules.list()
-        print("iterating approval rules with {self.__dict__}\n\n\n")
+        print(f"iterating approval rules with {self.__dict__}\n\n\n")
         for ar in existing_approval_rules:
-            print("{ar.__dict__}")
+            print(f"{ar.__dict__}")
             if ar.name == approval_rule_name:
                 ar.user_ids = data["user_ids"]
                 ar.approvals_required = data["approvals_required"]
