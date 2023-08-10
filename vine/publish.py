@@ -1928,7 +1928,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            # Regenerate the pipeline now with new label
            logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
-        result = self.repo.addToMergeTrain(thisRequest)
+        numTries = 3
+        while numTries > 0:
+            try:
+                result = self.repo.addToMergeTrain(thisRequest)
+                numTries = 0
+            except:
+                time.sleep(5)
+                numTries = numTries - 1
         logging.info("********************************************************************************")
         logging.info(f"Merge Request added to Merge Train {result}")
         logging.info("********************************************************************************")
