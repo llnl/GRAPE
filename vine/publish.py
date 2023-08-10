@@ -1931,10 +1931,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         numTries = 3
         while numTries > 0:
             try:
-                logging.info("***  waiting for 120 seconds before adding to the merge train ****")
-                time.sleep(120)
+                logging.info("***  waiting for 30 seconds before adding to the merge train ****")
+                time.sleep(30)
                 logging.info("***  adding to the Merge Train ****")
-                result = self.repo.addToMergeTrain(thisRequest)
+                result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
                 numTries = 0
             except:
                 logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
