@@ -155,7 +155,6 @@ class ProjectMergeRequestApprovalRule(SaveMixin, ObjectDeleteMixin, RESTObject):
         self.merge_request_iid = self._parent_attrs["mr_iid"]
         self.id = self._parent_attrs["project_id"]
         print(f"{self.__dict__}")
-
         # save will update self.id with the result from the server, so no need
         # to overwrite with what it was before we overwrote it.
         SaveMixin.save(self, **kwargs)
