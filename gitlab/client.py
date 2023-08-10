@@ -722,6 +722,7 @@ class Gitlab:
         cur_retries = 0
         while True:
             try:
+                print(f"in http request with url {url}")
                 result = self._backend.http_request(
                     method=verb,
                     url=url,

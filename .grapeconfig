@@ -28,6 +28,7 @@ topicCascadeTick = internal_release:2 ?:1
 
 [publish]
 mergetrain = True
+skiptestontrain = True
 buildcmds = 
 builddir = 
 testcmds = ./grape test
