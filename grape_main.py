@@ -9,8 +9,8 @@ pythonMajorVersion = sys.version_info[0]
 pythonMinorVersion = sys.version_info[1]
 
 if not pythonMajorVersion > 2 or (pythonMajorVersion == 3 and
-                                  pythonMinorVersion < 9):
-    print('Grape requires Python 3.9 or greater.')
+                                  pythonMinorVersion < 7):
+    print('Grape requires Python 3.7 or greater.')
     exit(1)
 
 # Main GRAPE import path set up. Applies to GRAPE usage via menu.
