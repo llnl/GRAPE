@@ -6,7 +6,11 @@ import subprocess
 import sys
 import time
 import keyring
-import gitlab
+try:
+    import gitlab
+except ModuleNotFoundError:
+    # This was checked on startup
+    pass
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git

@@ -86,6 +86,12 @@ def startup():
         from vine import multi_repo_cmd_launcher
         multi_repo_cmd_launcher.NUM_TASKS = int(args["--np"])
 
+    try:
+        from typing_extensions import Protocol 
+    except ModuleNotFoundError:
+        print("GRAPE: WARNING: GitLab REST API functions not available.")
+        print("GRAPE: WARNING: You may need python 3.8+ and/or the typing_extensions module installed.") 
+
     retval = True
     try:
         if args["<command>"] is None:
