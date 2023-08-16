@@ -397,11 +397,11 @@ class Review(Option, WorkspaceDirHandler):
                try:
                   changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
                   if changedfilelabelmapping:
-                      refSHA = args["--label_reference_sha"]
-                      if not refSHA:
-                          refSHA = branch
-                      # find the common ancestor between the reference SHA and the target branch
-                      mergeBase = git.mergeBase(f"{target_branch} {refSHA}", execution_path=self.workspace_dir)
+                      label_ref = args["--label_ref"]
+                      if not label_ref:
+                          label_ref = branch
+                      # find the common ancestor between the reference for labels and the target branch
+                      mergeBase = git.mergeBase(f"{target_branch} {label_ref}", execution_path=self.workspace_dir)
                       for path,label in changedfilelabelmapping.items():
                           try:
                              # check if the file has changes from the ancestor
