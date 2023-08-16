@@ -103,7 +103,7 @@ class Review(Option, WorkspaceDirHandler):
                                     (Bitbucket, Gitlab) server.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
         --label_reference_sha       SHA to use for changedfilelabelmapping. This may be useful to set to a merged result SHA
-                                    to reflect the merge request diff. Defaults to current (source) branch.
+                                    to reflect the merged result diff. Defaults to current (source) branch.
 
 
     """
