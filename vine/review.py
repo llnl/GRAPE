@@ -102,6 +102,8 @@ class Review(Option, WorkspaceDirHandler):
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
+        --label_reference_sha       SHA to use for changedfilelabelmapping. This may be useful to set to a merged result SHA
+                                    to reflect the merge request diff. Defaults to current (source) branch.
 
 
     """
@@ -394,12 +396,15 @@ class Review(Option, WorkspaceDirHandler):
                try:
                   changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
                   if changedfilelabelmapping:
-                      # find the common ancestor between the current branch and the target branch
-                      mergeBase = git.mergeBase(f"{target_branch} {branch}", execution_path=self.workspace_dir)
+                      refSHA = args["--label_reference_sha"]
+                      if not refSHA:
+                          refSHA = branch
+                      # find the common ancestor between the reference SHA and the target branch
+                      mergeBase = git.mergeBase(f"{target_branch} {refSHA}", execution_path=self.workspace_dir)
                       for path,label in changedfilelabelmapping.items():
                           try:
                              # check if the file has changes from the ancestor
-                             if git.diff(f"--name-only {branch} {mergeBase} {path}", execution_path=self.workspace_dir):
+                             if git.diff(f"--name-only {refSHA} {mergeBase} {path}", execution_path=self.workspace_dir):
                                  add_labels.append(label)
                              else:
                                  remove_labels.append(label)
