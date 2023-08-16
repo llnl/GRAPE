@@ -46,7 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
                         [--noLocal]
-                        [--label_reference=<ref>]
+                        [--label_ref=<ref>]
                         [--skiplabels]
 
     Options:
@@ -102,8 +102,8 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-        --label_reference           SHA or branch to use for changedfilelabelmapping. This may be useful to set to a merged result SHA
-                                    to reflect the merged result diff. Defaults to current (source) branch.
+        --label_ref                 Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
+                                    the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
