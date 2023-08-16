@@ -405,7 +405,7 @@ class Review(Option, WorkspaceDirHandler):
                       for path,label in changedfilelabelmapping.items():
                           try:
                              # check if the file has changes from the ancestor
-                             if git.diff(f"--name-only {refSHA} {mergeBase} {path}", execution_path=self.workspace_dir):
+                             if git.diff(f"--name-only {label_ref} {mergeBase} {path}", execution_path=self.workspace_dir):
                                  add_labels.append(label)
                              else:
                                  remove_labels.append(label)
