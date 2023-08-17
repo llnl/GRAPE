@@ -46,6 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
                         [--noLocal]
+                        [--label_ref=<ref>]
                         [--skiplabels]
 
     Options:
@@ -101,6 +102,8 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
+                                    the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
@@ -394,12 +397,15 @@ class Review(Option, WorkspaceDirHandler):
                try:
                   changedfilelabelmapping = config.getMapping(self.SECTION_REVIEW, "changedfilelabelmapping")
                   if changedfilelabelmapping:
-                      # find the common ancestor between the current branch and the target branch
-                      mergeBase = git.mergeBase(f"{target_branch} {branch}", execution_path=self.workspace_dir)
+                      label_ref = args["--label_ref"]
+                      if not label_ref:
+                          label_ref = branch
+                      # find the common ancestor between the reference for labels and the target branch
+                      mergeBase = git.mergeBase(f"{target_branch} {label_ref}", execution_path=self.workspace_dir)
                       for path,label in changedfilelabelmapping.items():
                           try:
                              # check if the file has changes from the ancestor
-                             if git.diff(f"--name-only {branch} {mergeBase} {path}", execution_path=self.workspace_dir):
+                             if git.diff(f"--name-only {label_ref} {mergeBase} {path}", execution_path=self.workspace_dir):
                                  add_labels.append(label)
                              else:
                                  remove_labels.append(label)
