@@ -16,7 +16,7 @@ stages:
   variables:
     GIT_STRATEGY: clone
   extends:
-    - .run_manually_on_merge_request
+    - .run_manually_on_merge_request_allow_failure
     - .run_rzwhippet_shell
   script:
     - if [ "$CI_MERGE_REQUEST_APPROVED" != "true" ] ; then echo "Merge request must be approved by reviewers!"; exit 1 ; fi
