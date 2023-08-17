@@ -1929,19 +1929,29 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
         numTries = 3
-        while numTries > 0:
+        while numTries >= 0:
             try:
                 logging.info("***  waiting for 30 seconds before adding to the merge train ****")
                 time.sleep(30)
                 logging.info("***  adding to the Merge Train ****")
                 result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
                 numTries = 0
-            except:
+            except Exception as e:
                 logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
+                if numTries == 0:
+                    logging.info("********************************************************************************")
+                    logging.info(f"Error:")
+                    logging.info(e)
+                    logging.info("********************************************************************************")
                 numTries = numTries - 1
-        logging.info("********************************************************************************")
-        logging.info(f"Merge Request added to Merge Train")
-        logging.info("********************************************************************************")
+        if numTries == 0:
+            logging.info("********************************************************************************")
+            logging.info(f"Merge Request added to Merge Train")
+            logging.info("********************************************************************************")
+        else:
+            logging.info("********************************************************************************")
+            logging.info(f"Please manually add to Merge Train")
+            logging.info("********************************************************************************")
         return True
 
 
