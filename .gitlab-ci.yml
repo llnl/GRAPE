@@ -10,6 +10,19 @@ variables:
 stages:
   - test
 
++ Run Grape Publish (add to merge train):
+  stage: test
+  timeout: 30 minutes 
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_manually_on_merge_request
+    - .run_rzwhippet_shell
+  script:
+    - if [ "$CI_MERGE_REQUEST_APPROVED" != "true" ] ; then echo "Merge request must be approved by reviewers!"; exit 1 ; fi
+    - $CI_PROJECT_DIR/grape/grape -d publish
+
 merge_train_ticket:
   stage: test
   timeout: 30 minutes 
