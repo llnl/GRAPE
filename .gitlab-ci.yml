@@ -20,6 +20,7 @@ stages:
     - .run_rzwhippet_shell
   script:
     - if [ "$CI_MERGE_REQUEST_APPROVED" != "true" ] ; then echo "Merge request must be approved by reviewers!"; exit 1 ; fi
+    - git remote set-url origin ssh://git@rzgitlab.llnl.gov:7999/GRP/grape.git
     - $CI_PROJECT_DIR/grape -d checkout $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
     - $CI_PROJECT_DIR/grape -d publish
 
