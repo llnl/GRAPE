@@ -1939,7 +1939,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             except Exception as e:
                 logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
                 if numTries == 0:
-                    raise e
+                    logging.info("********************************************************************************")
+                    logging.info(f"Error:")
+                    logging.info(e)
+                    logging.info("********************************************************************************")
                 numTries = numTries - 1
         if numTries == 0:
             logging.info("********************************************************************************")
@@ -1947,7 +1950,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("********************************************************************************")
         else:
             logging.info("********************************************************************************")
-            logging.info(f"Failed to add Merge Request added to Merge Train!")
             logging.info(f"Please manually add to Merge Train")
             logging.info("********************************************************************************")
         return True
