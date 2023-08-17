@@ -15,7 +15,6 @@ stages:
   timeout: 30 minutes 
   variables:
     GIT_STRATEGY: clone
-    GIT_DEPTH: "2"
   extends:
     - .run_manually_on_merge_request
     - .run_rzwhippet_shell
