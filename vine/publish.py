@@ -1928,7 +1928,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            # Regenerate the pipeline now with new label
            logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
-        added = False
         numTries = 3
         while numTries > 0:
             try:
@@ -1936,17 +1935,17 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 time.sleep(30)
                 logging.info("***  adding to the Merge Train ****")
                 result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
-                added = True
                 break
             except Exception as e:
                 numTries = numTries - 1
                 if numTries == 0:
                     logging.info("********************************************************************************")
+                    logging.info(f'**** failed to add to the Merge Train ***')
                     logging.info(e)
                     logging.info("********************************************************************************")
                 else:
                     logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
-        if added:
+        if numTries != 0:
             logging.info("********************************************************************************")
             logging.info(f"Merge Request added to Merge Train")
             logging.info("********************************************************************************")
