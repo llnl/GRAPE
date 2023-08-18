@@ -84,14 +84,13 @@ do_not_push_the_button_before_grape_publish:
 
 wait_and_fail:
   stage: test
-  timeout: 30 minutes
   variables:
     GIT_STRATEGY: none
   extends:
     - .run_on_merge_train_changes_to_update_logs
     - .run_rzwhippet_shell
   script:
-    - sleep 600
+    - sleep 6000
     - exit 1
   interruptible: true
 
