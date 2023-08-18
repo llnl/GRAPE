@@ -90,6 +90,7 @@ wait_and_fail:
   extends:
     - .run_on_merge_train_changes_to_update_logs
     - .run_rzwhippet_shell
+  script:
     - sleep 600
     - exit 1
   interruptible: true
