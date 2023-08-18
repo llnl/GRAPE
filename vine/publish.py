@@ -1937,14 +1937,19 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
                 numTries = 0
             except Exception as e:
-                print(self.repo.getMergeRequestOnMergeTrain(thisRequest))
-                logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
-                if numTries == 0:
-                    logging.info("********************************************************************************")
-                    logging.info(f"Error:")
-                    logging.info(e)
-                    logging.info("********************************************************************************")
-                numTries = numTries - 1
+                MRonMergeTrain = self.repo.getMergeRequestOnMergeTrain(thisRequest)
+                if MRonMergeTrain:
+                    print("MR found")
+                    print(MRonMergeTrain)
+                    numTries = 0
+                else:
+                    logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
+                    if numTries == 0:
+                        logging.info("********************************************************************************")
+                        logging.info(f"Error:")
+                        logging.info(e)
+                        logging.info("********************************************************************************")
+                    numTries = numTries - 1
         if numTries == 0:
             logging.info("********************************************************************************")
             logging.info(f"Merge Request added to Merge Train")
