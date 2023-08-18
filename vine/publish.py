@@ -1939,20 +1939,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 added = True
                 break
             except Exception as e:
-                MRonMergeTrain = self.repo.getMergeRequestOnMergeTrain(thisRequest)
-                if MRonMergeTrain:
-                    print("MR found")
-                    print(MRonMergeTrain)
-                    added = True
-                    break
-                else:
-                    logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
-                    if numTries == 0:
-                        logging.info("********************************************************************************")
-                        logging.info(f"Error:")
-                        logging.info(e)
-                        logging.info("********************************************************************************")
-                    numTries = numTries - 1
+                logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
+                logging.info("********************************************************************************")
+                logging.info(f"Error:")
+                logging.info(e)
+                logging.info("********************************************************************************")
+                numTries = numTries - 1
         if added:
             logging.info("********************************************************************************")
             logging.info(f"Merge Request added to Merge Train")
