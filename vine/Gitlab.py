@@ -490,6 +490,9 @@ class Repo:
     def addToMergeTrain(self, pull_request, sha):
         return self.project.merge_trains_merge_request.add(pull_request.iid(), sha=sha)
 
+    def getMergeRequestOnMergeTrain(self, pull_request):
+        return self.project.merge_trains_merge_request.get_mr(pull_request.iid())
+
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
         self.job = gitlab_project.jobs.get(gitlab_job_id)

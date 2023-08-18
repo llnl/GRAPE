@@ -1937,6 +1937,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
                 numTries = 0
             except Exception as e:
+                print(self.repo.getMergeRequestOnMergeTrain(thisRequest))
                 logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
                 if numTries == 0:
                     logging.info("********************************************************************************")

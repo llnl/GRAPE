@@ -82,6 +82,18 @@ do_not_push_the_button_before_grape_publish:
     - .auto_fail
   interruptible: true
 
+wait_and_fail:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: none
+  extends:
+    - .run_on_merge_train_changes_to_update_logs
+    - .run_rzwhippet_shell
+    - sleep 600
+    - exit 1
+  interruptible: true
+
 # deactivated until we have a gitlab windows runner for grape
 test-Windows:
   stage: test
