@@ -617,7 +617,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     elif args["--append"]:
                         descr = currentDescription + "\n" + descr
 
-                subReviewers = reviewers
+                subReviewers = reviewers.copy()
                 if request.author() in subReviewers:
                     logging.info(
                             f"{request.author()} is the author of the pull" +
