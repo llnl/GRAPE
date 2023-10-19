@@ -7,6 +7,7 @@ import time
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
+from vine import Gitlab
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
@@ -32,6 +33,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--noChecks]
                     [--squash]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+                    [--user=<GitLabUserName>]
+                    [--codeReviewsURL=<httpsURL>]
+                    [--verifySSL=<bool>]
+                    [--project=<GitLabProjectKey>]
+                    [--repo=<GitLabRepoName>]
+                    [--ssh_pat_url=<url>]
+                    [--ssh_pat_port=<int>]
            grape-md --traverseMergedResult --topic=<branch>
 
 
@@ -64,7 +72,20 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                  to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-
+        --codeReviewsURL=<url>   Your Gitlab URL, e.g. https://your.home.org/gitlab.
+                                 [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>       Set to False to ignore SSL certificate verification issues.
+                                 [default: .grapeconfig.project.verifySSL]
+        --project=<project>      Your GitLab Project. See grape-review for more details.
+                                 [default: .grapeconfig.project.name]
+        --repo=<repo>            Your GitLab repo. See grape-review for more details.
+                                 [default: .grapeconfig.repo.name]
+        --ssh_pat_url=<url>      SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                 REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                 into a Code Review service's REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_port]
 
 
     """
@@ -290,8 +311,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         #     "Merge branch <branch> into <current train car ref>".
         commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
         logging.info(commit_msg)
-        logging.info(git.log)
-        time.sleep(3600)
         # parse the commit message into branch, next_train_car, current_train_car
         commit_msg = commit_msg.split(" with ")
         branch = commit_msg[0]
@@ -305,7 +324,28 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def lookupActiveMergeTrainBranches(self, args):
        local_branch = "HEAD"
-       branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+       try:
+           branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+       except:
+           if "gitlab" not in args["--codeReviewsURL"]:
+               logging.info("merge train should only be used with GitLab.")
+               return False
+
+           name = args["--user"]
+           if not name:
+               name = utility.getUserName()
+           verify = True if args["--verifySSL"].lower() == "true" else False
+
+           grape_gitlab = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
+                                                    verify=verify,
+                                                    port=int(args["--ssh_pat_port"]),
+                                                    ssh_path = args["--ssh_pat_url"],
+                                                    workspace_dir=self.workspace_dir
+                                                   )
+           repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
+           repo.listActiveMergeTrainCars()
+       sleep(3600)
+
        head_encountered = False
        branches = []
        while not head_encountered:
