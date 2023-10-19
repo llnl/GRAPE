@@ -3,6 +3,7 @@ import io
 import logging
 import os
 import re
+import time
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
@@ -284,9 +285,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     def lookUpInfoFromMergeTrainCommitDescription(self, local_branch):
         logging.info(f"CALL with {local_branch}")
         # lookup the commit message for the train merge commit
-        # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
+        # should be of the format
+        #     "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>" or
+        #     "Merge branch <branch> into <current train car ref>".
         commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
         logging.info(commit_msg)
+        logging.info(git.log)
+        time.sleep(3600)
         # parse the commit message into branch, next_train_car, current_train_car
         commit_msg = commit_msg.split(" with ")
         branch = commit_msg[0]
