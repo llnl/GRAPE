@@ -324,6 +324,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def lookupActiveMergeTrainBranches(self, args):
        local_branch = "HEAD"
+       logging.info("Waiting")
        time.sleep(300)
        try:
            branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
@@ -344,7 +345,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                     workspace_dir=self.workspace_dir
                                                    )
            repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
+           logging.info("Cars")
            repo.listActiveMergeTrainCars()
+       logging.info("Sleep")
        time.sleep(3600)
 
        head_encountered = False
