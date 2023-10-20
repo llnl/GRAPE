@@ -344,7 +344,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                    )
            repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
            repo.listActiveMergeTrainCars()
-       sleep(3600)
+       time.sleep(3600)
 
        head_encountered = False
        branches = []
