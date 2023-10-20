@@ -3,7 +3,6 @@ import io
 import logging
 import os
 import re
-import time
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
@@ -303,85 +302,41 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         self.progress = {}
         return True
 
-    def lookUpInfoFromMergeTrainCommitDescription(self, local_branch):
-        logging.info(f"CALL with {local_branch}")
-        # lookup the commit message for the train merge commit
-        # should be of the format
-        #     "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>" or
-        #     "Merge branch <branch> into <current train car ref>".
-        commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
-        logging.info(commit_msg)
-        # parse the commit message into branch, next_train_car, current_train_car
-        commit_msg = commit_msg.split(" with ")
-        branch = commit_msg[0]
-        logging.info(branch)
-        commit_msg = commit_msg[1].split(" into ")
-        logging.info(commit_msg)
-        next_train_car = commit_msg[0].split("refs/")[1]
-        current_train_car = commit_msg[1].split("refs/")[1]
-        return branch,next_train_car,current_train_car
-
-
     def lookupActiveMergeTrainBranches(self, args):
+       if "gitlab" not in args["--codeReviewsURL"]:
+           logging.info("merge train should only be used with GitLab.")
+           return False
+
+       name = args["--user"]
+       if not name:
+           name = utility.getUserName()
+       verify = True if args["--verifySSL"].lower() == "true" else False
+
+       grape_gitlab = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
+                                                verify=verify,
+                                                port=int(args["--ssh_pat_port"]),
+                                                ssh_path = args["--ssh_pat_url"],
+                                                workspace_dir=self.workspace_dir
+                                               )
+       repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
+
        branches = []
-       try:
-           local_branch = "HEAD"
-           branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
-           head_encountered = False
-           while not head_encountered:
-              # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
-              next_train_car_toks = next_train_car.split('/')
-              logging.info(next_train_car_toks)
-              if next_train_car_toks[0] == "heads":
-                  head_encountered = True
-                  public_branch = next_train_car_toks[1]
-                  # first branch to merge is the public branch
-                  branches = [f"{public_branch}"] + branches
-                  continue
-              # keep traversing down the merge history
-              local_branch = git.parentsOfMergeCommit(local_branch, execution_path=self.workspace_dir)[0]
-              branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
-              # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
-              branches = [branch] + branches
-       except:
-           if "gitlab" not in args["--codeReviewsURL"]:
-               logging.info("merge train should only be used with GitLab.")
-               return False
-
-           name = args["--user"]
-           if not name:
-               name = utility.getUserName()
-           verify = True if args["--verifySSL"].lower() == "true" else False
-
-           grape_gitlab = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
-                                                    verify=verify,
-                                                    port=int(args["--ssh_pat_port"]),
-                                                    ssh_path = args["--ssh_pat_url"],
-                                                    workspace_dir=self.workspace_dir
-                                                   )
-           repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
-           current_branch = args['--topic']
-           found_current = False
-           for car in repo.getActiveMergeTrainCars():
-               mr_iid = car.merge_request['iid']
-               logging.info(mr_iid)
-               mr = repo.pullRequests(state="all", id=mr_iid)[0]
-               logging.info(mr.state())
-               branch = mr.fromRef()
-               if branch == current_branch:
-                  found_current = True
-                  branches = [mr.toRef()] + branches
-                  break
-               # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
-               branches = [branch] + branches
-           if not found_current:
-               logging.info(f"{current_branch} not found in merge train!")
-               return False
-       logging.info(branches)
-       logging.info("Sleep")
-       time.sleep(3600)
-       sys.exit()
-
+       current_branch = args['--topic']
+       found_current = False
+       for car in repo.getActiveMergeTrainCars():
+           mr_iid = car.merge_request['iid']
+           # TODO should we do something different if the branch has already been merged?
+           mr = repo.pullRequests(state="all", id=mr_iid)[0]
+           branch = mr.fromRef()
+           if branch == current_branch:
+              found_current = True
+              branches = [mr.toRef()] + branches
+              break
+           # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
+           branches = [branch] + branches
+       if not found_current:
+           logging.info(f"{current_branch} not found in merge train!")
+           return False
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
