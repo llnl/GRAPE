@@ -328,6 +328,23 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        time.sleep(300)
        try:
            branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+           head_encountered = False
+           branches = []
+           while not head_encountered:
+              # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
+              next_train_car_toks = next_train_car.split('/')
+              logging.info(next_train_car_toks)
+              if next_train_car_toks[0] == "heads":
+                  head_encountered = True
+                  public_branch = next_train_car_toks[1]
+                  # first branch to merge is the public branch
+                  branches = [f"{public_branch}"] + branches
+                  continue
+              # keep traversing down the merge history
+              local_branch = git.parentsOfMergeCommit(local_branch, execution_path=self.workspace_dir)[0]
+              branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
+              # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
+              branches = [branch] + branches
        except:
            if "gitlab" not in args["--codeReviewsURL"]:
                logging.info("merge train should only be used with GitLab.")
@@ -345,28 +362,17 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                     workspace_dir=self.workspace_dir
                                                    )
            repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
-           logging.info("Cars")
-           repo.listActiveMergeTrainCars()
+           for car in repo.getActiveMergeTrainCars():
+               mr_id = car.merge_request.id
+               mr = repo.pullRequests(state="opened", id=mr_id)
+               branch = mr.source_branch
+               # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
+               branches = [branch] + branches
+       logging.info(branches)
        logging.info("Sleep")
        time.sleep(3600)
+       sys.exit()
 
-       head_encountered = False
-       branches = []
-       while not head_encountered:
-          # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
-          next_train_car_toks = next_train_car.split('/')
-          logging.info(next_train_car_toks)
-          if next_train_car_toks[0] == "heads":
-              head_encountered = True
-              public_branch = next_train_car_toks[1]
-              # first branch to merge is the public branch
-              branches = [f"{public_branch}"] + branches
-              continue
-          # keep traversing down the merge history
-          local_branch = git.parentsOfMergeCommit(local_branch, execution_path=self.workspace_dir)[0]
-          branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
-          # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
-          branches = [branch] + branches
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
