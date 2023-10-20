@@ -51,7 +51,7 @@ def parseArgs(docstr, arguments, config):
 
 
 # ask the user for something and return what they put in
-# NOTE THE SPECIAL TREATEMENT for y/n/Y/N defaults:
+# NOTE THE SPECIAL TREATMENT for y/n/Y/N defaults:
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate
 # to True if the user inputs anything that starts with a 'y' or 'Y',
 # and will evaluate to False if the user inputs anything that starts
