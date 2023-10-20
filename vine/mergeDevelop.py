@@ -323,13 +323,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
 
     def lookupActiveMergeTrainBranches(self, args):
-       logging.info("Waiting")
-       time.sleep(300)
+       branches = []
        try:
            local_branch = "HEAD"
            branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
            head_encountered = False
-           branches = []
            while not head_encountered:
               # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
               next_train_car_toks = next_train_car.split('/')
@@ -363,15 +361,22 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                    )
            repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
            current_branch = args['--topic']
+           found_current = False
            for car in repo.getActiveMergeTrainCars():
-               mr_id = car.merge_request.id
-               mr = repo.pullRequests(state="opened", id=mr_id)
-               branch = mr.source_branch
+               mr_iid = car.merge_request['iid']
+               logging.info(mr_iid)
+               mr = repo.pullRequests(state="all", id=mr_iid)[0]
+               logging.info(mr.state())
+               branch = mr.fromRef()
                if branch == current_branch:
-                  branches = [mr.target_branch] + branches
+                  found_current = True
+                  branches = [mr.toRef()] + branches
                   break
                # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
                branches = [branch] + branches
+           if not found_current:
+               logging.info(f"{current_branch} not found in merge train!")
+               return False
        logging.info(branches)
        logging.info("Sleep")
        time.sleep(3600)
@@ -399,6 +404,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     def traverseTrainRefs(self, args, nested):
         from vine import grapeMenu
         branches = self.lookupActiveMergeTrainBranches(args)
+        if not branches:
+            return False
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
