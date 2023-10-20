@@ -323,12 +323,16 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        branches = []
        current_branch = args['--topic']
        found_current = False
+       # Get the list of cars in the merge train, in order
        for car in repo.getActiveMergeTrainCars():
+           # Use the merge request to look up the branch
            mr_iid = car.merge_request['iid']
            # TODO should we do something different if the branch has already been merged?
            mr = repo.pullRequests(state="all", id=mr_iid)[0]
+           # Use the source branch, unless it is the current branch
            branch = mr.fromRef()
            if branch == current_branch:
+              # For the current branch, just prepend the target branch and skip any subsequent cars
               found_current = True
               branches = [mr.toRef()] + branches
               break
