@@ -323,10 +323,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
 
     def lookupActiveMergeTrainBranches(self, args):
-       local_branch = "HEAD"
        logging.info("Waiting")
        time.sleep(300)
        try:
+           local_branch = "HEAD"
            branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
            head_encountered = False
            branches = []
@@ -362,10 +362,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                     workspace_dir=self.workspace_dir
                                                    )
            repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
+           current_branch = args['--topic']
            for car in repo.getActiveMergeTrainCars():
                mr_id = car.merge_request.id
                mr = repo.pullRequests(state="opened", id=mr_id)
                branch = mr.source_branch
+               if branch == current_branch:
+                  branches = [mr.target_branch] + branches
+                  break
                # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
                branches = [branch] + branches
        logging.info(branches)
