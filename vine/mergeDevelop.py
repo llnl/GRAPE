@@ -324,6 +324,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     def lookupActiveMergeTrainBranches(self, args):
        local_branch = "HEAD"
+       time.sleep(300)
        try:
            branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
        except:
