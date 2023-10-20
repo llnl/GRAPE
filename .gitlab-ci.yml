@@ -58,6 +58,9 @@ merge_train:
     - .run_on_merge_train_changes_to_update_logs
     - .run_rzwhippet_shell
     - .test_linux
+  before_script:
+    # slow down merge train to allow testin
+    - sleep 300
   interruptible: true
 
 tag_pushes_to_develop_or_master:
