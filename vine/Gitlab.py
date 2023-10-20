@@ -384,9 +384,9 @@ class Repo:
 
     def listActiveMergeTrainCars(self):
         merge_train_cars = self.project.merge_trains.list(all=True, scope='active', sort='asc')
-        print()
+        logging.info("XXX")
         for car in merge_train_cars:
-            print(car)
+            logging.info(f"{car}")
 
     # Run named job on specified pipeline
     def runJob(self, job_name, pid, allow_rerun):
