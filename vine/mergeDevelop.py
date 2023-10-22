@@ -322,22 +322,32 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
        branches = []
        current_branch = args['--topic']
+       # We need to potential handle prior cars that have already been merged,
+       # so we get all merge train cars and start from the end (latest).
+       # TODO will this query get too big to deal with?
+       mergeTrainCars = repo.getMergeTrainCars()
+       mergeTrainCars.reverse()
        found_current = False
-       # Get the list of cars in the merge train, in order
-       for car in repo.getActiveMergeTrainCars():
+       for car in mergeTrainCars:
            # Use the merge request to look up the branch
            mr_iid = car.merge_request['iid']
-           # TODO should we do something different if the branch has already been merged?
            mr = repo.pullRequests(state="all", id=mr_iid)[0]
-           # Use the source branch, unless it is the current branch
            branch = mr.fromRef()
            if branch == current_branch:
-              # For the current branch, just prepend the target branch and skip any subsequent cars
+              # For the current branch, use the target branch and start considering other cars
+              branch = mr.toRef()
               found_current = True
-              branches = [mr.toRef()] + branches
-              break
-           # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
+           elif not found_current:
+              # Don't start considering other branches until we have found the current on
+              continue
+           if car.status['merged']:
+              # TODO The car may be merged but not yet accounted for in this car,
+              # so we need to check for that.
+              break 
+
+           # Prepend the branch, since we are looping over the cars backwards
            branches = [branch] + branches
+
        if not found_current:
            logging.info(f"{current_branch} not found in merge train!")
            return False
@@ -366,6 +376,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if not branches:
             return False
         logging.info(f"Merge Train Branches: {branches}")
+        # Hack for debugging
+        import time
+        time.sleep(3600)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
         targetBranch = branches[0]

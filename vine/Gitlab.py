@@ -382,8 +382,8 @@ class Repo:
                      pjob = self.project.jobs.get(job.id)
                      print(pjob.trace().decode())
 
-    def getActiveMergeTrainCars(self):
-        return self.project.merge_trains.list(all=True, scope='active', sort='asc')
+    def getMergeTrainCars(self):
+        return self.project.merge_trains.list(all=True, sort='asc')
 
     # Run named job on specified pipeline
     def runJob(self, job_name, pid, allow_rerun):
