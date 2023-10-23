@@ -346,13 +346,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               # For the current branch, just register the target branch
               target_branch = mr.toRef()
               # Now that we know the target branch, get the SHAs of all the merges between target branch and HEAD.
-              log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --merges --no-abbrev-commit").splitlines()
+              log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --merges --no-abbrev-commit",
+                                         execution_path=self.workspace_dir).splitlines()
               # Save the SHA of the target branch
-              target_SHA = git.SHA(f"origin/{target_branch}")
+              target_SHA = git.SHA(f"origin/{target_branch}", execution_path=self.workspace_dir)
               # Get the SHA of the most recent version tag
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
-              versionTag = git.describe(f"--match '{prefix}*'")
-              versionTag_SHA = git.SHA(versionTag)
+              versionTag = git.describe(f"--match '{prefix}*'", execution_path=self.workspace_dir)
+              versionTag_SHA = git.SHA(versionTag, execution_path=self.workspace_dir)
               continue
            elif not target_branch:
               # Don't start considering other branches until we have found the current one
