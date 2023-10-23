@@ -351,6 +351,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               # Save the SHA of the target branch
               target_SHA = git.SHA(f"origin/{target_branch}", execution_path=self.workspace_dir)
               # Get the SHA of the most recent version tag
+              config = config_parser_global.grapeConfig()
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
               versionTag = git.describe(f"--match '{prefix}*'", execution_path=self.workspace_dir)
               versionTag_SHA = git.SHA(versionTag, execution_path=self.workspace_dir)
