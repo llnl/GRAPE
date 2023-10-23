@@ -922,6 +922,13 @@ options are at least listed below.
                     [--noChecks]
                     [--squash]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+                    [--user=<GitLabUserName>]
+                    [--codeReviewsURL=<httpsURL>]
+                    [--verifySSL=<bool>]
+                    [--project=<GitLabProjectKey>]
+                    [--repo=<GitLabRepoName>]
+                    [--ssh_pat_url=<url>]
+                    [--ssh_pat_port=<int>]
            grape-md --traverseMergedResult --topic=<branch>
 
 
@@ -954,7 +961,20 @@ options are at least listed below.
                                  to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-
+        --codeReviewsURL=<url>   Your Gitlab URL, e.g. https://your.home.org/gitlab.
+                                 [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>       Set to False to ignore SSL certificate verification issues.
+                                 [default: .grapeconfig.project.verifySSL]
+        --project=<project>      Your GitLab Project. See grape-review for more details.
+                                 [default: .grapeconfig.project.name]
+        --repo=<repo>            Your GitLab repo. See grape-review for more details.
+                                 [default: .grapeconfig.repo.name]
+        --ssh_pat_url=<url>      SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                 REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                 into a Code Review service's REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_port]
 
 
     
