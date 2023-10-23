@@ -3,6 +3,7 @@ import io
 import logging
 import os
 import re
+import time
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
@@ -325,34 +326,66 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        # We need to potential handle prior cars that have already been merged,
        # so we get all merge train cars and start from the end (latest).
        # TODO will this query get too big to deal with?
-       mergeTrainCars = repo.project.merge_trains.list(all=True, sort='asc')
+       start_time = time.time()
+       # The Python GitLab API supported merge train lookups by target branch,
+       # the scope of this lookup could be reduced.
+       mergeTrainCars = repo.project.merge_trains.list(all=True, sort='desc')
+       end_time = time.time()
+       logging.info(f"Merge train lookup took {end_time-start_time}")
 
-       mergeTrainCars.reverse()
-       found_current = False
+       target_branch = None
+       log_descriptions = None
+       target_SHA = None
+       versionTag_SHA = None
        for car in mergeTrainCars:
            # Use the merge request to look up the branch
            mr_iid = car.merge_request['iid']
            mr = repo.pullRequests(state="all", id=mr_iid)[0]
            branch = mr.fromRef()
            if branch == current_branch:
-              # For the current branch, use the target branch and start considering other cars
-              branch = mr.toRef()
-              found_current = True
-           elif not found_current:
-              # Don't start considering other branches until we have found the current on
+              # For the current branch, just register the target branch
+              target_branch = mr.toRef()
+              # Now that we know the target branch, get the SHAs of all the merges between target branch and HEAD.
+              log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --merges --no-abbrev-commit").splitlines()
+              # Save the SHA of the target branch
+              target_SHA = git.SHA(f"origin/{target_branch}")
+              # Get the SHA of the most recent version tag
+              prefix = config.get(self.SECTION_VERSIONING, "prefix")
+              versionTag = git.describe(f"--match '{prefix}*'")
+              versionTag_SHA = git.SHA(versionTag)
               continue
+           elif not target_branch:
+              # Don't start considering other branches until we have found the current one
+              continue
+
            if car.status == 'merged':
-              # TODO The car may be merged but not yet accounted for in this car,
-              # so we need to check for that.
-              break 
+              # The car may be already been merged but not yet accounted for in this car, so we need to check for that.
+              merge_sha = mr.mergerequest.merge_commit_sha
+              # If the merge request corresponds to the current target branch, we don't need to look at this or earlier cars.
+              if merge_sha == target_SHA:
+                 break
+              # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
+              if merge_sha == versionTag_SHA:
+                 break
+              found_merge = False
+              for line in log_descriptions:
+                 if merge_sha in line:
+                    found_merge = True
+                    break
+              # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
+              if not found_merge:
+                 continue
 
            # Prepend the branch, since we are looping over the cars backwards
            logging.info(f"{car}")
            branches = [branch] + branches
 
-       if not found_current:
+       if not target_branch:
            logging.info(f"{current_branch} not found in merge train!")
            return False
+       else:
+           # Put the target branch first in the merge train
+           branches = [target_branch] + branches
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
@@ -379,7 +412,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             return False
         logging.info(f"Merge Train Branches: {branches}")
         # Hack for debugging
-        import time
         time.sleep(3600)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
