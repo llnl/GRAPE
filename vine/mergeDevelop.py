@@ -325,7 +325,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        # We need to potential handle prior cars that have already been merged,
        # so we get all merge train cars and start from the end (latest).
        # TODO will this query get too big to deal with?
-       mergeTrainCars = repo.getMergeTrainCars()
+       mergeTrainCars = repo.project.merge_trains.list(all=True, sort='asc')
+
        mergeTrainCars.reverse()
        found_current = False
        for car in mergeTrainCars:
@@ -340,12 +341,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            elif not found_current:
               # Don't start considering other branches until we have found the current on
               continue
-           if car.status['merged']:
+           if car.status == 'merged':
               # TODO The car may be merged but not yet accounted for in this car,
               # so we need to check for that.
               break 
 
            # Prepend the branch, since we are looping over the cars backwards
+           logging.info(f"{car}")
            branches = [branch] + branches
 
        if not found_current:
