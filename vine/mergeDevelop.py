@@ -323,15 +323,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
        branches = []
        current_branch = args['--topic']
-       # We need to potential handle prior cars that have already been merged,
-       # so we get all merge train cars and start from the end (latest).
-       # TODO will this query get too big to deal with?
        start_time = time.time()
-       # The Python GitLab API supported merge train lookups by target branch,
-       # the scope of this lookup could be reduced.
+       # We may need to handle prior cars that have already been merged, so we get all merge train cars and start from the end (latest).
+       # If the Python GitLab API supported merge train lookups by target branch, the scope of this lookup could be reduced.
+       # TODO If this query gets too large such that it affects performance, we may need to paginate the lookup.
        mergeTrainCars = repo.project.merge_trains.list(all=True, sort='desc')
        end_time = time.time()
-       logging.info(f"Merge train lookup took {end_time-start_time}")
+       logging.info(f"Merge train lookup took {end_time-start_time} seconds")
 
        target_branch = None
        log_descriptions = None
@@ -413,8 +411,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if not branches:
             return False
         logging.info(f"Merge Train Branches: {branches}")
-        # Hack for debugging
-        time.sleep(3600)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
         targetBranch = branches[0]
