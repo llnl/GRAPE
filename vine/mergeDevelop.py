@@ -377,7 +377,6 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                  continue
 
            # Prepend the branch, since we are looping over the cars backwards
-           logging.info(f"{car}")
            branches = [branch] + branches
 
        if not target_branch:
