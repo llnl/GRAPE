@@ -623,9 +623,14 @@ class PullRequest:
         # Create a new pipeline to reflect any changes in labels
         try:
             self.mergerequest.pipelines.create()
-        except gitlab.exceptions.GitlabCreateError as e:
-            if raiseOnFailure:
-                raise(e)
+        except gitlab.exceptions.GitlabCreateError:
+            time.sleep(5)
+            logging.info("Trying again after initial 405 error...")
+            try:
+                self.mergerequest.pipelines.create()
+            except gitlab.exceptions.GitlabCreateError as e:
+                if raiseOnFailure:
+                    raise(e)
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
