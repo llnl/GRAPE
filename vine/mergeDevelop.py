@@ -358,6 +358,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               # Don't start considering other branches until we have found the current one
               continue
 
+           if mr.toRef() != target_branch:
+              # Skip merge request if it doesn't target the same branch
+              continue
+
            if car.status == 'merged':
               # The car may be already been merged but not yet accounted for in this car, so we need to check for that.
               merge_sha = mr.mergerequest.merge_commit_sha
