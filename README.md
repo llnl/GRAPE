@@ -8,11 +8,21 @@
 Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
 
 Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
+ % grape checkout master
+ % git tag -d v<MAJOR>.<OLDDEV>.<LASTPATCH>
+ % git push --delete origin v<MAJOR>.<OLDDEV>.<LASTPATCH>
+ % git tag -a v<MAJOR>.<NEWPROD>.0 -m "Manually tagged" HEAD
 
 Push the new tag.
+ % git push origin v<MAJOR>.<NEWPROD>.0
 
 Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
 push both the new tag and the new commit directly to develop.
+ % grape checkout develop
+ % git merge master
+ # commit a change
+ % git tag -a v<MAJOR>.<NEWDEV>.0 -m "Manually tagged" HEAD
+ % git push
 
 ## Introducing the `.grapeconfig` file
 
