@@ -21,7 +21,10 @@ push both the new tag and the new commit directly to develop.
  % grape checkout develop
  % git merge master
  # commit a change
+ # TODO make this step the merging of the update logs 
  % git tag -a v<MAJOR>.<NEWDEV>.0 -m "Manually tagged" HEAD
+ # make sure to push the tag first to prevent incorrect autotagging by grape CI jobs
+ % git push origin v<MAJOR>.<NEWDEV>.0
  % git push
 
 ## Introducing the `.grapeconfig` file
