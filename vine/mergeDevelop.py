@@ -368,24 +368,25 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            if car.status == 'merged':
               # The car may be already been merged but not yet accounted for in this car, so we need to check for that.
               merge_sha = mr.mergerequest.merge_commit_sha
-              # If the merge request corresponds to the current target branch, we don't need to look at this or earlier cars.
-              if merge_sha == target_SHA:
-                 logging.info(f"MR {mr_iid} matches {target_branch}, skipping...")
-                 break
               # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
               if merge_sha == versionTag_SHA:
                  logging.info(f"MR {mr_iid} matches {versionTag}, skipping...")
                  break
-              found_merge = False
-              for line in log_descriptions:
-                 if merge_sha in line:
-                    found_merge = True
-                    logging.info(f"{merge_sha} for MR {mr_iid} found...")
-                    break
-              # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
-              if not found_merge:
-                 logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
-                 continue
+              # If the merge request corresponds to the current target branch, we still may need to consider it,
+              # as the nested subprojects may not have been merged yet.
+              if merge_sha == target_SHA:
+                 logging.info(f"MR {mr_iid} matches {target_branch}...")
+              else:
+                  found_merge = False
+                  for line in log_descriptions:
+                     if merge_sha in line:
+                        found_merge = True
+                        logging.info(f"{merge_sha} for MR {mr_iid} found...")
+                        break
+                  # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
+                  if not found_merge:
+                     logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
+                     continue
 
            # Prepend the branch, since we are looping over the cars backwards
            logging.info(f"Found branch: {branch}.")
