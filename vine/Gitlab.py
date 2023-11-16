@@ -6,7 +6,11 @@ import subprocess
 import sys
 import time
 import keyring
-import gitlab
+try:
+    import gitlab
+except ModuleNotFoundError:
+    # This was checked on startup
+    pass
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
@@ -483,6 +487,9 @@ class Repo:
     def artifact(self, ref_name, artifact_path, job):
         return self.project.artifact(ref_name,artifact_path, job)
 
+    def addToMergeTrain(self, pull_request, sha):
+        return self.project.merge_trains_merge_request.add(pull_request.iid(), sha=sha)
+
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
         self.job = gitlab_project.jobs.get(gitlab_job_id)
@@ -612,9 +619,18 @@ class PullRequest:
         self.mergerequest.save()
         return self
 
-    def regeneratePipeline(self):
+    def regeneratePipeline(self, raiseOnFailure=True):
         # Create a new pipeline to reflect any changes in labels
-        self.mergerequest.pipelines.create()
+        try:
+            self.mergerequest.pipelines.create()
+        except gitlab.exceptions.GitlabCreateError:
+            time.sleep(5)
+            logging.info("Trying again after initial 405 error...")
+            try:
+                self.mergerequest.pipelines.create()
+            except gitlab.exceptions.GitlabCreateError as e:
+                if raiseOnFailure:
+                    raise(e)
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
@@ -635,7 +651,6 @@ class PullRequest:
         except gitlab.exceptions.GitlabMRClosedError as e:
             logging.info(f"GitlabMRClosedError triggered! {e.__dict__}") 
             raise e
-
 
 def testMe():
     grape_gitlab = GrapeGitlabAdapter(workspace_dir=os.getcwd())

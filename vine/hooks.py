@@ -3,6 +3,7 @@ import io
 import logging
 import os
 from vine import config_parser_base
+from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
@@ -76,13 +77,15 @@ class RunHook(Option, WorkspaceDirHandler):
            grape-runHook pre-commit [--noExit]
            grape-runHook pre-push <dest> <url> [--noExit]
            grape-runHook pre-rebase <basebranch> [<rebasebranch>] [--noExit]
-           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>] [--noExit]
+           grape-runHook post-commit [--autopush=<autopush>] [--cascade=<pairs>] [--noExit]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>] [--noExit]
            grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>] [--noExit]
            grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
-        --autopush=<bool>           autopushes commits to origin
+        --autopush=<autopush>       autopushes commits to origin.
+                                    "False" disables autopush, "Topic" pushes non-public branches, any other value
+                                    pushes any branch.
                                     [default: .grapeconfig.post-commit.autopush]
         --cascade=<pairs>           performs a post commit cascade
                                     [default: .grapeconfig.post-commit.cascade]
@@ -162,15 +165,22 @@ class RunHook(Option, WorkspaceDirHandler):
 
     def postCommit(self, args):
         #applies the autoPush hook
-        autoPush = args["--autopush"]
-        if autoPush.lower().strip() != "false":
+        autoPush = args["--autopush"].lower().strip()
+        if autoPush == "topic":
+            if git.currentBranch(execution_path=self.workspace_dir) in config_parser_global.grapeConfig().getPublicBranchList():
+                autoPush = False
+            else:
+                autoPush = True
+        elif autoPush != "false":
+            autoPush = True
+        else:
+            autoPush = False
+
+        if autoPush:
             try:
                 git.push("-u origin HEAD", execution_path=self.workspace_dir)
             except grape_errors.GrapeGitError:
                 pass
-            autoPush = True
-        else:
-            autoPush = False
         #applies the cascade hook
         logging.info("GRAPE: checking for cascades...")
         cascadeDict = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--cascade"])

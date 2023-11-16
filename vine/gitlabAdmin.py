@@ -159,7 +159,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
               if verbose:
                  logging.info(f"Nested subproject {grapeReponame} is not in gitlab project {projectname}")
               
-        for path,url in git.getAllSubmoduleURLMap(execution_path=self.workspace_dir).items():
+        gitmodules = toprepo.project.files.raw(file_path=".gitmodules", ref=initialbranch).decode('utf-8')
+        for path,url in git.getAllSubmoduleURLMap(gitmodules_string=gitmodules).items():
            grapeReponame = os.path.splitext(os.path.basename(url))[0]
            try:
               found = [item.lower() for item in reponames].index(grapeReponame.lower())

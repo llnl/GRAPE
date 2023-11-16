@@ -1,3 +1,9 @@
+"""
+GitLab API:
+https://docs.gitlab.com/ee/api/features.html
+"""
+from typing import Any, Optional, TYPE_CHECKING, Union
+
 from gitlab import exceptions as exc
 from gitlab import utils
 from gitlab.base import RESTManager, RESTObject
@@ -20,23 +26,23 @@ class FeatureManager(ListMixin, DeleteMixin, RESTManager):
     @exc.on_http_error(exc.GitlabSetError)
     def set(
         self,
-        name,
-        value,
-        feature_group=None,
-        user=None,
-        group=None,
-        project=None,
-        **kwargs
-    ):
+        name: str,
+        value: Union[bool, int],
+        feature_group: Optional[str] = None,
+        user: Optional[str] = None,
+        group: Optional[str] = None,
+        project: Optional[str] = None,
+        **kwargs: Any,
+    ) -> Feature:
         """Create or update the object.
 
         Args:
-            name (str): The value to set for the object
-            value (bool/int): The value to set for the object
-            feature_group (str): A feature group name
-            user (str): A GitLab username
-            group (str): A GitLab group
-            project (str): A GitLab project in form group/project
+            name: The value to set for the object
+            value: The value to set for the object
+            feature_group: A feature group name
+            user: A GitLab username
+            group: A GitLab group
+            project: A GitLab project in form group/project
             **kwargs: Extra options to send to the server (e.g. sudo)
 
         Raises:
@@ -44,9 +50,10 @@ class FeatureManager(ListMixin, DeleteMixin, RESTManager):
             GitlabSetError: If an error occurred
 
         Returns:
-            obj: The created/updated attribute
+            The created/updated attribute
         """
-        path = "%s/%s" % (self.path, name.replace("/", "%2F"))
+        name = utils.EncodedId(name)
+        path = f"{self.path}/{name}"
         data = {
             "value": value,
             "feature_group": feature_group,
@@ -56,4 +63,6 @@ class FeatureManager(ListMixin, DeleteMixin, RESTManager):
         }
         data = utils.remove_none_from_dict(data)
         server_data = self.gitlab.http_post(path, post_data=data, **kwargs)
+        if TYPE_CHECKING:
+            assert isinstance(server_data, dict)
         return self._obj_cls(self, server_data)

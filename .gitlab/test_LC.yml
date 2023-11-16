@@ -3,10 +3,6 @@
     - cd $CI_PROJECT_DIR
     - ./grape test
 
-.sleep_1_minute:
-  script:
-    - sleep 60
-
 .tick_version:
   script:
     - cd $CI_PROJECT_DIR

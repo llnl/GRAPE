@@ -1,11 +1,16 @@
-from typing import Any, cast, Dict, List, Union
+"""
+GitLab API:
+https://docs.gitlab.com/ee/api/users.html
+https://docs.gitlab.com/ee/api/projects.html#list-projects-starred-by-a-user
+"""
+from typing import Any, cast, Dict, List, Optional, Union
 
 import requests
 
 from gitlab import cli
 from gitlab import exceptions as exc
 from gitlab import types
-from gitlab.base import RequiredOptional, RESTManager, RESTObject, RESTObjectList
+from gitlab.base import RESTManager, RESTObject, RESTObjectList
 from gitlab.mixins import (
     CreateMixin,
     CRUDMixin,
@@ -18,6 +23,7 @@ from gitlab.mixins import (
     SaveMixin,
     UpdateMixin,
 )
+from gitlab.types import ArrayAttribute, RequiredOptional
 
 from .custom_attributes import UserCustomAttributeManager  # noqa: F401
 from .events import UserEventManager  # noqa: F401
@@ -38,6 +44,8 @@ __all__ = [
     "UserManager",
     "ProjectUser",
     "ProjectUserManager",
+    "StarredProject",
+    "StarredProjectManager",
     "UserEmail",
     "UserEmailManager",
     "UserActivities",
@@ -59,13 +67,18 @@ __all__ = [
 
 
 class CurrentUserEmail(ObjectDeleteMixin, RESTObject):
-    _short_print_attr = "email"
+    _repr_attr = "email"
 
 
 class CurrentUserEmailManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTManager):
     _path = "/user/emails"
     _obj_cls = CurrentUserEmail
     _create_attrs = RequiredOptional(required=("email",))
+
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> CurrentUserEmail:
+        return cast(CurrentUserEmail, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class CurrentUserGPGKey(ObjectDeleteMixin, RESTObject):
@@ -77,9 +90,14 @@ class CurrentUserGPGKeyManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTMana
     _obj_cls = CurrentUserGPGKey
     _create_attrs = RequiredOptional(required=("key",))
 
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> CurrentUserGPGKey:
+        return cast(CurrentUserGPGKey, super().get(id=id, lazy=lazy, **kwargs))
+
 
 class CurrentUserKey(ObjectDeleteMixin, RESTObject):
-    _short_print_attr = "title"
+    _repr_attr = "title"
 
 
 class CurrentUserKeyManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTManager):
@@ -87,10 +105,15 @@ class CurrentUserKeyManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTManager
     _obj_cls = CurrentUserKey
     _create_attrs = RequiredOptional(required=("title", "key"))
 
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> CurrentUserKey:
+        return cast(CurrentUserKey, super().get(id=id, lazy=lazy, **kwargs))
+
 
 class CurrentUserStatus(SaveMixin, RESTObject):
     _id_attr = None
-    _short_print_attr = "message"
+    _repr_attr = "message"
 
 
 class CurrentUserStatusManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
@@ -98,10 +121,13 @@ class CurrentUserStatusManager(GetWithoutIdMixin, UpdateMixin, RESTManager):
     _obj_cls = CurrentUserStatus
     _update_attrs = RequiredOptional(optional=("emoji", "message"))
 
+    def get(self, **kwargs: Any) -> CurrentUserStatus:
+        return cast(CurrentUserStatus, super().get(**kwargs))
+
 
 class CurrentUser(RESTObject):
     _id_attr = None
-    _short_print_attr = "username"
+    _repr_attr = "username"
 
     emails: CurrentUserEmailManager
     gpgkeys: CurrentUserGPGKeyManager
@@ -113,9 +139,12 @@ class CurrentUserManager(GetWithoutIdMixin, RESTManager):
     _path = "/user"
     _obj_cls = CurrentUser
 
+    def get(self, **kwargs: Any) -> CurrentUser:
+        return cast(CurrentUser, super().get(**kwargs))
+
 
 class User(SaveMixin, ObjectDeleteMixin, RESTObject):
-    _short_print_attr = "username"
+    _repr_attr = "username"
 
     customattributes: UserCustomAttributeManager
     emails: "UserEmailManager"
@@ -129,11 +158,12 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
     memberships: "UserMembershipManager"
     personal_access_tokens: UserPersonalAccessTokenManager
     projects: "UserProjectManager"
+    starred_projects: "StarredProjectManager"
     status: "UserStatusManager"
 
     @cli.register_custom_action("User")
     @exc.on_http_error(exc.GitlabBlockError)
-    def block(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
+    def block(self, **kwargs: Any) -> Optional[bool]:
         """Block the user.
 
         Args:
@@ -144,10 +174,14 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabBlockError: If the user could not be blocked
 
         Returns:
-            bool: Whether the user status has been changed
+            Whether the user status has been changed
         """
-        path = "/users/%s/block" % self.id
-        server_data = self.manager.gitlab.http_post(path, **kwargs)
+        path = f"/users/{self.encoded_id}/block"
+        # NOTE: Undocumented behavior of the GitLab API is that it returns a
+        # boolean or None
+        server_data = cast(
+            Optional[bool], self.manager.gitlab.http_post(path, **kwargs)
+        )
         if server_data is True:
             self._attrs["state"] = "blocked"
         return server_data
@@ -165,9 +199,9 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabFollowError: If the user could not be followed
 
         Returns:
-            dict: The new object data (*not* a RESTObject)
+            The new object data (*not* a RESTObject)
         """
-        path = "/users/%s/follow" % self.id
+        path = f"/users/{self.encoded_id}/follow"
         return self.manager.gitlab.http_post(path, **kwargs)
 
     @cli.register_custom_action("User")
@@ -183,14 +217,14 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabUnfollowError: If the user could not be followed
 
         Returns:
-            dict: The new object data (*not* a RESTObject)
+            The new object data (*not* a RESTObject)
         """
-        path = "/users/%s/unfollow" % self.id
+        path = f"/users/{self.encoded_id}/unfollow"
         return self.manager.gitlab.http_post(path, **kwargs)
 
     @cli.register_custom_action("User")
     @exc.on_http_error(exc.GitlabUnblockError)
-    def unblock(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
+    def unblock(self, **kwargs: Any) -> Optional[bool]:
         """Unblock the user.
 
         Args:
@@ -201,10 +235,14 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabUnblockError: If the user could not be unblocked
 
         Returns:
-            bool: Whether the user status has been changed
+            Whether the user status has been changed
         """
-        path = "/users/%s/unblock" % self.id
-        server_data = self.manager.gitlab.http_post(path, **kwargs)
+        path = f"/users/{self.encoded_id}/unblock"
+        # NOTE: Undocumented behavior of the GitLab API is that it returns a
+        # boolean or None
+        server_data = cast(
+            Optional[bool], self.manager.gitlab.http_post(path, **kwargs)
+        )
         if server_data is True:
             self._attrs["state"] = "active"
         return server_data
@@ -222,9 +260,9 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabDeactivateError: If the user could not be deactivated
 
         Returns:
-            bool: Whether the user status has been changed
+            Whether the user status has been changed
         """
-        path = "/users/%s/deactivate" % self.id
+        path = f"/users/{self.encoded_id}/deactivate"
         server_data = self.manager.gitlab.http_post(path, **kwargs)
         if server_data:
             self._attrs["state"] = "deactivated"
@@ -243,9 +281,87 @@ class User(SaveMixin, ObjectDeleteMixin, RESTObject):
             GitlabActivateError: If the user could not be activated
 
         Returns:
-            bool: Whether the user status has been changed
+            Whether the user status has been changed
         """
-        path = "/users/%s/activate" % self.id
+        path = f"/users/{self.encoded_id}/activate"
+        server_data = self.manager.gitlab.http_post(path, **kwargs)
+        if server_data:
+            self._attrs["state"] = "active"
+        return server_data
+
+    @cli.register_custom_action("User")
+    @exc.on_http_error(exc.GitlabUserApproveError)
+    def approve(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
+        """Approve a user creation request.
+
+        Args:
+            **kwargs: Extra options to send to the server (e.g. sudo)
+
+        Raises:
+            GitlabAuthenticationError: If authentication is not correct
+            GitlabUserApproveError: If the user could not be activated
+
+        Returns:
+            The new object data (*not* a RESTObject)
+        """
+        path = f"/users/{self.encoded_id}/approve"
+        return self.manager.gitlab.http_post(path, **kwargs)
+
+    @cli.register_custom_action("User")
+    @exc.on_http_error(exc.GitlabUserRejectError)
+    def reject(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
+        """Reject a user creation request.
+
+        Args:
+            **kwargs: Extra options to send to the server (e.g. sudo)
+
+        Raises:
+            GitlabAuthenticationError: If authentication is not correct
+            GitlabUserRejectError: If the user could not be rejected
+
+        Returns:
+            The new object data (*not* a RESTObject)
+        """
+        path = f"/users/{self.encoded_id}/reject"
+        return self.manager.gitlab.http_post(path, **kwargs)
+
+    @cli.register_custom_action("User")
+    @exc.on_http_error(exc.GitlabBanError)
+    def ban(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
+        """Ban the user.
+
+        Args:
+            **kwargs: Extra options to send to the server (e.g. sudo)
+
+        Raises:
+            GitlabAuthenticationError: If authentication is not correct
+            GitlabBanError: If the user could not be banned
+
+        Returns:
+            Whether the user has been banned
+        """
+        path = f"/users/{self.encoded_id}/ban"
+        server_data = self.manager.gitlab.http_post(path, **kwargs)
+        if server_data:
+            self._attrs["state"] = "banned"
+        return server_data
+
+    @cli.register_custom_action("User")
+    @exc.on_http_error(exc.GitlabUnbanError)
+    def unban(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
+        """Unban the user.
+
+        Args:
+            **kwargs: Extra options to send to the server (e.g. sudo)
+
+        Raises:
+            GitlabAuthenticationError: If authentication is not correct
+            GitlabUnbanError: If the user could not be unbanned
+
+        Returns:
+            Whether the user has been unbanned
+        """
+        path = f"/users/{self.encoded_id}/unban"
         server_data = self.manager.gitlab.http_post(path, **kwargs)
         if server_data:
             self._attrs["state"] = "active"
@@ -332,22 +448,25 @@ class ProjectUser(RESTObject):
 
 
 class ProjectUserManager(ListMixin, RESTManager):
-    _path = "/projects/%(project_id)s/users"
+    _path = "/projects/{project_id}/users"
     _obj_cls = ProjectUser
     _from_parent_attrs = {"project_id": "id"}
     _list_filters = ("search", "skip_users")
-    _types = {"skip_users": types.ListAttribute}
+    _types = {"skip_users": types.ArrayAttribute}
 
 
 class UserEmail(ObjectDeleteMixin, RESTObject):
-    _short_print_attr = "email"
+    _repr_attr = "email"
 
 
 class UserEmailManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTManager):
-    _path = "/users/%(user_id)s/emails"
+    _path = "/users/{user_id}/emails"
     _obj_cls = UserEmail
     _from_parent_attrs = {"user_id": "id"}
     _create_attrs = RequiredOptional(required=("email",))
+
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> UserEmail:
+        return cast(UserEmail, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class UserActivities(RESTObject):
@@ -356,13 +475,16 @@ class UserActivities(RESTObject):
 
 class UserStatus(RESTObject):
     _id_attr = None
-    _short_print_attr = "message"
+    _repr_attr = "message"
 
 
 class UserStatusManager(GetWithoutIdMixin, RESTManager):
-    _path = "/users/%(user_id)s/status"
+    _path = "/users/{user_id}/status"
     _obj_cls = UserStatus
     _from_parent_attrs = {"user_id": "id"}
+
+    def get(self, **kwargs: Any) -> UserStatus:
+        return cast(UserStatus, super().get(**kwargs))
 
 
 class UserActivitiesManager(ListMixin, RESTManager):
@@ -375,21 +497,27 @@ class UserGPGKey(ObjectDeleteMixin, RESTObject):
 
 
 class UserGPGKeyManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTManager):
-    _path = "/users/%(user_id)s/gpg_keys"
+    _path = "/users/{user_id}/gpg_keys"
     _obj_cls = UserGPGKey
     _from_parent_attrs = {"user_id": "id"}
     _create_attrs = RequiredOptional(required=("key",))
+
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> UserGPGKey:
+        return cast(UserGPGKey, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class UserKey(ObjectDeleteMixin, RESTObject):
     pass
 
 
-class UserKeyManager(ListMixin, CreateMixin, DeleteMixin, RESTManager):
-    _path = "/users/%(user_id)s/keys"
+class UserKeyManager(RetrieveMixin, CreateMixin, DeleteMixin, RESTManager):
+    _path = "/users/{user_id}/keys"
     _obj_cls = UserKey
     _from_parent_attrs = {"user_id": "id"}
     _create_attrs = RequiredOptional(required=("title", "key"))
+
+    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> UserKey:
+        return cast(UserKey, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class UserIdentityProviderManager(DeleteMixin, RESTManager):
@@ -399,7 +527,7 @@ class UserIdentityProviderManager(DeleteMixin, RESTManager):
     functionality for deletion of user identities by provider.
     """
 
-    _path = "/users/%(user_id)s/identities"
+    _path = "/users/{user_id}/identities"
     _from_parent_attrs = {"user_id": "id"}
 
 
@@ -408,13 +536,19 @@ class UserImpersonationToken(ObjectDeleteMixin, RESTObject):
 
 
 class UserImpersonationTokenManager(NoUpdateMixin, RESTManager):
-    _path = "/users/%(user_id)s/impersonation_tokens"
+    _path = "/users/{user_id}/impersonation_tokens"
     _obj_cls = UserImpersonationToken
     _from_parent_attrs = {"user_id": "id"}
     _create_attrs = RequiredOptional(
         required=("name", "scopes"), optional=("expires_at",)
     )
     _list_filters = ("state",)
+    _types = {"scopes": ArrayAttribute}
+
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> UserImpersonationToken:
+        return cast(UserImpersonationToken, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class UserMembership(RESTObject):
@@ -422,10 +556,15 @@ class UserMembership(RESTObject):
 
 
 class UserMembershipManager(RetrieveMixin, RESTManager):
-    _path = "/users/%(user_id)s/memberships"
+    _path = "/users/{user_id}/memberships"
     _obj_cls = UserMembership
     _from_parent_attrs = {"user_id": "id"}
     _list_filters = ("type",)
+
+    def get(
+        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
+    ) -> UserMembership:
+        return cast(UserMembership, super().get(id=id, lazy=lazy, **kwargs))
 
 
 # Having this outside projects avoids circular imports due to ProjectUser
@@ -434,7 +573,7 @@ class UserProject(RESTObject):
 
 
 class UserProjectManager(ListMixin, CreateMixin, RESTManager):
-    _path = "/projects/user/%(user_id)s"
+    _path = "/projects/user/{user_id}"
     _obj_cls = UserProject
     _from_parent_attrs = {"user_id": "id"}
     _create_attrs = RequiredOptional(
@@ -446,6 +585,7 @@ class UserProjectManager(ListMixin, CreateMixin, RESTManager):
             "merge_requests_enabled",
             "wiki_enabled",
             "snippets_enabled",
+            "squash_option",
             "public",
             "visibility",
             "description",
@@ -481,34 +621,60 @@ class UserProjectManager(ListMixin, CreateMixin, RESTManager):
         """Retrieve a list of objects.
 
         Args:
-            all (bool): If True, return all the items, without pagination
-            per_page (int): Number of items to retrieve per request
-            page (int): ID of the page to return (starts with page 1)
-            as_list (bool): If set to False and no pagination option is
+            all: If True, return all the items, without pagination
+            per_page: Number of items to retrieve per request
+            page: ID of the page to return (starts with page 1)
+            iterator: If set to True and no pagination option is
                 defined, return a generator instead of a list
             **kwargs: Extra options to send to the server (e.g. sudo)
 
         Returns:
-            list: The list of objects, or a generator if `as_list` is False
+            The list of objects, or a generator if `iterator` is True
 
         Raises:
             GitlabAuthenticationError: If authentication is not correct
             GitlabListError: If the server cannot perform the request
         """
         if self._parent:
-            path = "/users/%s/projects" % self._parent.id
+            path = f"/users/{self._parent.id}/projects"
         else:
-            path = "/users/%s/projects" % kwargs["user_id"]
+            path = f"/users/{kwargs['user_id']}/projects"
         return ListMixin.list(self, path=path, **kwargs)
 
 
+class StarredProject(RESTObject):
+    pass
+
+
+class StarredProjectManager(ListMixin, RESTManager):
+    _path = "/users/{user_id}/starred_projects"
+    _obj_cls = StarredProject
+    _from_parent_attrs = {"user_id": "id"}
+    _list_filters = (
+        "archived",
+        "membership",
+        "min_access_level",
+        "order_by",
+        "owned",
+        "search",
+        "simple",
+        "sort",
+        "starred",
+        "statistics",
+        "visibility",
+        "with_custom_attributes",
+        "with_issues_enabled",
+        "with_merge_requests_enabled",
+    )
+
+
 class UserFollowersManager(ListMixin, RESTManager):
-    _path = "/users/%(user_id)s/followers"
+    _path = "/users/{user_id}/followers"
     _obj_cls = User
     _from_parent_attrs = {"user_id": "id"}
 
 
 class UserFollowingManager(ListMixin, RESTManager):
-    _path = "/users/%(user_id)s/following"
+    _path = "/users/{user_id}/following"
     _obj_cls = User
     _from_parent_attrs = {"user_id": "id"}

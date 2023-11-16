@@ -10,6 +10,20 @@ variables:
 stages:
   - test
 
++ Run Grape Publish (add to merge train):
+  stage: test
+  timeout: 30 minutes 
+  variables:
+    GIT_STRATEGY: clone
+  extends:
+    - .run_manually_on_merge_request_allow_failure
+    - .run_rzwhippet_shell
+  script:
+    - if [ "$CI_MERGE_REQUEST_APPROVED" != "true" ] ; then echo "Merge request must be approved by reviewers!"; exit 1 ; fi
+    - git remote set-url origin ssh://git@rzgitlab.llnl.gov:7999/GRP/grape.git
+    - $CI_PROJECT_DIR/grape -d checkout $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
+    - $CI_PROJECT_DIR/grape -d publish
+
 merge_train_ticket:
   stage: test
   timeout: 30 minutes 
@@ -18,7 +32,7 @@ merge_train_ticket:
     GIT_DEPTH: "2"
   extends:
     - .run_on_merge_request_except_on_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .test_linux
   interruptible: true
 
@@ -29,7 +43,7 @@ all_aboard_the_merge_train:
     GIT_STRATEGY: none
   extends:
     - .run_on_merge_request_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .auto_pass
   interruptible: true
 
@@ -42,7 +56,7 @@ merge_train:
     GIT_DEPTH: "2"
   extends:
     - .run_on_merge_train_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .test_linux
   interruptible: true
 
@@ -53,7 +67,7 @@ tag_pushes_to_develop_or_master:
     GIT_STRATEGY: clone
   extends:
     - .run_on_push_to_develop_or_master
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .tick_version
   interruptible: false
 
@@ -64,7 +78,7 @@ do_not_push_the_button_before_grape_publish:
     GIT_STRATEGY: none
   extends:
     - .run_on_merge_train_if_no_changes_to_update_logs
-    - .run_rzgenie_shell
+    - .run_rzwhippet_shell
     - .auto_fail
   interruptible: true
 

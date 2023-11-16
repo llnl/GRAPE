@@ -1,3 +1,7 @@
+from typing import Any, Dict, Union
+
+import requests
+
 from gitlab import cli
 from gitlab import exceptions as exc
 from gitlab.base import RESTManager
@@ -16,7 +20,7 @@ class SidekiqManager(RESTManager):
 
     @cli.register_custom_action("SidekiqManager")
     @exc.on_http_error(exc.GitlabGetError)
-    def queue_metrics(self, **kwargs):
+    def queue_metrics(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
         """Return the registered queues information.
 
         Args:
@@ -27,13 +31,15 @@ class SidekiqManager(RESTManager):
             GitlabGetError: If the information couldn't be retrieved
 
         Returns:
-            dict: Information about the Sidekiq queues
+            Information about the Sidekiq queues
         """
         return self.gitlab.http_get("/sidekiq/queue_metrics", **kwargs)
 
     @cli.register_custom_action("SidekiqManager")
     @exc.on_http_error(exc.GitlabGetError)
-    def process_metrics(self, **kwargs):
+    def process_metrics(
+        self, **kwargs: Any
+    ) -> Union[Dict[str, Any], requests.Response]:
         """Return the registered sidekiq workers.
 
         Args:
@@ -44,13 +50,13 @@ class SidekiqManager(RESTManager):
             GitlabGetError: If the information couldn't be retrieved
 
         Returns:
-            dict: Information about the register Sidekiq worker
+            Information about the register Sidekiq worker
         """
         return self.gitlab.http_get("/sidekiq/process_metrics", **kwargs)
 
     @cli.register_custom_action("SidekiqManager")
     @exc.on_http_error(exc.GitlabGetError)
-    def job_stats(self, **kwargs):
+    def job_stats(self, **kwargs: Any) -> Union[Dict[str, Any], requests.Response]:
         """Return statistics about the jobs performed.
 
         Args:
@@ -61,13 +67,15 @@ class SidekiqManager(RESTManager):
             GitlabGetError: If the information couldn't be retrieved
 
         Returns:
-            dict: Statistics about the Sidekiq jobs performed
+            Statistics about the Sidekiq jobs performed
         """
         return self.gitlab.http_get("/sidekiq/job_stats", **kwargs)
 
     @cli.register_custom_action("SidekiqManager")
     @exc.on_http_error(exc.GitlabGetError)
-    def compound_metrics(self, **kwargs):
+    def compound_metrics(
+        self, **kwargs: Any
+    ) -> Union[Dict[str, Any], requests.Response]:
         """Return all available metrics and statistics.
 
         Args:
@@ -78,6 +86,6 @@ class SidekiqManager(RESTManager):
             GitlabGetError: If the information couldn't be retrieved
 
         Returns:
-            dict: All available Sidekiq metrics and statistics
+            All available Sidekiq metrics and statistics
         """
         return self.gitlab.http_get("/sidekiq/compound_metrics", **kwargs)

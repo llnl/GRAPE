@@ -3,13 +3,16 @@ import io
 import logging
 import os
 import re
+import time
 from vine import checkout
 from vine import config_parser_global
 from vine import config_parser_user
+from vine import Gitlab
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import version as grapeVersion
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
@@ -30,6 +33,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--noChecks]
                     [--squash]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+                    [--user=<GitLabUserName>]
+                    [--codeReviewsURL=<httpsURL>]
+                    [--verifySSL=<bool>]
+                    [--project=<GitLabProjectKey>]
+                    [--repo=<GitLabRepoName>]
+                    [--ssh_pat_url=<url>]
+                    [--ssh_pat_port=<int>]
            grape-md --traverseMergedResult --topic=<branch>
 
 
@@ -62,7 +72,20 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                  to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-
+        --codeReviewsURL=<url>   Your Gitlab URL, e.g. https://your.home.org/gitlab.
+                                 [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>       Set to False to ignore SSL certificate verification issues.
+                                 [default: .grapeconfig.project.verifySSL]
+        --project=<project>      Your GitLab Project. See grape-review for more details.
+                                 [default: .grapeconfig.project.name]
+        --repo=<repo>            Your GitLab repo. See grape-review for more details.
+                                 [default: .grapeconfig.repo.name]
+        --ssh_pat_url=<url>      SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                 REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                 into a Code Review service's REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_port]
 
 
     """
@@ -280,43 +303,100 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         self.progress = {}
         return True
 
-    def lookUpInfoFromMergeTrainCommitDescription(self, local_branch):
-        logging.info(f"CALL with {local_branch}")
-        # lookup the commit message for the train merge commit
-        # should be of the format "Merge branch <branch> with <train_car_ref_or_head_ref> into <current train car ref>", e.g.
-        commit_msg = git.commitDescriptionShort(local_branch, execution_path=self.workspace_dir).strip().split("Merge branch ")[1]
-        logging.info(commit_msg)
-        # parse the commit message into branch, next_train_car, current_train_car
-        commit_msg = commit_msg.split(" with ")
-        branch = commit_msg[0]
-        logging.info(branch)
-        commit_msg = commit_msg[1].split(" into ")
-        logging.info(commit_msg)
-        next_train_car = commit_msg[0].split("refs/")[1]
-        current_train_car = commit_msg[1].split("refs/")[1]
-        return branch,next_train_car,current_train_car
-
-
     def lookupActiveMergeTrainBranches(self, args):
-       local_branch = "HEAD"
-       branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
-       head_encountered = False
+       if "gitlab" not in args["--codeReviewsURL"]:
+           logging.info("merge train should only be used with GitLab.")
+           return False
+
+       name = args["--user"]
+       if not name:
+           name = utility.getUserName()
+       verify = True if args["--verifySSL"].lower() == "true" else False
+
+       grape_gitlab = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
+                                                verify=verify,
+                                                port=int(args["--ssh_pat_port"]),
+                                                ssh_path = args["--ssh_pat_url"],
+                                                workspace_dir=self.workspace_dir
+                                               )
+       repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
+
        branches = []
-       while not head_encountered:
-          # test to see if this is the head of the train by looking for a merge from heads/{public_branch}
-          next_train_car_toks = next_train_car.split('/')
-          logging.info(next_train_car_toks)
-          if next_train_car_toks[0] == "heads":
-              head_encountered = True
-              public_branch = next_train_car_toks[1]
-              # first branch to merge is the public branch
-              branches = [f"{public_branch}"] + branches
+       current_branch = args['--topic']
+       start_time = time.time()
+       # We may need to handle prior cars that have already been merged, so we get all merge train cars and start from the end (latest).
+       # If the Python GitLab API supported merge train lookups by target branch, the scope of this lookup could be reduced.
+       # TODO If this query gets too large such that it affects performance, we may need to paginate the lookup.
+       mergeTrainCars = repo.project.merge_trains.list(all=True, sort='desc')
+       end_time = time.time()
+       logging.info(f"Merge train lookup took {end_time-start_time} seconds")
+
+       target_branch = None
+       log_descriptions = None
+       target_SHA = None
+       versionTag_SHA = None
+       for car in mergeTrainCars:
+           # Use the merge request to look up the branch
+           mr_iid = car.merge_request['iid']
+           mr = repo.pullRequests(state="all", id=mr_iid)[0]
+           branch = mr.fromRef()
+           if branch == current_branch:
+              # For the current branch, just register the target branch
+              target_branch = mr.toRef()
+              # Now that we know the target branch, get the SHAs of all the merges between target branch and HEAD.
+              log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --merges --no-abbrev-commit",
+                                         execution_path=self.workspace_dir).splitlines()
+              # Save the SHA of the target branch
+              target_SHA = git.SHA(f"origin/{target_branch}", execution_path=self.workspace_dir)
+              # Get the SHA of the most recent version tag
+              config = config_parser_global.grapeConfig()
+              prefix = config.get(self.SECTION_VERSIONING, "prefix")
+              versionTag = git.describe(f"--match '{prefix}*'", execution_path=self.workspace_dir)
+              versionTag_SHA = git.SHA(versionTag, execution_path=self.workspace_dir)
+              logging.info(f"Found current branch, targeting {target_branch} at {target_SHA}.")
+              logging.info(f"Latest version: {versionTag} at {versionTag_SHA}.")
+              logging.info(f"Log since {branch}\n{log_descriptions}.")
               continue
-          # keep traversing down the merge history
-          local_branch = git.parentsOfMergeCommit(local_branch, execution_path=self.workspace_dir)[0]
-          branch, next_train_car, current_train_car = self.lookUpInfoFromMergeTrainCommitDescription(local_branch)
-          # prepend the branch to branches, we will encounter the last branch to merge first in this algorithm
-          branches = [branch] + branches
+           elif not target_branch:
+              # Don't start considering other branches until we have found the current one
+              continue
+
+           if mr.toRef() != target_branch:
+              # Skip merge request if it doesn't target the same branch
+              continue
+
+           if car.status == 'merged':
+              # The car may be already been merged but not yet accounted for in this car, so we need to check for that.
+              merge_sha = mr.mergerequest.merge_commit_sha
+              # If the merge request corresponds to the current target branch, we don't need to look at this or earlier cars.
+              if merge_sha == target_SHA:
+                 logging.info(f"MR {mr_iid} matches {target_branch}, skipping...")
+                 break
+              # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
+              if merge_sha == versionTag_SHA:
+                 logging.info(f"MR {mr_iid} matches {versionTag}, skipping...")
+                 break
+              found_merge = False
+              for line in log_descriptions:
+                 if merge_sha in line:
+                    found_merge = True
+                    logging.info(f"{merge_sha} for MR {mr_iid} found...")
+                    break
+              # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
+              if not found_merge:
+                 logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
+                 continue
+
+           # Prepend the branch, since we are looping over the cars backwards
+           logging.info(f"Found branch: {branch}.")
+           branches = [branch] + branches
+
+       if not target_branch:
+           logging.info(f"{current_branch} not found in merge train!")
+           return False
+       else:
+           # Put the target branch first in the merge train
+           branches = [target_branch] + branches
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
@@ -324,14 +404,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
-        tagPrefix = f"{prefix}*"
 
-        description = git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir)
+        # TODO should these have suffix?
+        description = grapeVersion.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
         while '-' in description:
             numMerges = numMerges+1
             logging.info(f"branch {branch} is {description}, ticked numMerges to {numMerges}")
             branch = git.parentsOfMergeCommit(branch, execution_path=self.workspace_dir)[0]
-            description = git.describe(f"--match={tagPrefix} {branch}", execution_path=self.workspace_dir)
+            description = grapeVersion.describeLastVersion("", branch=branch, tagPrefix=prefix, execution_path=self.workspace_dir)
             logging.info(f"branch {branch} is {description}")
         return numMerges
 
@@ -339,6 +419,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
     def traverseTrainRefs(self, args, nested):
         from vine import grapeMenu
         branches = self.lookupActiveMergeTrainBranches(args)
+        if not branches:
+            return False
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
@@ -377,11 +459,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         git.fetch("origin '+refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         config = config_parser_global.grapeConfig()
         prefix = config.get(self.SECTION_VERSIONING, "prefix")
-        tagPrefix = f"{prefix}*"
         # Get the version of the branch
-        versionTag = git.describe(f"--abbrev=0 --match={tagPrefix} origin/{args['--topic']}", execution_path=self.workspace_dir)
+        # TODO should these have suffix?
+        versionTag = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=prefix, execution_path=self.workspace_dir)
         # Get the version of the merged result
-        mergedVersionTag = git.describe(f"--abbrev=0 --match={tagPrefix}", execution_path=self.workspace_dir)
+        mergedVersionTag = grapeVersion.describeLastVersion("--abbrev=0", branch="", tagPrefix=prefix, execution_path=self.workspace_dir)
         if versionTag == mergedVersionTag:
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True

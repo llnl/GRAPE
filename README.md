@@ -922,6 +922,13 @@ options are at least listed below.
                     [--noChecks]
                     [--squash]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+                    [--user=<GitLabUserName>]
+                    [--codeReviewsURL=<httpsURL>]
+                    [--verifySSL=<bool>]
+                    [--project=<GitLabProjectKey>]
+                    [--repo=<GitLabRepoName>]
+                    [--ssh_pat_url=<url>]
+                    [--ssh_pat_port=<int>]
            grape-md --traverseMergedResult --topic=<branch>
 
 
@@ -954,7 +961,20 @@ options are at least listed below.
                                  to define the starting point (this ensures we don't merge something behind the --topic branch).
         --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
                                  of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
-
+        --codeReviewsURL=<url>   Your Gitlab URL, e.g. https://your.home.org/gitlab.
+                                 [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>       Set to False to ignore SSL certificate verification issues.
+                                 [default: .grapeconfig.project.verifySSL]
+        --project=<project>      Your GitLab Project. See grape-review for more details.
+                                 [default: .grapeconfig.project.name]
+        --repo=<repo>            Your GitLab repo. See grape-review for more details.
+                                 [default: .grapeconfig.repo.name]
+        --ssh_pat_url=<url>      SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                 REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                 into a Code Review service's REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_port]
 
 
     
@@ -1027,6 +1047,7 @@ options are at least listed below.
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
                         [--noLocal]
+                        [--label_ref=<ref>]
                         [--skiplabels]
 
     Options:
@@ -1082,6 +1103,8 @@ options are at least listed below.
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
+                                    the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
@@ -1160,13 +1183,15 @@ options are at least listed below.
            grape-runHook pre-commit [--noExit]
            grape-runHook pre-push <dest> <url> [--noExit]
            grape-runHook pre-rebase <basebranch> [<rebasebranch>] [--noExit]
-           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>] [--noExit]
+           grape-runHook post-commit [--autopush=<autopush>] [--cascade=<pairs>] [--noExit]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>] [--noExit]
            grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>] [--noExit]
            grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
-        --autopush=<bool>           autopushes commits to origin
+        --autopush=<autopush>       autopushes commits to origin.
+                                    "False" disables autopush, "Topic" pushes non-public branches, any other value
+                                    pushes any branch.
                                     [default: .grapeconfig.post-commit.autopush]
         --cascade=<pairs>           performs a post commit cascade
                                     [default: .grapeconfig.post-commit.cascade]

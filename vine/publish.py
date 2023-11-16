@@ -21,6 +21,7 @@ from vine import grapeMenu
 from vine import review
 from vine import utility
 from vine import vine_subprocess
+from vine import version as grapeVersion
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.resumable import Resumable
@@ -699,6 +700,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                thisRequest = self.openPullRequest()
                thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
                # Regenerate the pipeline now with new label
+               logging.info(f"Regenerating pipeline with {inprogresslabel} label for in-progress lock...")
                thisRequest.regeneratePipeline()
 
         retcode = self.checkInProgressLock(args)
@@ -728,7 +730,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             if inprogresslabel:
                request.update(request.version(), remove_labels=[inprogresslabel])
                # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
-               request.regeneratePipeline()
+               # In certain cases, the merge request is already closed and the pipeline cannot be regenerated
+               logging.info(f"Regenerating pipeline without {inprogresslabel} label to release in-progress lock...")
+               request.regeneratePipeline(raiseOnFailure=False)
             return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
@@ -1012,7 +1016,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def loadVersion(self, args):
         if "version" not in self.progress:
             if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
-                tag = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+                # TODO should this have tagSuffix?
+                tag = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
                 self.progress["version"] = tag.split(args["--tagPrefix"])[1]
             elif args["--mergeTrain"] and not args["--sendEmail"]:
                 thisRequest = self.openPullRequest()
@@ -1042,7 +1047,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         
     def loadCommitMessageFromRecentMergeRequest(self, args):
-        last_version = git.describe(f"origin/{args['--topic']} --abbrev=0 --match={args['--tagPrefix']}*", execution_path=self.workspace_dir)
+        # TODO should this have tagSuffix?
+        last_version = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
         branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []
         for line in branch_log.splitlines():
@@ -1065,7 +1071,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            pull_request = self.repo.pullRequests(id=pr_id)[0]
            escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
            if len(tags) > 1:
-              escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag}.\n")
+              escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag} (tags: {tags}, last version: {last_version}, branch: {args['--topic']}).\n")
            escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
            escapedCommitMsg = escapedCommitMsg.replace("`", "'")
            self.progress["commitMsg"] = escapedCommitMsg
@@ -1920,13 +1926,33 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            thisRequest = self.openPullRequest()
            thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
            # Regenerate the pipeline now with new label
+           logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
            thisRequest.regeneratePipeline()
-        logging.info("********************************************************************************")
-        logging.info("All changes pushed and ready for being enqueued into merge train.")
-        logging.info("Gitlab does not yet support remote queuing into merge trains, please go to")
-        logging.info(thisRequest.link())
-        logging.info("and click on the 'Start merge train' or 'Add to merge train' button.")
-        logging.info("********************************************************************************")
+        numTries = 3
+        while numTries > 0:
+            try:
+                logging.info("***  waiting for 30 seconds before adding to the merge train ****")
+                time.sleep(30)
+                logging.info("***  adding to the Merge Train ****")
+                result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
+                break
+            except Exception as e:
+                numTries = numTries - 1
+                if numTries == 0:
+                    logging.info("********************************************************************************")
+                    logging.info(f'**** failed to add to the Merge Train ***')
+                    logging.info(e)
+                    logging.info("********************************************************************************")
+                else:
+                    logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
+        if numTries != 0:
+            logging.info("********************************************************************************")
+            logging.info(f"Merge Request added to Merge Train")
+            logging.info("********************************************************************************")
+        else:
+            logging.info("********************************************************************************")
+            logging.info(f"Please manually add to Merge Train")
+            logging.info("********************************************************************************")
         return True
 
 

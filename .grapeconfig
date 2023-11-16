@@ -21,16 +21,16 @@ branchmappings = develop:develop master:master  master-cz:master-cz
 [flow]
 #publishpolicy = ?:merge master:cascade->develop master-cz:cascade->master
 publishpolicy = ?:merge
-publicbranches = master develop release 
+publicbranches = master develop
 topicprefixmappings = hotfix:master feature:develop bugfix:develop internal_release:develop public_release:develop ?:develop
 topicdestinationmappings = internal_release:master public_release:master-cz
 topicCascadeTick = internal_release:2 ?:1
 
 [publish]
 mergetrain = True
+skiptestontrain = True
 buildcmds = 
 builddir = 
-testcijob = merge_train_ticket
 testcmds = ./grape test
 testdir = ./
 prepublishcmds = vine/gendocs.py README.md , git add README.md
@@ -50,7 +50,7 @@ emailsendto = robinson96@llnl.gov
 emailsubject = <public> updated to <version>
 
 [post-commit]
-autopush = True
+autopush = Topic
 #cascade = master:develop
 
 [post-rebase]
