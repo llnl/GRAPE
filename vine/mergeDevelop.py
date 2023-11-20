@@ -439,9 +439,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                unmergedTrainBranches.append(branch)
             else:
                # Only include other branches in the merge train if they are not contained by the target branch
-               containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
-               if f"origin/{targetBranch}" not in containingBranches:
-                  unmergedTrainBranches.append(branch)
+               try:
+                   containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
+                   if f"origin/{targetBranch}" not in containingBranches:
+                      unmergedTrainBranches.append(branch)
+               except grape_errors.GrapeGitError:
+                   # skip if branch does not exist (if it has already been merged and deleted)
+                   pass
         if args["--tagProposedVersion"]:
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{targetBranch}")
             logging.info(f"numMerges = {numMerges}")
