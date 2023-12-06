@@ -351,8 +351,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               # Get the SHA of the most recent version tag
               config = config_parser_global.grapeConfig()
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
-              versionTag = git.describe(f"--match '{prefix}*'", execution_path=self.workspace_dir)
-              versionTag_SHA = git.SHA(versionTag, execution_path=self.workspace_dir)
+              versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
+              versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
               logging.info(f"Found current branch, targeting {target_branch} at {target_SHA}.")
               logging.info(f"Latest version: {versionTag} at {versionTag_SHA}.")
               logging.info(f"Log since {branch}\n{log_descriptions}.")
@@ -368,24 +368,25 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            if car.status == 'merged':
               # The car may be already been merged but not yet accounted for in this car, so we need to check for that.
               merge_sha = mr.mergerequest.merge_commit_sha
-              # If the merge request corresponds to the current target branch, we don't need to look at this or earlier cars.
-              if merge_sha == target_SHA:
-                 logging.info(f"MR {mr_iid} matches {target_branch}, skipping...")
-                 break
               # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
               if merge_sha == versionTag_SHA:
                  logging.info(f"MR {mr_iid} matches {versionTag}, skipping...")
                  break
-              found_merge = False
-              for line in log_descriptions:
-                 if merge_sha in line:
-                    found_merge = True
-                    logging.info(f"{merge_sha} for MR {mr_iid} found...")
-                    break
-              # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
-              if not found_merge:
-                 logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
-                 continue
+              # If the merge request corresponds to the current target branch, we still may need to consider it,
+              # as the nested subprojects may not have been merged yet.
+              if merge_sha == target_SHA:
+                 logging.info(f"MR {mr_iid} matches {target_branch}...")
+              else:
+                  found_merge = False
+                  for line in log_descriptions:
+                     if merge_sha in line:
+                        found_merge = True
+                        logging.info(f"{merge_sha} for MR {mr_iid} found...")
+                        break
+                  # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
+                  if not found_merge:
+                     logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
+                     continue
 
            # Prepend the branch, since we are looping over the cars backwards
            logging.info(f"Found branch: {branch}.")
