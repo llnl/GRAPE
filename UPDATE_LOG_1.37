@@ -1,0 +1,147 @@
+
+
+Thu Jun  2 16:42:17 2022 Peter B. Robinson
+v1.37.37
+Reviewers: Ben Liu, Alan Dayton
+
+Dropping the md in the merge train publish process to give developers more control over when their merge train tickets may be invalidated.
+
+
+Wed Jun  1 08:56:52 2022 Peter B. Robinson
+v1.37.36
+Reviewers: Ben Liu, Alan Dayton
+
+Addresses an issue where grape uv wasn't correctly syncing if the branch was already checked out.
+
+
+Tue May 31 11:08:30 2022 Peter B. Robinson
+v1.37.35
+Reviewers: Ben Liu, Alan Dayton
+
+optimizing merge train rules
+
+
+Tue May 31 11:06:52 2022 Peter B. Robinson
+v1.37.34
+Reviewers: Ben Liu, Alan Dayton
+
+Fix issue where successful jobs on projects not configured to run CI under merge commits were not being located.
+
+
+Tue May 24 13:47:20 2022 Peter B. Robinson
+v1.37.33
+Reviewers: Ben Liu, Alan Dayton
+
+use generated project sha artifacts as an additional check on a valid merge train ticket job.
+
+
+Tue May 24 11:50:13 2022 Peter B. Robinson
+v1.37.32
+Reviewers: David Bloss, Ben Liu
+
+Teaches grape uv how to produce a .json file that contains SHA information of all grape-managed projects, suitable for verifying SHAs across workspaces, esp. in CI.
+
+
+Thu May 19 14:03:56 2022 Peter B. Robinson
+v1.37.31
+Reviewers: Ben Liu, Alan Dayton
+
+Teaches GRAPE how to produce a merged update log from update files generated during a merge train publish.
+
+
+Wed May 18 13:58:14 2022 Peter B. Robinson
+v1.37.30
+Reviewers: Ben Liu, Alan Dayton
+
+optimize number of API calls during publish process.
+
+
+Wed May 18 11:49:05 2022 Peter B. Robinson
+v1.37.29
+Reviewers: Ben Liu, Alan Dayton
+
+Addresses bug where grape always returned v1.37.unknown as current version.
+
+
+Wed May 18 08:16:32 2022 Peter B. Robinson
+v1.37.28
+Reviewers: Ben Liu, Alan Dayton
+
+Adds a push triggered job that tags changes to develop / master.
+
+
+Tue May 17 15:38:33 2022 Peter B. Robinson
+v1.37.27
+Reviewers: Ben Liu, Alan Dayton
+
+Adjusts the merge train publish steps to ask users to push the merge train button, as remote merges don't actually queue things in the train
+
+
+Thu May  5 09:35:33 2022 Benjamin T. Liu
+v1.37.26
+Reviewers: Peter Robinson
+
+uv improvements
+
+- add --branchName and --skipTopLevel options
+
+- Plumb --skipSubmodules and --skipNestedSubprojects through multi-repo launchers
+
+
+Mon May  2 16:06:33 2022 Peter B. Robinson
+v1.37.25
+Reviewers: Alan Dayton
+
+Follow up fixes to origin merge_trains MR (grape!368).
+
+
+Mon May  2 15:19:41 2022 Peter B. Robinson
+v1.37.24
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+
+Adds a --mergeTrain option to grape publish. 
+
+Details:
+
+New path through grape publish that sets up an Merge Request to be merged by Gitlab CI using Merge Trains.
+
+Configures Grape's publish process to use merge trains by default.
+
+
+Fri Apr 29 13:40:00 2022 Peter B. Robinson
+v1.37.23
+Reviewers: Ben Liu
+
+Continued attempts at fixing final tagVersion step of publish process when using tags as primary version info.
+
+
+Fri Apr 29 12:16:05 2022 Peter B. Robinson
+v1.37.22
+Reviewers: Ben Liu, Alan Dayton
+
+Addresses publish tagVersion step getting wrong version number if tags are being used for primary version information.
+
+
+Fri Apr 29 11:12:21 2022 Peter B. Robinson
+v1.37.21
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY: 
+
+Fix publish process in projects that use .grapeconfig.versioning.fileIsDerived.
+
+
+Thu Apr 28 16:30:06 2022 Peter B. Robinson
+v1.37.20
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+
+Teaches grape to support using version tags as primary source for version information, treats version file as a generated file.
+
+Configures GRAPE to use version tags as it's primary source for version information - runtime no longer requires vine/VERSION to be present.
+
+Removes vine/VERSION, adds vine/VERSION to .gitignore.
+

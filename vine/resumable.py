@@ -1,78 +1,87 @@
-import pickle
-import abc
+from abc import ABC, abstractmethod
+import io
+import logging
 import os
-import grapeGit as git
-import option
-import utility
-import grapeConfig
+import pickle
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
 
 
-class Resumable(option.Option):
-    __metaclass__ = abc.ABCMeta
+class Resumable(ABC):
 
     def __init__(self):
         super(Resumable, self).__init__()
+        self._key = ""
         self.progress = {}
+        self.progressFile = None
+
+    def set_progress_file(self, *, execution_path):
         try:
-            gitDir = git.gitDir()
-            self.progressFile = os.path.join(gitDir, "grapeProgress")
-        except git.GrapeGitError:
+            gitDir = str(git.gitDir(execution_path=execution_path))
+            progressFile = os.path.join(gitDir, f"grapeProgress{self._key}")
+            self._reset_progress(progressFile)
+        except grape_errors.GrapeGitError:
             # can happen if called from outside a workspace, create a .grapeProgress file
             # in the user's $HOME directory
-            self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
+            progressFile = os.path.join(os.path.expanduser('~'), f".grapeProgress{self._key}")
+            self._reset_progress(progressFile)
 
-    def dumpProgress(self, args,msg=""):
-        print(msg)
+    def _reset_progress(self, progress_file_path):
+        if not self.progressFile or self.progressFile != progress_file_path:
+            self.progressFile = progress_file_path
+            self.progress = {}
+
+    def dumpProgress(self, args, msg=""):
+        if msg:
+            logging.info(msg)
         self._saveProgress(args)
         args["--continue"] = True
         self.progress["args"] = args
-        self.progress["config"] = grapeConfig.grapeConfig()
-        with open(self.progressFile,'w') as f:
+        self.progress["config"] = config_parser_global.grapeConfig()
+        with io.open(self.progressFile, 'wb') as f:
             p = pickle.Pickler(f)
             p.dump(self.progress)
 
-    @abc.abstractmethod
+    @abstractmethod
     def _saveProgress(self, args):
         pass
 
     def _readProgressFile(self):
-        with open(self.progressFile, 'r') as f:
+        with io.open(self.progressFile, 'rb') as f:
             p = pickle.Unpickler(f)
             self.progress = p.load()
-    
+
     def _removeProgressFile(self):
         #remove the file
         try:
             os.remove(self.progressFile)
         except OSError as e:
-            if e.errno == 2: 
+            if e.errno == 2:
                 pass
             else:
                 raise e
 
-    @abc.abstractmethod
-    def _resume(self, args, deleteProgressFile=True):
+    @abstractmethod
+    def _resume(self, args, deleteProgressFile=True, *, workspace_dir):
+        if not self.progressFile:
+            self.set_progress_file(execution_path=workspace_dir)
         try:
             self._readProgressFile()
-        except IOError:
-            # give the workspace level progress file a shot
+        except IOError as e:
             try:
-                self.progressFile = os.path.join(utility.workspaceDir(), ".git", "grapeProgress")
+                # look for it at the home directory level
+                self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
                 self._readProgressFile()
-            except IOError as e:
-                try:
-                    # look for it at the home directory level
-                    self.progressFile = os.path.join(os.path.expanduser('~'), ".grapeProgress")
-                    self._readProgressFile()
-                except:
-                    utility.printMsg("No progress file found to continue from. Please enter a command without the "
-                                     "--continue option. ")
-                    raise e
+            except:
+                logging.error("No progress file found to continue from. Please enter a command without the "
+                                 "--continue option. ")
+                raise e
         newArgs = self.progress["args"]
         #overwrite args with the loaded args
         for key in newArgs.keys():
             args[key] = newArgs[key]
         #load the config
-        grapeConfig.resetGrapeConfig(self.progress["config"])
+        config_parser_global.resetGrapeConfig(self.progress["config"])
         if deleteProgressFile:
             self._removeProgressFile()

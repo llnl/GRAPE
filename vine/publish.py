@@ -1,22 +1,32 @@
+import io
+import json
+import logging
 import os
 import re
-import time
-import tempfile
-import traceback
 import smtplib
+import socket
+import tempfile
+import time
+import traceback
 try:
     from email.mime.text import MIMEText
 except ImportError:
     from email.MIMEText import MIMEText
-
-import Atlassian
-import utility
-import grapeGit as git
-import grapeMenu
-import grapeConfig
-import resumable
+from vine import CodeReviewsFactory
+from vine import config_parser_global
+from vine import config_parser_user
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import grapeMenu
+from vine import review
+from vine import utility
+from vine import vine_subprocess
+from vine import version as grapeVersion
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.option import Option
+from vine.resumable import Resumable
+from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
-
 
 
 class PublishStepFailed(Exception):
@@ -25,7 +35,7 @@ class PublishStepFailed(Exception):
         self.stepName = stepName
 
 
-class Publish(resumable.Resumable):
+class Publish(Resumable, Option, WorkspaceDirHandler):
     """
     grape publish
     Merges/Squash-merges/Rebases the current topic branch <type>/<username>/<descr> into the public <branch>,
@@ -36,24 +46,26 @@ class Publish(resumable.Resumable):
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
+                         [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush]
+                         [--nopush] [--noUpdateMD]
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
-                         [--buildCmds=<buildStr>] [--buildDir=<path>]
-                         [--testCmds=<testStr>] [--testDir=<path>]
+                         [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuild | --noSkipBuild]
+                         [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
+                         [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
-                         [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
+                         [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
-                         [--bitbucketURL=<httpsURL>]
+                         [--codeReviewsURL=<httpsURL>]
                          [--verifySSL=<bool>]
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
@@ -65,120 +77,174 @@ class Publish(resumable.Resumable):
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
                          [--remoteMerge]
+                         [--quiet]
+                         [--ssh_pat_url=<url>]
+                         [--ssh_pat_port=<int>]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse]
+            grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
-    --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade=<branch>      For squash merges, can choose to cascade back to <branch> after the merge is
-                            completed. Define multiple times to setup a chain of cascades. Overrides outer repo and 
-                            nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
-                            submodule publish policies. 
-    --merge                 Perform a normal merge.
-    -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
-                            --rebase.
-    --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the
-                            topic.
-    --recurse               Perform the publish action in submodules.
-                            Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --noRecurse             Do not perform the publish action in submodules.
-                            Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
-    --topic=<branch>        The branch to publish. Defaults to the current branch.
-    --noverify              Set to skip interactive verification of publish commands.
-    --nopush                Set to skip the push of commits generated during the publish procedure.
-    --pushSubtrees          Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
-                            public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
-                            Set by default if .grapeconfig.subtrees.pushOnPublish is True.
-    --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md1",
-                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                            "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
-                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
-    --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
-                            perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
-    --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
-                            steps.
-    --abort                 Abort a previously failed call to grape publish.   
-    --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
-                            [default: .grapeconfig.publish.buildCmds]
-    --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
-                            [default: .grapeconfig.publish.buildDir]
-    --testCmds=<testStr>    The comma-delimited list of test commands to execute.
-                            [default: .grapeconfig.publish.testCmds]
-    --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
-                            [default: .grapeconfig.publish.testDir]
-    --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
-                            [default: .grapeconfig.publish.prepublishCmds]
-    --prepublishDir=<str>   The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
-                            [default: .grapeconfig.publish.prepublishDir]
-    --postpublishCmds=<str>  The comma-delimited list of commands to execute just after the publish step.
-                            [default: .grapeconfig.publish.postpublishCmds]
-    --postpublishDir=<str>  The directory (relative to the workspace root directory) to execute the post-publish
-                            cmds in.
-                            [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
-    --noUpdateLog           Set to skip the updateLog step.
-    --updateLog=<file>      The log file to update with the commit message for this branch.
-                            [default: .grapeconfig.publish.updateLog]
-    --skipFirstLines=<int>  The number of lines to skip in the updateLog file before inserting the commit message.
-                            [default: .grapeconfig.publish.logSkipFirstLines]
-    --entryHeader=<string>  The format for the commit message header. The string literals <date>, <user>, and <version>
-                            will be replaced by the date, the result of git config --get user.name, and the result of
-                            git describe --abbrev=0 after the tickversion step, respectively.
-                            [default: .grapeconfig.publish.logEntryHeader]
-    --tickVersion=<bool>    Tick a version number as a part of this publish action.
-                            [default: .grapeconfig.publish.tickVersion]
-    --tickOnCascade=<slot>  Tick the <slot> version number when performing a cascade.
-                            Default behavior governed by the flow.topicCascadeTick mapping. 
-    -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
-                            and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Bitbucket username.
-    --bitbucketURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
-                            [default: .grapeconfig.project.stashURL]
-    --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
-                            [default: .grapeconfig.project.verifySSL]
-    --project=<project>     Your Bitbucket Project. See grape-review for more details.
-                            [default: .grapeconfig.project.name]
-    --repo=<repo>           Your Bitbucket repo. See grape-review for more details.
-                            [default: .grapeconfig.repo.name]
-    -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
-                            Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
-    --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
-                            by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
-                            if no option for .grapeconfig.flow.topicDestinationMappings exists.
-    --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
-                            as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
-    --emailNotification=<b> Set to true to send a notification email after you've published. The email will consist of
-                            a header <header> and a message, generally the contents of <CommitMessageFile> and/or
-                            the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
-                            and will be CC'd to the user.
-                            For the email subject, header and footer, the string literals
-                            '<user>', '<date>', '<version>', and '<public>' with the following:
-                            <user>: the result of git config --get user.name
-                            <date>: the current timestamp.
-                            <version>: The version of the project, so long as grape is managing your versioning.
-                            <public>: The branch to publish to.
-                            [default: .grapeconfig.publish.emailNotification]
-    --emailHeader=<header>  The email header. See above.
-                            [default: .grapeconfig.publish.emailHeader]
-    --emailFooter=<footer>  The email footer. See above.
-                            [default: .grapeconfig.publish.emailFooter]
-    --emailSubject=<sbj>    The email subject. See above.
-                            [default: .grapeconfig.publish.emailSubject]
-    --emailSendTo=<addr>    The comma-delimited list of receivers of the email.
-                            [default: .grapeconfig.publish.emailSendTo]
-    --emailServer=<server>  The smtp email server address.
-                            [default: .grapeconfig.publish.emailServer]
-    --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
-                            [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
-                            markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge           Perform the merge using the Bitbucket REST API. 
+    --squash                  Squash merges the topic into the public, then performs a commit if the merge goes clean.
+    --cascade=<branch>        For squash merges, can choose to cascade back to <branch> after the merge is
+                              completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
+                              nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
+                              submodule publish policies.
+    --merge                   Perform a normal merge.
+    --mergeTrain=<bool>       Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
+                              in an active merge train.
+                              [default: .grapeconfig.publish.mergeTrain]
+    -m <msg>                  The commit message to use for a successful merge / squash merge. Ignored if used with
+                              --rebase.
+    --rebase                  Rebases the topic branch to the public, then fast forwards the public to the tip of the
+                              topic.
+    --recurse                 Perform the publish action in submodules.
+                              Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
+    --noRecurse               Do not perform the publish action in submodules.
+                              Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --topic=<branch>          The branch to publish. Defaults to the current branch.
+    --noverify                Set to skip interactive verification of publish commands.
+    --nopush                  Set to skip the push of commits generated during the publish procedure.
+    --noUpdateMD              Set to skip update of local public branches during md steps.
+    --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
+                              public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
+                              Set by default if .grapeconfig.subtrees.pushOnPublish is True.
+    --noPushSubtrees          Don't perform a git subtree push.
+    --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
+                              "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                              "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
+                              "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                              "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
+    --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
+                              perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
+    --continue                Resume a previous call to grape publish that encountered a failure at one of the publish
+                              steps.
+    --abort                   Abort a previously failed call to grape publish.
+    --buildCmds=<buildStr>    The comma-delimited list of build commands to execute.
+                              [default: .grapeconfig.publish.buildCmds]
+    --buildDir=<path>         The directory (relative to the workspace root directory) to execute the build steps in.
+                              [default: .grapeconfig.publish.buildDir]
+    --skipBuild               Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
+                              if mergeTrain is enabled, otherwise default is False.
+    --noSkipBuild             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
+                              enabled. Default behavior is to not skip builds.
+    --testCmds=<testStr>      The comma-delimited list of test commands to execute.
+                              [default: .grapeconfig.publish.testCmds]
+    --testDir=<path>          The directory (relative to the workspace root directory) to execute the test steps in.
+                              [default: .grapeconfig.publish.testDir]
+    --skipTest                Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
+                              if mergeTrain is enabled, otherwise default is False.
+    --noSkipTests             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
+                              enabled. Default behavior is to not skip tests.
+    --testCIJob=<jobStr>      The comma-delimited list of required passing CI jobs that allows short circuiting of
+                              builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
+                              to indicate that entry may be satisfied by one of multiple possible jobs.
+                              E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                              passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
+                              [default: .grapeconfig.publish.testCIJob]
+    --prepublishCmds=<str>    The comma-delimited list of commands to execute just before the publish step.
+                              [default: .grapeconfig.publish.prepublishCmds]
+    --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
+                              [default: .grapeconfig.publish.prepublishDir]
+    --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
+                              [default: .grapeconfig.publish.postpublishCmds]
+    --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
+                              cmds in.
+                              [default: .grapeconfig.publish.postpublishDir]
+    --deleteTopic=<bool>      Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --noUpdateLog             Set to skip the updateLog step.
+    --updateLogDir=<dir>      Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
+                              a directory named after current development version.
+                              [default: .grapeconfig.publish.updateLogDir]
+    --updateLogCmds=<cmds>    The comma-delimited list of commands to execute as part of the update log construction.
+                              [default: .grapeconfig.publish.updateLogCmds]
+    --updateLog=<file>        The log file to update with the commit message for this branch. If --updateLogDir is defined,
+                              this is the base file name for update message files.
+                              [default: .grapeconfig.publish.updateLog]
+    --skipFirstLines=<int>    The number of lines to skip in the updateLog file before inserting the commit message.
+                              [default: .grapeconfig.publish.logSkipFirstLines]
+    --entryHeader=<string>    The format for the commit message header. The string literals <date>, <user>, and <version>
+                              will be replaced by the date, the result of git config --get user.name, and the result of
+                              git describe --abbrev=0 after the tickversion step, respectively.
+                              [default: .grapeconfig.publish.logEntryHeader]
+    --tickVersion=<bool>      Tick a version number as a part of this publish action.
+                              [default: .grapeconfig.publish.tickVersion]
+    --tickOnCascade=<slot>    Tick the <slot> version number when performing a cascade.
+                              Default behavior governed by the flow.topicCascadeTick mapping.
+    -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
+                              and defaults. -T can be used multiple times to pass multiple arguments.
+    --user=<user>             Your Bitbucket/Gitlab username.
+    --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+                              [default: .grapeconfig.project.codeReviewsURL]
+    --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
+                              [default: .grapeconfig.project.verifySSL]
+    --project=<project>       Your Bitbucket Project. See grape-review for more details.
+                              [default: .grapeconfig.project.name]
+    --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+                              [default: .grapeconfig.repo.name]
+    -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
+                              Type grape review --help for valid options.
+    --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
+                              by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
+                              if no option for .grapeconfig.flow.topicDestinationMappings exists.
+    --submodulePublic=<b>     The branch to publish to in submodules. Defaults to the mapping for the current topic branch
+                              as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+    --emailNotification=<b>   Set to true to send a notification email after you've published. The email will consist of
+                              a header <header> and a message, generally the contents of <CommitMessageFile> and/or
+                              the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
+                              and will be CC'd to the user.
+                              For the email subject, header and footer, the string literals
+                              '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
+                              <user>: the result of git config --get user.name
+                              <date>: the current timestamp.
+                              <version>: The version of the project, so long as grape is managing your versioning.
+                              <public>: The branch to publish to.
+                              <branch>: The branch to publish from.
+                              [default: .grapeconfig.publish.emailNotification]
+    --emailHeader=<header>    The email header. See above.
+                              [default: .grapeconfig.publish.emailHeader]
+    --emailFooter=<footer>    The email footer. See above.
+                              [default: .grapeconfig.publish.emailFooter]
+    --emailSubject=<sbj>      The email subject. See above.
+                              [default: .grapeconfig.publish.emailSubject]
+    --emailSendTo=<addr>      The comma-delimited list of receivers of the email.
+                              [default: .grapeconfig.publish.emailSendTo]
+    --emailServer=<server>    The smtp email server address.
+                              [default: .grapeconfig.publish.emailServer]
+    --emailMaxFiles=<int>     Maximum number of modified files (per subproject) to show in email.
+                              [default: .grapeconfig.publish.emailMaxFiles]
+    --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
+                              markInProgress, md2, publish, markAsDone, deleteTopic, done]
+    --remoteMerge             Perform the merge using the Bitbucket REST API.
+    --quiet                   Suppress output from custom build and test steps unless there is a failure.
+    --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                              REST API.
+                              [default: .grapeconfig.repo.ssh_pat_url]
+    --ssh_pat_port=<int>      Port number to issue ssh command over to generate a Personal Access Token for authentication
+                              into a Code Review service's REST API.
+                              [default: .grapeconfig.repo.ssh_pat_port]
+    --mergeUpdateLogs         If you are using a merge train workflow, this command can be used to produce a file that
+                              is a concatenation of merge request update log files, with the merge request version
+                              substituted out for appropriate version tags.
+    --mergedLog=<file>        The file to write the merged update logs to.
+    --startVersion=<ver>      Starting version to search for relevant update message files.
+    --stopVersion=<ver>       Most recent version to search for relevant update message files. Defaults to HEAD.
+    --tagPrefix=<str>         The prefix for the git version tags. [default: v]
+    --tagSuffix=<str>         The suffix for the git version tags. Default value comes from
+                              .grapeconfig.versioning.branchTagSuffixMappings.
+    --sendEmail               Just send the notification email.
+    --topLevelMergeSHA=<SHA>  Specify the SHA in the top level repo corresponding to the merge commit of the topic branch
+                              into the public branch for use in generating the commit file list for an email notification.
+    --markMRWithVersion       Update a merge request title with the given version string.
+
+
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -191,54 +257,6 @@ class Publish(resumable.Resumable):
 
     """
 
-    def setDefaultConfig(self, config):
-        config.ensureSection("workspace")
-        config.ensureSection("flow")
-        config.ensureSection("subtrees")
-        config.ensureSection("publish")
-
-        # workspace defaults
-        config.set('workspace', 'manageSubmodules', 'True')
-        config.set('workspace', 'submoduleTopicPrefixMappings', '?:develop')
-        config.set('workspace', 'submodulePublishPolicy', '?:merge')
-        # publish policy defaults
-        config.set('flow', 'publishPolicy', '?:merge')
-        # subtree publish actions
-        config.set('subtrees', 'names', '')
-        config.set('subtrees', 'pushOnPublish', "False")
-        # build steps
-        config.set('publish', 'buildCmds', '')
-        config.set('publish', 'buildDir', '.')
-        # test steps
-        config.set('publish', 'testCmds', '')
-        config.set('publish', 'testDir', '.')
-        # prepublish steps
-        config.set('publish', 'prepublishCmds', '')
-        config.set('publish', 'prepublishDir', '.')
-        # postpublish steps
-        config.set('publish', 'postpublishCmds', '')
-        config.set('publish', 'postpublishDir', '.')
-        # tick the version?
-        config.set('publish', 'tickVersion', 'False')
-        # use Bitbucket for checking Pull Request status?
-        config.set('publish', 'useStash', 'True')
-        # delete when done
-        config.set('publish', 'deleteTopic', 'False')
-        # log file
-        config.set('publish', 'updateLog', '.grapepublishlog')
-        config.set('publish', 'logSkipFirstLines', '0')
-        config.set('publish', 'logEntryHeader', "<date> <user>\\n<version>\\n")
-        # email config
-        config.set('publish', 'emailNotification', 'False')
-        config.set('publish', 'emailHeader', '<public> updated to <version>')
-        config.set('publish', 'emailFooter', '')
-        config.set('publish', 'emailServer', 'smtp.email.server')
-        config.set('publish', 'emailSendTo', 'user.list@company.com')
-        config.set('publish', 'emailSubject', '<public> updated to <version>')
-        config.set('publish', 'emailMaxFiles', '100')
-        # tick on cascade behavior
-        config.set("flow","topicCascadeTick","?:0")
-
     def __init__(self):
         super(Publish, self).__init__()
         self._key = "publish"
@@ -250,21 +268,81 @@ class Publish(resumable.Resumable):
         self.st_branches = {}
         self.cascadeDict = {}
         self.doDelete = {}
+        self._codeReviews = None
+        self._repo = None
+
+    def setDefaultConfig(self, config):
+        config.ensureSection(self.SECTION_WORKSPACE)
+        config.ensureSection(self.SECTION_FLOW)
+        config.ensureSection(self.SECTION_SUBTREES)
+        config.ensureSection(self.SECTION_PUBLISH)
+
+        # workspace defaults
+        config.set(self.SECTION_WORKSPACE, 'manageSubmodules', 'True')
+        config.set(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings', '?:develop')
+        config.set(self.SECTION_WORKSPACE, 'submodulePublishPolicy', '?:merge')
+        # publish policy defaults
+        config.set(self.SECTION_FLOW, 'publishPolicy', '?:merge')
+        config.set(self.SECTION_PUBLISH, 'mergeTrain', 'False')
+        # subtree publish actions
+        config.set(self.SECTION_SUBTREES, 'names', '')
+        config.set(self.SECTION_SUBTREES, 'pushOnPublish', 'False')
+        # build steps
+        config.set(self.SECTION_PUBLISH, 'buildCmds', '')
+        config.set(self.SECTION_PUBLISH, 'buildDir', '.')
+        config.set(self.SECTION_PUBLISH, 'skipBuildOnTrain', 'False')
+        config.set(self.SECTION_PUBLISH, 'skipTestOnTrain', 'False')
+        # test steps
+        config.set(self.SECTION_PUBLISH, 'testCmds', '')
+        config.set(self.SECTION_PUBLISH, 'testDir', '.')
+        config.set(self.SECTION_PUBLISH, 'testCIJob', '')
+        # prepublish steps
+        config.set(self.SECTION_PUBLISH, 'prepublishCmds', '')
+        config.set(self.SECTION_PUBLISH, 'prepublishDir', '.')
+        # postpublish steps
+        config.set(self.SECTION_PUBLISH, 'postpublishCmds', '')
+        config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
+        # tick the version?
+        config.set(self.SECTION_PUBLISH, 'tickVersion', 'False')
+        # use Bitbucket for checking Pull Request status?
+        config.set(self.SECTION_PUBLISH, 'useStash', 'True')
+        # delete when done
+        config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
+        # log file
+        config.set(self.SECTION_PUBLISH, 'updateLog', '.grapepublishlog')
+        config.set(self.SECTION_PUBLISH, 'updateLogCmds', '')
+        config.set(self.SECTION_PUBLISH, 'updateLogDir', '')
+        config.set(self.SECTION_PUBLISH, 'logSkipFirstLines', '0')
+        config.set(self.SECTION_PUBLISH, 'logEntryHeader', "<date> <user>\\n<version>\\n")
+        # email config
+        config.set(self.SECTION_PUBLISH, 'emailNotification', 'False')
+        config.set(self.SECTION_PUBLISH, 'emailHeader', '<public> updated to <version>')
+        config.set(self.SECTION_PUBLISH, 'emailFooter', '')
+        config.set(self.SECTION_PUBLISH, 'emailServer', 'smtp.email.server')
+        config.set(self.SECTION_PUBLISH, 'emailSendTo', 'user.list@company.com')
+        config.set(self.SECTION_PUBLISH, 'emailSubject', '<public> updated to <version>')
+        config.set(self.SECTION_PUBLISH, 'emailMaxFiles', '100')
+        # tick on cascade behavior
+        config.set(self.SECTION_FLOW, "topicCascadeTick","?:0")
+        # reviewer lists
+        config.set(self.SECTION_PUBLISH, 'projects_with_reviewer_lists', '')
 
     def description(self):
         try:
-            current = git.currentBranch()
-            public = grapeConfig.grapeConfig().getPublicBranchFor(git.currentBranch())
-        except git.GrapeGitError:
+            current = git.currentBranch(execution_path=self.workspace_dir)
+            public = config_parser_global.grapeConfig().getPublicBranchFor(
+                git.currentBranch(execution_path=self.workspace_dir))
+        except grape_errors.GrapeGitError:
             public = "Unknown"
             current = "Unknown"
         except KeyError:
             public = "Unknown"
             current = "Unknown"
-        return "Publish the current %s branch to %s" % (git.branchPrefix(current), public)
+        return f"Publish the current {git.branchPrefix(current)} " + \
+               f"branch to {public}"
 
-    def _resume(self, args):
-        super(Publish, self)._resume(args)
+    def _resume(self, args, *, workspace_dir):
+        super(Publish, self)._resume(args, workspace_dir=workspace_dir)
         self.execute(args)
 
     def _saveProgress(self, args):
@@ -274,13 +352,14 @@ class Publish(resumable.Resumable):
         # resolve default topic branch, ensure we are on the topic branch
         topic = args["--topic"]
         if not topic:
-            topic = git.currentBranch()
-        if topic != git.currentBranch() and self.after(self.order, "publish", args["--startAt"]):
-            git.checkout(topic)
+            topic = git.currentBranch(execution_path=self.workspace_dir)
+        if topic != git.currentBranch(execution_path=self.workspace_dir) and \
+                args['--startAt'] == 'publish' and args["--startAt"] in self.order:
+            git.checkout(topic, execution_path=self.workspace_dir)
         args["--topic"] = topic
 
         # resolve default public branch using .grapeconfig.flow.topicPrefixMappings
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         prefix = git.branchPrefix(topic)
         public = args["--public"]
         if not public:
@@ -290,74 +369,121 @@ class Publish(resumable.Resumable):
         # whether or not to use Bitbucket
         if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
-        if not args["--noReview"] and type(args["--verifySSL"]) != bool:
-            verify = True if args["--verifySSL"].lower() == "true" else False
+        if not args["--noReview"] and not isinstance(args["--verifySSL"], bool):
+            verify = args["--verifySSL"].lower() == "true"
             args["--verifySSL"] = verify
         # get the Bitbucket Username
         user = args["--user"]
 
         if not user and not args["--noReview"] and not args["--printSteps"]:
             args["--user"] = utility.getUserName(service="Bitbucket")
-            
-        
+
+
         if args["--tickVersion"] is not False and args["--tickVersion"] is not True:
             if args["--tickVersion"].lower() == "false":
                 args["--tickVersion"] = False
             else:
                 args["--tickVersion"] = True
         if  args["--tickOnCascade"] is None:
-            args["--tickOnCascade"] = int(config.getMapping("flow","topicCascadeTick")[args["--topic"]])
+            args["--tickOnCascade"] = int(config.getMapping(self.SECTION_FLOW, "topicCascadeTick")[args["--topic"]])
+
+        #whether mergeTrains are enabled
+        if args["--mergeTrain"]:
+            if args["--mergeTrain"] is not True and args["--mergeTrain"] is not False:
+                doMergeTrain = args["--mergeTrain"].lower() == "true"
+                args["--mergeTrain"] = doMergeTrain
+        
+        # resolve skip[Build|Test}OnTrain grapeconfig option with skip[Build|Test] command line option
+        if args["--mergeTrain"]:
+            if "--skipBuild" in args and not args["--skipBuild"]:
+                if config.get(self.SECTION_PUBLISH, 'skipBuildOnTrain').lower() == "true":
+                    args["--skipBuild"] = True
+            if "--noSkipBuilds" in args and args["--noSkipBuilds"]:
+                args["--skipBuild"] = False
+            if "--skipTest" in args and not args["--skipTest"]:
+                if config.get(self.SECTION_PUBLISH, 'skipTestOnTrain').lower() == "true":
+                    args["--skipTest"] = True
+            if "--noSkipTests" in args and args["--noSkipTests"]:
+                args["--skipTest"] = False
+
+        if "--skipBuild" not in args:
+            args["--skipBuild"] = False
+        if "--skipTest" not in args:
+            args["--skipTest"] = False
+        # these aren't actually options, but are put in to prevent KeyErrors for performCustomStep
+        args["--skipPostpublish"] = False
+        args["--skipPrepublish"] = False
+
+        # store the args in self
+        self.args = args
+
 
     def abort(self, args):
         #undo any commits done since we first started
-        super(Publish, self)._resume(args)
-        branch = git.currentBranch()
-        if self.progress["startingSHA"] != git.SHA(branch):
-            utility.printMsg("Reverting all commits from %s from %s to %s" % (branch, self.progress["startingSHA"],
-                                                                              git.SHA(branch)))
-            revert = utility.userInput("This will apply to %s. continue? [y,n]" % git.currentBranch(), "y")
+        super(Publish, self)._resume(args, workspace_dir=self.workspace_dir)
+        branch = git.currentBranch(execution_path=self.workspace_dir)
+        if self.progress["startingSHA"] != git.SHA(branch, execution_path=self.workspace_dir):
+            logging.info(f"Reverting all commits from {branch} from " +
+                         f"{self.progress['startingSHA']} to {git.SHA(branch, execution_path=self.workspace_dir)}")
+            revert = utility.userInput(
+                f"This will apply to {branch}. continue? [y,n]", "y")
             if revert:
-                git.revert("--no-edit %s..%s" % (self.progress["startingSHA"], "HEAD"))
+                git.revert(f"--no-edit {self.progress['startingSHA']}..HEAD",
+                           execution_path=self.workspace_dir)
         # release IN PROGRESS LOCK
-        utility.printMsg("Releasing In Progress Lock")
+        logging.info("Releasing In Progress Lock")
+        self.args = args
         self.releaseInProgressLock(args)
 
-    @staticmethod
-    def after(array, item1, item2): 
-        try: 
-            pos1 = array.index(item1)
-            pos2 = array.index(item2)
-        except ValueError:
-            return False
-    
+    @log_wrapper
     def execute(self, args):
-        if args["--abort"]: 
+        self.set_progress_file(execution_path=self.workspace_dir)
+
+        # this is needed for all custom actions, ensure it is initialized for all cases here
+        self.progress["CIPassed"] = False
+
+        if args["--abort"]:
             self.abort(args)
             return True
         if "startingSHA" not in self.progress:
-            self.progress["startingSHA"] = git.SHA("HEAD")
-            
-        self.order = ["testForCleanWorkspace1",  "md1", "ensureModifiedSubmodulesAreActive", 
-                      "verifyPublishActions",
-                      "ensureReview", "verifyCompletedReview", 
-                      "markInProgress", "md2", "tickVersion", "updateLog",
-                      "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                      "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]        
-        if args["--quick"]:
-            self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish", 
-                          "markAsDone", "deleteTopic", "done"]
-        
+            self.progress["startingSHA"] = git.SHA("HEAD",
+                                                   execution_path=self.workspace_dir)
+
         self.parseArgs(args)
-        
+
+        if args["--mergeUpdateLogs"]:
+            self.mergeUpdateLogs(args)
+            return True
+        if args["--markMRWithVersion"]:
+            return self.markReviewWithVersionNumber(args)
+        if args["--quick"]:
+            self.order = ["md1","ensureModifiedSubmodulesAreActive","ensureReview", "verifyPublishActions", "markInProgress", "md2", "publish",
+                          "markAsDone", "deleteTopic", "done"]
+        elif args["--sendEmail"]:
+            self.order = ["notify", "done"]
+        elif args["--mergeTrain"]:
+            # steps for queuing in the merge train
+            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
+                          "checkCI", "build", "test",
+                          "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "requestUserStartMergeTrain", "done"]
+        else:
+            self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview",
+                          "markInProgress", "md2", "checkCI", "tickVersion", "updateLog",
+                          "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                          "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
+
         startPoint = args["--startAt"]
 
         if args["--printSteps"]:
-            print self.order
+            logging.info(self.order)
             return True
 
         if startPoint:
             if startPoint not in self.order:
-                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (startPoint, self.order))
+                logging.info(f"{startPoint} not a valid publish step. " +
+                             f"Choose 1 of :\n{self.order}")
                 return False
         else:
             startPoint = self.order[0]
@@ -366,16 +492,20 @@ class Publish(resumable.Resumable):
 
         if stopPoint:
             if stopPoint not in self.order:
-                utility.printMsg("%s not a valid publish step. Choose 1 of :\n %s" % (stopPoint, self.order))
+                logging.info(
+                    f"{stopPoint} not a valid publish step." +
+                    f"Choose 1 of :\n{self.order}")
                 return False
 
-        steps = {"build": self.performCustomBuildStep,
+        steps = {"checkCI": self.performCICheck,
+                 "build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
                  "prePublish": self.performCustomPrePublishSteps,
                  "tickVersion": self.tickVersion,
                  "tagVersion": self.tagVersion,
                  "performCascades": self.performCascades,
                  "publish": self.publishAllProjects,
+                 "push": self.push,
                  "postPublish": self.performCustomPostPublishSteps,
                  "deleteTopic": self.deleteTopicBranch,
                  "verifyCompletedReview": self.verifyCompletedReview,
@@ -383,33 +513,42 @@ class Publish(resumable.Resumable):
                  "testForCleanWorkspace2": self.testForCleanWorkspace,
                  "markInProgress": self.acquireInProgressLock,
                  "markAsDone": self.releaseInProgressLock,
+                 "mergeOnSuccess" : self.mergeOnSuccess,
                  "updateLog": self.updateLog,
                  "notify": self.sendNotificationEmail,
                  "ensureReview": self.ensureReview,
                  "ensureModifiedSubmodulesAreActive": self.ensureModifiedSubmodulesAreActive,
                  "md1": self.mergePublic,
                  "md2": self.mergePublic,
-                 
+                 "requestUserStartMergeTrain": self.requestUserStartMergeTrain,
                  "verifyPublishActions": self.verifyPublishTargetsWithUser}
 
 
         currentStep = startPoint
-        os.chdir(utility.workspaceDir())
         for step in self.order:
             if step == "done":
                 break
             if step == stopPoint:
-                utility.printMsg("Stopping at %s step as requested." % stopPoint)
+                logging.info(f"Stopping at {stopPoint} step as requested.")
                 args["--startAt"] = step
                 self.dumpProgress(args)
                 return True
             if step != currentStep:
                 continue
             try:
+                # Save the progress before attempting a step (this ensures that the progress
+                # is saved even if the first step after a --continue fails).
+                args['workspace_dir'] = self.workspace_dir
+                self.dumpProgress(args)
+
                 ret = steps[step](args)
+
+                # Save the progress immediately after a successful step (in case there is an
+                # uncaught interruption in between steps).
+                self.dumpProgress(args)
             except BaseException as e:
                 self.bailOut(step, args)
-                print(traceback.format_exc())
+                logging.error(traceback.format_exc())
                 return False
             if ret:
                 currentStep = self.order[self.order.index(currentStep) + 1]
@@ -420,96 +559,150 @@ class Publish(resumable.Resumable):
         return True
 
     def bailOut(self, step, args):
-        utility.printMsg("Publish step %s failed. Please resolve the issue and then continue using\n"
-                         "grape publish --continue" % step.upper())
+        logging.info(
+            f"Publish step {step.upper()} failed. Please resolve the issue" +
+            " and then continue using\ngrape publish --continue")
         args["--startAt"] = step
         self.dumpProgress(args)
         return
 
     def ensureModifiedSubmodulesAreActive(self, args):
-        missing = utility.getModifiedInactiveSubmodules(args["--public"], args["--topic"])
+        missing = utility.getModifiedInactiveSubmodules(
+            args["--public"], args["--topic"], includeAdded=True,
+            workspace_dir=self.workspace_dir)
         if missing:
-            utility.printMsg("The following submodules that you've modified are not currently present in your workspace.\n"
+            logging.info("The following submodules that you've modified are not currently present in your workspace.\n"
                              "You should activate them using grape uv and then call publish --continue")
-            utility.printMsg(','.join(missing))
+            logging.info(','.join(missing))
             return False
         return True
 
     def mergePublic(self, args):
-        menu = grapeMenu.menu()
-        return menu.applyMenuChoice("md", ["--am", "--public=%s" % args["--public"]])
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        mdArgs = ["--am", f"--public={args['--public']}"]
+        if args["--noUpdateMD"]:
+            mdArgs.append("--noUpdate")
+        if  menu.applyMenuChoice("md", mdArgs):
+            # update the startingSHA to be after any merges as they cause all sorts of problems for git revert in the
+            # event of a grape publish --abort
+            self.progress["startingSHA"] = git.SHA("HEAD", execution_path=self.workspace_dir)
+            return True
+        else:
+            return False
 
-    @staticmethod
-    def markReview(args, newArgs, skipStr, updateOnly=True):
+
+    def markReview(self, args, newArgs, skipStr, updateOnly=True):
         if args["--noReview"]:
-            utility.printMsg(skipStr)
+            logging.info(skipStr)
             return True
         reviewArgs = args["-R"]
         finalArgs = []
         if updateOnly:
             finalArgs = ["--update"]
-        finalArgs += ["--source=%s" % args["--topic"], "--target=%s" % args["--public"],
-                      "--user=%s" % args["--user"]]
+        finalArgs += [f"--source={args['--topic']}",
+                      f"--target={args['--public']}",
+                      f"--user={args['--user']}",
+                      f"--verifySSL={args['--verifySSL']}"]
         if len(newArgs) > 0:
             finalArgs += newArgs
         for arg in reviewArgs:
             finalArgs.append(arg.strip())
-        return grapeMenu.menu().applyMenuChoice("review", finalArgs)
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        return menu.applyMenuChoice("review", finalArgs)
 
     def markReviewAsInProgress(self, args):
-        utility.printMsg("Prepending pull request title with **IN PROGRESS**...")
+        logging.info("Prepending pull request title with **IN PROGRESS**...")
         return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend"], "Skipping marking pull request "
                                                                                 "as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
+        self.loadVersion(args)
         version = self.progress["version"]
-        utility.printMsg("Prepending pull request title with %s" % version)
-        return self.markReview(args, ["--title=%s :" % version, "--prepend"], "Skipping marking pull request with "
-                                                                              "version number")
+        logging.info(f"Prepending pull request title with {version}")
+        return self.markReview(args, [f"--title={version} :", "--prepend", "--noLocal", "--noRecurse", "--noRecurseSubprojects", "--skiplabels"],
+                              "Skipping marking pull request with version number")
 
     def ensureReview(self, args):
         return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
 
+    @property
+    def codeReviews(self):
+        if self._codeReviews is None:
+            self._codeReviews = CodeReviewsFactory.makeCodeReviews(
+                username=self.args["--user"], url=self.args["--codeReviewsURL"],
+                verify=self.args["--verifySSL"], port=int(self.args["--ssh_pat_port"]),
+                ssh_path = self.args["--ssh_pat_url"], workspace_dir=self.workspace_dir)
+        return  self._codeReviews
 
-            
+    @property
+    def repo(self):
+        if self._repo is None:
+            self._repo = self.codeReviews.project(self.args["--project"]).repo(self.args["--repo"])
+        return self._repo
 
- 
-    @staticmethod
-    def checkInProgressLock(args):
+    def pullRequests(self):
+        return self.repo.pullRequests()
+
+    def openPullRequest(self):
+        return self.repo.getOpenPullRequest(self.args["--topic"], self.args["--public"])
+
+    def checkInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping In Progress Lock Check..")
+            logging.info("Skipping In Progress Lock Check..")
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
-        repo = atlassian.project(args["--project"]).repo(args["--repo"])
-        pullRequests = repo.pullRequests()
         inProgressRequests = []
-        for request in pullRequests:
+        for request in self.pullRequests():
             inProgress = "IN PROGRESS" in request.title()
             if inProgress:
                 doesConflict = request.toRef() == args["--public"]
                 if doesConflict:
                     inProgressRequests.append(request)
         if len(inProgressRequests) == 0:
-            utility.printMsg("No other pull requests are IN PROGRESS...")
+            logging.info("No other pull requests are IN PROGRESS...")
             return True
-        elif len(inProgressRequests) == 1:
-            thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        if len(inProgressRequests) == 1:
+            thisRequest = self.openPullRequest()
             if thisRequest == inProgressRequests[0]:
-                utility.printMsg("The pull request for this branch is already in progress. Continuing...")
+                logging.info("The pull request for this branch is already in progress. Continuing...")
                 return 2
-            else:
-                utility.printMsg("The following pull request is already in progress:")
-                print(inProgressRequests[0])
+            if not args["--mergeTrain"]:
+                logging.info("The following pull request is already in progress:")
+                logging.info(inProgressRequests[0])
                 return False
+            else:
+                return True
         else:
-            utility.printMsg("ERROR: There are multiple pull requests in progress!")
-            for request in inProgressRequests:
-                print request
-            return False
+            if not args["--mergeTrain"]:
+                logging.error("ERROR: There are multiple pull requests in progress!")
+                for request in inProgressRequests:
+                    logging.info(request)
+                return False
+            else:
+                thisRequest = self.openPullRequest()
+                for request in inProgressRequests:
+                    if thisRequest == request:
+                        logging.info("The pull request for this branch is already in progress. Continuing...")
+                        return 2
+                logging.info("This pull request is not yet marked in progress.")
+                return True
+
+
     def acquireInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping In Progress Lock Check..")
+            logging.info("Skipping In Progress Lock Check..")
             return True
+
+        if not args["--mergeTrain"]:
+            thisRequest = self.openPullRequest()
+            config = config_parser_global.grapeConfig()
+            inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+            if inprogresslabel:
+               thisRequest = self.openPullRequest()
+               thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
+               # Regenerate the pipeline now with new label
+               logging.info(f"Regenerating pipeline with {inprogresslabel} label for in-progress lock...")
+               thisRequest.regeneratePipeline()
+
         retcode = self.checkInProgressLock(args)
         if retcode:
             # the 2 means we are already marked as in progress
@@ -519,15 +712,12 @@ class Publish(resumable.Resumable):
 
     def releaseInProgressLock(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping In Progress Lock Release...")
+            logging.info("Skipping In Progress Lock Release...")
             return True
-
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
-        repo = atlassian.project(args["--project"]).repo(args["--repo"])
-        request = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        request = self.openPullRequest()
         state = "open"
         if not request:
-            matchingRequests = repo.getMergedPullRequests(args["--topic"], args["--public"])
+            matchingRequests = self.repo.getMergedPullRequests(args["--topic"], args["--public"])
             state = "merged"
             for r in matchingRequests:
                 if "**IN PROGRESS**" in r.title():
@@ -535,34 +725,44 @@ class Publish(resumable.Resumable):
                     break
         if request:
             title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
-            return self.markReview(args, ["--title=%s" % title, "--state=%s" % state], "")
+            config = config_parser_global.grapeConfig()
+            inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+            if inprogresslabel:
+               request.update(request.version(), remove_labels=[inprogresslabel])
+               # Regenerate the pipeline now (in case there were no commits to push that would have regenerated one)
+               # In certain cases, the merge request is already closed and the pipeline cannot be regenerated
+               logging.info(f"Regenerating pipeline without {inprogresslabel} label to release in-progress lock...")
+               request.regeneratePipeline(raiseOnFailure=False)
+            return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
         else:
-            utility.printMsg("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
+            logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
-            utility.printMsg("Skipping verification of code review...")
+            logging.info("Skipping verification of code review...")
             self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
             return True
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
-        repo = atlassian.project(args["--project"]).repo(args["--repo"])
-        pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+        pullRequest = self.openPullRequest()
         verified = False
         if pullRequest:
             verified = pullRequest.approved()
             reviewers = pullRequest.reviewers()
             if not verified:
                 if not reviewers:
-                    utility.printMsg("There are no reviewers for your pull request for %s targeting %s." %
-                                     (args["--topic"], args["--public"]))
+                    logging.info(
+                        "There are no reviewers for your pull request for " +
+                        f"{args['--topic']} targeting {args['--public']}.")
                     self.progress["reviewers"] = "No reviewers"
                 else:
-                    utility.printMsg("The following reviewers have not approved your request:\n")
+                    logging.info("The following reviewers have not approved your request:\n")
                     approvedReviewerNames = []
                     for reviewer in reviewers:
                         if reviewer[1] is False:
-                            print "%s (%s)" % (reviewer[0], reviewer[2])
+                            logging.info(f"{reviewer[0]} ({reviewer[2]})")
                         else:
                             approvedReviewerNames.append(reviewer[2])
                     if len(approvedReviewerNames) > 0:
@@ -570,60 +770,135 @@ class Publish(resumable.Resumable):
                     else:
                         self.progress["reviewers"] = "No reviewers"
             else:
-                utility.printMsg("All reviewers have approved your request.")
-                if args["--user"] != pullRequest.author():
-                    reviewers.append((pullRequest.author(), True, pullRequest.authorName()))
+                logging.info("All reviewers have approved your request.")
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
+            self.progress["author"] = pullRequest.authorName()
+            self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
         else:
-            utility.printMsg("There is no pull request for your current branch. \nStart one using grape review or by "
-                             "visiting %s" % ('/'.join([atlassian.url, "projects", args["--project"], "repos",
-                                                        args["--repo"], "pull-requests"])))
+            logging.info("There is no pull request for your current branch.\nStart one using grape review.")
             self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
         return verified
 
-    @staticmethod
-    def testForCleanWorkspace(args):
-        utility.printMsg("Checking to make sure workspace has a clean status.")
-        with utility.cd(utility.workspaceDir()):
-            ret = utility.isWorkspaceClean(printOutput=True)
-            ret = grapeMenu.menu().applyMenuChoice("status", ["--failIfInconsistent"]) and ret
-            if ret:
-                cb = git.currentBranch()
-                topic = args["--topic"]
-                ret = ret and cb == topic
-                if not ret:
-                    utility.printMsg("Current branch %s is not topic branch %s. Please checkout %s before publishing. " % (cb, topic, topic))
+    def testForCleanWorkspace(self, args):
+        logging.info("Checking to make sure workspace has a clean status.")
+        ret = utility.isWorkspaceClean(printOutput=True,
+                                       workspace_dir=self.workspace_dir)
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        ret = menu.applyMenuChoice("status", ["--failIfInconsistent"]) and ret
+        if ret:
+            cb = git.currentBranch(execution_path=self.workspace_dir)
+            topic = args["--topic"]
+            ret = ret and cb == topic
+            if not ret:
+                logging.info(
+                    f"Current branch {cb} is not topic branch {topic}. " +
+                    f"Please checkout {topic} before publishing. ")
         return ret
+
+    def performCICheck(self, args):
+        """
+        The purpose of this check is to allow the publish process to use the fact that the result of a
+        merge between this branch and the public branch as they are right now did in fact past testing
+        on the server to skip the test in the local environment.
+        """
+        ci_jobs = args["--testCIJob"]
+        if ci_jobs:
+            ci_jobs = ci_jobs.split(',')
+            for i in range(len(ci_jobs)):
+                ci_jobs[i] = ci_jobs[i].split('|')
+
+
+        else:
+            # If the user did not explicitly name their CI jobs that count as building and testing,
+            # then this logic just skips the investigation of whether those jobs passed or not, avoiding
+            # unnecessary communication with the Gitlab server.
+            # if there are no jobs to check against, short-circuit
+            self.progress["CIPassed"] = False
+            return True
+        
+        passed = True
+        for possible_jobs in ci_jobs:
+            logging.info(f"Checking if one of {possible_jobs} is passing for current commit.")
+            or_pass = False
+            for job in possible_jobs:
+            
+                successful_job = self.repo.getSuccessfulJob(job,
+                                                            git.SHA(args["--topic"], execution_path=self.workspace_dir),
+                                                            git.SHA(args["--public"], execution_path=self.workspace_dir),
+                                                            args["--topic"],
+                                                            args["--public"]
+                                                            )
+                or_passed = successful_job != None
+                if or_passed:
+                    logging.info(f"{job} was successful.")
+                    break
+            passed = passed and or_passed
+            if not passed:
+                logging.info(f"no successful job found in one of {possible_jobs}")
+            # if user has configured a list of CIRepos that need to be active during CI jobs, we verify the
+            # job has produced a GRAPE_PROJECT_SHA.json artifact and that all grape projects (top level and nested)
+            # are consistent with our current workspace
+            config = config_parser_global.grapeConfig()
+            if passed and config.get(self.SECTION_WORKSPACE, "CIRepos"):
+                logging.info("downloading artifact GRAPE_PROJECT_SHA.json from successful job...")
+                artifact = json.loads(successful_job.artifact("GRAPE_PROJECT_SHA.json"))
+                logging.info("...downloaded.")
+                logging.info(f"verifying {artifact} is consistent with current workspace.")
+                menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                passed = menu.getOption("uv").verifySHAList(artifact)
+                if not passed:
+                    logging.info(f"{artifact} is inconsistent with current workspace.")
+
+        self.progress["CIPassed"] = passed 
+        if passed:
+            logging.info(f'CI jobs {ci_jobs} passed, GRAPE PUBLISH will skip build and test steps')
+        return True
 
     def performCustomStep(self, prefix, args):
-        if not args["--%sCmds" % prefix]:
+        if args[f'--skip{prefix.capitalize()}']:
             return True
-        cwd = os.getcwd()
-        if args["--%sDir" % prefix]:
-            os.chdir(os.path.join(utility.workspaceDir(), args["--%sDir" % prefix]))
-        cmds = args["--%sCmds" % prefix].split(',')
-        ret = True
-        utility.printMsg("GRAPE PUBLISH - PERFORMING CUSTOM %s STEP" % prefix.upper())
+        if not args[f"--{prefix}Cmds"]:
+            return True
+        if args[f"--{prefix}Dir"]:
+            working_dir = os.path.join(self.workspace_dir, args[f"--{prefix}Dir"])
+        else:
+            working_dir = os.getcwd()
+
+        cmds = args[f"--{prefix}Cmds"].split(',')
+        logging.info("GRAPE PUBLISH - PERFORMING CUSTOM " +
+                              f"{prefix.upper()} STEP")
         for cmd in cmds:
-            if ret:
-                if "<version>" in cmd:
-                    self.loadVersion(args)
-                    verStr = self.progress["version"]
-                    cmd = cmd.replace("<version>", verStr)
-                returnCode = utility.executeSubProcess(cmd.strip(), workingDirectory=os.getcwd(), 
-                                                       stream=True).returncode
-                print(returnCode)
-                ret = ret and (returnCode == 0)
-                if not ret: 
-                    break
-        os.chdir(cwd)
-        return ret
+            if "<version>" in cmd:
+                self.loadVersion(args)
+                verStr = self.progress["version"]
+                cmd = cmd.replace("<version>", verStr)
+            if "<public>" in cmd:
+                cmd = cmd.replace("<public>", args["--public"])
+            if "<branch>" in cmd:
+                cmd = cmd.replace("<branch>", args["--topic"])
+
+            capture_output = args["--quiet"]
+            process_result = vine_subprocess.executeSubProcess(
+                cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
+            logging.info(process_result.returncode)
+            if process_result.returncode != 0:
+                if process_result.stdout:
+                    logging.info(process_result.stdout.decode().strip())
+                if process_result.stderr:
+                    logging.error(process_result.stderr.decode().strip())
+                return False
+        return True
 
     def performCustomBuildStep(self, args):
-        return self.performCustomStep("build", args) and self.checkInProgressLock(args)
+        
+        return (self.progress["CIPassed"] or self.performCustomStep("build", args)) and self.checkInProgressLock(args)
 
     def performCustomTestStep(self, args):
-        return self.performCustomStep("test", args) and self.checkInProgressLock(args)
+        return (self.progress["CIPassed"] or self.performCustomStep("test", args)) and self.checkInProgressLock(args)
 
     def performCustomPrePublishSteps(self, args):
         ret = self.performCustomStep("prepublish", args)
@@ -638,8 +913,9 @@ class Publish(resumable.Resumable):
         # modified during the prepublish step, the git add *and* the git commit must be
         # handled in the custom step.
         try:
-            git.commit(" -m \"%s\"" % args["-m"])
-        except git.GrapeGitError:
+            git.commit(f" -m \"{args['-m']}\"",
+                       execution_path=self.workspace_dir)
+        except grape_errors.GrapeGitError:
             pass
 
         return self.checkInProgressLock(args)
@@ -648,60 +924,168 @@ class Publish(resumable.Resumable):
         return self.performCustomStep("postpublish", args)
 
     @staticmethod
-    def getModifiedFileList(public, topic, args):
+    def getModifiedFileList(public, topic, args, *, execution_path):
         # Limit the number of updated files displayed per subproject
         emailMaxFiles = args["--emailMaxFiles"]
-        updatelist = git.diff("--name-only %s %s" % (public, topic)).split('\n')
-        if len(updatelist) > emailMaxFiles:
+        try:
+            mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+            updatelist = git.diff(f"--name-only {mergeBase} {topic}",
+                                  execution_path=execution_path).split()
+        except:
+            # Ensure branches are on working tree, then retry diff.
+            try:
+               current_branch = git.currentBranch(execution_path=execution_path)
+               git.checkout(public, execution_path=execution_path)
+               git.checkout(topic, execution_path=execution_path)
+               git.checkout(current_branch, execution_path=execution_path)
+               mergeBase = git.mergeBase(f"{public} {topic}", execution_path=execution_path)
+               updatelist = git.diff(f"--name-only {mergeBase} {topic}",
+                                     execution_path=execution_path).split()
+            except grape_errors.GrapeGitError as e:
+               # If a nested subproject was unchanged, the @{1} argument may be invalid,
+               # but we don't want an error message in this case.
+               if 'only has 1 entries' in e.gitOutput:
+                  updatelist = []
+               else:
+                  logging.error(e.message)
+                  updatelist = ["[ Failed to get diff ]"]
+        if len(updatelist) > int(emailMaxFiles):
             updatelist.append("[ Additional files not shown ]")
         return updatelist
 
     def loadModifiedFiles(self, args):
         if "modifiedFiles" in self.progress:
             return True
-        wsdir = utility.workspaceDir()    
-        os.chdir(wsdir)
+
         public = args["--public"]
-        topic = args["--topic"]
-        if git.SHA(public) == git.SHA(topic):
-            public = utility.userInput("Please enter the branch name or SHA of the commit to diff against %s for the "
-                                       "modified file list." % topic)
+        if args["--sendEmail"]:
+            topic = f'origin/{args["--topic"]}'
+            # The topic branch has already been merged in in the outer level and should correspond to the public
+            # branch now, so we need to find the previous (pre-merge) version of the public branch to diff for
+            # the file list. The public branch should be a merge commit, so we find the first parent (which was
+            # the public branch prior to merging in the topic branch) to use for the diff.
+            # We can use origin/{public} if there have not been any other updates to {public} after the topic
+            # branch was merged; otherwise, the appropriate merge commit SHA needs to be specified.
+            mergeCommit = args["--topLevelMergeSHA"] if args["--topLevelMergeSHA"] else f"origin/{public}"
+            topLevelPublic = git.parentsOfMergeCommit(mergeCommit,execution_path=self.workspace_dir)[0]
+        else:
+            topic = args["--topic"]
+            topLevelPublic = public
+            if git.SHA(public, execution_path=self.workspace_dir) == \
+                    git.SHA(topic, execution_path=self.workspace_dir):
+                public = utility.userInput(
+                    "Please enter the branch name or SHA of the commit to diff " +
+                    f"against {topic} for the modified file list.")
 
         self.progress["modifiedFiles"] = []
 
         # Get list of modified files in main repo
-        self.progress["modifiedFiles"] += self.getModifiedFileList(public, topic, args)
+        self.progress["modifiedFiles"] += self.getModifiedFileList(
+            topLevelPublic, topic, args, execution_path=self.workspace_dir)
 
         # Get list of modified files in submodules
         if args["--recurse"]:
             submodulePublic = args["--submodulePublic"]
-            submodules = git.getModifiedSubmodules(public, topic)
+            if args["--sendEmail"]:
+                # This assumes that we are in the same workspace that published the changes in the submodule.
+                # Get the first prior SHA on the branch.
+                submodulePublic = f"{args['--submodulePublic']}"+"@{1}"
+            submodules = git.getModifiedSubmodules(
+                self.workspace_dir, topLevelPublic, topic, includeAdded=True)
             for sub in submodules:
-                os.chdir(os.path.join(wsdir, sub))
-                self.progress["modifiedFiles"] += [sub + "/" + s for s in self.getModifiedFileList(submodulePublic, topic, args)]
-            os.chdir(wsdir)
+                try:
+                    self.progress["modifiedFiles"].remove(sub)
+                    execution_path = os.path.join(self.workspace_dir, sub)
+                    self.progress["modifiedFiles"] += [os.path.join(sub, s) for s in self.getModifiedFileList(submodulePublic, topic, args, execution_path=execution_path)]
+                except ValueError as e:
+                    pass
 
         # Get list of modified files in nested subprojects
-        for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-            os.chdir(os.path.join(wsdir, nested))
-            modified = self.getModifiedFileList(public, topic, args)
+        if args["--sendEmail"]:
+            # This assumes that we are in the same workspace that published the changes in the nested subproject.
+            # Get the first prior SHA on the branch.
+            public = f"{args['--public']}"+"@{1}"
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+            execution_path = os.path.join(self.workspace_dir, nested)
+            modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
             if len(modified) > 0:
-                self.progress["modifiedFiles"] += [nested + "/" + s for s in modified]
-        os.chdir(wsdir)
+                self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
 
         return True
 
     def loadVersion(self, args):
-        if "version" in self.progress:
-            return True
-        else:
-            menu = grapeMenu.menu()
-            menu.applyMenuChoice("version", ["read"])
-            guess = menu.getOption("version").ver
-            self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
+        if "version" not in self.progress:
+            if "--markMRWithVersion" in args and args["--markMRWithVersion"]:
+                # TODO should this have tagSuffix?
+                tag = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
+                self.progress["version"] = tag.split(args["--tagPrefix"])[1]
+            elif args["--mergeTrain"] and not args["--sendEmail"]:
+                thisRequest = self.openPullRequest()
+                iid = thisRequest.iid()
+                version = f"MR_{iid}"
+                self.progress["version"] = version
+                return True
+            else:
+                menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                menu.applyMenuChoice("version", ["read"])
+                guess = menu.getOption("version").ver
+                self.progress["version"] = utility.userInput("Please enter version string for this commit", guess)
+                logging.info(f"version is {self.progress['version']}")
         return True
 
+    def loadMajorAndMinorVersion(self, args):
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        menu.applyMenuChoice("version", ["read"])
+        self.progress["major_version"] = menu.getOption("version").major_ver
+        self.progress["minor_version"] = menu.getOption("version").minor_ver
+        logDir = args["--updateLogDir"]
+        if "<major_version>" in logDir:
+            logDir = logDir.replace("<major_version>", f"{self.progress['major_version']}")
+        if "<minor_version>" in logDir:
+            logDir = logDir.replace("<minor_version>", f"{self.progress['minor_version']}")
+        args["--updateLogDir"] = logDir
+
+        
+    def loadCommitMessageFromRecentMergeRequest(self, args):
+        # TODO should this have tagSuffix?
+        last_version = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
+        branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+        tags = []
+        for line in branch_log.splitlines():
+           match = re.search("tag: (MR_[^),]+)", line)
+           if match:
+              logging.debug(match.group(1))
+              tags.append(match.group(1))
+        # This step occurs during grape publish --sendEmail, which should follow grape version tick,
+        # so it cannot easily be rerun as part of the same job (as the version tick will fail on rerun).
+        if len(tags) == 0:
+           self.progress["commitMsg"] = "No MR_ tag was found on this branch, so the merge request details could not be determined."
+           self.progress["reviewers"] = "unknown"
+           self.progress["author"] = "unknown"
+           self.progress["author_username"] = "unknown"
+           self.progress["author_email"] = ""
+        else:
+           tag = tags[0] 
+           self.progress["MR_tag"] = tag
+           pr_id = tag.split("MR_")[1]
+           pull_request = self.repo.pullRequests(id=pr_id)[0]
+           escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
+           if len(tags) > 1:
+              escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag} (tags: {tags}, last version: {last_version}, branch: {args['--topic']}).\n")
+           escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
+           escapedCommitMsg = escapedCommitMsg.replace("`", "'")
+           self.progress["commitMsg"] = escapedCommitMsg
+           self.progress["reviewers"] = ", ".join(x[2] for x in pull_request.reviewers())
+           self.progress["author"] = pull_request.authorName()
+           self.progress["author_username"] = pull_request.author()
+           self.progress["author_email"] = pull_request.authorEmail()
+           args["-m"] = escapedCommitMsg
+        return True
+             
+
     def loadCommitMessage(self, args):
+        if args["--sendEmail"]:
+            return self.loadCommitMessageFromRecentMergeRequest(args)
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
             self.verifyCompletedReview(args)
@@ -724,65 +1108,93 @@ class Publish(resumable.Resumable):
             # commit message should come from the file
             commitMsgFile = args["<CommitMessageFile>"]
             try:
-                with open(commitMsgFile, 'r') as f:
+                with io.open(commitMsgFile, 'r') as f:
                     commitMsg = f.readlines()+["\n"]
 
             except IOError as e:
-                print(e.message)
-                utility.printMsg("Could not read contents of %s" % commitMsgFile)
-                args["<CommitMessageFile>"] = False 
+                logging.error(e.message)
+                logging.error(f"Could not read contents of {commitMsgFile}")
+                args["<CommitMessageFile>"] = False
                 return False
 
             if not args["--noReview"]:
-                utility.printMsg("Updating Pull Request with commit msg...")
+                logging.info("Updating Pull Request with commit msg...")
                 self.markReview(args, ["--descr", commitMsgFile], "")
             else:
-                utility.printMsg("Skipping update of pull request description from commit message")
-        elif args["-m"]: 
-            commitMsg = [args["-m"]+"\n"] 
+                logging.info("Skipping update of pull request description from commit message")
+        elif args["-m"]:
+            commitMsg = [args["-m"]+"\n"]
         else:
             if args["--noReview"]:
-                utility.printMsg("Skipping retrieval of commit message from Pull Request description..")
+                logging.info("Skipping retrieval of commit message from Pull Request description..")
                 if not args["-m"]:
-                    print("File with commit message is required argument when publishing with --noReview and no -m "
-                          "<msg> defined.")
+                    logging.info("File with commit message is required " +
+                                 "argument when publishing with --noReview " +
+                                 "and no -m <msg> defined.")
                     return False
-            utility.printMsg("Retrieving pull request description for use as commit message...")
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
-            repo = atlassian.project(args["--project"]).repo(args["--repo"])
-            pullRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+            logging.info("Retrieving pull request description for use as commit message...")
+            pullRequest = self.openPullRequest()
             if pullRequest:
-               commitMsg = pullRequest.description().splitlines(True)+['\n']
+                commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
             else:
-               commitMsg = ""
+                commitMsg = ""
 
         # this will be used for the actual merge commit message.
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
-        
-        if escapedCommitMsg: 
-            args["-m"] = escapedCommitMsg
-        else:
-            utility.printMsg("WARNING: Commit message is empty. ")
 
-        utility.printMsg("The following commit message will be used for email notification, merge commits, etc.\n"
+        haveLink = False
+        haveBlock = False
+        skipBlock = False
+        empty = True
+        for line in escapedCommitMsg.splitlines():
+            line = line.strip()
+            if line:
+               if line.startswith(review.MRLinkText()):
+                  # Skip links to other merge requests
+                  haveLink = True
+                  continue
+               elif line.startswith(review.MRBlockDelimiter()):
+                  # Skip review blocks
+                  if line.endswith(f"START{review.MRBlockDelimiter()}"):
+                     haveBlock = True
+                     skipBlock = True
+                  if line.endswith(f"STOP{review.MRBlockDelimiter()}"):
+                     skipBlock = False
+                     continue
+               if skipBlock:
+                  continue
+               empty = False
+               break
+
+        if empty:
+            errMsg = "The commit message must be non-empty!"
+            if haveLink:
+               errMsg += f"\n- Lines starting with '{review.MRLinkText()}' are ignored."
+            if haveBlock:
+               errMsg += "\n- Lines in reviewer blocks are ignored."
+            logging.error(errMsg)
+            return False
+
+        args["-m"] = escapedCommitMsg
+
+        logging.info("The following commit message will be used for email notification, merge commits, etc.\n"
                          "======================================================================")
-        print ''.join(commitMsg[:10])
-        print "======================================================================"
+        logging.info(''.join(commitMsg[:10]))
+        logging.info("======================================================================")
         proceed = utility.userInput("Is the above message what you want for email notifications and merge commits? "
                                     "['y','n']", 'y')
         if not proceed:
-            utility.printMsg("Stopping. Either edit the message in your pull request, or pass in the name of a file "
+            logging.info("Stopping. Either edit the message in your pull request, or pass in the name of a file "
                              "containing your message as an argument to grape publish.")
             e = Exception()
             e.message = "Invalid commit message."
             args["<CommitMessageFile>"] = False
             args["-m"] = False
             raise e
-        else:
-            self.progress["commitMsg"] = escapedCommitMsg
-            args["-m"] = escapedCommitMsg
-            return True
+        self.progress["commitMsg"] = escapedCommitMsg
+        args["-m"] = escapedCommitMsg
+        return True
 
     def updateLog(self, args):
         if not (self.loadCommitMessage(args) and self.loadVersion(args)):
@@ -792,86 +1204,174 @@ class Publish(resumable.Resumable):
         if args["--noUpdateLog"]:
             return True
         logFile = args["--updateLog"]
-        cwd = os.getcwd()
-        os.chdir(utility.workspaceDir())
+        self.loadMajorAndMinorVersion(args)
+        logDir = args["--updateLogDir"]
+        if logDir:
+            if not os.path.exists(logDir):
+                os.makedirs(logDir)
+            logFile = os.path.join(logDir,f"{logFile}_{self.progress['version']}")
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
-            header = header.replace("<user>", git.config("--get user.name"))
+            header = header.replace("<user>", git.config(
+                "--get user.name", execution_path=self.workspace_dir))
+            header = header.replace("<author>", self.progress["author"])
+            header = header.replace("<author_username>", self.progress["author_username"])
             header = header.replace("<version>", self.progress["version"])
             header = header.replace("<reviewers>", self.progress["reviewers"])
             header = ["\n"]+header.split("\\n")
             commitMsg = header + commitMsg
             numLinesToSkip = int(args["--skipFirstLines"])
-            with open(logFile, 'r') as f:
-                loglines = f.readlines()
+            logFilePath = os.path.join(self.workspace_dir,logFile)
+            loglines = []
+            if not logDir:
+                with io.open(logFilePath, 'r') as f:
+                    loglines = f.readlines()
+                updated_or_added  = "updated"
+            else:
+                updated_or_added = "added"
             loglines.insert(numLinesToSkip, '\n'.join(commitMsg))
-            with open(logFile, 'w') as f:
+
+            # Execute any custom commands before writing the update log
+            if args["--updateLogCmds"]:
+                cmds = args[f"--updateLogCmds"].split(',')
+                logging.info("GRAPE PUBLISH - PERFORMING CUSTOM UPDATELOG STEP")
+                for cmd in cmds:
+                    if "<update_log>" in cmd:
+                        loglinestring = ''.join(loglines)
+                        loglinestring = loglinestring.replace('\n',r'\n')
+                        cmd = cmd.replace("<update_log>",loglinestring)
+                    capture_output = args["--quiet"]
+                    process_result = vine_subprocess.executeSubProcess(
+                        cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
+                    logging.info(process_result.returncode)
+                    if process_result.returncode != 0:
+                        if process_result.stdout:
+                            logging.info(process_result.stdout.decode().strip())
+                        if process_result.stderr:
+                            logging.error(process_result.stderr.decode().strip())
+                        return False
+            with io.open(logFilePath, 'w') as f:
                 f.writelines(loglines)
-            git.commit("%s -m \"GRAPE publish: updated log file %s\"" % (logFile, logFile))
-        os.chdir(cwd)
+            git.add(f"{logFilePath}", execution_path=self.workspace_dir)
+            git.commit(f"{logFile} -m \"GRAPE publish: {updated_or_added} log file " +
+                       f"{logFile}\"", execution_path=self.workspace_dir)
         return self.checkInProgressLock(args)
+
+    def mergeUpdateLogs(self, args):
+        startVer = args["--startVersion"]
+        stopVer = args["--stopVersion"]
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        versionOption = menu.getOption("version")
+        if stopVer is None:
+            versionArgs = ["read"]
+            menu.applyMenuChoice("version", versionArgs)
+            stopVer = menu.getOption("version").ver
+        if args["--tagSuffix"] is None:
+            config = config_parser_global.grapeConfig()
+            branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
+            args["--tagSuffix"] = branch2suffix[git.currentBranch(execution_path=self.workspace_dir)]
+        startSlots = versionOption.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], startVer)
+        stopSlots = versionOption.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], stopVer)
+        # we will only merge update logs over the last slot
+        mergedLogLines =  []
+        slotArgs = {"--prefix":args["--tagPrefix"],"--suffix":args["--tagSuffix"]}
+        while stopSlots[-1] >= startSlots[-1]:
+            ver2 =  versionOption.slotsToString(slotArgs, stopSlots)
+            stopSlots[-1] = stopSlots[-1] - 1
+            ver1 =  versionOption.slotsToString(slotArgs, stopSlots)
+            self.loadMajorAndMinorVersion(args)
+            log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
+            log_files = log_files.split()
+            if not log_files:
+                logging.info(f"No log file found for version {ver2}")
+            for lf in log_files:
+                logging.info(f"concatenating {lf} as version {ver2}")
+                try:
+                    mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split(args["--updateLog"]+'_')[1]
+                except IndexError as e:
+                    mr_ver = lf.split(args["--updateLogDir"]+os.path.sep)[1].split("UPDATE_LOG_")[1]
+                try:
+                    with open(lf) as f:
+                        file_lines = f.readlines()
+                    for l in file_lines:
+                        if l == f"{mr_ver}\n":
+                            mergedLogLines.append(f"{ver2}\n")
+                        else:
+                            mergedLogLines.append(l)
+                except FileNotFoundError as e:
+                    logging.info(f"{lf} no longer in repo, skipping")
+                    pass
+        with open(args["--mergedLog"],'w') as f:
+            for l in mergedLogLines:
+                f.write(l)
+        return True
+
 
     def tickVersion(self, args):
         if not args["--tickVersion"]:
             return True
-        menu = grapeMenu.menu()
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         if not args["--noReview"]:
-            atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--bitbucketURL"], verify=args["--verifySSL"])
-            repo = atlassian.project(args["--project"]).repo(args["--repo"])
-            thisRequest = repo.getOpenPullRequest(args["--topic"], args["--public"])
+            thisRequest = self.openPullRequest()
             requestTitle = thisRequest.title()
             versionArgs = ["read"]
             menu.applyMenuChoice("version", versionArgs)
-            currentVer = grapeMenu.menu().getOption("version").ver
+            currentVer = menu.getOption("version").ver
             if currentVer in requestTitle:
-                utility.printMsg("Current Version string already in pull request title. Assuming this is from "
+                logging.info(f"Current Version string '{currentVer}' already in pull request title '{requestTitle}'. Assuming this is from "
                 "a previous call to grape publish. Not ticking version again.")
                 return True
         ret = True
         if args["--tickVersion"]:
-            versionArgs = ["tick", "--notag", "--public=%s" % args["--public"]]
+            versionArgs = ["tick", "--notag", f"--public={args['--public']}"]
             for arg in args["-T"]:
                 versionArgs += [arg.strip()]
-            ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            self.progress["version"] = grapeMenu.menu().getOption("version").ver
+            ret = menu.applyMenuChoice("version", versionArgs)
+            self.progress["version"] = menu.getOption("version").ver
             ret = ret and self.markReviewWithVersionNumber(args)
         return ret and self.checkInProgressLock(args)
 
-    @staticmethod
-    def tagVersion(args):
-        ret = True
-        if args["--tickVersion"]:
-            versionArgs = ["tick", "--tag", "--notick", "--nocommit", "--tagNested"]
-            for arg in args["-T"]:
-                versionArgs += [arg.strip()]
-            cwd = os.getcwd()
-            wsdir = utility.workspaceDir()    
-            os.chdir(wsdir)
-            ret = grapeMenu.menu().applyMenuChoice("version", versionArgs)
-            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-                os.chdir(os.path.join(wsdir, nested))
-                git.push("--tags origin")
-            os.chdir(wsdir)
-            git.push("--tags origin")
-            os.chdir(cwd)
+    def tagVersion(self, args):
+        if not self.loadVersion(args):
+            return False
+        if not args["--tickVersion"]:
+            return True
+        if 'workspace_dir' not in args:
+            logging.error("Failed to Tag Version. Workspace dir not given.")
+            raise Exception
+        versionArgs = ["tick", self.progress["version"], "--tag", "--notick", "--nocommit", "--tagNested"]
+        if args["--mergeTrain"]:
+            versionArgs.append("-f")
+            versionArgs.append("--tagPrefix=MR_")
+            versionArgs.append("--prefix=MR_")
+        versionArgs.append("--pushTag")
+
+        for arg in args["-T"]:
+            versionArgs += [arg.strip()]
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        ret = menu.applyMenuChoice("version", versionArgs)
         return ret
 
     def sendNotificationEmail(self, args):
 
-        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadModifiedFiles(args)):
+        if not (self.loadCommitMessage(args) and self.loadVersion(args) and self.loadPublishTargets(args) and self.loadModifiedFiles(args)):
             return False
         # Write the contents of the mail file out to a temporary file
-        mailfile = tempfile.mktemp()
+        mailfile = os.path.realpath(tempfile.mktemp())
 
-        with open(mailfile, 'w') as mf:
+        with io.open(mailfile, 'w') as mf:
             date = time.asctime()
             emailHeader = args["--emailHeader"]
-            emailHeader = emailHeader.replace("<user>", git.config("--get user.name"))
+            emailHeader = emailHeader.replace(
+                "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+            emailHeader = emailHeader.replace("<author>", self.progress["author"])
+            emailHeader = emailHeader.replace("<author_username>", self.progress["author_username"])
             emailHeader = emailHeader.replace("<date>", date)
             emailHeader = emailHeader.replace("<version>", self.progress["version"])
             emailHeader = emailHeader.replace("<reviewers>", self.progress["reviewers"])
             emailHeader = emailHeader.replace("<public>", args["--public"])
+            emailHeader = emailHeader.replace("<branch>", args["--topic"])
             emailHeader = emailHeader.split("\\n")
             mf.write('\n'.join(emailHeader))
             comments = self.progress["commitMsg"]
@@ -883,33 +1383,46 @@ class Publish(resumable.Resumable):
                 mf.write("\n".join(updatelist))
             mf.write('\n')
             emailFooter = args["--emailFooter"]
-            emailFooter = emailFooter.replace("<user>", git.config("--get user.name"))
+            emailFooter = emailFooter.replace(
+                "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+            emailFooter = emailFooter.replace("<author>", self.progress["author"])
+            emailFooter = emailFooter.replace("<author_username>", self.progress["author_username"])
             emailFooter = emailFooter.replace("<date>", date)
             emailFooter = emailFooter.replace("<version>", self.progress["version"])
             emailFooter = emailFooter.replace("<reviewers>", self.progress["reviewers"])
             emailFooter = emailFooter.replace("<public>", args["--public"])
+            emailFooter = emailFooter.replace("<branch>", args["--topic"])
             emailFooter = emailFooter.split("\\n")
             mf.write('\n'.join(emailFooter))
- 
+
         if not args["--emailNotification"].lower() == "true":
-            utility.printMsg("Skipping E-mail notification..")
-            with open(mailfile, 'r') as mf:
-                utility.printMsg("-- Begin update message --")
-                utility.printMsg(mf.read())
-                utility.printMsg("-- End update message --")
+            logging.info("Skipping E-mail notification..")
+            with io.open(mailfile, 'r') as mf:
+                logging.info("-- Begin update message --")
+                logging.info(mf.read())
+                logging.info("-- End update message --")
             return True
 
         # Open the file back up and attach it to a MIME message
-        t = open(mailfile, 'rb')
-        message = t.read()
-        t.close()
+        with io.open(mailfile, 'r') as t:
+            message = t.read()
         msg = MIMEText(message)
 
         # Use their email address from their git user profile.
-        myemail = git.config("--get user.email")
+        myemail = git.config("--get user.email",
+                             execution_path=self.workspace_dir)
+        # If the author email is available, send as the author
+        author_email = self.progress["author_email"]
+        if author_email:
+            myemail = author_email
+
         mailsubj = args["--emailSubject"]
-        mailsubj = mailsubj.replace("<user>", git.config("--get user.name"))
+        mailsubj = mailsubj.replace(
+            "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+        mailsubj = mailsubj.replace("<author>", self.progress["author"])
+        mailsubj = mailsubj.replace("<author_username>", self.progress["author_username"])
         mailsubj = mailsubj.replace("<public>", args["--public"])
+        mailsubj = mailsubj.replace("<branch>", args["--topic"])
         mailsubj = mailsubj.replace("<version>", self.progress["version"])
         mailsubj = mailsubj.replace("<date>", date)
         sendto = args["--emailSendTo"]
@@ -920,11 +1433,11 @@ class Publish(resumable.Resumable):
 
         # Send the message via the configured SMTP server (don't know if this
         # is necessary - localhost might work just as well)
-        import socket
         try:
-            s = smtplib.SMTP("nospam.llnl.gov", timeout=10)
-        except socket.error, e:
-            utility.printMsg("Failed to email: %s" % str(e))
+            server = args["--emailServer"]
+            s = smtplib.SMTP(server, timeout=10)
+        except socket.error as e:
+            logging.error(f"Failed to email: {e}")
             return False
 
         # Don't need to connect if we specified the
@@ -944,24 +1457,33 @@ class Publish(resumable.Resumable):
         if "<<doDelete>>" in self.progress:
             self.doDelete = self.progress["<<doDelete>>"]
         if not self.doDelete:
-            if args["--deleteTopic"].lower() == "true":
-               self.doDelete[args["--topic"]] = utility.userInput("Once the publish is done, would you like to delete the branch %s ? \n[y/n]" % (args["--topic"]), default='y')
+            if args["--deleteTopic"].lower() == "true" and not args["--mergeTrain"]:
+                self.doDelete[args["--topic"]] = utility.userInput(
+                    "Once the publish is done, would you like to delete " +
+                    f"the branch {args['--topic']} ?\n[y/n]",
+                    default='y')
             else:
-               self.doDelete[args["--topic"]] = False
+                self.doDelete[args["--topic"]] = False
         self.progress["<<doDelete>>"] = self.doDelete
-                
+
     def deleteTopicBranch(self, args):
         self.askWhetherToDelete(args)
         if self.doDelete[args["--topic"]]:
-            utility.printMsg("Deleting %s" % args["--topic"])
-            grapeMenu.menu().applyMenuChoice("db", [args["--topic"]])
+            logging.info(f"Deleting {args['--topic']}")
+            menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+            menu.applyMenuChoice("db", [args["--topic"]])
         # If the branch was not deleted, offer to return to that branch
         try:
             # SHA will raise an exception if the branch has been deleted
-            if git.SHA(args["--topic"]):
-                checkout = utility.userInput("You are currently on %s. Would you like to checkout %s? [y,n]" % (git.currentBranch(), args["--topic"]), "n")
-                if checkout: 
-                    grapeMenu.menu().applyMenuChoice("checkout", [args["--topic"]])
+            if git.SHA(args["--topic"], execution_path=self.workspace_dir):
+                checkout = utility.userInput(
+                    f"You are currently on {git.currentBranch(execution_path=self.workspace_dir)}. " +
+                    f"Would you like to checkout {args['--topic']}? [y,n]",
+                    "n")
+                # 'checkout' is bool or the user's input. Enforces 'y' given.
+                if checkout is True:
+                    menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                    menu.applyMenuChoice("checkout", [args["--topic"]])
         except:
             pass
         return True
@@ -972,66 +1494,61 @@ class Publish(resumable.Resumable):
         valid = False
         if policy == "merge" or policy == "squash":
             valid = bool(args["-m"])
-            print args["-m"]
+            logging.info(args["-m"])
             if not valid:
-                print("Commit message required for merge or squash merge publish policies.")
+                logging.info("Commit message required for merge or squash merge publish policies.")
         if policy == "rebase":
             valid = True
         if not valid:
-            print("Type grape publish -h for more details")
+            logging.info("Type grape publish -h for more details")
         return valid
 
-    @staticmethod
-    def remoteMerge(public, topic, repo, args, isSubmodule, isNested):
-        atlassian = Atlassian.Atlassian(username=args["--user"], url=args["--stashURL"], verify=args["--verifySSL"])
-        remoteRepo = atlassian.repoFromWorkspaceRepoPath(repo, 
-                                                        isSubmodule=isSubmodule, 
+    def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
+        codeReviews = self.codeReviews(args)
+        remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
+                                                        isSubmodule=isSubmodule,
                                                         isNested=isNested)
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
-            utility.printMsg("remotely merging %s into %s" % (topic, public))            
+            logging.info(f"remotely merging {topic} into {public}")
             if pr.merge():
-                git.checkout(public)
-                git.pull("")
-                print("%s merged successfully to %s" % (topic, public))
-                print("You are currently on %s" % public)
+                git.checkout(execution_path=public)
+                git.pull("", execution_path=self.workspace_dir)
+                logging.info(f"{topic} merged successfully to {public}")
+                logging.info(f"You are currently on {public}")
                 return True
-            else:
-                utility.printMsg("Failed to do a remote merge.")
+            logging.info("Failed to do a remote merge.")
         else:
-            utility.printMsg("Could not find open Pull Request for %s in %s" % (topic, repo))
+            logging.info(
+                f"Could not find open Pull Request for {topic} in {repo}")
         return False
 
     @staticmethod
     def merge(public, topic, repo, args):
-        with utility.cd(repo):
-            print("merging %s into %s" % (topic, public))
-            git.checkout(public)
-            git.merge("%s -m \"%s\" " % (topic, args["-m"]))
-            print("%s merged successfully to %s" % (topic, public))
-            print("You are currently on %s" % public)
+        logging.info(f"merging {topic} into {public}")
+        git.push(f". {topic}:{public}", execution_path=repo)
+        git.checkout(public, execution_path=repo)
+        logging.info(f"{topic} merged successfully to {public}")
+        logging.info(f"You are currently on {public}")
 
     @staticmethod
     def squashMerge(public, topic, repo, args):
-        with utility.cd(repo):
-            print("squash merging %s into %s" % (topic, public))
-            git.checkout(public)
-            git.merge("--squash %s" % topic)
-            git.commit("-m \"%s\"" % args["-m"])
-            print("%s squash-merged successfully to %s" % (topic, public))
-            print("You are currently on %s" % public)
-        
+        logging.info(f"squash merging {topic} into {public}")
+        git.checkout(public, execution_path=repo)
+        git.merge(f"--squash {topic}", execution_path=repo)
+        git.commit(f"-m \"{args['-m']}\"", execution_path=repo)
+        logging.info(f"{topic} squash-merged successfully to {public}")
+        logging.info(f"You are currently on {public}")
 
     @staticmethod
     def rebase(public, topic, repo):
-        with utility.cd(repo):
-            print("rebasing %s onto %s" % (topic, public))
-            git.rebase(public)
-            print("%s successfully rebased onto %s" % (topic, public))
-            git.checkout(public)
-            git.merge(topic)
-            print("You are currently on %s" % public)
-        
+        logging.info(f"rebasing {topic} onto {public}")
+        git.rebase(public, execution_path=repo)
+        logging.info(f"{topic} successfully rebased onto {public}")
+        git.checkout(public, execution_path=repo)
+        git.merge(topic, execution_path=repo)
+        logging.info(f"You are currently on {public}")
+
     def parseConfigPublishPolicy(self, args, policy, defaultCascadeDestination, repoType="outer"):
         # if the policy starts with cascade, we allow a cascade->Branch->branch2->... syntax in the config file
         policyToks = policy.strip().lower().split('->')
@@ -1040,100 +1557,106 @@ class Publish(resumable.Resumable):
             # restore cascade info from an abort if necessary
             if "<<cascadeDict>>" in args and args["<<cascadeDict>>"] is not None:
                 self.cascadeDict = args["<<cascadeDict>>"]
-                args["<<cascadeDict>>"] = None    
+                args["<<cascadeDict>>"] = None
             if len(policyToks) > 1:
                 self.cascadeDict[repoType] = policyToks[1:]
             else:
                 self.cascadeDict[repoType] = [defaultCascadeDestination]
         args["<<cascadeDict>>"] = self.cascadeDict
         return policy
-    
-    def parseCascadeArgs(self, args): 
+
+    def parseCascadeArgs(self, args):
         if args["--cascade"]:
             self.cascadeDict["outer"] = args["--cascade"]
             args["<<cascadeDict>>"] = self.cascadeDict
 
-    def performCascade(self, status,args,mergeID,repo, branch, public):
-        if not mergeID in status:
+    def performCascade(self, status, args, mergeID, repo, branch, public):
+        if mergeID not in status:
             status[mergeID] = "READY"
         if status[mergeID] == "DONE":
             return True
-        if status[mergeID] == "READY": 
-            git.checkout(branch)
+        if status[mergeID] == "READY":
+            git.checkout(branch, execution_path=self.workspace_dir)
             status[mergeID] = "SWITCHED"
         if status[mergeID] == "SWITCHED":
             status[mergeID] = "MERGING"
             try:
-                git.merge("%s -m \"GRAPE PUBLISH: cascade merge of %s to %s after publish.\"" % (public, public, branch))
+                git.merge(f"{public} -m \"GRAPE PUBLISH: cascade merge of " +
+                          f"{public} to {branch} after publish.\"",
+                          execution_path=self.workspace_dir)
                 status[mergeID] = "MERGED"
-            except git.GrapeGitError as e: 
-                if "conflict" in e.gitOutput.lower():
-                    utility.printMsg("Conflicts generated in cascade merge from %s to %s in %s.\n"
-                                     "Please use git mergetool to resolve, and then git commit to commit your changes.\n"
-                                     "Once done, please run grape publish --continue ."% (public, branch, repo))
+            except grape_errors.GrapeGitError as e:
+                if e.has_conflict():
+                    logging.error(
+                        f"Conflicts generated in cascade merge from {public}" +
+                        f" to {branch} in {repo}.\nPlease use git " +
+                        "mergetool to resolve, and then git commit to commit" +
+                        " your changes.\nOnce done, please run grape publish " +
+                        "--continue .")
                 return False
-                    
+
         if status[mergeID] == "MERGING":
             clean = self.testForCleanWorkspace(args)
-            if clean: 
-                utility.printMsg("Resuming with cascades...")
+            if clean:
+                logging.info("Resuming with cascades...")
                 status[mergeID] = "MERGED"
-            if not clean: 
-                utility.printMsg("Workspace not clean after resuming from a cascade.\n"
+            if not clean:
+                logging.info("Workspace not clean after resuming from a cascade.\n"
                                  "Please commit your merge resolution or otherwise clean up your workspace.")
                 return False
         if status[mergeID] == "MERGED":
-            public = branch 
-            git.push("origin %s" % branch)
+            public = branch
+            git.push(f"origin {branch}", execution_path=self.workspace_dir)
             status[mergeID] = "PUSHED"
         if status[mergeID] == "PUSHED":
             if "outer" in mergeID and args["--tickOnCascade"] > 0:
-                grapeMenu.menu().applyMenuChoice("version",["tick", "--tag","--slot=%i"%args["--tickOnCascade"]])
-                git.push("--tags origin")
+                menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+                menu.applyMenuChoice(
+                    "version", ["tick", "--tag", f"--slot={args['--tickOnCascade']}", "--pushTag"])
             status[mergeID] = "DONE"
         return True
 
     def performCascades(self, args):
         self.loadPublishTargets(args)
-        
+
         if "<<cascadeDict>>" in args and args["<<cascadeDict>>"]:
             self.cascadeDict = args["<<cascadeDict>>"]
         if "<<cascadeMergeStatus>>" not in args:
             args["<<cascadeMergeStatus>>"] = {}
         status = args["<<cascadeMergeStatus>>"]
-        wsdir = utility.workspaceDir()
         if self.cascadeDict:
             # do outer level and nested project cascades
             cascade = self.cascadeDict["outer"]
-            repos= [""]+grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()
-            repos = [os.path.join(wsdir,r) for r in repos]
+            repos= [""] + config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+            repos = [os.path.join(self.workspace_dir, r) for r in repos]
             for repo in repos:
                 public = args["--public"]
-                with utility.cd(repo):
+                with self.temp_work_in_dir(repo):
                     for branch in cascade:
-                        mergeID = "%s_%s_%s" % ("outer", repo, branch)
-                        if not self.performCascade(status, args, mergeID, repo, branch, public): 
+                        mergeID = f"outer_{repo}_{branch}"
+                        if not self.performCascade(status, args, mergeID, repo, branch, public):
                             return False
-                    
+
             if "submodules" in self.cascadeDict and "<<publishedSubmodules>>" in args:
                 cascade = self.cascadeDict["submodules"]
-                repos = [os.path.join(wsdir,r) for r in args["<<publishedSubmodules>>"]]
+                repos = [os.path.join(self.workspace_dir, r) for r in args["<<publishedSubmodules>>"]]
                 for repo in repos:
-                    with utility.cd(repo):
-                        public = args["--submodulePublic"]
+                    public = args["--submodulePublic"]
+                    with self.temp_work_in_dir(repo):
                         for branch in cascade:
-                            mergeID = "%s_%s_%s" % ("submodules", repo, branch)
+                            mergeID = f"submodules_{repo}_{branch}"
                             if not self.performCascade(status, args, mergeID, repo, branch, public):
                                 return False
-            
+
         return True
-                 
-                
+
+
 
     def publish(self, policy, public, topic, repo, args, isSubmodule=False, isNested=False):
         # don't bother publishing if public and topic are the same commit
-        if git.shortSHA(public).strip() == git.shortSHA(topic).strip():
-            git.checkout(public)
+        if git.shortSHA(public, execution_path=repo).strip() \
+                == git.shortSHA(topic, execution_path=repo).strip():
+            git.checkout(public, execution_path=repo)
             return
         policy = policy.strip().lower()
         if policy == "merge":
@@ -1142,10 +1665,12 @@ class Publish(resumable.Resumable):
                     if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
                         return
                     else:
-                        utility.printMsg("Bitbucket seems to think %s in %s is not mergeable... aborting" % (topic, repo))                        
+                        logging.error(
+                            f"Bitbucket seems to think {topic} in {repo} " +
+                            "is not mergeable... aborting")
                         raise Exception
                 except stashyErrors.GenericException as e:
-                    utility.printMsg("WARNING: Remote merge failed. Attempting local merge instead.")
+                    logging.warning("WARNING: Remote merge failed. Attempting local merge instead.")
                     self.merge(public, topic, repo, args)
             else:
                 self.merge(public, topic, repo, args)
@@ -1156,21 +1681,19 @@ class Publish(resumable.Resumable):
 
         if not args["--nopush"]:
             try:
-                with utility.cd(repo):
-                    git.push("-u origin HEAD", throwOnFail=True)
-            except git.GrapeGitError as e:
+                git.push("-u origin HEAD", throwOnFail=True, execution_path=repo)
+            except grape_errors.GrapeGitError as e:
                 if e.commError:
-                    utility.printMsg("Unable to push result of publish to origin due to connectivity issue.")
+                    logging.error("Unable to push result of publish to origin due to connectivity issue.")
                 raise e
-                
 
     def loadPublishTargets(self, args):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         public = args["--public"]
         topic = args["--topic"]
-        
+
         # decide whether to recurse into submodules
-        recurse = config.get('workspace', 'manageSubmodules')
+        recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
         if args["--recurse"]:
             recurse = True
         if args["--noRecurse"]:
@@ -1179,31 +1702,36 @@ class Publish(resumable.Resumable):
         args["--recurse"] = recurse
         if args["--recurse"]:
             if not args["--submodulePublic"]:
-                submapping = config.getMapping('workspace', 'submoduleTopicPrefixMappings')
+                submapping = config.getMapping(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings')
                 submodulePublic = submapping[self.branchPrefix]
                 args["--submodulePublic"] = submodulePublic
 
-        # deal with subtrees
-        push_subtrees = config.getboolean("subtrees", 'pushOnPublish') or args["--pushSubtrees"]
-        push_subtrees = push_subtrees and not args["--noPushSubtrees"]
-        args["--pushSubtrees"] = push_subtrees
-        if push_subtrees:
-            allsubtrees = config.get('subtrees', 'names').strip().split()
-            self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
-            for st in allsubtrees:
-                prefix = config.get('subtree-%s' % st, 'prefix')
-                if git.diff("--name-only %s %s -- %s" % (public, topic, os.path.join(utility.workspaceDir(),prefix))):
-                    self.modifiedSubtrees.add(st)
-            for st in self.modifiedSubtrees:
-                self.st_prefixes[st] = config.get('subtree-%s' % st, 'prefix')
-                self.st_remotes[st] = utility.parseSubprojectRemoteURL(config.get('subtree-%s' % st, 'remote'))
-                self.st_branches[st] = config.getMapping('subtree-%s' % st, 'topicPrefixMappings')[topic]
-        
-        # deal with nested subprojects
-        self.modifiedNestedProjects =  grapeConfig.GrapeConfigParser.getAllModifiedNestedSubprojectPrefixes(public,topic)
-        
-        self.modifiedOuter = True if git.log("--oneline %s..%s" % (public, topic)) else False                                                                                       
-        
+        if not args["--sendEmail"]:
+            # deal with subtrees
+            push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
+            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
+            args["--pushSubtrees"] = push_subtrees
+            if push_subtrees:
+                allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
+                self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
+                for st in allsubtrees:
+                    prefix = config.get(f'subtree-{st}', 'prefix')
+                    if git.diff(f"--name-only {public} {topic} -- " +
+                                f"{os.path.join(self.workspace_dir, prefix)}",
+                                execution_path=self.workspace_dir):
+                        self.modifiedSubtrees.add(st)
+                for st in self.modifiedSubtrees:
+                    self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
+                    self.st_remotes[st] = git.parseSubprojectRemoteURL(
+                        config.get(f'subtree-{st}', 'remote'),
+                        execution_path=self.workspace_dir)
+                    self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
+
+            # deal with nested subprojects. 'workspaceDir' is None on purpose.
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+
+            self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
+
         return True
 
     def verifyPublishTargetsWithUser(self, args):
@@ -1216,47 +1744,49 @@ class Publish(resumable.Resumable):
         recurse = args["--recurse"]
         public = args["--public"]
         topic = args["--topic"]
-        submodules = git.getModifiedSubmodules(public, topic)
-        
-        userMsg = "GRAPE: When ready, grape will publish %s to:\n" % topic
-        
+        submodules = git.getModifiedSubmodules(self.workspace_dir, public,
+                                               topic, includeAdded=True)
+
+        userMsg = f"GRAPE: When ready, grape will publish {topic} to:\n"
+
         useAnd = False
         if recurse:
-            if (submodules):
-                userMsg += "%s for the following submodules:\n\t\t%s\n" % (args["--submodulePublic"], "\n\t\t".join(submodules))
+            newline_and_tabs = '\n\t\t'
+            if submodules:
+                spaced_submodules = newline_and_tabs.join(submodules)
+                userMsg += f"{args['--submodulePublic']} for the "
+                userMsg += f"following submodules:{newline_and_tabs}"
+                userMsg += f"{spaced_submodules}\n"
                 useAnd = True
-            
-            if self.modifiedNestedProjects: 
-                prefixes = self.modifiedNestedProjects 
-                userMsg += "%s for the following nested subprojects:\n\t\t%s\n" % (public, "\n\t\t".join(prefixes))
-                useAnd = True
-        
-        if self.modifiedOuter:    
-            userMsg += "%s%s for the outer level repo. \n" % ("and " if useAnd else "", public)
-        
 
+            if self.modifiedNestedProjects:
+                spaced_prefixes = newline_and_tabs.join(self.modifiedNestedProjects)
+                userMsg += f"{public} for the following nested "
+                userMsg += f"subprojects:{newline_and_tabs}{spaced_prefixes}\n"
+                useAnd = True
+
+        if self.modifiedOuter:
+            maybe_and = "and " if useAnd else ""
+            userMsg += f"{maybe_and}{public} for the outer level repo.\n"
 
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
             if self.modifiedSubtrees:
                 userMsg += "Additionally, grape will publish the following subtrees to the following destinations:\n"
                 for st in self.modifiedSubtrees:
-                    userMsg += "subtree: %s\trepo: %s\tbranch:%s\n" % (self.st_prefixes[st], self.st_remotes[st],
-                                                                     self.st_branches[st])
+                    userMsg += f"subtree: {self.st_prefixes[st]}\t"
+                    userMsg += f"repo: {self.st_remotes[st]}\t"
+                    userMsg += f"branch:{self.st_branches[st]}\n"
 
-        proceed = utility.userInput(userMsg + "\nProceed? [y/n]", 'y')
+        proceed = utility.userInput(f"{userMsg}\nProceed? [y/n]", 'y')
         if not proceed:
-            return False        
+            return False
         self.progress["targetsVerified"] = True
         # get the commit message here as well.
         if not self.loadCommitMessage(args):
             return False
         self.askWhetherToDelete(args)
         return True
-
-
-    
-
 
     def publishAllProjects(self, args):
         # make sure we have a commit message
@@ -1265,10 +1795,13 @@ class Publish(resumable.Resumable):
         public = args["--public"]
         topic = args["--topic"]
         recurse = args["--recurse"]
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
 
         # make sure public branch is up to date.
-        grapeMenu.menu().applyMenuChoice('up', ['up', '--public=%s' % public])
+        upToDate = grapeMenu.menu().applyMenuChoice('up', ['up', f'--public={public}', '--noForce'])
+        if not upToDate:
+            logging.info("Failed to update local branches.")
+            return False
 
         # set any CL defined publish policy
         policy = None
@@ -1285,88 +1818,162 @@ class Publish(resumable.Resumable):
 
         # update policy from config if not set on CL
         if not policy:
-            policy = self.parseConfigPublishPolicy(args, config.getMapping('flow', 'publishPolicy')[public], topic)
-        
+            policy = self.parseConfigPublishPolicy(args, config.getMapping(self.SECTION_FLOW, 'publishPolicy')[public], topic)
+
         self.parseCascadeArgs(args)
-            
-        wsdir = utility.workspaceDir()    
-        os.chdir(wsdir)
 
         if recurse:
             submodulePublic = args["--submodulePublic"]
-            activeSubmodules = git.getActiveSubmodules()
-            modifiedSubmodules = git.getModifiedSubmodules(public, topic)
+            activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, public, topic, includeAdded=True)
             unmodifiedSubmodules = list(set(activeSubmodules) - set(modifiedSubmodules))
-                                                              
-            # submodule policy is Command Line requested policy, otherwise is based on 
+
+            # submodule policy is Command Line requested policy, otherwise is based on
             #       .grapeconfig.workspace.submodulePublishPolicy
             submodulePolicy = CLPolicy
             # store current value for args["--cascade"]
             outerCascadeOption = args["--cascade"]
             if not submodulePolicy:
-                submodulePolicy = config.getMapping('workspace', 'submodulePublishPolicy')[submodulePublic]
+                submodulePolicy = config.getMapping(self.SECTION_WORKSPACE, 'submodulePublishPolicy')[submodulePublic]
                 submodulePolicy = self.parseConfigPublishPolicy(args, submodulePolicy, topic, repoType="submodule")
 
             valid = self.validateInput(submodulePolicy, args)
             if valid and self.verifyPublishTargetsWithUser(args):
                 for sub in modifiedSubmodules:
-                    subpath = os.path.join(wsdir,sub)
-                    with utility.cd(subpath):
-                        grapeMenu.menu().applyMenuChoice('up', ['up', '--noRecurse', '--wd=%s' % subpath, '--public=%s' % submodulePublic])
+                    subpath = os.path.join(self.workspace_dir, sub)
+                    menu = grapeMenu.menu(workspace_dir=subpath)
+                    menu.applyMenuChoice('up', ['up', '--noRecurse',
+                                         f'--wd={subpath}',
+                                         f'--public={submodulePublic}'])
+                    with self.temp_work_in_dir(subpath):
                         self.publish(submodulePolicy, submodulePublic, topic, subpath, args, isSubmodule=True)
                     #add and commit any new merge commits in submodules as a result of the publish
-                    git.add(sub)
+                    git.add(sub, execution_path=self.workspace_dir)
                 try:
-                    # we are cool with this not working - only will have something to commit if the 
+                    # we are cool with this not working - only will have something to commit if the
                     # submodules were published without fast forward merges
-                    git.commit("-m \"%s - submodules published\"" % args["-m"])
-                except git.GrapeGitError:
+                    git.commit(f"-m \"{args['-m']} - submodules published\"",
+                               execution_path=self.workspace_dir)
+                except grape_errors.GrapeGitError:
                     pass
                 # ensure submodules that aren't modified end up on the public branch
                 for sub in unmodifiedSubmodules:
-                    with utility.cd(os.path.join(wsdir, sub)):
-                        git.checkout(submodulePublic)
-    
+                    git.checkout(submodulePublic,
+                                 execution_path=os.path.join(self.workspace_dir, sub))
+
                 # restore value for args["--cascade"]
                 args["<<publishedSubmodules>>"] = modifiedSubmodules
                 args["--cascade"] = outerCascadeOption
-            os.chdir(wsdir)
 
 
         # push subtrees to their respective remote branches
         push_subtrees = args["--pushSubtrees"]
         if push_subtrees:
             modifiedSubtrees = self.modifiedSubtrees
-            if modifiedSubtrees: 
+            if modifiedSubtrees:
                 proceed = self.verifyPublishTargetsWithUser(args)
                 if proceed:
-                    squash = "--squash" if config.get("subtrees", "mergepolicy").lower() == "squash" else ""
+                    squash = "--squash" if config.get(self.SECTION_SUBTREES, "mergepolicy").lower() == "squash" else ""
                     for st in modifiedSubtrees:
-                        utility.printMsg("pushing subtree %s to %s (branch %s)..." % (self.st_prefixes[st],
-                                                                              self.st_remotes[st], self.st_branches[st]))
+                        logging.info(
+                            f"pushing subtree {self.st_prefixes[st]} " +
+                            f"to {self.st_remotes[st]} " +
+                            f"(branch {self.st_branches[st]})...")
 
                         try:
-                            git.subtree("push --prefix=%s %s %s " % (self.st_prefixes[st],
-                                                                                 self.st_remotes[st],  self.st_branches[st]))
-                        except git.GrapeGitError:
+                            git.subtree(
+                                f"push --prefix={self.st_prefixes[st]} " +
+                                f"{self.st_remotes[st]} " +
+                                f"{self.st_branches[st]} ",
+                                execution_path=self.workspace_dir)
+                        except grape_errors.GrapeGitError:
                             # the push can fail if there has never been a subtree add / pull in this repo.
-                            utility.printMsg("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree("pull %s --prefix=%s %s %s " % (squash, self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st]))
-                            git.subtree("push --prefix=%s %s %s " % ( self.st_prefixes[st],
-                                                                                 self.st_remotes[st], self.st_branches[st]))
-                            utility.printMsg("Succeeded!")
-
-
+                            logging.info("First attempt failed. Attempting a subtree pull then push...")
+                            git.subtree(
+                                f"pull {squash} " +
+                                f"--prefix={self.st_prefixes[st]} " +
+                                f"{self.st_remotes[st]} " +
+                                f"{self.st_branches[st]} ",
+                                execution_path=self.workspace_dir)
+                            git.subtree(
+                                f"push --prefix={self.st_prefixes[st]} " +
+                                f"{self.st_remotes[st]} " +
+                                f"{self.st_branches[st]} ",
+                                execution_path=self.workspace_dir)
+                            logging.info("Succeeded!")
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-                self.publish(policy, public, topic, os.path.join(wsdir, nested), args, isNested=True)
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested), args, isNested=True)
             if self.modifiedOuter:
-                self.publish(policy, public, topic, wsdir, args)
+                self.publish(policy, public, topic, self.workspace_dir, args)
             else:
-                git.checkout(public)
+                git.checkout(public, execution_path=self.workspace_dir)
             return True
+        return False
+
+    def push(self, args):
+        logging.info("pushing branch to trigger merge train pipeline.")
+        menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
+        return menu.applyMenuChoice("push")
+
+    def requestUserStartMergeTrain(self, args):
+        thisRequest = self.openPullRequest()
+        config = config_parser_global.grapeConfig()
+        inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
+        if inprogresslabel:
+           thisRequest = self.openPullRequest()
+           thisRequest.update(thisRequest.version(), add_labels=[inprogresslabel])
+           # Regenerate the pipeline now with new label
+           logging.info(f"Regenerating pipeline with {inprogresslabel} label for starting merge train...")
+           thisRequest.regeneratePipeline()
+        numTries = 3
+        while numTries > 0:
+            try:
+                logging.info("***  waiting for 30 seconds before adding to the merge train ****")
+                time.sleep(30)
+                logging.info("***  adding to the Merge Train ****")
+                result = self.repo.addToMergeTrain(thisRequest, git.SHA(execution_path=self.workspace_dir))
+                break
+            except Exception as e:
+                numTries = numTries - 1
+                if numTries == 0:
+                    logging.info("********************************************************************************")
+                    logging.info(f'**** failed to add to the Merge Train ***')
+                    logging.info(e)
+                    logging.info("********************************************************************************")
+                else:
+                    logging.info(f'**** failed to add to the Merge Train, retrying ({numTries} tries left)***')
+        if numTries != 0:
+            logging.info("********************************************************************************")
+            logging.info(f"Merge Request added to Merge Train")
+            logging.info("********************************************************************************")
         else:
+            logging.info("********************************************************************************")
+            logging.info(f"Please manually add to Merge Train")
+            logging.info("********************************************************************************")
+        return True
+
+
+    def mergeOnSuccess(self, args):
+        if not self.loadCommitMessage(args):
             return False
+        thisRequest = self.openPullRequest()
+        logging.info("Triggering merge on success of merge train pipeline.")
+        try:
+            success = thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
+                                 should_remove_source_branch=False,
+                                 merge_when_pipeline_succeeds=True)
+        except GitlabMRClosedError:
+            time.sleep(5)
+            logging.info("Trying again after initial 405 error...")
+            try:
+                success = thisRequest.merge(merge_commit_message=self.progress["commitMsg"],
+                                     should_remove_source_branch=False,
+                                     merge_when_pipeline_succeeds=True)
+                logging.info("successful...")
+            except GitlabMRClosedError:
+                return False
+        return success
+

@@ -1,100 +1,138 @@
+import sys
 import os
 
-from keyring.keyring.backend import KeyringBackend
-from keyring.keyring.errors import PasswordDeleteError
-from keyring.keyring.errors import PasswordSetError, ExceptionRaisedContext
-from keyring.keyring.util import properties
+from ..backend import KeyringBackend
+from ..errors import PasswordDeleteError
+from ..errors import PasswordSetError, InitError, KeyringLocked
+from ..util import properties
 
 try:
-    from PyKDE4.kdeui import KWallet
-    from PyQt4 import QtGui
+    import dbus
+    from dbus.mainloop.glib import DBusGMainLoop
 except ImportError:
     pass
+except AttributeError:
+    # See https://github.com/jaraco/keyring/issues/296
+    pass
 
-kwallet = None
 
-def open_kwallet(kwallet_module=None, qt_module=None):
+class DBusKeyring(KeyringBackend):
+    """
+    KDE KWallet 5 via D-Bus
+    """
 
-    # If we specified the kwallet_module and/or qt_module, surely we won't need
-    # the cached kwallet object...
-    if kwallet_module is None and qt_module is None:
-        global kwallet
-        if not kwallet is None:
-            return kwallet
-
-    # Allow for the injection of module-like objects for testing purposes.
-    if kwallet_module is None:
-        kwallet_module = KWallet.Wallet
-    if qt_module is None:
-        qt_module = QtGui
-
-    # KDE wants us to instantiate an application object.
-    app = None
-    if qt_module.qApp.instance() == None:
-        app = qt_module.QApplication([])
-    try:
-        window = qt_module.QWidget()
-        kwallet = kwallet_module.openWallet(
-            kwallet_module.NetworkWallet(),
-            window.winId(),
-            kwallet_module.Synchronous)
-        if kwallet is not None:
-            if not kwallet.hasFolder('Python'):
-                kwallet.createFolder('Python')
-            kwallet.setFolder('Python')
-            return kwallet
-    finally:
-        if app:
-            app.exit()
-
-class Keyring(KeyringBackend):
-    """KDE KWallet"""
+    appid = os.path.basename(sys.argv[0]) or 'Python keyring library'
+    wallet = None
+    bus_name = 'org.kde.kwalletd5'
+    object_path = '/modules/kwalletd5'
 
     @properties.ClassProperty
     @classmethod
     def priority(cls):
-        with ExceptionRaisedContext() as exc:
-            KWallet.__name__
-        if exc:
-            raise RuntimeError("KDE libraries not available")
-        if 'KDE_SESSION_ID' not in os.environ:
-            return 0
-        return 5
+        if 'dbus' not in globals():
+            raise RuntimeError('python-dbus not installed')
+        try:
+            bus = dbus.SessionBus(mainloop=DBusGMainLoop())
+        except dbus.DBusException as exc:
+            raise RuntimeError(exc.get_dbus_message())
+        try:
+            bus.get_object(cls.bus_name, cls.object_path)
+        except dbus.DBusException:
+            tmpl = 'cannot connect to {bus_name}'
+            msg = tmpl.format(bus_name=cls.bus_name)
+            raise RuntimeError(msg)
+        if "KDE" in os.getenv("XDG_CURRENT_DESKTOP", "").split(":"):
+            return 5.1
+        return 4.9
+
+    def __init__(self, *arg, **kw):
+        super().__init__(*arg, **kw)
+        self.handle = -1
+
+    def _migrate(self, service):
+        old_folder = 'Python'
+        entry_list = []
+        if self.iface.hasFolder(self.handle, old_folder, self.appid):
+            entry_list = self.iface.readPasswordList(
+                self.handle, old_folder, '*@*', self.appid)
+
+            for entry in entry_list.items():
+                key = entry[0]
+                password = entry[1]
+
+                username, service = key.rsplit('@', 1)
+                ret = self.iface.writePassword(
+                    self.handle, service, username, password, self.appid)
+                if ret == 0:
+                    self.iface.removeEntry(
+                        self.handle, old_folder, key, self.appid)
+
+            entry_list = self.iface.readPasswordList(
+                self.handle, old_folder, '*', self.appid)
+            if not entry_list:
+                self.iface.removeFolder(self.handle, old_folder, self.appid)
+
+    def connected(self, service):
+        if self.handle >= 0:
+            if self.iface.isOpen(self.handle):
+                return True
+
+        bus = dbus.SessionBus(mainloop=DBusGMainLoop())
+        wId = 0
+        try:
+            remote_obj = bus.get_object(self.bus_name, self.object_path)
+            self.iface = dbus.Interface(remote_obj, 'org.kde.KWallet')
+            self.handle = self.iface.open(
+                self.iface.networkWallet(), wId, self.appid)
+        except dbus.DBusException as e:
+            raise InitError('Failed to open keyring: %s.' % e)
+
+        if self.handle < 0:
+            return False
+        self._migrate(service)
+        return True
 
     def get_password(self, service, username):
         """Get password of the username for the service
         """
-        key = username + '@' + service
-        network = KWallet.Wallet.NetworkWallet()
-        wallet = open_kwallet()
-        if wallet is None:
+        if not self.connected(service):
             # the user pressed "cancel" when prompted to unlock their keyring.
+            raise KeyringLocked("Failed to unlock the keyring!")
+        if not self.iface.hasEntry(self.handle, service, username, self.appid):
             return None
-        if wallet.keyDoesNotExist(network, 'Python', key):
-            return None
-
-        result = wallet.readPassword(key)[1]
-        # The string will be a PyQt4.QtCore.QString, so turn it into a unicode
-        # object.
-        return unicode(result)
+        password = self.iface.readPassword(
+            self.handle, service, username, self.appid)
+        return str(password)
 
     def set_password(self, service, username, password):
         """Set password for the username of the service
         """
-        wallet = open_kwallet()
-        if wallet is None:
+        if not self.connected(service):
             # the user pressed "cancel" when prompted to unlock their keyring.
             raise PasswordSetError("Cancelled by user")
-        wallet.writePassword(username+'@'+service, password)
+        self.iface.writePassword(
+            self.handle, service, username, password, self.appid)
 
     def delete_password(self, service, username):
         """Delete the password for the username of the service.
         """
-        key = username + '@' + service
-        wallet = open_kwallet()
-        if wallet is None:
+        if not self.connected(service):
             # the user pressed "cancel" when prompted to unlock their keyring.
             raise PasswordDeleteError("Cancelled by user")
-        if wallet.keyDoesNotExist(wallet.walletName(), 'Python', key):
+        if not self.iface.hasEntry(self.handle, service, username, self.appid):
             raise PasswordDeleteError("Password not found")
-        wallet.removeEntry(key)
+        self.iface.removeEntry(self.handle, service, username, self.appid)
+
+
+class DBusKeyringKWallet4(DBusKeyring):
+    """
+    KDE KWallet 4 via D-Bus
+    """
+
+    bus_name = 'org.kde.kwalletd'
+    object_path = '/modules/kwalletd'
+
+    @properties.ClassProperty
+    @classmethod
+    def priority(cls):
+        return super().priority - 1

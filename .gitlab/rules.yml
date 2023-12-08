@@ -1,0 +1,153 @@
+.run_manually:
+  rules:
+    - when: manual
+
+.run_manually_on_merge_request:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train"'
+      when: manual
+
+.run_manually_on_merge_request_allow_failure:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train"'
+      when: manual
+      allow_failure: true
+
+.run_on_merge_request:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE != "merge_train"'
+
+.run_on_merge_request_except_on_changes_to_update_logs:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - UPDATES_*/*
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+.run_on_merge_request_changes_to_update_logs:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - UPDATES_*/*
+
+.run_on_merge_train_changes_to_update_logs:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"'
+      changes:
+        - UPDATES_*/*
+
+.run_on_merge_train_if_no_changes_to_update_logs:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"'
+      changes:
+        - UPDATES_*/*
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_EVENT_TYPE == "merge_train"'
+
+
+.run_on_merge_request_or_nightly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $NIGHTLY'
+
+.run_on_merge_request_or_nightly_with_20_min_delay:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $NIGHTLY'
+      when: delayed
+      start_in: 20 minutes
+
+.run_on_merge_request_or_push:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" || $CI_PIPELINE_SOURCE == "push"'
+
+.run_on_merge_request_or_weekly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY'
+
+.run_on_merge_request_approved_except_grape_commit:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_APPROVED == "true" && $CI_COMMIT_MESSAGE !~ /GRAPE. ticked version to/'
+
+.run_when_grape_queues_in_merge_train:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_APPROVED == "true" && $CI_COMMIT_MESSAGE =~ /GRAPE added log file UPDATES_/'
+      changes:
+        - UPDATES_*/*
+
+.run_when_grape_queues_in_merge_train_no_approval:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_COMMIT_MESSAGE =~ /GRAPE added log file UPDATES_/'
+      changes:
+        - UPDATES_*/*
+
+.run_on_merge_request_unapproved_or_grape_commit_manually:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "merge_request_event"'
+      when: never
+    - if: '$CI_MERGE_REQUEST_APPROVED != "true" || $CI_COMMIT_MESSAGE =~ /GRAPE. ticked version to/'
+      when: manual
+
+.run_on_push:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+
+.run_on_push_to_develop_or_master:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && ($CI_COMMIT_BRANCH =="develop" || $CI_COMMIT_BRANCH == "master")'
+
+.run_nightly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $NIGHTLY'
+
+.run_nightly_or_weekly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $NIGHTLY || $WEEKLY'
+
+.run_nightly_or_weekly_2:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $NIGHTLY || $WEEKLY_2'
+
+.run_nightly_with_30_min_delay:
+  rules:
+    - if: $IS_NIGHTLY_JOB
+      when: delayed
+      start_in: 30 minutes
+
+.run_unless_on_push:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: never
+    - when: on_success
+
+.run_unless_weekly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY'
+      when: never
+    - when: on_success
+
+.run_weekly:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY'
+
+.run_weekly_2:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY_2'
+
+.run_weekly_with_15_min_delay:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY'
+      when: delayed
+      start_in: 15 minutes
+
+.run_weekly_with_30_min_delay:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $WEEKLY'
+      when: delayed
+      start_in: 30 minutes
+
+.run_never:
+  rules:
+    - when: never

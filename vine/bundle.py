@@ -1,14 +1,18 @@
+import glob
+import logging
 import os
-import ConfigParser
-# vine imports
-import option
-import grapeGit as git
-import utility
-import grapeConfig
-import grapeMenu
+from vine import config_parser_base
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.option import Option
+from vine.vine_logging import log_wrapper
+
 
 # pull and merge in an up-to-date development branch
-class Bundle(option.Option):
+class Bundle(Option, WorkspaceDirHandler):
 
     """
     grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
@@ -62,7 +66,7 @@ class Bundle(option.Option):
     tagprefix = patched
     describePattern = v*
     submodulebranches = master
-    
+
 
     [repo]
     name = None
@@ -73,128 +77,135 @@ class Bundle(option.Option):
         super(Bundle, self).__init__()
         self._key = "bundle"
         self._section = "Patches"
-            
-    def config(self):
-        return grapeConfig.grapeConfig()
-         
-    def description(self):
-         # since bundle calls grape recursively, we give it configuration based on current repository semantics, 
-        # whereas grape typically has full workspace semantics. 
-        name = self.config().get("patch", "tagprefix")
-        return "Create a bundle of branches listed in patch.branches since the '%s/<branch>' tags" % name
 
+    def config(self):
+        return config_parser_global.grapeConfig()
+
+    def description(self):
+        # since bundle calls grape recursively, we give it configuration based on current repository semantics,
+        # whereas grape typically has full workspace semantics.
+        name = self.config().get(self.SECTION_PATCH, "tagprefix")
+        description = "Create a bundle of branches listed in " + \
+                      f"patch.branches since the '{name}/<branch>' tags"
+        return description
+
+    @log_wrapper
     def execute(self, args):
 
         tagprefix = args["--tagprefix"]
         branches = args["--branches"]
-        
+
         reponame = args["--name"]
         describePattern = args["--describePattern"]
-        
-        launchArgs = {}
-        
-        tagsToBundle = grapeConfig.GrapeConfigParser.parseConfigPairList(args["--bundleTags"])
-        recurse = not args["--noRecurse"]
-          
 
-        git.fetch()
-        git.fetch("--tags")
+        launchArgs = {}
+
+        tagsToBundle = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--bundleTags"])
+        recurse = not args["--noRecurse"]
+
+        git.fetch(execution_path=self.workspace_dir)
+        git.fetch("--tags --force", execution_path=self.workspace_dir)
         branchlist = branches.split()
-        
+
         launchArgs["branchList"] = branchlist
         launchArgs["tags"] = tagsToBundle
         launchArgs["prefix"] = tagprefix
         launchArgs["describePattern"] = describePattern
         launchArgs["--outfile"] = args["--outfile"]
-        
-        
-        otherCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                                runInSubprojects=recurse, globalArgs=launchArgs)
-    
+
+        otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            bundlecmd, skipSubmodules=True, runInSubmodules=False,
+            runInSubprojects=recurse, globalArgs=launchArgs,
+            workspace_dir=self.workspace_dir)
+
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
-        
-        if (recurse):
+        if recurse:
             launchArgs["branchList"] = args["--submoduleBranches"].split()
-            submoduleCommandLauncher = utility.MultiRepoCommandLauncher(bundlecmd,                                                                     
-                                                                       runInSubmodules=recurse, 
-                                                                       runInSubprojects=False,
-                                                                       skipSubmodules=not recurse, 
-                                                                       runInOuter=False, 
-                                                                       globalArgs=launchArgs
-                                                                       )
-            
-    
-            submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
+            submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                bundlecmd, runInSubmodules=recurse, runInSubprojects=False,
+                skipSubmodules=not recurse, runInOuter=False,
+                globalArgs=launchArgs, workspace_dir=self.workspace_dir)
+            submoduleCommandLauncher.launchFromWorkspaceDir(
+                handleMRE=bundlecmdMRE, noPause=True)
 
         return True
-        
+
 
     def setDefaultConfig(self, config):
-        config.ensureSection("patch")
-        config.set('patch', 'tagprefix', 'patched')
-        config.set('patch', 'describePattern', 'v*')
-        config.set('patch', 'branches', 'master')
-        config.set('patch', 'branchmappings', '?:?')
-        config.set('patch', 'branchToTagPatternMapping', '?:v*')
-        config.set('patch', 'submodulebranches', 'master')
-        config.set('patch', 'submodulebranchmappings', '?:?')
+        config.ensureSection(self.SECTION_PATCH)
+        config.set(self.SECTION_PATCH, 'tagprefix', 'patched')
+        config.set(self.SECTION_PATCH, 'describePattern', 'v*')
+        config.set(self.SECTION_PATCH, 'branches', 'master')
+        config.set(self.SECTION_PATCH, 'branchmappings', '?:?')
+        config.set(self.SECTION_PATCH, 'branchToTagPatternMapping', '?:v*')
+        config.set(self.SECTION_PATCH, 'submodulebranches', 'master')
+        config.set(self.SECTION_PATCH, 'submodulebranchmappings', '?:?')
 
 
-def bundlecmd(repo='', branch='', args={}):
+def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
+    execution_path = repo
     branchlist = args["branchList"]
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
-    
-    
-    
-    with utility.cd(repo):
-        reponame = os.path.split(repo)[1]
-        for branch in branchlist:
-            # ensure branch can be fast forwardable to origin/branch and do so
-            if not git.safeForceBranchToOriginRef(branch):
-                print("Branch %s in %s has diverged from or is ahead of origin, or does not exist. Sync branches before bundling." % (branch, repo)) 
-                continue
-            tagname = "%s/%s" % (tagprefix, branch)
+
+    reponame = os.path.split(repo)[1]
+    logging.debug(f"bundlecmd called with {repo}, {execution_path}, {branchlist}")
+    for branch in branchlist:
+        # ensure branch can be fast forwardable to origin/branch and do so
+        if not git.safeForceBranchToOriginRef(branch, execution_path=execution_path):
+            logging.info(f"Branch {branch} in {repo} has diverged from " +
+                         "or is ahead of origin, or does not exist. " +
+                         "Sync branches before bundling.")
+            continue
+        tagname = f"{tagprefix}/{branch}"
+        try:
+            previousLocation = git.describe(
+                f"--always --match '{describePattern}' {tagname}",
+                execution_path=execution_path)
+        except:
+            # We should only get here if the tagname does not exist
+            previousLocation = "unknown"
+        try:
+            currentLocation = git.describe(
+                f"--always --match '{describePattern}' {branch}",
+                execution_path=execution_path)
+        except:
+            logging.warning(f"Unable to locate {branch} in {reponame}!" +
+                            " Something may be wrong...")
+            currentLocation = branch
+        if previousLocation.strip() != currentLocation.strip():
             try:
-               previousLocation = git.describe("--always --match '%s' %s" % (describePattern, tagname))
+                git.shortSHA(tagname, execution_path=execution_path)
+                revlists = f" {tagname}..{branch}"
             except:
-               # We should only get here if the tagname does not exist
-               previousLocation = "unknown"
-            try:
-               currentLocation = git.describe("--always --match '%s' %s" % (describePattern, branch))
-            except:
-               utility.printMsg("Unable to locate %s in %s! Something may be wrong..." % (branch, reponame))
-               currentLocation = branch
-            if previousLocation.strip() != currentLocation.strip():
-                try:
-                    git.shortSHA(tagname)
-                    revlists = " %s..%s" % (tagname, branch)
-                except:
-                    utility.printMsg("%s does not exist in %s, bundling entire branch %s" % (tagname, reponame, branch))
-                    revlists = " %s" % (branch)
-                bundlename = args["--outfile"]
-                if not bundlename:
-                    bundlename = "%s.%s-%s-%s.bundle" % (reponame, branch.replace('/', '.'), previousLocation,
-                                                         currentLocation)
-                utility.printMsg("creating bundle %s in %s" % (bundlename, reponame))
-                git.bundle("create %s %s --tags=%s " % (bundlename, revlists, tagsToBundle[branch]))
+                logging.info(f"{tagname} does not exist in {reponame}, " +
+                             f"bundling entire branch {branch}")
+                revlists = f" {branch}"
+            bundlename = args["--outfile"]
+            if not bundlename:
+                bundlename = f"{reponame}.{branch.replace('/', '.')}-" + \
+                             f"{previousLocation}-{currentLocation}.bundle"
+            logging.info(f"creating bundle {bundlename} in {reponame}")
+            git.bundle(f"create {bundlename} {revlists} " +
+                       f"--tags={tagsToBundle[branch]} ", execution_path=execution_path)
+        else:
+            logging.debug(f"{previousLocation} the same as {currentLocation} in {reponame}, no bundle necessary.")
     return True
-    
+
 def bundlecmdMRE(mre):
-    print mre
+    logging.warning(mre)
+
     try:
         raise mre
-    except  utility.MultiRepoException as errors:
-        utility.printMsg("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
+    except grape_errors.MultiRepoException as errors:
+        logging.warning("WARNING: ERRORS WERE GENERATED DURING GRAPE BUNDLE")
         for e, b in zip(errors.exceptions(), errors.branches()):
-            print b, e
-        
-            
-        
+            logging.error(f"{b} {e}")
 
-class Unbundle(option.Option):
+
+class Unbundle(Option, WorkspaceDirHandler):
     """
     grape unbundle
 
@@ -218,7 +229,7 @@ class Unbundle(option.Option):
         super(Unbundle, self).__init__()
         self._key = "unbundle"
         self._section = "Patches"
-      
+
 
     def description(self):
         return "Unbundle the given bundle into this repo, update all updated branches"
@@ -227,56 +238,53 @@ class Unbundle(option.Option):
         recurse = not args["--noRecurse"]
         launchArgs = {}
         launchArgs["--branchMappings"] = args["--branchMappings"]
-        repoLauncher =  utility.MultiRepoCommandLauncher(unbundlecmd, skipSubmodules=True, runInSubmodules=False,
-                                                        runInSubprojects=recurse, globalArgs=launchArgs)
+        repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            unbundlecmd, skipSubmodules=True, runInSubmodules=False,
+            runInSubprojects=recurse, globalArgs=launchArgs,
+            workspace_dir=self.workspace_dir)
         repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
-        launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
-        submoduleCommandLauncher = utility.MultiRepoCommandLauncher(unbundlecmd,                                                                     
-                                                                    runInSubmodules=recurse, 
-                                                                    runInSubprojects=False,
-                                                                    skipSubmodules=not recurse, 
-                                                                    runInOuter=False, 
-                                                                    globalArgs=launchArgs
-                                                                    )
-            
-    
-        submoduleCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE, noPause=True)
-        
-        return True
-        
-    def setDefaultConfig(self, config):
-        config.ensureSection("patch")
-        config.set('patch', 'branchMappings', 'master:master')
 
-import glob
-def unbundlecmd(repo='', branch='', args={}):
+        launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
+
+        submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            unbundlecmd, runInSubmodules=recurse, runInSubprojects=False,
+            skipSubmodules=not recurse, runInOuter=False,
+            globalArgs=launchArgs,
+            workspace_dir=self.workspace_dir)
+        submoduleCommandLauncher.launchFromWorkspaceDir(
+            handleMRE=bundlecmdMRE, noPause=True)
+
+        return True
+
+    def setDefaultConfig(self, config):
+        config.ensureSection(self.SECTION_PATCH)
+        config.set(self.SECTION_PATCH, 'branchMappings', 'master:master')
+
+def unbundlecmd(repo='', branch='', args={}, *, workspace_dir):
+    execution_path = repo
     mappings = args["--branchMappings"]
     mapTokens = mappings.split()
-    with utility.cd(repo):
-        bundleNames = glob.glob("*.bundle")
-        for bundleName in bundleNames:
-            mappings = ""
-            for token in mapTokens:
-                sourceDestPair = token.split(":")
-                source = sourceDestPair[0]
-                dest = sourceDestPair[1]
-                bundleHeads = git.bundle("list-heads %s" % bundleName).split("\n")
-                bundleBranches = []
-                for line in bundleHeads:
-                    if "refs/heads" in line:
-                        bundleBranches.append(line.split()[1].split("refs/heads/")[1])
-                if source.replace('/', '.') in bundleBranches:
-                    mappings += "%s:%s " % (source, dest)
+    bundleNames = glob.glob(os.path.join(execution_path,"*.bundle"))
+    for bundleName in bundleNames:
+        mappings = ""
+        for token in mapTokens:
+            sourceDestPair = token.split(":")
+            source = sourceDestPair[0]
+            dest = sourceDestPair[1]
+            bundleHeads = git.bundle(f"list-heads {bundleName}", execution_path=execution_path).split("\n")
+            bundleBranches = []
+            for line in bundleHeads:
+                if "refs/heads" in line:
+                    bundleBranches.append(line.split()[1].split("refs/heads/")[1])
+            if source.replace('/', '.') in bundleBranches:
+                mappings += f"{source}:{dest} "
 
-            try:
-                git.bundle("verify %s" % bundleName)
-            except git.GrapeGitError as e:
-                print e.gitCommand
-                print e.cwd
-                print e.gitOutput
-                raise e
-            git.fetch("--tags -u %s %s" % (bundleName, mappings))
-    return True        
-
-    
-    
+        try:
+            git.bundle(f"verify {bundleName}", execution_path=execution_path)
+        except grape_errors.GrapeGitError as e:
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(e.gitOutput)
+            raise e
+        git.fetch(f"--tags -u {bundleName} {mappings}", execution_path=execution_path)
+    return True

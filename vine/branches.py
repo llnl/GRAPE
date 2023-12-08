@@ -1,20 +1,27 @@
-import sys, os
-import grapeGit as git
-import option
+import logging
+import os
+from vine import grapeGit as git
+from vine.option import Option
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.vine_logging import log_wrapper
 
 # list local branches (git branch)
-class Branches(option.Option):
+class Branches(Option, WorkspaceDirHandler):
+
     def __init__(self):
-        super(Branches,self).__init__()
+        super(Branches, self).__init__()
         self._key = "b"
         self._section = "Workspace"
 
     def description(self):
         return "List all of your local repo's branches"
 
+    @log_wrapper
     def execute(self, args):
         os.environ["GIT_PYTHON_TRACE"] = "full"
-        print(git.branch())
+        # Branches logged & printed during vine_subprocess.executeSubProcess()
+        branches = git.branch(execution_path=self.workspace_dir)
+        logging.info(f'\n{branches}')
         return True
 
     def setDefaultConfig(self, config):

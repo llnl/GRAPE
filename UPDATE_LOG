@@ -1,5 +1,1214 @@
 
 
+Tue Apr 26 15:01:45 2022 Peter B. Robinson
+v1.37.19
+Reviewers: David Bloss, Ben Liu, Alan Dayton
+
+SUMMARY:
+
+Support writing update messages to 1 file per merge request.
+
+Configure GRAPE to do the same.
+
+
+Mon Apr 25 14:46:42 2022 Peter B. Robinson
+v1.37.18
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+
+Adds capability for grape to verify publish build and test steps using successfully run Gitlab CI pipeline jobs.
+
+Configures grape to use test-all_rzgenie to verify it's own publish and test steps using Gitlab CI.
+
+
+Fri Apr 22 12:24:42 2022 Peter B. Robinson
+v1.37.17
+Reviewers: Ben Liu, Alan Dayton
+
+Adds Gitlab CI integration.
+
+
+Tue Mar 22 11:44:08 2022 David Bloss
+v1.37.16
+Reviewers: Peter Robinson, Ben Liu
+
+GRAPE checks environment variables for Gitlab CI variables. \
+If the most basic variable [GITLAB_CI](https://docs.gitlab.com/ee/ci/variables/predefined_variables.html) exists then GRAPE is running from within a Gitlab CI job and will run non-interactively - not asking user for input.
+
+
+Wed Mar 16 10:39:06 2022 Benjamin T. Liu
+v1.37.15
+Reviewers: Peter Robinson
+
+Mergeback of v1.36.17
+
+Fri Mar 11 08:50:26 2022 Benjamin T. Liu
+v1.36.17
+Reviewers: Peter Robinson, Patrick Greene
+
+Fix grape uv --gui bug for top-level nested subprojects
+
+- Toggling top-level subprojects previously caused grape to crash
+
+Thu Feb 17 09:21:20 2022 Benjamin T. Liu
+v1.37.14
+Reviewers: Peter Robinson, Al Nichols
+
+Use separate progress files for different grape operations
+
+- Allows grape md to be continued within a grape publish that is in progress, for example
+
+
+Thu Feb 17 09:16:54 2022 Benjamin T. Liu
+v1.37.13
+Reviewers: Peter Robinson
+
+Mergeback of v4.36.16
+
+Wed Feb 16 11:25:02 2022 Benjamin T. Liu
+v1.36.16
+Reviewers: Peter Robinson, Patrick Greene
+
+Checkout the corresponding public branch before creating a new flow branch
+
+- Only do this if the public branch differs from the public branch for the current branch
+
+Mon Feb 14 15:15:55 2022 Patrick Greene
+v1.37.12
+Reviewers: Peter Robinson, Ben Liu
+
+Added --remote-only and --local-only flags to grape db command
+
+
+Wed Feb  9 07:57:08 2022 Benjamin T. Liu
+v1.37.11
+Reviewers: Peter Robinson
+
+Create gitlab admin task to protect public branches from force pushes/deletes (replaces task to remove all protected branches).  Limit admin tasks to grape-configured repos.
+
+
+Tue Dec 14 09:53:25 2021 Benjamin T. Liu
+v1.37.10
+Reviewers: Peter Robinson, Al Nichols
+
+Fixes for grape uv
+
+- Fix gui for Windows
+
+- Fix gui for empty subproject lists
+
+- Fix documentation
+
+
+Mon Nov 22 14:51:33 2021 Benjamin T. Liu
+v1.37.9
+Reviewers: Peter Robinson, Al Nichols
+
+Mergeback of v1.36.14/15
+
+Mon Nov 22 14:39:50 2021 Benjamin T. Liu
+v1.36.15
+Reviewers: Peter Robinson, Al Nichols
+
+Fix project highlighting for changed entries
+
+- Was broken in v4.36.14
+
+
+Mon Nov 22 09:26:49 2021 Benjamin T. Liu
+v1.36.14
+Reviewers: Peter Robinson, Al Nichols
+
+Fixes for grape uv --gui
+
+- Allow widgets to resize
+
+- Remove enclosing directory from list box display
+
+Tue Nov  2 14:15:38 2021 Benjamin T. Liu
+v1.37.8
+Reviewers: Peter Robinson
+
+Add more gitlab admin tasks
+
+
+Mon Nov  1 13:43:58 2021 Benjamin T. Liu
+v1.37.7
+Reviewers: Peter Robinson
+
+Mergeback of v1.36.12/13
+
+Mon Nov  1 12:59:32 2021 Benjamin T. Liu
+v1.36.13
+Reviewers: Peter Robinson, Paul Tsuji
+
+Fix case sensitivity in gitlab review
+
+- Allows review/publish of subprojects that are not lowercase
+
+
+Mon Nov  1 09:53:52 2021 Benjamin T. Liu
+v1.36.12
+Reviewers: Peter Robinson
+
+Fix path for gitlab review
+
+- Previously incorrect if run from somewhere other than the workspace dir for project with subprojects
+
+Prevent python cache file generation for doc generation and testing
+
+- vine/gendocs.py is directly called during publishing in grape project
+
+Fri Oct 29 11:26:27 2021 Benjamin T. Liu
+v1.37.6
+Reviewers: Peter Robinson
+
+Add gitlab admin tasks (removeProtectedBranches implemented)
+
+
+Fri Oct 29 10:58:28 2021 Benjamin T. Liu
+v1.37.5
+Reviewers: Peter Robinson
+
+Mergeback of v1.36.8 and v1.36.9
+
+Fri Oct 29 10:30:30 2021 Benjamin T. Liu
+v1.36.11
+Reviewers: Peter Robinson
+
+Prevent generation of python cache files
+
+
+Fri Oct 29 10:22:15 2021 Peter B. Robinson
+v1.36.10
+Reviewers: Ben Liu
+
+GRAPE was only looking at reviewers added by grape, now pays attention to reviewers added through the web interface.
+
+
+Wed Oct 27 08:27:24 2021 Benjamin T. Liu
+v1.36.9
+Reviewers: Peter Robinson
+
+Fix debugging exception during personal access token generation
+
+
+Wed Oct 27 08:01:42 2021 Benjamin T. Liu
+v1.36.8
+Reviewers: Peter Robinson
+
+Provide better output for gitlab query failures
+
+
+Tue Oct 26 14:00:24 2021 Peter B. Robinson
+v1.37.4
+Reviewers: Ben Liu
+
+Mergeback of 1.36.7
+
+
+Mon Oct 25 13:47:19 2021 Peter B. Robinson
+v1.37.3
+Reviewers: Ben Liu, Arlie Capps
+
+Mergeback of project lookup fix.
+
+
+Thu Oct 21 14:25:30 2021 Peter B. Robinson
+v1.37.2
+Reviewers: Ben Liu
+
+Mergeback of v1.36.3.
+
+
+Thu Oct 21 11:52:05 2021 Peter B. Robinson
+v1.37.1
+Reviewers: Ben Liu
+
+mergeback of v1.36.2
+
+Tue Oct 26 12:52:40 2021 Peter B. Robinson
+v1.36.7
+Reviewers: Ben Liu
+
+Fixes an issue where you needed to run grape review twice to add reviewers to a gitlab MR.
+
+
+Tue Oct 26 12:02:25 2021 Benjamin T. Liu
+v1.36.6
+Reviewers: Peter Robinson
+
+Fix gitlab lookups to search all entries rather than just the first page
+
+
+Tue Oct 26 11:55:17 2021 Peter B. Robinson
+v1.36.5
+Reviewers: Ben Liu
+
+Ensures Gitlab::reviewers always returns a list.
+
+
+Mon Oct 25 13:15:44 2021 Peter B. Robinson
+v1.36.4
+Reviewers: Ben Liu, Arlie Capps
+
+Fix group lookup in vine/Gitlab.py
+
+
+Thu Oct 21 13:21:55 2021 Peter B. Robinson
+v1.36.3
+Reviewers: Ben Liu
+
+Ensures repo lookups in Gitlab RestAPI get the correct project. 
+Allows SSL Certificate to be ignored for Gitlab RestAPI.
+
+
+Thu Oct 21 11:45:44 2021 Peter B. Robinson
+v1.36.2
+Reviewers: Ben Liu
+
+Fixes CodeReviewsFactory calls in vine/publish.lpy to consistently use ssh PAT generation.
+
+
+Tue Oct 19 12:20:08 2021 Peter B. Robinson
+v1.36.1
+Reviewers: Ben Liu
+
+SUMMARY
+Merge latest develop in, create v1.36. 
+
+Details:
+GitLab support for grape review, grape publish. 
+Moves grape to be hosted on GitLab. 
+Various robustness improvements. 
+Grape commit can now handle filetrees across subprojects and commit multiple filetrees. 
+Performance improvements.
+
+
+Thu Oct 14 15:16:35 2021 Peter B. Robinson
+v1.35.27
+Reviewers: David Dawson
+
+Migrate from stash/bitbucket to gitlab.
+
+
+Wed Oct 13 13:12:41 2021 Peter B. Robinson
+v1.35.26
+Reviewers: David Dawson, Ben Liu
+
+Authenticate to Gitlab REST API using SSH generated Personal Access Tokens.
+
+
+Tue Oct 12 13:55:03 2021 Peter B. Robinson
+v1.35.25
+Reviewers: David Dawson, Ben Liu
+
+Summary: 
+Correctly update reviewer IDs in gitlab during grape review. 
+Modify the description to use 2 newline characters everywhere there is currently a single newline character to enforce displaying new lines on a separate line in the markdown description context.
+
+
+Tue Oct 12 11:33:24 2021 Peter B. Robinson
+v1.35.24
+Reviewers: Ben Liu, David Dawson
+
+Summary
+Updates gitlab and requests, adds requests_toolbelts (new dependency of gitlab).
+
+Details:
+python-gitlab updated to 2.10.1
+requests updated to v2.26.0
+requests_toolbelt added v0.9.1
+
+
+Thu Sep  2 11:24:28 2021 Peter B. Robinson
+v1.35.23
+Reviewers: Ben Liu, Alan Dayton
+
+Summary:
+Removes a couple of warnings from using \"is not\" as a comparison against string literals.
+
+
+Wed Sep  1 08:35:43 2021 Peter B. Robinson
+v1.35.22
+Reviewers: Ben Liu, Alan Dayton
+
+Summary: Global handling of authentication errors with some helpful suggestions for how a user can get out of that cycle of sadness.
+Addresses GRP_198
+
+
+Mon Aug 23 10:58:17 2021 Daniel Taller
+v1.35.21
+Reviewers: Peter Robinson, Ben Liu
+
+BRANCH: feature/taller1/printMenu
+SUMMARY: Previously, if you wrote \"grape option\" with an unknown option, you got an ugly error message. Now I print the menu and give nicer user feedback.
+
+Now:
+
+rzgenie2{taller1}57: ./grape poop
+
+GRAPE: GRAPE: Unknown option 'poop'
+GRAPE: Please choose option from menu below
+
+**GRAPE - Git Replacement for \"Awesome\" PARSEC Environment**
+
+********************* Getting Started **********************
+clone           : Clone a repo and configure it for grape
+config          : Initialize a repo you've already cloned without using GRAPE
+writeConfig     : write a .grapeconfig file based on your current environment
+
+*********************** Code Reviews ***********************
+review          : Prepare current topic branch for review
+
+....
+
+Before:
+
+rzgenie2{taller1}27: grape merge
+GRAPE: Unknown option 'merge'
+ {'addSubproject': <vine.addSubproject.AddSubproject object at 0x2aaab2a03470>, 'bundle': <vine.bundle.Bundle object at 0x2aaab2729d30>, 'unbundle': <vine.bundle.Unbundle object at 0x2aaab2729710>, 'b': <vine.branches.Branches object at 0x2aaab2729c88>, 'status': <vine.status.Status object at 0x2aaab2729cc0>, 'stash': <vine.stash.Stash object at 0x2aaab2729ba8>, 'checkout': <vine.checkout.Checkout object at 0x2aaab520f3c8>, 'push': <vine.push.Push object at 0x2aaab520f518>, 'pull': <vine.pull.Pull object at 0x2aaab520f5f8>, 'commit': <vine.commit.Commit object at 0x2aaab520f748>, 'publish': <vine.publish.Publish object at 0x2aaab520f780>, 'clone': <vine.clone.Clone object at 0x2aaab520f7b8>, 'config': <vine.config.Config object at 0x2aaab520f8d0>, 'writeConfig': <vine.writeConfig.WriteConfig object at 0x2aaab50a7e10>, 'foreach': <vine.foreach.ForEach object at 0x2aaab50a7e80>, 'm': <vine.merge.Merge object at 0x2aaab50a7eb8>, 'md': <vine.mergeDevelop.MergeDevelop object at 0x2aaab50a7ef0>, 'mr': <vine.mergeRemote.MergeRemote object at 0x2aaab50a7f28>, 'db': <vine.deleteBranch.DeleteBranch object at 0x2aaab50a7f60>, 'resolve': <vine.resolveConflicts.ResolveConflicts object at 0x2aaab50a7f98>, 'review': <vine.review.Review object at 0x2aaab50a7fd0>, 'test': <vine.grapeTest.Test object at 0x2aaab2758048>, 'up': <vine.updateLocal.UpdateLocal object at 0x2aaab2758080>, 'updateSubproject': <vine.updateSubproject.UpdateSubproject object at 0x2aaab27580b8>, 'installHooks': <vine.hooks.InstallHooks object at 0x2aaab27580f0>, 'runHook': <vine.hooks.RunHook object at 0x2aaab2758128>, 'uv': <vine.updateView.UpdateView object at 0x2aaab2758160>, 'version': <vine.version.Version object at 0x2aaab2758198>, 'w': <vine.walkthrough.Walkthrough object at 0x2aaab27581d0>, 'q': <vine.quit.Quit object at 0x2aaab2758208>, 'feature': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c048>, 'rel': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c390>, 'hotfix': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c2e8>, 'mergeback': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c358>, 'rebaseline': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c400>, 'bugfix': <vine.newFlowBranch.NewBranchOption object at 0x2aaab299c3c8>}
+Traceback (most recent call last):
+  File \"/usr/gapps/grape/master/vine/grapeMenu.py\", line 130, in getOption
+    return self._optionLookup[choice]
+KeyError: 'merge'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File \"/usr/gapps/ale3d_dev/bin/grape\", line 133, in <module>
+    exit(0 if startup() else 1)
+  File \"/usr/gapps/ale3d_dev/bin/grape\", line 80, in startup
+    retval = grapeMenu.menu().applyMenuChoice(args[\"<command>\"], args[\"<args>\"])
+  File \"/usr/gapps/grape/master/vine/grapeMenu.py\", line 137, in applyMenuChoice
+    chosen_option = self.getOption(choice)
+  File \"/usr/gapps/grape/master/vine/grapeMenu.py\", line 133, in getOption
+    raise Exception
+Exception
+
+    
+TESTS REBASELINED: NONE
+
+
+Fri Aug 13 09:44:33 2021 Peter B. Robinson
+v1.35.20
+Reviewers: Ben Liu, Alan Dayton
+
+Fixes error message when there is a conflict in the outer repo (addresses GRP-194).
+
+
+Fri Aug 13 09:38:41 2021 Peter B. Robinson
+v1.35.19
+Reviewers: Alan Dayton, Ben Liu
+
+Addresses crashes in grape abort where the md1 step actually incurred a merge. (Addresses GRP-195)
+
+
+Thu Aug 12 15:02:56 2021 Peter B. Robinson
+v1.35.18
+Reviewers: Alan Dayton, Ben Liu
+
+Fixes a long standing race condition where the second call to md from the publish process was never getting executed.
+
+
+Thu Aug 12 14:47:39 2021 Peter B. Robinson
+v1.35.17
+Reviewers: Ben Liu, Alan Dayton
+
+fix crash in grape review when executing in submodule.
+
+
+Thu Aug 12 09:48:58 2021 Peter B. Robinson
+v1.35.16
+Reviewers: Alan Dayton, Ben Liu
+
+teach grape to correctly handle filetrees across subprojects, can commit multiple filetrees.
+Addresses GRP-157.
+
+
+Thu Jul 22 15:07:14 2021 Peter B. Robinson
+v1.35.15
+Reviewers: Alan Dayton, Ben Liu
+
+Parallelizes grape review.
+updates grape's copy of urllib to support up to 100 concurrent https connections to bitbucket.
+
+
+Thu Jul 22 14:48:27 2021 Peter B. Robinson
+v1.35.14
+Reviewers: Ben Liu, Alan Dayton
+
+Change the merge technique in publish to avoid file thrashing.
+
+
+Thu Jul 22 10:40:27 2021 Peter B. Robinson
+v1.35.13
+Reviewers: Alan Dayton, Ben Liu
+
+Speeds up grape up by 3x by merging 3 fetches and one pull into a single fetch and a merge.
+
+
+Wed Jul 21 14:24:11 2021 Peter B. Robinson
+v1.35.12
+Reviewers: Ben Liu
+
+mergeback of grape clone return value fix.
+
+
+Wed Jul 21 13:55:45 2021 Peter B. Robinson
+v1.35.11
+Reviewers: David Dawson, Ben Liu
+
+Give grape review and opportunity to add any missing target branches to merge into.
+
+
+Mon Jul 19 11:29:15 2021 Peter B. Robinson
+v1.35.10
+Reviewers: Ben Liu, Patrick Greene
+
+Addresses an issue with rewritten grape md where grape reported conflicted files when there were none.
+
+
+Fri Jul 16 14:03:12 2021 Peter B. Robinson
+v1.35.9
+Reviewers: Alan Dayton, Ben Liu
+
+Parallelizes and optimizes grape md.
+
+
+Wed Jun 23 09:33:45 2021 Benjamin T. Liu
+v1.35.8
+Reviewers: Peter Robinson
+
+Mergeback of 1.34.9: Fix crash when using interactive menu
+
+
+Tue May 18 11:46:59 2021 Peter B. Robinson
+v1.35.7
+Reviewers: Alan Dayton, Ben Liu
+
+SUMMARY
+Adds configurable concurrency defaults.
+Details:
+np default is now configurable, with differing behavior for login nodes than on backend nodes for SLURM and BLUEOS clusters.
+
+
+Mon May 17 13:52:36 2021 Peter B. Robinson
+v1.35.6
+Reviewers: Ben Liu
+
+Summary:
+Mergeback of 1.34.8
+
+Details:
+clean up args parsing in top level grape.
+Use asyncio.semaphore to limit concurrency for parallel operations.
+Reenable --np.
+
+
+Thu Apr 29 07:49:42 2021 Benjamin T. Liu
+v1.35.5
+Reviewers: Peter Robinson, David Dawson, Alan Dayton
+
+Improve grape status output
+- Add branch ahead/behind information (this was intended but not previously output)
+- Check to see if merge is in progress
+
+
+Mon Apr 26 14:54:19 2021 Benjamin T. Liu
+v1.35.4
+Reviewers: Peter Robinson
+
+Mergeback of v1.34.6:
+Control verbosity of custom build and test steps in grape publish
+- Default to verbose (to match behavior before 1.34.5/1.35.3)
+- Add --quiet option to suppress output
+- TODO consider streaming captured output to a tail-able file and changing default behavior on develop
+Remove unused --quiet option for grape foreach
+- This capability disappeared between v1.19.6 and v1.19.7 with the MultiRepoLauncher
+
+Mergeback of v1.34.7:
+Fix bug running grape config as part of grape clone
+- Bug introduced in python3 refactoring
+- workspace_dir handler probably requires more examination
+
+
+Mon Apr 12 09:20:12 2021 Benjamin T. Liu
+v1.35.3
+Reviewers: Peter Robinson
+
+Mergeback of v1.34.4 and 1.34.5
+- v1.34.4: Fix grape clone from outside of git repo
+- v1.34.5: Ensure that output is captured and errors are checked for grapeGit commands
+
+
+Fri Apr  2 13:49:17 2021 Benjamin T. Liu
+v1.35.2
+Reviewers: Alan Dayton
+
+Mergeback of v1.34.3
+- Reduce noisiness of grapeGit.submodule by capturing output by default
+- Update grape publish to respect emailServer configurations
+- Update email server due to LC system update
+- Fix version tick for grape project's hotfix
+
+
+Thu Apr  1 12:25:46 2021 Peter B. Robinson
+v1.35.1
+Reviewers: Ben Liu
+
+Ticks develop to 1.35.0 after merging in 1.34.0
+
+Thu Aug  5 11:40:53 2021 Peter B. Robinson
+v1.34.11
+Reviewers: Patrick Greene
+
+Fix return values for a few grape commands.
+
+
+Wed Jul 21 14:00:56 2021 Peter B. Robinson
+v1.34.10
+Reviewers: Patrick Greene
+
+Fix return values for grape clone
+
+
+Mon Jun 21 08:40:17 2021 Benjamin T. Liu
+v1.34.9
+Reviewers: Al Nichols, Peter Robinson
+
+Fix crash when using interactive menu
+
+
+Mon May 17 13:37:57 2021 Peter B. Robinson
+v1.34.8
+Reviewers: Ben Liu, Alan Dayton
+
+Summary:
+Reenable --np feature that was dropped in initial python 3 conversion.
+Details
+clean up args parsing in top level grape.
+Use asyncio.semaphore to limit concurrency for parallel operations.
+Reenable --np.
+
+
+Thu Apr 22 10:33:00 2021 Benjamin T. Liu
+v1.34.7
+Reviewers: Daniel Taller, David Bloss, Peter Robinson
+
+Fix bug running grape config as part of grape clone
+- Bug introduced in python3 refactoring
+- workspace_dir handler probably requires more examination
+
+
+Wed Apr 14 11:35:55 2021 Benjamin T. Liu
+v1.34.6
+Reviewers: Daniel Taller, David Dawson, David Bloss
+
+Control verbosity of custom build and test steps in grape publish
+- Default to verbose (to match behavior before 1.34.5/1.35.3)
+- Add --quiet option to suppress output
+- TODO consider streaming captured output to a tail-able file and changing default behavior on develop
+
+Remove unused --quiet option for grape foreach
+- This capability disappeared between v1.19.6 and v1.19.7 with the MultiRepoLauncher
+
+
+Tue Apr  6 15:09:49 2021 Benjamin T. Liu
+v1.34.5
+Reviewers: David Bloss, Peter Robinson
+
+Ensure that output is captured in git commands
+- Fix pull and publish to use captured output
+- Errors and warnings cannot be checked without captured output
+- This fixes issue during python3 conversion
+
+
+Tue Apr  6 10:00:56 2021 Benjamin T. Liu
+v1.34.4
+Reviewers: Peter Robinson, David Bloss
+
+Fix grape clone from outside of git repo
+
+
+Fri Apr  2 11:18:21 2021 Benjamin T. Liu
+v1.34.3
+Reviewers: Peter Robinson
+
+Connect emailServer to configuration variable
+
+
+Fri Apr  2 10:46:08 2021 Benjamin T. Liu
+v1.34.2
+Reviewers: Peter Robinson
+
+Update email server for LC email migration
+
+
+Fri Apr  2 10:26:49 2021 Benjamin T. Liu
+v1.34.1
+Reviewers: Peter Robinson
+
+Fix version ticking for hotfix
+Make grapeGit.submodule less noisy
+- Change default to capture output
+- This is closer to python2 grape behavior
+
+
+Thu Apr  1 11:54:45 2021 Peter B. Robinson
+v1.34.0
+Reviewers: Ben Liu
+
+SUMMARY: 
+Updates master to the current state of v1.33.16. 
+
+Details:
+Switch to Python 3. 
+Initial Gitlab support.
+Miscellaneous bugfixes and robustness improvments.
+
+
+Wed Mar 31 15:44:10 2021 Peter B. Robinson
+v1.33.16
+Reviewers: Ben Liu
+
+Summary: 
+cleaner exit when grape called outside of a git repo
+
+
+Thu Feb  4 08:50:16 2021 Benjamin T. Liu
+v1.33.15
+Reviewers: Peter Robinson
+
+Fix issues with review output from gitlab transition
+
+
+Tue Feb  2 17:04:27 2021 Benjamin T. Liu
+v1.33.14
+Reviewers: David Bloss, Peter Robinson
+
+Fix bug in grape unbundle introduced in Python3 refactor
+- Fix path for unbundle glob
+- Add testing for unbundle with nested subproject
+
+
+Mon Jan 25 10:56:31 2021 Benjamin T. Liu
+v1.33.13
+Reviewers: Peter Robinson
+
+- Fix stashURL for bitbucket development
+- Disable submodule recurse for default git fetch
+
+
+Wed Oct 14 11:12:30 2020 Peter B. Robinson
+v1.33.12
+Reviewers: Ben Liu, Alan Dayton
+
+Fix an issue that prevented completion of previous publish.
+
+
+Wed Oct 14 10:51:47 2020 Peter B. Robinson
+v1.33.11
+Reviewers: Ben Liu, Alan Dayton
+
+Addresses an issue where if a stash URL is being used an Atlassian CodeReviews object is never created.
+Addresses some issues for creating new MRs in Gitlab.
+
+
+Mon Oct 12 14:50:25 2020 Peter B. Robinson
+v1.33.10
+Reviewers: Alan Dayton, Ben Liu
+
+Attempting to get grape to work with gitlab.
+
+Adds a dependency on python-gitlab (https://github.com/python-gitlab/python-gitlab). Contents of https://github.com/python-gitlab/python-gitlab/pull/1200 is copied into GRAPE for now. 
+
+-Peter
+
+
+Mon Oct 12 14:46:46 2020 Peter B. Robinson
+v1.33.10
+Reviewers: Alan Dayton, Ben Liu
+
+Attempting to get grape to work with gitlab.
+
+Adds a dependency on python-gitlab (https://github.com/python-gitlab/python-gitlab). Contents of https://github.com/python-gitlab/python-gitlab/pull/1200 is copied into GRAPE for now. 
+
+-Peter
+
+
+Mon Oct 12 14:09:42 2020 Peter B. Robinson
+v1.33.10
+Reviewers: Alan Dayton, Ben Liu
+
+Attempting to get grape to work with gitlab.
+
+Adds a dependency on python-gitlab (https://github.com/python-gitlab/python-gitlab). Contents of https://github.com/python-gitlab/python-gitlab/pull/1200 is copied into GRAPE for now. 
+
+-Peter
+
+
+Mon Aug 31 11:55:59 2020 David Bloss
+v1.33.9
+Reviewers: Ben Liu, Peter Robinson
+
+Updated if statements using \"is\" where \"==\" is more appropriate in accordance with Python 3.8.5 standards.
+
+
+Mon Aug 31 09:04:55 2020 Benjamin T. Liu
+v1.33.8
+Reviewers: Peter Robinson
+
+Fix behavior of grape uv when nested subprojects are added/removed in another workspace
+- Revert semantic change in user config read in grape uv (introduced during Python 3 refactor
+- Reduce grapeuserconfig output to nested subproject blocks only
+- Added test for adding/removing nested subprojects in a different workspace
+
+
+Mon Jun 29 08:49:05 2020 Benjamin T. Liu
+v1.33.7
+Reviewers: David Bloss, Patrick Greene, Peter Robinson
+
+Fix grape publish file list within nested subprojects
+
+
+Mon Jun  8 07:27:19 2020 David Bloss
+v1.33.6
+Reviewers: Peter Robinson, Ben Liu
+
+The version file was sometimes correctly found relative to the workspace directory, and sometimes incorrectly found relative to the current working directly.
+Now it's all relative to the workspace directory.
+
+See https://rzlc.llnl.gov/jira/browse/GRP-187
+
+
+Thu Apr 30 13:22:27 2020 David Bloss
+v1.33.5
+Reviewers: Ben Liu, Peter Robinson
+
+Fixed Grape's walkthrough command. Its internal workspace_dir was not being properly set.
+
+
+Mon Mar  2 14:33:24 2020 Benjamin T. Liu
+v1.33.4
+Reviewers: Al Nichols, Peter Robinson
+
+Fix sporadic Linux crash due to Windows fix
+- os.altsep is None on Linux
+- fixes crash in grape uv when initializing a subproject that does not have the current branch
+
+
+Mon Mar  2 13:04:18 2020 Peter B. Robinson
+v1.33.3
+Reviewers: Ben Liu
+
+Fix crash caused by failure to check for missing directories.
+
+
+Thu Feb  6 14:12:50 2020 Peter B. Robinson
+v1.33.2
+Reviewers: Ben Liu
+
+SUMMARY
+Fixes crash in grape review.
+Fixes crash in grape publish when calling grape publish from anywhere other than your workspace directory.
+
+
+Thu Dec 12 08:25:43 2019 David Bloss
+v1.33.1
+Reviewers: Ben Liu, Peter Robinson
+
+Grape upgraded to Python 3.6 (or higher).
+Third party libraries \"stashy\" and \"keyring\" updated to run with Python 3.x.
+Importing is more explicit.
+\"f strings\" introduced (Python 3.6 string formatter).
+Improvements to multiprocessing.
+
+
+Thu Dec 12 08:05:10 2019 David Bloss
+v1.33.1
+Reviewers: Ben Liu, Peter Robinson
+
+Grape upgraded to Python 3.6 (or higher).
+Third party libraries \"stashy\" and \"keyring\" updated to run with Python 3.x.
+Importing is more explicit.
+\"f strings\" introduced (Python 3.6 string formatter).
+Improvements to multiprocessing.
+
+
+Thu Dec 12 07:54:52 2019 David Bloss
+v1.33.1
+Reviewers: Peter Robinson, Ben Liu
+
+Grape upgraded to Python 3.6 (or higher).
+Third party libraries \"stashy\" and \"keyring\" updated to run with Python 3.x.
+Importing is more explicit.
+\"f strings\" introduced (Python 3.6 string formatter).
+Improvements to multiprocessing.
+
+
+Thu Dec 12 07:35:18 2019 David Bloss
+v1.33.1
+Reviewers: Ben Liu, Peter Robinson
+
+Grape upgraded to Python 3.6 (or higher).
+Third party libraries \"stashy\" and \"keyring\" updated to run with Python 3.x.
+Importing is more explicit.
+\"f strings\" introduced (Python 3.6 string formatter).
+Improvements to multiprocessing.
+
+
+Wed Dec 11 17:19:29 2019 David Bloss
+v1.33.1
+Reviewers: Ben Liu, Peter Robinson
+
+Grape upgraded to Python 3.6 (or higher).
+Third party libraries \"stashy\" and \"keyring\" updated to run with Python 3.x.
+Importing is more explicit.
+\"f strings\" introduced (Python 3.6 string formatter).
+Improvements to multiprocessing.
+
+
+Wed Dec 11 16:14:25 2019 Peter B. Robinson
+v1.32.0
+Reviewers: Ben Liu, David Bloss
+
+putting current state of grape into master before we switch to python 3.
+
+
+Wed Jul 31 08:29:26 2019 David Bloss
+v1.31.16
+Reviewers: Peter Robinson, Ben Liu
+
+Error messages are not being displayed to GRAPE users.
+
+During a previous commit, I unintentionally hid all error messages when I really just needed to hide one error message in one location; 'grape_errors.py'. Whenever an instance of 'grape_errors.py' is created, a summary of that instance was printed to screen as an error, and now the summary is printed only when \"--debug\" in testing is used.
+
+
+Tue Jul 23 16:59:36 2019 David Bloss
+v1.31.15
+Reviewers: Peter Robinson, Ben Liu
+
+GRAPE users would see erroneous error messages if they executed GRAPE from a directory not containing a git repository.
+
+Instantiating the GrapeLogger as the first step correctly handles these errors. GRAPE users should only see these error messages during testing while using the \"--debug\" flag.
+
+
+Mon Jul 22 11:21:35 2019 David Bloss
+v1.31.14
+Reviewers: Peter Robinson, Ben Liu
+
+Patrick found two issues, this commit fixes the easy problem.
+
+The other issue seems to be cosmetic at worst. Error messages that should print only when debugging are printing to stdout on his machine. So far I have not been able to replicate this locally but am working on it.
+
+
+Thu Jul 18 16:33:03 2019 David Bloss
+v1.31.13
+Reviewers: Ben Liu, Peter Robinson
+
+* vine_logging logs to file, routes stdout/stderr
+* backspace usable for GRAPE menu input
+
+GRAPE's current state:
+Testing currently redirects the OS' stdout & stderr to \"file like objects\" before executing tests, and undoes this redirection after tests have finished. Users running a test can use \"--debug\" to have output printed to stdout, but can not set breakpoints for actual debugging with a debugger like \"pdb\". The \"--debug\" flag makes use of a custom \"multifile\" object to reroute the file like objects back to the OS' stdout & stderr, which does not seem to allow for interactive debugging.
+
+GRAPE's future state (with provided changes):
+Executing code's stdout/stderr traffic is routed through \"vine_logging\", which hooks into Python's built-in logging module. Using logging handlers, traffic can be send to nowhere (devnull), to stdout, stderr, a log file, or any combination of the above.
+The OS' stdout is left alone and only temporarily rerouted before GRAPE's menu is displayed or if tests are executed without the \"--debug\" flag. If tests are ran with \"--debug\" then stdout is left alone and devs can set pdb breakpoints for interactive debugging. Also log files are created and deleted as part of the testing process.
+
+
+Thu Jul 18 16:08:12 2019 David Bloss
+v1.31.13
+Reviewers: Peter Robinson, Ben Liu
+
+* vine_logging logs to file, routes stdout/stderr
+* backspace usable for GRAPE menu input
+
+GRAPE's current state:
+Testing currently redirects the OS' stdout & stderr to \"file like objects\" before executing tests, and undoes this redirection after tests have finished. Users running a test can use \"--debug\" to have output printed to stdout, but can not set breakpoints for actual debugging with a debugger like \"pdb\". The \"--debug\" flag makes use of a custom \"multifile\" object to reroute the file like objects back to the OS' stdout & stderr, which does not seem to allow for interactive debugging.
+
+GRAPE's future state (with provided changes):
+Executing code's stdout/stderr traffic is routed through \"vine_logging\", which hooks into Python's built-in logging module. Using logging handlers, traffic can be send to nowhere (devnull), to stdout, stderr, a log file, or any combination of the above.
+The OS' stdout is left alone and only temporarily rerouted before GRAPE's menu is displayed or if tests are executed without the \"--debug\" flag. If tests are ran with \"--debug\" then stdout is left alone and devs can set pdb breakpoints for interactive debugging. Also log files are created and deleted as part of the testing process.
+
+
+Thu Apr 18 10:57:33 2019 David Bloss
+v1.31.12
+Reviewers: Ben Liu, Peter Robinson
+
+* deprecated p4 merge logic removed
+* walkthrough bug fixed
+
+
+Tue Apr  9 11:10:16 2019 David Bloss
+v1.31.11
+Reviewers: Ben Liu, Peter Robinson
+
+Overriding \"sys.stdin\" was previously applied to all Grape tests when this need is much more narrow in scope. \"sys.stdin\" now replaced with an IOStream only when user input is actually needed for testing, then reset to its normal operations immediately after.
+
+
+Mon Apr  1 15:07:38 2019 David Bloss
+v1.31.10
+Reviewers: Peter Robinson, Ben Liu
+
+Import to deprecated module removed. Not sure how the tests didn't catch this last commit.
+
+
+Mon Mar 25 13:29:56 2019 David Bloss
+v1.31.9
+Reviewers: Ben Liu, Peter Robinson
+
+Python 2.7 --> python 3.x upgrade blocked by cyclic dependencies that are uncovered while updating python's import system.
+The changes in this PR are a step toward unraveling those cyclic dependencies.
+
+The majority of changes here are motivated by increased cohesion (tighter grouping of responsibilities) and decoupling (Fewer dependencies. Dependencies that flow in one direction).
+
+@benliu and @probinso I am leaving notes in this PR explaining where code was moved and the underlying motivation where it may not be obvious. Once those are done I will email you both.
+
+
+Mon Mar 11 14:38:01 2019 David Bloss
+v1.31.8
+Reviewers: Ben Liu, Peter Robinson
+
+Missed adding an import statement during sed operations.
+
+
+Mon Mar 11 13:57:15 2019 David Bloss
+v1.31.7
+Reviewers: Ben Liu, Peter Robinson
+
+
+
+
+Wed Mar  6 11:19:10 2019 Benjamin T. Liu
+v1.31.6
+Reviewers: Peter Robinson, Patrick Greene
+
+Fix bug introduced in v1.28.6
+- Previously grape checkout returned early after fetching a branch that was not available locally
+- Now correctly proceeds with the checkout
+
+
+Wed Mar  6 08:43:17 2019 Benjamin T. Liu
+v1.31.5
+Reviewers: Peter Robinson, Arlie Capps
+
+Try to make grape md after change in submodule URL more robust
+
+
+Thu Feb 28 14:01:05 2019 Peter B. Robinson
+v1.31.4
+Reviewers: Ben Liu
+
+SUMMARY: 
+changes default behavior of grape md to be gits default, with no user prompt required.
+
+
+Thu Feb 28 13:53:48 2019 David Bloss
+v1.31.3
+Reviewers: Peter Robinson, Ben Liu
+
+Missed a few custom exceptions in the last branch
+
+
+Tue Feb 26 08:58:53 2019 David Bloss
+v1.31.2
+Reviewers: Ben Liu, Peter Robinson
+
+* Custom errors given separate class, indentation fixes
+* updated custom errors in tests
+
+
+Mon Feb 25 15:43:25 2019 David Bloss
+v1.31.1
+Reviewers: Ben Liu, Peter Robinson
+
+The first significant step toward upgrading GRAPE to python 3.x is updating GRAPE's import schema. This branch is the first step down that road, with python's 'reindent' tool also handling some spacing/indentation issues.
+
+In python 2.7 \"implicit importing\" is allowed, i.e. 'import grapeGit' (path implied). But python 3.x requires relative or absolute importing, i.e. 'import ..grapeGit' or 'import grape.vine.grapeGit' respectively.
+
+This revealed some circular dependencies that must be unraveled before python 3.x can begin to process GRAPE's demands. Separating 'option.py' and 'resumable.py' is a decent first step and can be visually seen by running 'pylint --disable=all --enable=imports,RP0401,RP0402 --import-graph=stuff.pdf **/*.py' on both this branch and develop. Results output to \"stuff.pdf\".
+
+
+Mon Mar 18 16:41:16 2019 Benjamin T. Liu
+v1.31.0
+Reviewers: Patrick Greene, Al Nichols
+
+Hotfix for checkout of branch that is not present locally
+- Previously would return early after the fetch
+- Fix is already in develop
+
+
+Mon Mar 25 14:01:14 2019 Benjamin T. Liu
+v1.30.2
+Reviewers: Peter Robinson
+
+Roll back master version after incorrect publish
+
+
+Wed Feb 20 09:59:17 2019 Peter B. Robinson
+v1.30.0
+Reviewers: Ben Liu
+
+Update to v1.30.
+
+
+Thu Feb 14 14:43:48 2019 Benjamin T. Liu
+v1.28.6
+Reviewers: Peter Robinson, Al Nichols
+
+- Fix for grape checkout -b (broken 1.28.4)
+- Enforce lowercase username and topic prefix
+- Check for existing branch or case-insensitive match (in outer level repo) before creating branches through newFlow or checkout -b
+
+
+Mon Feb 11 09:53:49 2019 Benjamin T. Liu
+v1.28.5
+Reviewers: Peter Robinson
+
+Fix bug in previous md update that caused issues when more than one subproject had a conflict
+Allow merge to proceed if public branch is not available in nested subproject
+
+
+Thu Feb  7 11:05:22 2019 Benjamin T. Liu
+v1.28.4
+Reviewers: Peter Robinson
+
+- Allow grape checkout, md, and newFlow to switch between branches where submodule URLs have changed
+
+
+Thu Jan 17 15:10:37 2019 Benjamin T. Liu
+v1.28.3
+Reviewers: Peter Robinson
+
+Fix missing public branches for grape status
+Fix error checking for git fetch
+Fix fatal error detection for updated capitalization for git 2.20
+Fix comment in testUpdateLocal
+
+
+Tue Jan 15 12:44:36 2019 Benjamin T. Liu
+v1.28.2
+Reviewers: Peter Robinson
+
+Include new submodules in grape review and grape publish
+
+Fixes for git 2.20 (still some issues remain)
+
+Test improvements
+- Add test for publish with new submodules
+- Fix --debug mode for testing
+- Allow running individual tests via <suite>.<test>
+
+
+Mon Jan 14 09:33:31 2019 Benjamin T. Liu
+v1.28.1
+Reviewers: Peter Robinson
+
+Force fetch of tags for compatibility with newer versions of git
+
+
+Mon Dec 10 11:51:18 2018 Peter B. Robinson
+v1.28.0
+Reviewers: Ben Liu
+
+Updates requests to modernize SSL certificate verification.
+
+
+Mon Dec 10 11:25:56 2018 Peter B. Robinson
+v1.27.4
+Reviewers: Ben Liu
+
+Updates requests.py to resolve SSL certificate verification issues.
+
+
+Mon Dec  3 13:53:01 2018 Benjamin T. Liu
+v1.27.3
+Reviewers: Al Nichols, Peter Robinson
+
+Pass verifySSL flag through to grape review during grape publish
+
+
+Fri Jun 22 08:49:22 2018 Benjamin T. Liu
+v1.27.3 (errondous master version)
+Reviewers: Ben Liu, Peter Robinson
+
+update to master so people can publish after Patricks update
+
+
+Wed Jun 20 10:54:17 2018 Peter B. Robinson
+v1.27.2
+Reviewers: Ben Liu, Patrick Greene
+
+Allows users to use <public> as a placeholder for the target publish branch in custom publish cmds.
+
+
+Thu Jun 14 10:50:39 2018 Benjamin T. Liu
+v1.27.1
+Reviewers: Alan Loyd Dayton, Peter Robinson
+
+Save publish progress before and after each step
+
+
+Thu May 17 08:58:21 2018 Peter B. Robinson
+v1.26.0
+Reviewers: Ben Liu
+
+Brings master up to date with v1.25.3. Since 1.24, this addresses some bugs in grape m and grape checkout having to deal with moving to a branch that no longer has a submodule or nested suproject.
+
+
+Fri May  4 10:05:47 2018 Peter B. Robinson
+v1.25.3
+Reviewers: Ben Liu
+
+SUMMARY:
+Fixes KeyError failure when switching between branches that have renamed a nested subproject. 
+
+DETAILS:
+checkout now parses full contents of .grapeconfig on each branch into a separate GrapeConfigParser object, and then uses set subtraction to determine added and removed nested subprojects.
+
+
+Mon Apr 16 16:36:45 2018 Benjamin T. Liu
+v1.25.2
+Reviewers: Peter Robinson
+
+Fix issue in grape m <branch> if a submodule does not exist in the target branch
+
+
+Tue Apr  3 08:11:28 2018 Benjamin T. Liu
+v1.25.1
+Reviewers: Peter Robinson
+
+Allow consecutive newlines in review message specified with -m
+
+
+Mon Mar 12 13:37:53 2018 Peter B. Robinson
+v1.23.3
+Reviewers: Ben Liu
+
+SUMMARY:
+Adds a grape uv --gui option. 
+More graceful behavior when submodules are removed during a merge.
+
+
+Wed Feb 28 17:18:33 2018 Benjamin T. Liu
+v1.23.2
+Reviewers: Chris White, Peter Robinson
+
+Fixes to handle removed submodules
+- Handle removed submodules after grape md
+- Make getActiveSubmodules robust to inconsistent submodule state
+
+
+Mon Dec 18 14:09:28 2017 Benjamin T. Liu
+v1.23.1
+Reviewers: Peter Robinson
+
+Add GUI option to select projects with grape uv
+
+
 Wed Dec  6 09:03:02 2017 Peter B. Robinson
 v1.21.17
 Reviewers: Ben Liu

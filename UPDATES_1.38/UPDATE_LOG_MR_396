@@ -1,0 +1,7 @@
+
+
+Wed Jul 13 10:48:17 2022 Benjamin T. Liu
+MR_396
+Reviewers: Peter Robinson, Daniel Taller
+
+Limit publish pushes to only tags we created rather than all tags

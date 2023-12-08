@@ -8,13 +8,13 @@ class Users(ResourceBase, FilteredIterableResource):
         """
         Add a user, returns a dictionary containing information about the newly created user
         """
-        data = dict(name=name,
+        params = dict(name=name,
                     password=password,
                     displayName=displayName,
                     emailAddress=emailAddress,
                     addToDefaultGroup=addToDefaultGroup)
 
-        return self._client.post(self.url(), data)
+        return self._client.post(self.url(), params=params)
 
     @ok_or_error
     def delete(self, user):
@@ -51,14 +51,14 @@ class Users(ResourceBase, FilteredIterableResource):
     @ok_or_error
     def add_group(self, user, group):
         """
-        Add the given user to the given user.
+        Add the given group to the given user.
         """
         return self._client.post(self.url("/add-group"), dict(context=user, itemName=group))
 
     @ok_or_error
     def remove_group(self, user, group):
         """
-        Remove the given user from the given group.
+        Remove the given group from the given user.
         """
         return self._client.post(self.url("/remove-group"), dict(context=user, itemName=group))
 

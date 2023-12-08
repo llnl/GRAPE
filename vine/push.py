@@ -1,19 +1,22 @@
-import os
-import option
-import grapeGit as git
-import utility
-import grapeConfig
+import logging
+from vine import config_parser_global
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
+from vine.option import Option
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.vine_logging import log_wrapper
 
 
-class Push(option.Option):
+class Push(Option, WorkspaceDirHandler):
     """
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--noRecurse] 
+    Usage: grape-push [--noRecurse]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.  
+    --noRecurse     Don't perform pushes in submodules.
 
     """
     def __init__(self):
@@ -24,46 +27,40 @@ class Push(option.Option):
     def description(self):
         return "Pushes your current branch to origin in all projects in this workspace."
 
+    @log_wrapper
     def execute(self, args):
-        baseDir = utility.workspaceDir()
+        git.currentBranch(execution_path=self.workspace_dir)
+        config = config_parser_global.grapeConfig()
+        config.getPublicBranchList()
 
-        cwd = os.getcwd()
-        os.chdir(baseDir)
-        currentBranch = git.currentBranch()
-        config = grapeConfig.grapeConfig()
-        publicBranches = config.getPublicBranchList()
+        git.getActiveSubmodules(execution_path=self.workspace_dir)
 
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            push, workspace_dir=self.workspace_dir)
+        retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
-            
-        submodules = git.getActiveSubmodules()
-        
-        retvals = utility.MultiRepoCommandLauncher(push).launchFromWorkspaceDir(handleMRE=handlePushMRE)
-        
-        os.chdir(cwd)        
-        utility.printMsg("Pushed current branch to origin")
+        logging.info("Pushed current branch to origin")
         return False not in retvals
-    
+
     def setDefaultConfig(self, config):
         pass
 
-def push(repo='', branch='master'):
-    with utility.cd(repo):
-        utility.printMsg("Pushing %s in %s..." % (branch, repo))
-        git.push("-u origin %s" % branch, throwOnFail=True)
-        
+def push(repo='', branch='master', *, workspace_dir):
+    logging.info(f"Pushing {branch} in {repo}...")
+    git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
+
 def handlePushMRE(mre):
     for e1 in mre.exceptions():
         try:
             raise e1
-        except git.GrapeGitError as e:
-            utility.printMsg("Failed to push branch.")
-            print e.gitCommand
-            print e.cwd
-            print e.gitOutput
-            return False            
+        except grape_errors.GrapeGitError as e:
+            logging.error("Failed to push branch.")
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(e.gitOutput)
+            return False
 
-if __name__ is "__main__":
-    import grapeMenu
+if __name__ == "__main__":
+    from vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("push", [])
-    

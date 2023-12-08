@@ -1,22 +1,34 @@
-#!/usr/bin/env python
-
-import sys
+#!/usr/bin/env python3
+from contextlib import contextmanager
+import io
 import os
-import inspect
-import unittest
-import StringIO
 import shutil
+import stat
+import sys
 import tempfile
+import unittest
 
-curPath = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-if not curPath in sys.path:
-    sys.path.insert(0, curPath)
-grapePath = os.path.join(curPath, "..")
-if grapePath not in sys.path:
-    sys.path.insert(0, grapePath)
+sys.dont_write_bytecode = True
+
+# Assert tests are ran with Python 3.6 or greater.
+pythonMajorVersion = sys.version_info[0]
+pythonMinorVersion = sys.version_info[1]
+if not pythonMajorVersion == 3 and pythonMinorVersion >= 6:
+    print('Grape requires Python 3.6 or greater.')
+    exit(1)
+# Needed if testing GRAPE directly through CLI. (Not through GRAPE's menu).
+grape_path = os.path.dirname(os.path.realpath(os.path.dirname(__file__)))
+grape_par_dir = os.path.dirname(grape_path)
+if grape_par_dir not in sys.path:
+    sys.path.insert(0, grape_par_dir)
+
+from vine import grape_errors
 from vine import grapeGit as git
-from vine import grapeConfig
+from vine import config_parser_global
 from vine import grapeMenu
+from vine import utility
+from vine import vine_logging
+from vine.option import Option
 
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
@@ -39,76 +51,75 @@ def writeFile3(path):
 
 
 class TestGrape(unittest.TestCase):
-    def printToScreen(self, str): 
-        self.stdout.write(str)
-        
-    def switchToStdout(self):
-        sys.stdout = self.stdout
-        sys.stderr = self.stderr
-        
-    def switchToHiddenOutput(self):
-        sys.stdout = self.output
-        sys.stderr = self.error
-        
+
     def __init__(self, superArg):
         super(TestGrape, self).__init__(superArg)
-        self.defaultWorkingDirectory = tempfile.mkdtemp()
+        # 'realpath' resolves issues caused by symlinks and path assumptions.
+        self.defaultWorkingDirectory = os.path.realpath(tempfile.mkdtemp())
 
         self.repos = [os.path.join(self.defaultWorkingDirectory, "testRepo"),
                       os.path.join(self.defaultWorkingDirectory, "testRepo2")]
         self.repo = self.repos[0]
+
+        # Wipe out grape menu created by calling "grape test"
+        grapeMenu._resetMenu()
+        self.menu = None
+
         self._debug = False
+        self.logger = vine_logging.GrapeLogger()
 
     def setUpConfig(self):
         grapeMenu._resetMenu()
-        grapeMenu.menu()
-        config = grapeConfig.grapeConfig()
-        config.set("flow", "publicBranches", "master")
-        config.set("flow", "topicPrefixMappings", "?:master")
-        config.set("workspace", "submoduleTopicPrefixMappings", "?:master")
+        self.menu = grapeMenu.menu(workspace_dir=self.repo)
+        config = config_parser_global.grapeConfig()
+        try:
+            # Git user name required for publish tests.
+            config.ensureSection('user')
+            config.get('--get user.name')
+        except:
+            config.set('user', 'name', 'TEST USER')
+        config.set(Option.SECTION_FLOW, "publicBranches", "master")
+        config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
+        config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
+        config.set(Option.SECTION_PUBLISH, "mergeTrain", "False")
+
+    def setUpLogging(self):
+        if self._debug:
+            self.logger.log_to_stderr()
+            self.logger.log_to_stdout()
+            log_file = os.path.join(os.getcwd(), self._testMethodName + '.log')
+        else:
+            self.logger.redirect_sys_stdout()
+            log_file = os.path.join(self.defaultWorkingDirectory,
+                                    self._testMethodName + '.log')
+        self.logger.log_to_file(log_file)
 
     def setUp(self):
         # setUp stdout and stderr wrapping to capture
         # messages from the modules that we test
-        self.output = StringIO.StringIO()
-        self.error = StringIO.StringIO()
-        self.stdout = sys.stdout
-        self.stderr = sys.stderr
-        self.stdin = sys.stdin
-        self.cwd = os.getcwd()
-        sys.stdout = self.output
-        sys.stderr = self.error
+        self.setUpLogging()
 
         # create a test repository to operate in.
-        try:
-            try:
-                os.mkdir(self.repo + "-origin")
-            except OSError:
-                pass
+        bare_repo = self.repo + '-origin'
+        os.mkdir(bare_repo)
 
-            os.chdir(self.repo + "-origin")
-            cwd = os.getcwd()
-            git.gitcmd("init --bare", "Setup Failed")
-            os.chdir(os.path.join(self.repo+"-origin",".."))
-            git.gitcmd("clone %s %s" % (self.repo +"-origin",self.repo), "could not clone test bare repo")
-            os.chdir(self.repo)
-            fname = os.path.join(self.repo, "testRepoFile")
-            writeFile1(fname)
-            self.file1 = fname
-            git.gitcmd("add %s" % fname, "Add Failed")
-            git.gitcmd("commit -m \"initial commit\"", "Commit Failed")
-            git.gitcmd("push origin master", "push to master failed")
-            # create a develop branch in addition to master by default
-            git.branch("develop")
-            git.push("origin develop")
-            os.chdir(os.path.join(self.repo, ".."))
-        except git.GrapeGitError:
-            pass
-        
-        self.menu = grapeMenu.menu()
-        
-        if self._debug:
-            self.switchToStdout()
+        git.gitcmd("init --bare", "Setup Failed",
+                   execution_path=bare_repo)
+
+        working_dir = os.path.dirname(f"{self.repo}-origin")
+        git.clone(source_repo=bare_repo, clone_repo=self.repo,
+                  execution_path=self.defaultWorkingDirectory)
+        self.menu = grapeMenu.menu(workspace_dir=self.repo)
+        fname = os.path.join(self.repo, "testRepoFile")
+        writeFile1(fname)
+        self.file1 = fname
+        git.add(fname, execution_path=self.repo)
+        git.commit("-m \"initial commit\"", execution_path=self.repo)
+        git.gitcmd(f"push origin master", "push to master failed",
+                   execution_path=self.repo)
+        # create a develop branch in addition to master by default
+        git.branch("develop", execution_path=self.repo)
+        git.push("origin develop", execution_path=self.repo)
 
     def tearDown(self):
         def onError(func, path, exc_info):
@@ -122,115 +133,177 @@ class TestGrape(unittest.TestCase):
 
             Usage : ``shutil.rmtree(path, onerror=onerror)``
             """
-            import stat
             if not os.access(path, os.W_OK):
                 # Is the error an access error ?
                 os.chmod(path, stat.S_IWUSR)
                 func(path)
             else:
                 raise Exception
-        if self._debug:
-            self.switchToHiddenOutput()
-        os.chdir(os.path.abspath(os.path.join(self.defaultWorkingDirectory,"..")))
         shutil.rmtree(self.defaultWorkingDirectory, False, onError)
 
-        # restore stdout, stdin, and stderr to their original streams
-        sys.stdout = self.stdout
-        sys.stderr = self.stderr
-        sys.stdin = self.stdin
-        os.chdir(self.cwd)
-        self.output.close()
-
         # reset grapeConfig and grapeMenu
-        grapeConfig.resetGrapeConfig()
+        config_parser_global.resetGrapeConfig()
         grapeMenu._resetMenu()
+        self.menu = None
+        self.logger.restore_sys_stdout()
 
-    # print the captured standard out
-    def printOutput(self):
-        for l in self.output:
-            self.stdout.write(l)
+        if not self._debug and os.path.isfile(self.logger.log_file):
+            os.remove(self.logger.log_file)
 
-    # print the captured standard error
-    def printError(self):
-        for l in self.error:
-            self.stderr.write(l)
+    def get_output(self):
+        return self.logger.get_log_file_contents()
 
-    # stage user input for methods that expect it
-    def queueUserInput(self, inputList):
-        self.input = StringIO.StringIO()
-        sys.stdin = self.input
-        self.input.writelines(inputList)
-        self.input.seek(0)
+    @contextmanager
+    def queue_user_input(self, user_input_list):
+        """
+        Temporarily replaces sys.stdin with a text stream holding user input.
+        """
+        original_stdin = sys.stdin
+        input_stream = io.StringIO()
+        sys.stdin = input_stream
+        input_stream.writelines(user_input_list)
+        input_stream.seek(0)
+        try:
+            yield
+        finally:
+            input_stream.close()
+            sys.stdin = original_stdin
 
     def assertTrue(self, expr, msg=None):
         if msg is not None:
-            msg += "\n%s" % self.output.getvalue()
+            msg += f"\n{self.get_output()}"
         super(TestGrape, self).assertTrue(expr, msg=msg)
 
     def assertFalse(self, expr, msg=None):
         if msg is not None:
-            msg += "\n%s" % self.output.getvalue()
+            msg += f"\n{self.get_output()}"
         super(TestGrape, self).assertFalse(expr, msg=msg)
 
+    # Sets up a new nested subproject
+    @staticmethod
+    def assertCanAddNewSubproject(testGrapeObject, *, execution_path):
+        git.clone(argstr='--mirror', source_repo=testGrapeObject.repo,
+                  clone_repo=testGrapeObject.repos[1],
+                  execution_path=testGrapeObject.repo)
+        subproject_path = os.path.join('subs', 'subproject1')
+        testGrapeObject.menu.applyMenuChoice(
+            "addSubproject", ["--name=subproject1",
+                              f"--prefix={subproject_path}", "--branch=master",
+                              f"--url={testGrapeObject.repos[1]}",
+                              "--nested", "--noverify"])
+        subproject1path = os.path.join(testGrapeObject.repo, subproject_path)
+        testGrapeObject.assertTrue(os.path.exists(subproject1path), "subproject1 does not exist")
+        # check to see that subproject1 is a git repo
+        basedir = os.path.split(git.baseDir(execution_path=subproject1path))[-1]
+        subdir = os.path.split(subproject1path)[-1]
+        testGrapeObject.assertEqual(basedir, subdir,
+                                   f"subproject1's git repo is {basedir}, " +
+                                   f"not {subdir}")
+        # check to see that edits that occur in the new subproject are ignored by outer repo
+        writeFile3(os.path.join(subproject1path, "f3"))
+        # make sure there is an edit
+        testGrapeObject.assertFalse(git.isWorkingDirectoryClean(execution_path=subproject1path),
+                                    "subproject1 clean after adding f3")
+        # check that grape left the repository in a clean state
+        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=testGrapeObject.repo),
+                                   "repo not clean after added subproject1")
+        # check in the edit
+        git.add("f3", execution_path=subproject1path)
+        git.commit("-m \"added f3\"", execution_path=subproject1path)
+        testGrapeObject.assertTrue(git.isWorkingDirectoryClean(execution_path=subproject1path),
+                                   "subproject1 not clean")
+        testGrapeObject.subproject = subproject1path
 
-def buildSuite(cls, appendTo=None):
+def buildSuite(cls, appendTo, sub=None):
     suite = appendTo
-    if suite is None:
-        suite = unittest.TestSuite()
-    suite.addTest(unittest.makeSuite(cls))
+    if sub:
+        suite.addTest(cls(sub))
+    else:
+        suite.addTest(unittest.makeSuite(cls))
     return suite
 
 
 def main(argv, debug=False):
-   
-    import testBranches
-    import testClone
-    import testConfig
-    import testMergeDevelop
-    import testGrapeGit
-    import testReview
-    import testVersion
-    import testPublish
-    import testCO
-    import testNestedSubproject
-    import testStatus
-    import testUpdateLocal
-    import testUtility
+
+    from test import testBranches
+    from test import testBundle
+    from test import testClone
+    from test import testConfig
+    from test import testDeleteBranch
+    from test import testMergeDevelop
+    from test import testGrapeGit
+    from test import testResolveConflicts
+    from test import testReview
+    from test import testStash
+    from test import testUnbundle
+    from test import testVersion
+    from test import testPublish
+    from test import testCO
+    from test import testNestedSubproject
+    from test import testStatus
+    from test import testUpdateLocal
 
     testClasses = {"Branches":testBranches.TestBranches,
+                   "Bundle":testBundle.TestBundle,
                    "Clone":testClone.TestClone,
                    "Config":testConfig.TestConfig,
+                   "DeleteBranch":testDeleteBranch.TestDeleteBranch,
                    "GrapeGit":testGrapeGit.TestGrapeGit,
                    "MergeDevelop":testMergeDevelop.TestMD,
+                   "ResolveConflicts":testResolveConflicts.TestResolveConflicts,
                    "Review":testReview.TestReview,
+                   "Stash":testStash.TestStash,
+                   "Unbundle":testUnbundle.TestUnbundle,
                    "Version":testVersion.TestVersion,
                    "Publish":testPublish.TestPublish,
                    "CO":testCO.TestCheckout,
-                   "NestedSubproject":testNestedSubproject.TestNestedSubproject, 
-                   "Status":testStatus.createStatusTester(),
-                   "GrapeUp":testUpdateLocal.createUpTester(),
-                   "Utility":testUtility.TestUtility }
-
+                   "NestedSubproject":testNestedSubproject.TestNestedSubproject}
 
 
     suite = unittest.TestSuite()
-    if len(argv) == 0: 
+    if len(argv) == 0:
+        testClasses.update({"Status": testStatus.createStatusTester(),
+                            "GrapeUp":testUpdateLocal.createUpTester()})
         for cls in testClasses.values():
             suite = buildSuite(cls, suite)
     else:
         if argv[0] == "listSuites":
-            print testClasses.keys()
+            print(testClasses.keys())
             exit(0)
-        for cls in  [testClasses[arg] for arg in argv]:
-            suite = buildSuite(cls, suite)
-            
+        if "Status" in argv:
+            testClasses.update({"Status": testStatus.createStatusTester()})
+        if "GrapeUp" in argv:
+            testClasses.update({"GrapeUp": testUpdateLocal.createUpTester()})
+        for arg in argv:
+            if '.' in arg:
+                (cls, sub) = arg.split('.')
+                try:
+                    cls = testClasses[cls]
+                except:
+                    print(f"*** {cls} is not a valid test suite!\n" + \
+                          f"Valid values are:\n{testClasses.keys()}")
+                    exit(0)
+            else:
+                try:
+                    cls = testClasses[arg]
+                except:
+                    print(f"*** {arg} is not a valid test suite!\n" + \
+                          f"Valid values are:\n{testClasses.keys()}")
+                    exit(0)
+                sub = None
+            suite = buildSuite(cls, suite, sub)
+
     if debug:
         for cls in suite:
-            for case in cls:
-                print case
-                case._debug = True
-        suite._tests    
-    
+            try:
+                for case in cls:
+                    print(case)
+                    case._debug = True
+            except TypeError:
+                print(cls)
+                cls._debug = True
+        suite._tests
+
     result = unittest.TextTestRunner(verbosity=2).run(suite)
     return result.wasSuccessful()
 

@@ -1,12 +1,13 @@
-import option
+from vine.option import Option
+from vine.vine_logging import log_wrapper
 
 
-class Quit(option.Option):
+class Quit(Option):
     """
     grape q
-    Quits grape. 
+    Quits grape.
 
-    Usage: grape-q 
+    Usage: grape-q
 
     """
     def __init__(self):
@@ -17,6 +18,7 @@ class Quit(option.Option):
     def description(self):
         return "Quit."
 
+    @log_wrapper
     def execute(self, args):
         return True
 

@@ -1,5 +1,10 @@
-import gridTesting
-from testGrape import *
+import inspect
+import logging
+import os
+from test import gridTesting
+from test import testGrape
+from vine import grapeGit as git
+from vine import grapeMenu
 
 
 def find_subclasses(module, clazz):
@@ -9,7 +14,7 @@ def find_subclasses(module, clazz):
                 if inspect.isclass(cls) and issubclass(cls, clazz) and not cls is clazz
     ]
 
-class grapeProject(gridTesting.ResettableProject): 
+class grapeProject(gridTesting.ResettableProject):
     def __init__(self, path):
         super(grapeProject, self).__init__(path)
         self._debugging = False
@@ -17,202 +22,216 @@ class grapeProject(gridTesting.ResettableProject):
         self._branchModelConsistent = False
         self._numExpectedFetches = 2
 
-    def isConsistent(self): 
+    def isConsistent(self):
         return self._publicBranchesValid and self._branchModelConsistent
-    
+
     def arePublicBranchesValid(self):
         return self._publicBranchesValid
-    
+
     def isStateConsistentWithBranchModel(self):
         return self._branchModelConsistent
-    
+
     def numExpectedFetches(self):
         return self._numExpectedFetches
-    
+
     def debugging(self):
         return self._debugging
 
-class singleRepo(grapeProject): 
-    def __init__(self, path): 
+class singleRepo(grapeProject):
+
+    def __init__(self, path):
         super(singleRepo, self).__init__(path)
-        
+
+        project_dir = lambda: self.getProjectDir()
+        f1_path = lambda: os.path.join(self.getProjectDir(), "f1")
         self.addCommands([
-            (writeFile1, "f1"),
-            (git.add,"f1"),
-            (git.commit, "-m \"added a single file\"")
+            (testGrape.writeFile1, f1_path),
+            (git.add, ("f1", project_dir)),
+            (git.commit, ("-m \"added a single file\"", project_dir))
         ])
-        
-        self._publicBranchesValid = True
+
+        # public branches are not present on origin
+        self._publicBranchesValid = False
         self._branchModelConsistent = True
 
 
 class repoWithLocalGitflowBranches(singleRepo):
-    def __init__(self, path): 
+    def __init__(self, path):
         super(repoWithLocalGitflowBranches, self).__init__(path)
+        branch_path = lambda: self.getProjectDir()
         self.addCommands([
-            (git.branch, "release master"),
-            (git.branch, "develop master")
+            (git.branch, ("release master", branch_path)),
+            (git.branch, ("develop master", branch_path))
             ])
-        
+
         self._publicBranchesValid = True
         self._branchModelConsistent = True
 
-        
+
 class repoWithLocalAndOriginGitflowBranches(repoWithLocalGitflowBranches):
-    def __init__(self,path): 
+    def __init__(self, path):
         super(repoWithLocalAndOriginGitflowBranches, self).__init__(path)
-        self.addCommands([(git.push, "origin --all")])
+        push_path = lambda: self.getProjectDir()
+        self.addCommands([(git.push, ("origin --all", push_path))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-        
-    
-class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches): 
-    def __init__(self,path): 
+
+
+class singleRepoWithMissingLocalPublicBranches(repoWithLocalAndOriginGitflowBranches):
+    def __init__(self,path):
         super(singleRepoWithMissingLocalPublicBranches, self).__init__(path)
-        
+        project_dir = lambda: self.getProjectDir()
+
         self.addCommands([
-            (git.checkout, "-b feature/user/f1"),
-            (git.branch, "-D master")
+            (git.checkout, ("-b feature/user/f1", project_dir)),
+            (git.branch, ("-D master", project_dir))
         ])
-        
+
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-        
+
 
 # setting up subrojects
-# default grapeconfig expects all submodules to be on master branch when on 
-# public branch in workspace. 
-class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches): 
-    def __init__(self,path):
+# default grapeconfig expects all submodules to be on master branch when on
+# public branch in workspace.
+class validRepoWithSubmodule(repoWithLocalAndOriginGitflowBranches):
+    def __init__(self, path):
         super(validRepoWithSubmodule, self).__init__(path)
+        project_dir = lambda: self.getProjectDir()
         self.addCommands([(grapeMenu.menu().applyMenuChoice,
                          lambda: ("addSubproject", ["--name=submodule1",
                                             "--prefix=submodule1",
-                                            "--url=%s" % self.getOriginDir(),
-                                            "--branch=master", 
-                                            "--submodule", 
+                                            f"--url={self.getOriginDir()}",
+                                            "--branch=master",
+                                            "--submodule",
                                             "--noverify"],
-                                            None,
-                                            ["-v"] )),
-                          (git.commit, "-m \"added submodule1\""),
-                          (git.push, "origin --all")])
+                                            None)),
+                          (git.commit, ("-m \"added submodule1\"", project_dir)),
+                          (git.push, ("origin --all", project_dir))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
-        
-        
+
+
 class WorkspaceWithSubmoduleOnDevelop(validRepoWithSubmodule):
     def __init__(self,path):
         super(WorkspaceWithSubmoduleOnDevelop, self).__init__(path)
-        self.addCommands([
-                           (os.chdir, "submodule1"),
-                           (git.checkout, "develop"),
-                           self.cdToProjectDirCmd(),
-                         ])
+        submodule_path = lambda: os.path.join(self.getProjectDir(),
+                                              "submodule1")
+        self.addCommands([(git.checkout, ("develop", submodule_path))])
         # outer on public branch means expect submodule on master
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
-        
+
+
 class WorkspaceOnDevelopSubmoduleOnDevelop(WorkspaceWithSubmoduleOnDevelop):
     def __init__(self, path):
         super(WorkspaceOnDevelopSubmoduleOnDevelop,self).__init__(path)
-        self.addCommands([(git.checkout,"-B develop master"), 
-                          ])
+        project_dir = lambda: self.getProjectDir()
+        self.addCommands([(git.checkout, ("-B develop master", project_dir))])
         # outer on public branch means we expect submodule on master
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
+
 class WorkspaceOnTopicSubmoduleOnMaster(validRepoWithSubmodule):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnMaster, self).__init__(path)
-        self.addCommands([(git.checkout, "-b topicBranch")])
+        project_dir = lambda: self.getProjectDir()
+        self.addCommands([(git.checkout, ("-b topicBranch", project_dir))])
         # outer on topic branch means we expect submodule on topic branch
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
+
 class WorkspaceOnTopicSubmoduleOnTopic(WorkspaceOnTopicSubmoduleOnMaster):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnTopic, self).__init__(path)
-        self.addCommands([(os.chdir,"submodule1"),
-                          (git.checkout,"-b topicBranch")])
+        submodule_path = lambda: os.path.join(self.getProjectDir(),
+                                              "submodule1")
+        self.addCommands([(git.checkout, ("-b topicBranch", submodule_path))])
         # now both are on topicBranch
         self._publicBranchesValid = True
         self._branchModelConsistent= True
-        
+
 class WorkspaceOnTopicSubmoduleOnTopicTwoClients(WorkspaceOnTopicSubmoduleOnTopic):
     def __init__(self, path):
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).__init__(path)
         self.secondProjectDir = self.projectDir + "2"
         if os.path.exists(self.secondProjectDir):
-            print "Path (%s) already exists, so it cannot be used by a new ResettableProject." % self.secondProjectDir
+            logging.error(f"Path ({self.secondProjectDir}) already exists, " +
+                          "so it cannot be used by a new ResettableProject.")
             sys.exit(1)
 
-        self.addCommands([(git.clone, lambda : "--recursive %s %s" % (self.getOriginDir(), self.getSecondProjectDir())), 
-                          (os.chdir, lambda : self.getSecondProjectDir()),
-                          (os.chdir,"submodule1"),
-                          (git.checkout, "master"),
-                          (writeFile1, "f2"),
-                          (git.add,"f2"),
-                          (git.commit, "-m \"added a second file to submodule\""),
-                          (git.push, "origin master"),
-                          (os.chdir, lambda : self.getSecondProjectDir()),
-                          (git.checkout, "master"),
+        origin_dir = lambda: self.getOriginDir()
+        second_project_dir = lambda: self.getSecondProjectDir()
+        second_submodule_dir = lambda: os.path.join(self.getSecondProjectDir(),
+                                                    'submodule1')
+        f2_dir = lambda: os.path.join(self.getSecondProjectDir(),
+                                      'submodule1', "f2")
+
+        self.addCommands([(git.clone, (lambda: "--recursive " +
+                                              f"{self.getOriginDir()} " +
+                                              f"{self.getSecondProjectDir()}",
+                                       origin_dir)),
+                          (git.checkout, ("master", second_submodule_dir)),
+                          (testGrape.writeFile1, f2_dir),
+                          (git.add, ("f2", second_submodule_dir)),
+                          (git.commit, ("-m \"added a second file to submodule\"",
+                                        second_submodule_dir)),
+                          (git.push, ("origin master", second_submodule_dir)),
+                          (git.checkout, ("master", second_project_dir)),
                           # We have to pull here because the submodule repo is the same as the original one
-                          (git.pull, "origin"),
-                          (git.add,"submodule1"),
-                          (git.commit, "-m \"update gitlink\""),
-                          (git.push, "origin master"),
-                          self.cdToProjectDirCmd()
-                         ])
+                          (git.pull, ("origin", second_project_dir)),
+                          (git.add, ("submodule1", second_project_dir)),
+                          (git.commit, ("-m \"update gitlink\"",
+                                        second_project_dir)),
+                          (git.push, ("origin master", second_project_dir))])
         # now both are on topicBranch, but master is behind in both
         self._publicBranchesValid = True
         self._branchModelConsistent= True
-        
-    def getSecondProjectDir(self): 
+
+    def getSecondProjectDir(self):
         return os.path.abspath(os.path.join(self.projectPrefix,self.secondProjectDir))
-    def tearDown(self): 
+
+    def tearDown(self):
         super(WorkspaceOnTopicSubmoduleOnTopicTwoClients, self).tearDown()
         secondProjectDir = self.getSecondProjectDir()
         if os.path.exists(secondProjectDir) and os.path.isdir(secondProjectDir):
-            os.chdir(os.path.abspath(os.path.join(secondProjectDir,"..")))
             shutil.rmtree(secondProjectDir, ignore_errors=True)
-        
+
 class WorkspaceWithDetachedSubmodule(validRepoWithSubmodule):
     def __init__(self, path):
         super(WorkspaceWithDetachedSubmodule, self).__init__(path)
-        self.addCommands([(os.chdir,"submodule1"),
-                          (git.checkout, "--detach")])
+        submodule_path = lambda: os.path.join(self.getProjectDir(),
+                                              "submodule1")
+        self.addCommands([(git.checkout,
+                          ("--detach", submodule_path))])
         # detached submodule is a bad place to be
         self._publicBranchesValid = True
         self._branchModelConsistent = False
         self._numExpectedFetches = 2
-        
+
 class ValidRepoWithNestedSubproject(repoWithLocalAndOriginGitflowBranches):
     def __init__(self,path):
         super(ValidRepoWithNestedSubproject, self).__init__(path)
         self.addCommands([(grapeMenu.menu().applyMenuChoice,
-                         lambda: ("addSubproject", ["--name=subproject1",
-                                            "--prefix=subproject1",
-                                            "--url=%s" % self.getOriginDir(),
-                                            "--branch=master", 
-                                            "--nested", 
-                                            "--noverify"], None, 
-                                            ["-v"] ))])
+                           lambda: ("addSubproject",
+                                    ["--name=subproject1",
+                                     "--prefix=subproject1",
+                                     f"--url={self.getOriginDir()}",
+                                     "--branch=master",
+                                     "--nested",
+                                     "--noverify"],
+                                    None))])
         self._publicBranchesValid = True
         self._branchModelConsistent = True
         # there should be one fetch for the outer level master and one for the nested master
         self._numExpectedFetches = 2
-        
+
 class WorkspaceWithNestedOnDevelop(ValidRepoWithNestedSubproject):
     def __init__(self,path):
         super(WorkspaceWithNestedOnDevelop, self).__init__(path)
-        self.addCommands([
-                           (os.chdir, "subproject1"),
-                           (git.checkout, "develop"),
-                           self.cdToProjectDirCmd(),
-                         ])
+        subproject_path = lambda: os.path.join(self.getProjectDir(),
+                                               'subproject1')
+        self.addCommands([(git.checkout, ("develop", subproject_path))])
         # outer on public branch means expect submodule on master
         self._publicBranchesValid = True
         self._branchModelConsistent = False
-        
-        

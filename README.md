@@ -1,5 +1,19 @@
 ## Tutorial
 
+## Contributing to GRAPE
+    <section under development>
+
+# Forking a new version number for grape.
+
+Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+
+Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
+
+Push the new tag.
+
+Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
+push both the new tag and the new commit directly to develop.
+
 ## Introducing the `.grapeconfig` file
 
 To write a sample .grapeconfig file with the settings for grape in your current environment:
@@ -182,7 +196,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 ## Managing Subprojects with grape
 If you'd like to manage third-party library source-code inline with your project, git provides a couple of ways
-to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project. 
+to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
 
 Googling submodules vs. subtrees will yield discussions as vehemently
 idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
@@ -249,7 +263,7 @@ it might matter a great deal.
     submodulepublishpolicy = ?:merge
     submodulepublicmappings = ?:master
 
-`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested. 
+`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested.
 
 `managesubmodules` should be set to True to enable grape managed subprojects. Otherwise, you're on your own.
 
@@ -279,12 +293,12 @@ calling `grape bugfix` will create a new branch off of develop in project foo, a
 foo_dev in submodule libBar.
 
 ### `grape status`
-Grape status will gather the status across all submodules and nested projectes and your outer-level project. This is different 
+Grape status will gather the status across all submodules and nested projectes and your outer-level project. This is different
 from git status, which will only give you the status of the repo / submodule / nested project you are currently in.
 
 ### `grape commit`
 Grape commit will commit all changes in submodules and nested subprojectes first, then perform the commit in the outer level repository to
-ensure you have updated the gitlink for your submodules. 
+ensure you have updated the gitlink for your submodules.
 
 ### `grape push`
 Grape push pushes changes in your current branch to origin in all submodules and your outer level repository.
@@ -344,35 +358,35 @@ file as appropriate.
 Grape can be configured to split-push changes in subtrees to their host repository as part of your publish step by
 setting subtrees.pushonpublish to True.
 
-## How grape works with nested subprojects 
-A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish 
+## How grape works with nested subprojects
+A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish
 actions, gathering information with status, etc. Individual developers decide whether they want the nested subproject in
-their workspace by using 'grape uv'. 
+their workspace by using 'grape uv'.
 
-Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig 
-to know which ones to expect to find in the user's workspace. 
+Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig
+to know which ones to expect to find in the user's workspace.
 
-nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at 
-the moment includes publish, merge actions (m, mr, and md), and foreach. 
+nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at
+the moment includes publish, merge actions (m, mr, and md), and foreach.
 
 ### relevant nested subproject `.grapeconfig` sections
-    
+
     [nested]
     names = libBar
 
     [nested-libBar]
     prefix = imports/libBar
     remote = ../libBar
-    
-All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts. 
-    
+
+All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts.
+
 ### relevant nested subproject `.grapeuserconfig` sections
     [nested-libBar]
     active = True
-    
-The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will 
+
+The active flag is what grape uses to determine if the nested subproject should be in your workspace. Note that grape will
 only look in .git/.grapeuserconfig for this particular setting, since the intended use cases for nested projects tend to be highly
-individualized. 
+individualized.
 
 
 # Grape Commands
@@ -467,7 +481,7 @@ options are at least listed below.
     tagprefix = patched
     describePattern = v*
     submodulebranches = master
-    
+
 
     [repo]
     name = None
@@ -496,27 +510,27 @@ options are at least listed below.
     
 ## status
 
-    Usage: grape-status [-u | --uno] 
-              [--failIfInconsistent] 
+    Usage: grape-status [-u | --uno]
+              [--failIfInconsistent]
               [--failIfMissingPublicBranches]
               [--failIfBranchesInconsistent]
               [--checkWSOnly]
 
     Options:
     --uno                          Do not show untracked files
-    -u                             Show untracked files. 
-    --failIfInconsistent           Fail if any consistency checks fail. 
-    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches. 
-    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace. 
+    -u                             Show untracked files.
+    --failIfInconsistent           Fail if any consistency checks fail.
+    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches.
+    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace.
     --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
-    
+
 
     
 ## stash
 
     grape stash can run simple git stash, git stash pop, or git stash list commands in all repositories
-    in your workspace. 
-    
+    in your workspace.
+
     Note that this is a bit scary - a simple git stash pop will attempt to apply the most recently stashed
     commit in each repo, grape makes no attempt of tracking of which commits were stashed on the most recent
     call to grape stash, so if you do a stash with active edits in one repo, then later do a stash with
@@ -530,7 +544,7 @@ options are at least listed below.
 ## checkout
 
     grape checkout
-    
+
     Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
 
     Options:
@@ -544,7 +558,7 @@ options are at least listed below.
 
 
     Arguments:
-    <branch>    The name of the branch to checkout. 
+    <branch>    The name of the branch to checkout.
 
     
 ## push
@@ -552,36 +566,37 @@ options are at least listed below.
     grape push pushes your current branch to origin for your outer level repo and all submodules.
     it uses 'git push -u origin HEAD' for the git command.
 
-    Usage: grape-push [--noRecurse] 
+    Usage: grape-push [--noRecurse]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.  
+    --noRecurse     Don't perform pushes in submodules.
 
     
 ## pull
 
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
-    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
+    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
 
     Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
     --continue     Finish a pull that failed due to merge conflicts.
-    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.  
+    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.
 
 
     
 ## commit
 
-    Usage: grape-commit [-m <message>] [-a | <filetree>]  
+    Usage: grape-commit [-m <message>] [--failIfNoCommit] [-a | <filetree>...]
 
     Options:
-    -m <message>    The commit message.
-    -a              Commit modified files that have not been staged.
-    
+    -m <message>      The commit message.
+    -a                Commit modified files that have not been staged.
+    --failIfNoCommit  Exit with failure if no files were committed.
+
 
     Arguments:
-    <filetree> The relative path of files to include in this commit. 
+    <filetree>... The relative paths of files to include in this commit.
 
     
 ## publish
@@ -595,24 +610,26 @@ options are at least listed below.
     submodules is decided using grapeconfig.workspace.submodulePublishPolicy.
 
     Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
+                         [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush]
+                         [--nopush] [--noUpdateMD]
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
-                         [--buildCmds=<buildStr>] [--buildDir=<path>]
-                         [--testCmds=<testStr>] [--testDir=<path>]
+                         [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuild | --noSkipBuild]
+                         [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
+                         [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
-                         [--noUpdateLog | [--updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
+                         [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
                          [--user=<BitbucketUserName>]
-                         [--bitbucketURL=<httpsURL>]
+                         [--codeReviewsURL=<httpsURL>]
                          [--verifySSL=<bool>]
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
@@ -624,120 +641,174 @@ options are at least listed below.
                           --emailSubject=<str> --emailSendTo=<addr> --emailServer=<smtpserver> --emailMaxFiles=<int>]]
                          [<CommitMessageFile>]
                          [--remoteMerge]
+                         [--quiet]
+                         [--ssh_pat_url=<url>]
+                         [--ssh_pat_port=<int>]
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge]
+            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+            grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
+            grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse]
+            grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
-    --squash                Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade=<branch>      For squash merges, can choose to cascade back to <branch> after the merge is
-                            completed. Define multiple times to setup a chain of cascades. Overrides outer repo and 
-                            nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
-                            submodule publish policies. 
-    --merge                 Perform a normal merge.
-    -m <msg>                The commit message to use for a successful merge / squash merge. Ignored if used with
-                            --rebase.
-    --rebase                Rebases the topic branch to the public, then fast forwards the public to the tip of the
-                            topic.
-    --recurse               Perform the publish action in submodules.
-                            Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --noRecurse             Do not perform the publish action in submodules.
-                            Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
-    --topic=<branch>        The branch to publish. Defaults to the current branch.
-    --noverify              Set to skip interactive verification of publish commands.
-    --nopush                Set to skip the push of commits generated during the publish procedure.
-    --pushSubtrees          Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
-                            public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
-                            Set by default if .grapeconfig.subtrees.pushOnPublish is True.
-    --noPushSubtrees        Don't perform a git subtree push.
-    --startAt=<startStep>   The publish step to start at. One of "testForCleanWorkspace1", "md1",
-                            "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                            "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
-                            "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                            "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
-    --stopAt=<stopStep>     The publish step to stop at. Valid values are the same as for --startAt. Publish will
-                            perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
-    --continue              Resume a previous call to grape publish that encountered a failure at one of the publish
-                            steps.
-    --abort                 Abort a previously failed call to grape publish.   
-    --buildCmds=<buildStr>  The comma-delimited list of build commands to execute.
-                            [default: .grapeconfig.publish.buildCmds]
-    --buildDir=<path>       The directory (relative to the workspace root directory) to execute the build steps in.
-                            [default: .grapeconfig.publish.buildDir]
-    --testCmds=<testStr>    The comma-delimited list of test commands to execute.
-                            [default: .grapeconfig.publish.testCmds]
-    --testDir=<path>        The directory (relative to the workspace root directory) to execute the test steps in.
-                            [default: .grapeconfig.publish.testDir]
-    --prepublishCmds=<str>  The comma-delimited list of commands to execute just before the publish step.
-                            [default: .grapeconfig.publish.prepublishCmds]
-    --prepublishDir=<str>   The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
-                            [default: .grapeconfig.publish.prepublishDir]
-    --postpublishCmds=<str>  The comma-delimited list of commands to execute just after the publish step.
-                            [default: .grapeconfig.publish.postpublishCmds]
-    --postpublishDir=<str>  The directory (relative to the workspace root directory) to execute the post-publish
-                            cmds in.
-                            [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>    Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
-    --noUpdateLog           Set to skip the updateLog step.
-    --updateLog=<file>      The log file to update with the commit message for this branch.
-                            [default: .grapeconfig.publish.updateLog]
-    --skipFirstLines=<int>  The number of lines to skip in the updateLog file before inserting the commit message.
-                            [default: .grapeconfig.publish.logSkipFirstLines]
-    --entryHeader=<string>  The format for the commit message header. The string literals <date>, <user>, and <version>
-                            will be replaced by the date, the result of git config --get user.name, and the result of
-                            git describe --abbrev=0 after the tickversion step, respectively.
-                            [default: .grapeconfig.publish.logEntryHeader]
-    --tickVersion=<bool>    Tick a version number as a part of this publish action.
-                            [default: .grapeconfig.publish.tickVersion]
-    --tickOnCascade=<slot>  Tick the <slot> version number when performing a cascade.
-                            Default behavior governed by the flow.topicCascadeTick mapping. 
-    -T <arg>                An argument to pass to grape-version tick. Type grape version --help for available options
-                            and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>           Your Bitbucket username.
-    --bitbucketURL=<url>        Your Bitbucket URL, e.g. https://rzlc.llnl.gov/bitbucket .
-                            [default: .grapeconfig.project.stashURL]
-    --verifySSL=<bool>      Set to False to ignore SSL certificate verification issues.
-                            [default: .grapeconfig.project.verifySSL]
-    --project=<project>     Your Bitbucket Project. See grape-review for more details.
-                            [default: .grapeconfig.project.name]
-    --repo=<repo>           Your Bitbucket repo. See grape-review for more details.
-                            [default: .grapeconfig.repo.name]
-    -R <arg>                Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
-                            Type grape review --help for valid options.
-    --noReview              Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --useBitbucket=<bool>       Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
-    --public=<public>       The branch to publish to. Defaults to the mapping for the current topic branch as described
-                            by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
-                            if no option for .grapeconfig.flow.topicDestinationMappings exists.
-    --submodulePublic=<b>   The branch to publish to in submodules. Defaults to the mapping for the current topic branch
-                            as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
-    --emailNotification=<b> Set to true to send a notification email after you've published. The email will consist of
-                            a header <header> and a message, generally the contents of <CommitMessageFile> and/or
-                            the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
-                            and will be CC'd to the user.
-                            For the email subject, header and footer, the string literals
-                            '<user>', '<date>', '<version>', and '<public>' with the following:
-                            <user>: the result of git config --get user.name
-                            <date>: the current timestamp.
-                            <version>: The version of the project, so long as grape is managing your versioning.
-                            <public>: The branch to publish to.
-                            [default: .grapeconfig.publish.emailNotification]
-    --emailHeader=<header>  The email header. See above.
-                            [default: .grapeconfig.publish.emailHeader]
-    --emailFooter=<footer>  The email footer. See above.
-                            [default: .grapeconfig.publish.emailFooter]
-    --emailSubject=<sbj>    The email subject. See above.
-                            [default: .grapeconfig.publish.emailSubject]
-    --emailSendTo=<addr>    The comma-delimited list of receivers of the email.
-                            [default: .grapeconfig.publish.emailSendTo]
-    --emailServer=<server>  The smtp email server address.
-                            [default: .grapeconfig.publish.emailServer]
-    --emailMaxFiles=<int>   Maximum number of modified files (per subproject) to show in email.
-                            [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                 Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview, 
-                            markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge           Perform the merge using the Bitbucket REST API. 
+    --squash                  Squash merges the topic into the public, then performs a commit if the merge goes clean.
+    --cascade=<branch>        For squash merges, can choose to cascade back to <branch> after the merge is
+                              completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
+                              nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
+                              submodule publish policies.
+    --merge                   Perform a normal merge.
+    --mergeTrain=<bool>       Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
+                              in an active merge train.
+                              [default: .grapeconfig.publish.mergeTrain]
+    -m <msg>                  The commit message to use for a successful merge / squash merge. Ignored if used with
+                              --rebase.
+    --rebase                  Rebases the topic branch to the public, then fast forwards the public to the tip of the
+                              topic.
+    --recurse                 Perform the publish action in submodules.
+                              Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
+    --noRecurse               Do not perform the publish action in submodules.
+                              Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --topic=<branch>          The branch to publish. Defaults to the current branch.
+    --noverify                Set to skip interactive verification of publish commands.
+    --nopush                  Set to skip the push of commits generated during the publish procedure.
+    --noUpdateMD              Set to skip update of local public branches during md steps.
+    --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
+                              public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
+                              Set by default if .grapeconfig.subtrees.pushOnPublish is True.
+    --noPushSubtrees          Don't perform a git subtree push.
+    --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
+                              "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                              "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
+                              "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                              "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
+    --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
+                              perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
+    --continue                Resume a previous call to grape publish that encountered a failure at one of the publish
+                              steps.
+    --abort                   Abort a previously failed call to grape publish.
+    --buildCmds=<buildStr>    The comma-delimited list of build commands to execute.
+                              [default: .grapeconfig.publish.buildCmds]
+    --buildDir=<path>         The directory (relative to the workspace root directory) to execute the build steps in.
+                              [default: .grapeconfig.publish.buildDir]
+    --skipBuild               Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
+                              if mergeTrain is enabled, otherwise default is False.
+    --noSkipBuild             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
+                              enabled. Default behavior is to not skip builds.
+    --testCmds=<testStr>      The comma-delimited list of test commands to execute.
+                              [default: .grapeconfig.publish.testCmds]
+    --testDir=<path>          The directory (relative to the workspace root directory) to execute the test steps in.
+                              [default: .grapeconfig.publish.testDir]
+    --skipTest                Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
+                              if mergeTrain is enabled, otherwise default is False.
+    --noSkipTests             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
+                              enabled. Default behavior is to not skip tests.
+    --testCIJob=<jobStr>      The comma-delimited list of required passing CI jobs that allows short circuiting of
+                              builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
+                              to indicate that entry may be satisfied by one of multiple possible jobs.
+                              E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                              passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
+                              [default: .grapeconfig.publish.testCIJob]
+    --prepublishCmds=<str>    The comma-delimited list of commands to execute just before the publish step.
+                              [default: .grapeconfig.publish.prepublishCmds]
+    --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
+                              [default: .grapeconfig.publish.prepublishDir]
+    --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
+                              [default: .grapeconfig.publish.postpublishCmds]
+    --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
+                              cmds in.
+                              [default: .grapeconfig.publish.postpublishDir]
+    --deleteTopic=<bool>      Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+    --noUpdateLog             Set to skip the updateLog step.
+    --updateLogDir=<dir>      Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
+                              a directory named after current development version.
+                              [default: .grapeconfig.publish.updateLogDir]
+    --updateLogCmds=<cmds>    The comma-delimited list of commands to execute as part of the update log construction.
+                              [default: .grapeconfig.publish.updateLogCmds]
+    --updateLog=<file>        The log file to update with the commit message for this branch. If --updateLogDir is defined,
+                              this is the base file name for update message files.
+                              [default: .grapeconfig.publish.updateLog]
+    --skipFirstLines=<int>    The number of lines to skip in the updateLog file before inserting the commit message.
+                              [default: .grapeconfig.publish.logSkipFirstLines]
+    --entryHeader=<string>    The format for the commit message header. The string literals <date>, <user>, and <version>
+                              will be replaced by the date, the result of git config --get user.name, and the result of
+                              git describe --abbrev=0 after the tickversion step, respectively.
+                              [default: .grapeconfig.publish.logEntryHeader]
+    --tickVersion=<bool>      Tick a version number as a part of this publish action.
+                              [default: .grapeconfig.publish.tickVersion]
+    --tickOnCascade=<slot>    Tick the <slot> version number when performing a cascade.
+                              Default behavior governed by the flow.topicCascadeTick mapping.
+    -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
+                              and defaults. -T can be used multiple times to pass multiple arguments.
+    --user=<user>             Your Bitbucket/Gitlab username.
+    --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+                              [default: .grapeconfig.project.codeReviewsURL]
+    --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
+                              [default: .grapeconfig.project.verifySSL]
+    --project=<project>       Your Bitbucket Project. See grape-review for more details.
+                              [default: .grapeconfig.project.name]
+    --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+                              [default: .grapeconfig.repo.name]
+    -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
+                              Type grape review --help for valid options.
+    --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
+                              by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
+                              if no option for .grapeconfig.flow.topicDestinationMappings exists.
+    --submodulePublic=<b>     The branch to publish to in submodules. Defaults to the mapping for the current topic branch
+                              as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+    --emailNotification=<b>   Set to true to send a notification email after you've published. The email will consist of
+                              a header <header> and a message, generally the contents of <CommitMessageFile> and/or
+                              the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
+                              and will be CC'd to the user.
+                              For the email subject, header and footer, the string literals
+                              '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
+                              <user>: the result of git config --get user.name
+                              <date>: the current timestamp.
+                              <version>: The version of the project, so long as grape is managing your versioning.
+                              <public>: The branch to publish to.
+                              <branch>: The branch to publish from.
+                              [default: .grapeconfig.publish.emailNotification]
+    --emailHeader=<header>    The email header. See above.
+                              [default: .grapeconfig.publish.emailHeader]
+    --emailFooter=<footer>    The email footer. See above.
+                              [default: .grapeconfig.publish.emailFooter]
+    --emailSubject=<sbj>      The email subject. See above.
+                              [default: .grapeconfig.publish.emailSubject]
+    --emailSendTo=<addr>      The comma-delimited list of receivers of the email.
+                              [default: .grapeconfig.publish.emailSendTo]
+    --emailServer=<server>    The smtp email server address.
+                              [default: .grapeconfig.publish.emailServer]
+    --emailMaxFiles=<int>     Maximum number of modified files (per subproject) to show in email.
+                              [default: .grapeconfig.publish.emailMaxFiles]
+    --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
+                              markInProgress, md2, publish, markAsDone, deleteTopic, done]
+    --remoteMerge             Perform the merge using the Bitbucket REST API.
+    --quiet                   Suppress output from custom build and test steps unless there is a failure.
+    --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                              REST API.
+                              [default: .grapeconfig.repo.ssh_pat_url]
+    --ssh_pat_port=<int>      Port number to issue ssh command over to generate a Personal Access Token for authentication
+                              into a Code Review service's REST API.
+                              [default: .grapeconfig.repo.ssh_pat_port]
+    --mergeUpdateLogs         If you are using a merge train workflow, this command can be used to produce a file that
+                              is a concatenation of merge request update log files, with the merge request version
+                              substituted out for appropriate version tags.
+    --mergedLog=<file>        The file to write the merged update logs to.
+    --startVersion=<ver>      Starting version to search for relevant update message files.
+    --stopVersion=<ver>       Most recent version to search for relevant update message files. Defaults to HEAD.
+    --tagPrefix=<str>         The prefix for the git version tags. [default: v]
+    --tagSuffix=<str>         The suffix for the git version tags. Default value comes from
+                              .grapeconfig.versioning.branchTagSuffixMappings.
+    --sendEmail               Just send the notification email.
+    --topLevelMergeSHA=<SHA>  Specify the SHA in the top level repo corresponding to the merge commit of the topic branch
+                              into the public branch for use in generating the commit file list for an email notification.
+    --markMRWithVersion       Update a merge request title with the given version string.
+
+
     Optional Arguments:
     <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
                             this branch will be updated to contain this message. If you don't specify a filename, grape
@@ -761,24 +832,24 @@ options are at least listed below.
 
     Options:
         --recursive   Recursively clone submodules.
-        --allNested   Get all nested subprojects. 
-        
+        --allNested   Get all nested subprojects.
+
     
 ## config
 
     Configures the current repo to be optimized for GRAPE on LC
-    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv] 
-                        [--nocredcache | --credcache] [--p4merge] 
+    Usage: grape-config [--uv [--uvArg=<arg>]... | --nouv]
+                        [--nocredcache | --credcache] [--p4merge]
                         [--nop4merge] [--p4diff] [--nop4diff] [--git-p4]
 
     Options:
         --uv            walks you through setting up a sparse checkout for this repo. (interactive)
         --nouv          skips custom-view questions
-        --credcache     enables https 12 hr credential cacheing. 
+        --credcache     enables https 12 hr credential cacheing.
         --nocredcache   disables https 12 hr credential cacheing (this option recommended for Windows users)
-        --p4merge       will set up p4merge as your merge tool. 
+        --p4merge       will set up p4merge as your merge tool.
         --nop4merge     will skip p4merge questions.
-        --p4diff        will set up p4merge as your diff tool. 
+        --p4diff        will set up p4merge as your diff tool.
         --nop4diff      will skip p4diff questions.
         --git-p4        will configure your repo for use with git-p4 (deprecated)
 
@@ -786,9 +857,9 @@ options are at least listed below.
 ## writeConfig
 
         grape writeConfig: Writes the current configuration to a file, using any configuration set
-        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig. 
+        by ~/.grapeconfig or your <REPO_BASE>/.grapeconfig.
 
-        Usage: 
+        Usage:
         grape-writeConfig <file> [--gitflow]
 
     
@@ -796,79 +867,114 @@ options are at least listed below.
 
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--quiet] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] <cmd> 
+    Usage: grape-foreach [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
 
     Options:
-    --quiet          Quiets git's printout of "Entering submodule..."
-    --noTopLevel     Does not call <cmd> in the workspace directory.
-    --noSubprojects  Does not call <cmd> in any grape nested subprojects.
-    --noSubmodules   Does not call <cmd> in any git submodules. 
-    --currentCWD     grape foreach normally starts work from the workspace top level directory. This flag 
-                     starts work from the current working directory.
+    --noTopLevel        Does not call <cmd> in the workspace directory.
+    --noSubprojects     Does not call <cmd> in any grape nested subprojects.
+    --noSubmodules      Does not call <cmd> in any git submodules.
+    --currentCWD        grape foreach normally starts work from the workspace top level directory. This flag
+                        starts work from the current working directory.
+    --ignoreReturnCode  Ignore return code from <cmd>. Otherwise, returns 0 if all commands succeeded, 1 otherwise.
 
     Arguments:
-    <cmd>        The cmd to execute. 
+    <cmd>        The cmd to execute.
 
     
 ## m
 
     grape m
     merge a local branch into your current branch
-    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
+    Usage: grape-m [<branch>] [--am | --as | --at | --aT | --ay | --aY | --ask | --askAll]
+                   [--continue] [--noRecurse] [--forceUpdate | --noUpdate | --ensureCleanUpdate] [--squash]
 
     Options:
-        --am            Use git's default merge. 
-        --as            Do a safe merge - force git to issue conflicts for files that
-                        are touched by both branches. 
-        --at            Git accept their changes in any file touched by both branches (the branch you're merging from)
-        --aT            Git accept their changes in the event of a conflict (the branch you're merging from)
-        --ay            Git will accept your changes in any file touched by both branches (the branch you're currently on)
-        --aY            Git will accept your changes in the event of a conflict (the branch you're currently on)
-        --askAll        Ask to determine the merge strategy before merging each subproject.
-        --noRecurse     Perform the merge in the current repository only. Otherwise, grape md --public=<branch> 
-                        will be called to handle submodule and nested project merges.
-        --continue      Resume your previous merge after resolving conflicts.
-        --noUpdate      Don't perform an update of your local version of <branch> from the remote before attempting
-                        the merge.
-        --squash        Perform squash merges. 
+        --am                 Use git's default merge.
+        --as                 Do a safe merge - force git to issue conflicts for files that
+                             are touched by both branches.
+        --at                 Git accept their changes in any file touched by both branches (the branch you're merging from)
+        --aT                 Git accept their changes in the event of a conflict (the branch you're merging from)
+        --ay                 Git will accept your changes in any file touched by both branches (the branch you're currently on)
+        --aY                 Git will accept your changes in the event of a conflict (the branch you're currently on)
+        --noRecurse          Perform the merge in the current repository only. Otherwise, grape md --public=<branch>
+                             will be called to handle submodule and nested project merges.
+        --continue           Resume your previous merge after resolving conflicts.
+        --forceUpdate        Force update local versions of <branch> from the remote before attempting merges.
+        --noUpdate           Don't perform an update of your local version of <branch> from the remote before attempting
+                             the merge.
+        --ensureCleanUpdate  Return failure if update of local versions fails.
+        --squash             Perform squash merges.
 
     Arguments:
-        <branch>        The branch you want to merge in. 
+        <branch>        The branch you want to merge in.
 
     
 ## md
 
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
-    If executed on a public branch, performs a pull --rebase to update your local public branch. 
+    If executed on a public branch, performs a pull --rebase to update your local public branch.
     Usage: grape-md [--public=<branch>] [--subpublic=<branch>]
-                    [--am | --as | --at | --aT | --ay | --aY | --askAll]
+                    [--am | --as | --at | --aT | --ay | --aY ]
                     [--continue]
-                    [--recurse | --noRecurse]
-                    [--noUpdate]
+                    [--recurse | --noRecurse | --nestedSubprojectsOnly]
+                    [--forceUpdate | --noUpdate | --ensureCleanUpdate]
+                    [--noChecks]
                     [--squash]
-                    
+           grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
+                    [--user=<GitLabUserName>]
+                    [--codeReviewsURL=<httpsURL>]
+                    [--verifySSL=<bool>]
+                    [--project=<GitLabProjectKey>]
+                    [--repo=<GitLabRepoName>]
+                    [--ssh_pat_url=<url>]
+                    [--ssh_pat_port=<int>]
+           grape-md --traverseMergedResult --topic=<branch>
+
 
     Options:
-        --public=<branch>       Overrides the public branch to merge from. 
-                                Default behavior is to merge according to 
-                                .grapeconfig.flow.topicPrefixMappings.
-        --subpublic=<branch>    Overrides the submodules' public branch to merge from. Default behavior is to merge
-                                according to .grapeconfig.flow.submoduleTopicPrefixMappings. 
-        --am                    Perform the merge using git's default strategy.
-        --as                    Perform the merge issuing conflicts on any file modified by both branches.
-        --at                    Perform the merge using the public branch's version for any file modified by both branches.
-        --aT                    Perform the merge resolving conficts using the public branch's version. 
-        --ay                    Perform the merge using the your topic branch's version for any file modified by both branches.
-        --aY                    Perform the merge resolving conflicts using your topic branch's version.
-        --askAll                Ask to determine the merge strategy before merging each subproject.
-        --recurse               Perform merges in submodules first, then merge in the outer level keeping the
-                                results of submodule merges.
-        --noRecurse             Do not perform merges in submodules, just attempt to merge the gitlinks.
-        --continue              Resume the most recent call to grape md that issued conflicts in this workspace.
-        --noUpdate              Do not update local versions of the public branch before attempting merges.
-        --squash                Perform squash merges. 
-        
+        --public=<branch>        Overrides the public branch to merge from.
+                                 Default behavior is to merge according to
+                                 .grapeconfig.flow.topicPrefixMappings.
+        --subpublic=<branch>     Overrides the submodules' public branch to merge from. Default behavior is to merge
+                                 according to .grapeconfig.flow.submoduleTopicPrefixMappings.
+        --am                     Perform the merge using git's default strategy. (default)
+        --as                     Perform the merge issuing conflicts on any file modified by both branches.
+        --at                     Perform the merge using the public branch's version for any file modified by both branches.
+        --aT                     Perform the merge resolving conficts using the public branch's version.
+        --ay                     Perform the merge using the your topic branch's version for any file modified by both branches.
+        --aY                     Perform the merge resolving conflicts using your topic branch's version.
+        --recurse                Perform merges in submodules first, then merge in the outer level keeping the
+                                 results of submodule merges. Nested subprojects are also merged.
+        --noRecurse              Do not perform merges in submodules, just attempt to merge the gitlinks.
+                                 Nested subprojects are also merged.
+        --nestedSubprojectsOnly  Do not perform merges in outer level or submodules, just nested subprojects.
+        --continue               Resume the most recent call to grape md that issued conflicts in this workspace.
+        --forceUpdate            Force update local versions of the public branch before attempting merges.
+        --noUpdate               Do not update local versions of the public branch before attempting merges.
+        --ensureCleanUpdate      Return failure if update of local versions fails.
+        --noChecks               Skip workspace consistency checks.
+        --squash                 Perform squash merges.
+        --traverseTrainRefs      Do the necessary merges to merge all branches in the active merge train into this one for all nested subprojects.
+        --traverseMergedResult   Do the necessary merges to merge all nested subprojects up to the point of the merged result in the top level.
+        --topic=<branch>         Topic branch we are merging into. This is defined explicitly with --traverseTrainRefs/--traverseMergedResult
+                                 to define the starting point (this ensures we don't merge something behind the --topic branch).
+        --tagProposedVersion     Useful for merge train workflows, this option tags --topic with a proposed version tag based on the number
+                                 of train cars that needed to be merged during this call to grape md --traverseTrainRefs.
+        --codeReviewsURL=<url>   Your Gitlab URL, e.g. https://your.home.org/gitlab.
+                                 [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>       Set to False to ignore SSL certificate verification issues.
+                                 [default: .grapeconfig.project.verifySSL]
+        --project=<project>      Your GitLab Project. See grape-review for more details.
+                                 [default: .grapeconfig.project.name]
+        --repo=<repo>            Your GitLab repo. See grape-review for more details.
+                                 [default: .grapeconfig.repo.name]
+        --ssh_pat_url=<url>      SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                 REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                 into a Code Review service's REST API.
+                                 [default: .grapeconfig.repo.ssh_pat_port]
 
 
     
@@ -880,55 +986,42 @@ options are at least listed below.
     then this will do a merge assuming the remote branch has a different line of development than
     your local branch. (Ideal for developers working on shared branches.)
 
-    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY | --askAll] [--continue] [--noRecurse] [--noUpdate] [--squash]
+    Usage: grape-mr [<branch>] [--am | --as | --at | --aT | --ay | --aY ] [--continue] [--noRecurse] [--squash]
 
 
     Options:
         --am                    Perform the merge using git's default strategy.
         --as                    Perform the merge issuing conflicts on any file modified by both branches.
         --at                    Perform the merge using the remote branch's version for any file modified by both branches.
-        --aT                    Perform the merge resolving conficts using the remote branch's version. 
+        --aT                    Perform the merge resolving conficts using the remote branch's version.
         --ay                    Perform the merge resolving conflicts using your topic branch's version.
         --aY                    Perform the merge using your topic branch's version for any file modified by both branches.
-        --askAll                Ask to determine the merge strategy before merging each subproject.
         --noRecurse             Perform the merge in the current repository only. Otherwise, this will call
-                                grape md --public=<branch> to handle submodule and nested project merges. 
+                                grape md --public=<branch> to handle submodule and nested project merges.
         --continue              Resume your previous merge after resolving conflicts.
-        --squash                Perform squash merges. 
-        
+        --squash                Perform squash merges.
+
     Arguments:
     <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
-    
+
     
 ## db
- Deletes a topic branch both locally and on origin for all projects in this workspace. 
-    Usage: grape-db [-D] [<branch>] [--verify]
+ Deletes a topic branch both locally and on origin for all projects in this workspace.
+    Usage: grape-db [-D] [<branch>...] [--verify] [--local-only|--remote-only] [--inactive-repos]
 
     Options:
-    -D              Forces the deletion of unmerged branches. If you are on the branch you
-                    are trying to delete, this will detach you from the branch and then 
-                    delete it, issuing a warning that you are in a detached state.  
-     --verify       Verifies the delete before performing it. 
+    -D                Forces the deletion of unmerged branches. If you are on the branch you
+                      are trying to delete, this will detach you from the branch and then
+                      delete it, issuing a warning that you are in a detached state.
+    --local-only      Only deletes the local branch.
+    --remote-only     Only deletes the remote branch.
+    --verify          Verifies the delete before performing it.
+    --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
 
-    Arguments: 
-    <branch>        The branch to delete. Will ask for branch name if not included. 
-    
-    
-    
-## cv
+    Arguments:
+    <branch>         The branches to delete. Will ask for branch name if not included.
 
-    grape cv: create a new custom view
-    Usage: grape-cv [--source=<repo>] [--dest=<name>] [--destPath=<path>] [[--noSparse] | [-- <uvargs>...]]  
 
-    Options: 
-        --source=<repo>     Path to original clone. 
-        --dest=<name>       Name of new workspace. 
-        --destPath=<path>   Path (must exist) to place new workspace in. 
-                            Full path to workspace will be <path>/<name>
-        --noSparse          Skips grape uv, does a vanilla checkout instead. 
-    Arguments: 
-        <uvargs>            Arguments to pass to grape uv. Note that if you are using the -f
-                            option, you should use an absolute path. 
     
 ## review
 
@@ -941,15 +1034,21 @@ options are at least listed below.
                         [--source=<topicBranch>]
                         [--target=<publicBranch>]
                         [--state=<openMergedDeclined>]
-                        [--bitbucketURL=<url>]
+                        [--codeReviewsURL=<url>]
                         [--verifySSL=<bool>]
                         [--project=<prj>]
                         [--repo=<repo>]
                         [--recurse]
-                        [--norecurse]
+                        [--noRecurse]
+                        [--noRecurseSubprojects]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
+                        [--ssh_pat_url=<url>]
+                        [--ssh_pat_port=<int>]
+                        [--noLocal]
+                        [--label_ref=<ref>]
+                        [--skiplabels]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -970,80 +1069,98 @@ options are at least listed below.
         --state=<state>             The state of the pull request to update. Valid values are open, merged, and
                                     declined.
                                     [default: open]
-        --bitbucketURL=<url>            The bitbucket url, e.g. https://rzlc.llnl.gov/bitbucket. 
-                                    [default: .grapeconfig.project.stashURL]
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab. Grape supports
+                                    both Bitbucket and Gitlab code review platforms.
+                                    [default: .grapeconfig.project.codeReviewsURL]
         --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
                                     [default: .grapeconfig.project.verifySSL]
-        --project=<prj>             The project key part of the bitbucket url, e.g. the "GRP" in
-                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
+        --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
+                                    https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repo name part of the bitbucket url, e.g. the "grape" in
-                                    https://rzlc.llnl.gov/bitbucket/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The repo name part of the codeReviews url, e.g. the "grape" in
+                                    https://your.host.org/gitlab/or/bitbucket/projects/GRP/repos/grape/browse.
                                     [default: .grapeconfig.repo.name]
-        --recurse                   If set, adds a pull request for each modified submodule and nested subproject.
-                                    The pull request for the outer level repo will have a description with links to the 
+        --recurse                   If set, adds a pull request for each modified submodule.
+                                    The pull request for the outer level repo will have a description with links to the
                                     submodules' pull requests. On by default if grapeConfig.workspace.manageSubmodules
-                                    is set to true. 
-        --norecurse                 Disables adding pull requests to submodules and subprojects. 
-        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket 
+                                    is set to true.
+        --noRecurse                 Disables adding pull requests to submodules.
+        --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
+        --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
                                     <description> to the existing title / description instead of replacing it.
         --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
                                     <description> to the existing reviewers, title, or description instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
-                                    arising
- 
+                                    arising in the top level repo.
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_port]
+        --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
+                                    of the local branch in the local workspace. Branches must still exist on the codeReviews
+                                    (Bitbucket, Gitlab) server.
+        --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
+                                    the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
+        --skiplabels                Skip labeling based on changedfilelabelmapping.
 
 
     
 ## test
 
     grape test
-    Runs grape's unit tests.    
+    Runs grape's unit tests.
     Usage: grape-test [--debug] [<suite>]...
 
 
     Arguments:
     <suite>  The name of the suite to test. The default is all.
-             Enter listSuites as the suite name to list available suites. 
-
+             Enter listSuites as the suite name to list available suites.
+             <suite> = <suite name>.<test> will run a particular test in a suite.
 
     
 ## up
 
     grape up
-    Updates the current branch and any public branches. 
-    Usage: grape-up [--public=<branch> ]
+    Updates the current branch and any public branches.
+    Usage: grape-up [--public=<branch> ] [--noForce] [--ignoreCommError] [--updateRemoteOnly]
                     [--recurse | --noRecurse [--recurseSubprojects]]
                     [--wd=<working dir>]
-                    
+                    [--noTopLevel]
+
 
     Options:
     --public=<branch>       The public branches to update in addition to the current one,
                             e.g. --public="master develop"
                             [default: .grapeconfig.flow.publicBranches ]
+    --noForce               Do not force update of public branches.
+    --updateRemoteOnly      Only fetch the remote tracking branches, do not update the local branches
+    --ignoreCommError       Ignore communications errors.
     --recurse               Update branches in submodules and nested subprojects.
     --noRecurse             Do not update branches in submodules and nested subprojects.
-    --wd=<working dir>      Working directory which should be updated. 
+    --wd=<working dir>      Working directory which should be updated.
                             Top level workspace will be updated if this is unspecified.
-    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules. 
+    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
+    --noTopLevel            Do nothing in the top level repo.
 
 
     
 ## updateSubproject
 
         grape updateSubproject
-        Updates an existing subproject from its host repository.  
-        
+        Updates an existing subproject from its host repository.
+
         Usage: grape-updateSubproject subtree --name=<name> --branch=<committish>
 
         Options:
-        --name=<name>  The name of the subproject. Must match a [subtree-<name>] section in .grapeconfig
-                       that has prefix and remote options defined. 
-        
-        --branch=<b>   The branch in the subtree's host repository whose state you want in your 
-                       repository.
+        --name=<name>           The name of the subproject. Must match a [subtree-<name>]
+                                section in .grapeconfig that has prefix and remote options defined.
+
+        --branch=<committish>   The branch in the subtree's host repository whose state
+                                you want in your repository.
 
     
 ## installHooks
@@ -1066,13 +1183,15 @@ options are at least listed below.
            grape-runHook pre-commit [--noExit]
            grape-runHook pre-push <dest> <url> [--noExit]
            grape-runHook pre-rebase <basebranch> [<rebasebranch>] [--noExit]
-           grape-runHook post-commit [--autopush=<bool>] [--cascade=<pairs>] [--noExit]
+           grape-runHook post-commit [--autopush=<autopush>] [--cascade=<pairs>] [--noExit]
            grape-runHook post-rebase [--rebaseSubmodule=<bool>] [--noExit]
            grape-runHook post-merge <wasSquashed> [--mergeSubmodule=<bool>] [--noExit]
            grape-runHook post-checkout <prevHEAD> <newHEAD> <isBranchCheckout> [--checkoutSubmodule=<bool>] [--noExit]
 
     Options:
-        --autopush=<bool>           autopushes commits to origin
+        --autopush=<autopush>       autopushes commits to origin.
+                                    "False" disables autopush, "Topic" pushes non-public branches, any other value
+                                    pushes any branch.
                                     [default: .grapeconfig.post-commit.autopush]
         --cascade=<pairs>           performs a post commit cascade
                                     [default: .grapeconfig.post-commit.cascade]
@@ -1095,92 +1214,179 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f ] [--checkSubprojects] [-b] [--skipSubmodules] [--allSubmodules]
-                    [--skipNestedSubprojects] [--allNestedSubprojects] [--sync=<bool>]
+    Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui] [--skipTopLevel]
+                    [--skipSubmodules | --allSubmodules | --noSubmodules]
+                    [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
+                    [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
+                    [--branchFilter=<branch> | --branchChanged=<branch>[~]]
+                    [--updateRemoteProtocol]
+                    [--spackEnv]
+           grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
-        -f                      Force removal of subprojects currently in your view that are taken out of the view as a
-                                result to this call to uv.
-        --checkSubprojects      Checks for branch model consistency across your submodules and subprojects, but does
-                                not go through the 'which submodules do you want' script.
-        -b                      Automatically creates subproject branches that should be there according to your branching
-                                model. 
-        --allSubmodules         Automatically add all submodules to your workspace. 
-        --allNestedSubprojects  Automatically add all nested subprojects to your workspace.
-        --sync=<bool>           Take extra steps to ensure the branch you're on is up to date with origin,
-                                either by pushing or pulling the remote tracking branch.
-                                This will also checkout the public branch in a headless state prior to offering to create
-                                a new branch (in repositories where the current branch does not exist).
-                                [default: .grapeconfig.post-checkout.syncWithOrigin]
-        --add=<project>         Submodule or subproject to add to the workspace. Can be defined multiple times. 
-        --remove=<project>      Submodule or subproject to remove from the workspace. Can be defined multiple times.
+        -f                           Force removal of submodules currently in your view that are taken out of the view
+                                     as a result to this call to uv.
+        -F                           Force removal of nested subprojects currently in your view that are taken out of the
+                                     view as a result to this call to uv.
+        --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
+                                     not go through the 'which submodules do you want' script.
+        --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
+                                     remote submodule repos. Only submodules in the workspace are checked
+                                     unless --allSubmodules is specified, 
+        -b                           Automatically creates subproject branches that should be there according to your
+                                     branching model.
+        --skipTopLevel               Skip top level repository for syncing and checking.
+        --skipSubmodules             Skip all submodules (leaving them untouched).
+        --allSubmodules              Automatically add all submodules from your workspace. This can be subsequently
+                                     modified by --branchFilter, --branchChanged, or --rm.
+        --noSubmodules               Remove all submodules to your workspace. This can be subsequently
+                                     modified by --add or --ensureCIReposPresent.
+        --skipNestedSubprojects      Skip all nested subprojects (leaving them untouched).
+        --allNestedSubprojects       Automatically add all nested subprojects to your workspace. This can be subsequently
+                                     modified by --branchFilter, --branchChanged, or --rm.
+        --noNestedSubprojects        Remove all nested subprojects from your workspace. This can be subsequently
+                                     modified by --add or --ensureCIReposPresent.
+        --sync=<bool>                Take extra steps to ensure the branch you're on is up-to-date with origin,
+                                     either by pushing or pulling the remote tracking branch.
+                                     This will also checkout the public branch in a headless state prior to offering to
+                                     create a new branch (in repositories where the current branch does not exist).
+                                     [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --syncPublic                 Ensure the public branch for the branch you are on is up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
+        --forceSyncPublic            Force the public branch for the branch you are on to be up-to-date with origin.
+                                     This will only have an effect if --sync is set to True and the current branch
+                                     is not a public branch.
+        --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
+        --skipBranchCreation         Skip creation of branches that don't exist.
+        --branchName=<name>          Override the branch name
+        --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
+        --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.
+        --gui                        Use the graphical user interface to select your view.
+        --generateSHAList            Dump current nested subproject and topLevel repo SHAs to GRAPE_PROJECT_SHA.json.
+        --verifySHAList              Verify current state is consistent with state in a file generated by --generateSHAList.
+        --ensureCIReposPresent       Ensure any repos listed in .grapeconfig.workspace.CIRepos are present in the workspace
+        --branchFilter=<branch>      Filter workspace by repos that currently have a branch matching branch, removing or
+                                     deactivating repositories that do not have the branch stored on their remote.
+        --branchChanged=<branch>[~]  Filter workspace by repos that currently have a branch matching <branch> and where
+                                     that branch is changed relative to the public branch, removing or deactivating repositories
+                                     that are not changed.
+                                     If a tilde (~) follows <branch>, the branch is not considered changed in a subproject
+                                     if the SHA of the branch is tagged by a tag (e.g. <tagPrefix><version>.<version>) that
+                                     matches the tag of the public branch (except for the final version slot) or in a submodule
+                                     if the SHA of the branch is in the history of the gitlink.
+        --updateRemoteProtocol       Update subprojects whose remotes use a different protocol from the outer level
+                                     repository. These subprojects are updated by recloning using the protocol of the outer
+                                     level repo.
+        --spackEnv                   Spack Develop Environment build option 
+
+        If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
+        --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
+        non-interactive mode, the operations are applied in the following order:
+            1) --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects
+            2) --branchFilter/--branchChanged
+            3) --add, --rm, --ensureCIReposPresent
 
     
 ## version
 
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
-    The read subcommand is a no-op - it is used internally by other grape/vine modules. 
+    The read subcommand is a no-op - it is used internally by other grape/vine modules.
 
-    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
+    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [--suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
-           grape-version tick [--major | --minor | --slot=<int>]
+                                                      [--fileIsDerived=<bool>]
+           grape-version tick [<version>]
+                              [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<suffix>] [--tagPrefix=<prefix>] [--tagSuffix=<suffix>][--file=<path>]
+                              [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--tagBase=<ref>]
+                              [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
-           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>]
+                              [--fileIsDerived=<bool>]
+                              [--target=<commitish>]
+                              [--useProposed --topic=<branch>]
+                              [-f]
+                              [--pushTag]
+           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
+                            Also used by tick to force a particular version number.
+
+
 
     Options:
-        --file=<file>       The file to store the version number. When used with init, this is mandatory, and
-                            grape will update your .grapeconfig file for future version number lookups.
-                            [default: .grapeconfig.versioning.file]
-        --matchTo=<matchTo> The regex to match to before reaching the version descriptor. Grape will look for the string
-                            literals '<prefix>' and '<suffix>' in your regex and substitute your values for <prefix>
-                            and <suffix> in their place. Default can be overridden using
-                            .grapeconfig.versioning.branchVersionRegexMappings.
-                            Note that, if defining matchTo in .grapeconfig.versioning.branchVersionRegexMappings, you
-                            should ensure you use \s instead of ' ' as part of your regex, as the list of mappings uses
-                            whitespace as a delimiter.
-                            Currently, grape expects there to be 4 groups in your regex, with the version number in
-                            group 3.
-                            [default: (VERSION_ID\s*=\s*)(<prefix>)(\S+)(<suffix>)]
-        --matchGroup=<int>  The regex group to pick the version number from. [default:3]
-        --prefix=<prefix>   The version number prefix for version string to match in <file>, such as the 'v' in v1.2.3.
-                            [default: .grapeconfig.versioning.prefix]
-        --suffix=<suffix>   The version number suffix for grape-version to match in <file>, such as the 'm' in v1.2.3.m
-                            [default: ]
-        --major             Tick the Major (1st) version number.
-        --minor             Tick the Minor (2nd) version number.
-        --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
-                            than the current max number of digits, the version number will be extended to have <int>
-                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings. 
-        --public=<branch>   The public branch to use for determine the slot to tick. Default based on 
-                            .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the version
-                            ticking is consistent with the --public option passed to grape publish. 
-        --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
-        --tag               Forces updateTag to be True.
-        --notag             Forces updateTag to be False.
-        --tagPrefix=<str>   The prefix for the git version tags. [default: v]
-        --tagSuffix=<str>   The suffix for the git version tags. Default value comes from
-                            .grapeconfig.versioning.branchTagSuffixMappings.
-        --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
-        --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
-                            version in <file>.
-        --tagNested         Tag any active nested subprojects. 
-        
+        --file=<file>           The file to store the version number. When used with init, this is mandatory, and
+                                grape will update your .grapeconfig file for future version number lookups.
+                                [default: .grapeconfig.versioning.file]
+        --fileIsDerived=<bool>  Don't commit the versioning file, only produce it as a derived file when needed. Use
+                                repository tags to decide what version we are on.
+                                [default: .grapeconfig.versioning.fileIsDerived]
+        --matchTo=<matchTo>     The regex to match to before reaching the version descriptor. Grape will look for the
+                                string literals '<prefix>' and '<suffix>' in your regex and substitute your values for
+                                <prefix> and <suffix> in their place. Default can be overridden using
+                                .grapeconfig.versioning.branchVersionRegexMappings.
+                                Note that, if defining matchTo in .grapeconfig.versioning.branchVersionRegexMappings,
+                                you should ensure you use \s instead of ' ' as part of your regex, as the list of
+                                mappings uses whitespace as a delimiter.
+                                Currently, grape expects there to be 4 groups in your regex, with the version number in
+                                group 3.
+                                [default: (VERSION_ID\s*=\s*)(<prefix>)(\S+)(<suffix>)]
+        --matchGroup=<int>      The regex group to pick the version number from. [default:3]
+        --prefix=<prefix>       The version number prefix for version string to match in <file>, such as the 'v' in
+                                v1.2.3.
+                                [default: .grapeconfig.versioning.prefix]
+        --suffix=<suffix>       The version number suffix for grape-version to match in <file>, such as the 'm' in
+                                v1.2.3.m.
+                                [default: ]
+        --major                 Tick the Major (1st) version number.
+        --minor                 Tick the Minor (2nd) version number.
+        --slot=<int>            Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is
+                                bigger than the current max number of digits, the version number will be extended to
+                                have <int> digits. Default value comes from .grapeconfig.versioning.branchSlotMappings.
+        --public=<branch>       The public branch to use for determine the slot to tick. Default based on
+                                .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the
+                                version ticking is consistent with the --public option passed to grape publish.
+        --target=<commit>       The commit to tag.
+                                [default: HEAD]
+        --updateTag=<bool>      If true, update the version git annotated tag.
+                                [default: .grapeconfig.versioning.updateTag]
+        --tag                   Forces updateTag to be True.
+        -f                      Forces creation of the tag even if it already exists. Force pushes the tag if --pushTag is
+                                set.
+        --pushTag               Push the tags that are created.
+        --notag                 Forces updateTag to be False.
+        --tagPrefix=<str>       The prefix for the git version tags. [default: v]
+        --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
+                                .grapeconfig.versioning.branchTagSuffixMappings.
+        --newTagPrefix=<str>    The written tag prefix, use if desired to be different from read tag prefix.
+                                Default is value of tagPrefix.
+        --newTagSuffix=<str>    The written tag suffix,  use if desired to be different from read tag suffix.
+                                Default is value of tagSuffix.
+        --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
+        --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
+                                version in <file>.
+        --tagBase=<ref>         Branch or reference from which to look for version tags. [default: HEAD]
+        --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
+                                [default: 1]
+        --tagNested             Tag any active nested subprojects.
+        --useProposed           Select a version based off of the first "proposed_*" tag reachable from the head
+                                of --topic but not tagged with an actual version.
+        --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
-    
+   
 ## w
- 
+
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
                    [--mergeDiff | --rawDiff ]
@@ -1214,97 +1420,122 @@ options are at least listed below.
                                     Defaults to the public branch for <b1>.
 
     
+## gitlab-admin
+
+    grape gitlab-admin 
+    Perform gitlab administration tasks.
+    Usage: grape-gitlab-admin [--dry]
+                              [--verbose]
+                              [--createRepo=<name> [--owner=<user>]]
+                              [--setProtectedBranches]
+                              [--setKeepMRApprovals]
+                              [--disableLFS]
+                              [--addSubprojectCIAccess]
+                              [--requirePipelineSuccess]
+                              [--allRepoSettings]
+                              [--scheduledPipelines=[list|add|delete|take|update]
+                               [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
+                              [--runJob=<jobName> | --startJob=<jobName>]
+                              [--pid=<id>]
+                              [--checkJob=<jobName>]
+                              [--runningJobs=[list|log]]
+                              [--user=<userName>]
+                              [--codeReviewsURL=<url>]
+                              [--verifySSL=<bool>]
+                              [--project=<prj>]
+                              [--repo=<repo>]
+                              [--branch=<branch>]
+                              [--ssh_pat_url=<url>]
+                              [--ssh_pat_port=<int>]
+                              [--curl=<path>]
+
+    Options:
+        --dry                       Do not actually perform administration tasks, just perform a dry run.
+        --verbose                   Print information about unaffected repos.
+        --createRepo=<name>         Create new empty repo in project with given name. All relevant repo settings will be
+                                    set for the new repo (per --allRepoSettings) except protected branches will not be set.
+        --owner=<user>              Add user as owner of newly created repo.
+        --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
+        --setKeepMRApprovals        Keep merge request approvals after push.
+        --disableLFS                Disable LFS in main project and all subprojects.
+        --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
+        --requirePipelineSuccess    Require pipeline success for merge button.
+        --allRepoSettings           Set all administrative repo settings. This includes:
+                                       setProtectedBranches
+                                       setKeepMRApprovals
+                                       disableLFS
+                                       addSubprojectCIAccess
+                                       requirePipelineSuccess
+        --scheduledPipelines=<op>   Manage scheduled pipelines. <op> is one of
+                                       list   : List scheduled pipelines
+                                       add    : Add a new scheduled pipeline
+                                       delete : Delete an existing scheduled pipeline that you own
+                                       update : Update an existing scheduled pipeline that you own
+                                       take   : Take ownership of an existing scheduled pipeline
+                                    Note: scheduled pipeline variables do not appear to be exposed properly through the REST API
+                                    (https://gitlab.com/gitlab-org/gitlab/-/issues/250850).
+        --runJob=<jobName>          Run job with given name.
+                                    Pipeline identifier must be specified using --pid.
+        --startJob=<jobName>        Run job with given name. Will not run job if already succeeded.
+                                    Pipeline identifier must be specified using --pid.
+        --checkJob=<jobName>        Check most recently finished jobs with given name. Returns list of pipeline identifiers
+                                    corresponding to --pid.
+        --runningJobs=<op>          Show running jobs that you own.  <op> is one of
+                                       list   : List running jobs
+                                       log    : Show logs for running jobs
+        --pid=<id>                  Identifier for pipeline. Required, and only allowed for
+                                    --scheduledPipelines when <op> is 'delete','take', or 'update' or --runPipelineJob.
+        --desc=<description>        New description for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+        --cron=<cron>               New cron entry for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+        --timezone=<timezone>       New cron timezone for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+                                    e.g. 'America/Los_Angeles', 'Etc/UTC'
+        --ref=<ref>                 Branch reference for scheduled pipeline. Only allowed when <op> is 'add' or 'update'.
+                                    e.g. 'develop', 'refs/heads/bugfix/mybranch'
+        --active=<bool>             Whether the scheduled pipeline should be active. Only allowed when <op> is 'add' or 'update'.
+        --user=<userName>           Your Gitlab user name.
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
+                                    [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
+                                    [default: .grapeconfig.project.verifySSL]
+        --project=<prj>             The project key part of the codeReviews url, e.g. the "GRP" in
+                                    https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
+        --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
+                                    https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
+        --branch=<branch>           Branch in top level repo for checking .grapeconfig.
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_port]
+        --curl=<path>               Path to curl executable
+                                    [default: .grapeconfig.repo.curl]
+
+    
 ## q
 
     grape q
-    Quits grape. 
+    Quits grape.
 
-    Usage: grape-q 
-
-    
-## internalRelease
-
-    grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
-    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
-
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
-
-    Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
-                            [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules.
-    
-    Optional Arguments:
-    <descr>                  Single word description of work being done on this branch. Asks by default.
-
-
-    
-## bugfix
-
-    grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
-    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
-
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
-
-    Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
-                            [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules.
-    
-    Optional Arguments:
-    <descr>                  Single word description of work being done on this branch. Asks by default.
-
-
-    
-## publicRelease
-
-    grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
-    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
-
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
-
-    Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
-                            [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules.
-    
-    Optional Arguments:
-    <descr>                  Single word description of work being done on this branch. Asks by default.
-
+    Usage: grape-q
 
     
 ## hotfix
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+    --recurse               Create the branch in submodules/nested subprojects.
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules.
-    
+    --noRecurse             Don't create the branch in submodules/nested subprojects.
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 
@@ -1313,20 +1544,82 @@ options are at least listed below.
 ## feature
 
     grape <newtopicbranch>
-    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from 
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
     one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
 
-    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--noverify] [--recurse | --noRecurse] [<descr>] 
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default. 
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings. 
-    --noverify              By default, grape will ask the user to verify the name and start point of the branch. 
-                            This disables the verification. 
-    --recurse               Create the branch in submodules. 
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+    --recurse               Create the branch in submodules/nested subprojects.
                             [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules.
+    --noRecurse             Don't create the branch in submodules/nested subprojects.
+
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
     
+## bugfix
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+    --recurse               Create the branch in submodules/nested subprojects.
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --noRecurse             Don't create the branch in submodules/nested subprojects.
+
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
+    
+## internal_release
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+    --recurse               Create the branch in submodules/nested subprojects.
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --noRecurse             Don't create the branch in submodules/nested subprojects.
+
+    Optional Arguments:
+    <descr>                  Single word description of work being done on this branch. Asks by default.
+
+
+    
+## public_release
+
+    grape <newtopicbranch>
+    Creates a new topic branch <type>/<username>/<descr> off of a public <branch>, where <type> is read from
+    one of the <type>:<branch> pairs found in .grapeconfig.flow.topicPrefixMappings.
+
+    Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
+
+    Options:
+    --user=<username>       The user developing this branch. Asks by default.
+    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+    --recurse               Create the branch in submodules/nested subprojects.
+                            [default: .grapeconfig.workspace.manageSubmodules]
+    --noRecurse             Don't create the branch in submodules/nested subprojects.
+
     Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
 

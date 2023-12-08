@@ -1,76 +1,140 @@
-import option
-
+import configparser
+import io
+import logging
 import os
 import re
-import StringIO
-import ConfigParser
+from vine import config_parser_global
+from vine import config_parser_workspace
+from vine import config_parser_user
+from vine import grape_errors
+from vine import grapeGit as git
+from vine.option import Option
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.vine_logging import log_wrapper
 
-import grapeGit as git
-import grapeConfig
-import utility
+def grapeVersion():
+    try:
+        grape_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),"..")
+        grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":'',"--tagBase":'HEAD'}, workspace_dir=grape_path, asString=True)
+        return grapeVersion
+    except:
+        return "v.1.37.unknown"
 
-class Version(option.Option):
+def describeLastVersion(args, *, branch, tagPrefix, tagSuffix='', execution_path):
+    description = git.describe(f"{branch} {args} --match={tagPrefix}*{tagSuffix}", execution_path=execution_path)
+    # In certain cases, the description of mergeback branches will describe the prior version rather than the current one.
+    # For those cases, we check for a match against the next minor version and use that if it exists.
+    versions = description.split('.')
+    if len(versions) > 1 and versions[1].isdigit():
+        next_minor_version = int(versions[1]) + 1
+        try:
+            next_description = git.describe(f"{branch} {args} --match={versions[0]}.{next_minor_version}.*{tagSuffix}", execution_path=execution_path)
+            description = next_description
+        except grape_errors.GrapeGitError as e:
+            if "could not describe commit" in e.message:
+                pass
+            else:
+                raise(e)
+
+    return description
+
+
+class Version(Option, WorkspaceDirHandler):
     """
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
-    The read subcommand is a no-op - it is used internally by other grape/vine modules. 
+    The read subcommand is a no-op - it is used internally by other grape/vine modules.
 
-    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [-suffix=<verSuffix>]
+    Usage: grape-version init <version> --file=<path> [--matchTo=<str>] [--prefix=<verPrefix>] [--suffix=<verSuffix>]
                                                       [--tag | --notag | --updateTag=<bool>]
-           grape-version tick [--major | --minor | --slot=<int>]
+                                                      [--fileIsDerived=<bool>]
+           grape-version tick [<version>]
+                              [--major | --minor | --slot=<int>]
                               [--tag | --notag | --updateTag=<bool>]
                               [--matchTo=<matchTo>]
-                              [--prefix=<prefix>] [--suffix=<sufix>] [--tagPrefix=<prefix>] [--tagSuffix=<sufix>][--file=<path>]
+                              [--prefix=<prefix>] [--suffix=<suffix>] [--tagPrefix=<prefix>] [--tagSuffix=<suffix>][--file=<path>]
+                              [--newTagPrefix=<prefix>] [--newTagSuffix=<suffix>]
                               [--nocommit]
                               [--notick]
+                              [--tagBase=<ref>]
+                              [--numTicks=<int>]
                               [--tagNested]
                               [--public=<branch>]
-           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>]
+                              [--fileIsDerived=<bool>]
+                              [--target=<commitish>]
+                              [--useProposed --topic=<branch>]
+                              [-f]
+                              [--pushTag]
+           grape-version read [--prefix=<prefix>] [--suffix=<suffix>] [--file=<file>] [--fileIsDerived=<bool>]
 
     Arguments:
         <version>           Used by grape version init, this is the initial version that grape will start counting from.
+                            Also used by tick to force a particular version number.
+
+
 
     Options:
-        --file=<file>       The file to store the version number. When used with init, this is mandatory, and
-                            grape will update your .grapeconfig file for future version number lookups.
-                            [default: .grapeconfig.versioning.file]
-        --matchTo=<matchTo> The regex to match to before reaching the version descriptor. Grape will look for the string
-                            literals '<prefix>' and '<suffix>' in your regex and substitute your values for <prefix>
-                            and <suffix> in their place. Default can be overridden using
-                            .grapeconfig.versioning.branchVersionRegexMappings.
-                            Note that, if defining matchTo in .grapeconfig.versioning.branchVersionRegexMappings, you
-                            should ensure you use \s instead of ' ' as part of your regex, as the list of mappings uses
-                            whitespace as a delimiter.
-                            Currently, grape expects there to be 4 groups in your regex, with the version number in
-                            group 3.
-                            [default: (VERSION_ID\s*=\s*)(<prefix>)(\S+)(<suffix>)]
-        --matchGroup=<int>  The regex group to pick the version number from. [default:3]
-        --prefix=<prefix>   The version number prefix for version string to match in <file>, such as the 'v' in v1.2.3.
-                            [default: .grapeconfig.versioning.prefix]
-        --suffix=<suffix>   The version number suffix for grape-version to match in <file>, such as the 'm' in v1.2.3.m
-                            [default: ]
-        --major             Tick the Major (1st) version number.
-        --minor             Tick the Minor (2nd) version number.
-        --slot=<int>        Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is bigger
-                            than the current max number of digits, the version number will be extended to have <int>
-                            digits. Default value comes from .grapeconfig.versioning.branchSlotMappings. 
-        --public=<branch>   The public branch to use for determine the slot to tick. Default based on 
-                            .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the version
-                            ticking is consistent with the --public option passed to grape publish. 
-        --updateTag=<bool>  If true, update the version git annotated tag. [default: .grapeconfig.versioning.updateTag]
-        --tag               Forces updateTag to be True.
-        --notag             Forces updateTag to be False.
-        --tagPrefix=<str>   The prefix for the git version tags. [default: v]
-        --tagSuffix=<str>   The suffix for the git version tags. Default value comes from
-                            .grapeconfig.versioning.branchTagSuffixMappings.
-        --nocommit          Do not create a new commit, just modify <file>. This implies --updateTag=False.
-        --notick            Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
-                            version in <file>.
-        --tagNested         Tag any active nested subprojects. 
-        
+        --file=<file>           The file to store the version number. When used with init, this is mandatory, and
+                                grape will update your .grapeconfig file for future version number lookups.
+                                [default: .grapeconfig.versioning.file]
+        --fileIsDerived=<bool>  Don't commit the versioning file, only produce it as a derived file when needed. Use
+                                repository tags to decide what version we are on.
+                                [default: .grapeconfig.versioning.fileIsDerived]
+        --matchTo=<matchTo>     The regex to match to before reaching the version descriptor. Grape will look for the
+                                string literals '<prefix>' and '<suffix>' in your regex and substitute your values for
+                                <prefix> and <suffix> in their place. Default can be overridden using
+                                .grapeconfig.versioning.branchVersionRegexMappings.
+                                Note that, if defining matchTo in .grapeconfig.versioning.branchVersionRegexMappings,
+                                you should ensure you use \s instead of ' ' as part of your regex, as the list of
+                                mappings uses whitespace as a delimiter.
+                                Currently, grape expects there to be 4 groups in your regex, with the version number in
+                                group 3.
+                                [default: (VERSION_ID\s*=\s*)(<prefix>)(\S+)(<suffix>)]
+        --matchGroup=<int>      The regex group to pick the version number from. [default:3]
+        --prefix=<prefix>       The version number prefix for version string to match in <file>, such as the 'v' in
+                                v1.2.3.
+                                [default: .grapeconfig.versioning.prefix]
+        --suffix=<suffix>       The version number suffix for grape-version to match in <file>, such as the 'm' in
+                                v1.2.3.m.
+                                [default: ]
+        --major                 Tick the Major (1st) version number.
+        --minor                 Tick the Minor (2nd) version number.
+        --slot=<int>            Tick the <int>'th version number. 1 = Major, 2 = Minor, 3 = third, etc. If <int> is
+                                bigger than the current max number of digits, the version number will be extended to
+                                have <int> digits. Default value comes from .grapeconfig.versioning.branchSlotMappings.
+        --public=<branch>       The public branch to use for determine the slot to tick. Default based on
+                                .grapeconfig.flow.topicprefixmappings. Grape publish uses this option to ensure the
+                                version ticking is consistent with the --public option passed to grape publish.
+        --target=<commit>       The commit to tag.
+                                [default: HEAD]
+        --updateTag=<bool>      If true, update the version git annotated tag.
+                                [default: .grapeconfig.versioning.updateTag]
+        --tag                   Forces updateTag to be True.
+        -f                      Forces creation of the tag even if it already exists. Force pushes the tag if --pushTag is
+                                set.
+        --pushTag               Push the tags that are created.
+        --notag                 Forces updateTag to be False.
+        --tagPrefix=<str>       The prefix for the git version tags. [default: v]
+        --tagSuffix=<str>       The suffix for the git version tags. Default value comes from
+                                .grapeconfig.versioning.branchTagSuffixMappings.
+        --newTagPrefix=<str>    The written tag prefix, use if desired to be different from read tag prefix.
+                                Default is value of tagPrefix.
+        --newTagSuffix=<str>    The written tag suffix,  use if desired to be different from read tag suffix.
+                                Default is value of tagSuffix.
+        --nocommit              Do not create a new commit, just modify <file>. This implies --updateTag=False.
+        --notick                Do not tick the version in <file>. Useful with --tag to tag HEAD as being the current
+                                version in <file>.
+        --tagBase=<ref>         Branch or reference from which to look for version tags. [default: HEAD]
+        --numTicks=<int>        The number of times to increment slot. If greater than 1, intervening versions are skipped.
+                                [default: 1]
+        --tagNested             Tag any active nested subprojects.
+        --useProposed           Select a version based off of the first "proposed_*" tag reachable from the head
+                                of --topic but not tagged with an actual version.
+        --topic=<commit>        The starting point to look for a "proposed_*" tag.
 
 
-    """
+   """
+
     def __init__(self):
         super(Version, self).__init__()
         self._key = "version"
@@ -81,13 +145,50 @@ class Version(option.Option):
     def description(self):
         return "Update the version for your current project."
 
-    def parseArgs(self, args): 
-        config = grapeConfig.grapeConfig()
+    def parseArgs(self, args):
+        config = config_parser_global.grapeConfig()
         # parse tagSuffix for version mappings
-        if args["--tagSuffix"] is None: 
-            branch2suffix = config.getMapping("versioning", "branchtagsuffixmappings")
-            args["--tagSuffix"] = branch2suffix[git.currentBranch()]
+        if args["--tagSuffix"] is None:
+            branch2suffix = config.getMapping(self.SECTION_VERSIONING, "branchtagsuffixmappings")
+            args["--tagSuffix"] = branch2suffix[git.currentBranch(execution_path=self.workspace_dir)]
+        # convert to boolean for updateTag
+        doTag = args["--updateTag"].strip().lower() == "true"
+        if doTag:
+            doTag = not args["--notag"]
+        else:
+            doTag = args["--tag"]
+        args["--updateTag"] = doTag
+        # convert to boolean for fileIsDerived
+        derived= args["--fileIsDerived"].strip().lower() == "true"
+        args["--fileIsDerived"] = derived
+        # set version based on proposed version number tag in topic branch
+        if "--useProposed" in args and args["--useProposed"]:
+            logging.info(f"looking up proposed_ tag at origin/{args['--topic']}")
+            # TODO should this have tagSuffix?
+            last_version = describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
+            proposed_tags = []
+            branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
+            for line in branch_log.splitlines():
+               match = re.search(f"tag: (proposed_[^),]+)", line)
+               if match:
+                  logging.debug(match.group(1))
+                  proposed_tags.append(match.group(1))
+            # Sort the proposed tags by version number
+            proposed_tags.sort(key=lambda s: list(map(int, re.search("[0-9]+(\.[0-9]+)+",s).group(0).split('.'))))
+            # Use the latest version tag
+            proposed_tag = proposed_tags[-1]
+            if len(proposed_tags) > 1:
+               logging.info(f"found multiple tags: {proposed_tags}")
+            logging.info(f"using tag {proposed_tag}")
+            args["<version>"] = proposed_tag.split("proposed_")[1]
 
+        if "--numTicks" in args:
+            args["--numTicks"] = int(args["--numTicks"])
+        else:
+            args["--numTicks"] = 1
+
+
+    @log_wrapper
     def execute(self, args):
         self.parseArgs(args)
         if args["init"]:
@@ -95,111 +196,88 @@ class Version(option.Option):
         if args["tick"]:
             self.tickVersion(args)
         if args["read"]:
-            config = grapeConfig.grapeConfig()
-            fileName = config.get("versioning","file")
-            try:
-                with open(fileName) as f:
-                    slots = self.readVersion(f, args)
-                    self.ver = self.slotsToString(args, slots)
-            except IOError:
-                self.ver = ""
+            self.readVersion(args)
         return True
 
     def initializeVersioning(self, args):
-        config = grapeConfig.grapeConfig()
-        version = StringIO.StringIO()
-        version.write("VERSION_ID = %s" % args["<version>"])
+        version = io.StringIO()
+        version.write(f"VERSION_ID = {args['<version>']}")
         version.seek(0)
-        version = self.readVersion(version, args)
+        version = self.readVersionFromFile(version, args)
         if args["--file"]:
             fname = args["--file"]
-            with open(fname, 'w+') as f:
-                version = self.writeVersion(f, version, args)
-            self.stageVersionFile(fname)
-            config.set("versioning", "file", fname)
-            configFile = os.path.join(git.baseDir(), ".grapeconfig")
-            grapeConfig.writeConfig(config, configFile)
-            self.stageGrapeconfigFile(configFile)
-            if not args["--nocommit"]:
-                git.commit("%s %s -m \"GRAPE: added initial version info file %s\"" % (fname, configFile, fname))
-                self.tagVersion(version, args)
+            config = config_parser_global.grapeConfig()
+            config.set("versioning", "file", args["--file"])
+            configFile = os.path.join(self.workspace_dir, ".grapeconfig")
+            config_parser_global.writeConfig(config, configFile)
+            self.stageGrapeconfigFile(configFile, execution_path=self.workspace_dir)
+            self.writeVersion(version,args,
+                              f"{fname} {configFile} -m \"GRAPE: added initial version info file {fname}\"",
+                              True)
 
     def tickVersion(self, args):
-        config = grapeConfig.grapeConfig()
-        fileName = config.get("versioning", "file")
-        with open(fileName) as f:
-            slots = self.readVersion(f, args)
-            self.ver = self.slotsToString(args, slots)
-            
-        if not args["--notick"]:
-            slot = args["--slot"]
-            if not slot:
-                slotMappings = config.getMapping("versioning", "branchSlotMappings")
-                if args["--public"]:
-                    publicBranch = args["--public"]
-                else:
-                    publicBranch = config.getPublicBranchFor(git.currentBranch())
-                slot = int(slotMappings[publicBranch])
-            else:
-                slot = int(slot)
-            if args["--minor"]:
-                slot = 2
-            if args["--major"]:
-                slot = 1
-            # extend the version number if slot comes in too large.
-            while len(slots) < slot:
-                slots.append(0)
-            slots[slot - 1] += 1
-            while slot < len(slots):
-                slots[slot] = 0
-                slot += 1
-            # write the new version number to the version file. 
-            with open(fileName, 'r+') as f:
-                self.ver = self.writeVersion(f, slots, args)
-            self.stageVersionFile(fileName)
-            if not args["--nocommit"]:
-                git.commit("-m \"GRAPE: ticked version to %s\"" % self.ver)
-                
-        if (not args["--nocommit"]) or args["--tag"]:
-            self.tagVersion(self.ver, args)
-            if args["--tagNested"]:
-                cwd = os.getcwd()
-                wsDir = utility.workspaceDir()
-                for subproject in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes():
-                    os.chdir(os.path.join(wsDir, subproject))
-                    self.tagVersion(self.ver, args)
-                os.chdir(cwd)
-                
-
-    @staticmethod
-    def stageVersionFile(fname):
-        print ( "STAGING %s" % fname)
-        git.add(fname)
-        return True
-
-    @staticmethod
-    def stageGrapeconfigFile(fname):
-        git.add(fname)
-
-        return True
-
-    @staticmethod
-    def tagVersion(version, args):
-        doTag = args["--updateTag"].strip().lower() == "true"
-        if doTag:
-            doTag = not args["--notag"]
+        numTicks = args["--numTicks"]
+        config = config_parser_global.grapeConfig()
+        if args["<version>"]:
+            versionString = args["<version>"]
+            slots = self.convertTagStringToSlots(args["--tagPrefix"], args["--tagSuffix"], versionString)
+            self.ver = args["<version>"]
         else:
-            doTag = args["--tag"]
-        if doTag:
+            slots = self.readVersion(args)
+            if not args["--notick"]:
+                slot = args["--slot"]
+                if not slot:
+                    slotMappings = config.getMapping(self.SECTION_VERSIONING, "branchSlotMappings")
+                    if args["--public"]:
+                        publicBranch = args["--public"]
+                    else:
+                        publicBranch = config.getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
+                    slot = int(slotMappings[publicBranch])
+                else:
+                    slot = int(slot)
+                if args["--minor"]:
+                    slot = 2
+                if args["--major"]:
+                    slot = 1
+                # extend the version number if slot comes in too large.
+                while len(slots) < slot:
+                    slots.append(0)
+                slots[slot - 1] += numTicks
+                while slot < len(slots):
+                    slots[slot] = 0
+                    slot += numTicks
+        # write version number
+        self.writeVersion(slots,args,f"-m \"GRAPE: ticked version to {self.ver}\"",False)
+
+
+    @staticmethod
+    def stageVersionFile(args, *, execution_path):
+        fname = args["--file"]
+        logging.info(f"STAGING {fname}")
+        git.add(fname, execution_path=execution_path)
+        return True
+
+    @staticmethod
+    def stageGrapeconfigFile(fname, *, execution_path):
+        git.add(fname, execution_path=execution_path)
+        return True
+
+    @staticmethod
+    def tagVersion(version, args, *, execution_path):
+        if args["--updateTag"]:
             prefix = args["--prefix"]
             suffix = args["--suffix"]
             tagPrefix = args["--tagPrefix"]
             tagSuffix = args["--tagSuffix"]
-            
+            if "--newTagPrefix" in args and args["--newTagPrefix"]:
+                tagPrefix = args["--newTagPrefix"]
+            if "--newTagSuffix" in args and args["--newTagSuffix"]:
+                tagSuffix = args["--newTagSuffix"]
+
             if tagPrefix and tagPrefix != prefix:
-                if prefix: 
-                    version.replace(prefix,tagPrefix,1)
-                else: 
+                if prefix:
+                    version = version.replace(prefix,tagPrefix,1)
+                else:
                     version = tagPrefix+version
             if tagSuffix and tagSuffix != suffix:
                 if suffix:
@@ -207,29 +285,82 @@ class Version(option.Option):
                     version = version[0:-l] + version[-l:].replace(suffix, tagSuffix, 1)
                 else:
                     version = version + tagSuffix
-                    
-                
-            git.tag("-a %s -m \"Tagged by grape\"" % version)
+            force_str = ""
+            if "-f" in args and args["-f"]:
+                force_str = "-f"
+            tag_args = f"{force_str} -a {version} -m \"Tagged by grape\" {args['--target']}"
+            logging.info(f"Calling git tag {tag_args} in {execution_path}")
+            git.tag(f"{force_str} -a {version} -m \"Tagged by grape\" {args['--target']}",
+                    execution_path=execution_path)
+            if "--pushTag" in args and args["--pushTag"]:
+                push_args = f"{force_str} --porcelain origin {version}"
+                logging.info(f"Calling git push {push_args} in {execution_path}")
+                git.push(f"{push_args}", execution_path=execution_path)
         return True
 
-    def readVersion(self, fileName, args):
-        config = grapeConfig.grapeConfig()
+    @staticmethod
+    def convertTagStringToSlots(tagPrefix, tagSuffix, tagName):
+        slots = []
+        if tagName:
+            if tagPrefix:
+                tagName = tagName.split(tagPrefix)[1]
+            if tagSuffix:
+                tagName = tagName.split(tagSuffix)[0]
+            slots = tagName.split('.')
+            # convert strings to ints
+            slots = list(map(int, slots))
+        return slots
+
+    @staticmethod
+    def readVersionFromTag(args, workspace_dir, asString=False):
+        tagPrefix = args["--tagPrefix"]
+        tagSuffix = args["--tagSuffix"]
+        tagBase = args["--tagBase"]
+        tagName = describeLastVersion("--abbrev=0", branch=tagBase, tagPrefix=tagPrefix, tagSuffix=tagSuffix, execution_path=workspace_dir)
+        if asString:
+            return tagName
+        else:
+            return Version.convertTagStringToSlots(tagPrefix, tagSuffix, tagName)
+
+    def readVersion(self,args):
+        if args["--fileIsDerived"]:
+            slots = self.readVersionFromTag(args, self.workspace_dir)
+        else:
+            config = config_parser_global.grapeConfig()
+            fileName = args["--file"]
+            fileName = os.path.join(self.workspace_dir, fileName)
+            with io.open(fileName) as f:
+                slots = self.readVersionFromFile(f, args)
+        # update ver
+        self.ver = self.slotsToString(args, slots)
+        if len(slots) > 0:
+            self.major_ver = slots[0]
+        else:
+            self.major_ver = 0
+        if len(slots) > 1:
+            self.minor_ver = slots[1]
+        else:
+            self.minor_ver = 0
+        return slots
+
+    def readVersionFromFile(self, f, args):
+        config = config_parser_global.grapeConfig()
         prefix = args["--prefix"]
         if args["--suffix"]:
             suffix = args["--suffix"]
         else:
             try:
-                suffixMapping = config.getMapping("versioning", "branchSuffixMappings")
-                suffix = suffixMapping[config.getPublicBranchFor(git.currentBranch())]
+                suffixMapping = config.getMapping(self.SECTION_VERSIONING, "branchSuffixMappings")
+                suffix = suffixMapping[config.getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))]
             except KeyError:
                 suffix = ""
         args["--suffix"] = suffix
         regex = args["--matchTo"]
         try:
-            regexMappings = config.getMapping("versioning", "branchVersionRegexMappings")
-            public = config.getPublicBranchFor(git.currentBranch())
+            regexMappings = config.getMapping(self.SECTION_VERSIONING, "branchVersionRegexMappings")
+            public = config.getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
             regex = regexMappings[public]
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
 
         #tweaked from http://stackoverflow.com/questions/2020180/increment-a-version-id-by-one-and-write-to-mk-file
@@ -238,61 +369,87 @@ class Version(option.Option):
         self.r = re.compile(regex)
 
         VERSION_ID = None
-        for l in fileName:
+        for l in f:
             m1 = self.r.match(l)
             if m1:
-                VERSION_ID = map(int, m1.group(3).split("."))
+                VERSION_ID = list(map(int, m1.group(3).split(".")))
                 self.matchedLine = l
         if VERSION_ID is None:
-            print("GRAPE: .")
+            logging.info("GRAPE: .")
 
         return VERSION_ID
 
     def versionLine(self, version):
-        return self.r.sub(r'\g<1>\g<2>' + '.'.join(['%s' % v for v in version]) + r'\g<4>', self.matchedLine)
+        return self.r.sub(r'\g<1>\g<2>' + '.'.join([f'{v}' for v in version]) + r'\g<4>', self.matchedLine)
 
-    def slotsToString(self, args, slots): 
-        return args["--prefix"] + '.'.join(['%s' % v for v in slots])+args["--suffix"]
-    
+    def slotsToString(self, args, slots):
+        return args["--prefix"] + '.'.join([f'{v}' for v in slots]) + args["--suffix"]
+
     def stringToSlots(self, args, string):
         prefix = args["--prefix"]
         suffix = args["--suffix"]
-        if prefix: 
+        if prefix:
             # strip off the prefix
             string = ''.join(string.strip().split(prefix)[1:])
         if suffix:
             string = ''.join(string.strip().split(suffix)[:-1])
         return string.strip().split('.')
-        
 
-    def writeVersion(self, fileName, version, args):
-        fileName.seek(0)
+    def writeVersion(self, version, args, commitMsg,forceToFile):
+        if forceToFile or not args["--fileIsDerived"]:
+            fname = os.path.join(self.workspace_dir, args["--file"])
+            mode = 'w+' if args["init"] else 'r+'
+            with io.open(fname, mode) as f:
+                self.writeVersionToFile(f, version, args)
+            if not args["--fileIsDerived"]:
+                self.stageVersionFile(args, execution_path=self.workspace_dir)
+                if not args["--nocommit"]:
+                    git.commit(commitMsg,
+                               execution_path=self.workspace_dir)
+        version = self.slotsToString(args, version)
+        self.ver = version
+        if args["--updateTag"]:
+            self.tagVersion(version, args, execution_path=self.workspace_dir)
+            if args["--tagNested"]:
+                for subproject in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                    execution_path = os.path.join(self.workspace_dir, subproject)
+                    logging.info(f"tagging {execution_path} with {self.ver}")
+                    self.tagVersion(self.ver, args, execution_path=execution_path)
+
+        return version
+
+
+    def writeVersionToFile(self, f, version, args):
+        f.seek(0)
         lines = []
         if args["init"]:
             lines.append(self.versionLine(version))
-        for l in fileName:
+        for l in f:
             if l == self.matchedLine:
                 l = self.versionLine(version)
             lines.append(l)
-        fileName.seek(0)
-        fileName.writelines(lines)
-        return self.slotsToString(args, version)
+        f.seek(0)
+        f.writelines(lines)
+        return
+
 
     def setDefaultConfig(self, config):
         """
 
         :type config: GrapeConfigParser
         """
-        config.ensureSection("versioning")
-        config.set("versioning", "file", ".grapeversion")
-        config.set("versioning", "updateTag", "True")
-        config.set("versioning", "branchSlotMappings", "?:2")
-        config.set("versioning", "branchSuffixMappings", "?:")
-        config.set("versioning", "branchTagSuffixMappings", "?:")
-        config.set("versioning", "prefix", "v")
-        
-if __name__ is "__main__": 
-    import grapeMenu
+        config.ensureSection(self.SECTION_VERSIONING)
+        config.set(self.SECTION_VERSIONING, "file", ".grapeversion")
+        config.set(self.SECTION_VERSIONING, "updateTag", "True")
+        config.set(self.SECTION_VERSIONING, "branchSlotMappings", "?:2")
+        config.set(self.SECTION_VERSIONING, "branchSuffixMappings", "?:")
+        config.set(self.SECTION_VERSIONING, "branchTagSuffixMappings", "?:")
+        config.set(self.SECTION_VERSIONING, "prefix", "v")
+        config.set(self.SECTION_VERSIONING, "fileIsDerived", "False")
+
+
+if __name__ == "__main__":
     import sys
+    from vine import grapeMenu
     menu = grapeMenu.menu()
     menu.applyMenuChoice("version", sys.argv[1:])

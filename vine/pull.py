@@ -1,32 +1,21 @@
-import os
-import option
-import grapeGit as git
-import grapeMenu
-import utility
-import grapeConfig
-import resumable
+import logging
+from vine import grapeGit as git
+from vine.option import Option
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.resumable import Resumable
+from vine.vine_logging import log_wrapper
 
 
-def pull(branch="develop", repo=".", rebase=False):
-    if rebase:
-        argStr = "--rebase origin %s" % branch
-    else:
-        argStr = "origin %s " % branch
-    
-    utility.printMsg("Pulling %s in %s..." % (branch, repo))
-    git.pull(argStr, throwOnFail=True)
-
-
-class Pull(resumable.Resumable):
+class Pull(Resumable, Option, WorkspaceDirHandler):
     """
     grape pull pulls any updates to your current branch into for your outer level repo and all subprojects.
-    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>. 
+    Since a pull is really a remote merge, this is the same as grape mr <currentBranch>.
 
     Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
     --continue     Finish a pull that failed due to merge conflicts.
-    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.  
+    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.
 
 
     """
@@ -38,12 +27,15 @@ class Pull(resumable.Resumable):
     def description(self):
         return "Pulls your current branch to origin in all projects in this workspace. (Calls grape mr <currentBranch>)"
 
+    @log_wrapper
     def execute(self, args):
+        self.set_progress_file(execution_path=self.workspace_dir)
+
         mrArgs = {}
-        currentBranch = git.currentBranch()
+        currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         mrArgs["<branch>"] = currentBranch
         # the <<cmd>> stuff is for consistent --continue output
-        if not "<<cmd>>" in args:
+        if "<<cmd>>" not in args:
             args["<<cmd>>"] = "pull"
         mrArgs["<<cmd>>"] = args["<<cmd>>"]
         mrArgs["--am"] = True
@@ -52,27 +44,34 @@ class Pull(resumable.Resumable):
         mrArgs["--aT"] = False
         mrArgs["--ay"] = False
         mrArgs["--aY"] = False
-        mrArgs["--askAll"] = False
         mrArgs["--continue"] = args["--continue"]
         mrArgs["--noRecurse"] = False
         mrArgs["--squash"] = False
 
         if args["--noRecurse"]:
-            git.pull("origin %s" % currentBranch)
-            utility.printMsg("Pulled current branch from origin")
+            git.pull(f"origin {currentBranch}", execution_path=self.workspace_dir)
+            logging.info("Pulled current branch from origin")
             return True
-        else:
-            val =  grapeMenu.menu().getOption("mr").execute(mrArgs)
-            if val:
-                utility.printMsg("Pulled current branch from origin")
-            return val
+        # Imported here to avoid circular dependencies
+        from vine import grapeMenu
 
-    def _resume(self, args):
-        grapeMenu.menu().getOption("md")._resume(args)             
+        merge_remote_command = grapeMenu.menu().getOption("mr")
+        merge_remote_command.workspace_dir = self.workspace_dir
+        val = merge_remote_command.execute(mrArgs)
+        if val:
+            logging.info("Pulled current branch from origin")
+        return val
+
+    def _resume(self, args, *, workspace_dir):
+        # Imported here to avoid circular dependencies
+        from vine import grapeMenu
+        merge_down_command = grapeMenu.menu().getOption("md")
+        merge_down_command.workspace_dir = self.workspace_dir
+        merge_down_command._resume(args, workspace_dir=workspace_dir)
         return True
 
     def _saveProgress(self, args):
-        super(Merge, self)._saveProgress(args)
-    
+        super(Pull, self)._saveProgress(args)
+
     def setDefaultConfig(self, config):
         pass

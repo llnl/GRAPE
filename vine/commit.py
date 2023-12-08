@@ -1,24 +1,30 @@
+import logging
 import os
-import option
-import grapeGit as git
-import grapeConfig
-import utility
+from vine import config_parser_user
+from vine import grape_errors
+from vine import grapeGit as git
+from vine import utility
+from vine.option import Option
+from vine.workspace_dir_handler import WorkspaceDirHandler
+from vine.vine_logging import log_wrapper
 
-class Commit(option.Option):
+
+class Commit(Option, WorkspaceDirHandler):
     """
-    Usage: grape-commit [-m <message>] [-a | <filetree>]  
+    Usage: grape-commit [-m <message>] [--failIfNoCommit] [-a | <filetree>...]
 
     Options:
-    -m <message>    The commit message.
-    -a              Commit modified files that have not been staged.
-    
+    -m <message>      The commit message.
+    -a                Commit modified files that have not been staged.
+    --failIfNoCommit  Exit with failure if no files were committed.
+
 
     Arguments:
-    <filetree> The relative path of files to include in this commit. 
+    <filetree>... The relative paths of files to include in this commit.
 
     """
     def __init__(self):
-        super(Commit,self).__init__()
+        super(Commit, self).__init__()
         self._key = "commit"
         self._section = "Workspace"
 
@@ -27,42 +33,68 @@ class Commit(option.Option):
 
     def commit(self, commitargs, repo):
         try:
-            git.commit(commitargs)
+            git.commit(commitargs, execution_path=repo)
             return True
-        except git.GrapeGitError as e: 
-            utility.printMsg("Commit in %s failed. Perhaps there were no staged changes? Use -a to commit all modified files." % repo)
+        except grape_errors.GrapeGitError as e:
+            logging.error(f"Commit in {repo} failed. Perhaps there were no " +
+                          "staged changes? Use -a to commit all modified files.")
             return False
 
+    @log_wrapper
     def execute(self, args):
+        filetrees = None
         commitargs = ""
-        if args['-a']: 
+        if args['-a']:
             commitargs = commitargs +  " -a"
         elif args["<filetree>"]:
-            commitargs = commitargs + " %s"% args["<filetree>"]
+            filetrees = {os.path.abspath(x):False for x in args['<filetree>']}
         if not args['-m']:
             args["-m"] = utility.userInput("Please enter commit message:")
-        commitargs += " -m \"%s\"" % args["-m"]
-         
-        wsDir = utility.workspaceDir()
-        os.chdir(wsDir)
 
-        submodules = [(True, x ) for x in git.getModifiedSubmodules()]
-        subprojects = [(False, x) for x in grapeConfig.GrapeConfigParser.getAllActiveNestedSubprojectPrefixes()]
-        for stage,sub in submodules +  subprojects:
-            os.chdir(os.path.join(wsDir,sub))
-            subStatus = git.status("--porcelain -uno")
-            if subStatus:
-                utility.printMsg("Committing in %s..." % sub)
-                if self.commit(commitargs, sub) and stage: 
-                    os.chdir(wsDir)
-                    utility.printMsg("Staging committed change in %s..." % sub)
-                    git.add(sub)
-        
-        os.chdir(wsDir)
-        if submodules or git.status("--porcelain"): 
-            utility.printMsg("Performing commit in outer level project...")
-            self.commit(commitargs, wsDir)
-        return True
-    
-    def setDefaultConfig(self,config): 
+        filesCommitted = False
+        commitargs += f" -m \"{args['-m']}\""
+
+        submodules = [(True, x ) for x in git.getModifiedSubmodules(self.workspace_dir)]
+
+        subprojects = [(False, x) for x in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)]
+        for stage, sub in submodules + subprojects:
+            sub_path = os.path.join(self.workspace_dir, sub)
+            if filetrees:
+                for f in filetrees.keys():
+                    relpath = os.path.relpath(f,sub_path)
+                    if ".." not in relpath:
+                        logging.info(f"Committing {relpath} in {sub}...")
+                        if self.commit(commitargs + f" {relpath}", sub_path):
+                           filesCommitted = True
+                        filetrees[f] = True
+                        if stage:
+                            logging.info(f"Staging committed change in {sub}...")
+                            git.add(sub, execution_path=self.workspace_dir)
+
+            else:
+                subStatus = git.status("--porcelain -uno", execution_path=sub_path)
+                if subStatus:
+                    logging.info(f"Committing in {sub}...")
+                    if self.commit(commitargs, sub_path):
+                        filesCommitted = True
+                        if stage:
+                           logging.info(f"Staging committed change in {sub}...")
+                           git.add(sub, execution_path=self.workspace_dir)
+
+        remaining_filetrees = ''
+        if filetrees:
+            remaining_filetrees = ' '.join([os.path.relpath(x,self.workspace_dir) for x in filetrees.keys() if not filetrees[x]])
+
+        if submodules or git.status("--porcelain", execution_path=self.workspace_dir) or remaining_filetrees:
+
+            logging.info(f"Committing {remaining_filetrees} in {self.workspace_dir} ...")
+            if self.commit(commitargs + ' ' + remaining_filetrees, self.workspace_dir):
+                filesCommitted = True
+
+        if args['--failIfNoCommit']:
+            return filesCommitted
+        else:
+            return True
+
+    def setDefaultConfig(self,config):
         pass

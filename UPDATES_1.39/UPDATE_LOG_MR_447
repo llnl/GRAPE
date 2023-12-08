@@ -1,0 +1,7 @@
+
+
+Thu Nov  3 15:49:22 2022 Benjamin T. Liu
+MR_447
+Reviewers: Peter Robinson
+
+Add gitlab-admin --requirePipelineSuccess option

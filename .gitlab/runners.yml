@@ -1,0 +1,107 @@
+._batch:
+  tags: &batch batch
+
+._shell:
+  tags: &shell shell
+
+._rzalastor:
+  tags: &rzalastor rzalastor
+
+._rzalastor_group:
+  resource_group: ${GITLAB_USER_LOGIN}-RZALASTOR
+
+._rzansel:
+  tags: &rzansel rzansel
+
+._rzansel_group:
+  resource_group: ${GITLAB_USER_LOGIN}-RZANSEL
+
+._rzansel_group_after_hours:
+  resource_group: ${GITLAB_USER_LOGIN}-RZANSEL-LATE
+
+._rzwhippet:
+  tags: &rzwhippet rzwhippet
+
+._rzwhippet_group:
+  resource_group: ${GITLAB_USER_LOGIN}-RZGENIE
+
+._rzwhippet_group_after_hours:
+  resource_group: ${GITLAB_USER_LOGIN}-RZGENIE-LATE
+
+._rztopaz:
+  tags: &rztopaz rztopaz
+
+.run_ale3d_windows:
+  tags:
+    - ale3d
+    - windows
+
+.run_rzalastor_batch:
+  tags:
+    - *rzalastor
+    - *batch
+
+.run_rzalastor_shell:
+  tags:
+    - *rzalastor
+    - *shell
+
+.run_rzansel_batch:
+  tags:
+    - *rzansel
+    - *batch
+
+.run_rzansel_shell:
+  tags:
+    - *rzansel
+    - *shell
+
+.run_rzwhippet_batch:
+  tags:
+    - *rzwhippet
+    - *batch
+
+.run_rzwhippet_shell:
+  tags:
+    - *rzwhippet
+    - *shell
+
+.run_rztopaz_batch:
+  tags:
+    - *rztopaz
+    - *batch
+
+.run_rztopaz_shell:
+  tags:
+    - *rztopaz
+    - *shell
+
+.run_rzalastor_batch_resource_group:
+  extends: [.run_rzalastor_batch, ._rzalastor_group]
+
+.run_rzalastor_shell_resource_group:
+  extends: [.run_rzalastor_shell, ._rzalastor_group]
+
+.run_rzansel_batch_exclusive:
+  extends: [.run_rzansel_batch, ._rzansel_group]
+
+.run_rzansel_batch_exclusive_after_hours:
+  extends: [.run_rzansel_batch, ._rzansel_group_after_hours]
+
+.run_rzansel_shell_exclusive:
+  extends: [.run_rzansel_shell, ._rzansel_group]
+
+.run_rzansel_shell_exclusive_after_hours:
+  extends: [.run_rzansel_shell, ._rzansel_group_after_hours]
+
+.run_rzwhippet_batch_exclusive:
+  extends: [.run_rzwhippet_batch, ._rzwhippet_group]
+
+.run_rzwhippet_batch_exclusive_after_hours:
+  extends: [.run_rzwhippet_batch, ._rzwhippet_group_after_hours]
+
+.run_rzwhippet_shell_exclusive:
+  extends: [.run_rzwhippet_shell, ._rzwhippet_group]
+
+.run_rzwhippet_shell_exclusive_after_hours:
+  extends: [.run_rzwhippet_shell, ._rzwhippet_group_after_hours]

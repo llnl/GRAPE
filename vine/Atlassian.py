@@ -1,106 +1,125 @@
-﻿import sys
-import os
-filedir = os.path.dirname(os.path.realpath(__file__))
-grapedir = os.path.join(filedir, "..")
-if not grapedir in sys.path:
-    sys.path.insert(0, grapedir)
-import stashy.stashy as stashy
-import keyring.keyring as keyring
 import getpass
+import logging
+import os
+import sys
 import time
-import utility
-import grapeConfig
-import grapeGit as git
+import keyring
+from stashy.stashy import connect as stashy_connect
+import stashy.stashy.errors as stashy_errors
+from vine import config_parser_global
+from vine import grapeGit as git
+from vine import utility
+from vine.option import Option
+
 
 class Atlassian:
-    rzbitbucketURL = "https://rzlc.llnl.gov/bitbucket"
+    defaultURL = "https://your.host.org/bitbucket"
 
-    def __init__(self, username=None, url=rzbitbucketURL, verify=True):
+    def __init__(self, username=None, url=defaultURL, verify=True, port=-1, ssh_path= "git@ssh.org", *,
+                 workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
         else:
             self._userName = username
 
+        self.workspace_dir = workspace_dir
+
+        # Ensures same keyring used across all OSes
+        MAGIC_PRIORITY_NUM = .5
+        if keyring.get_keyring().priority != MAGIC_PRIORITY_NUM:
+            key_rings = [kr for kr in keyring.backend.get_all_keyring()
+                         if kr.priority == MAGIC_PRIORITY_NUM]
+            keyring.set_keyring(key_rings.pop())
         self.keyring = keyring.get_keyring()
+
         self._service = url
         password = keyring.get_password(self._service, self._userName)
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
-            print("Connected to Bitbucket.")
+            logging.info("Connected to Bitbucket.")
         else:
             self._stash = None
-            print("Could not connect to Bitbucket...")
+            logging.info("Could not connect to Bitbucket...")
 
     def auth(self, service, username, password, verify=True):
         self._userName = username
         self._service = service
-        self._stash = stashy.connect(service, username, password, verify=verify)
+        self._stash = stashy_connect(service, username, password, verify=verify)
         numAttempts = 0
         success = False
         while numAttempts < 3 and not success:
             try:
                 self._stash.projects.list()
                 success = True
-            except stashy.errors.AuthenticationException:
+            except stashy_errors.AuthenticationException:
                 if numAttempts == 0:
-                    print("session expired...")
+                    logging.info("session expired...")
                 else:
-                    print("incorrect username / password...")
+                    logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                keyring.set_password(service, self._userName, getpass.getpass("Enter password for %s: " % service))
-                self._stash = stashy.connect(service, self._userName, keyring.get_password(service, self._userName),
+                keyring.set_password(service, self._userName,
+                                     getpass.getpass("Enter password for " +
+                                                     f"{service}: "))
+                self._stash = stashy_connect(service, self._userName, keyring.get_password(service, self._userName),
                                             verify=verify)
                 numAttempts += 1
 
         return success
-
+    
+    # Return list of project names
     def projectlist(self):
         projects = self._stash.projects.list()
         return [r["key"] for r in projects]
-    
+
     def project(self, name):
 
         for node in self._stash.projects:
             if node["key"].lower() == name.lower():
                 r = self._stash.projects[name]
                 return Project(r, node)
-            
+
         return None
-    
+
     def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
-        config = grapeConfig.grapeConfig()
+        config = config_parser_global.grapeConfig()
         if isNested:
             proj = os.path.split(path)[1]
-            nestedProjectURL = config.get("nested-%s" % proj , "url")
-            url = utility.parseSubprojectRemoteURL(nestedProjectURL)
+            nestedProjectURL = config.get(f"nested-{proj}", "url")
+            url = git.parseSubprojectRemoteURL(
+                nestedProjectURL, execution_path=self.workspace_dir)
             urlTokens = url.split('/')
             proj = urlTokens[-2]
-            repo_name = urlTokens[-1]       
+            repo_name = urlTokens[-1]
             # strip off the git extension
             repo_name = '.'.join(repo_name.split('.')[:-1])
         elif isSubmodule:
-            fullpath = os.path.abspath(path)
-            wsdir = utility.workspaceDir() + os.path.sep
+            fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
+            wsdir = self.workspace_dir + os.path.sep
             proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url =  git.config("--get submodule.%s.url" % proj).split('/')
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+            url = url_map[proj].split('/')
+            if url[-2] == '..':
+               # replace relative path with the top repo project
+               topProjectURL = config.get(f"repo", "url").split('/')
+               url[-2] = topProjectURL[-2]
             proj = url[-2]
             repo_name = url[-1]
-    
+
             # strip off the .git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])   
+            repo_name = '.'.join(repo_name.split('.')[:-1])
         else:
             if topLevelRepo is None:
-                topLevelRepo = config.get("repo", "name")
+                topLevelRepo = config.get(Option.SECTION_REPO, "name")
             if topLevelProject is None:
-                topLevelProject = config.get("project", "name")
-                
+                topLevelProject = config.get(Option.SECTION_PROJECT, "name")
+
             repo_name = topLevelRepo
             proj = topLevelProject
-            
+
         repo = self.project(proj).repo(repo_name)
-        return repo        
+        return repo
 
 class StashyNode:
     def __init__(self, node, stashynode):
@@ -115,27 +134,27 @@ class StashyNode:
         keys.sort()
         for key in keys:
             val = d[key]
-            if type(val) in (str, unicode, bool, int):
-                print "  "*level, key, "  :  ", val
-            elif type(val) == dict:
-                print "  "*level, key
+            if isinstance(val, (str, unicode, bool, int)):
+                logging.info("  "*level, key, "  :  ", val)
+            elif isinstance(val, dict):
+                logging.info("  "*level, key)
                 self._show(val, level + 1)
-            elif type(val) == list:
+            elif isinstance(val, list):
                 dd = {}
                 for i in range(len(val)):
-                    dd["%s[%d]" % (key, i)] = val[i]
-                print "  "*level, key
+                    dd[f"{key}[{i}]"] = val[i]
+                logging.info("  "*level, key)
                 self._show(dd, level + 1)
             else:
-                print "  "*level, key, type(val), "???"
-                
+                logging.info("  "*level, key, type(val), "???")
+
     def get(self, path):
         response = self.snode._client.get(self.snode.url(path))
         return response.json()
-    
+
     def put(self, path):
         return self.snode._client.put(self.snode.url(path)).json()
-    
+
     def post(self, path):
         return self.snode._client.post(self.snode.url(path)).json()
 
@@ -147,11 +166,11 @@ class Project(StashyNode):
 
     def name(self):
         return self.node["name"]
-    
+
     def repolist(self):
         repos = self.project.repos.list()
         return [r["name"] for r in repos]
-    
+
     def repo(self, name):
 
         repos = self.project.repos.list()
@@ -159,7 +178,7 @@ class Project(StashyNode):
             if node["name"].lower() == name.lower():
                 r = self.project.repos[name]
                 return Repo(r, node)
-            
+
         return None
 
 
@@ -168,7 +187,7 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
-    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN"):
+    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):
@@ -188,20 +207,34 @@ class Repo(StashyNode):
                 ret.append(r)
         return ret
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, labels=[]):
         """reviewers"""
+        if labels:
+           logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
-        
+
         return PullRequest(stashyRequest,self.repo.pull_requests)
-    
-    
-        
-        
+
+    def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
+        logging.info("GRAPE does not support CI integration with Atlassian tools.")
+        return None
+
+
+class Job:
+    """
+    A Job object should never be instantiated for Bitbucket.
+    """
+    def __init__(self):
+        pass
+    def artifact(self, path):
+        return b''
+
+
 
 class PullRequest(StashyNode):
     """
-    node is the dictionary with the state of the Pull Request. 
-    stashy_pull_requests is the stashy object needed to update the pull request.    
+    node is the dictionary with the state of the Pull Request.
+    stashy_pull_requests is the stashy object needed to update the pull request.
     """
     def __init__(self, node, stashy_pull_requests):
         StashyNode.__init__(self, node, stashy_pull_requests[str(node["id"])])
@@ -213,7 +246,10 @@ class PullRequest(StashyNode):
 
     def authorName(self):
         return self.node["author"]["user"]["displayName"]
-    
+
+    def authorEmail(self):
+        return self.node["author"]["user"]["email"]
+
     def description(self):
         try:
             return self.node["description"].encode('ascii', 'ignore')
@@ -237,26 +273,26 @@ class PullRequest(StashyNode):
         #         }
         #     }
         #   ]
-        # Which I interpret to mean the following:        
+        # Which I interpret to mean the following:
         ret = []
         for reviewer in self.node["reviewers"]:
             name = reviewer["user"]["name"]
-            approved = reviewer["approved"] 
-            displayName = reviewer["user"]["displayName"] 
+            approved = reviewer["approved"]
+            displayName = reviewer["user"]["displayName"]
             if displayName == "":
-                displayName = name 
+                displayName = name
             ret.append((name, approved, displayName))
         return ret
 
     def state(self):
         return self.node["state"]
-    
+
     def title(self):
         return self.node["title"]
-    
+
     def fromRef(self):
         return self.node["fromRef"]["displayId"]
-        
+
     def toRef(self):
         return self.node["toRef"]["displayId"]
 
@@ -267,15 +303,15 @@ class PullRequest(StashyNode):
             approved = reviewer[1]
             ret = ret and approved
         return ret
-    
-    def link(self): 
+
+    def link(self):
         return self.node["links"]["self"][0]["href"]
-    
+
     def version(self):
         return self.node["version"]
-    
-    # reviewers is a list of username-approved(bool) pairs
-    def update(self, ver, title=None, description=None, reviewers=None): 
+
+    # reviewers is a list of usernames
+    def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -283,58 +319,64 @@ class PullRequest(StashyNode):
         #             "name": "charlie"
         #         }
         #     }
-        #   ]       
-        reviewerList = []
-        if reviewers is not None:
-            for r in reviewers:
-                reviewerList.append(dict(user=dict(name=r)))
-                
+        #   ]
+        # Older versions of stashy needed this translation, the current one does it for us so we don't need to anymore.
+        # leaving this commented version around in case the magic that appeared in stashy disappears in the future.
+        #reviewerList = []
+        #if reviewers is not None:
+        #    for r in reviewers:
+        #        reviewerList.append(dict(user=dict(name=r)))
+        if add_labels or remove_labels:
+           logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
+
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
-        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewerList), self._stashy_pull_requests)
-        
+        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewers), self._stashy_pull_requests)
+
+    def regeneratePipeline(self):
+        pass
 
     def __eq__(self, other):
         return (self.toRef() == other.toRef()) and (self.fromRef() == other.fromRef())
 
     def __str__(self):
-        return "Title: %s\n" % self.title() + "From: %s\n" % self.fromRef() + "To: %s\n" % self.toRef() + \
-            "Reviewers: %s\n" % ', '.join(r[0]+" (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers()) + "Description: %s\n" % self.description()
-    
+        all_reviewers = ', '.join(r[0] + " (%s)" % ("Approved" if r[1] else "Not yet approved") for r in self.reviewers())
+        return f"Title: {self.title()}\n" + \
+               f"From: {self.fromRef()}\n" + \
+               f"To: {self.toRef()}\n" + \
+               f"Reviewers: {all_reviewers}\n" + \
+               f"Description: {self.description()}\n"
+
     def merge(self):
         canMerge = self._stashy_pull_request.can_merge()
         if canMerge is True:
             response = self._stashy_pull_request.merge(version=self.node["version"])
             return response["state"] == "MERGED"
         return False
-            
 
 
-if __name__ == "__main__":
-    atlassian = Atlassian()
+def testMe():
+    atlassian = Atlassian(workspace_dir=os.getcwd())
     plist = atlassian.projectlist()
-    print plist
+    logging.info(plist)
     for p in plist:
-        print "\nPROJECT:", p
+        logging.info(f"\nPROJECT:{p}")
         project = atlassian.project(p)
         reponames = project.repolist()
         for reponame in reponames:
-            print " REPONAME", reponame
+            logging.info(f" REPONAME{reponame}")
             try:
                 repo = project.repo(reponame)
-                for pull in repo.pullRequests():
- 
-                    print "  TITLE:     ", pull.title()
-                    print "  STATE:     ", pull.state()
-                    print "  AUTHOR:    ", pull.author()
-                    print "  DATE:      ", pull.date()
-                    print "  REVIEWERS: ", pull.reviewers()
-                    print "  FROM:      ", pull.fromRef()
-                    print "  TO:        ", pull.toRef()
-                    print "  DESC:      ", pull.description()
- 
-                    print 
-            except stashy.errors.NotFoundException:
-                print "  repo not found"
+                for pull in repo.pullRequests()[0:1]:
+                    logging.info(f"  TITLE:     {pull.title()}")
+                    logging.info(f"  STATE:     {pull.state()}")
+                    logging.info(f"  AUTHOR:    {pull.author()}")
+                    logging.info(f"  DATE:      {pull.date()}")
+                    logging.info(f"  REVIEWERS: {pull.reviewers()}")
+                    logging.info(f"  FROM:      {pull.fromRef()}")
+                    logging.info(f"  TO:        {pull.toRef()}")
+                    logging.info(f"  DESC:      {pull.description()}\n")
+            except stashy_errors.NotFoundException:
+                logging.info("  repo not found")
 
 
 class TestStashResponse(dict):
@@ -343,9 +385,9 @@ class TestStashResponse(dict):
         try:
             return super(TestStashResponse, self).__getitem__(item)
         except KeyError:
-            print ("TESTBITBUCKET: resource %s does not exist" %item)
+            logging.error(f"TESTBITBUCKET: resource {item} does not exist")
             self.status_code = 999
-            raise stashy.errors.GenericException(self)
+            raise stashy_errors.GenericException(self)
 
     def json(self):
         return self
@@ -359,25 +401,25 @@ class TestPullRequest(TestStashResponse):
         super(TestPullRequest, self).__init__(title=title, fromRef=fromRef, toRef=toRef, id=id,
                                               description=description,
                                               reviewers=reviewers, links=links)
-    
+
     def toRef(self):
         return self["toRef"]
-    
+
     def title(self):
         return self["title"]
-    
+
     def fromRef(self):
         return self["fromRef"]
-    
+
     def id(self):
         return self["id"]
-    
+
     def reviewers(self):
         return self["reviewers"]
-    
+
     def link(self):
-        return self["links"]["self"][0]["href"] 
-    
+        return self["links"]["self"][0]["href"]
+
     def description(self):
         if self["description"] is not None:
             return self["description"]
@@ -399,7 +441,7 @@ class TestPullRequests(TestStashResponse):
         self[newId] = TestPullRequest(title, fromRef, toRef, self.url, id=newId, description=description,
                                       reviewers=reviewers)
         return self[newId]
-    
+
 
 
 
@@ -408,14 +450,14 @@ class TestRepo(TestStashResponse):
         self.url = parent + "repos/" + name
         self.name = name
         self.pull_requests = TestPullRequests(self.url)
-        
+
     def pullRequests(self, direction="OUTGOING", at=None, state="OPEN"):
         return self.pull_requests.all(direction,at,state)
-    
+
     def createPullRequest(self, title,branch,target_branch, description=None,reviewers=None):
-        
-        return self.pull_requests.create(title, branch, target_branch, 
-                                        description=description, 
+
+        return self.pull_requests.create(title, branch, target_branch,
+                                        description=description,
                                         reviewers=reviewers)
 
 
@@ -452,7 +494,8 @@ class TestAtlassian:
         else:
             self.userName = username
         self.stash = TestStash()
-        print("Connected to Bitbucket")
-        
+        self.url = "https://your.org/test/bitbucket"
+        logging.info("Connected to Bitbucket")
+
     def project(self, name):
         return self.stash.project(name)

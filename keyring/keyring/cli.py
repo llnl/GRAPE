@@ -5,23 +5,42 @@ import getpass
 from optparse import OptionParser
 import sys
 
-import keyring.keyring
-import keyring.keyring.core
+from . import core
+from . import backend
+from . import set_keyring, get_password, set_password, delete_password
+
+__metaclass__ = type
 
 
-class CommandLineTool(object):
+class CommandLineTool:
     def __init__(self):
         self.parser = OptionParser(
-                        usage="%prog [get|set|del] SERVICE USERNAME")
+            usage="%prog [get|set|del] SERVICE USERNAME",
+        )
         self.parser.add_option("-p", "--keyring-path",
                                dest="keyring_path", default=None,
                                help="Path to the keyring backend")
         self.parser.add_option("-b", "--keyring-backend",
                                dest="keyring_backend", default=None,
                                help="Name of the keyring backend")
+        self.parser.add_option("--list-backends",
+                               action="store_true",
+                               help="List keyring backends and exit")
+        self.parser.add_option("--disable",
+                               action="store_true",
+                               help="Disable keyring and exit")
 
     def run(self, argv):
         opts, args = self.parser.parse_args(argv)
+
+        if opts.list_backends:
+            for k in backend.get_all_keyring():
+                print(k)
+            return
+
+        if opts.disable:
+            core.disable()
+            return
 
         try:
             kind, service, username = args
@@ -35,9 +54,9 @@ class CommandLineTool(object):
 
         if opts.keyring_backend is not None:
             try:
-                backend = keyring.core.load_keyring(opts.keyring_path,
-                                                    opts.keyring_backend)
-                keyring.set_keyring(backend)
+                if opts.keyring_path:
+                    sys.path.insert(0, opts.keyring_path)
+                set_keyring(core.load_keyring(opts.keyring_backend))
             except (Exception,):
                 # Tons of things can go wrong here:
                 #   ImportError when using "fjkljfljkl"
@@ -48,7 +67,7 @@ class CommandLineTool(object):
                 self.parser.error("Unable to load specified keyring: %s" % e)
 
         if kind == 'get':
-            password = keyring.get_password(service, username)
+            password = get_password(service, username)
             if password is None:
                 return 1
 
@@ -58,13 +77,15 @@ class CommandLineTool(object):
         elif kind == 'set':
             password = self.input_password("Password for '%s' in '%s': " %
                                            (username, service))
-            keyring.set_password(service, username, password)
+            set_password(service, username, password)
             return 0
 
         elif kind == 'del':
-            password = self.input_password("Deleting password for '%s' in '%s': " %
-                                      (username, service))
-            keyring.delete_password(service, username)
+            password = self.input_password(
+                "Deleting password for '%s' in '%s': " %
+                (username, service),
+            )
+            delete_password(service, username)
             return 0
 
         else:
@@ -72,12 +93,21 @@ class CommandLineTool(object):
             pass
 
     def input_password(self, prompt):
-        """Ask for a password to the user.
-
-        This mostly exists to ease the testing process.
+        """Retrieve password from input.
         """
+        return self.pass_from_pipe() or getpass.getpass(prompt)
 
-        return getpass.getpass(prompt)
+    @classmethod
+    def pass_from_pipe(cls):
+        """Return password from pipe if not on TTY, else False.
+        """
+        is_pipe = not sys.stdin.isatty()
+        return is_pipe and cls.strip_last_newline(sys.stdin.read())
+
+    @staticmethod
+    def strip_last_newline(str):
+        """Strip one last newline, if present."""
+        return str[:-str.endswith('\n')]
 
     def output_password(self, password):
         """Output the password to the user.
@@ -85,7 +115,7 @@ class CommandLineTool(object):
         This mostly exists to ease the testing process.
         """
 
-        print >> sys.stdout, password
+        print(password, file=sys.stdout)
 
 
 def main(argv=None):

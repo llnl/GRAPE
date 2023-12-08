@@ -1,0 +1,9 @@
+
+
+Thu Dec 15 09:27:07 2022 Benjamin T. Liu
+MR_477
+Reviewers: Peter Robinson
+
+Prevent 'Failed to get diff' error message for commit messages from nested subprojects that were not changed
+
+- This can occur in a merge train for subprojects explicitly added for tagging
