@@ -20,8 +20,8 @@ except ImportError as e:
 class Walkthrough(Option, WorkspaceDirHandler):
     """
     grape w(alkthrough)
-    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
-                   [--mergeDiff | --rawDiff ]
+    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--fontSize=<font_size>] 
+                   [--showUnchanged] [--noFetch] [--mergeDiff | --rawDiff ]
                    [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
@@ -35,6 +35,7 @@ class Walkthrough(Option, WorkspaceDirHandler):
                                     [default: .grapeconfig.walkthrough.height]
         --width=<width>             Width of window in pixels.
                                     [default: .grapeconfig.walkthrough.width]
+        --fontSize=<font_size>      Initial font size to use for graphical user interface.
         --staged                    Compare staged changes with branch <b1>.
         --workspace                 Compare workspace files with branch <b1>.
         --mergeDiff                 Perform diff of branches from common ancestor (diff <b1>...<b2>) (default).
@@ -111,7 +112,7 @@ class Walkthrough(Option, WorkspaceDirHandler):
         root = Tk.Tk()
         root.title("GRAPE walkthrough")
 
-        DiffManager(master=root, height=height, width=width,
+        DiffManager(master=root, height=height, width=width, fontsize=args["--fontSize"],
                     branchA=b1, branchB=b2,
                     difftool=difftool, diffargs=diffargs,
                     doMergeDiff=doMergeDiff,
