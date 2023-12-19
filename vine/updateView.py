@@ -971,6 +971,7 @@ class UVManager:
         self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
         controlpanel = Tk.Frame()
 
+        # Create font size selector
         fontpanel = Tk.Frame(controlpanel)
         fontlabel = Tk.Label(fontpanel, text="Font size")
         self.makeResizable(fontlabel)
@@ -979,10 +980,10 @@ class UVManager:
         for i in range(1, int(self.fontsize/2)-1):
             fontoptions.insert(0, self.fontsize - 2*i)
             fontoptions.append(self.fontsize + 2*i)
-        self.clicked = Tk.StringVar(master=controlpanel)
-        self.clicked.set(self.fontsize)
-        self.clicked.trace("w", self.changeFont)
-        fontselect = Tk.OptionMenu(fontpanel, self.clicked, *fontoptions)
+        self.fontselection = Tk.StringVar(master=controlpanel)
+        self.fontselection.set(self.fontsize)
+        self.fontselection.trace("w", self.changeFont)
+        fontselect = Tk.OptionMenu(fontpanel, self.fontselection, *fontoptions)
         self.makeResizable(fontselect)
         # make drop down entries resizable
         self.makeResizable(fontpanel.nametowidget(fontselect.menuname))
@@ -1005,7 +1006,7 @@ class UVManager:
         self.resizable.append(widget)
 
     def changeFont(self, *args):
-        self.fontsize = self.clicked.get()
+        self.fontsize = self.fontselection.get()
         for label in self.resizable:
             label.config(font=(self.fontfamily, self.fontsize))
 
