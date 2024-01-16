@@ -1079,6 +1079,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            self.progress["author"] = pull_request.authorName()
            self.progress["author_username"] = pull_request.author()
            self.progress["author_email"] = pull_request.authorEmail()
+           # If the authorEmail is not set (e.g. not public), fall back to the author of the latest commit
+           if not self.progress["author_email"]:
+               self.progress["author_email"] = git.log("--format=format:%ae -1", execution_path=self.workspace_dir)
            args["-m"] = escapedCommitMsg
         return True
              
