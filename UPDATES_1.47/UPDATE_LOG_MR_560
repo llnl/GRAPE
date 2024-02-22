@@ -1,0 +1,9 @@
+
+
+Thu Feb 22 13:10:49 2024 Benjamin T. Liu
+MR_560
+Reviewers: Peter Robinson, Patrick Greene
+
+Suppress warning during merge approval gitlab API lookup
+
+- this warning seems to cause issues with grape review in certain cases
