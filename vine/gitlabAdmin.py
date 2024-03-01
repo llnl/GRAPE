@@ -9,6 +9,7 @@ from vine import config_parser_global
 from vine import config_parser_workspace
 from vine import Gitlab
 from vine import grapeGit as git
+from vine import review
 from vine import utility
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -20,6 +21,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
+                              [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
@@ -28,7 +30,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--requirePipelineSuccess]
                               [--allRepoSettings]
                               [--scheduledPipelines=[list|add|delete|take|update]
-                               [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
+                              [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--runJob=<jobName> | --startJob=<jobName>]
                               [--pid=<id>]
                               [--checkJob=<jobName>]
@@ -46,6 +48,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos.
+        --regenerateMRPipeline      Regenerate merge request pipeline for merge request for <branch> on corresponding public branch.
         --createRepo=<name>         Create new empty repo in project with given name. All relevant repo settings will be
                                     set for the new repo (per --allRepoSettings) except protected branches will not be set.
         --owner=<user>              Add user as owner of newly created repo.
@@ -95,7 +98,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
         --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-        --branch=<branch>           Branch in top level repo for checking .grapeconfig.
+        --branch=<branch>           Branch in top level repo for checking .grapeconfig. Also used for --regenerateMRPipeline.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
@@ -195,7 +198,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
 
         projectname = args["--project"]
         topreponame = args["--repo"]
-        initialbranch = args["--branch"]
+        userbranch = args["--branch"]
+        initialbranch = userbranch
 
         # Get defaults from current workspace
         grape_config = config_parser_global.grapeConfig()
@@ -203,8 +207,10 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            projectname = utility.userInput("Project (group) name:", default=grape_config.get("project", "name"))
         if not topreponame:
            topreponame = utility.userInput("Outer level repo (project) name:", default=grape_config.get("repo", "name"))
-        if not initialbranch:
-           initialpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
+        if not userbranch:
+           userbranch = git.currentBranch(execution_path=self.workspace_dir)
+           userbranch = utility.userInput("Active branch name:", default=userbranch)
+           initialpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(userbranch)
            initialbranch = utility.userInput("Branch for outer level repo .grapeconfig:", default=initialpublic)
 
         try:
@@ -220,6 +226,17 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
            return False
            
         task_completed = False
+
+        if args["--regenerateMRPipeline"]:
+           review_args = { "--state":"open"} 
+           public_branch = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getPublicBranchFor(userbranch) 
+           request = review.getReposPullRequest(topRepo, userbranch, public_branch, review_args)
+           logging.info(f"Regenerating merge request pipeline for {request.link()}")
+           if args["--dry"]:
+              logging.info("[Dry run]: Pipeline not regenerated")
+           else:
+              request.regeneratePipeline()
+           task_completed = True
 
         if args["--createRepo"]:
             try:

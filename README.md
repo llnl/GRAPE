@@ -1428,6 +1428,7 @@ options are at least listed below.
     Perform gitlab administration tasks.
     Usage: grape-gitlab-admin [--dry]
                               [--verbose]
+                              [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
                               [--setProtectedBranches]
                               [--setKeepMRApprovals]
@@ -1436,7 +1437,7 @@ options are at least listed below.
                               [--requirePipelineSuccess]
                               [--allRepoSettings]
                               [--scheduledPipelines=[list|add|delete|take|update]
-                               [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
+                              [--desc=<description>] [--ref=<ref>] [--cron=<cron>] [--timezone=<timezone>] [--active=<bool>] ]
                               [--runJob=<jobName> | --startJob=<jobName>]
                               [--pid=<id>]
                               [--checkJob=<jobName>]
@@ -1454,6 +1455,7 @@ options are at least listed below.
     Options:
         --dry                       Do not actually perform administration tasks, just perform a dry run.
         --verbose                   Print information about unaffected repos.
+        --regenerateMRPipeline      Regenerate merge request pipeline for merge request for <branch> on corresponding public branch.
         --createRepo=<name>         Create new empty repo in project with given name. All relevant repo settings will be
                                     set for the new repo (per --allRepoSettings) except protected branches will not be set.
         --owner=<user>              Add user as owner of newly created repo.
@@ -1503,7 +1505,7 @@ options are at least listed below.
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
         --repo=<repo>               The top level repo key part of the codeReviews url, e.g. the "grape" in
                                     https://your.host.org/gitlab/projects/GRP/repos/grape/browse.
-        --branch=<branch>           Branch in top level repo for checking .grapeconfig.
+        --branch=<branch>           Branch in top level repo for checking .grapeconfig. Also used for --regenerateMRPipeline.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                     REST API.
                                     [default: .grapeconfig.repo.ssh_pat_url]
