@@ -129,7 +129,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
         if checkoutBeforeCreate:
             logging.info(f"Checking out public branch {start} before branch creation...")
 
-            updateView.safeSwitchWorkspaceToBranch(branch=start, checkoutArgs="", sync=False, workspace_dir=self.workspace_dir)
+            updateView.safeSwitchWorkspaceToBranch(branch=start, checkoutArgs="", sync=True, workspace_dir=self.workspace_dir)
             # Re-read the grape config from the new public branch
             config_parser_global.resetGrapeConfig()
             config_parser_global.read(workspace_dir=self.workspace_dir)

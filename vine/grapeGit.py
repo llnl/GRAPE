@@ -65,7 +65,15 @@ def allBranches(*, execution_path):
     return branch("-a", execution_path=execution_path).replace("*",' ').replace(" ",'').split()
 
 def remoteBranches(*, execution_path):
-    return branch("-r", execution_path=execution_path).replace(" ", '').split()
+    # git branch -r only lists branches that are currently being tracked, so we have to use ls-remote instead.
+    remotes = gitcmd("ls-remote origin", "ls-remote failed", execution_path=execution_path, debug_log_stdout=GIT_VERY_VERBOSE)
+    branches = []
+    for entry in remotes.splitlines():
+        fields = entry.split()
+        if len(fields) == 2 and fields[1].startswith("refs/heads"):
+            branch = fields[1].replace("refs/heads","origin",1)
+            branches.append(branch)
+    return branches
 
 def remote(argstr="", *, execution_path):
     return gitcmd(f"remote {argstr}", "git remote failed", execution_path=execution_path)
