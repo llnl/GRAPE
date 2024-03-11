@@ -1,3 +1,17 @@
+# Windows doesn't parse the variables correctly, but doesn't need this anyways.
+.windows_credential_vars:
+  variables:
+    GIT_CONFIG_COUNT: 0
+
+# This job should be used with TOSS4 jobs to try to address an authentication issue.
+.patch_auth:
+  hooks:
+    pre_get_sources_script:
+      # The git version is based on the user's login configuration, so the
+      # credential cache may still be present if the git version is older to 2.31. 
+      # We clear the cache here as a workaround for older versions of git.
+      - git credential-cache exit
+
 ._batch:
   tags: &batch batch
 
@@ -32,16 +46,22 @@
   tags: &rztopaz rztopaz
 
 .run_ale3d_windows:
+  extends:
+    - .windows_credential_vars
   tags:
     - ale3d
     - windows
 
 .run_rzalastor_batch:
+  extends:
+    - .patch_auth
   tags:
     - *rzalastor
     - *batch
 
 .run_rzalastor_shell:
+  extends:
+    - .patch_auth
   tags:
     - *rzalastor
     - *shell
@@ -57,21 +77,29 @@
     - *shell
 
 .run_rzwhippet_batch:
+  extends:
+    - .patch_auth
   tags:
     - *rzwhippet
     - *batch
 
 .run_rzwhippet_shell:
+  extends:
+    - .patch_auth
   tags:
     - *rzwhippet
     - *shell
 
 .run_rztopaz_batch:
+  extends:
+    - .patch_auth
   tags:
     - *rztopaz
     - *batch
 
 .run_rztopaz_shell:
+  extends:
+    - .patch_auth
   tags:
     - *rztopaz
     - *shell

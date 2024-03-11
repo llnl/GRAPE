@@ -11,6 +11,7 @@ from vine.option import Option
 
 try:
     import tkinter as Tk
+    from tkinter import font
     TkinterImportError = None
 except ImportError as e:
     TkinterImportError = e
@@ -19,8 +20,8 @@ except ImportError as e:
 class Walkthrough(Option, WorkspaceDirHandler):
     """
     grape w(alkthrough)
-    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--showUnchanged] [--noFetch]
-                   [--mergeDiff | --rawDiff ]
+    Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--fontSize=<font_size>] 
+                   [--showUnchanged] [--noFetch] [--mergeDiff | --rawDiff ]
                    [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
@@ -34,6 +35,7 @@ class Walkthrough(Option, WorkspaceDirHandler):
                                     [default: .grapeconfig.walkthrough.height]
         --width=<width>             Width of window in pixels.
                                     [default: .grapeconfig.walkthrough.width]
+        --fontSize=<font_size>      Initial font size to use for graphical user interface.
         --staged                    Compare staged changes with branch <b1>.
         --workspace                 Compare workspace files with branch <b1>.
         --mergeDiff                 Perform diff of branches from common ancestor (diff <b1>...<b2>) (default).
@@ -110,7 +112,7 @@ class Walkthrough(Option, WorkspaceDirHandler):
         root = Tk.Tk()
         root.title("GRAPE walkthrough")
 
-        DiffManager(master=root, height=height, width=width,
+        DiffManager(master=root, height=height, width=width, fontsize=args["--fontSize"],
                     branchA=b1, branchB=b2,
                     difftool=difftool, diffargs=diffargs,
                     doMergeDiff=doMergeDiff,
@@ -139,6 +141,17 @@ class ProjectManager(WorkspaceDirHandler):
         height = kwargs.get('height', 0)
         width  = kwargs.get('width', 0)
 
+        fontsize = kwargs.get('fontsize', 0)
+
+        default_font = font.nametofont("TkDefaultFont").actual()
+        if fontsize:
+            self.fontsize = int(fontsize)
+        else:
+            #self.fontsize = int(default_font["size"])
+            self.fontsize = 12
+
+        self.fontfamily = default_font["family"]
+
         self.master = master
         self.grapeconfig = config_parser_global.grapeConfig()
         self.oldprojindex = 0
@@ -158,6 +171,8 @@ class ProjectManager(WorkspaceDirHandler):
         self.fgactive   = kwargs.get('fgactive', 'black')
         self.bgactive   = kwargs.get('bgactive', 'light goldenrod')
 
+        self.resizable = []
+
         # Panel labels
         # These variables should be set by derived classes
         self.filepanelabel = Tk.StringVar()
@@ -165,11 +180,14 @@ class ProjectManager(WorkspaceDirHandler):
 
         # Main resizable window
         self.main = Tk.PanedWindow(master, height=height, width=width, sashwidth=4)
+
         # Create file navigation pane widgets
         self.filepanel = Tk.Frame()
         self.filelabel = Tk.Label(self.filepanel, textvariable=self.filepanelabel)
+        self.makeResizable(self.filelabel)
         self.filescroll = Tk.Scrollbar(self.filepanel, width=10)
         self.filelist = Tk.Listbox(self.filepanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=self.filescroll.set, selectmode=Tk.SINGLE)
+        self.makeResizable(self.filelist)
         self.filescroll.config(command=self.filelist.yview)
         self.filelist.bind("<Double-Button-1>", lambda e: self.spawnDiff())
 
@@ -182,8 +200,10 @@ class ProjectManager(WorkspaceDirHandler):
         # Create subproject navigation widgets
         self.projpanel = Tk.Frame()
         self.projlabel = Tk.Label(self.projpanel, textvariable=self.projpanelabel)
+        self.makeResizable(self.projlabel)
         self.projscroll = Tk.Scrollbar(self.projpanel, width=10)
         self.projlist = Tk.Listbox(self.projpanel, background=self.bginit, foreground=self.fginit, selectbackground=self.bgselected, selectforeground=self.fgselected, yscrollcommand=self.projscroll.set, selectmode=Tk.SINGLE)
+        self.makeResizable(self.projlist)
         self.projscroll.config(command=self.projlist.yview)
         self.projlist.bind("<Double-Button-1>", lambda e: self.chooseProject())
 
@@ -290,6 +310,15 @@ class ProjectManager(WorkspaceDirHandler):
         self.projpanelabel.set(oldlabel)
         self.master.update()
 
+    def makeResizable(self, widget):
+        widget.config(font=(self.fontfamily, self.fontsize))
+        self.resizable.append(widget)
+
+    def changeFont(self, *args):
+        self.fontsize = self.fontselection.get()
+        for label in self.resizable:
+            label.config(font=(self.fontfamily, self.fontsize))
+
     def get_selected_project_name(self):
         index = self.projlist.index(Tk.ACTIVE)
         project_name, _ = self.projlist.get(index).split("<")
@@ -376,20 +405,45 @@ class DiffManager(ProjectManager):
         self.showUnchanged = kwargs.get('showUnchanged', False)
         self.doMergeDiff = kwargs.get('doMergeDiff', True)
 
+        super(DiffManager, self).__init__(master, workspace_dir=workspace_dir,
+                                          **kwargs)
+
         # Branch specification pane
         self.branchpane = Tk.Frame(master)
         self.branchlabelA= Tk.Label(self.branchpane, text="Branch A:")
+        self.makeResizable(self.branchlabelA)
         self.branchnameA= Tk.Label(self.branchpane, textvariable=self.diffAnnotationA)
+        self.makeResizable(self.branchnameA)
         self.branchlabelB= Tk.Label(self.branchpane, text="Branch B:")
+        self.makeResizable(self.branchlabelB)
         self.branchnameB= Tk.Label(self.branchpane, textvariable=self.diffAnnotationB)
+        self.makeResizable(self.branchnameB)
+
+        # Create font size selector
+        fontpanel = Tk.Frame(master)
+        fontlabel = Tk.Label(fontpanel, text="Font size")
+        self.makeResizable(fontlabel)
+        fontlabel.pack(side=Tk.LEFT)
+        fontoptions = [self.fontsize]
+        for i in range(1, int(self.fontsize/2)-1):
+            fontoptions.insert(0, self.fontsize - 2*i)
+            fontoptions.append(self.fontsize + 2*i)
+        self.fontselection = Tk.StringVar(master=master)
+        self.fontselection.set(self.fontsize)
+        self.fontselection.trace("w", self.changeFont)
+        fontselect = Tk.OptionMenu(fontpanel, self.fontselection, *fontoptions)
+        self.makeResizable(fontselect)
+        # make drop down entries resizable
+        self.makeResizable(fontpanel.nametowidget(fontselect.menuname))
+        fontselect.pack(side=Tk.LEFT)
+        fontpanel.pack(side=Tk.LEFT, anchor=Tk.NW,)
+
         self.branchlabelA.pack(side=Tk.LEFT, fill=Tk.Y)
         self.branchnameA.pack(side=Tk.LEFT, fill=Tk.Y)
         self.branchlabelB.pack(side=Tk.LEFT, fill=Tk.Y)
         self.branchnameB.pack(side=Tk.LEFT, fill=Tk.Y)
         self.branchpane.pack(side=Tk.TOP)
 
-        super(DiffManager, self).__init__(master, workspace_dir=workspace_dir,
-                                          **kwargs)
 
         # If we are diffing against the workspace, get the status of the workspace
         # and save the set of changed files in the outer project (including submodules).

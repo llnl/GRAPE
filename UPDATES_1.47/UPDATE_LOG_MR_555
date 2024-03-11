@@ -1,0 +1,13 @@
+
+
+Mon Nov 20 15:37:56 2023 Benjamin T. Liu
+MR_555
+Reviewers: Paul Tsuji
+
+Bugfix for merge train traversal logic
+
+- fix detection of previous tagged SHA
+
+- prior code incorrectly returned to SHA of HEAD
+
+- return tagged SHA instead
