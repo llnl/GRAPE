@@ -1,0 +1,63 @@
+
+
+Mon Mar 11 12:31:38 2024 Benjamin T. Liu
+v1.47.8
+Reviewers: Peter Robinson
+
+Fix issues when public branches are not present in subprojects
+
+- add sync to newflow branch checkout (ensures that public branch is fetched if it doesn't exist rather than creating a new one)
+
+- use ls-remote rather than branch -r to get remote branches for grape up
+
+
+Fri Mar  1 15:10:02 2024 Benjamin T. Liu
+v1.47.7
+Reviewers: Peter Robinson
+
+Add gitlab-admin option to regenerate MR pipeline
+
+
+Thu Feb 22 13:38:54 2024 Benjamin T. Liu
+v1.47.6
+Reviewers: Peter Robinson, Patrick Greene
+
+Suppress warning during merge approval gitlab API lookup
+
+- this warning seems to cause issues with grape review in certain cases
+
+
+Tue Jan 16 12:13:29 2024 Benjamin T. Liu
+v1.47.5
+Reviewers: Peter Robinson
+
+Use last commit for author email for publish email if merge request email is not available
+
+
+Tue Dec 19 11:06:21 2023 Benjamin T. Liu
+v1.47.4
+Reviewers: Peter Robinson, Jeremy White
+
+Make grape uv and walkthrough font resizable and default to 12
+
+
+Mon Nov 20 15:37:56 2023 Benjamin T. Liu
+v1.47.2
+Reviewers: Paul Tsuji
+
+Bugfix for merge train traversal logic
+
+- fix detection of previous tagged SHA
+
+- prior code incorrectly returned to SHA of HEAD
+
+- return tagged SHA instead
+
+
+Thu Nov 16 14:24:51 2023 Benjamin T. Liu
+v1.47.1
+Reviewers: Peter Robinson
+
+- Fix in merge train logic
+
+- Update readme for internal release

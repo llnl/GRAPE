@@ -1,9 +1,0 @@
-
-
-Wed Dec 14 09:25:25 2022 David M. Dawson
-MR_476
-Reviewers: Peter Robinson, Ben Liu
-
-Handles the case where a suffix block is to be added but the MR description doesn't exist yet.
-
-If it does not exist and a suffix block is to be added, then grape will initialize the description with the suffix block(s).

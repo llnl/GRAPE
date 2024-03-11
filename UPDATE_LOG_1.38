@@ -1,0 +1,51 @@
+
+
+Fri Oct 14 09:47:11 2022 Benjamin T. Liu
+v1.38.7
+Reviewers: Alan Dayton, Jean Paul Fermaint Hernandez
+
+Allow author and author_username to be used in commit messages
+
+
+Mon Aug  1 09:09:23 2022 Benjamin T. Liu
+v1.38.6
+Reviewers: Peter Robinson, Alan Dayton
+
+Updates from develop: add branch name to commit message and update merge train message
+
+
+Mon Jul 25 15:29:06 2022 Peter B. Robinson
+v1.38.5
+Reviewers: Arlie Capps, David Dawson
+
+Supports skipping build and/or test steps during grape publish. Adds configuration options to do so by default if merge trains are enabled.
+
+
+Wed Jul 13 12:10:13 2022 Peter B. Robinson
+v1.38.4
+Reviewers: Ben Liu, Alan Dayton
+
+Adds the ability to push tags, force create a tag, and force push a tag to grape version
+
+
+Wed Jul 13 10:48:17 2022 Benjamin T. Liu
+v1.38.3
+Reviewers: Peter Robinson, Daniel Taller
+
+Limit publish pushes to only tags we created rather than all tags
+
+
+Tue Jul 12 12:20:26 2022 Peter B. Robinson
+v1.38.2
+Reviewers: Ben Liu, Alan Dayton
+
+ do not ask about deleting branches during merge train publish process.
+
+
+Tue Jun  7 08:43:57 2022 Peter B. Robinson
+v1.38.1
+Reviewers: Ben Liu
+
+Merges in merge train capabilities.
+Updates updatelogdir to know about <major_version> and <minor_version> substition tags.
+Consolidates update UPDATES_1.37 update messages into UPDATE_LOG_1.37.

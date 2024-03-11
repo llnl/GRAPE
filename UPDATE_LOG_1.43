@@ -1,0 +1,367 @@
+
+
+Mon Apr  3 15:50:43 2023 Benjamin T. Liu
+v1.43.47
+Reviewers: Peter Robinson, David Dawson
+
+Update gitlab-admin to handle allowlists and enable/deactivate subproject CI
+
+
+Tue Mar 21 15:32:24 2023 David M. Dawson
+v1.43.46
+Reviewers: Peter Robinson, Ben Liu
+
+Adds the ability to call a custom script to check or process the update log contents.
+
+
+Tue Mar 21 13:30:44 2023 Benjamin T. Liu
+v1.43.45
+Reviewers: Peter Robinson
+
+- Fix exception in grape publish --resume
+
+- Fix message for missing pull request
+
+
+Tue Mar 14 12:24:55 2023 Benjamin T. Liu
+v1.43.44
+Reviewers: Peter Robinson, Alan Dayton
+
+Fix detection of changed files for grape review labels
+
+- previous code add label if public branch was ahead of the topic branch
+
+- new logic diffs file against last merge
+
+
+Fri Mar 10 10:32:49 2023 Benjamin T. Liu
+v1.43.43
+Reviewers: Alan Dayton
+
+Fix uv --syncPublic/--forceSyncPublic for case where subproject is already on public branch
+
+
+Thu Mar  9 10:39:40 2023 Benjamin T. Liu
+v1.43.42
+Reviewers: Peter Robinson
+
+Ensure public branch is fetched during grape uv
+
+
+Wed Mar  8 12:00:51 2023 Benjamin T. Liu
+v1.43.41
+Reviewers: David Dawson, Al Nichols
+
+Allow workspace directory to be the root directory
+
+- Windows CI has the ale3d repository at the top level of the PSDrive (e.g. R:)
+
+- Previous behavior could not set workspace directory
+
+Set expiration for GitLab personal_access_token
+
+- Server now requires expiration date in request
+
+
+Thu Mar  2 10:30:07 2023 Benjamin T. Liu
+v1.43.40
+Reviewers: Peter Robinson
+
+Fetch public branch and tags before checking branchChanged for grape uv
+
+
+Wed Mar  1 08:56:58 2023 Benjamin T. Liu
+v1.43.39
+Reviewers: Peter Robinson
+
+Force fetch of tags during md --traverseMergedResult
+
+
+Thu Feb 23 12:06:28 2023 Benjamin T. Liu
+v1.43.38
+Reviewers: Peter Robinson, David Dawson
+
+Add in progress label later for merge train publishes
+
+- prevents the merge train label from being available before update message is staged
+
+
+Thu Feb 23 11:26:27 2023 Benjamin T. Liu
+v1.43.37
+Reviewers: Peter Robinson
+
+Fix python syntax in grape publish --noUpdateMD
+
+
+Thu Feb 23 11:04:21 2023 Benjamin T. Liu
+v1.43.36
+Reviewers: Peter Robinson
+
+- Add option for publish --sendEmail to specify the starting ref for diffs
+
+- Add documentation
+
+
+Wed Feb 22 15:35:50 2023 Benjamin T. Liu
+v1.43.35
+Reviewers: Peter Robinson
+
+Allow grape publish to run without updating public branches for md steps
+
+
+Tue Feb 21 15:25:09 2023 Benjamin T. Liu
+v1.43.34
+Reviewers: Peter Robinson, David Dawson
+
+- Fix grape md --traverseTrainRefs to fail on conflict and require --topic
+
+- Add grape md --traverseMergedResult to update nested subprojects appropriately
+
+- Ensure up called in only in nested subprojects when grape md --nestedSubprojectsOnly is called
+
+
+Wed Feb 15 12:19:33 2023 Benjamin T. Liu
+v1.43.33
+Reviewers: Peter Robinson
+
+Harden gitlab-admin
+
+
+Thu Feb  9 13:16:21 2023 Jean Paul Fermaint Hernandez
+v1.43.32
+Reviewers: Peter Robinson, Arlie Capps
+
+- adding a call to the script to update the spack environment and doing the necessary calls 'spack undevelop spec@version'
+
+- the calls to develop or undevelop are done based on the active submodules and spack packages available
+
+
+Tue Feb  7 14:09:19 2023 Benjamin T. Liu
+v1.43.31
+Reviewers: Peter Robinson
+
+Fix parsing of git log
+
+
+Tue Feb  7 13:46:13 2023 Benjamin T. Liu
+v1.43.30
+Reviewers: Peter Robinson
+
+Another fix for tag lookup
+
+
+Tue Feb  7 13:18:45 2023 Benjamin T. Liu
+v1.43.29
+Reviewers: Peter Robinson
+
+Debugging output
+
+
+Tue Feb  7 12:50:02 2023 Benjamin T. Liu
+v1.43.28
+Reviewers: Peter Robinson
+
+Fix sorting of proposed tags
+
+
+Tue Feb  7 10:18:34 2023 Benjamin T. Liu
+v1.43.27
+Reviewers: Peter Robinson
+
+Refactor detection of version and publish tags
+
+- Remove use of --first-parent that gets confused by merges after publish
+
+
+Fri Feb  3 13:23:54 2023 Benjamin T. Liu
+v1.43.26
+Reviewers: Paul Tsuji
+
+Fix debugging line
+
+
+Thu Feb  2 16:18:39 2023 Benjamin T. Liu
+v1.43.25
+Reviewers: Paul Tsuji
+
+Add debugging for grape uv failure
+
+
+Thu Feb  2 10:15:28 2023 Benjamin T. Liu
+v1.43.24
+Reviewers: Peter Robinson, David Dawson
+
+Require non-empty update message for grape publish
+
+
+Thu Feb  2 09:48:21 2023 Benjamin T. Liu
+v1.43.23
+Reviewers: Peter Robinson, David Dawson
+
+Fix grape --version (broken in v4.43.21)
+
+
+Mon Jan 30 16:45:37 2023 Benjamin T. Liu
+v1.43.22
+Reviewers: Peter Robinson
+
+Skip labeling when marking version number during review
+
+Skip diff of local branch when local branch not used
+
+
+Mon Jan 30 16:28:10 2023 Benjamin T. Liu
+v1.43.21
+Reviewers: Peter Robinson
+
+Look for version in public branch rather than HEAD when traversing merge train refs
+
+
+Mon Jan 30 16:06:07 2023 Jean Paul Fermaint Hernandez
+v1.43.20
+Reviewers: Peter Robinson, Arlie Capps
+
+- Spack Develop Environment grape option --spackEnv to call a script which gets the names and versions of the libraries to then make the right calls to 'spack develop -p path/to/lib spec@version'
+
+- starting with zlib to start implementing Spack packages into our build system
+
+
+Mon Jan 30 08:02:55 2023 Benjamin T. Liu
+v1.43.19
+Reviewers: Peter Robinson
+
+Add --nestedSubprojectsOnly options for grape md
+
+
+Wed Jan 25 09:23:12 2023 Benjamin T. Liu
+v1.43.18
+Reviewers: Alan Dayton
+
+Fix logic for uv branch changed filtering of submodules in history
+- Ignore latest SHA
+- This is needed to post merge update
+
+
+Tue Jan 24 11:56:39 2023 Benjamin T. Liu
+v1.43.17
+Reviewers: Peter Robinson
+
+Check origin for filtering by changed submodules
+
+
+Tue Jan 24 10:59:40 2023 Benjamin T. Liu
+v1.43.16
+Reviewers: Peter Robinson
+
+Fix uv --branchChanged=branch~ to ignore submodule SHAs that are in the history of the public branch
+
+
+Mon Jan 23 12:21:19 2023 Benjamin T. Liu
+v1.43.15
+Reviewers: Peter Robinson
+
+Fix typo in gitlab-admin refactoring in 1.43.12
+
+
+Wed Jan 18 13:08:02 2023 Benjamin T. Liu
+v1.43.14
+Reviewers: Peter Robinson, Jeremy L. White
+
+Improvements for grape uv GUI
+
+- Prevent sections from disappearing when resizing
+
+- Set list box size to actual size, up to 8 (instead of fixed at 10)
+
+- Sort sections
+
+
+Tue Jan 17 15:30:35 2023 Benjamin T. Liu
+v1.43.13
+Reviewers: Peter Robinson, Alan Dayton
+
+- Add label management for grape review and publish
+
+- Fix for grape publish --abort to ensure self.args is available
+
+
+Tue Jan 10 16:01:57 2023 Benjamin T. Liu
+v1.43.12
+Reviewers: Peter Robinson, Alan Dayton
+
+Improvements for grape gitlab-admin
+
+- Allow administration tasks for any repos with sufficient access
+
+- Skip project/repo query if specified on command line
+
+- Fixes to allow running admin tasks from another workspace (query .grapeconfig from server)
+
+- Do not create initial branch for --createRepo
+
+- Optionally grant ownership privileges when creating repo
+
+
+Tue Jan 10 15:33:33 2023 Benjamin T. Liu
+v1.43.11
+Reviewers: Peter Robinson, Robert Nourgaliev
+
+Prevent grape review from failing if diff to too large
+
+
+Mon Jan  9 09:36:14 2023 Benjamin T. Liu
+v1.43.10
+Reviewers: Peter Robinson, Alan Dayton
+
+Add gitlab-admin createRepo and allRepoSettings options
+
+
+Wed Dec 21 10:28:55 2022 Peter B. Robinson
+v1.43.9
+Reviewers: Ben Liu, David Dawson
+
+
+
+
+Wed Dec 21 08:37:51 2022 Benjamin T. Liu
+v1.43.8
+Reviewers: Peter Robinson
+
+New method to determine whether merge train branches have already been merged
+
+- Previous method was incorrect because it did not account for the merge commit nor multiple merges
+
+- This is to address double ticking issue
+
+
+Tue Dec 20 09:36:50 2022 Benjamin T. Liu
+v1.43.7
+Reviewers: Peter Robinson
+
+Check origin for merge train refs
+
+
+Mon Dec 19 15:43:39 2022 Benjamin T. Liu
+v1.43.6
+Reviewers: Peter Robinson, David Dawson
+
+Fix bug in SHA lookup for merge train refs (again)
+
+
+Mon Dec 19 14:48:29 2022 Benjamin T. Liu
+v1.43.5
+Reviewers: Peter Robinson, David Dawson
+
+Fix bug in SHA lookup for merge train refs
+
+
+Mon Dec 19 12:00:00 2022 David M. Dawson
+v1.43.4
+Reviewers: Peter Robinson, Ben Liu
+
+Mergeback of MR !476
+
+
+Handles the case where a suffix block is to be added but the MR description doesn't exist yet.  
+
+If it does not exist and a suffix block is to be added, then grape will initialize the description with the suffix block(s).

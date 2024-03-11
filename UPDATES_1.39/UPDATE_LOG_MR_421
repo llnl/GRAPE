@@ -1,7 +1,0 @@
-
-
-Wed Aug 10 10:44:32 2022 Benjamin T. Liu
-MR_421
-Reviewers: Peter Robinson, David Dawson, Alan Dayton
-
-Add grape uv --updateRemoteProtocol to ensure that submodule protocols match top level

@@ -1,7 +1,0 @@
-
-
-Thu Jun 30 16:09:03 2022 Peter B. Robinson
-MR_384
-Reviewers: Arlie Capps, Ben Liu
-
-Fixes a crash in grape pull --continue.

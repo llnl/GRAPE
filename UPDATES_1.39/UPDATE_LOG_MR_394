@@ -1,7 +1,0 @@
-
-
-Wed Jul 13 08:10:43 2022 Peter B. Robinson
-MR_394
-Reviewers: Arlie Capps, Ben Liu, Alan Dayton
-
-Teach grape how to write a proposed version tag based off number of merges needed in the merge train and how to set an actual version tag from a proposed version tag.

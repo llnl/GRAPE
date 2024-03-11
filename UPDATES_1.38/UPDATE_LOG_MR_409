@@ -1,7 +1,0 @@
-
-
-Mon Jul 25 15:29:06 2022 Peter B. Robinson
-MR_409
-Reviewers: Arlie Capps, David Dawson
-
-Supports skipping build and/or test steps during grape publish. Adds configuration options to do so by default if merge trains are enabled.

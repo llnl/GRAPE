@@ -1,9 +1,0 @@
-
-
-Wed Nov 16 10:41:40 2022 Benjamin T. Liu
-MR_450
-Reviewers: Peter Robinson
-
-- Prevent uv and checkout from creating branches named HEAD
-
-- Allow changed submodules to be determined even if there is a file named develop or release

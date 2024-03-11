@@ -1,7 +1,0 @@
-
-
-Mon Oct 23 13:09:51 2023 Benjamin T. Liu
-MR_547
-Reviewers: Peter Robinson
-
-Use GitLab API to look up merge train branches

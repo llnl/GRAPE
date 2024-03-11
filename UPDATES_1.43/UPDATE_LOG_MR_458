@@ -1,9 +1,0 @@
-
-
-Mon Jan 30 16:06:07 2023 Jean Paul Fermaint Hernandez
-MR_458
-Reviewers: Peter Robinson, Arlie Capps
-
-- Spack Develop Environment grape option --spackEnv to call a script which gets the names and versions of the libraries to then make the right calls to 'spack develop -p path/to/lib spec@version'
-
-- starting with zlib to start implementing Spack packages into our build system

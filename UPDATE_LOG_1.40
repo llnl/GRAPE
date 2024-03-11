@@ -1,0 +1,123 @@
+
+
+Mon Dec 19 09:11:20 2022 Benjamin T. Liu
+v1.40.12
+Reviewers: Peter Robinson
+
+Fix logic to prevent 'Failed to get diff' error message for commit messages from nested subprojects that were not changed
+
+- This can occur in a merge train for subprojects explicitly added for tagging
+
+
+Mon Dec 19 09:10:26 2022 Benjamin T. Liu
+v1.40.11
+Reviewers: Peter Robinson
+
+Try to force version skipping race condition
+
+
+Thu Dec 15 11:59:36 2022 Benjamin T. Liu
+v1.40.10
+Reviewers: Peter Robinson
+
+Make .grapeconfig default parsing more robust
+
+- Regular expression parsing was missing some arguments for up
+
+
+Thu Dec 15 14:03:10 2022 Benjamin T. Liu
+v1.40.10
+Reviewers: Peter Robinson
+
+Mergeback of MR_478
+
+
+Thu Dec 15 09:27:07 2022 Benjamin T. Liu
+v1.40.9
+Reviewers: Peter Robinson
+
+Prevent 'Failed to get diff' error message for commit messages from nested subprojects that were not changed
+
+- This can occur in a merge train for subprojects explicitly added for tagging
+
+
+Tue Dec 13 15:36:52 2022 Benjamin T. Liu
+v1.40.8
+Reviewers: Peter Robinson, Alan Dayton
+
+Account for possible hyphens in grape config keys
+
+- Fix for bug in 1.40.6
+
+
+Tue Dec 13 10:33:55 2022 Benjamin T. Liu
+v1.40.7
+Reviewers: Peter Robinson
+
+Get list of changes files in nested subprojects
+
+
+Mon Dec 12 13:43:14 2022 Benjamin T. Liu
+v1.40.6
+Reviewers: Peter Robinson, Alan Dayton
+
+Allow the string '.grapeconfig' to appear in arguments to grape
+
+
+Tue Dec 13 09:46:48 2022 Benjamin T. Liu
+v1.40.6
+Reviewers: Peter Robinson, Alan Dayton
+
+Mergeback
+
+- Allow the string '.grapeconfig' to appear in arguments to grape
+
+- Version should have been 1.40.6 but the tagging didn't work
+
+
+Thu Dec  8 12:37:27 2022 Benjamin T. Liu
+v1.40.5
+Reviewers: Peter Robinson
+
+Mergeback of v1.40.4
+
+- Fix check for active nested subprojects for grape review
+
+- Fix of update log location
+
+
+Thu Dec  8 10:37:03 2022 Benjamin T. Liu
+v1.40.4
+Reviewers: Peter Robinson
+
+Fix check for active nested subprojects for grape review
+
+- Previously, not all active nested subprojects were getting pushed
+
+
+Thu Dec  8 11:14:52 2022 Benjamin T. Liu
+v1.40.4
+Reviewers: Peter Robinson
+
+Move update log to proper place (previously incorrect due to incorrect tagging during fork)
+
+
+Wed Dec  7 15:07:28 2022 Peter B. Robinson
+v1.40.2
+Reviewers: Ben Liu
+
+Fork 1.39 to 1.40 for new release branch.
+
+
+Wed Dec  7 15:33:54 2022 Peter B. Robinson
+v1.40.2
+Reviewers: Ben Liu
+
+
+
+
+Wed Dec  7 16:02:44 2022 Benjamin T. Liu
+v1.40.1
+Reviewers: Peter Robinson
+
+Fix bug when running grape review with no reviewers

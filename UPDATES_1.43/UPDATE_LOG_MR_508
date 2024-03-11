@@ -1,9 +1,0 @@
-
-
-Tue Feb  7 10:18:34 2023 Benjamin T. Liu
-MR_508
-Reviewers: Peter Robinson
-
-Refactor detection of version and publish tags
-
-- Remove use of --first-parent that gets confused by merges after publish

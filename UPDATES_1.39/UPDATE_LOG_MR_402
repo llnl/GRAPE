@@ -1,7 +1,0 @@
-
-
-Mon Jul 18 13:21:27 2022 Benjamin T. Liu
-MR_402
-Reviewers: Peter Robinson, Alan Dayton
-
-Fix up call in traverseTrainRefs

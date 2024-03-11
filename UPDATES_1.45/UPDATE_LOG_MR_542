@@ -1,7 +1,0 @@
-
-
-Fri Aug 11 09:01:23 2023 Benjamin T. Liu
-MR_542
-Reviewers: Alan Dayton
-
-Allow grape to work without rest API for python 3.7
