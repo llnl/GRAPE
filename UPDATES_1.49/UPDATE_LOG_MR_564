@@ -1,0 +1,13 @@
+
+
+Wed Mar 13 07:12:31 2024 Benjamin T. Liu
+MR_564
+Reviewers: Peter Robinson
+
+Public release v1.49.0
+
+- Add resizeable GUI elements
+
+- Fix updating of public branches
+
+- Add regeneration of MR pipelines
