@@ -1,0 +1,57 @@
+{
+  "extends": [
+    "config:base",
+    ":enablePreCommit",
+    "group:allNonMajor",
+    "schedule:weekly"
+  ],
+  "ignorePaths": [
+    "**/.venv/**",
+    "**/node_modules/**"
+  ],
+  "pip_requirements": {
+    "fileMatch": ["^requirements(-[\\w]*)?\\.txt$"]
+  },
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "(^|/)tests\\/functional\\/fixtures\\/\\.env$"
+      ],
+      "matchStrings": [
+        "GITLAB_TAG=(?<currentValue>.*?)\n"
+      ],
+      "depNameTemplate": "gitlab/gitlab-ee",
+      "datasourceTemplate": "docker",
+      "versioningTemplate": "loose"
+    }
+  ],
+  "packageRules": [
+    {
+      "depTypeList": [
+        "action"
+      ],
+      "extractVersion": "^(?<version>v\\d+\\.\\d+\\.\\d+)$",
+      "versioning": "regex:^v(?<major>\\d+)(\\.(?<minor>\\d+)\\.(?<patch>\\d+))?$"
+    },
+    {
+      "packageName": "argcomplete",
+      "enabled": false
+    },
+    {
+      "packagePatterns": [
+        "^gitlab\/gitlab-.+$"
+      ],
+      "automerge": true,
+      "groupName": "GitLab"
+    },
+    {
+      "matchPackageNames": [
+        "pre-commit/mirrors-mypy"
+      ],
+      "matchManagers": [
+        "pre-commit"
+      ],
+      "versioning": "pep440"
+    }
+  ]
+}
