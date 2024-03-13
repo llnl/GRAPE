@@ -7,6 +7,8 @@ import sys
 import time
 import keyring
 try:
+    grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
     import gitlab
 except ModuleNotFoundError:
     # This was checked on startup
