@@ -1,2 +1,5 @@
 The python-gitlab files were copied from https://github.com/python-gitlab/python-gitlab:
 3/13/2024 main@14a3ffe
+
+The following patches were subsequently applied:
+https://github.com/python-gitlab/python-gitlab/pull/2552/files - p-varma:main: Add merge request to merge train
