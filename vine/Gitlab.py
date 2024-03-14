@@ -11,7 +11,7 @@ try:
     sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
     import gitlab
 except ModuleNotFoundError:
-    # This was checked on startup
+    # Don't error out here because this is imported even if GitLab is not used
     pass
 from vine import config_parser_global
 from vine import grape_errors
