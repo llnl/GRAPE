@@ -202,6 +202,18 @@ class Project:
             raise SystemExit("Abort")
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
+    def groupid(self, groupname):
+        # groups API doesn't include exact match, so we have to iterate over the search
+        for group in self.gitlab.groups.list(all=True, search=groupname):
+            if group.name == groupname:
+                return group.id
+        return 0
+
+    def userid(self, username):
+        users = self.gitlab.users.list(all=True, username=username)
+        if users:
+            return users[0].id
+        return 0
 
 class Repo:
     def __init__(self, gitlab_project, gitlab ):
@@ -253,16 +265,41 @@ class Repo:
 
          return mr
 
-    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
+    # If restrict_id is positive, it is the group id to restrict the branch to;
+    # if it is negative, it is the negative of the user id to restrict the branch to;
+    # otherwise, the push_access_level and merge_access_level are used.
+    def setProtectedBranch(self, name, push_access_level, merge_access_level, restrict_id, allow_force_push):
         replaced = False
         # Remove the old protected branch if it already exists
         if self.project.protectedbranches.list(all=True, search=name):
            self.project.protectedbranches.delete(name)
            replaced = True
-        self.project.protectedbranches.create({"name": name,
-                                               "push_access_level": push_access_level,
-                                               "merge_access_level": merge_access_level,
-                                               "allow_force_push": allow_force_push})
+        createArgs = {"name": name, "allow_force_push": allow_force_push}
+        if restrict_id > 0:
+           # protect by group
+           if push_access_level != 0:
+              createArgs["allowed_to_push"] = [{"group_id": restrict_id}]
+           else:
+              createArgs["push_access_level"] = 0
+           if merge_access_level != 0:
+              createArgs["allowed_to_merge"] = [{"group_id": restrict_id}]
+           else:
+              createArgs["merge_access_level"] = 0
+        elif restrict_id < 0:
+           # protect by user
+           if push_access_level != 0:
+              createArgs["allowed_to_push"] = [{"user_id": -restrict_id}]
+           else:
+              createArgs["push_access_level"] = 0
+           if merge_access_level != 0:
+              createArgs["allowed_to_merge"] = [{"user_id": -restrict_id}]
+           else:
+              createArgs["merge_access_level"] = 0
+        else:
+           # protect by access level
+           createArgs["push_access_level"] = push_access_level
+           createArgs["merge_access_level"] = merge_access_level
+        self.project.protectedbranches.create(createArgs)
         return replaced
 
     @staticmethod

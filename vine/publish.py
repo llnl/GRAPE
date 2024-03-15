@@ -284,6 +284,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # publish policy defaults
         config.set(self.SECTION_FLOW, 'publishPolicy', '?:merge')
         config.set(self.SECTION_PUBLISH, 'mergeTrain', 'False')
+        config.set(self.SECTION_PUBLISH, 'mergeTrainSubprojectRestrict', '')
         # subtree publish actions
         config.set(self.SECTION_SUBTREES, 'names', '')
         config.set(self.SECTION_SUBTREES, 'pushOnPublish', 'False')

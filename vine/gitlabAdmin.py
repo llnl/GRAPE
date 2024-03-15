@@ -11,6 +11,7 @@ from vine import Gitlab
 from vine import grapeGit as git
 from vine import review
 from vine import utility
+from vine import publish
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
@@ -23,7 +24,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--verbose]
                               [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
-                              [--setProtectedBranches]
+                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>]]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--addSubprojectCIAccess]
@@ -53,6 +54,9 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                                     set for the new repo (per --allRepoSettings) except protected branches will not be set.
         --owner=<user>              Add user as owner of newly created repo.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
+        --subprojectMergeTrainRestrict=<group_or_user>
+                                    If merge trains are enabled, only allow merges in subprojects from this group or user.
+                                    [default: .grapeconfig.publish.mergeTrainSubprojectRestrict]
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
@@ -117,7 +121,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
     def description(self):
         return "Gitlab administration."
 
-    # Returns a dictionary of repo => list of public branch names
+    # Returns a dictionary of repo => list of (public branch name, top level public branch name)
     # for each repo in the project that is in the grape project
     def getGrapeReposAndPublicBranches(self, project, topreponame, initialbranch, verbose):
         grapeRepos = {}
@@ -136,7 +140,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         try:
            branchMapping = config.getMapping("workspace", "submodulepublicmappings")
            for branch in publicbranches:
-              submodule_publicbranches.append(branchMapping[branch])
+              submodule_publicbranches.append((branchMapping[branch], branch))
         except configparser.NoOptionError:
            pass
 
@@ -145,19 +149,25 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         try:
            found = [item.lower() for item in reponames].index(outer.lower())
            del reponames[found]
-           grapeRepos[outer] = publicbranches
         except ValueError:
            if verbose:
               logging.info(f"Outer level repo {outer} is not in gitlab project {projectname}")
 
-        grapeRepos = {outer : publicbranches}
+        outer_publicbranches = []
+        for branch in publicbranches:
+           outer_publicbranches.append((branch, branch))
+        grapeRepos = {outer : outer_publicbranches}
+
         for name in config.getAllNestedSubprojects():
            url = config[f"nested-{name}"]["url"]
            grapeReponame = os.path.splitext(os.path.basename(url))[0]
            try:
               found = [item.lower() for item in reponames].index(grapeReponame.lower())
               del reponames[found]
-              grapeRepos[grapeReponame] = publicbranches
+              nested_publicbranches = []
+              for branch in publicbranches:
+                 nested_publicbranches.append((branch, branch))
+              grapeRepos[grapeReponame] = nested_publicbranches
            except ValueError:
               if verbose:
                  logging.info(f"Nested subproject {grapeReponame} is not in gitlab project {projectname}")
@@ -295,33 +305,45 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                   continue
 
                if setProtectedBranches:
-                  for branch in public:
+                  for branch, toplevel_branch in public:
                      # If this is the top level repository and merge trains are enabled,
                      # disable all pushes if merge trains are enabled for the branch.
                      disablePush = False
-                     if reponame == topreponame and repo.project.merge_trains_enabled:
+                     subprojectPublishId = 0
+                     if topRepo.project.merge_trains_enabled:
                          parser = configparser.ConfigParser()
-                         grapeConfig = repo.project.files.raw(file_path=".grapeconfig", ref=branch).decode('utf-8')
+                         grapeConfig = topRepo.project.files.raw(file_path=".grapeconfig", ref=toplevel_branch).decode('utf-8')
                          parser.read_string(grapeConfig)
                          try:
                              if parser.get('publish','mergetrain'):
-                                 disablePush = True
+                                 if reponame == topreponame:
+                                     disablePush = True
+                                 else:
+                                     subprojectPublishRestrict = args["--subprojectMergeTrainRestrict"]
+                                     if subprojectPublishRestrict:
+                                        # if group is found, use it
+                                        # note that a group currently needs to be a direct member:
+                                        # https://gitlab.com/gitlab-org/gitlab/-/issues/408284 (merged but not yet deployed)
+                                        subprojectPublishId = project.groupid(subprojectPublishRestrict)
+                                        if subprojectPublishId == 0:
+                                            # pass userid as negative value
+                                            subprojectPublishId = -project.userid(subprojectPublishRestrict)
                          except:
                              pass
                      try:
                         if disablePush:
                             # Set to allow developers+maintainers to merge, but not to push or force push
-                            replaced = repo.setProtectedBranch(branch, 0, 30, False)
+                            replaced = repo.setProtectedBranch(branch, 0, 30, 0, False)
                             logging.info(f"\tDisabling push for {branch}")
                         else:
-                            # Set to allow developers+maintainers to merge and push, but not to force push
-                            replaced = repo.setProtectedBranch(branch, 30, 30, False)
+                            # Set to allow developers+maintainers (or specified user/group) to merge and push, but not to force push
+                            replaced = repo.setProtectedBranch(branch, 30, 30, subprojectPublishId, False)
                         if replaced:
                            logging.info(f"\tUpdating protected branch {branch}")
                         else:
                            logging.info(f"\tProtecting branch {branch}")
-                     except:
-                         warnings.append(f"Failed disabling push for {branch} in {reponame}")
+                     except Exception as e:
+                         warnings.append(f"Failed disabling push for {branch} in {reponame}: {e}")
                   task_completed = True
 
                if setKeepMRApprovals:
