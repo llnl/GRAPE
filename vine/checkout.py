@@ -153,7 +153,7 @@ def createNewBranchesMREHandler(mre):
 #              2 : exists as a case-insensitive match
 def branchAlreadyExists(branch, workspace_dir):
     retVal = 0
-    git.fetch("--prune", execution_path=workspace_dir)
+    git.fetch("origin", execution_path=workspace_dir)
     # Trailing '' used to add a delimiter to end of path.
     branch_path = git.join_list_as_git_path(['remotes', 'origin', ''])
     # make sure branch does not already exist
