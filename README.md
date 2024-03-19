@@ -1430,7 +1430,7 @@ options are at least listed below.
                               [--verbose]
                               [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
-                              [--setProtectedBranches]
+                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>]]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--addSubprojectCIAccess]
@@ -1460,6 +1460,9 @@ options are at least listed below.
                                     set for the new repo (per --allRepoSettings) except protected branches will not be set.
         --owner=<user>              Add user as owner of newly created repo.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
+        --subprojectMergeTrainRestrict=<group_or_user>
+                                    If merge trains are enabled, only allow merges in subprojects from this group or user.
+                                    [default: .grapeconfig.publish.mergeTrainSubprojectRestrict]
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
