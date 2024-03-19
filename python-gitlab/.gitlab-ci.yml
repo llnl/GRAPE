@@ -1,0 +1,30 @@
+image: python:3.12
+
+stages:
+  - deploy
+  - promote
+
+deploy-images:
+  stage: deploy
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG-alpine
+    - executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG-slim-bullseye --build-arg PYTHON_FLAVOR=slim-bullseye
+  rules:
+    - if: $CI_COMMIT_TAG
+
+tag-latest:
+  stage: promote
+  image:
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: [""]
+  script:
+    - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - crane tag $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG-alpine ${CI_COMMIT_TAG}       # /python-gitlab:v1.2.3
+    - crane tag $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG-alpine latest                 # /python-gitlab:latest
+    - crane tag $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG-alpine alpine                 # /python-gitlab:alpine
+    - crane tag $CI_REGISTRY_IMAGE:$CI_COMMIT_TAG-slim-bullseye slim-bullseye   # /python-gitlab:slim-bullseye
+  rules:
+    - if: $CI_COMMIT_TAG

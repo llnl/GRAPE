@@ -1,0 +1,26 @@
+*.pyc
+build/
+dist/
+htmlcov/
+MANIFEST
+.*.swp
+*.egg-info
+.idea/
+coverage.xml
+docs/_build
+.coverage*
+.python-version
+.tox
+.venv/
+venv/
+
+# Include tracked hidden files and directories in search and diff tools
+!.dockerignore
+!.env
+!.github/
+!.gitignore
+!.gitlab-ci.yml
+!.mypy.ini
+!.pre-commit-config.yaml
+!.readthedocs.yml
+!.renovaterc.json
