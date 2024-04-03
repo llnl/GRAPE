@@ -67,7 +67,7 @@ class Config(Option, WorkspaceDirHandler):
         if not args["--nocredcache"]:
             cache = args["--credcache"]
             if not cache:
-                cache = utility.userInput("Would you like to enable git-managed credential caching?", 'y')
+                cache = utility.userInput("Would you like to enable git-managed credential caching?", 'n')
             if cache:
                 logging.info("Enabling 12 hr caching of https credentials...")
                 if os.name == "nt":
