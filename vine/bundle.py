@@ -3,6 +3,7 @@ import logging
 import os
 from vine import config_parser_base
 from vine import config_parser_global
+from vine import config_parser_workspace
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
@@ -111,6 +112,7 @@ class Bundle(Option, WorkspaceDirHandler):
         launchArgs["tags"] = tagsToBundle
         launchArgs["prefix"] = tagprefix
         launchArgs["describePattern"] = describePattern
+        launchArgs["submoduleReverseBranchMap"] = None
         launchArgs["--outfile"] = args["--outfile"]
 
         otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
@@ -122,6 +124,20 @@ class Bundle(Option, WorkspaceDirHandler):
 
         if recurse:
             launchArgs["branchList"] = args["--submoduleBranches"].split()
+            subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
+            submoduleReverseBranchMap = {}
+            found = False
+            for branch in launchArgs["branchList"]:
+                for key, value in subpublicmapping.items():
+                    if branch == value: 
+                        submoduleReverseBranchMap[branch] = key
+                        found = True
+                        break
+            if not found:
+                logging.info(f"submodule branch {branch} was not found in submodule public mapping" +
+                             " and will not be checked for consistency!")
+            launchArgs["submoduleReverseBranchMap"] = submoduleReverseBranchMap
+
             submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 bundlecmd, runInSubmodules=recurse, runInSubprojects=False,
                 skipSubmodules=not recurse, runInOuter=False,
@@ -149,6 +165,7 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
+    submoduleReverseBranchMap = args["submoduleReverseBranchMap"]
 
     reponame = os.path.split(repo)[1]
     logging.debug(f"bundlecmd called with {repo}, {execution_path}, {branchlist}")
@@ -164,6 +181,18 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
             logging.info(f"Branch {branch} in {repo} has diverged from " +
                          "or is ahead of origin. Sync branches before bundling.")
             continue
+        
+        # check to ensure that submodule gitlinks are consistent
+        if submoduleReverseBranchMap:
+            if branch in submoduleReverseBranchMap.keys():
+                top_branch = submoduleReverseBranchMap[branch]
+                rel_path = os.path.relpath(repo, start=workspace_dir)
+                gitlinkSHA = git.SHA(f"origin/{top_branch}:{rel_path}", execution_path=workspace_dir)
+                SHA = git.SHA(f"origin/{branch}", execution_path=repo)
+                if gitlinkSHA != SHA:
+                    logging.info(f"Branch {branch} in {rel_path} inconsistent with gitlink on {top_branch}." 
+                                 + " Rerun grape up and retry bundle.")
+
         tagname = f"{tagprefix}/{branch}"
         try:
             previousLocation = git.describe(
