@@ -556,16 +556,14 @@ def safeForceBranchToOriginRef(branchToSync, *, execution_path):
         localUpToDateWithRemote = branchUpToDateWith(branchToSync, remoteRef,
                                                      execution_path=execution_path)
         if remoteUpToDateWithLocal and not localUpToDateWithRemote:
-            if branchToSync == currentBranch(execution_path=execution_path):
-                logging.info(f"Current branch {branchToSync} is out of date" +
-                             " with origin. Pulling new changes.")
-                try:
-                    pull(f"origin {branchToSync}", throwOnFail=True, execution_path=execution_path)
-                except:
-                    logging.info(f"Can't pull {branchToSync}. Aborting...")
-                    return False
-            else:
-                branch(f"-f {branchToSync} {remoteRef}", execution_path=execution_path)
+            onBranch = branchToSync == currentBranch(execution_path=execution_path)
+            if onBranch:
+                logging.info(f"Current branch {branchToSync} in {execution_path} is out of date" +
+                             " with origin. Detaching before forcing sync to origin.")
+                checkout("--detach HEAD", execution_path=execution_path)
+            branch(f"-f {branchToSync} {remoteRef}", execution_path=execution_path)
+            if onBranch:
+                checkout(f"{branchToSync}", execution_path=execution_path)
             return True
         elif remoteUpToDateWithLocal and localUpToDateWithRemote:
             return True

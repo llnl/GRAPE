@@ -152,12 +152,17 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
 
     reponame = os.path.split(repo)[1]
     logging.debug(f"bundlecmd called with {repo}, {execution_path}, {branchlist}")
+    allBranches = git.allBranches(execution_path=execution_path)
     for branch in branchlist:
+        remoteRef = git.join_list_as_git_path(['remotes', 'origin', branch])
+        if remoteRef.strip() not in allBranches:
+            logging.info(f"Branch {branch} in {repo} does not exist." +
+                         f"This is only ok if {repo} was added after or removed before {branch}.")
+            continue
         # ensure branch can be fast forwardable to origin/branch and do so
         if not git.safeForceBranchToOriginRef(branch, execution_path=execution_path):
             logging.info(f"Branch {branch} in {repo} has diverged from " +
-                         "or is ahead of origin, or does not exist. " +
-                         "Sync branches before bundling.")
+                         "or is ahead of origin. Sync branches before bundling.")
             continue
         tagname = f"{tagprefix}/{branch}"
         try:
