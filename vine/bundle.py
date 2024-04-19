@@ -188,7 +188,7 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
             continue
         # ensure branch can be fast forwardable to origin/branch and do so
         if not git.safeForceBranchToOriginRef(branch, execution_path=execution_path):
-            logging.info(f"Branch {branch} in {repo} has diverged from " +
+            logging.info(f"*** Branch {branch} in {repo} has diverged from " +
                          "or is ahead of origin. Sync branches before bundling.")
             continue
         
@@ -200,7 +200,7 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                 gitlinkSHA = git.SHA(f"origin/{top_branch}:{rel_path}", execution_path=workspace_dir)
                 SHA = git.SHA(f"origin/{branch}", execution_path=repo)
                 if gitlinkSHA != SHA:
-                    logging.info(f"Branch {branch} in {rel_path} inconsistent with gitlink on {top_branch}." 
+                    logging.info(f"*** Branch {branch} in {rel_path} inconsistent with gitlink on {top_branch}." 
                                  + " Rerun grape up and retry bundle.")
 
         tagname = f"{tagprefix}/{branch}"
@@ -226,7 +226,7 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                 if outerTag != currentLocation:
                     outerLog = git.log(f"{currentLocation}..{outerTag}", execution_path=workspace_dir)
                     if not outerLog:
-                        logging.info(f"{reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
+                        logging.info(f"*** {reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
                                      + " Rerun grape up and retry bundle.")
             try:
                 git.shortSHA(tagname, execution_path=execution_path)
