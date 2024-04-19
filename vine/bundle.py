@@ -224,10 +224,14 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                 # Check to see if the tag in the nested subprojects differs from top level
                 outerTag = nestedSubprojectBranchToTagMap[branch]
                 if outerTag != currentLocation:
-                    outerLog = git.log(f"{currentLocation}..{outerTag}", execution_path=workspace_dir)
-                    if not outerLog:
-                        logging.info(f"*** {reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
-                                     + " Rerun grape up and retry bundle.")
+                    try:
+                        outerLog = git.log(f"{currentLocation}..{outerTag}", execution_path=workspace_dir)
+                        if not outerLog:
+                            logging.info(f"*** {reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
+                                         + " Rerun grape up and retry bundle.")
+                    except:
+                        logging.info(f"*** Top level does not contain tag for {currentLocation} from {reponame}."
+                                         + " Not checking for nested subproject consistency.")
             try:
                 git.shortSHA(tagname, execution_path=execution_path)
                 revlists = f" {tagname}..{branch}"
