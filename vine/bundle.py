@@ -3,6 +3,7 @@ import logging
 import os
 from vine import config_parser_base
 from vine import config_parser_global
+from vine import config_parser_workspace
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
@@ -11,7 +12,7 @@ from vine.option import Option
 from vine.vine_logging import log_wrapper
 
 
-# pull and merge in an up-to-date development branch
+# Create git bundle files for each repo
 class Bundle(Option, WorkspaceDirHandler):
 
     """
@@ -103,14 +104,21 @@ class Bundle(Option, WorkspaceDirHandler):
         tagsToBundle = config_parser_base.GrapeConfigParserBase.parseConfigPairList(args["--bundleTags"])
         recurse = not args["--noRecurse"]
 
-        git.fetch(execution_path=self.workspace_dir)
-        git.fetch("--tags --force", execution_path=self.workspace_dir)
+        # Fetch only tags, so the workspace is consistent with last grape up
+        git.fetch("origin '+refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         branchlist = branches.split()
+
+        branchToTagMap = {}
+        for branch in branchlist:
+            versionTag = git.describe(f"--always --match '{describePattern}' {branch}", execution_path=self.workspace_dir)
+            branchToTagMap[branch] = versionTag
 
         launchArgs["branchList"] = branchlist
         launchArgs["tags"] = tagsToBundle
         launchArgs["prefix"] = tagprefix
         launchArgs["describePattern"] = describePattern
+        launchArgs["submoduleReverseBranchMap"] = None
+        launchArgs["nestedSubprojectBranchToTagMap"] = branchToTagMap
         launchArgs["--outfile"] = args["--outfile"]
 
         otherCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
@@ -121,7 +129,24 @@ class Bundle(Option, WorkspaceDirHandler):
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         if recurse:
-            launchArgs["branchList"] = args["--submoduleBranches"].split()
+            subbranchlist = args["--submoduleBranches"].split()
+            subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
+            submoduleReverseBranchMap = {}
+            found = False
+            for branch in subbranchlist:
+                for key, value in subpublicmapping.items():
+                    if branch == value: 
+                        submoduleReverseBranchMap[branch] = key
+                        found = True
+                        break
+            if not found:
+                logging.info(f"submodule branch {branch} was not found in submodule public mapping" +
+                             " and will not be checked for consistency!")
+
+            launchArgs["branchList"] = subbranchlist
+            launchArgs["submoduleReverseBranchMap"] = submoduleReverseBranchMap
+            launchArgs["nestedSubprojectBranchToTagMap"] = None
+
             submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
                 bundlecmd, runInSubmodules=recurse, runInSubprojects=False,
                 skipSubmodules=not recurse, runInOuter=False,
@@ -149,16 +174,35 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
     describePattern = args["describePattern"]
+    submoduleReverseBranchMap = args["submoduleReverseBranchMap"]
+    nestedSubprojectBranchToTagMap = args["nestedSubprojectBranchToTagMap"]
 
     reponame = os.path.split(repo)[1]
     logging.debug(f"bundlecmd called with {repo}, {execution_path}, {branchlist}")
+    allBranches = git.allBranches(execution_path=execution_path)
     for branch in branchlist:
+        remoteRef = git.join_list_as_git_path(['remotes', 'origin', branch])
+        if remoteRef.strip() not in allBranches:
+            logging.info(f"Branch {branch} in {repo} does not exist." +
+                         f"This is only ok if {repo} was added after or removed before {branch}.")
+            continue
         # ensure branch can be fast forwardable to origin/branch and do so
         if not git.safeForceBranchToOriginRef(branch, execution_path=execution_path):
-            logging.info(f"Branch {branch} in {repo} has diverged from " +
-                         "or is ahead of origin, or does not exist. " +
-                         "Sync branches before bundling.")
+            logging.info(f"*** Branch {branch} in {repo} has diverged from " +
+                         "or is ahead of origin. Sync branches before bundling.")
             continue
+        
+        # check to ensure that submodule gitlinks are consistent
+        if submoduleReverseBranchMap:
+            if branch in submoduleReverseBranchMap.keys():
+                top_branch = submoduleReverseBranchMap[branch]
+                rel_path = os.path.relpath(repo, start=workspace_dir)
+                gitlinkSHA = git.SHA(f"origin/{top_branch}:{rel_path}", execution_path=workspace_dir)
+                SHA = git.SHA(f"origin/{branch}", execution_path=repo)
+                if gitlinkSHA != SHA:
+                    logging.info(f"*** Branch {branch} in {rel_path} inconsistent with gitlink on {top_branch}." 
+                                 + " Rerun grape up and retry bundle.")
+
         tagname = f"{tagprefix}/{branch}"
         try:
             previousLocation = git.describe(
@@ -176,6 +220,18 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                             " Something may be wrong...")
             currentLocation = branch
         if previousLocation.strip() != currentLocation.strip():
+            if nestedSubprojectBranchToTagMap and currentLocation != branch:
+                # Check to see if the tag in the nested subprojects differs from top level
+                outerTag = nestedSubprojectBranchToTagMap[branch]
+                if outerTag != currentLocation:
+                    try:
+                        outerLog = git.log(f"{currentLocation}..{outerTag}", execution_path=workspace_dir)
+                        if not outerLog:
+                            logging.info(f"*** {reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
+                                         + " Rerun grape up and retry bundle.")
+                    except:
+                        logging.info(f"*** Top level does not contain tag for {currentLocation} from {reponame}."
+                                         + " Not checking for nested subproject consistency.")
             try:
                 git.shortSHA(tagname, execution_path=execution_path)
                 revlists = f" {tagname}..{branch}"

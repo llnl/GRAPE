@@ -1,0 +1,21 @@
+
+
+Tue Apr 23 08:42:54 2024 Benjamin T. Liu
+MR_568
+Reviewers: Peter Robinson, David Dawson
+
+bundle fixes
+
+- do not perform any branch fetches during bundle (this should be done by grape up)
+
+- do not pull if safeForceBranchToOriginRef called from bundle on a public branch
+
+- check for consistency of gitlinks for submodules
+
+- check for nested subproject tags ahead of top level
+
+- distinguish diverged branches from missing branches
+
+Remove prune from fetches (has the potential of affecting pipeline references)
+
+Disable git managed credential caching by default (no longer typically used)

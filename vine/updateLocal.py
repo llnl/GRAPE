@@ -104,7 +104,7 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
     fetchArgs = "--recurse-submodules=no origin "
     if not args["--updateRemoteOnly"]:
-        fetchArgs += "--prune '+refs/tags/*:refs/tags/*' "
+        fetchArgs += "'+refs/tags/*:refs/tags/*' "
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
