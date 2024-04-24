@@ -1,3 +1,9 @@
+# This is required for all jobs run by Jacamar (all LC jobs)
+.id_tokens:
+  id_tokens:
+     SITE_ID_TOKEN:
+        aud: $CI_SERVER_URL
+
 # Windows doesn't parse the variables correctly, but doesn't need this anyways.
 .windows_credential_vars:
   variables:
@@ -37,13 +43,10 @@
   tags: &rzwhippet rzwhippet
 
 ._rzwhippet_group:
-  resource_group: ${GITLAB_USER_LOGIN}-RZGENIE
+  resource_group: ${GITLAB_USER_LOGIN}-RZWHIPPET
 
 ._rzwhippet_group_after_hours:
-  resource_group: ${GITLAB_USER_LOGIN}-RZGENIE-LATE
-
-._rztopaz:
-  tags: &rztopaz rztopaz
+  resource_group: ${GITLAB_USER_LOGIN}-RZWHIPPET-LATE
 
 .run_ale3d_windows:
   extends:
@@ -54,6 +57,7 @@
 
 .run_rzalastor_batch:
   extends:
+    - .id_tokens
     - .patch_auth
   tags:
     - *rzalastor
@@ -61,6 +65,7 @@
 
 .run_rzalastor_shell:
   extends:
+    - .id_tokens
     - .patch_auth
   tags:
     - *rzalastor
@@ -78,6 +83,7 @@
 
 .run_rzwhippet_batch:
   extends:
+    - .id_tokens
     - .patch_auth
   tags:
     - *rzwhippet
@@ -85,23 +91,10 @@
 
 .run_rzwhippet_shell:
   extends:
+    - .id_tokens
     - .patch_auth
   tags:
     - *rzwhippet
-    - *shell
-
-.run_rztopaz_batch:
-  extends:
-    - .patch_auth
-  tags:
-    - *rztopaz
-    - *batch
-
-.run_rztopaz_shell:
-  extends:
-    - .patch_auth
-  tags:
-    - *rztopaz
     - *shell
 
 .run_rzalastor_batch_resource_group:
