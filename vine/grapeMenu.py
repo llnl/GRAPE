@@ -139,6 +139,7 @@ class _Menu(WorkspaceDirHandler):
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None):
+        logging.debug(f"Executing applyMenuChoice {choice} with args: {args} and option_args: {option_args}")
         chosen_option = self.getOption(choice)
         if chosen_option is None:
             return False
