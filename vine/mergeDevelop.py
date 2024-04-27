@@ -32,6 +32,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
+                    [--filter=<args>]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
                     [--user=<GitLabUserName>]
                     [--codeReviewsURL=<httpsURL>]
@@ -86,6 +87,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
                                  into a Code Review service's REST API.
                                  [default: .grapeconfig.repo.ssh_pat_port]
+        --filter=<arg>           Optional clone filter argument to use if any subprojects get cloned during the merge.
 
 
     """
@@ -295,7 +297,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
                 logging.info("Updating new submodules using grape uv --allSubmodules")
                 original_workspace_dir = menu.workspace_dir
-                menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
+                uvArgs = ["--allSubmodules", "--skipNestedSubprojects"]
+                if args["--filter"]:
+                    uvArgs.append("--filter="+args["--filter"])
+                menu.applyMenuChoice("uv", uvArgs)
                 menu.set_workspace_dir(original_workspace_dir)
 
         # clear out the progress now that we're done so that when we are called a second time during a publish

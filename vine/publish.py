@@ -52,7 +52,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush] [--noUpdateMD]
+                         [--nopush] [--noUpdateMD] [--filter=<arg>]
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
@@ -111,6 +111,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --noverify                Set to skip interactive verification of publish commands.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
     --noUpdateMD              Set to skip update of local public branches during md steps.
+    --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
     --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
                               public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                               Set by default if .grapeconfig.subtrees.pushOnPublish is True.
@@ -583,6 +584,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         mdArgs = ["--am", f"--public={args['--public']}"]
         if args["--noUpdateMD"]:
             mdArgs.append("--noUpdate")
+        if args["--filter"]:
+            mdArgs.append("--filter="+args["--filter"])
         if  menu.applyMenuChoice("md", mdArgs):
             # update the startingSHA to be after any merges as they cause all sorts of problems for git revert in the
             # event of a grape publish --abort
