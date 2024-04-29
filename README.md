@@ -426,7 +426,6 @@ options are at least listed below.
                             act across all nested subprojects in much the same way as grape manages submodules.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
 
-
     
 ## bundle
 
@@ -545,7 +544,7 @@ options are at least listed below.
 
     grape checkout
 
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
     -b                  Create the branch off of the current HEAD in each project.
@@ -555,6 +554,7 @@ options are at least listed below.
     --updateView        If your submodules / nested projects change, change your workspace to match the changes.
                         Warning - setting this may cause you to lose unpushed work in nested subprojects.
     --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
+    --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
 
 
     Arguments:
@@ -616,7 +616,7 @@ options are at least listed below.
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush] [--noUpdateMD]
+                         [--nopush] [--noUpdateMD] [--filter=<arg>]
                          [--pushSubtrees | --noPushSubtrees]
                          [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
@@ -675,6 +675,7 @@ options are at least listed below.
     --noverify                Set to skip interactive verification of publish commands.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
     --noUpdateMD              Set to skip update of local public branches during md steps.
+    --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
     --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
                               public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                               Set by default if .grapeconfig.subtrees.pushOnPublish is True.
@@ -824,15 +825,16 @@ options are at least listed below.
  grape-clone
     Clones a git repo and configures it for use with git.
 
-    Usage: grape-clone <url> <path> [--recursive] [--allNested]
+    Usage: grape-clone <url> <path> [--recursive] [--allNested] [--filter=<arg>]
 
     Arguments:
         <url>       The URL of the remote repository
         <path>      The directory where you want to clone the repo to.
 
     Options:
-        --recursive   Recursively clone submodules.
-        --allNested   Get all nested subprojects.
+        --recursive        Recursively clone submodules. Does not clone nested submodules.
+        --allNested        Get all nested subprojects.
+        --filter=<arg>     Optional clone filter argument.
 
     
 ## config
@@ -921,6 +923,7 @@ options are at least listed below.
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
+                    [--filter=<args>]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
                     [--user=<GitLabUserName>]
                     [--codeReviewsURL=<httpsURL>]
@@ -975,6 +978,7 @@ options are at least listed below.
         --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
                                  into a Code Review service's REST API.
                                  [default: .grapeconfig.repo.ssh_pat_port]
+        --filter=<arg>           Optional clone filter argument to use if any subprojects get cloned during the merge.
 
 
     
@@ -1221,7 +1225,7 @@ options are at least listed below.
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
-                    [--updateRemoteProtocol]
+                    [--updateRemoteProtocol] [--filter=<arg>]
                     [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
@@ -1282,6 +1286,7 @@ options are at least listed below.
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
+        --filter=<arg>               Optional clone filter argument.
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
