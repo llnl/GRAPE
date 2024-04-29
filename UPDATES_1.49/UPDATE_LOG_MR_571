@@ -1,0 +1,13 @@
+
+
+Mon Apr 29 13:42:46 2024 Benjamin T. Liu
+MR_571
+Reviewers: Peter Robinson
+
+- Add --filter argument for partial clones (only supported in submodules from git 2.36+)
+
+- Add concurrency to git submodule update
+
+- Prevent grape clone recursive from creating nested submodules
+
+- Fix fetch error checking for newer git versions
