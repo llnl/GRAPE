@@ -792,7 +792,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     try:
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
-        if "refusing to fetch into current branch" in e.gitOutput.lower():
+        if "refusing to fetch into" in e.gitOutput.lower():
             try:
                 git.pull(f"origin {branch}", execution_path=repo)
             except grape_errors.GrapeGitError as e:
@@ -817,7 +817,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
         try:
            git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
         except grape_errors.GrapeGitError as e:
-           if "refusing to fetch into current branch" in e.gitOutput.lower():
+           if "refusing to fetch into" in e.gitOutput.lower():
                # A subproject may be on the public branch even though a different branch is specified.
                try:
                    git.pull(f"origin {public}", execution_path=repo)
