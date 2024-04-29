@@ -40,7 +40,6 @@ class AddSubproject(Option, WorkspaceDirHandler):
                             act across all nested subprojects in much the same way as grape manages submodules.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
 
-
     """
     def __init__(self):
         super(AddSubproject, self).__init__()
@@ -163,10 +162,11 @@ class AddSubproject(Option, WorkspaceDirHandler):
         return True
 
     @staticmethod
-    def activateNestedSubproject(subprojectName, userconfig, workspace_dir):
+    def activateNestedSubproject(subprojectName, userconfig, filterArg, workspace_dir):
         config = config_parser_global.grapeConfig()
         prefix = config.get(f"nested-{subprojectName}", "prefix")
         url = config.get(f"nested-{subprojectName}", "url")
+        fstr = f"--filter={filterArg}" if filterArg else ""
         fullurl = git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)
         section = f"nested-{subprojectName}"
         userconfig.ensureSection(section)
@@ -174,7 +174,7 @@ class AddSubproject(Option, WorkspaceDirHandler):
         if not currentlyActive:
             destDir = os.path.join(workspace_dir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
-                git.clone(source_repo=fullurl, clone_repo=prefix,
+                git.clone(argstr=fstr, source_repo=fullurl, clone_repo=prefix,
                           execution_path=workspace_dir)
             elif '.git' in os.listdir(destDir):
                 pass

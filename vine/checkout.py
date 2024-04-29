@@ -270,7 +270,7 @@ class Checkout(Option, WorkspaceDirHandler):
     """
     grape checkout
 
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
     -b                  Create the branch off of the current HEAD in each project.
@@ -280,6 +280,7 @@ class Checkout(Option, WorkspaceDirHandler):
     --updateView        If your submodules / nested projects change, change your workspace to match the changes.
                         Warning - setting this may cause you to lose unpushed work in nested subprojects.
     --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
+    --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
 
 
     Arguments:
@@ -453,6 +454,9 @@ class Checkout(Option, WorkspaceDirHandler):
             uvArgs.append("--sync=True")
         else:
             uvArgs.append("--sync=False")
+
+        if args["--filter"]:
+            uvArgs.append("--filter="+args["--filter"])
 
         # in case the user switches to a branch without corresponding branches in the submodules, make sure active submodules
         # are at the right commit before possibly creating new branches at the current HEAD.

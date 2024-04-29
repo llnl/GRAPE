@@ -287,8 +287,8 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         return retvals
 
     # determine concurrency based off of whether we are executing on a shared or exclusive resource
-    @property
-    def concurrency(self):
+    @staticmethod
+    def get_concurrency():
         # this is set via the command line, which overrides configuration behavior
         if NUM_TASKS > -1:
             n = NUM_TASKS
@@ -317,3 +317,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
                 n = config.getint(SECTION_CONCURRENCY_CONTROL, "defaultnumtasks")
         logging.debug(f"concurrency set to {n}")
         return n
+
+    @property
+    def concurrency(self):
+        return self.get_concurrency()

@@ -81,6 +81,9 @@ class TestClone(testGrape.TestGrape):
         git.clone(argstr="--mirror", source_repo=self.repo,
                   clone_repo=self.repos[1],
                   execution_path=self.defaultWorkingDirectory)
+        # Add submodule on develop as grape clone defaults to checking out develop,
+        # if present as a public branch.
+        git.checkout("develop", execution_path=self.repo)
         # add repo2 as a submodule to repo1
         git.submodule(f"add {self.repos[1]} submodule1",
                       execution_path=self.repo)

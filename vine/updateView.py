@@ -37,7 +37,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
-                    [--updateRemoteProtocol]
+                    [--updateRemoteProtocol] [--filter=<arg>]
                     [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
@@ -98,6 +98,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
+        --filter=<arg>               Optional clone filter argument.
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -612,7 +613,18 @@ class UpdateView(Option, WorkspaceDirHandler):
 
                 if initStr:
                     logging.info(f"Updating active submodules...({initStr})")
-                    git.submodule("update", execution_path=self.workspace_dir)
+                    jobs = multi_repo_cmd_launcher.MultiRepoCommandLauncher.get_concurrency()
+                    filterArg = args["--filter"]
+                    fstr = ""
+                    if filterArg:
+                        gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
+                        if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
+                            # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
+                            # flag to parse correctly, so we add it even though we already inited previously.
+                            fstr = f"--init --filter={filterArg}"
+                        else:
+                            logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
+                    git.submodule(f"update --jobs {jobs} {fstr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
@@ -646,7 +658,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
+                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"]}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -756,8 +768,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
+    filterArg = args["filterArg"]
     logging.info(f"Activating Nested Subproject {subprojectName}")
-    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, workspace_dir):
+    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
     logging.info(f"Nested Subproject {subprojectName} activated.")
@@ -779,7 +792,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     try:
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
-        if "refusing to fetch into current branch" in e.gitOutput.lower():
+        if "refusing to fetch into" in e.gitOutput.lower():
             try:
                 git.pull(f"origin {branch}", execution_path=repo)
             except grape_errors.GrapeGitError as e:
@@ -804,7 +817,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
         try:
            git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
         except grape_errors.GrapeGitError as e:
-           if "refusing to fetch into current branch" in e.gitOutput.lower():
+           if "refusing to fetch into" in e.gitOutput.lower():
                # A subproject may be on the public branch even though a different branch is specified.
                try:
                    git.pull(f"origin {public}", execution_path=repo)
