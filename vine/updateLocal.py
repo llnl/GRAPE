@@ -131,7 +131,7 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
                             f" {','.join(branches)} in {execution_path} has local " +
                             "commits! Did you forget to create a topic " +
                             "branch?")
-        elif "refusing to fetch into current branch" in e.gitOutput.lower():
+        elif "refusing to fetch into" in e.gitOutput.lower():
             logging.error(f"GRAPE: ERROR: {execution_path}:\n{e.gitOutput}")
         else:
             raise e

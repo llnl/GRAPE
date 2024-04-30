@@ -13,7 +13,11 @@ from vine import vine_subprocess
 
 GRAPE_CONFIG = '.grapeconfig'
 GIT_VERY_VERBOSE = False
+GRAPE_GIT_CONFIG_FLAGS = ''
 
+def setConfigFlags(flags):
+    global GRAPE_GIT_CONFIG_FLAGS
+    GRAPE_GIT_CONFIG_FLAGS = flags
 
 # Note that if capture_output is None, the return code and
 # any errors are ignored.
@@ -21,15 +25,15 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     from vine import config_parser_global
 
     cnfg = config_parser_global.grapeConfig()
-    if cnfg.has_section('git') and cnfg.has_option("executable"):
+    if cnfg.has_section('git') and cnfg.has_option('git', 'executable'):
         _cmd = cnfg.get("git", "executable")
-        _cmd += f" {cmd}"
+        _cmd += f" {GRAPE_GIT_CONFIG_FLAGS} {cmd}"
     elif os.name == "nt":
         git_path = os.path.join('C:', os.path.sep, 'Program Files',
                                 'Git', 'bin', 'git.exe')
-        _cmd = f"\"{git_path}\" {cmd}"
+        _cmd = f"\"{git_path}\" {GRAPE_GIT_CONFIG_FLAGS} {cmd}"
     else:
-        _cmd = f"git {cmd}"
+        _cmd = f"git {GRAPE_GIT_CONFIG_FLAGS} {cmd}"
 
     completed_process = vine_subprocess.executeSubProcess(
         _cmd, working_dir=execution_path, capture_output=capture_output, debug_log_stdout=debug_log_stdout)
