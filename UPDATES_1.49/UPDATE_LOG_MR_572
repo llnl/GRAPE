@@ -1,0 +1,11 @@
+
+
+Tue Apr 30 13:26:15 2024 Benjamin T. Liu
+MR_572
+Reviewers: Peter Robinson
+
+Fix submodule parallelism if unlimited
+
+- use the multiprocessing CPU count if set to -1
+
+- fixes error for git 2.45
