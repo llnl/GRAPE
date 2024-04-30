@@ -12,6 +12,7 @@ class TestCheckout(testGrape.TestGrape):
     # the submodule has two branches, master and addSubmodule
     # master has the file f3, addSubmodule has the file f2.
     def setUpSubmoduleBranch(self):
+        self.setUpConfig()
         git.clone(source_repo=self.repo, clone_repo=self.repos[1],
                   execution_path=self.defaultWorkingDirectory)
         git.checkout("-b addSubmodule", execution_path=self.repo)
