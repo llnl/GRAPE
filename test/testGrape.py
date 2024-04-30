@@ -82,9 +82,6 @@ class TestGrape(unittest.TestCase):
         config.set(Option.SECTION_FLOW, "topicPrefixMappings", "?:master")
         config.set(Option.SECTION_WORKSPACE, "submoduleTopicPrefixMappings", "?:master")
         config.set(Option.SECTION_PUBLISH, "mergeTrain", "False")
-        # This is required to allow cloning from files
-        config.ensureSection('git')
-        config.set('git', 'executable', 'git -c protocol.file.allow=always')
 
     def setUpLogging(self):
         if self._debug:

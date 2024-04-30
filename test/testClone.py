@@ -75,7 +75,6 @@ class TestClone(testGrape.TestGrape):
 #    def testRecursiveCloneWithSubmodule(self, mock_userInput):
     def testRecursiveCloneWithSubmodule(self):
         cwd = os.getcwd()
-        self.setUpConfig()
         self.menu.set_workspace_dir(self.repo)
 
         # make a repo to turn into a submodule

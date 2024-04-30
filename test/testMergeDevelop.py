@@ -108,7 +108,6 @@ class TestMD(testGrape.TestGrape):
 
 
     def setUpNonConflictingSubmoduleMerge(self):
-        self.setUpConfig()
         self.createTestSubmodule(execution_path=self.defaultWorkingDirectory)
         git.branch("testSubmoduleMerge",
                    execution_path=self.repo)
@@ -138,7 +137,6 @@ class TestMD(testGrape.TestGrape):
         self.menu.set_workspace_dir(self.repo)
 
     def setUpConflictingSubmoduleMerge(self):
-        self.setUpConfig()
         self.createTestSubmodule(execution_path=self.defaultWorkingDirectory)
         git.branch("testSubmoduleMerge2",
                    execution_path=self.repo)
