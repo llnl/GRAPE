@@ -614,6 +614,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                 if initStr:
                     logging.info(f"Updating active submodules...({initStr})")
                     jobs = multi_repo_cmd_launcher.MultiRepoCommandLauncher.get_concurrency()
+                    if jobs < 1:
+                        # If the concurrency is unlimited, default to the multiprocessing CPU count
+                        try:
+                            import multiprocessing
+                            jobs = multiprocessing.cpu_count()
+                        except:
+                            # Default to no parallelism if this somehow fails
+                            jobs = 1
                     filterArg = args["--filter"]
                     fstr = ""
                     if filterArg:
