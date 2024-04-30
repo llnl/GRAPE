@@ -1,3 +1,4 @@
+from vine import grapeGit as git
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 
@@ -25,6 +26,8 @@ class Test(Option):
 
     @log_wrapper
     def execute(self, args):
+        # Allow cloning from file for testing
+        git.setConfigFlags('-c protocol.file.allow=always')
         from test import testGrape
         good = testGrape.main(args["<suite>"], debug = args["--debug"])
         if not good:

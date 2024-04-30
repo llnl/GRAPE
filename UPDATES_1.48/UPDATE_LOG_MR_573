@@ -1,0 +1,11 @@
+
+
+Tue Apr 30 14:38:55 2024 Benjamin T. Liu
+MR_573
+Reviewers: Peter Robinson
+
+- fixes for updated fetch errors in git 2.36+
+
+- allow git.executable to be set in config file
+
+- testing fixes for git 2.45
