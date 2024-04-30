@@ -21,7 +21,7 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     from vine import config_parser_global
 
     cnfg = config_parser_global.grapeConfig()
-    if cnfg.has_section('git') and cnfg.has_option("executable"):
+    if cnfg.has_section('git') and cnfg.has_option('git', 'executable'):
         _cmd = cnfg.get("git", "executable")
         _cmd += f" {cmd}"
     elif os.name == "nt":

@@ -6,7 +6,6 @@ sshbase = ssh://git@rzgitlab.llnl.gov:7999/grp/
 ssh_pat_url = git@rzgitlab.llnl.gov
 ssh_pat_port = 7999
 
-
 [workspace]
 managesubmodules = True
 submoduletopicprefixmappings = ?:develop
