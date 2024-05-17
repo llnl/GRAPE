@@ -776,7 +776,8 @@ class UpdateView(Option, WorkspaceDirHandler):
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
-    filterArg = args["filterArg"]
+    #filterArg = args["filterArg"]
+    filterArg = ""
     logging.info(f"Activating Nested Subproject {subprojectName}")
     if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
