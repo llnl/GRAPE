@@ -1286,7 +1286,7 @@ options are at least listed below.
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
-        --filter=<arg>               Optional clone filter argument.
+        --filter=<arg>               Optional clone filter argument. CURRENTLY DISABLED.
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
