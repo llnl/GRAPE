@@ -555,7 +555,10 @@ options are at least listed below.
                         Warning - setting this may cause you to lose unpushed work in nested subprojects.
     --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
     --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
-
+                        WARNING! This is still experimental and may have issues with grape workflows.
+                        In particular, tree:0 has performance issues with git rev-list/log command on specified
+                        files (it appears to download each commit separately).
+      
 
     Arguments:
     <branch>    The name of the branch to checkout.
@@ -676,6 +679,9 @@ options are at least listed below.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
     --noUpdateMD              Set to skip update of local public branches during md steps.
     --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
+                              WARNING! This is still experimental and may have issues with grape workflows.
+                              In particular, tree:0 has performance issues with git rev-list/log command on specified
+                              files (it appears to download each commit separately).
     --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
                               public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                               Set by default if .grapeconfig.subtrees.pushOnPublish is True.
@@ -835,6 +841,9 @@ options are at least listed below.
         --recursive        Recursively clone submodules. Does not clone nested submodules.
         --allNested        Get all nested subprojects.
         --filter=<arg>     Optional clone filter argument.
+                           WARNING! This is still experimental and may have issues with grape workflows.
+                           In particular, tree:0 has performance issues with git rev-list/log command on specified
+                           files (it appears to download each commit separately).
 
     
 ## config
@@ -979,6 +988,9 @@ options are at least listed below.
                                  into a Code Review service's REST API.
                                  [default: .grapeconfig.repo.ssh_pat_port]
         --filter=<arg>           Optional clone filter argument to use if any subprojects get cloned during the merge.
+                                 WARNING! This is still experimental and may have issues with grape workflows.
+                                 In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                 files (it appears to download each commit separately).
 
 
     
@@ -1286,7 +1298,10 @@ options are at least listed below.
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
-        --filter=<arg>               Optional clone filter argument. CURRENTLY DISABLED.
+        --filter=<arg>               Optional clone filter argument.
+                                     WARNING! This is still experimental and may have issues with grape workflows.
+                                     In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                     files (it appears to download each commit separately).
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
