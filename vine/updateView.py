@@ -100,7 +100,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         --spackEnv                   Spack Develop Environment build option 
         --filter=<arg>               Optional clone filter argument.
                                      WARNING! This is still experimental and may have issues with grape workflows.
-                                     In particular, tree:0 has issues with submodules and should not be used yet.
+                                     In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                     files (it appears to download each commit separately).
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this

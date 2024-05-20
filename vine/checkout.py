@@ -282,7 +282,8 @@ class Checkout(Option, WorkspaceDirHandler):
     --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
     --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
                         WARNING! This is still experimental and may have issues with grape workflows.
-                        In particular, tree:0 has issues with submodules and should not be used yet.
+                        In particular, tree:0 has performance issues with git rev-list/log command on specified
+                        files (it appears to download each commit separately).
       
 
     Arguments:
