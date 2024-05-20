@@ -21,6 +21,9 @@ class Clone(Option, WorkspaceDirHandler):
         --recursive        Recursively clone submodules. Does not clone nested submodules.
         --allNested        Get all nested subprojects.
         --filter=<arg>     Optional clone filter argument.
+                           WARNING! This is still experimental and may have issues with grape workflows.
+                           In particular, tree:0 has performance issues with git rev-list/log command on specified
+                           files (it appears to download each commit separately).
 
     """
 

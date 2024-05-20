@@ -88,6 +88,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                  into a Code Review service's REST API.
                                  [default: .grapeconfig.repo.ssh_pat_port]
         --filter=<arg>           Optional clone filter argument to use if any subprojects get cloned during the merge.
+                                 WARNING! This is still experimental and may have issues with grape workflows.
+                                 In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                 files (it appears to download each commit separately).
 
 
     """
