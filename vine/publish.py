@@ -112,6 +112,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     --nopush                  Set to skip the push of commits generated during the publish procedure.
     --noUpdateMD              Set to skip update of local public branches during md steps.
     --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
+                              WARNING! This is still experimental and may have issues with grape workflows.
+                              In particular, tree:0 has issues with submodules and should not be used yet.
     --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
                               public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
                               Set by default if .grapeconfig.subtrees.pushOnPublish is True.

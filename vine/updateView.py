@@ -98,7 +98,9 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
-        --filter=<arg>               Optional clone filter argument. CURRENTLY DISABLED.
+        --filter=<arg>               Optional clone filter argument.
+                                     WARNING! This is still experimental and may have issues with grape workflows.
+                                     In particular, tree:0 has issues with submodules and should not be used yet.
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -624,14 +626,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                             jobs = 1
                     filterArg = args["--filter"]
                     fstr = ""
-                    #if filterArg:
-                    #    gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
-                    #    if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
-                    #        # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
-                    #        # flag to parse correctly, so we add it even though we already inited previously.
-                    #        fstr = f"--init --filter={filterArg}"
-                    #    else:
-                    #        logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
+                    if filterArg:
+                        gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
+                        if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
+                            # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
+                            # flag to parse correctly, so we add it even though we already inited previously.
+                            fstr = f"--init --filter={filterArg}"
+                        else:
+                            logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
                     git.submodule(f"update --jobs {jobs} {fstr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
@@ -776,8 +778,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
-    #filterArg = args["filterArg"]
-    filterArg = ""
+    filterArg = args["filterArg"]
     logging.info(f"Activating Nested Subproject {subprojectName}")
     if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
