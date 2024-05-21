@@ -1,0 +1,9 @@
+
+
+Tue May 21 13:27:19 2024 Benjamin T. Liu
+MR_578
+Reviewers: Peter Robinson, David Dawson
+
+Fix grape --version for public grape using newer git versions
+
+- git 2.36+ will not run git commands from directories owned by others

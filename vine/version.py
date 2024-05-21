@@ -21,14 +21,17 @@ def grapeVersion():
         return "v.1.37.unknown"
 
 def describeLastVersion(args, *, branch, tagPrefix, tagSuffix='', execution_path):
-    description = git.describe(f"{branch} {args} --match={tagPrefix}*{tagSuffix}", execution_path=execution_path)
+    # We may be describing the repo from the grape directory, so we need to run the git command from the current working
+    # directory to avoid a potential git security issue (CVE-2022-24765).
+    git_dir = "--git-dir=\""+os.path.abspath(os.path.join(execution_path, ".git"))+"\""
+    description = git.gitcmd(f"{git_dir} describe {branch} {args} --match={tagPrefix}*{tagSuffix}", "could not describe commit", execution_path=os.getcwd())
     # In certain cases, the description of mergeback branches will describe the prior version rather than the current one.
     # For those cases, we check for a match against the next minor version and use that if it exists.
     versions = description.split('.')
     if len(versions) > 1 and versions[1].isdigit():
         next_minor_version = int(versions[1]) + 1
         try:
-            next_description = git.describe(f"{branch} {args} --match={versions[0]}.{next_minor_version}.*{tagSuffix}", execution_path=execution_path)
+            next_description = git.gitcmd(f"{git_dir} describe {branch} {args} --match={versions[0]}.{next_minor_version}.*{tagSuffix}", "could not describe commit", execution_path=os.getcwd())
             description = next_description
         except grape_errors.GrapeGitError as e:
             if "could not describe commit" in e.message:
