@@ -28,7 +28,10 @@ def describeLastVersion(args, *, branch, tagPrefix, tagSuffix='', execution_path
     if len(versions) > 1 and versions[1].isdigit():
         next_minor_version = int(versions[1]) + 1
         try:
-            next_description = git.describe(f"{branch} {args} --match={versions[0]}.{next_minor_version}.*{tagSuffix}", execution_path=execution_path)
+            # We may be describing the repo from the grape directory, so we need to run the git command from the current working
+            # directory to avoid a potential git security issue (CVE-2022-24765).
+            git_dir = "--git-dir=\""+os.path.abspath(os.path.join(execution_path, ".git"))+"\""
+            next_description = git.gitcmd(f"{git_dir} describe {branch} {args} --match={versions[0]}.{next_minor_version}.*{tagSuffix}", execution_path=os.getcwd())
             description = next_description
         except grape_errors.GrapeGitError as e:
             if "could not describe commit" in e.message:
