@@ -174,7 +174,7 @@ class AddSubproject(Option, WorkspaceDirHandler):
         if not currentlyActive:
             destDir = os.path.join(workspace_dir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
-                git.clone(argstr=fstr, source_repo=fullurl, clone_repo=prefix,
+                git.clone(argstr=f"-n {fstr}", source_repo=fullurl, clone_repo=prefix,
                           execution_path=workspace_dir)
             elif '.git' in os.listdir(destDir):
                 pass
