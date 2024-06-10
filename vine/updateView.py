@@ -635,7 +635,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                             fstr = f"--init --filter={filterArg}"
                         else:
                             logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
-                    git.submodule(f"update --jobs {jobs} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    git.submodule(f"update -N --jobs {jobs} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
@@ -658,7 +658,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                             if subRemoteProtocol != remoteProtocol:
                                 logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
                                 if self.rmNestedSubproject(subproject, args):
-                                    toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
+                                    toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"], "branch":branch}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
                                     userConfig.set(section, "active", "False")
@@ -669,7 +669,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"]}))
+                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"], "branch":branch}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -776,12 +776,13 @@ class UpdateView(Option, WorkspaceDirHandler):
         config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ")
         config.set(self.SECTION_SPACK_PROJECTS, "script", " ")
 
-def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
+def activateSubproject(repo='', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
     filterArg = args["filterArg"]
+    branch = args["branch"]
     logging.info(f"Activating Nested Subproject {subprojectName}")
-    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, filterArg, workspace_dir):
+    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
     logging.info(f"Nested Subproject {subprojectName} activated.")
