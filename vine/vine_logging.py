@@ -47,6 +47,7 @@ class GrapeLogger(metaclass=Singleton):
         self.manager = logging.Manager(logging.root)
         self.manager.root.setLevel(logging.DEBUG)
         self._silence_root_logger()
+        self.time_string = ''
 
     def _silence_root_logger(self):
         """
@@ -190,10 +191,11 @@ class StreamHandlerFactory:
 
     @staticmethod
     def _get_formatter(stream=sys.stdout):
+        time_string = GrapeLogger().time_string
         if stream == sys.stdout:
-            return logging.Formatter('GRAPE: %(message)s')
+            return logging.Formatter('GRAPE'+ time_string + ': %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         if stream == sys.stderr:
-            return logging.Formatter('%(levelname)s: %(message)s')
+            return logging.Formatter('%(levelname)s' + time_string + ': %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 
 class SingleLevelFilter(logging.Filter):

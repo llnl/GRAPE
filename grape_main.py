@@ -30,9 +30,10 @@ from vine import version
 CLI =  """
 *** GRAPE - Git Replacement for "Awesome" PARSEC Environment **********
 Calling grape by itself will pull up the grape menu.
-Usage: grape [-v | --vv | -q] [-d] [--np=<numProcs>] [--version] [<command> <args>...]
+Usage: grape [-t] [-v | --vv | -q] [-d] [--np=<numProcs>] [--version] [<command> <args>...]
 
 Options:
+-t           Print time before each logging statement.
 -v           Run in verbose mode. This will print out most git output as git commands complete.
 --vv         Run in very verbose mode. This will print out all git output as git commands complete.
 -q           Quiet mode. Quiet's all output except for user input prompts.
@@ -76,6 +77,9 @@ def startup():
     #additionalConfigFiles = []
     #grapeConfig.read(additionalConfigFiles)
     args = docopt(CLI, version=version.grapeVersion(), options_first=True )
+
+    if args['-t']:
+        logger.time_string = '[%(asctime)s]'
 
     # do not prompt user for input
     if args["-d"]:
