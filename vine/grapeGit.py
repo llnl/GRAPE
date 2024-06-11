@@ -13,7 +13,7 @@ from vine import vine_subprocess
 
 GRAPE_CONFIG = '.grapeconfig'
 GIT_VERY_VERBOSE = False
-GRAPE_GIT_CONFIG_FLAGS = ''
+GRAPE_GIT_CONFIG_FLAGS = '-c feature.manyFiles=true'
 
 def setConfigFlags(flags):
     global GRAPE_GIT_CONFIG_FLAGS
