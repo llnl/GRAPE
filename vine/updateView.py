@@ -652,7 +652,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     previouslyActive = userConfig.getboolean(section, "active")
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(self.workspace_dir, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
-                    filterArg = "" if userConfig.getboolean(section, "disable_clone_filter", False) else args["--filter"]
+                    filterArg = "" if userConfig.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)).split(":")[0]
