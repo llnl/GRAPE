@@ -638,7 +638,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                             fstr = f"--init --filter={filterArg}"
                         else:
                             logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
-                    git.submodule(f"update -N --jobs {jobs} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    git.submodule(f"update --jobs {jobs} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
