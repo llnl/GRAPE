@@ -652,13 +652,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                     previouslyActive = userConfig.getboolean(section, "active")
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(self.workspace_dir, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
+                    filterArg = "" if userConfig.getboolean(section, "disable_clone_filter") else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)).split(":")[0]
                             if subRemoteProtocol != remoteProtocol:
                                 logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
                                 if self.rmNestedSubproject(subproject, args):
-                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"]}))
+                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
                                     userConfig.set(section, "active", "False")
@@ -669,7 +670,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"]}))
+                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
 
                         updatedActiveList.append(subprojectName)
 
