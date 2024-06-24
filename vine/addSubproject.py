@@ -6,6 +6,7 @@ from vine import config_parser_user
 from vine import config_parser_workspace
 from vine import utility
 from vine import grapeGit as git
+from vine import grape_errors
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
