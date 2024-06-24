@@ -162,7 +162,7 @@ class AddSubproject(Option, WorkspaceDirHandler):
         return True
 
     @staticmethod
-    def activateNestedSubproject(subprojectName, userconfig, filterArg, workspace_dir):
+    def activateNestedSubproject(subprojectName, userconfig, branch, filterArg, workspace_dir):
         config = config_parser_global.grapeConfig()
         prefix = config.get(f"nested-{subprojectName}", "prefix")
         url = config.get(f"nested-{subprojectName}", "url")
@@ -174,8 +174,15 @@ class AddSubproject(Option, WorkspaceDirHandler):
         if not currentlyActive:
             destDir = os.path.join(workspace_dir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
-                git.clone(argstr=fstr, source_repo=fullurl, clone_repo=prefix,
-                          execution_path=workspace_dir)
+                try:
+                    git.clone(argstr=f"-b {branch} {fstr}", source_repo=fullurl, clone_repo=prefix, execution_path=workspace_dir)
+                except grape_errors.GrapeGitError as e:
+                    if f"Remote branch {branch} not found" in e.gitOutput:
+                        # Just clone default branch if branch does not exist
+                        git.clone(argstr=f"{fstr}", source_repo=fullurl, clone_repo=prefix, execution_path=workspace_dir)
+                    else:
+                        logging.error(e.gitOutput)
+                        raise e
             elif '.git' in os.listdir(destDir):
                 pass
             else:

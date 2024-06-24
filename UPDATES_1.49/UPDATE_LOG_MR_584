@@ -1,0 +1,17 @@
+
+
+Mon Jun 24 13:39:49 2024 Benjamin T. Liu
+MR_584
+Reviewers: Peter Robinson (He/Him)
+
+Improvements for grape uv with --filter=blob:none
+
+- disable filter for nested subprojects with disable_clone_filter set in .grapeconfig (repos with many binary blobs have performance issues during checkout)
+
+- perform initial subproject clone at specified branch, if present (so only those blobs need to be checked out)
+
+Add --gc options to pass config parameters to git commands
+
+- docopt doesn't quite parse -c key=value correctly
+
+- checkout.workers=-1 and feature.manyFiles=true may be useful for blobless clones

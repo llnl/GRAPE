@@ -99,6 +99,9 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
         --filter=<arg>               Optional clone filter argument.
+                                     This option is ignored in nested-subprojects that have disable_clone_filter set in
+                                     their .grapeconfig section (--filter=blob:none has performance issues with some repos with
+                                     many binary blobs).
                                      WARNING! This is still experimental and may have issues with grape workflows.
                                      In particular, tree:0 has performance issues with git rev-list/log command on specified
                                      files (it appears to download each commit separately).
@@ -652,13 +655,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                     previouslyActive = userConfig.getboolean(section, "active")
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(self.workspace_dir, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
+                    filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)).split(":")[0]
                             if subRemoteProtocol != remoteProtocol:
                                 logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
                                 if self.rmNestedSubproject(subproject, args):
-                                    toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
+                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
                                     userConfig.set(section, "active", "False")
@@ -669,7 +673,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":args["--filter"]}))
+                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -780,8 +784,8 @@ def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
     filterArg = args["filterArg"]
-    logging.info(f"Activating Nested Subproject {subprojectName}")
-    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, filterArg, workspace_dir):
+    logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
+    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
     logging.info(f"Nested Subproject {subprojectName} activated.")
