@@ -1299,6 +1299,9 @@ options are at least listed below.
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
         --filter=<arg>               Optional clone filter argument.
+                                     This option is ignored in nested-subprojects that have disable_clone_filter set in
+                                     their .grapeconfig section (--filter=blob:none has performance issues with some repos with
+                                     many binary blobs).
                                      WARNING! This is still experimental and may have issues with grape workflows.
                                      In particular, tree:0 has performance issues with git rev-list/log command on specified
                                      files (it appears to download each commit separately).
