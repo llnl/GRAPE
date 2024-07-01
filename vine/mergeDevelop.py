@@ -435,7 +435,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                )
        repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
        try:
-           test_branches = lookupActiveMergeTrainBranches_new_version(args, repo)
+           test_branches = self.lookupActiveMergeTrainBranches_new_version(args, repo)
        except Exception as e:
            logging.info(f"lookupActiveMergeTrainBranches_new_version threw exception {e}")
            test_branches = []
