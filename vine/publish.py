@@ -753,11 +753,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
             return True
+
         pullRequest = self.openPullRequest()
         verified = False
+
         if pullRequest:
             verified = pullRequest.approved()
             reviewers = pullRequest.reviewers()
+
             if not verified:
                 if not reviewers:
                     logging.info(
@@ -767,6 +770,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 else:
                     logging.info("The following reviewers have not approved your request:\n")
                     approvedReviewerNames = []
+
                     for reviewer in reviewers:
                         if reviewer[1] is False:
                             logging.info(f"{reviewer[0]} ({reviewer[2]})")
@@ -779,6 +783,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             else:
                 logging.info("All reviewers have approved your request.")
                 self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
+
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
             self.progress["author_email"] = pullRequest.authorEmail()
@@ -788,6 +793,79 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author"] = ""
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
+
+        pullRequests = []
+
+        userMessage = ""
+
+        finishedReviewers = set()
+
+        config = config_parser_global.grapeConfig()
+        recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
+
+        if args["--recurse"]:
+            recurse = True
+
+        if args["--noRecurse"]:
+            recurse = False
+
+        if recurse:
+            public = args["--public"]
+            topic = args["--topic"]
+
+            # Gather pull requests for submodules
+            submodules = git.getModifiedSubmodules(self.workspace_dir, public,
+                                                   topic, includeAdded=True)
+
+            submodulePublicMappings = config.getMapping(self.SECTION_WORKSPACE, "submodulePublicMappings")
+            submodulePublicBranch = submodulePublicMappings[public]
+
+            for submodule in submodules:
+                submoduleRepo = self.codeReviews.repoFromWorkspaceRepoPath(submodule, isSubmodule=True)
+                submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
+                pullRequests.append((submodule, submodulePullRequest))
+
+            # Gather pull requests for subprojects
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+
+            for subproject in self.modifiedNestedProjects:
+                subprojectRepo = self.codeReviews.repoFromWorkspaceRepoPath(subproject, isNested=True)
+                subprojectPullRequest = subprojectRepo.getOpenPullRequest(topic, public)
+
+                pullRequests.append((subproject, subprojectPullRequest))
+
+        # Check all reviews are completed
+        for (repo, pullRequest) in pullRequests:
+            if not pullRequest:
+                userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
+                verified = False
+                continue
+
+            repoVerified = pullRequest.approved()
+            repoReviewers = pullRequest.reviewers()
+
+            if not repoVerified:
+                verified = False
+
+                if not repoReviewers:
+                    userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
+                else:
+                    unfinishedReviewers = " ,".join([f"{reviewer[0]} ({reviewer[2]})" for reviewer in repoReviewers if reviewer[1] is False])
+                    userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
+                    finishedReviewers.update([reviewer[2] for reviewers in repoReviewers if reviewer[1] is True])
+            else:
+                finishedReviewers.update([reviewer[2] for reviewer in repoReviewers])
+
+        if len(finishedReviewers) > 0:
+            self.progress["reviewers"] = ", ".join(finishedReviewers)
+        else:
+            self.progress["reviewers"] = "No reviewers"
+
+        if userMessage:
+            logging.info(f"Code reviews are not completed in the following repo(s):{userMessage}")
+        else:
+            logging.info("All reviewers have approved your request.")
+
         return verified
 
     def testForCleanWorkspace(self, args):
