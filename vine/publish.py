@@ -754,7 +754,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_email"] = ""
             return True
 
-        verified = False
+        verified = True
 
         pullRequests = []
 
