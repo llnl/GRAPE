@@ -838,7 +838,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if userMessage:
             logging.info(f"Code reviews are not completed in the following repo(s):{userMessage}")
         else:
-            logging.info("All reviewers have approved your request.")
+            logging.info("All code reviews have been completed.")
 
         return verified
 
