@@ -754,51 +754,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_email"] = ""
             return True
 
-        pullRequest = self.openPullRequest()
         verified = False
 
-        if pullRequest:
-            verified = pullRequest.approved()
-            reviewers = pullRequest.reviewers()
-
-            if not verified:
-                if not reviewers:
-                    logging.info(
-                        "There are no reviewers for your pull request for " +
-                        f"{args['--topic']} targeting {args['--public']}.")
-                    self.progress["reviewers"] = "No reviewers"
-                else:
-                    logging.info("The following reviewers have not approved your request:\n")
-                    approvedReviewerNames = []
-
-                    for reviewer in reviewers:
-                        if reviewer[1] is False:
-                            logging.info(f"{reviewer[0]} ({reviewer[2]})")
-                        else:
-                            approvedReviewerNames.append(reviewer[2])
-                    if len(approvedReviewerNames) > 0:
-                        self.progress["reviewers"] = ", ".join(approvedReviewerNames)
-                    else:
-                        self.progress["reviewers"] = "No reviewers"
-            else:
-                logging.info("All reviewers have approved your request.")
-                self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
-
-            self.progress["author"] = pullRequest.authorName()
-            self.progress["author_username"] = pullRequest.author()
-            self.progress["author_email"] = pullRequest.authorEmail()
-        else:
-            logging.info("There is no pull request for your current branch.\nStart one using grape review.")
-            self.progress["reviewers"] = "No reviewers"
-            self.progress["author"] = ""
-            self.progress["author_username"] = ""
-            self.progress["author_email"] = ""
-
         pullRequests = []
-
-        userMessage = ""
-
-        finishedReviewers = set()
 
         config = config_parser_global.grapeConfig()
         recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
@@ -834,27 +792,43 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                 pullRequests.append((subproject, subprojectPullRequest))
 
+        # Add top level pull request
+        topPullRequest = self.openPullRequest()
+        pullRequests.append((self.args["--repo"], topPullRequest))
+
         # Check all reviews are completed
+        userMessage = ""
+        finishedReviewers = set()
+
         for (repo, pullRequest) in pullRequests:
             if not pullRequest:
                 userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
                 verified = False
                 continue
 
-            repoVerified = pullRequest.approved()
-            repoReviewers = pullRequest.reviewers()
+            approved = pullRequest.approved()
+            reviewers = pullRequest.reviewers()
 
-            if not repoVerified:
+            if not approved:
                 verified = False
 
-                if not repoReviewers:
+                if not reviewers:
                     userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
                 else:
-                    unfinishedReviewers = " ,".join([f"{reviewer[0]} ({reviewer[2]})" for reviewer in repoReviewers if reviewer[1] is False])
+                    unfinishedReviewers = " ,".join([f"{reviewer[0]} ({reviewer[2]})" for reviewer in reviewers if reviewer[1] is False])
                     userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
-                    finishedReviewers.update([reviewer[2] for reviewers in repoReviewers if reviewer[1] is True])
+                    finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
-                finishedReviewers.update([reviewer[2] for reviewer in repoReviewers])
+                finishedReviewers.update([reviewer[2] for reviewer in reviewers])
+
+        if topPullRequest:
+            self.progress["author"] = pullRequest.authorName()
+            self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
+        else:
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
 
         if len(finishedReviewers) > 0:
             self.progress["reviewers"] = ", ".join(finishedReviewers)
