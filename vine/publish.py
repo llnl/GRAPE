@@ -49,6 +49,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
+                         [--noRecurseSubprojects]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
@@ -86,7 +87,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
-                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse]
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
@@ -107,6 +108,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
     --noRecurse               Do not perform the publish action in submodules.
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
     --topic=<branch>          The branch to publish. Defaults to the current branch.
     --noverify                Set to skip interactive verification of publish commands.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
@@ -753,41 +755,95 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
             return True
-        pullRequest = self.openPullRequest()
-        verified = False
-        if pullRequest:
-            verified = pullRequest.approved()
+
+        verified = True
+
+        public = args["--public"]
+        topic = args["--topic"]
+
+        pullRequests = []
+
+        config = config_parser_global.grapeConfig()
+
+        # Gather pull requests for submodules
+        recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
+
+        if args["--recurse"]:
+            recurse = True
+
+        if args["--noRecurse"]:
+            recurse = False
+
+        if recurse:
+            submodules = git.getModifiedSubmodules(self.workspace_dir, public,
+                                                   topic, includeAdded=True)
+
+            submodulePublicMappings = config.getMapping(self.SECTION_WORKSPACE, "submodulePublicMappings")
+            submodulePublicBranch = submodulePublicMappings[public]
+
+            for submodule in submodules:
+                submoduleRepo = self.codeReviews.repoFromWorkspaceRepoPath(submodule, isSubmodule=True)
+                submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
+                pullRequests.append((submodule, submodulePullRequest))
+
+        # Gather pull requests for subprojects
+        if not args["--noRecurseSubprojects"]:
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+
+            for subproject in self.modifiedNestedProjects:
+                subprojectRepo = self.codeReviews.repoFromWorkspaceRepoPath(subproject, isNested=True)
+                subprojectPullRequest = subprojectRepo.getOpenPullRequest(topic, public)
+
+                pullRequests.append((subproject, subprojectPullRequest))
+
+        # Add top level pull request
+        topPullRequest = self.openPullRequest()
+        pullRequests.append((self.args["--repo"], topPullRequest))
+
+        # Check all reviews are completed
+        userMessage = ""
+        finishedReviewers = set()
+
+        for (repo, pullRequest) in pullRequests:
+            if not pullRequest:
+                userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
+                verified = False
+                continue
+
+            approved = pullRequest.approved()
             reviewers = pullRequest.reviewers()
-            if not verified:
+
+            if not approved:
+                verified = False
+
                 if not reviewers:
-                    logging.info(
-                        "There are no reviewers for your pull request for " +
-                        f"{args['--topic']} targeting {args['--public']}.")
-                    self.progress["reviewers"] = "No reviewers"
+                    userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
                 else:
-                    logging.info("The following reviewers have not approved your request:\n")
-                    approvedReviewerNames = []
-                    for reviewer in reviewers:
-                        if reviewer[1] is False:
-                            logging.info(f"{reviewer[0]} ({reviewer[2]})")
-                        else:
-                            approvedReviewerNames.append(reviewer[2])
-                    if len(approvedReviewerNames) > 0:
-                        self.progress["reviewers"] = ", ".join(approvedReviewerNames)
-                    else:
-                        self.progress["reviewers"] = "No reviewers"
+                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False])
+                    userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
+                    finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
-                logging.info("All reviewers have approved your request.")
-                self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
+                finishedReviewers.update([reviewer[2] for reviewer in reviewers])
+
+        if topPullRequest:
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
             self.progress["author_email"] = pullRequest.authorEmail()
         else:
-            logging.info("There is no pull request for your current branch.\nStart one using grape review.")
-            self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
+
+        if len(finishedReviewers) > 0:
+            self.progress["reviewers"] = ", ".join(finishedReviewers)
+        else:
+            self.progress["reviewers"] = "No reviewers"
+
+        if userMessage:
+            logging.info(f"Code reviews are not completed in the following repo(s):{userMessage}")
+        else:
+            logging.info("All code reviews have been completed.")
+
         return verified
 
     def testForCleanWorkspace(self, args):
