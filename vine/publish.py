@@ -49,6 +49,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
+                         [--noRecurseSubprojects]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
@@ -86,7 +87,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
-                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse]
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
@@ -107,6 +108,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
     --noRecurse               Do not perform the publish action in submodules.
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
     --topic=<branch>          The branch to publish. Defaults to the current branch.
     --noverify                Set to skip interactive verification of publish commands.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
@@ -759,6 +761,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         pullRequests = []
 
         config = config_parser_global.grapeConfig()
+
+        # Gather pull requests for submodules
         recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
 
         if args["--recurse"]:
@@ -771,7 +775,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             public = args["--public"]
             topic = args["--topic"]
 
-            # Gather pull requests for submodules
             submodules = git.getModifiedSubmodules(self.workspace_dir, public,
                                                    topic, includeAdded=True)
 
@@ -783,7 +786,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
                 pullRequests.append((submodule, submodulePullRequest))
 
-            # Gather pull requests for subprojects
+        # Gather pull requests for subprojects
+        if not args["--noRecurseSubprojects"]:
             self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
             for subproject in self.modifiedNestedProjects:
