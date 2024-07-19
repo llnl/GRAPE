@@ -758,6 +758,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         verified = True
 
+        public = args["--public"]
+        topic = args["--topic"]
+
         pullRequests = []
 
         config = config_parser_global.grapeConfig()
@@ -772,9 +775,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             recurse = False
 
         if recurse:
-            public = args["--public"]
-            topic = args["--topic"]
-
             submodules = git.getModifiedSubmodules(self.workspace_dir, public,
                                                    topic, includeAdded=True)
 
