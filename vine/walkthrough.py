@@ -22,7 +22,7 @@ class Walkthrough(Option, WorkspaceDirHandler):
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--fontSize=<font_size>] 
                    [--showUnchanged] [--noFetch] [--mergeDiff | --rawDiff ]
-                   [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
+                   [--noInactive] [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
     Options:
@@ -45,7 +45,6 @@ class Walkthrough(Option, WorkspaceDirHandler):
         --noInactive                Do not show inactive subprojects.
         --noTopLevel                Do not show outer level project.
         --noSubmodules              Do not show submodules.
-        --noSubtrees                Do not show nested subtrees.
         --noNestedSubprojects       Do not show nested subprojects.
         <b1>                        The first branch to compare.
                                     Defaults to the current branch of workspace.
@@ -120,7 +119,6 @@ class Walkthrough(Option, WorkspaceDirHandler):
                     showInactive=not args["--noInactive"],
                     showToplevel=not args["--noTopLevel"],
                     showSubmodules=not args["--noSubmodules"],
-                    showSubtrees=not args["--noSubtrees"],
                     showNestedSubprojects=not args["--noNestedSubprojects"],
                     noFetch=args["--noFetch"],
                     workspace_dir=self.workspace_dir)
@@ -158,7 +156,6 @@ class ProjectManager(WorkspaceDirHandler):
         self.showInactive          = kwargs.get('showInactive', True)
         self.showToplevel          = kwargs.get('showToplevel', True)
         self.showSubmodules        = kwargs.get('showSubmodules', True)
-        self.showSubtrees          = kwargs.get('showSubtrees', True)
         self.showNestedSubprojects = kwargs.get('showNestedSubprojects', True)
 
         # Colors
@@ -264,16 +261,6 @@ class ProjectManager(WorkspaceDirHandler):
                     self.append_project_data(
                         list_item=f"? {proj} <Inactive Submodule>",
                         type_="Inactive Submodule")
-
-        # Subtrees
-        self.subtrees = []
-        if self.showSubtrees:
-            self.subtrees = [self.grapeconfig.get(f'subtree-{proj}', 'prefix') for proj in self.grapeconfig.get(Option.SECTION_SUBTREES, 'names').strip().split()]
-            self.projects.extend(self.subtrees)
-            for proj in self.subtrees:
-                self.append_project_data(
-                    list_item=f"? {proj} <Subtree>",
-                    type_="Subtree")
 
         logging.info("Done.")
 
@@ -494,13 +481,6 @@ class DiffManager(ProjectManager):
                             raise
                         haveDiff = False
                     logging.info("Done.")
-            elif type_.endswith("Subtree"):
-                nestedFiles = git.diff(f"--name-only {self.diffBranchSpec(self.branchA, self.branchB)} {dir_}", execution_path=self.workspace_dir).split()
-                if len(nestedFiles) > 0:
-                    haveDiff = True
-                    for changedFile in changedFiles:
-                        if changedFile.startswith(dir_ + os.path.sep):
-                            changedFiles.remove(changedFile)
 
             if haveDiff:
                 self.setProjectStatus(index, "*")
@@ -601,13 +581,6 @@ class DiffManager(ProjectManager):
                         filename = file
                     if type_ == "Outer":
                         if filename in self.submodules:
-                            continue
-                        inSubtree = False
-                        for subtree in self.subtrees:
-                            if filename.startswith(subtree+os.path.sep):
-                                inSubtree = True
-                                break
-                        if inSubtree:
                             continue
 
                     self.filelist.insert(Tk.END, f"{filedisplay} {statusstring}")

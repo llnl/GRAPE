@@ -114,7 +114,7 @@ Almost all of those grape commands have more options associated with them, which
 And that's all you valued developers need to know! Project maintainers, read on!
 
 ## Setting up a project with Grape.
-If your project is simple, with a single repository and no submodules or subtrees with third party
+If your project is simple, with a single repository and no submodules or nested subprojects with third party
 libraries, then this section should be all you need. Read on for more advanced topics as they come up.
 
 ### Assumptions
@@ -245,29 +245,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 ## Managing Subprojects with grape
 If you'd like to manage third-party library source-code inline with your project, git provides a couple of ways
-to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
-
-Googling submodules vs. subtrees will yield discussions as vehemently
-idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
-based on religion, so it aims to make life easier regardless of your decision, and to hide inherent complexities
-associated with both as much as possible. That said, here is our take on situations appropriate for submodules vs
-situations more appropriate for subtrees:
-
-### The difference between submodules and subtrees
-Google it for details on the technical differences.  Keep in mind as you read forums that a lot of the negative
-side effects of both are mitigated by grape, athough the submodule functionality is perhaps more fully flushed
-out than the subtree functionality at the current stage of development. That said, the internet probably leans
-toward subtrees. In any case, there are still situations where you definitely want one vs. the other, listed
-below.
-
-### When to definitely use subtrees
-1. When only one or two people on your large team are responsible for library updates, and they can be easily trained on
- the relatively small amount of complexity introduced by subtrees.
-2. When, all things being equal, you have lots of team members who are fairly familiar with git and may ignore the
-fact that you are using grape. Subtrees tend to 'just work' for plain 'ol git commands, whereas all developers
-have to be aware of the fact that they are using submodules if they need access to the submodules.
-3. When you have nested subprojects. Subtrees that contain subtrees will work well, submodules that contain submodules
-adds complexity that grape doesn't handle at the moment.
+to do it: Submodules and Subtrees (GRAPE only supports Submodules). GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
 
 ### When to definitely use submodules
 1. When your subprojects consists of mostly large binary blobs (test baselines, art assets, etc.)
@@ -284,7 +262,7 @@ you can use nested subprojects for things like
 
 
 ### Grape's assumptions about subprojects
-We assume that you're using submodules or subtrees as a means to manage pedigree of your code - when you check out
+We assume that you're using submodules as a means to manage pedigree of your code - when you check out
 version 1.2 of your project, you want to make sure you can always build it with the versions of third party libraries
 you had when you developed version 1.2.  We also assume you need to make changes to the third party libs as a regular course of
 business (e.g. portability fixes), and that such changes are expected to be reviewed in the context of changes to
@@ -299,8 +277,7 @@ libBar might have the branches foo_dev and foo_master.
 Using this model allows one to merge in updates to the third-party codebase with your changes in a natural way. If
 desired, it enables relative easy contributions of your fixes to the library when appropriate.
 
-Currently grape doesn't support recursive subprojects. This doesn't matter too much for subtrees, but for submodules
-it might matter a great deal.
+Currently grape doesn't support recursive subprojects. For submodules, this might matter a great deal.
 
 ## How grape works with submodules
 ### relevant sections in the `.grapeconfig`
@@ -312,7 +289,7 @@ it might matter a great deal.
     submodulepublishpolicy = ?:merge
     submodulepublicmappings = ?:master
 
-`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested.
+`subprojecttype` is used when adding new subprojects, and can be set to either submodule (Default) or nested.
 
 `managesubmodules` should be set to True to enable grape managed subprojects. Otherwise, you're on your own.
 
@@ -382,31 +359,6 @@ append links to those pull requests in your project-level pull request.
 ### `grape db`
 When deleting a branch, grape will delete branches of the same name in your submodules.
 
-## How grape works with subtrees
-Grape uses git-subtree, which is part of the contrib/ section of the official git repository. You'll need to install
-git-subtree for grape's subtree features to work.
-
-### relevant subtree `.grapeconfig` sections
-
-    [subtrees]
-    mergepolicy = nosquash
-    pushonpublish = False
-    names = libBar
-
-    [subtree-libBar]
-    prefix = imports/libBar
-    remote = ../libBar
-    topicprefixmappings = ?:
-
-### Adding subtrees.
-Check out the grape addSubproject --help for more details. When you use addSubproject, grape updates the .grapeconfig
-file as appropriate.
-
-
-### `grape publish`
-Grape can be configured to split-push changes in subtrees to their host repository as part of your publish step by
-setting subtrees.pushonpublish to True.
-
 ## How grape works with nested subprojects
 A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish
 actions, gathering information with status, etc. Individual developers decide whether they want the nested subproject in
@@ -426,8 +378,6 @@ the moment includes publish, merge actions (m, mr, and md), and foreach.
     [nested-libBar]
     prefix = imports/libBar
     remote = ../libBar
-
-All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts.
 
 ### relevant nested subproject `.grapeuserconfig` sections
     [nested-libBar]
