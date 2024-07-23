@@ -54,8 +54,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--topic=<branch>]
                          [--noverify]
                          [--nopush] [--noUpdateMD] [--filter=<arg>]
-                         [--pushSubtrees | --noPushSubtrees]
-                         [--forcePushSubtree=<subtreeName>]...
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuild | --noSkipBuild]
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
@@ -117,10 +115,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               WARNING! This is still experimental and may have issues with grape workflows.
                               In particular, tree:0 has performance issues with git rev-list/log command on specified
                               files (it appears to download each commit separately).
-    --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
-                              public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
-                              Set by default if .grapeconfig.subtrees.pushOnPublish is True.
-    --noPushSubtrees          Don't perform a git subtree push.
     --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
                               "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
                               "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
@@ -268,7 +262,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self._key = "publish"
         self._section = "Gitflow Tasks"
         self.branchPrefix = None
-        self.modifiedSubtrees = set()
         self.st_prefixes = {}
         self.st_remotes = {}
         self.st_branches = {}
@@ -280,7 +273,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.ensureSection(self.SECTION_FLOW)
-        config.ensureSection(self.SECTION_SUBTREES)
         config.ensureSection(self.SECTION_PUBLISH)
 
         # workspace defaults
@@ -291,9 +283,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_FLOW, 'publishPolicy', '?:merge')
         config.set(self.SECTION_PUBLISH, 'mergeTrain', 'False')
         config.set(self.SECTION_PUBLISH, 'mergeTrainSubprojectRestrict', '')
-        # subtree publish actions
-        config.set(self.SECTION_SUBTREES, 'names', '')
-        config.set(self.SECTION_SUBTREES, 'pushOnPublish', 'False')
         # build steps
         config.set(self.SECTION_PUBLISH, 'buildCmds', '')
         config.set(self.SECTION_PUBLISH, 'buildDir', '.')
@@ -1773,26 +1762,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 args["--submodulePublic"] = submodulePublic
 
         if not args["--sendEmail"]:
-            # deal with subtrees
-            push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
-            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
-            args["--pushSubtrees"] = push_subtrees
-            if push_subtrees:
-                allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
-                self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
-                for st in allsubtrees:
-                    prefix = config.get(f'subtree-{st}', 'prefix')
-                    if git.diff(f"--name-only {public} {topic} -- " +
-                                f"{os.path.join(self.workspace_dir, prefix)}",
-                                execution_path=self.workspace_dir):
-                        self.modifiedSubtrees.add(st)
-                for st in self.modifiedSubtrees:
-                    self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
-                    self.st_remotes[st] = git.parseSubprojectRemoteURL(
-                        config.get(f'subtree-{st}', 'remote'),
-                        execution_path=self.workspace_dir)
-                    self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
-
             # deal with nested subprojects. 'workspaceDir' is None on purpose.
             self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
@@ -1834,15 +1803,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if self.modifiedOuter:
             maybe_and = "and " if useAnd else ""
             userMsg += f"{maybe_and}{public} for the outer level repo.\n"
-
-        push_subtrees = args["--pushSubtrees"]
-        if push_subtrees:
-            if self.modifiedSubtrees:
-                userMsg += "Additionally, grape will publish the following subtrees to the following destinations:\n"
-                for st in self.modifiedSubtrees:
-                    userMsg += f"subtree: {self.st_prefixes[st]}\t"
-                    userMsg += f"repo: {self.st_remotes[st]}\t"
-                    userMsg += f"branch:{self.st_branches[st]}\n"
 
         proceed = utility.userInput(f"{userMsg}\nProceed? [y/n]", 'y')
         if not proceed:
@@ -1930,43 +1890,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 # restore value for args["--cascade"]
                 args["<<publishedSubmodules>>"] = modifiedSubmodules
                 args["--cascade"] = outerCascadeOption
-
-
-        # push subtrees to their respective remote branches
-        push_subtrees = args["--pushSubtrees"]
-        if push_subtrees:
-            modifiedSubtrees = self.modifiedSubtrees
-            if modifiedSubtrees:
-                proceed = self.verifyPublishTargetsWithUser(args)
-                if proceed:
-                    squash = "--squash" if config.get(self.SECTION_SUBTREES, "mergepolicy").lower() == "squash" else ""
-                    for st in modifiedSubtrees:
-                        logging.info(
-                            f"pushing subtree {self.st_prefixes[st]} " +
-                            f"to {self.st_remotes[st]} " +
-                            f"(branch {self.st_branches[st]})...")
-
-                        try:
-                            git.subtree(
-                                f"push --prefix={self.st_prefixes[st]} " +
-                                f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ",
-                                execution_path=self.workspace_dir)
-                        except grape_errors.GrapeGitError:
-                            # the push can fail if there has never been a subtree add / pull in this repo.
-                            logging.info("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree(
-                                f"pull {squash} " +
-                                f"--prefix={self.st_prefixes[st]} " +
-                                f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ",
-                                execution_path=self.workspace_dir)
-                            git.subtree(
-                                f"push --prefix={self.st_prefixes[st]} " +
-                                f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ",
-                                execution_path=self.workspace_dir)
-                            logging.info("Succeeded!")
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):

@@ -12,7 +12,6 @@ class Option(ABC):
     SECTION_REPO = 'repo'
     SECTION_SPACK_PROJECTS = 'spackProjects'
     SECTION_REVIEW = 'review'
-    SECTION_SUBTREES = 'subtrees'
     SECTION_VERSIONING = 'versioning'
     SECTION_WORKSPACE = 'workspace'
     SECTION_WALKTHROUGH = "walkthrough"

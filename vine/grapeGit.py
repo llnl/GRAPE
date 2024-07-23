@@ -366,7 +366,7 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
             return []
 
     # make sure everything in modifiedSubmodules is in the original list of submodules
-    # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
+    # (this can not be the case if the module existed as a regular directory in the other branch,
     #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
     verifiedSubmodules = []
     for s in modifiedSubmodules:
@@ -632,13 +632,6 @@ def submodule(argstr, *, execution_path, capture_output=True):
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
                   execution_path=execution_path,
                   capture_output=capture_output)
-
-
-def subtree(argstr, *, execution_path):
-    return gitcmd(f"subtree {argstr}",
-                  f"subtree {argstr} failed - maybe subtree isn't installed" \
-                  " on your system?",
-                  execution_path=execution_path)
 
 
 def tag(argstr, *, execution_path):
