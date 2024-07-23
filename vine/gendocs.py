@@ -367,9 +367,6 @@ their workspace by using 'grape uv'.
 Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig
 to know which ones to expect to find in the user's workspace.
 
-nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at
-the moment includes publish, merge actions (m, mr, and md), and foreach.
-
 ### relevant nested subproject `.grapeconfig` sections
 
     [nested]
