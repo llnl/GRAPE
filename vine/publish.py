@@ -781,7 +781,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             for subproject in self.modifiedNestedProjects:
                 url = config.get(f"nested-{subproject}", "url")
-                repo = self.codeReviews.repoFromURL(url, workdspace_dir=self.workspace_dir)
+                prefix = config.get(f"nested-{subproject}", "prefix")
+                subproject_path = os.path.abspath(os.path.join(self.workspace_dir, prefix))
+                repo = self.codeReviews.repoFromURL(url, path=subproject_path)
                 pullRequest = repo.getOpenPullRequest(topic, public)
                 pullRequests.append((subproject, pullRequest))
 

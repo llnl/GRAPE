@@ -182,8 +182,8 @@ class GrapeGitlabAdapter:
         repo = self.project(proj).repo(repo_name)
         return repo
 
-    def repoFromURL(self, url, workspace_dir):
-        absolute_url = git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)
+    def repoFromURL(self, url, path):
+        absolute_url = git.parseSubprojectRemoteURL(url, execution_path=path)
         urlTokens = absolute_url.split('/')
         proj_name = urlTokens[-2]
         repo_name = urlTokens[-1]
