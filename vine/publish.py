@@ -777,13 +777,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         # Gather pull requests for subprojects
         if not args["--noRecurseSubprojects"]:
-            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojects(public, now=topic, workspaceDir=self.workspace_dir, checkRemote=True)
 
             for subproject in self.modifiedNestedProjects:
-                subprojectRepo = self.codeReviews.repoFromWorkspaceRepoPath(subproject, isNested=True)
-                subprojectPullRequest = subprojectRepo.getOpenPullRequest(topic, public)
-
-                pullRequests.append((subproject, subprojectPullRequest))
+                url = config.get(f"nested-{subproject}", "url")
+                repo = self.codeReviews.repoFromURL(url, workdspace_dir=self.workspace_dir)
+                pullRequest = repo.getOpenPullRequest(topic, public)
+                pullRequests.append((subproject, pullRequest))
 
         # Add top level pull request
         topPullRequest = self.openPullRequest()

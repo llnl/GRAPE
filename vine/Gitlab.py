@@ -182,6 +182,15 @@ class GrapeGitlabAdapter:
         repo = self.project(proj).repo(repo_name)
         return repo
 
+    def repoFromURL(self, url, workspace_dir):
+        absolute_url = git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)
+        urlTokens = absolute_url.split('/')
+        proj_name = urlTokens[-2]
+        repo_name = urlTokens[-1]
+        # strip off the git extension
+        repo_name = '.'.join(repo_name.split('.')[:-1])
+        return self.project(proj_name).repo(repo_name)
+
 class Project:
     def __init__(self, gitlab_group, gitlab):
         self.group = gitlab_group
