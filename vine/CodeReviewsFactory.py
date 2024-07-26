@@ -55,13 +55,3 @@ def repoObject(codeReviewsObject, repoName=None, projectName=None):
     repo = codeReviewsObject.project(projectName).repo(repoName)
     return repo
 
-# Return repo object from url
-def repoFromURL(codeReviewsObject, url):
-    absolute_url = git.parseSubprojectRemoteURL(url, execution_path=codeReviewsObject.workspace_dir)
-    urlTokens = absolute_url.split('/')
-    proj_name = urlTokens[-2]
-    repo_name = urlTokens[-1]
-    # strip off the git extension
-    repo_name = '.'.join(repo_name.split('.')[:-1])
-    return codeReviewsObject.project(proj_name).repo(repo_name)
-
