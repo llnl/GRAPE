@@ -82,10 +82,20 @@ class Atlassian:
 
         return None
 
+    # Return repository given the workspace path.
+    # If neither isSubmodule nor isNested is set, path is ignored and the top-level repository is returned.
+    # For nested subprojects, path is the name in grapeconfig [nestedProjects.names].
+    # For submodules, path is the relative path of the submodule from the top level.
+    # topLevelProject is the name of the Bitbucket project, defaults to grapeconfig [project.name].
+    # topLevelRepo is the name of the Bitbucket repo, defaults to grapeconfig [project.repo].
     def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
+        if isSubmodule and isNested:
+            logging.info("isSubmodule and isNested are mutually exclusive")
+            raise SystemExit("Abort")
+
         config = config_parser_global.grapeConfig()
         if isNested:
-            proj = os.path.split(path)[1]
+            proj = path
             nestedProjectURL = config.get(f"nested-{proj}", "url")
             url = git.parseSubprojectRemoteURL(
                 nestedProjectURL, execution_path=self.workspace_dir)
