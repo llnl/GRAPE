@@ -630,15 +630,21 @@ class UpdateView(Option, WorkspaceDirHandler):
                             jobs = 1
                     filterArg = args["--filter"]
                     fstr = ""
+                    gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
                     if filterArg:
-                        gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
                         if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
                             # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
                             # flag to parse correctly, so we add it even though we already inited previously.
                             fstr = f"--init --filter={filterArg}"
                         else:
                             logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
-                    git.submodule(f"update --jobs {jobs} {fstr} {initStr}", execution_path=self.workspace_dir)
+
+                    if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9):
+                        # the --jobs argument is supported for git submodule update starting in 2.9.0.
+                        jobstr = f"--jobs {jobs}"
+                    else:            
+                        jobstr = ""
+                    git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
