@@ -639,8 +639,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         else:
                             logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
 
-                    if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 11):
-                        # the --jobs argument is supported for git submodule update starting in 2.11.0.
+                    if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9):
+                        # the --jobs argument is supported for git submodule update starting in 2.9.0.
                         jobstr = f"--jobs {jobs}"
                     else:            
                         jobstr = ""
