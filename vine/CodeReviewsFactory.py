@@ -23,7 +23,7 @@ def repoFromNestedSubprojectName(codeReviewsObject, subproj_name):
     repo_name = urlTokens[-1]
     # strip off the git extension
     repo_name = '.'.join(repo_name.split('.')[:-1])
-    repo = codeReviewsObject.project(proj).repo(repo_name)
+    return codeReviewsObject.project(proj).repo(repo_name)
 
 # Return repo object given the submodule path (relative to the top-level repository)
 def repoFromSubmodulePath(codeReviewsObject, submodule_path):
@@ -42,7 +42,7 @@ def repoFromSubmodulePath(codeReviewsObject, submodule_path):
 
     # strip off the .git extension
     repo_name = '.'.join(repo_name.split('.')[:-1])
-    repo = codeReviewsObject.project(proj).repo(repo_name)
+    return codeReviewsObject.project(proj).repo(repo_name)
 
 # Return repo object from repo (Gitlab project) and project (Gitlab group) name.
 # Defaults to top-level repository.
