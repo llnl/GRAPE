@@ -6,10 +6,7 @@ import time
 import keyring
 from stashy.stashy import connect as stashy_connect
 import stashy.stashy.errors as stashy_errors
-from vine import config_parser_global
-from vine import grapeGit as git
 from vine import utility
-from vine.option import Option
 
 
 class Atlassian:

@@ -771,7 +771,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             submodulePublicBranch = submodulePublicMappings[public]
 
             for submodule in submodules:
-                submoduleRepo = repoFromSubmodulePath(self.codeReviews, submodule)
+                submoduleRepo = CodeReviewsFactory.repoFromSubmodulePath(self.codeReviews, submodule)
                 submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
                 pullRequests.append((submodule, submodulePullRequest))
 
@@ -783,7 +783,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 url = config.get(f"nested-{subproject}", "url")
                 prefix = config.get(f"nested-{subproject}", "prefix")
                 subproject_path = os.path.abspath(os.path.join(self.workspace_dir, prefix))
-                repo = repoFromURL(self.codeReviews, url)
+                repo = CodeReviewsFactory.repoFromURL(self.codeReviews, url)
                 pullRequest = repo.getOpenPullRequest(topic, public)
                 pullRequests.append((subproject, pullRequest))
 
@@ -1563,11 +1563,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def remoteMerge(self, public, topic, subproject_name, args, isSubmodule, isNested):
         codeReviews = self.codeReviews(args)
         if isNested:
-            remoteRepo = repoFromNestedSubprojectName(codeReviews, subproject_name)
+            remoteRepo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, subproject_name)
         elif isSubmodule:
-            remoteRepo = repoFromSubmodulePath(codeReviews, subproject_name)
+            remoteRepo = CodeReviewsFactory.repoFromSubmodulePath(codeReviews, subproject_name)
         else:
-            remoteRepo = repoObject(codeReviews)
+            remoteRepo = CodeReviewsFactory.repoObject(codeReviews)
 
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:

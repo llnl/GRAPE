@@ -13,11 +13,7 @@ try:
 except ModuleNotFoundError:
     # Don't error out here because this is imported even if GitLab is not used
     pass
-from vine import config_parser_global
-from vine import grape_errors
-from vine import grapeGit as git
 from vine import utility
-from vine.option import Option
 
 
 GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"

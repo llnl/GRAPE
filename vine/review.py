@@ -417,7 +417,7 @@ class Review(Option, WorkspaceDirHandler):
                   pass
 
             repo_name = args["--repo"]
-            repo = repoObject(codeReviews, repoName=repo_name, projectName=project_name)
+            repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
             updatedDescription = request.description()
@@ -484,11 +484,11 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
         git.push(f"origin {branch}", execution_path=repo)
 
     if isNested:
-        codeReview_repo = repoFromNestedSubprojectName(codeReviews, proj)
+        codeReview_repo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, proj)
     elif isSubmodule:
-        codeReview_repo = repoFromSubmodulePath(codeReviews, proj)
+        codeReview_repo = CodeReviewsFactory.repoFromSubmodulePath(codeReviews, proj)
     else:
-        codeReview_repo = repoObject(codeReviews)
+        codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
     #amend the subproject pull request description with the link to the outer pull request
     getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)

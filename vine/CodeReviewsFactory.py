@@ -1,3 +1,8 @@
+import os
+from vine import config_parser_global
+from vine import grapeGit as git
+from vine.option import Option
+
 from vine import Atlassian
 from vine import Gitlab
 
@@ -22,6 +27,7 @@ def repoFromNestedSubprojectName(codeReviewsObject, subproj_name):
 
 # Return repo object given the submodule path (relative to the top-level repository)
 def repoFromSubmodulePath(codeReviewsObject, submodule_path):
+    config = config_parser_global.grapeConfig()
     fullpath = os.path.abspath(os.path.join(codeReviewsObject.workspace_dir,submodule_path))
     wsdir = codeReviewsObject.workspace_dir + os.path.sep
     proj = fullpath.split(wsdir)[1].replace("\\","/")
@@ -41,6 +47,7 @@ def repoFromSubmodulePath(codeReviewsObject, submodule_path):
 # Return repo object from repo (Gitlab project) and project (Gitlab group) name.
 # Defaults to top-level repository.
 def repoObject(codeReviewsObject, repoName=None, projectName=None):
+    config = config_parser_global.grapeConfig()
     if repoName is None:
         repoName = config.get(Option.SECTION_REPO, "name")
     if projectName is None:
