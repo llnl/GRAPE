@@ -185,7 +185,7 @@ class Review(Option, WorkspaceDirHandler):
         target_branch = args["--target"]
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
-        # load pull request from Bitbucket if it already exists
+        # load pull request if it already exists
         wsRepo =  codeReviews.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
 
@@ -417,7 +417,7 @@ class Review(Option, WorkspaceDirHandler):
                   pass
 
             repo_name = args["--repo"]
-            repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
+            repo = repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
             updatedDescription = request.description()
@@ -482,7 +482,13 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     if active and ("--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"])):
         logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
         git.push(f"origin {branch}", execution_path=repo)
-    codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
+
+    if isNested:
+        codeReview_repo = repoFromNestedSubprojectName(codeReviews, proj)
+    elif isSubmodule:
+        codeReview_repo = repoFromSubmodulePath(codeReviews, proj)
+    else:
+        codeReview_repo = repoObject(codeReviews)
 
     #amend the subproject pull request description with the link to the outer pull request
     getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)

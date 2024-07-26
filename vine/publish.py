@@ -771,7 +771,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             submodulePublicBranch = submodulePublicMappings[public]
 
             for submodule in submodules:
-                submoduleRepo = self.codeReviews.repoFromWorkspaceRepoPath(submodule, isSubmodule=True)
+                submoduleRepo = repoFromSubmodulePath(self.codeReviews, submodule)
                 submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
                 pullRequests.append((submodule, submodulePullRequest))
 
@@ -783,7 +783,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 url = config.get(f"nested-{subproject}", "url")
                 prefix = config.get(f"nested-{subproject}", "prefix")
                 subproject_path = os.path.abspath(os.path.join(self.workspace_dir, prefix))
-                repo = self.codeReviews.repoFromURL(url, path=subproject_path)
+                repo = repoFromURL(self.codeReviews, url)
                 pullRequest = repo.getOpenPullRequest(topic, public)
                 pullRequests.append((subproject, pullRequest))
 
@@ -1560,11 +1560,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Type grape publish -h for more details")
         return valid
 
-    def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
+    def remoteMerge(self, public, topic, subproject_name, args, isSubmodule, isNested):
         codeReviews = self.codeReviews(args)
-        remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
-                                                        isSubmodule=isSubmodule,
-                                                        isNested=isNested)
+        if isNested:
+            remoteRepo = repoFromNestedSubprojectName(codeReviews, subproject_name)
+        elif isSubmodule:
+            remoteRepo = repoFromSubmodulePath(codeReviews, subproject_name)
+        else:
+            remoteRepo = repoObject(codeReviews)
+
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
             logging.info(f"remotely merging {topic} into {public}")
@@ -1577,7 +1581,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Failed to do a remote merge.")
         else:
             logging.info(
-                f"Could not find open Pull Request for {topic} in {repo}")
+                f"Could not find open Pull Request for {topic} in {subproject_name}")
         return False
 
     @staticmethod
@@ -1709,7 +1713,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
 
 
-    def publish(self, policy, public, topic, repo, args, isSubmodule=False, isNested=False):
+    def publish(self, policy, public, topic, repo, subproject_name, args, isSubmodule=False, isNested=False):
         # don't bother publishing if public and topic are the same commit
         if git.shortSHA(public, execution_path=repo).strip() \
                 == git.shortSHA(topic, execution_path=repo).strip():
@@ -1719,7 +1723,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if policy == "merge":
             if args["--remoteMerge"]:
                 try:
-                    if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
+                    if self.remoteMerge(public, topic, subproject_name, args, isSubmodule, isNested):
                         return
                     else:
                         logging.error(
@@ -1874,7 +1878,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                          f'--wd={subpath}',
                                          f'--public={submodulePublic}'])
                     with self.temp_work_in_dir(subpath):
-                        self.publish(submodulePolicy, submodulePublic, topic, subpath, args, isSubmodule=True)
+                        self.publish(submodulePolicy, submodulePublic, topic, subpath, subpath, args, isSubmodule=True)
                     #add and commit any new merge commits in submodules as a result of the publish
                     git.add(sub, execution_path=self.workspace_dir)
                 try:
@@ -1895,10 +1899,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-                self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested), args, isNested=True)
+            for nested, nested_path in zip(config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir), config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)):
+                self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested_path), nested, args, isNested=True)
             if self.modifiedOuter:
-                self.publish(policy, public, topic, self.workspace_dir, args)
+                self.publish(policy, public, topic, self.workspace_dir, "Top level", args)
             else:
                 git.checkout(public, execution_path=self.workspace_dir)
             return True
