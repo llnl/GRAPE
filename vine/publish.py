@@ -782,7 +782,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 pullRequests.append((submodule, submodulePullRequest))
 
         # Gather pull requests for subprojects
-        if not args["--noRecurseSubprojects"] and not args["--noReviewSubprojects":
+        if not args["--noRecurseSubprojects"] and not args["--noReviewSubprojects"]:
             self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojects(public, now=topic, workspaceDir=self.workspace_dir, checkRemote=True)
 
             for subproject in self.modifiedNestedProjects:
