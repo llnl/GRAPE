@@ -1,0 +1,9 @@
+
+
+Tue Jul 30 08:46:25 2024 Arlie Capps
+MR_592
+Reviewers: Daniel Taller, Peter Robinson (He/Him)
+
+Prepend r to several regular expression strings.
+
+This turns the strings into raw string literals and allows Grape to run with newer Python on Windows.
