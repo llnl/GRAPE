@@ -69,7 +69,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
-                         [--noReview | --noReviewSubmodules | --noReviewRecurseSubprojects]
+                         [--noReview | --noReviewSubmodules | --noReviewSubprojects]
                          [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
