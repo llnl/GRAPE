@@ -13,11 +13,7 @@ try:
 except ModuleNotFoundError:
     # Don't error out here because this is imported even if GitLab is not used
     pass
-from vine import config_parser_global
-from vine import grape_errors
-from vine import grapeGit as git
 from vine import utility
-from vine.option import Option
 
 
 GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
@@ -142,54 +138,6 @@ class GrapeGitlabAdapter:
             raise SystemExit("Abort")
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
-
-    def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
-        config = config_parser_global.grapeConfig()
-        if isNested:
-            proj = os.path.split(path)[1]
-            nestedProjectURL = config.get(f"nested-{proj}", "url")
-            url = git.parseSubprojectRemoteURL(
-                nestedProjectURL, execution_path=self.workspace_dir)
-            urlTokens = url.split('/')
-            proj = urlTokens[-2]
-            repo_name = urlTokens[-1]
-            # strip off the git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])
-        elif isSubmodule:
-            fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
-            wsdir = self.workspace_dir + os.path.sep
-            proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
-            url = url_map[proj].split('/')
-            if url[-2] == '..':
-               # replace relative path with the top repo project
-               topProjectURL = config.get(f"repo", "url").split('/')
-               url[-2] = topProjectURL[-2]
-            proj = url[-2]
-            repo_name = url[-1]
-
-            # strip off the .git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])
-        else:
-            if topLevelRepo is None:
-                topLevelRepo = config.get(Option.SECTION_REPO, "name")
-            if topLevelProject is None:
-                topLevelProject = config.get(Option.SECTION_PROJECT, "name")
-
-            repo_name = topLevelRepo
-            proj = topLevelProject
-
-        repo = self.project(proj).repo(repo_name)
-        return repo
-
-    def repoFromURL(self, url, path):
-        absolute_url = git.parseSubprojectRemoteURL(url, execution_path=path)
-        urlTokens = absolute_url.split('/')
-        proj_name = urlTokens[-2]
-        repo_name = urlTokens[-1]
-        # strip off the git extension
-        repo_name = '.'.join(repo_name.split('.')[:-1])
-        return self.project(proj_name).repo(repo_name)
 
 class Project:
     def __init__(self, gitlab_group, gitlab):
