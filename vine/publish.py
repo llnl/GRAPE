@@ -69,7 +69,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
-                         [--noReview]
+                         [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                          [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
@@ -190,6 +190,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                               Type grape review --help for valid options.
     --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
+    --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
     --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                               by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
@@ -601,6 +603,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                       f"--target={args['--public']}",
                       f"--user={args['--user']}",
                       f"--verifySSL={args['--verifySSL']}"]
+        if (args["--noRecurse"] or args["--noReviewSubmodules"]) and "--noRecurse" not in newArgs:
+            finalArgs += ["--noRecurse"]
+        if (args["--noRecurseSubprojects"] or args["--noReviewSubprojects"]) and "--noRecurseSubprojects" not in newArgs:
+            finalArgs += ["--noRecurseSubprojects"]
         if len(newArgs) > 0:
             finalArgs += newArgs
         for arg in reviewArgs:
@@ -763,7 +769,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noRecurse"]:
             recurse = False
 
-        if recurse:
+        if recurse and not args["--noReviewSubmodules"]:
             submodules = git.getModifiedSubmodules(self.workspace_dir, public,
                                                    topic, includeAdded=True)
 
@@ -776,7 +782,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 pullRequests.append((submodule, submodulePullRequest))
 
         # Gather pull requests for subprojects
-        if not args["--noRecurseSubprojects"]:
+        if not args["--noRecurseSubprojects"] and not args["--noReviewSubprojects"]:
             self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojects(public, now=topic, workspaceDir=self.workspace_dir, checkRemote=True)
 
             for subproject in self.modifiedNestedProjects:
@@ -1056,11 +1062,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # This assumes that we are in the same workspace that published the changes in the nested subproject.
             # Get the first prior SHA on the branch.
             public = f"{args['--public']}"+"@{1}"
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-            execution_path = os.path.join(self.workspace_dir, nested)
-            modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
-            if len(modified) > 0:
-                self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
+        if not args["--noRecurseSubprojects"]:
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                execution_path = os.path.join(self.workspace_dir, nested)
+                modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
+                if len(modified) > 0:
+                    self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
 
         return True
 
@@ -1765,8 +1772,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 args["--submodulePublic"] = submodulePublic
 
         if not args["--sendEmail"]:
-            # deal with nested subprojects. 'workspaceDir' is None on purpose.
-            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+            if not args["--noRecurseSubprojects"]:
+                # deal with nested subprojects. 'workspaceDir' is None on purpose.
+                self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
             self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
 
@@ -1896,8 +1904,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested, nested_path in zip(config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir), config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)):
-                self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested_path), nested, args, isNested=True)
+            if not args["--noRecurseSubprojects"]:
+                for nested, nested_path in zip(config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir), config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)):
+                    self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested_path), nested, args, isNested=True)
             if self.modifiedOuter:
                 self.publish(policy, public, topic, self.workspace_dir, "Top level", args)
             else:
