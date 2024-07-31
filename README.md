@@ -577,7 +577,7 @@ options are at least listed below.
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
-                         [--noReview]
+                         [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                          [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
@@ -698,6 +698,8 @@ options are at least listed below.
     -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                               Type grape review --help for valid options.
     --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
+    --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
     --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                               by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
