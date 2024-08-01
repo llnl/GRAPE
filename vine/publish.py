@@ -1506,7 +1506,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         #s.connect()
         tolist = msg['To'].split(',')
         tolist.append(myemail)
-        s.sendmail(msg['From'], tolist, msg.as_string())
+        try:
+            s.sendmail(msg['From'], tolist, msg.as_string())
+        except smtplib.SMTPSenderRefused:
+            logging.info("Sender refused, waiting 60 seconds...")
+            time.sleep(60)
+            logging.info("Retrying...")
+            s.sendmail(msg['From'], tolist, msg.as_string())
         s.quit()
 
         # Remove the tempfile
