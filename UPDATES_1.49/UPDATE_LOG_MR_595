@@ -1,0 +1,7 @@
+
+
+Thu Aug  1 08:30:30 2024 Benjamin T. Liu
+MR_595
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Retry publish email message if sender is refused (handles transient SMTP issues)
