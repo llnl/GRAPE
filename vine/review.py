@@ -21,6 +21,8 @@ from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
+_review_description_template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
     """
