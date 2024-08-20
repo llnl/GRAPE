@@ -1043,10 +1043,8 @@ options are at least listed below.
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
-        --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
-        --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing reviewers, title, or description instead of replacing it.
+        --prepend                   Prepend <title> to the existing title instead of replacing it.
+        --append                    Append <title> to the existing title instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising in the top level repo.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's

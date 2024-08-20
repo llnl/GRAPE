@@ -88,10 +88,8 @@ class Review(Option, WorkspaceDirHandler):
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
-        --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
-        --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing reviewers, title, or description instead of replacing it.
+        --prepend                   Prepend <title> to the existing title instead of replacing it.
+        --append                    Append <title> to the existing title instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising in the top level repo.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
@@ -306,8 +304,6 @@ This merge request is related to the merge request at: https://rzlc.llnl.gov/git
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
             title = args["--title"]
-            descr = self.parseDescriptionArgs(args)
-            reviewers = self.parseReviewerArgs(args)
 
         logging.info(f"Updating remote tracking branches for {target_branch}...")
 
@@ -577,10 +573,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
 
     #amend the subproject pull request description with the link to the outer pull request
     getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)
-    subDescr = addLinkToDescription(descr, outerLevelURL)
-    if review_args["--prepend"] or review_args["--append"]:
-        subDescr = descr
-    descr = subDescr
+    descr = addLinkToDescription(descr, outerLevelURL)
 
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, review_args, repo)
     if newRequest:
@@ -679,13 +672,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
             # update the pull request
             logging.info("Updating pull request...")
             try:
-
-                if reviewers:
-                    if args["--prepend"] or args["--append"]:
-                        revList = [r[0] for r in request.reviewers()]
-                    else:
-                        revList = []
-                    reviewers += revList
                 if not reviewers:
                     reviewers = [r[0] for r in request.reviewers()]
                 # Remove duplicate reviewers
@@ -699,16 +685,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         title = title+currentTitle
                     elif args["--append"]:
                         title = currentTitle+title
-                if descr is not None and (args["--prepend"] or args["--append"]):
-                    currentDescription = request.description()
-                    if isinstance(descr, bytes):
-                        descr = descr.decode("utf-8")
-                    if isinstance(currentDescription, bytes):
-                        currentDescription = currentDescription.decode("utf-8")
-                    if args["--prepend"]:
-                        descr = descr + "\n" + currentDescription
-                    elif args["--append"]:
-                        descr = currentDescription + "\n" + descr
 
                 subReviewers = reviewers.copy()
                 if request.author() in subReviewers:
