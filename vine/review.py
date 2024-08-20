@@ -21,7 +21,6 @@ from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
-_review_description_template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
@@ -145,6 +144,9 @@ class Review(Option, WorkspaceDirHandler):
             reviewers = reviewers.replace(',',' ').split()
         return reviewers
 
+    def buildDescriptionTemplate(self):
+        return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+
 
     @log_wrapper
     def execute(self, args):
@@ -209,6 +211,8 @@ class Review(Option, WorkspaceDirHandler):
             if isinstance(pr_description, bytes):
                 pr_description = pr_description.decode("utf-8")
             descr = pr_description
+
+        descriptionTemplate = self.buildDescriptionTemplate()
         
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
