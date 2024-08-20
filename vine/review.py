@@ -147,6 +147,15 @@ class Review(Option, WorkspaceDirHandler):
     def buildDescriptionTemplate(self):
         return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
 
+    def buildDescriptionRegex(self, description_template):
+        # Replace text substitution markers with regex capture groups for parsing
+        description_regex = re.sub(r'\{(.*)\}', r'(?P<\1>.*?)', description_template)
+
+        # Replace newlines with generic whitespace matching for more resiliance
+        description_regex = re.sub('\n+', r'\\s*', description_regex)
+
+        return description_regex
+
 
     @log_wrapper
     def execute(self, args):
@@ -212,7 +221,77 @@ class Review(Option, WorkspaceDirHandler):
                 pr_description = pr_description.decode("utf-8")
             descr = pr_description
 
+        descr = """ROCM fixes
+
+Add gid64 build jobs
+
+CARE update for sequential IntersectArray
+
+- fix incorrect memory allocations when using host_device_ptr overload
+
+- incorrect allocations cause crashes for single memory space
+
+Refactor RAJA reducer in FEusion::sort_faces()
+
+- previous usage did not get correct reducer value when minloc() not called
+
+- checking with RAJA team regarding this issue
+
+Disable optimization for SlideDecompSpatial managed ptr loop for ROCM
+
+- optimized code gives different answers between first and second pass
+
+- appears to be possible compiler bug
+
+Fix BVH calls for ProE shaping
+
+- use Sync execution policy and add gpuDeviceSynchronize per BVHSearch.h
+
+- use types from BVHSearch.h
+
+- fixes crash for ROCM runs
+
+Other fixes
+
+Use sequential IntersectArrays for GIDChompWorld::IdentifySharedData()
+
+- workaround for race condition still under investigation
+
+- fixes CUDA and host-only failures for autotherm4
+
+Miscellaneous fixes
+
+- clean up InitSlideSDLists to have conditional consistent with SCAN_EVERYWHERE loop conditional
+
+- only enable library OPENMP vars if ENABLE_OPENMP for blueos host_config
+
+Test DC review by dawson24, guidance tracked separately
+
+This merge request is related to the merge request at: https://rzlc.llnl.gov/gitlab/ale/imports_care/-/merge_requests/166
+
+This merge request is related to the merge request at: https://rzlc.llnl.gov/gitlab/ale/test/-/merge_requests/1783"""
+
         descriptionTemplate = self.buildDescriptionTemplate()
+        descriptionRegex = self.buildDescriptionRegex(descriptionTemplate)
+        match = re.fullmatch(descriptionRegex, descr, re.DOTALL)
+
+        if match:
+            userDescription = match.group('user_description')
+            relatedReviews = match.group('related_reviews')
+            grapeData = match.group('grape_data')
+        else:
+            oldDescriptionRegex = '(?P<user_description>.*?)(\s*This merge request is related to the merge request at: \S*)*\s*'
+            match = re.fullmatch(oldDescriptionRegex, descr, re.DOTALL)
+
+            if match:
+                userDescription = match.group('user_description')
+                relatedReviews = None # GRAPE is now using a different format
+                grapeData = None
+
+        print(userDescription)
+        print(relatedReviews)
+        print(grapeData)
+        exit(1)
         
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
