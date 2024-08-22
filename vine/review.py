@@ -16,6 +16,7 @@ from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import version
 from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -207,8 +208,12 @@ class Review(Option, WorkspaceDirHandler):
 
         #determine pull request URL
         outerLevelURL = None
+
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
+
+            if not isinstance(outerLevelURL, str):
+                outerLevelURL = outerLevelURL.decode("utf-8")
 
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
@@ -218,56 +223,6 @@ class Review(Option, WorkspaceDirHandler):
             if isinstance(pr_description, bytes):
                 pr_description = pr_description.decode("utf-8")
             descr = pr_description
-
-        descr = """ROCM fixes
-
-Add gid64 build jobs
-
-CARE update for sequential IntersectArray
-
-- fix incorrect memory allocations when using host_device_ptr overload
-
-- incorrect allocations cause crashes for single memory space
-
-Refactor RAJA reducer in FEusion::sort_faces()
-
-- previous usage did not get correct reducer value when minloc() not called
-
-- checking with RAJA team regarding this issue
-
-Disable optimization for SlideDecompSpatial managed ptr loop for ROCM
-
-- optimized code gives different answers between first and second pass
-
-- appears to be possible compiler bug
-
-Fix BVH calls for ProE shaping
-
-- use Sync execution policy and add gpuDeviceSynchronize per BVHSearch.h
-
-- use types from BVHSearch.h
-
-- fixes crash for ROCM runs
-
-Other fixes
-
-Use sequential IntersectArrays for GIDChompWorld::IdentifySharedData()
-
-- workaround for race condition still under investigation
-
-- fixes CUDA and host-only failures for autotherm4
-
-Miscellaneous fixes
-
-- clean up InitSlideSDLists to have conditional consistent with SCAN_EVERYWHERE loop conditional
-
-- only enable library OPENMP vars if ENABLE_OPENMP for blueos host_config
-
-Test DC review by dawson24, guidance tracked separately
-
-This merge request is related to the merge request at: https://rzlc.llnl.gov/gitlab/ale/imports_care/-/merge_requests/166
-
-This merge request is related to the merge request at: https://rzlc.llnl.gov/gitlab/ale/test/-/merge_requests/1783"""
 
         descriptionTemplate = self.buildDescriptionTemplate()
         descriptionRegex = self.buildDescriptionRegex(descriptionTemplate)
@@ -283,14 +238,30 @@ This merge request is related to the merge request at: https://rzlc.llnl.gov/git
 
             if match:
                 userDescription = match.group('user_description')
-                relatedReviews = None # GRAPE is now using a different format
+                relatedReviews = "" # GRAPE is now using a different format
+                grapeData = None
+            else:
+                userDescription = descr
+                relatedReviews = ""
                 grapeData = None
 
-        print(userDescription)
-        print(relatedReviews)
-        print(grapeData)
-        exit(1)
-        
+        if not userDescription:
+            userDescription = ""
+
+        generatedDescription = descriptionTemplate
+        generatedDescription = generatedDescription.replace('{user_description}', userDescription)
+
+        if not relatedReviews:
+            relatedReviews = outerLevelURL
+
+            if not relatedReviews:
+                relatedReviews = "None"
+
+        generatedDescription = generatedDescription.replace('{related_reviews}', relatedReviews)
+
+        grapeData = version.grapeVersion()
+        generatedDescription = generatedDescription.replace('{grape_data}', grapeData)
+
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
@@ -407,7 +378,7 @@ This merge request is related to the merge request at: https://rzlc.llnl.gov/git
                                                                          "isNested": False,
                                                                          "args": args,
                                                                          "target_branch": sub_target_branch,
-                                                                         "descr": descr,
+                                                                         "descr": generatedDescription,
                                                                          "title": title,
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
@@ -436,7 +407,7 @@ This merge request is related to the merge request at: https://rzlc.llnl.gov/git
                                                                     "isNested": True,
                                                                     "args": args,
                                                                     "target_branch": target_branch,
-                                                                    "descr": descr,
+                                                                    "descr": generatedDescription,
                                                                     "title": title,
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
@@ -500,13 +471,23 @@ This merge request is related to the merge request at: https://rzlc.llnl.gov/git
             repo_name = args["--repo"]
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
-            updatedDescription = request.description()
-            if isinstance(updatedDescription, bytes):
-                updatedDescription = updatedDescription.decode("utf-8")
+            request = postPullRequest(repo, title, branch, target_branch, generatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
-            for link in pullRequestLinks:
-                updatedDescription = addLinkToDescription(updatedDescription, link)
+            updatedDescription = descriptionTemplate
+            updatedDescription = updatedDescription.replace('{user_description}', userDescription)
+
+            if pullRequestLinks:
+                for i in range(len(pullRequestLinks)):
+                    if not isinstance(pullRequestLinks[i], str):
+                        pullRequestLinks[i] = pullRequestLinks[i].decode("utf-8")
+
+                relatedReviews = '  \n'.join(pullRequestLinks)
+            else:
+                relatedReviews = 'None'
+
+            updatedDescription = updatedDescription.replace('{related_reviews}', relatedReviews)
+
+            updatedDescription = updatedDescription.replace('{grape_data}', grapeData)
 
             pre_update_description = request.description()
             if isinstance(pre_update_description, bytes):
