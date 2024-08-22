@@ -158,7 +158,7 @@ class Review(Option, WorkspaceDirHandler):
 
         return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
 
-    def buildDescriptionRegex(self, description_template):
+    def buildDescriptionRegex(self, template):
         """
         Converts a description template with placeholders into a regex pattern.
 
@@ -168,7 +168,7 @@ class Review(Option, WorkspaceDirHandler):
         and newlines are replaced with a pattern that matches any amount of whitespace.
 
         Args:
-            description_template (str): A string template containing placeholders.
+            template (str): A string template containing placeholders.
 
         Returns:
             str: A regex pattern that can be used to match and extract data from
@@ -182,12 +182,54 @@ class Review(Option, WorkspaceDirHandler):
         """
 
         # Replace text substitution markers with regex capture groups for parsing
-        description_regex = re.sub(r'\{(.*)\}', r'(?P<\1>.*?)', description_template)
+        regex = re.sub(r'\{(.*)\}', r'(?P<\1>.*?)', template)
 
         # Replace newlines with generic whitespace matching for more resiliance
-        description_regex = re.sub('\n+', r'\\s*', description_regex)
+        regex = re.sub('\n+', r'\\s*', regex)
 
-        return description_regex
+        return regex
+
+    def buildDescription(self, template, data):
+        """
+        Generates a description by replacing placeholders in the template with
+        values from the provided dictionary.
+
+        Args:
+            template (str): The template string containing placeholders (in the format `{placeholder}`).
+            data (dict): A dictionary containing values to replace in the template.
+                         Expected keys: 'user_description', 'related_reviews', and 'grape_data'.
+
+        Returns:
+            str: The generated description with placeholders replaced by actual values.
+
+        Example:
+            >>> template = '{user_description}\n# Related Reviews\n{related_reviews}\n# GRAPE\n{grape_data}'
+            >>> data = {'user_description': 'Adds a new feature', 'related_reviews': 'https://github.com/LLNL/GRAPE/pull/1', 'grape_data': 'v1.49.26'}
+            >>> description = self.buildDescription(template, data)
+            >>> print(description)
+            'Adds a new feature
+             # Related Reviews
+             https://github.com/LLNL/GRAPE/pull/1
+             # GRAPE
+             v1.49.26'
+        """
+
+        # Start with the description template
+        description = template
+
+        # Substitute user description
+        userDescription = data.get('user_description', '')
+        description = description.replace('{user_description}', userDescription)
+
+        # Substitute related reviews
+        relatedReviews = data.get('related_reviews', 'None')
+        description = description.replace('{related_reviews}', relatedReviews)
+
+        # Substitute GRAPE data
+        grapeData = data.get('grape_data', version.grapeVersion())
+        description = description.replace('{grape_data}', grapeData)
+
+        return description
 
 
     @log_wrapper
@@ -282,19 +324,10 @@ class Review(Option, WorkspaceDirHandler):
         if not userDescription:
             userDescription = ""
 
-        generatedDescription = descriptionTemplate
-        generatedDescription = generatedDescription.replace('{user_description}', userDescription)
-
-        if not relatedReviews:
-            relatedReviews = outerLevelURL
-
-            if not relatedReviews:
-                relatedReviews = "None"
-
-        generatedDescription = generatedDescription.replace('{related_reviews}', relatedReviews)
-
-        grapeData = version.grapeVersion()
-        generatedDescription = generatedDescription.replace('{grape_data}', grapeData)
+        descriptionSubstitutions = {'user_description': userDescription,
+                                    'related_reviews': relatedReviews,
+                                    'grape_data': grapeData}
+        updatedDescription = self.buildDescription(descriptionTemplate, descriptionSubstitutions)
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
@@ -412,7 +445,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "isNested": False,
                                                                          "args": args,
                                                                          "target_branch": sub_target_branch,
-                                                                         "descr": generatedDescription,
+                                                                         "descr": updatedDescription,
                                                                          "title": title,
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
@@ -441,7 +474,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "isNested": True,
                                                                     "args": args,
                                                                     "target_branch": target_branch,
-                                                                    "descr": generatedDescription,
+                                                                    "descr": updatedDescription,
                                                                     "title": title,
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
@@ -505,7 +538,7 @@ class Review(Option, WorkspaceDirHandler):
             repo_name = args["--repo"]
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, generatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
             updatedDescription = descriptionTemplate
             updatedDescription = updatedDescription.replace('{user_description}', userDescription)
