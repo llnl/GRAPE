@@ -435,6 +435,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
+        try:
+            git.config("--get user.name", execution_path=self.workspace_dir)
+            git.config("--get user.email", execution_path=self.workspace_dir)
+        except grape_errors.GrapeGitError as e:
+            logging.info("Both user.name and user.email must be specified in your .gitconfig for grape publish!\nUse\n  git config --global user.name <Your Name>\n  git config --global user.email <your_email>@<your_domain>\n")
+            return False
+            
         self.set_progress_file(execution_path=self.workspace_dir)
 
         # this is needed for all custom actions, ensure it is initialized for all cases here
