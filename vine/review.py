@@ -143,9 +143,44 @@ class Review(Option, WorkspaceDirHandler):
         return reviewers
 
     def buildDescriptionTemplate(self):
+        """
+        Constructs a template for the merge/pull request description.
+
+        The template includes placeholders for the user description,
+        related reviews, and grape data.
+
+        Returns:
+            str: A formatted string template with placeholders for:
+                - user_description: The user's merge/pull request description.
+                - related_reviews: Links to related merge/pull requests.
+                - grape_data: Additional data used by GRAPE.
+        """
+
         return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
 
     def buildDescriptionRegex(self, description_template):
+        """
+        Converts a description template with placeholders into a regex pattern.
+
+        This function takes a string template containing placeholders (in the format
+        `{placeholder}`) and transforms it into a regex pattern that can be used
+        for parsing text. The placeholders are replaced with named capture groups,
+        and newlines are replaced with a pattern that matches any amount of whitespace.
+
+        Args:
+            description_template (str): A string template containing placeholders.
+
+        Returns:
+            str: A regex pattern that can be used to match and extract data from
+                 strings formatted according to the provided template.
+
+        Example:
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+            >>> regex_pattern = buildDescriptionRegex(template)
+            >>> print(regex_pattern)
+            '(?P<user_description>.*?)\\s*# Related Reviews\\s*(?P<related_reviews>.*?)\\s*# GRAPE\\s*(?P<grape_data>.*?)'
+        """
+
         # Replace text substitution markers with regex capture groups for parsing
         description_regex = re.sub(r'\{(.*)\}', r'(?P<\1>.*?)', description_template)
 
