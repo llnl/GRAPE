@@ -22,7 +22,6 @@ from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
-
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
     """
@@ -554,7 +553,6 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
 
     #amend the subproject pull request description with the link to the outer pull request
     getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)
-    descr = addLinkToDescription(descr, outerLevelURL)
 
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, review_args, repo)
     if newRequest:
