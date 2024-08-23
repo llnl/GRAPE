@@ -204,7 +204,7 @@ class Review(Option, WorkspaceDirHandler):
 
         Example:
             >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> data = {'user_description': 'Adds a new feature', 'related_reviews': 'https://github.com/LLNL/GRAPE/pull/1', 'grape_data': 'v1.49.26'}
+            >>> data = {'user_description': 'Adds a new feature.', 'related_reviews': 'https://github.com/LLNL/GRAPE/pull/1', 'grape_data': 'v1.49.26'}
             >>> description = self.buildDescription(template, data)
             >>> print(description)
             'Adds a new feature
@@ -226,7 +226,13 @@ class Review(Option, WorkspaceDirHandler):
         description = description.replace('{user_description}', userDescription)
 
         # Substitute related reviews
-        relatedReviews = data.get('related_reviews', 'None')
+        relatedReviews = data.get('related_reviews', [])
+
+        if relatedReviews:
+            relatedReviews = '  \n'.join(relatedReviews)
+        else:
+            relatedReviews = 'None'
+
         description = description.replace('{related_reviews}', relatedReviews)
 
         # Substitute GRAPE data
@@ -235,34 +241,70 @@ class Review(Option, WorkspaceDirHandler):
 
         return description
 
-    def parseDescription(self):
-        descriptionTemplate = self.buildDescriptionTemplate()
-        descriptionRegex = self.buildDescriptionRegex(descriptionTemplate)
-        match = re.fullmatch(descriptionRegex, descr, re.DOTALL)
+    def parseDescription(self, description, template):
+        """
+        Parses a merge/pull request description based on a provided template
+        and extracts relevant data.
+
+        This function uses a regex pattern generated from the provided template
+        to match and extract specific components from the description. If the
+        description does not match the template, it attempts to match an older
+        regex pattern. If neither pattern matches, it defaults to treating the
+        entire description as the user description.
+
+        Args:
+            description (str): The merge/pull request description to be parsed.
+            template (str): The template string used to generate the regex pattern for parsing.
+
+        Returns:
+            dict: A dictionary containing the parsed data with the following keys:
+                - 'user_description': The extracted user description.
+                - 'related_reviews': A list of related merge/pull request links extracted from the description (an empty list if none).
+                - 'grape_data': Additional data used by GRAPE.
+
+        Example 1:
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+            >>> description = 'Adds a new feature.\n\n# Related Reviews\n\nhttps://github.com/LLNL/GRAPE/pull/1\n\n# GRAPE\n\nv1.49.26'
+            >>> result = parseDescription(description, template)
+            >>> print(result)
+            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': 'v1.49.26'}
+
+        Example 2:
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+            >>> description = 'Adds a new feature.\n\nThis merge request is related to the merge request at: https://github.com/LLNL/GRAPE/pull/1'
+            >>> result = parseDescription(description, template)
+            >>> print(result)
+            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': None}
+
+        Notes:
+            - The function uses `re.fullmatch` to ensure the entire description matches the regex pattern.
+            - If the description does not match the new regex, it falls back to an older regex pattern.
+            - If no matches are found, the function defaults to treating the entire description as the user description, with no related reviews or grape data.
+        """
+        data = {}
+
+        regex = self.buildDescriptionRegex(template)
+        match = re.fullmatch(regex, description, re.DOTALL)
 
         if match:
-            userDescription = match.group('user_description')
-            relatedReviews = match.group('related_reviews')
-            grapeData = match.group('grape_data')
+            data['user_description'] = match.group('user_description')
+            data['related_reviews'] = match.group('related_reviews').split()
+            data['grape_data'] = match.group('grape_data')
         else:
-            oldDescriptionRegex = '(?P<user_description>.*?)(\s*This merge request is related to the merge request at: \S*)*\s*'
-            match = re.fullmatch(oldDescriptionRegex, descr, re.DOTALL)
+            oldRegex = '(?P<user_description>.*?)\s*(?<related_reviews>(This merge request is related to the merge request at: \S+\s*)+)'
+            match = re.fullmatch(oldRegex, description, re.DOTALL)
 
             if match:
-                userDescription = match.group('user_description')
-                relatedReviews = "" # GRAPE is now using a different format
-                grapeData = None
+                data['user_description'] = match.group('user_description')
+                data['related_reviews'] = match.group('related_reviews').replace('This merge request is related to the merge request at: ', '').split()
+                data['grape_data'] = None
             else:
-                userDescription = descr
-                relatedReviews = ""
-                grapeData = None
+                data['user_description'] = description
+                data['related_reviews'] = []
+                data['grape_data'] = None
 
-        if not userDescription:
-            userDescription = ""
+        return data
 
-        descriptionSubstitutions = {'user_description': userDescription,
-                                    'related_reviews': relatedReviews,
-                                    'grape_data': grapeData}
 
     @log_wrapper
     def execute(self, args):
@@ -333,33 +375,13 @@ class Review(Option, WorkspaceDirHandler):
             descr = pr_description
 
         descriptionTemplate = self.buildDescriptionTemplate()
-        descriptionRegex = self.buildDescriptionRegex(descriptionTemplate)
-        match = re.fullmatch(descriptionRegex, descr, re.DOTALL)
+        descriptionData = self.parseDescription(descr, descriptionTemplate)
 
-        if match:
-            userDescription = match.group('user_description')
-            relatedReviews = match.group('related_reviews')
-            grapeData = match.group('grape_data')
-        else:
-            oldDescriptionRegex = '(?P<user_description>.*?)(\s*This merge request is related to the merge request at: \S*)*\s*'
-            match = re.fullmatch(oldDescriptionRegex, descr, re.DOTALL)
+        if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
+            descriptionData['related_reviews'].append(outerLevelURL)
+            descriptionData['related_reviews'].sort()
 
-            if match:
-                userDescription = match.group('user_description')
-                relatedReviews = "" # GRAPE is now using a different format
-                grapeData = None
-            else:
-                userDescription = descr
-                relatedReviews = ""
-                grapeData = None
-
-        if not userDescription:
-            userDescription = ""
-
-        descriptionSubstitutions = {'user_description': userDescription,
-                                    'related_reviews': relatedReviews,
-                                    'grape_data': grapeData}
-        updatedDescription = self.buildDescription(descriptionTemplate, descriptionSubstitutions)
+        updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
@@ -518,7 +540,6 @@ class Review(Option, WorkspaceDirHandler):
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
-        pullRequestLinks.sort()
 
         ## OUTER LEVEL REPO
         # load the repo level REST resource
@@ -571,17 +592,21 @@ class Review(Option, WorkspaceDirHandler):
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+            outerLevelURL = request.link()
 
             if pullRequestLinks:
+                if outerLevelURL not in pullRequestLinks:
+                    pullRequestLinks.append(outerLevelURL)
+
                 for i in range(len(pullRequestLinks)):
                     if not isinstance(pullRequestLinks[i], str):
                         pullRequestLinks[i] = pullRequestLinks[i].decode("utf-8")
 
-                descriptionSubstitutions['related_reviews'] = '\n'.join(pullRequestLinks)
+                descriptionData['related_reviews'].sort()
             else:
-                descriptionSubstitutions['related_reviews'] = 'None'
+                descriptionData['related_reviews'] = []
 
-            updatedDescription = self.buildDescription(descriptionTemplate, descriptionSubstitutions)
+            updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
             pre_update_description = request.description()
             if isinstance(pre_update_description, bytes):
