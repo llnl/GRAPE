@@ -158,36 +158,19 @@ class Review(Option, WorkspaceDirHandler):
 
         return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
 
-    def buildDescriptionRegex(self, template):
+    def buildDescriptionRegex(self):
         """
-        Converts a description template with placeholders into a regex pattern.
+        Converts a regex for the merge/pull request description.
 
-        This function takes a string template containing placeholders (in the format
-        `{placeholder}`) and transforms it into a regex pattern that can be used
-        for parsing text. The placeholders are replaced with named capture groups,
-        and newlines are replaced with a pattern that matches any amount of whitespace.
-
-        Args:
-            template (str): A string template containing placeholders.
+        The regex includes capture groups for the user description,
+        related reviews, and grape data.
 
         Returns:
-            str: A regex pattern that can be used to match and extract data from
-                 strings formatted according to the provided template.
-
-        Example:
-            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> regex_pattern = buildDescriptionRegex(template)
-            >>> print(regex_pattern)
-            '(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
+            str: A regex pattern that can be used to match and extract data
+            from the merge/pull request description.
         """
 
-        # Replace text substitution markers with regex capture groups for parsing
-        regex = re.sub(r'\{(.*)\}', r'(?P<\1>.*?)', template)
-
-        # Replace newlines with generic whitespace matching for more resiliance
-        regex = re.sub('\n+', r'\\s*', regex)
-
-        return regex
+        return '(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
 
     def buildDescription(self, template, data):
         """
@@ -292,7 +275,7 @@ class Review(Option, WorkspaceDirHandler):
         if not description:
             return data
 
-        regex = self.buildDescriptionRegex(template)
+        regex = self.buildDescriptionRegex()
         match = re.fullmatch(regex, description, re.DOTALL)
 
         if match:
