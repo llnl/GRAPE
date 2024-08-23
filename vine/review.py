@@ -606,7 +606,9 @@ class Review(Option, WorkspaceDirHandler):
                     if not isinstance(pullRequestLinks[i], str):
                         pullRequestLinks[i] = pullRequestLinks[i].decode("utf-8")
 
-                descriptionData['related_reviews'].sort()
+                pullRequestLinks.sort()
+
+                descriptionData['related_reviews'] = pullRequestLinks
             else:
                 descriptionData['related_reviews'] = []
 
