@@ -203,14 +203,18 @@ class Review(Option, WorkspaceDirHandler):
             str: The generated description with placeholders replaced by actual values.
 
         Example:
-            >>> template = '{user_description}\n# Related Reviews\n{related_reviews}\n# GRAPE\n{grape_data}'
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
             >>> data = {'user_description': 'Adds a new feature', 'related_reviews': 'https://github.com/LLNL/GRAPE/pull/1', 'grape_data': 'v1.49.26'}
             >>> description = self.buildDescription(template, data)
             >>> print(description)
             'Adds a new feature
+
              # Related Reviews
+
              https://github.com/LLNL/GRAPE/pull/1
+
              # GRAPE
+
              v1.49.26'
         """
 
@@ -231,6 +235,34 @@ class Review(Option, WorkspaceDirHandler):
 
         return description
 
+    def parseDescription(self):
+        descriptionTemplate = self.buildDescriptionTemplate()
+        descriptionRegex = self.buildDescriptionRegex(descriptionTemplate)
+        match = re.fullmatch(descriptionRegex, descr, re.DOTALL)
+
+        if match:
+            userDescription = match.group('user_description')
+            relatedReviews = match.group('related_reviews')
+            grapeData = match.group('grape_data')
+        else:
+            oldDescriptionRegex = '(?P<user_description>.*?)(\s*This merge request is related to the merge request at: \S*)*\s*'
+            match = re.fullmatch(oldDescriptionRegex, descr, re.DOTALL)
+
+            if match:
+                userDescription = match.group('user_description')
+                relatedReviews = "" # GRAPE is now using a different format
+                grapeData = None
+            else:
+                userDescription = descr
+                relatedReviews = ""
+                grapeData = None
+
+        if not userDescription:
+            userDescription = ""
+
+        descriptionSubstitutions = {'user_description': userDescription,
+                                    'related_reviews': relatedReviews,
+                                    'grape_data': grapeData}
 
     @log_wrapper
     def execute(self, args):
@@ -540,21 +572,16 @@ class Review(Option, WorkspaceDirHandler):
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
-            updatedDescription = descriptionTemplate
-            updatedDescription = updatedDescription.replace('{user_description}', userDescription)
-
             if pullRequestLinks:
                 for i in range(len(pullRequestLinks)):
                     if not isinstance(pullRequestLinks[i], str):
                         pullRequestLinks[i] = pullRequestLinks[i].decode("utf-8")
 
-                relatedReviews = '  \n'.join(pullRequestLinks)
+                descriptionSubstitutions['related_reviews'] = '\n'.join(pullRequestLinks)
             else:
-                relatedReviews = 'None'
+                descriptionSubstitutions['related_reviews'] = 'None'
 
-            updatedDescription = updatedDescription.replace('{related_reviews}', relatedReviews)
-
-            updatedDescription = updatedDescription.replace('{grape_data}', grapeData)
+            updatedDescription = self.buildDescription(descriptionTemplate, descriptionSubstitutions)
 
             pre_update_description = request.description()
             if isinstance(pre_update_description, bytes):
