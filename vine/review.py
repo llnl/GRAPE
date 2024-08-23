@@ -236,7 +236,11 @@ class Review(Option, WorkspaceDirHandler):
         description = description.replace('{related_reviews}', relatedReviews)
 
         # Substitute GRAPE data
-        grapeData = data.get('grape_data', version.grapeVersion())
+        grapeData = data.get('grape_data', None)
+
+        if not grapeData:
+            grapeData = version.grapeVersion()
+
         description = description.replace('{grape_data}', grapeData)
 
         return description
@@ -291,12 +295,12 @@ class Review(Option, WorkspaceDirHandler):
             data['related_reviews'] = match.group('related_reviews').split()
             data['grape_data'] = match.group('grape_data')
         else:
-            oldRegex = '(?P<user_description>.*?)\s*(?<related_reviews>(This merge request is related to the merge request at: \S+\s*)+)'
+            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)+)'
             match = re.fullmatch(oldRegex, description, re.DOTALL)
 
             if match:
                 data['user_description'] = match.group('user_description')
-                data['related_reviews'] = match.group('related_reviews').replace('This merge request is related to the merge request at: ', '').split()
+                data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
                 data['grape_data'] = None
             else:
                 data['user_description'] = description
@@ -636,8 +640,10 @@ class Review(Option, WorkspaceDirHandler):
 def MRLinkText():
     return "This merge request is related to the merge request at: "
 
+
 def MRBlockDelimiter():
     return "--------------------"
+
 
 def HandlePostPullRequestForRepoMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
@@ -679,16 +685,6 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
         return newRequest.link()
     else:
         return ""
-
-def addLinkToDescription(descr, link):
-    if descr is not None and link:
-        if not isinstance(link, str):
-            link = link.decode("utf-8")
-        if not isinstance(descr, str):
-            descr = descr.decode("utf-8")
-        if link not in descr:
-            descr += f"\n{MRLinkText()}{link}"
-    return descr
 
 
 def getReposPullRequest(repo, branch, target_branch, args):
