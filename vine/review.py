@@ -236,7 +236,7 @@ class Review(Option, WorkspaceDirHandler):
         description = description.replace('{related_reviews}', relatedReviews)
 
         # Substitute GRAPE data
-        grapeData = data.get('grape_data', None)
+        grapeData = data.get('grape_data', '')
 
         if not grapeData:
             grapeData = version.grapeVersion()
@@ -285,7 +285,12 @@ class Review(Option, WorkspaceDirHandler):
             - If the description does not match the new regex, it falls back to an older regex pattern.
             - If no matches are found, the function defaults to treating the entire description as the user description, with no related reviews or grape data.
         """
-        data = {}
+        data = {'user_description': '',
+                'related_reviews': [],
+                'grape_data': ''}
+
+        if not description:
+            return data
 
         regex = self.buildDescriptionRegex(template)
         match = re.fullmatch(regex, description, re.DOTALL)
@@ -301,11 +306,11 @@ class Review(Option, WorkspaceDirHandler):
             if match:
                 data['user_description'] = match.group('user_description')
                 data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
-                data['grape_data'] = None
+                data['grape_data'] = ''
             else:
                 data['user_description'] = description
                 data['related_reviews'] = []
-                data['grape_data'] = None
+                data['grape_data'] = ''
 
         return data
 
