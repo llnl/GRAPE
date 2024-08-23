@@ -178,7 +178,7 @@ class Review(Option, WorkspaceDirHandler):
             >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
             >>> regex_pattern = buildDescriptionRegex(template)
             >>> print(regex_pattern)
-            '(?P<user_description>.*?)\\s*# Related Reviews\\s*(?P<related_reviews>.*?)\\s*# GRAPE\\s*(?P<grape_data>.*?)'
+            '(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
         """
 
         # Replace text substitution markers with regex capture groups for parsing
