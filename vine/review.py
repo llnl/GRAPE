@@ -291,6 +291,8 @@ class Review(Option, WorkspaceDirHandler):
                 data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
                 data['grape_data'] = ''
             else:
+                logging.warning(f"GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.")
+
                 data['user_description'] = description
                 data['related_reviews'] = []
                 data['grape_data'] = ''
