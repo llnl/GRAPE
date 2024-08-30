@@ -46,7 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noLocal]
+                        [--noLocal | --pushPullRequestOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
 
@@ -101,6 +101,8 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --pushPullRequestOnly       Only push in repos where we are posting pull requests. By default, the entire local
+                                    workspace will be pushed to ensure consistency.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -336,7 +338,10 @@ class Review(Option, WorkspaceDirHandler):
         #ensure branch is pushed
         if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
             logging.info(f"Pushing {branch} to {codeReviews.url}...")
-            git.push(f"origin {branch}", execution_path=self.workspace_dir)
+            if "--pushPullRequestOnly" not in args or ("--pushPullRequestOnly" in args and not args["--pushPullRequestOnly"]):
+                grapeMenu.menu().applyMenuChoice("push")
+            else:
+                git.push(f"origin {branch}", execution_path=self.workspace_dir)
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
