@@ -46,7 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noLocal | --pushPullRequestOnly]
+                        [--noLocal | --pushModifiedOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
 
@@ -101,8 +101,9 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-        --pushPullRequestOnly       Only push in repos where we are posting pull requests. By default, the entire local
-                                    workspace will be pushed to ensure consistency.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch), respecting
+                                    the --recurse/--noRecurse/--noRecurseSubprojects arguments.
+                                    By default, the entire local workspace will be pushed to ensure consistency.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -621,8 +622,8 @@ class Review(Option, WorkspaceDirHandler):
 
             logging.info(f"Request generated/updated:\n\n{request}")
 
-            if "--pushPullRequestOnly" not in args or not args["--pushPullRequestOnly"]:
-                logging.info(f"Pushing {branch} from workspace (use --pushPullRequestOnly to skip this step)...")
+            if "--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]:
+                logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly to skip this step)...")
                 grapeMenu.menu().applyMenuChoice("push")
         return True
 
