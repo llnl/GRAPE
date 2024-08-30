@@ -338,10 +338,8 @@ class Review(Option, WorkspaceDirHandler):
         #ensure branch is pushed
         if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
             logging.info(f"Pushing {branch} to {codeReviews.url}...")
-            if "--pushPullRequestOnly" not in args or ("--pushPullRequestOnly" in args and not args["--pushPullRequestOnly"]):
-                grapeMenu.menu().applyMenuChoice("push")
-            else:
-                git.push(f"origin {branch}", execution_path=self.workspace_dir)
+            git.push(f"origin {branch}", execution_path=self.workspace_dir)
+        
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
@@ -622,6 +620,10 @@ class Review(Option, WorkspaceDirHandler):
                                           add_labels=add_labels, remove_labels=remove_labels)
 
             logging.info(f"Request generated/updated:\n\n{request}")
+
+            if "--pushPullRequestOnly" not in args or ("--pushPullRequestOnly" in args and not args["--pushPullRequestOnly"]):
+                logging.info(f"Pushing {branch} from workspace (use --pushPullRequestOnly to skip this step)...")
+                grapeMenu.menu().applyMenuChoice("push")
         return True
 
 
