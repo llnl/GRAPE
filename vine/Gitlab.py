@@ -511,9 +511,6 @@ class PullRequest:
     def authorName(self):
         return self.mergerequest.author["name"]
 
-    def authorName(self):
-        return self.mergerequest.author["name"]
-
     def authorEmail(self):
         authorID = self.mergerequest.author["id"]
         # This will only return a non-empty value if the public email has been set
@@ -576,13 +573,20 @@ class PullRequest:
     def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
+
         if description:
             self.mergerequest.description = description
+
         if reviewers:
+            all_reviewer_ids = set()
+
             for approval_rule_name in reviewers:
-                (users,numRequired) = reviewers[approval_rule_name]
+                users = reviewers[approval_rule_name]
+                numRequired = len(users)
+
                 if users:
                     reviewer_ids = []
+
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
                         if matching_reviewers:
@@ -591,8 +595,13 @@ class PullRequest:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
+
                     self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
-                    self.mergerequest.reviewer_ids = reviewer_ids
+
+                    for reviewer_id in reviewer_ids:
+                        all_reviewer_ids.add(reviewer_id)
+
+            self.mergerequest.reviewer_ids = list(all_reviewer_ids)
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)

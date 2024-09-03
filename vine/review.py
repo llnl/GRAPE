@@ -300,6 +300,105 @@ class Review(Option, WorkspaceDirHandler):
         return data
 
 
+    def getSavedArgs(self, descriptionData):
+        """
+        Extracts saved arguments from the merge/pull request description.
+
+        :param descriptionData: Data extracted from the merge/pull request description
+        :return: A dictionary where keys are argument names and values are argument values
+        """
+        savedArgs = {}
+
+        if descriptionData:
+            grapeData = descriptionData['grape_data']
+
+            if grapeData:
+                grapeDataLines = grapeData.split('\n')
+
+                for line in grapeDataLines:
+                    if line.startswith("--"):
+                        tokens = line.split("=")
+
+                        if len(tokens) == 2:
+                            savedArgs[tokens[0].strip()] = tokens[1].strip()
+
+        return savedArgs
+
+
+    def parseReviewers(self, args):
+        '''
+        Extracts reviewer groups from the --reviewers argument.
+        The argument should be in the following form:
+
+        <rule>:<username>[,<username>]*[\s+<rule>:<username>[,<username>]*]*
+
+        e.g.
+
+        --reviewers="rule1:username1,username2 rule2:username1,username2"
+
+        :param args: A dictionary containing args to a prior or current GRAPE call
+        :return: A dictionary where each key is a review rule name and the value is a set of reviewers.
+        '''
+
+        # TODO: Warn/error if the same rule appears twice
+
+        reviewers = {}
+
+        # Parse reviewers from saved arguments
+        arg = args.get("--reviewers")
+
+        if arg is not None:
+            try:
+                reviewerGroups = arg.split()
+
+                for reviewerGroup in reviewerGroups:
+                    tokens = reviewerGroup.split(":")
+                    groupName = tokens[0]
+                    groupReviewers = set(tokens[1].split(","))
+                    reviewers[groupName] = groupReviewers
+            except Exception:
+                logging.error(f"GRAPE: The saved --reviewers argument should be in the following form:\n\t<rule>:<username>[,<username>]*[\s+<rule>:<username>[,<username>]*]*\n\te.g. --reviewers='rule1:username1,username2 rule2:username3,username4'")
+                exit(1)
+
+        # Return the dictionary of reviewers
+        return reviewers
+
+
+    def updateArgsFromSavedArgs(self, args, savedArgs):
+        '''
+        '''
+        # Copy current args
+        updatedArgs = args
+
+        # Update --reviewers arg
+        savedReviewers = self.parseReviewers(savedArgs)
+        currentReviewers = self.parseReviewers(args)
+
+        updatedReviewers = savedReviewers
+        for reviewRuleName in currentReviewers:
+            updatedReviewers[reviewRuleName] = currentReviewers[reviewRuleName]
+
+        newReviewersArg = ''
+        for reviewRuleName in updatedReviewers:
+            newReviewersArg += f'{reviewRuleName}:{",".join(updatedReviewers[reviewRuleName])}'
+
+        updatedArgs['--reviewers'] = newReviewersArg
+
+        # Return updated args
+        return updatedArgs
+
+
+    def buildGrapeData(self, args):
+        '''
+        '''
+        grapeData = version.grapeVersion()
+
+        if '--reviewers' in args and args['--reviewers']:
+            grapeData += f'\n{args["--reviewers"]}'
+
+        return grapeData
+
+
     @log_wrapper
     def execute(self, args):
         """
@@ -375,17 +474,22 @@ class Review(Option, WorkspaceDirHandler):
             descriptionData['related_reviews'].append(outerLevelURL)
             descriptionData['related_reviews'].sort()
 
+        savedArgs = self.getSavedArgs(descriptionData)
+        self.updateArgsFromSavedArgs(args, savedArgs)
+        descriptionData['grape_data'] = self.buildGrapeData(args)
         updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
+
+        # Determine pull request reviewers
+        reviewers = self.parseReviewers(args)
+
+        # TODO: Handle the case where --reviewers is not in current or saved args, but the outer level request has reviewers
+        #if reviewers is None and existingOuterLevelRequest is not None:
+            #reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
         project_reviewer_lists = {}
-
-        # determine pull request reviewers
-        reviewers = self.parseReviewerArgs(args)
-        if reviewers is None and existingOuterLevelRequest is not None:
-            reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
 
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
