@@ -341,7 +341,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                             if allowForcePushForFork:
                                 # Set to allow maintainers merge and force push
                                 replaced = repo.setProtectedBranch(branch, 40, 40, 0, True)
-                                logging.info(f"\tAllowing force push for {branch} (make sure to change this back!)")
+                                logging.info(f"\tAllowing force push for {branch} (make sure to change this back using grape gitlab-admin --setProtectedBranches!)")
                             else:
                                 # Set to allow developers+maintainers (or specified user/group) to merge and push, but not to force push
                                 replaced = repo.setProtectedBranch(branch, 30, 30, subprojectPublishId, False)
