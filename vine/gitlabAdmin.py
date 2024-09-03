@@ -292,6 +292,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         disableLFS = args["--disableLFS"] or args["--allRepoSettings"]
         addSubprojectCIAccess = args["--addSubprojectCIAccess"] or args["--allRepoSettings"]
         requirePipelineSuccess = args["--requirePipelineSuccess"] or args["--allRepoSettings"]
+
+        allowForcePushForFork = args["--allowForcePushForFork"]
       
         warnings = []
         if setProtectedBranches or allowForcePushForFork or setKeepMRApprovals or disableLFS or addSubprojectCIAccess or requirePipelineSuccess:
