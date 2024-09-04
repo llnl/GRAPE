@@ -325,7 +325,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        log_descriptions = None
        target_SHA = None
        versionTag_SHA = None
-       car_dict = {}
+       car_dict = []
        # first pass - build up a dictionary of relevant MRs, grab our own target branch, target sha, and log descriptions
        for car in mergeTrainCars:
            # Use the merge request to look up the branch
