@@ -1967,6 +1967,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("********************************************************************************")
             logging.info(f"Please manually add to Merge Train")
             logging.info("********************************************************************************")
+            return False
         return True
 
 

@@ -1,0 +1,18 @@
+
+
+Tue Sep  3 09:35:39 2024 Benjamin T. Liu
+MR_602
+Reviewers: Peter Robinson (He/Him)
+
+Update GitLab authentication to check for access to group (project)
+
+- the previous check failed to recognize an invalid token because of groups that are accessible to all users
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.28
