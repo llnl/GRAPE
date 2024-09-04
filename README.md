@@ -1377,7 +1377,7 @@ options are at least listed below.
                               [--verbose]
                               [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
-                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>]]
+                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>] | --allowForcePushForFork]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--addSubprojectCIAccess]
@@ -1410,6 +1410,8 @@ options are at least listed below.
         --subprojectMergeTrainRestrict=<group_or_user>
                                     If merge trains are enabled, only allow merges in subprojects from this group or user.
                                     [default: .grapeconfig.publish.mergeTrainSubprojectRestrict]
+        --allowForcePushForFork     Protect public branches to only allow maintainers and above to push, but allow force
+                                    pushes. This should only be enabled temporarily during fork.
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
