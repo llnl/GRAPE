@@ -399,6 +399,107 @@ class Review(Option, WorkspaceDirHandler):
         return grapeData
 
 
+    def parseReviewRules(self):
+        """
+        Parses the global GRAPE config file and returns a dictionary of review rules.
+
+        :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+        """
+
+        reviewRules = {}
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        if config.has_section(self.SECTION_REVIEW):
+            reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
+
+            for reviewRuleName in reviewRuleNames:
+                sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
+
+                if not config.has_section(sectionName):
+                    logging.error(f"GRAPE: Global config section '{sectionName}' is missing.")
+                    exit(1)
+
+                # Default to all repositories
+                repositories = [".+"]
+
+                if config.has_option(sectionName, "repositories"):
+                    repositories = config.get(sectionName, "repositories").split()
+
+                # Default to all reviewers
+                eligibleReviewers = [".+"]
+
+                if config.has_option(sectionName, "eligiblereviewers"):
+                    eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+
+                minNumReviewers = 1
+
+                if config.has_option(sectionName, "minnumreviewers"):
+                    minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                label = f"GRAPE: {reviewRuleName} review"
+
+                if config.has_option(sectionName, "label"):
+                    label = config.get(sectionName, "label")
+
+                reviewRules[reviewRuleName] = {
+                    "repositories": repositories,
+                    "eligibleReviewers": eligibleReviewers,
+                    "minNumReviewers": minNumReviewers,
+                    "label": label
+                }
+
+        return reviewRules
+
+
+    def validateReviewers(self, reviewers, grapeReviewRules):
+        """
+        Validates that the reviewers fit the GRAPE review rules.
+
+        :param reviewers: A dictionary where each key is a review rule name and the value is a set of reviewers.
+        :param grapeReviewRules: A dictionary where each key is a review rule name and the value is a dictionary representing the rule.
+        """
+
+        error = False
+
+        for reviewRuleName in reviewers:
+            # Check if the approval rule name exists in grape review rules
+            if reviewRuleName not in grapeReviewRules:
+                logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not a review rule.')
+                error = True
+                continue
+
+            grapeReviewRule = grapeReviewRules[reviewRuleName]
+
+            # Check if all reviewers are eligible
+            groupReviewers = reviewers[reviewRuleName]
+            eligibleReviewers = grapeReviewRule["eligibleReviewers"]
+
+            for groupReviewer in groupReviewers:
+                valid = False
+
+                for eligibleReviewer in eligibleReviewers:
+                    if re.fullmatch(eligibleReviewer, groupReviewer):
+                        valid = True
+                        break
+
+                if not valid:
+                    logging.error(f'GRAPE: ERROR: "{groupReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
+                    error = True
+
+            # Warn if the minimum number of reviewers has not been met, but proceed
+            minNumReviewers = grapeReviewRule["minNumReviewers"]
+
+            if len(groupReviewers) < minNumReviewers:
+                logging.warning(f"GRAPE: WARNING: {minNumReviewers} reviewer(s) required, but only {len(groupReviewers)} reviewer(s) given.")
+
+        if error:
+            exit(1)
+
+        return
+
+
     @log_wrapper
     def execute(self, args):
         """
@@ -481,6 +582,8 @@ class Review(Option, WorkspaceDirHandler):
 
         # Determine pull request reviewers
         reviewers = self.parseReviewers(args)
+        grapeReviewRules = self.parseGrapeReviewRules()
+        self.validateReviewers(reviewers, grapeReviewRules)
 
         # TODO: Handle the case where --reviewers is not in current or saved args, but the outer level request has reviewers
         #if reviewers is None and existingOuterLevelRequest is not None:
@@ -586,6 +689,16 @@ class Review(Option, WorkspaceDirHandler):
                        changed = True 
 
                 if changed:
+                    submoduleReviewers = {}
+
+                    for reviewRuleName in reviewers:
+                        reviewRule = grapeReviewRules[name]
+                        reviewRuleRepositoryList = grapeReviewRules["repositories"]
+
+                        for reviewRuleRepository in reviewRuleRepositoryList:
+                            if re.fullmatch(reviewRuleRepository, submodule):
+                                submoduleReviewers[reviewRuleName] = reviewers[reviewRuleName]
+
                     reviewer_list = {}
                     if submodule in projects_with_reviewer_lists:
                         reviewer_list_name = config.get(f"{submodule}-reviewers","reviewer_list_name")
@@ -601,7 +714,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "title": title,
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
-                                                                         "reviewers": reviewers,
+                                                                         "reviewers": submoduleReviewers,
                                                                          "reviewer_list" : reviewer_list,
                                                                          "active": submodule in activeSubmodules }]))
                     project_reviewer_lists.update(reviewer_list)
@@ -614,6 +727,16 @@ class Review(Option, WorkspaceDirHandler):
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+               subprojectReviewers = {}
+
+               for reviewRuleName in reviewers:
+                   grapeReviewRule = grapeReviewRules[reviewRuleName]
+                   reviewRuleRepositoryList = grapeReviewRule["repositories"]
+
+                   for reviewRuleRepository in reviewRuleRepositoryList:
+                       if re.fullmatch(reviewRuleRepository, proj):
+                           subprojectReviewers[reviewRuleName] = reviewers[reviewRuleName]
+
                reviewer_list = {}
                if proj in projects_with_reviewer_lists:
                    reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
@@ -630,7 +753,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "title": title,
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
-                                                                    "reviewers": reviewers,
+                                                                    "reviewers": subprojectReviewers,
                                                                     "reviewer_list" : reviewer_list,
                                                                     "active": proj in activeNestedSubprojects}]))
                project_reviewer_lists.update(reviewer_list)
@@ -689,6 +812,17 @@ class Review(Option, WorkspaceDirHandler):
             repo_name = args["--repo"]
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
+
+            outerReviewers = {}
+
+            for reviewRuleName in reviewers:
+                reviewRule = grapeReviewRules[reviewRuleName]
+                reviewRuleRepositoryList = reviewRule["repositories"]
+
+                for reviewRuleRepository in reviewRuleRepositoryList:
+                    if re.fullmatch(reviewRuleRepository, repo_name):
+                        outerReviewers[reviewRuleName] = reviewers[reviewRuleName]
+
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
             outerLevelURL = request.link()
 
@@ -714,7 +848,7 @@ class Review(Option, WorkspaceDirHandler):
             if updatedDescription != pre_update_description:
                 request = postPullRequest(repo, title, branch, target_branch,
                                           updatedDescription,
-                                          reviewers,
+                                          outerReviewers,
                                           project_reviewer_lists,
                                           args,
                                           self.workspace_dir,
@@ -863,10 +997,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
             # update the pull request
             logging.info("Updating pull request...")
             try:
-                if not reviewers:
-                    reviewers = [r[0] for r in request.reviewers()]
+                #if not reviewers:
+                #    reviewers = [r[0] for r in request.reviewers()]
                 # Remove duplicate reviewers
-                reviewers = list(set(reviewers))
+                #reviewers = list(set(reviewers))
                 logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
 
@@ -877,12 +1011,18 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     elif args["--append"]:
                         title = currentTitle+title
 
+                author = request.author()
                 subReviewers = reviewers.copy()
-                if request.author() in subReviewers:
-                    logging.info(
-                            f"{request.author()} is the author of the pull" +
-                            " request and cannot be a reviewer")
-                    subReviewers.remove(request.author())
+
+                for reviewRuleName in subReviewers:
+                    ruleReviewers = subReviewers[reviewRuleName]
+
+                    if author in ruleReviewers:
+                        logging.info(
+                                f"{author} is the author of the pull" +
+                                " request and cannot be a reviewer")
+                        subReviewers[reviewRuleName].remove(author)
+
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     logging.info(
                         f"updating request with title={title}, " +
