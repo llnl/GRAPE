@@ -399,6 +399,13 @@ class Review(Option, WorkspaceDirHandler):
         return grapeData
 
 
+    def getDefaultReviewRules(self):
+        return {'grape': {'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+                          'repositories': ['.+'],
+                          'eligibleReviewers': ['.+'],
+                          'minNumReviewers': 2}}
+
+
     def parseReviewRules(self):
         """
         Parses the global GRAPE config file and returns a dictionary of review rules.
@@ -450,7 +457,22 @@ class Review(Option, WorkspaceDirHandler):
                     "label": label
                 }
 
+        if not reviewRules:
+            reviewRules = self.getDefaultReviewRules()
+
         return reviewRules
+
+
+    def parseDefaultReviewRule(self):
+        defaultReviewRule = 'grape'
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        if config.has_section(self.SECTION_REVIEW):
+            defaultReviewRule = config.get(self.SECTION_REVIEW, "defaultrule")
+
+        return defaultReviewRule
 
 
     def validateReviewers(self, reviewers, grapeReviewRules):
@@ -570,19 +592,36 @@ class Review(Option, WorkspaceDirHandler):
 
         descriptionTemplate = self.buildDescriptionTemplate()
         descriptionData = self.parseDescription(descr, descriptionTemplate)
+        savedArgs = self.getSavedArgs(descriptionData)
 
+        # Get review rules
+        reviewRules = self.parseReviewRules()
+        defaultReviewRule = self.parseDefaultReviewRule()
+
+        # Determine merge/pull request reviewers
+        reviewers = {}
+
+        if defaultReviewRule and existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
+            reviewers[defaultReviewRule] = [r[0] for r in existingOuterLevelRequest.reviewers()]
+
+        reviewers.update(self.parseReviewers(savedArgs))
+        reviewers.update(self.parseReviewers(args))
+
+        newReviewersArg = self.serializeReviewers(reviewers)
+        args['--reviewers'] = newReviewersArg
+
+        # Update description
         if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
             descriptionData['related_reviews'].append(outerLevelURL)
             descriptionData['related_reviews'].sort()
 
-        savedArgs = self.getSavedArgs(descriptionData)
-        self.updateArgsFromSavedArgs(args, savedArgs)
+
+        #self.updateArgsFromSavedArgs(args, savedArgs)
         descriptionData['grape_data'] = self.buildGrapeData(args)
         updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
         # Determine pull request reviewers
         reviewers = self.parseReviewers(args)
-        grapeReviewRules = self.parseGrapeReviewRules()
         self.validateReviewers(reviewers, grapeReviewRules)
 
         # TODO: Handle the case where --reviewers is not in current or saved args, but the outer level request has reviewers
