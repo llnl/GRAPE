@@ -624,7 +624,9 @@ class Review(Option, WorkspaceDirHandler):
 
             if ("--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]) and ("--noLocal" not in args or not args["--noLocal"]):
                 logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly/--noLocal to skip this step)...")
-                grapeMenu.menu().applyMenuChoice("push")
+                pushed = grapeMenu.menu().applyMenuChoice("push")
+                if not pushed:
+                    return False
         return True
 
 
