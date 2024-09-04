@@ -300,31 +300,6 @@ class Review(Option, WorkspaceDirHandler):
         return data
 
 
-    def getSavedArgs(self, descriptionData):
-        """
-        Extracts saved arguments from the merge/pull request description.
-
-        :param descriptionData: Data extracted from the merge/pull request description
-        :return: A dictionary where keys are argument names and values are argument values
-        """
-        savedArgs = {}
-
-        if descriptionData:
-            grapeData = descriptionData['grape_data']
-
-            if grapeData:
-                grapeDataLines = grapeData.split('\n')
-
-                for line in grapeDataLines:
-                    if line.startswith("--"):
-                        tokens = line.split("=")
-
-                        if len(tokens) == 2:
-                            savedArgs[tokens[0].strip()] = tokens[1].strip()
-
-        return savedArgs
-
-
     def parseReviewers(self, args):
         '''
         Extracts reviewer groups from the --reviewers argument.
@@ -362,6 +337,31 @@ class Review(Option, WorkspaceDirHandler):
 
         # Return the dictionary of reviewers
         return reviewers
+
+
+    def getSavedArgs(self, descriptionData):
+        """
+        Extracts saved arguments from the merge/pull request description.
+
+        :param descriptionData: Data extracted from the merge/pull request description
+        :return: A dictionary where keys are argument names and values are argument values
+        """
+        savedArgs = {}
+
+        if descriptionData:
+            grapeData = descriptionData['grape_data']
+
+            if grapeData:
+                grapeDataLines = grapeData.split('\n')
+
+                for line in grapeDataLines:
+                    if line.startswith("--"):
+                        tokens = line.split("=")
+
+                        if len(tokens) == 2:
+                            savedArgs[tokens[0].strip()] = tokens[1].strip()
+
+        return savedArgs
 
 
     def updateArgsFromSavedArgs(self, args, savedArgs):
