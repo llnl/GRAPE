@@ -325,14 +325,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        log_descriptions = None
        target_SHA = None
        versionTag_SHA = None
-       car_dict = {}
-       # first pass - build up a dictionary of relevant MRs, grab our own target branch, target sha, and log descriptions
+       car_list = []
+       # first pass - build up a list of relevant MRs, grab our own target branch, target sha, and log descriptions
        for car in mergeTrainCars:
            # Use the merge request to look up the branch
            mr_iid = car.merge_request['iid']
            mr = repo.pullRequests(state="all", id=mr_iid)[0]
            branch = mr.fromRef()
-           car_dict.append({"id":mr_iid, "mr":mr, "from":mr.fromRef(), "to":mr.toRef(), "status":car.status, "car":car})
+           car_list.append({"id":mr_iid, "mr":mr, "from":mr.fromRef(), "to":mr.toRef(), "status":car.status, "car":car})
 
            if branch == current_branch:
               # For the current branch, just register the target branch
@@ -348,7 +348,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            return False
 
        # second pass
-       for entry in car_dict:
+       for entry in car_list:
            mr_iid = entry["id"]
            mr = entry["mr"]
            branch = entry["from"]
@@ -375,12 +375,12 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
              merge_sha = mr.mergerequest.merge_commit_sha
              # If the merge request corresponds to latest tagged version, we don't need to look at this car
              if merge_sha == versionTag_SHA:
-                logging.info(f"NEW: MR {mr_iid} matches {versionTag}, skipping...")
+                logging.info(f"NEW: {status} MR {mr_iid} matches {versionTag}, skipping...")
                 continue
              # If the merge request corresponds to the current target branch, we still may need to consider it,
              # as the nested subprojects may not have been merged yet.
              if merge_sha == target_SHA:
-                logging.info(f"NEW: MR {mr_iid} matches {target_branch}...")
+                logging.info(f"NEW: {status} MR {mr_iid} matches {target_branch}...")
                 order = 0
              else:
                  found_merge = False
@@ -388,11 +388,11 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     order = order + 1
                     if merge_sha in line:
                        found_merge = True
-                       logging.info(f"NEW: {merge_sha} for MR {mr_iid} found...")
+                       logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} found...")
                        break
                  # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
                  if not found_merge:
-                    logging.info(f"NEW: {merge_sha} for MR {mr_iid} not found, skipping...")
+                    logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                     continue
            else:
              # the car is still running, need to determine if it's in the history of our car or not
@@ -403,14 +403,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                order = order + 1
                if merge_sha in line:
                   found_merge = True
-                  logging.info(f"NEW: {merge_sha} for MR {mr_iid} found...")
+                  logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} found...")
                   break
              # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
              if not found_merge:
-               logging.info(f"NEW: {merge_sha} for MR {mr_iid} not found, skipping...")
+               logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                continue
 
-           logging.info(f"NEW: Found branch: {branch} at position {order}.")
+           logging.info(f"NEW: Found branch: {branch} at position {order} ({merged}).")
            branches[order] = branch
 
        # Put the target branch first in the merge train, dropping out any None entries leftover
@@ -489,26 +489,26 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               merge_sha = mr.mergerequest.merge_commit_sha
               # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
               if merge_sha == versionTag_SHA:
-                 logging.info(f"MR {mr_iid} matches {versionTag}, skipping...")
+                 logging.info(f"{car.status} MR {mr_iid} matches {versionTag}, skipping...")
                  break
               # If the merge request corresponds to the current target branch, we still may need to consider it,
               # as the nested subprojects may not have been merged yet.
               if merge_sha == target_SHA:
-                 logging.info(f"MR {mr_iid} matches {target_branch}...")
+                 logging.info(f"{car.status} MR {mr_iid} matches {target_branch}...")
               else:
                   found_merge = False
                   for line in log_descriptions:
                      if merge_sha in line:
                         found_merge = True
-                        logging.info(f"{merge_sha} for MR {mr_iid} found...")
+                        logging.info(f"{car.status} {merge_sha} for MR {mr_iid} found...")
                         break
                   # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
                   if not found_merge:
-                     logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
+                     logging.info(f"{car.status} {merge_sha} for MR {mr_iid} not found, skipping...")
                      continue
 
            # Prepend the branch, since we are looping over the cars backwards
-           logging.info(f"Found branch: {branch}.")
+           logging.info(f"Found branch: {branch} ({car.status}).")
            branches = [branch] + branches
 
        if not target_branch:
