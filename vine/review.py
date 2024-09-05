@@ -284,6 +284,8 @@ class Review(Option, WorkspaceDirHandler):
         if match:
             data['user_description'] = match.group('user_description')
             data['related_reviews'] = match.group('related_reviews').split()
+            if 'None' in data['related_reviews']:
+                data['related_reviews'].remove('None')
             data['grape_data'] = match.group('grape_data')
         else:
             oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)+)'
@@ -380,7 +382,6 @@ class Review(Option, WorkspaceDirHandler):
             descriptionData['related_reviews'].sort()
 
         updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
-
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
@@ -590,21 +591,43 @@ class Review(Option, WorkspaceDirHandler):
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+
+            # Update related reviews
             outerLevelURL = request.link()
+            if not isinstance(outerLevelURL, str):
+                outerLevelURL = outerLevelURL.decode("utf-8")
 
-            if pullRequestLinks:
-                if outerLevelURL not in pullRequestLinks:
-                    pullRequestLinks.append(outerLevelURL)
+            if runInSubmodules and not args["--noRecurseSubprojects"]:
+                updatedReviewLinks = []
 
-                for i in range(len(pullRequestLinks)):
-                    if not isinstance(pullRequestLinks[i], str):
-                        pullRequestLinks[i] = pullRequestLinks[i].decode("utf-8")
+                for link in pullRequestLinks:
+                    if not isinstance(link, str):
+                        link = link.decode("utf-8")
 
-                pullRequestLinks.sort()
+                    updatedReviewLinks.append(link)
 
-                descriptionData['related_reviews'] = pullRequestLinks
+                # Only add outer if there are any submodule/subproject links
+                if updatedReviewLinks:
+                    updatedReviewLinks.append(outerLevelURL)
             else:
-                descriptionData['related_reviews'] = []
+                # Start with related review links scraped from the outer level
+                # merge/pull request description. Then add all the new links if
+                # they are not already in the list.
+                updatedReviewLinks = descriptionData['related_reviews']
+
+                for link in pullRequestLinks:
+                    if not isinstance(link, str):
+                        link = link.decode("utf-8")
+
+                    if link not in updatedReviewLinks:
+                        updatedReviewLinks.append(link)
+
+                if outerLevelURL not in updatedReviewLinks:
+                    updatedReviewLinks.append(outerLevelURL)
+
+            updatedReviewLinks.sort()
+
+            descriptionData['related_reviews'] = updatedReviewLinks
 
             updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
