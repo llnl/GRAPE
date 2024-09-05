@@ -46,7 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noLocal]
+                        [--noLocal | --pushModifiedOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
 
@@ -101,6 +101,9 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch).
+                                    By default, the entire local workspace will be pushed to ensure consistency.
+                                    In either case, --recurse/--noRecurse/--noRecurseSubprojects arguments are respected.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -281,6 +284,8 @@ class Review(Option, WorkspaceDirHandler):
         if match:
             data['user_description'] = match.group('user_description')
             data['related_reviews'] = match.group('related_reviews').split()
+            if 'None' in data['related_reviews']:
+                data['related_reviews'].remove('None')
             data['grape_data'] = match.group('grape_data')
         else:
             oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)+)'
@@ -556,9 +561,10 @@ class Review(Option, WorkspaceDirHandler):
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
-        if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
+        if "--noLocal" not in args or not args["--noLocal"]:
             logging.info(f"Pushing {branch} to {codeReviews.url}...")
             git.push(f"origin {branch}", execution_path=self.workspace_dir)
+        
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
@@ -863,21 +869,46 @@ class Review(Option, WorkspaceDirHandler):
                         outerReviewers[reviewRuleName] = reviewers[reviewRuleName]
 
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+
+            # Update related reviews
             outerLevelURL = request.link()
+            if not isinstance(outerLevelURL, str):
+                outerLevelURL = outerLevelURL.decode("utf-8")
 
-            if pullRequestLinks:
-                if outerLevelURL not in pullRequestLinks:
-                    pullRequestLinks.append(outerLevelURL)
+            if runInSubmodules and not args["--noRecurseSubprojects"]:
+                # Ignore related review links scraped from the outer level
+                # merge/pull request description. Then add all the new
+                # submodule/subproject links. Only add the outer level link
+                # if there are any submodule/subproject links.
+                updatedReviewLinks = []
 
-                for i in range(len(pullRequestLinks)):
-                    if not isinstance(pullRequestLinks[i], str):
-                        pullRequestLinks[i] = pullRequestLinks[i].decode("utf-8")
+                for link in pullRequestLinks:
+                    if not isinstance(link, str):
+                        link = link.decode("utf-8")
 
-                pullRequestLinks.sort()
+                    updatedReviewLinks.append(link)
 
-                descriptionData['related_reviews'] = pullRequestLinks
+                if updatedReviewLinks:
+                    updatedReviewLinks.append(outerLevelURL)
             else:
-                descriptionData['related_reviews'] = []
+                # Start with related review links scraped from the outer level
+                # merge/pull request description. Then add all the new links if
+                # they are not already in the list.
+                updatedReviewLinks = descriptionData['related_reviews']
+
+                for link in pullRequestLinks:
+                    if not isinstance(link, str):
+                        link = link.decode("utf-8")
+
+                    if link not in updatedReviewLinks:
+                        updatedReviewLinks.append(link)
+
+                if outerLevelURL not in updatedReviewLinks:
+                    updatedReviewLinks.append(outerLevelURL)
+
+            updatedReviewLinks.sort()
+
+            descriptionData['related_reviews'] = updatedReviewLinks
 
             updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
@@ -894,6 +925,20 @@ class Review(Option, WorkspaceDirHandler):
                                           add_labels=add_labels, remove_labels=remove_labels)
 
             logging.info(f"Request generated/updated:\n\n{request}")
+
+        if ("--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]) and ("--noLocal" not in args or not args["--noLocal"]):
+            logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly/--noLocal to skip this step)...")
+            
+            # top level was already pushed at the beginning
+            pushArgs = ['push', '--noTopLevel']
+            if not runInSubmodules:
+                pushArgs.append('--noRecurse')
+            if args["--noRecurseSubprojects"]:
+                pushArgs.append('--noRecurseSubprojects')
+
+            pushed = grapeMenu.menu().applyMenuChoice("push", pushArgs)
+            if not pushed:
+                return False
         return True
 
 
@@ -1046,9 +1091,15 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                 if title is not None and (args["--prepend"] or args["--append"]):
                     currentTitle = request.title()
                     if args["--prepend"]:
-                        title = title+currentTitle
+                        if currentTitle.startswith(title):
+                            title = currentTitle
+                        else:
+                            title = title + currentTitle
                     elif args["--append"]:
-                        title = currentTitle+title
+                        if currentTitle.endswith(title):
+                            title = currentTitle
+                        else:
+                            title = currentTitle + title
 
                 author = request.author()
                 subReviewers = reviewers.copy()

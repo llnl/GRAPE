@@ -507,13 +507,15 @@ options are at least listed below.
     
 ## push
 
-    grape push pushes your current branch to origin for your outer level repo and all submodules.
-    it uses 'git push -u origin HEAD' for the git command.
+    grape push pushes your current branch to origin for your outer level repo and all subprojects.
+    it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noRecurse]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.
+    --noTopLevel            Don't perform push in top level repo.
+    --noRecurse             Don't perform pushes in submodules.
+    --noRecurseSubprojects  Don't perform pushes in nested subprojects.
 
     
 ## pull
@@ -1001,7 +1003,7 @@ options are at least listed below.
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noLocal]
+                        [--noLocal | --pushModifiedOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
 
@@ -1056,6 +1058,9 @@ options are at least listed below.
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch).
+                                    By default, the entire local workspace will be pushed to ensure consistency.
+                                    In either case, --recurse/--noRecurse/--noRecurseSubprojects arguments are respected.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -1374,7 +1379,7 @@ options are at least listed below.
                               [--verbose]
                               [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
-                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>]]
+                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>] | --allowForcePushForFork]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--addSubprojectCIAccess]
@@ -1407,6 +1412,8 @@ options are at least listed below.
         --subprojectMergeTrainRestrict=<group_or_user>
                                     If merge trains are enabled, only allow merges in subprojects from this group or user.
                                     [default: .grapeconfig.publish.mergeTrainSubprojectRestrict]
+        --allowForcePushForFork     Protect public branches to only allow maintainers and above to push, but allow force
+                                    pushes. This should only be enabled temporarily during fork.
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.

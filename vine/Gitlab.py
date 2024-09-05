@@ -13,7 +13,9 @@ try:
 except ModuleNotFoundError:
     # Don't error out here because this is imported even if GitLab is not used
     pass
+from vine import config_parser_global
 from vine import utility
+from vine.option import Option
 
 
 GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
@@ -28,7 +30,7 @@ class GrapeGitlabAdapter:
     # default token expiration
     defaultExpiration = 29
 
-    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, *, workspace_dir):
+    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, group = None, *, workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -49,7 +51,11 @@ class GrapeGitlabAdapter:
         self._curl = curl
         password = keyring.get_password(self._service, self._userName)
 
-        if self.auth(self._service, self._userName, password, port, ssh_path, verify=verify):
+        if group is None:
+            # If the group is not specified, get it from the .grapeconfig
+            group = config_parser_global.grapeConfig().get(Option.SECTION_PROJECT, "name")
+
+        if self.auth(self._service, self._userName, password, port, ssh_path, group, verify=verify):
             self.url = url
             logging.info("Connected to Gitlab.")
         else:
@@ -64,7 +70,7 @@ class GrapeGitlabAdapter:
                                            shell=True)
         return completed_process.stdout.decode().strip().split()[1].strip()
 
-    def auth(self, service, username, password, port, ssh_path, verify=True):
+    def auth(self, service, username, password, port, ssh_path, group, verify=True):
         # set a password to something bogus to trigger an authentication error
         if (password is None):
             password = "123456_bad_password"
@@ -81,9 +87,14 @@ class GrapeGitlabAdapter:
                 except:
                     pass
                 if projects:
-                    success = True
+                    # There may be projects (groups) that are visible to all users, so check for our project (group).
+                    if group.lower() in [x.lower() for x in projects]:
+                        success = True
+                    else:
+                        logging.info(f"{group} not accessible. Available groups: {projects}")
+                        raise gitlab.exceptions.GitlabAuthenticationError()
                 else:
-                    logging.info("empty list from gitlab project.")
+                    logging.info("empty list of gitlab groups.")
                     raise gitlab.exceptions.GitlabAuthenticationError()
             except gitlab.exceptions.GitlabAuthenticationError as e:
                 logging.debug(e)
@@ -125,9 +136,9 @@ class GrapeGitlabAdapter:
         else:
             return command
 
-    # Return list of project names
+    # Return list of project names (paths)
     def projectlist(self):
-        return [g.name for g in self._gitlab.groups.list(all=True)]
+        return [g.path for g in self._gitlab.groups.list(all=True)]
 
     def project(self, name, min_access_level=None):
         matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]

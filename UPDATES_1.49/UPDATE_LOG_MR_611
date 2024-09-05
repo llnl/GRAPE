@@ -1,0 +1,19 @@
+
+
+Thu Sep  5 15:54:46 2024 Benjamin T. Liu
+MR_611
+Reviewers: Alan Dayton, Peter Robinson (He/Him)
+
+Updates for looking up active merge train branches
+
+- implemented as 'new' (currently only for comparison) algorithm
+
+- get target_branch from grape config (use single pass)
+
+- restrict merge train lookup to target branch
+
+- preserve correct ordering of branches
+
+- check for SHA in parents of merge commits as well (merge commits in merge train may be ephemeral)
+
+- use merge request SHA rather than merge train pipeline SHA for unmerged cars (pipeline SHA may be ephemeral)

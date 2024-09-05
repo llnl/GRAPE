@@ -24,7 +24,7 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                               [--verbose]
                               [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
-                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>]]
+                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>] | --allowForcePushForFork]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--addSubprojectCIAccess]
@@ -57,6 +57,8 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         --subprojectMergeTrainRestrict=<group_or_user>
                                     If merge trains are enabled, only allow merges in subprojects from this group or user.
                                     [default: .grapeconfig.publish.mergeTrainSubprojectRestrict]
+        --allowForcePushForFork     Protect public branches to only allow maintainers and above to push, but allow force
+                                    pushes. This should only be enabled temporarily during fork.
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.
@@ -290,9 +292,11 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
         disableLFS = args["--disableLFS"] or args["--allRepoSettings"]
         addSubprojectCIAccess = args["--addSubprojectCIAccess"] or args["--allRepoSettings"]
         requirePipelineSuccess = args["--requirePipelineSuccess"] or args["--allRepoSettings"]
+
+        allowForcePushForFork = args["--allowForcePushForFork"]
       
         warnings = []
-        if setProtectedBranches or setKeepMRApprovals or disableLFS or addSubprojectCIAccess or requirePipelineSuccess:
+        if setProtectedBranches or allowForcePushForFork or setKeepMRApprovals or disableLFS or addSubprojectCIAccess or requirePipelineSuccess:
            project = grape_gitlab.project(projectname)
            grapeRepos = self.getGrapeReposAndPublicBranches(project=project, topreponame=topreponame, initialbranch=initialbranch, verbose=args["--verbose"])
 
@@ -304,13 +308,13 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                   logging.info("Skipped. Perhaps you are not an owner or maintainer")
                   continue
 
-               if setProtectedBranches:
+               if setProtectedBranches or allowForcePushForFork:
                   for branch, toplevel_branch in public:
                      # If this is the top level repository and merge trains are enabled,
                      # disable all pushes if merge trains are enabled for the branch.
                      disablePush = False
                      subprojectPublishId = 0
-                     if topRepo.project.merge_trains_enabled:
+                     if topRepo.project.merge_trains_enabled and not allowForcePushForFork:
                          parser = configparser.ConfigParser()
                          grapeConfig = topRepo.project.files.raw(file_path=".grapeconfig", ref=toplevel_branch).decode('utf-8')
                          parser.read_string(grapeConfig)
@@ -336,8 +340,13 @@ class GitlabAdmin(Option, WorkspaceDirHandler):
                             replaced = repo.setProtectedBranch(branch, 0, 30, 0, False)
                             logging.info(f"\tDisabling push for {branch}")
                         else:
-                            # Set to allow developers+maintainers (or specified user/group) to merge and push, but not to force push
-                            replaced = repo.setProtectedBranch(branch, 30, 30, subprojectPublishId, False)
+                            if allowForcePushForFork:
+                                # Set to allow maintainers merge and force push
+                                replaced = repo.setProtectedBranch(branch, 40, 40, 0, True)
+                                logging.info(f"\tAllowing force push for {branch} (make sure to change this back using grape gitlab-admin --setProtectedBranches!)")
+                            else:
+                                # Set to allow developers+maintainers (or specified user/group) to merge and push, but not to force push
+                                replaced = repo.setProtectedBranch(branch, 30, 30, subprojectPublishId, False)
                         if replaced:
                            logging.info(f"\tUpdating protected branch {branch}")
                         else:

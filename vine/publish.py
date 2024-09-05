@@ -623,8 +623,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def markReviewAsInProgress(self, args):
         logging.info("Prepending pull request title with **IN PROGRESS**...")
-        return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend"], "Skipping marking pull request "
-                                                                                "as IN PROGRESS...")
+        return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend", "--pushModifiedOnly"],
+                               "Skipping marking pull request as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
         self.loadVersion(args)
@@ -634,7 +634,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               "Skipping marking pull request with version number")
 
     def ensureReview(self, args):
-        return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
+        return self.markReview(args, ["--pushModifiedOnly"], "Skipping ensuring review exists.", updateOnly=False)
 
     @property
     def codeReviews(self):
@@ -744,7 +744,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                # In certain cases, the merge request is already closed and the pipeline cannot be regenerated
                logging.info(f"Regenerating pipeline without {inprogresslabel} label to release in-progress lock...")
                request.regeneratePipeline(raiseOnFailure=False)
-            return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
+            return self.markReview(args, [f"--title={title}", f"--state={state}", "--pushModifiedOnly"], "")
         else:
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
@@ -1187,7 +1187,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             if not args["--noReview"]:
                 logging.info("Updating Pull Request with commit msg...")
-                self.markReview(args, ["--descr", commitMsgFile], "")
+                self.markReview(args, ["--pushModifiedOnly", "--descr", commitMsgFile], "")
             else:
                 logging.info("Skipping update of pull request description from commit message")
         elif args["-m"]:
