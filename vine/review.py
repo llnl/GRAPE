@@ -632,7 +632,9 @@ class Review(Option, WorkspaceDirHandler):
             if args["--noRecurseSubprojects"]:
                 pushArgs.append('--noRecurseSubprojects')
 
-            grapeMenu.menu().applyMenuChoice("push", pushArgs)
+            pushed = grapeMenu.menu().applyMenuChoice("push", pushArgs)
+            if not pushed:
+                return False
         return True
 
 
