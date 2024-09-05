@@ -325,14 +325,14 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        log_descriptions = None
        target_SHA = None
        versionTag_SHA = None
-       car_dict = []
-       # first pass - build up a dictionary of relevant MRs, grab our own target branch, target sha, and log descriptions
+       car_list = []
+       # first pass - build up a list of relevant MRs, grab our own target branch, target sha, and log descriptions
        for car in mergeTrainCars:
            # Use the merge request to look up the branch
            mr_iid = car.merge_request['iid']
            mr = repo.pullRequests(state="all", id=mr_iid)[0]
            branch = mr.fromRef()
-           car_dict.append({"id":mr_iid, "mr":mr, "from":mr.fromRef(), "to":mr.toRef(), "status":car.status, "car":car})
+           car_list.append({"id":mr_iid, "mr":mr, "from":mr.fromRef(), "to":mr.toRef(), "status":car.status, "car":car})
 
            if branch == current_branch:
               # For the current branch, just register the target branch
@@ -348,7 +348,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
            return False
 
        # second pass
-       for entry in car_dict:
+       for entry in car_list:
            mr_iid = entry["id"]
            mr = entry["mr"]
            branch = entry["from"]
