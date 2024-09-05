@@ -354,7 +354,7 @@ class Review(Option, WorkspaceDirHandler):
         savedArgs = {}
 
         if descriptionData:
-            grapeData = descriptionData['grape_data']
+            grapeData = descriptionData.get('grape_data')
 
             if grapeData:
                 grapeDataLines = grapeData.split('\n')
@@ -405,10 +405,18 @@ class Review(Option, WorkspaceDirHandler):
 
 
     def getDefaultReviewRules(self):
+        """
+        Retrieves the default review rules for merge/pull requests. The default
+        set of review rules is used when no user specified rules are found in
+        the global config.
+
+        Returns:
+            dict: A dictionary containing the default review rules.
+        """
         return {'grape': {'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-                          'repositories': ['.+'],
+                          'minNumReviewers': 2,
                           'eligibleReviewers': ['.+'],
-                          'minNumReviewers': 2}}
+                          'repositories': ['.+']}}
 
 
     def parseReviewRules(self):
@@ -424,43 +432,47 @@ class Review(Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
 
         if config.has_section(self.SECTION_REVIEW):
-            reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
+            if config.has_option(self.SECTION_REVIEWS, "rules"):
+                reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
 
-            for reviewRuleName in reviewRuleNames:
-                sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
+                for reviewRuleName in reviewRuleNames:
+                    sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
 
-                if not config.has_section(sectionName):
-                    logging.error(f"GRAPE: Global config section '{sectionName}' is missing.")
-                    exit(1)
+                    if not config.has_section(sectionName):
+                        logging.error(f"GRAPE: Global config section '{sectionName}' is missing.")
+                        exit(1)
 
-                # Default to all repositories
-                repositories = [".+"]
+                    # Provide a reasonable default for the rule label
+                    label = f"GRAPE: {reviewRuleName} review"
 
-                if config.has_option(sectionName, "repositories"):
-                    repositories = config.get(sectionName, "repositories").split()
+                    if config.has_option(sectionName, "label"):
+                        label = config.get(sectionName, "label")
 
-                # Default to all reviewers
-                eligibleReviewers = [".+"]
+                    # Default to one reviewer
+                    minNumReviewers = 1
 
-                if config.has_option(sectionName, "eligiblereviewers"):
-                    eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+                    if config.has_option(sectionName, "minnumreviewers"):
+                        minNumReviewers = config.getint(sectionName, "minnumreviewers")
 
-                minNumReviewers = 1
+                    # Default to all reviewers
+                    eligibleReviewers = [".+"]
 
-                if config.has_option(sectionName, "minnumreviewers"):
-                    minNumReviewers = config.getint(sectionName, "minnumreviewers")
+                    if config.has_option(sectionName, "eligiblereviewers"):
+                        eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
 
-                label = f"GRAPE: {reviewRuleName} review"
+                    # Default to all repositories
+                    repositories = [".+"]
 
-                if config.has_option(sectionName, "label"):
-                    label = config.get(sectionName, "label")
+                    if config.has_option(sectionName, "repositories"):
+                        repositories = config.get(sectionName, "repositories").split()
 
-                reviewRules[reviewRuleName] = {
-                    "repositories": repositories,
-                    "eligibleReviewers": eligibleReviewers,
-                    "minNumReviewers": minNumReviewers,
-                    "label": label
-                }
+                    # Add the rule
+                    reviewRules[reviewRuleName] = {
+                        "label": label,
+                        "minNumReviewers": minNumReviewers,
+                        "eligibleReviewers": eligibleReviewers,
+                        "repositories": repositories
+                    }
 
         if not reviewRules:
             reviewRules = self.getDefaultReviewRules()
