@@ -480,16 +480,31 @@ class Review(Option, WorkspaceDirHandler):
         return reviewRules
 
 
-    def parseDefaultReviewRule(self):
-        defaultReviewRule = 'grape'
+    def parseDefaultReviewRuleName(self, reviewRules):
+        """
+        Retrieves the default review rule name for merge/pull requests.
+
+        If the user has provided a default in the global config, that is used.
+        Otherwise, the name of the first rule is used.
+
+        Returns:
+            str: A string containing the default review rule name.
+        """
+        defaultReviewRuleName = None
 
         # Extract the rule names from the [review] section
         config = config_parser_global.grapeConfig()
 
         if config.has_section(self.SECTION_REVIEW):
-            defaultReviewRule = config.get(self.SECTION_REVIEW, "defaultrule")
+            if config.has_option(self.SECTION_REVIEW, "defaultrule"):
+                defaultReviewRuleName = config.get(self.SECTION_REVIEW, "defaultrule")
 
-        return defaultReviewRule
+        if not defaultReviewRuleName:
+            for reviewRuleName in reviewRules:
+                defaultReviewRuleName = reviewRuleName
+                break
+
+        return defaultReviewRuleName
 
 
     def validateReviewers(self, reviewers, grapeReviewRules):
@@ -614,7 +629,7 @@ class Review(Option, WorkspaceDirHandler):
 
         # Get review rules
         reviewRules = self.parseReviewRules()
-        defaultReviewRule = self.parseDefaultReviewRule()
+        defaultReviewRule = self.parseDefaultReviewRuleName(reviewRules)
 
         # Determine merge/pull request reviewers
         reviewers = {}
