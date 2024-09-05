@@ -499,6 +499,10 @@ class Review(Option, WorkspaceDirHandler):
             if config.has_option(self.SECTION_REVIEW, "defaultrule"):
                 defaultReviewRuleName = config.get(self.SECTION_REVIEW, "defaultrule")
 
+                # Check that the default matches one of the review rule names
+                if defaultReviewRuleName not in reviewRules:
+                    logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify a review rule.')
+
         if not defaultReviewRuleName:
             for reviewRuleName in reviewRules:
                 defaultReviewRuleName = reviewRuleName
@@ -629,13 +633,16 @@ class Review(Option, WorkspaceDirHandler):
 
         # Get review rules
         reviewRules = self.parseReviewRules()
-        defaultReviewRule = self.parseDefaultReviewRuleName(reviewRules)
+        defaultReviewRuleName = self.parseDefaultReviewRuleName(reviewRules)
 
         # Determine merge/pull request reviewers
         reviewers = {}
 
-        if defaultReviewRule and existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
-            reviewers[defaultReviewRule] = [r[0] for r in existingOuterLevelRequest.reviewers()]
+        if existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
+            reviewers[defaultReviewRuleName] = {
+                'label': reviewRules[defaultReviewRuleName]['label'],
+                'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
+            }
 
         reviewers.update(self.parseReviewers(savedArgs))
         reviewers.update(self.parseReviewers(args))
