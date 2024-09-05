@@ -382,6 +382,7 @@ class Review(Option, WorkspaceDirHandler):
             descriptionData['related_reviews'].sort()
 
         updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
+
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
@@ -598,6 +599,10 @@ class Review(Option, WorkspaceDirHandler):
                 outerLevelURL = outerLevelURL.decode("utf-8")
 
             if runInSubmodules and not args["--noRecurseSubprojects"]:
+                # Ignore related review links scraped from the outer level
+                # merge/pull request description. Then add all the new
+                # submodule/subproject links. Only add the outer level link
+                # if there are any submodule/subproject links.
                 updatedReviewLinks = []
 
                 for link in pullRequestLinks:
@@ -606,7 +611,6 @@ class Review(Option, WorkspaceDirHandler):
 
                     updatedReviewLinks.append(link)
 
-                # Only add outer if there are any submodule/subproject links
                 if updatedReviewLinks:
                     updatedReviewLinks.append(outerLevelURL)
             else:
