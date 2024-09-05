@@ -814,9 +814,15 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                 if title is not None and (args["--prepend"] or args["--append"]):
                     currentTitle = request.title()
                     if args["--prepend"]:
-                        title = title+currentTitle
+                        if currentTitle.startswith(title):
+                            title = currentTitle
+                        else:
+                            title = title + currentTitle
                     elif args["--append"]:
-                        title = currentTitle+title
+                        if currentTitle.endswith(title):
+                            title = currentTitle
+                        else:
+                            title = currentTitle + title
 
                 subReviewers = reviewers.copy()
                 if request.author() in subReviewers:
