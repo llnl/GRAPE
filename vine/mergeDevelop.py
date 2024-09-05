@@ -377,7 +377,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                        found_merge = True
                        logging.info(f"NEW: {status} merge commit {merge_sha} for MR {mr_iid} found...")
                        break
-                 # If the merge commit sha is not found, try using the sha from the merge request
+                 # If the merge commit sha is not found, try using the sha from the merge request (matching with merge commit parents)
                  if not found_merge:
                     merge_sha = mr.mergerequest.sha
                     for line in log_descriptions:
@@ -390,8 +390,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                     continue
            else:
-             # the car is still running, need to determine if it's in the history of our car or not
-             merge_sha = car.pipeline.sha
+             # The car is still running, need to determine if it's in the history of our car or not.
+             # Use the sha from the merge request and see if it matches a merge commit parent.
+             merge_sha = mr.mergerequest.sha
              found_merge = False
 
              for line in log_descriptions:
