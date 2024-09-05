@@ -10,13 +10,15 @@ from vine.vine_logging import log_wrapper
 
 class Push(Option, WorkspaceDirHandler):
     """
-    grape push pushes your current branch to origin for your outer level repo and all submodules.
-    it uses 'git push -u origin HEAD' for the git command.
+    grape push pushes your current branch to origin for your outer level repo and all subprojects.
+    it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noRecurse]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.
+    --noTopLevel            Don't perform push in top level repo.
+    --noRecurse             Don't perform pushes in submodules.
+    --noRecurseSubprojects  Don't perform pushes in nested subprojects.
 
     """
     def __init__(self):
@@ -29,17 +31,18 @@ class Push(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
-        git.currentBranch(execution_path=self.workspace_dir)
-        config = config_parser_global.grapeConfig()
-        config.getPublicBranchList()
-
-        git.getActiveSubmodules(execution_path=self.workspace_dir)
-
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            push, workspace_dir=self.workspace_dir)
+            push,
+            skipSubmodules=args["--noRecurse"],
+            runInSubprojects=not args["--noRecurseSubprojects"],
+            runInOuter=not args["--noTopLevel"],
+            workspace_dir=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
-        logging.info("Pushed current branch to origin")
+        if args["--noRecurse"] and args["--noRecurseSubprojects"] and args["--noTopLevel"]:
+            logging.info("No repositories were pushed origin")
+        else:
+            logging.info("Pushed current branch to origin")
         return False not in retvals
 
     def setDefaultConfig(self, config):

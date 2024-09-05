@@ -101,9 +101,9 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch), respecting
-                                    the --recurse/--noRecurse/--noRecurseSubprojects arguments.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch).
                                     By default, the entire local workspace will be pushed to ensure consistency.
+                                    In either case, --recurse/--noRecurse/--noRecurseSubprojects arguments are respected.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -622,11 +622,19 @@ class Review(Option, WorkspaceDirHandler):
 
             logging.info(f"Request generated/updated:\n\n{request}")
 
-            if ("--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]) and ("--noLocal" not in args or not args["--noLocal"]):
-                logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly/--noLocal to skip this step)...")
-                pushed = grapeMenu.menu().applyMenuChoice("push")
-                if not pushed:
-                    return False
+        if ("--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]) and ("--noLocal" not in args or not args["--noLocal"]):
+            logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly/--noLocal to skip this step)...")
+            
+            # top level was already pushed at the beginning
+            pushArgs = ['push', '--noTopLevel']
+            if not runInSubmodules:
+                pushArgs.append('--noRecurse')
+            if args["--noRecurseSubprojects"]:
+                pushArgs.append('--noRecurseSubprojects')
+
+            pushed = grapeMenu.menu().applyMenuChoice("push", pushArgs)
+            if not pushed:
+                return False
         return True
 
 

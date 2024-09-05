@@ -109,6 +109,8 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
 
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
+# If runInSubmodules is false, lambdas will run in active submodules if the manageSubmodules
+# config is true.  Set skipSubmodules to true to never run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 
