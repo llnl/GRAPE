@@ -507,13 +507,15 @@ options are at least listed below.
     
 ## push
 
-    grape push pushes your current branch to origin for your outer level repo and all submodules.
-    it uses 'git push -u origin HEAD' for the git command.
+    grape push pushes your current branch to origin for your outer level repo and all subprojects.
+    it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noRecurse]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.
+    --noTopLevel            Don't perform push in top level repo.
+    --noRecurse             Don't perform pushes in submodules.
+    --noRecurseSubprojects  Don't perform pushes in nested subprojects.
 
     
 ## pull
@@ -1056,9 +1058,9 @@ options are at least listed below.
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
-        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch), respecting
-                                    the --recurse/--noRecurse/--noRecurseSubprojects arguments.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch).
                                     By default, the entire local workspace will be pushed to ensure consistency.
+                                    In either case, --recurse/--noRecurse/--noRecurseSubprojects arguments are respected.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
