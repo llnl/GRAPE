@@ -359,13 +359,15 @@ class Review(Option, WorkspaceDirHandler):
         reservedReviewRuleNames = ['grape']
         reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
 
+        # Count the number of active review rules
+        numActiveRules = 0
+
         # Extract the rule names from the [review] section
         config = config_parser_global.grapeConfig()
 
         if config.has_section(self.SECTION_REVIEW):
             if config.has_option(self.SECTION_REVIEW, "rules"):
                 reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
-                numActiveRules = 0
 
                 for reviewRuleName in reviewRuleNames:
                     if reviewRuleName in reservedReviewRuleNames:
@@ -424,18 +426,20 @@ class Review(Option, WorkspaceDirHandler):
                         "repositories": repositories
                     }
 
-        if numActiveRules == 0:
-            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
-            exit(1)
-
         # Add the GRAPE review rule. It will be active only if the user has
         # not specified any rules.
         if not reviewRules:
             grapeReviewRuleActive = True
+            numActiveRules += 1
         else:
             grapeReviewRuleActive = False
 
         reviewRules.update(self.getGrapeReviewRule(grapeReviewRuleActive))
+
+        if numActiveRules == 0:
+            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+            exit(1)
+
         return reviewRules
 
 
