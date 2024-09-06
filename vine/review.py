@@ -364,6 +364,7 @@ class Review(Option, WorkspaceDirHandler):
         if config.has_section(self.SECTION_REVIEW):
             if config.has_option(self.SECTION_REVIEW, "rules"):
                 reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
+                numActiveRules = 0
 
                 for reviewRuleName in reviewRuleNames:
                     if reviewRuleName in reservedReviewRuleNames:
@@ -381,6 +382,9 @@ class Review(Option, WorkspaceDirHandler):
 
                     if config.has_option(sectionName, "active"):
                         active = config.getboolean(sectionName, "active")
+
+                    if active:
+                        numActiveRules += 1
 
                     # Provide a reasonable default for the rule label
                     label = f"GRAPE: {reviewRuleName} review"
@@ -414,6 +418,10 @@ class Review(Option, WorkspaceDirHandler):
                         "eligibleReviewers": eligibleReviewers,
                         "repositories": repositories
                     }
+
+        if numActiveRules == 0:
+            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+            exit(1)
 
         # Add the GRAPE review rule. It will be active only if the user has
         # not specified any rules.
