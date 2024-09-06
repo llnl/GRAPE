@@ -614,20 +614,20 @@ class PullRequest:
                     for reviewer_id in reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
                 else:
-                    approval_rules = self.mergerequest.approvalrules.list()
+                    approval_rules = self.mergerequest.approval_rules.list()
 
                     # Find the approval rule by name
-                    rule_to_delete = None
+                    rule_id = None
 
                     for rule in approval_rules:
                         if rule.name == approval_rule_name:
-                            rule_to_delete = rule
+                            rule_id = rule.id
                             break
 
-                    if rule_to_delete:
+                    if rule_id is not None:
                         try:
                             # Delete the approval rule
-                            rule_to_delete.delete()
+                            self.mergerequest.approval_rules.delete(rule_id)
                             logging.info(f'GRAPE: INFO: Deleted approval rule "{approval_rule_name}".')
                         except gitlab.exceptions.GitlabDeleteError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')
