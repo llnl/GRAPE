@@ -412,6 +412,76 @@ class Review(Option, WorkspaceDirHandler):
         return reviewRules
 
 
+    def parseReviewRuleMap(self, reviewRules):
+        """
+        Parses the review rule mappings from the global configuration and
+        creates a mapping of old rules to new rules.
+
+        This function reads the rule mappings defined in the configuration file
+        under the [review] section, validates them against the provided review
+        rules, and constructs a dictionary that maps old rule names to new rule
+        names.
+
+        Parameters:
+        ----------
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is
+            a dictionary containing the details of that review rule.
+
+        Returns:
+        -------
+        dict
+            A dictionary mapping old rule names (str) to new rule names (str).
+            If no valid mappings are found, an empty dictionary is returned.
+
+        Example:
+        --------
+        reviewRules = {
+            'code': {...},
+            'doc': {...}
+        }
+
+        # Assuming the configuration has the following mappings:
+        # rulemap = "oldcode:code olddoc:doc"
+
+        ruleMap = parseReviewRuleMap(reviewRules)
+        # ruleMap would be: {'oldcode': 'code', 'olddoc': 'doc'}
+
+        Notes:
+        -----
+        - The function expects the configuration to have a section defined as `self.SECTION_REVIEW`
+          and an option `rulemap` containing the mappings.
+        - Each mapping should be in the format "oldrule:newrule". If the format is incorrect or if a new rule
+          does not exist in the provided review rules, an error is logged and the program exits with a status code of 1.
+        """
+        reviewRuleMap = {}
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        if config.has_section(self.SECTION_REVIEW):
+            if config.has_option(self.SECTION_REVIEWS, 'rulemap'):
+                mappings = config.get(self.SECTION_REVIEW, 'rulemap')
+
+                for mapping in mappings:
+                    tokens = mapping.split(':')
+
+                    if len(tokens) != 2:
+                        logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
+                        exit(1)
+
+                    oldRule = token[0]
+                    newRule = token[1]
+
+                    if newRule not in reviewRules:
+                        logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify a valid review rule.')
+                        exit(1)
+
+                    reviewRuleMap[oldRule] = newRule
+
+        return reviewRuleMap
+
+
     def parseDefaultReviewRuleName(self, reviewRules):
         """
         Retrieves the default review rule name for merge/pull requests.
@@ -436,6 +506,7 @@ class Review(Option, WorkspaceDirHandler):
                     logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify a review rule.')
                     exit(1)
 
+        # Pick the first review rule as a fallback
         if not defaultReviewRuleName:
             for reviewRuleName in reviewRules:
                 defaultReviewRuleName = reviewRuleName
