@@ -706,7 +706,10 @@ class Review(Option, WorkspaceDirHandler):
                 reviewRuleReviewers = reviewerGroup['reviewers']
 
                 if reviewRuleReviewers:
-                    serializedReviewGroups.append(f'{reviewRuleName}:{",".join(reviewRuleReviewers)}')
+                    if len(reviewers) == 1:
+                        serializedReviewGroups.append(f'{",".join(reviewRuleReviewers)}')
+                    else:
+                        serializedReviewGroups.append(f'{reviewRuleName}:{",".join(reviewRuleReviewers)}')
 
             if serializedReviewGroups:
                 return ' '.join(serializedReviewGroups)
