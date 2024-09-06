@@ -362,7 +362,7 @@ class Review(Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
 
         if config.has_section(self.SECTION_REVIEW):
-            if config.has_option(self.SECTION_REVIEWS, "rules"):
+            if config.has_option(self.SECTION_REVIEW, "rules"):
                 reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
 
                 for reviewRuleName in reviewRuleNames:
@@ -474,7 +474,7 @@ class Review(Option, WorkspaceDirHandler):
         config = config_parser_global.grapeConfig()
 
         if config.has_section(self.SECTION_REVIEW):
-            if config.has_option(self.SECTION_REVIEWS, 'rulemap'):
+            if config.has_option(self.SECTION_REVIEW, 'rulemap'):
                 mappings = config.get(self.SECTION_REVIEW, 'rulemap')
 
                 for mapping in mappings:
@@ -614,7 +614,10 @@ class Review(Option, WorkspaceDirHandler):
                         logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                         exit(1)
 
-                    reviewRuleReviewers = tokens[1].split(',')
+                    if tokens[1]:
+                        reviewRuleReviewers = tokens[1].split(',')
+                    else:
+                        reviewRuleReviewers = []
 
                     if reviewRuleName in reviewers:
                         logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
