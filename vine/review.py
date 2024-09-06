@@ -296,7 +296,7 @@ class Review(Option, WorkspaceDirHandler):
                 data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
                 data['grape_data'] = ''
             else:
-                logging.warning(f"GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.")
+                logging.warning(f'GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.')
 
                 data['user_description'] = description
                 data['related_reviews'] = []
@@ -364,7 +364,7 @@ class Review(Option, WorkspaceDirHandler):
                     sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
 
                     if not config.has_section(sectionName):
-                        logging.error(f"GRAPE: ERROR: Global config section '{sectionName}' is missing.")
+                        logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
                         exit(1)
 
                     # Provide a reasonable default for the rule label
@@ -477,7 +477,7 @@ class Review(Option, WorkspaceDirHandler):
                     reviewRuleReviewers = tokens[0].split(',')
 
                     if reviewRuleName in reviewers:
-                        logging.warning(f'GRAPE: WARNING: "Reviewers should be separated by commas instead of whitespace (whitespace is used to separate review rules).')
+                        logging.warning(f'GRAPE: WARNING: Reviewers should be separated by commas instead of whitespace (whitespace is used to separate review rules).')
                         reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
                 elif len(tokens) == 2:
                     # Use the given rule
@@ -494,7 +494,7 @@ class Review(Option, WorkspaceDirHandler):
                         logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
                         reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
                 else:
-                    logging.error(f"GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers='username1,username2 rule:username3,username4'")
+                    logging.error(f'GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers="username1,username2 rule:username3,username4"')
                     exit(1)
 
                 reviewRule = reviewRules[reviewRuleName]
@@ -506,27 +506,6 @@ class Review(Option, WorkspaceDirHandler):
                     logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
                     reviewRuleReviewers = list(uniqueReviewRuleReviewers)
 
-                # Check that the reviewers are allowed to approve this rule
-                eligibleReviewers = reviewRule["eligibleReviewers"]
-
-                for reviewRuleReviewer in reviewRuleReviewers:
-                    validReviewer = False
-
-                    for eligibleReviewer in eligibleReviewers:
-                        if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
-                            validReviewer = True
-                            break
-
-                    if not validReviewer:
-                        logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
-                        exit(1)
-
-                # Check if the minimum number of reviewers has been met
-                minNumReviewers = reviewRule["minNumReviewers"]
-
-                if len(reviewRuleReviewers) < minNumReviewers:
-                    logging.warning(f"GRAPE: WARNING: {minNumReviewers} reviewer(s) required, but only {len(reviewRuleReviewers)} reviewer(s) given.")
-
                 reviewers[reviewRuleName] = {
                     'label': reviewRule['label'],
                     'reviewers': reviewRuleReviewers
@@ -534,6 +513,70 @@ class Review(Option, WorkspaceDirHandler):
 
         # Return the dictionary of reviewers
         return reviewers
+
+
+    def validateReviewers(self, reviewers, reviewRules):
+        """
+        Validates the provided reviewers against defined review rules.
+
+        This function checks if the specified reviewers are valid according to the review rules,
+        ensuring that each reviewer is eligible and that the minimum number of reviewers is met.
+
+        Parameters:
+        ----------
+        reviewers : dict
+            A dictionary where each key is a review rule name and each value is a dictionary containing:
+                - 'reviewers': A list of reviewers assigned to that rule.
+
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is another dictionary
+            containing:
+                - 'eligibleReviewers': A list of patterns (str) representing eligible reviewers for the rule.
+                - 'minNumReviewers': An integer specifying the minimum number of reviewers required for the rule.
+
+        Returns:
+        -------
+        None
+            The function does not return a value. It logs errors and warnings as necessary and exits
+            the program if validation fails.
+
+        Notes:
+        -----
+        - The function uses regular expression matching to determine if each reviewer is eligible.
+        """
+        for reviewRuleName in reviewers:
+            # Check the given rule name is a review rule
+            if reviewRuleName not in reviewRules:
+                logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not a review rule.')
+                exit(1)
+
+            reviewGroup = reviewers[reviewRuleName]
+            reviewRule = reviewRules[reviewRuleName]
+
+            # Check that the reviewers are allowed to approve this rule
+            reviewRuleReviewers = reviewGroup['reviewers']
+            eligibleReviewers = reviewRule["eligibleReviewers"]
+
+            for reviewRuleReviewer in reviewRuleReviewers:
+                validReviewer = False
+
+                for eligibleReviewer in eligibleReviewers:
+                    if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
+                        validReviewer = True
+                        break
+
+                if not validReviewer:
+                    logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
+                    exit(1)
+
+            # Check if the minimum number of reviewers has been met
+            numReviewers = len(reviewRuleReviewers)
+            minNumReviewers = reviewRule["minNumReviewers"]
+
+            if numReviewers < minNumReviewers:
+                logging.warning(f'GRAPE: WARNING: {minNumReviewers} reviewer(s) required for review rule "{reviewRuleName}", but only {numReviewers} reviewer(s) given.')
+
+        return
 
 
     def serializeReviewers(self, reviewers):
@@ -782,6 +825,7 @@ class Review(Option, WorkspaceDirHandler):
 
         reviewers.update(self.parseReviewers(savedArgs, reviewRules, defaultReviewRuleName))
         reviewers.update(self.parseReviewers(args, reviewRules, defaultReviewRuleName))
+        self.validateReviewers(reviewers, reviewRules)
 
         # Update description
         newReviewersArg = self.serializeReviewers(reviewers)
