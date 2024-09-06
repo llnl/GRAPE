@@ -490,6 +490,8 @@ class Review(Option, WorkspaceDirHandler):
         along with username3 will be assigned to rule2.
 
         :param args: A dictionary containing arguments to a prior or current GRAPE call
+        :param reviewRules: A dictionary containing review rules
+        :param defaultReviewRuleName A string containing the name of the default rule
         :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
         '''
 
