@@ -399,7 +399,7 @@ class Review(Option, WorkspaceDirHandler):
                     sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
 
                     if not config.has_section(sectionName):
-                        logging.error(f"GRAPE: Global config section '{sectionName}' is missing.")
+                        logging.error(f"GRAPE: ERROR: Global config section '{sectionName}' is missing.")
                         exit(1)
 
                     # Provide a reasonable default for the rule label
@@ -462,6 +462,7 @@ class Review(Option, WorkspaceDirHandler):
                 # Check that the default matches one of the review rule names
                 if defaultReviewRuleName not in reviewRules:
                     logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify a review rule.')
+                    exit(1)
 
         if not defaultReviewRuleName:
             for reviewRuleName in reviewRules:
@@ -525,7 +526,7 @@ class Review(Option, WorkspaceDirHandler):
                     reviewRuleReviewers = tokens[1].split(',')
 
                     if reviewRuleName in reviewers:
-                        logging.error(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
+                        logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
                         reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
                 else:
                     logging.error(f"GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers='username1,username2 rule:username3,username4'")
