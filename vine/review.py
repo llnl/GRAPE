@@ -1220,10 +1220,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
             # update the pull request
             logging.info("Updating pull request...")
             try:
-                #if not reviewers:
-                #    reviewers = [r[0] for r in request.reviewers()]
-                # Remove duplicate reviewers
-                #reviewers = list(set(reviewers))
                 logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
 
