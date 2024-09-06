@@ -330,37 +330,96 @@ class Review(Option, WorkspaceDirHandler):
         return savedArgs
 
 
-    def updateArgsFromSavedArgs(self, args, savedArgs):
-        '''
-        '''
-        # Copy current args
-        updatedArgs = args
+    def serializeReviewers(self, reviewers):
+        """
+        Serializes a dictionary of reviewers into a formatted string.
 
-        # Update --reviewers arg
-        savedReviewers = self.parseReviewers(savedArgs)
-        currentReviewers = self.parseReviewers(args)
+        This function takes a dictionary where each key represents a review rule name,
+        and the associated value is another dictionary containing a list of reviewers.
+        It constructs a string representation of the reviewers grouped by their review rule names.
 
-        updatedReviewers = savedReviewers
-        for reviewRuleName in currentReviewers:
-            updatedReviewers[reviewRuleName] = currentReviewers[reviewRuleName]
+        Parameters:
+        ----------
+        reviewers : dict
+            A dictionary where each key is a review rule name (str) and each value is a dictionary
+            containing:
+                - 'reviewers': A list of reviewer names (str) associated with the review rule.
 
-        newReviewersArg = ''
-        for reviewRuleName in updatedReviewers:
-            newReviewersArg += f'{reviewRuleName}:{",".join(updatedReviewers[reviewRuleName])}'
+        Returns:
+        -------
+        str or None
+            A string representing the serialized reviewers in the format:
+            "reviewRuleName:reviewer1,reviewer2,..." for each review rule with reviewers.
+            If there are no reviewers or the input dictionary is empty, returns None.
 
-        updatedArgs['--reviewers'] = newReviewersArg
+        Example:
+        --------
+        reviewers = {
+            'code': {
+                'reviewers': ['Alice', 'Bob']
+            },
+            'documentation': {
+                'reviewers': ['Charlie']
+            }
+        }
 
-        # Return updated args
-        return updatedArgs
+        result = serializeReviewers(reviewers)
+        # result would be: "code:Alice,Bob documentation:Charlie"
+
+        Notes:
+        -----
+        - If a review rule has no reviewers, it will be skipped in the output.
+        - If the input `reviewers` dictionary is empty or None, or all the review rules have no reviewers, the function will return None.
+        """
+        if reviewers:
+            serializedReviewGroups = []
+
+            for reviewRuleName in reviewers:
+                reviewerGroup = reviewers[reviewRuleName]
+                reviewRuleReviewers = reviewerGroup['reviewers']
+
+                if reviewRuleReviewers:
+                    serializedReviewGroups.append(f'{reviewRuleName}:{",".join(reviewRuleReviewers)}')
+
+            if serializedReviewGroups:
+                return ' '.join(serializedReviewGroups)
+            else:
+                return None
+        else:
+            return None
 
 
     def buildGrapeData(self, args):
-        '''
-        '''
+        """
+        Builds a string containing info about the current call to grape review.
+        This includes the grape version number and certain arguments that need
+        to be stored in the merge/pull request description for later use.
+
+        Parameters:
+        ----------
+        args : dict
+            A dictionary containing arguments to a prior or current GRAPE call
+
+        Returns:
+        -------
+        str
+            A string representing the grape data, which includes the grape version and,
+            if applicable, other arguments in the format:
+            '--argname=argvalue'.
+
+        Example:
+        --------
+        args = {
+            '--reviewers': 'Alice,Bob'
+        }
+
+        result = self.buildGrapeData(args)
+        # result might be: 'v1.49.26\n--reviewers=Alice,Bob'
+        """
         grapeData = version.grapeVersion()
 
         if '--reviewers' in args and args['--reviewers']:
-            grapeData += f'\n{args["--reviewers"]}'
+            grapeData += f'\n--reviewers={args["--reviewers"]}'
 
         return grapeData
 
@@ -661,15 +720,15 @@ class Review(Option, WorkspaceDirHandler):
         reviewers.update(self.parseReviewers(args, reviewRules, defaultReviewRuleName))
 
         newReviewersArg = self.serializeReviewers(reviewers)
-        args['--reviewers'] = newReviewersArg
+
+        if newReviewersArg:
+            args['--reviewers'] = newReviewersArg
 
         # Update description
         if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
             descriptionData['related_reviews'].append(outerLevelURL)
             descriptionData['related_reviews'].sort()
 
-
-        #self.updateArgsFromSavedArgs(args, savedArgs)
         descriptionData['grape_data'] = self.buildGrapeData(args)
         updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
