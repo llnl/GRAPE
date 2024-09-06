@@ -330,15 +330,17 @@ class Review(Option, WorkspaceDirHandler):
         return savedArgs
 
 
-    def getDefaultReviewRules(self):
+    def getGrapeReviewRule(self, active):
         """
-        Retrieves the default review rules for merge/pull requests. The default
-        set of review rules is used when no user specified rules are found in
-        the global config.
+        Retrieves the GRAPE review rule for merge/pull requests. The GRAPE
+        review rule is used when no user specified rules are found in the
+        global config.
 
-        :return: A dictionary containing the default review rules.
+        :param active: Whether or not the GRAPE review rule is active.
+        :return: A dictionary containing the GRAPE review rule.
         """
-        return {'grape': {'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+        return {'grape': {'active': active,
+                          'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
                           'minNumReviewers': 2,
                           'eligibleReviewers': ['.+'],
                           'repositories': ['.+']}}
@@ -374,6 +376,12 @@ class Review(Option, WorkspaceDirHandler):
                         logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
                         exit(1)
 
+                    # Default to active
+                    active = True
+
+                    if config.has_option(sectionName, "active"):
+                        active = config.getboolean(sectionName, "active")
+
                     # Provide a reasonable default for the rule label
                     label = f"GRAPE: {reviewRuleName} review"
 
@@ -400,15 +408,21 @@ class Review(Option, WorkspaceDirHandler):
 
                     # Add the rule
                     reviewRules[reviewRuleName] = {
+                        "active": active,
                         "label": label,
                         "minNumReviewers": minNumReviewers,
                         "eligibleReviewers": eligibleReviewers,
                         "repositories": repositories
                     }
 
+        # Add the GRAPE review rule. It will be active only if the user has
+        # not specified any rules.
         if not reviewRules:
-            reviewRules = self.getDefaultReviewRules()
+            grapeReviewRuleActive = True
+        else:
+            grapeReviewRuleActive = False
 
+        reviewRules.update(self.getGrapeReviewRule(grapeReviewRuleActive))
         return reviewRules
 
 
@@ -472,14 +486,14 @@ class Review(Option, WorkspaceDirHandler):
 
                     oldRule = token[0]
 
-                    if oldRule in reviewRules:
-                        logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" is a valid review rule.')
+                    if oldRule not in reviewRules or reviewRules[oldRule]['active']:
+                        logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
                         exit(1)
 
                     newRule = token[1]
 
-                    if newRule not in reviewRules:
-                        logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify a valid review rule.')
+                    if newRule not in reviewRules or not reviewRules[newRule]['active']:
+                        logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
                         exit(1)
 
                     reviewRuleMap[oldRule] = newRule
@@ -508,15 +522,24 @@ class Review(Option, WorkspaceDirHandler):
             if config.has_option(self.SECTION_REVIEW, "defaultrule"):
                 defaultReviewRuleName = config.get(self.SECTION_REVIEW, "defaultrule")
 
-                # Check that the default matches one of the review rule names
-                if defaultReviewRuleName not in reviewRules:
-                    logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify a review rule.')
+                # Check that the default matches one of the active review rule names
+                if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
+                    logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
                     exit(1)
 
-        # If there is only one rule, use that as the default
+        # If there is only one active review rule, use that as the default
         if not defaultReviewRuleName:
-            if len(reviewRules) == 1:
-                defaultReviewRuleName = list(reviewRules.keys())[0]
+            numActiveReviewRules = 0
+
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName]['active']:
+                    numActiveReviewRules += 1
+
+            if numActiveReviewRules == 1:
+                for reviewRuleName in reviewRules:
+                    if reviewRules[reviewRuleName]['active']:
+                        defaultReviewRuleName = reviewRuleName
+                        break
             else:
                 logging.error(f'GRAPE: ERROR: "defaultrule" in section "{self.SECTION_REVIEW}" in the global config must be specified.')
                 exit(1)
@@ -565,7 +588,7 @@ class Review(Option, WorkspaceDirHandler):
                     reviewRuleReviewers = tokens[0].split(',')
 
                     if reviewRuleName in reviewers:
-                        logging.warning(f'GRAPE: WARNING: Reviewers should be separated by commas instead of whitespace (whitespace is used to separate review rules).')
+                        logging.warning(f'GRAPE: WARNING: Reviewers should be separated by commas.')
                         reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
                 elif len(tokens) == 2:
                     # Use the given rule
@@ -575,8 +598,8 @@ class Review(Option, WorkspaceDirHandler):
                         reviewRuleName = reviewRuleMap[reviewRuleName]
 
                     # Check the given rule name is a review rule
-                    if reviewRuleName not in reviewRules:
-                        logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not a review rule.')
+                    if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                        logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                         exit(1)
 
                     reviewRuleReviewers = tokens[1].split(',')
@@ -637,8 +660,8 @@ class Review(Option, WorkspaceDirHandler):
         """
         for reviewRuleName in reviewers:
             # Check the given rule name is a review rule
-            if reviewRuleName not in reviewRules:
-                logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not a review rule.')
+            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                 exit(1)
 
             reviewGroup = reviewers[reviewRuleName]
@@ -927,6 +950,15 @@ class Review(Option, WorkspaceDirHandler):
 
         if newReviewersArg:
             args['--reviewers'] = newReviewersArg
+
+        # Add inactive rules with empty reviewer lists in order to delete any
+        # outdated approval rules.
+        for reviewRuleName in reviewRules:
+            if not reviewRules[reviewRuleName]['active']:
+                reviewers[reviewRuleName] = {
+                    'label': reviewRules[reviewRuleName]['label'],
+                    'reviewers': []
+                }
 
         descriptionData['grape_data'] = self.buildGrapeData(args)
 
