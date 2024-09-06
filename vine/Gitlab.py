@@ -591,9 +591,11 @@ class PullRequest:
         if reviewers:
             all_reviewer_ids = set()
 
-            for approval_rule_name in reviewers:
-                users = reviewers[approval_rule_name]
-                numRequired = len(users)
+            for review_rule_name in reviewers:
+                reviewer_group = reviewers[review_rule_name]
+                approval_rule_name = reviewer_group['label']
+                users = reviewer_group['reviewers']
+                num_required = len(users)
 
                 if users:
                     reviewer_ids = []
@@ -607,7 +609,7 @@ class PullRequest:
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
 
-                    self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
 
                     for reviewer_id in reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)

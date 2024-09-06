@@ -1244,13 +1244,11 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                 subReviewers = reviewers.copy()
 
                 for reviewRuleName in subReviewers:
-                    ruleReviewers = subReviewers[reviewRuleName]
-
-                    if author in ruleReviewers:
+                    if author in subReviewers[reviewRuleName]['reviewers']:
                         logging.info(
                                 f"{author} is the author of the pull" +
                                 " request and cannot be a reviewer")
-                        subReviewers[reviewRuleName].remove(author)
+                        subReviewers[reviewRuleName]['reviewers'].remove(author)
 
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     logging.info(
