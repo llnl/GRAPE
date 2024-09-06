@@ -353,6 +353,9 @@ class Review(Option, WorkspaceDirHandler):
 
         reviewRules = {}
 
+        # Names reserved by grape
+        reservedReviewRuleNames = ['grape']
+
         # Extract the rule names from the [review] section
         config = config_parser_global.grapeConfig()
 
@@ -361,6 +364,10 @@ class Review(Option, WorkspaceDirHandler):
                 reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
 
                 for reviewRuleName in reviewRuleNames:
+                    if reviewRuleName in reservedReviewRuleNames:
+                        logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
+                        exit(1)
+
                     sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
 
                     if not config.has_section(sectionName):
