@@ -511,7 +511,7 @@ class Review(Option, WorkspaceDirHandler):
         # If there is only one rule, use that as the default
         if not defaultReviewRuleName:
             if len(reviewRules) == 1:
-                defaultReviewRuleName = reviewRules.keys()[0]
+                defaultReviewRuleName = list(reviewRules.keys())[0]
             else:
                 logging.error(f'GRAPE: ERROR: "defaultrule" in section "{self.SECTION_REVIEW}" in the global config must be specified.')
                 exit(1)
