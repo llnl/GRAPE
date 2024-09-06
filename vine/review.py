@@ -690,7 +690,7 @@ class Review(Option, WorkspaceDirHandler):
 
             for reviewRuleRepository in reviewRuleRepositories:
                 if re.fullmatch(reviewRuleRepository, repoName):
-                    applicableReviewers[reviewRuleName] = reviewers[reviewRuleName]
+                    applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
 
         return applicableReviewers
 
@@ -1250,12 +1250,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}, add_labels={add_labels}, remove_labels={remove_labels}")
-                    if "gitlab" in args["--codeReviewsURL"]:
-                       combined_reviewers = {Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0)}
-                       combined_reviewers.update(reviewer_list)
-                       request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers, add_labels=add_labels, remove_labels=remove_labels)
-                    else:
-                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
+                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
                     if add_labels or remove_labels:
                        logging.info("Regenerating pipeline...")
                        request.regeneratePipeline()
