@@ -630,6 +630,70 @@ class Review(Option, WorkspaceDirHandler):
         return grapeData
 
 
+    def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
+        """
+        Retrieves applicable reviewers for a given repository based on defined review rules.
+
+        This function checks the provided review rules against the specified repository name
+        and returns a dictionary of reviewers that are applicable for that repository.
+
+        Parameters:
+        ----------
+        repoName : str
+            The name of the repository for which applicable reviewers are to be retrieved.
+
+        allReviewers : dict
+            A dictionary where each key is a review rule name and each value is a dictionary
+            containing a list of reviewers associated with that rule.
+
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is another dictionary
+            containing:
+                - 'repositories': A list of repository patterns (str) that the rule applies to.
+
+        Returns:
+        -------
+        dict
+            A dictionary where each key is a review rule name and each value is a dictionary
+            containing a list of applicable reviewers for that rule. If no applicable reviewers are found, an empty dictionary is returned.
+
+        Example:
+        --------
+        repoName = 'example-repo'
+        allReviewers = {
+            'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']},
+            'documentation': {'label': 'Documentation Review', 'reviewers': ['Charlie']}
+        }
+        reviewRules = {
+            'code': {
+                'repositories': ['example-repo', 'another-repo']
+            },
+            'documentation': {
+                'repositories': ['example-docs']
+            }
+        }
+
+        result = self.getApplicableReviewers(repoName, allReviewers, reviewRules)
+        # result would be: {'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']}}
+
+        Notes:
+        -----
+        - The function uses regular expression matching to determine if the repository name matches
+          any of the patterns defined in the review rules.
+        - If no review rules match the given repository name, the function will return an empty dictionary.
+        """
+        applicableReviewers = {}
+
+        for reviewRuleName in allReviewers:
+            reviewRule = reviewRules[reviewRuleName]
+            reviewRuleRepositories = reviewRule["repositories"]
+
+            for reviewRuleRepository in reviewRuleRepositories:
+                if re.fullmatch(reviewRuleRepository, repoName):
+                    applicableReviewers[reviewRuleName] = reviewers[reviewRuleName]
+
+        return applicableReviewers
+
     @log_wrapper
     def execute(self, args):
         """
@@ -833,15 +897,7 @@ class Review(Option, WorkspaceDirHandler):
                        changed = True 
 
                 if changed:
-                    submoduleReviewers = {}
-
-                    for reviewRuleName in reviewers:
-                        reviewRule = reviewRules[reviewRuleName]
-                        reviewRuleRepositories = reviewRule["repositories"]
-
-                        for reviewRuleRepository in reviewRuleRepositories:
-                            if re.fullmatch(reviewRuleRepository, submodule):
-                                submoduleReviewers[reviewRuleName] = reviewers[reviewRuleName]
+                    submoduleReviewers = self.getApplicableReviewers(submodule, reviewers, reviewRules)
 
                     reviewer_list = {}
                     if submodule in projects_with_reviewer_lists:
@@ -871,15 +927,7 @@ class Review(Option, WorkspaceDirHandler):
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
-               subprojectReviewers = {}
-
-               for reviewRuleName in reviewers:
-                   reviewRule = reviewRules[reviewRuleName]
-                   reviewRuleRepositories = reviewRule["repositories"]
-
-                   for reviewRuleRepository in reviewRuleRepositoryies:
-                       if re.fullmatch(reviewRuleRepository, proj):
-                           subprojectReviewers[reviewRuleName] = reviewers[reviewRuleName]
+               subprojectReviewers = self.getApplicableReviewers(proj, reviewers, reviewRules)
 
                reviewer_list = {}
                if proj in projects_with_reviewer_lists:
@@ -957,15 +1005,7 @@ class Review(Option, WorkspaceDirHandler):
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
 
-            outerReviewers = {}
-
-            for reviewRuleName in reviewers:
-                reviewRule = reviewRules[reviewRuleName]
-                reviewRuleRepositories = reviewRule["repositories"]
-
-                for reviewRuleRepository in reviewRuleRepositories:
-                    if re.fullmatch(reviewRuleRepository, repo_name):
-                        outerReviewers[reviewRuleName] = reviewers[reviewRuleName]
+            outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
