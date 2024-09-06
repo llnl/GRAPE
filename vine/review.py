@@ -305,105 +305,6 @@ class Review(Option, WorkspaceDirHandler):
         return data
 
 
-    def parseReviewers(self, args, reviewRules, defaultReviewRuleName):
-        '''
-        Extracts reviewer groups from the --reviewers argument.
-        The argument should consist of whitespace separated groups, where
-        each group is in one of the following forms:
-
-        <username>[,<username>]* -> these reviewers are assigned to the default rule
-        <rule>:<username>[,<username>] -> these reviewers are assigned to the given rule
-
-        e.g.
-
-        --reviewers="username1,username2 rule1:username1 rule2:username2,username3"
-
-        In this case, username1 and username2 will be assigned to the default
-        review rule. username1 will also be assigned to rule1, and username2
-        along with username3 will be assigned to rule2.
-
-        :param args: A dictionary containing arguments to a prior or current GRAPE call
-        :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
-        '''
-
-        # TODO: Warn/error if the same rule appears twice
-
-        reviewers = {}
-
-        # Parse reviewers from saved arguments
-        arg = args.get("--reviewers")
-
-        if arg is not None:
-            reviewerGroups = arg.split()
-
-            for reviewerGroup in reviewerGroups:
-                tokens = reviewerGroup.split(":")
-
-                if len(tokens) == 1:
-                    # Use the default rule
-                    reviewRuleName = defaultReviewRuleName
-                    reviewRuleReviewers = tokens[0].split(',')
-
-                    if reviewRuleName in reviewers:
-                        logging.warning(f'GRAPE: WARNING: "Reviewers should be separated by commas instead of whitespace (whitespace is used to separate review rules).')
-                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
-                elif len(tokens) == 2:
-                    # Use the given rule
-                    reviewRuleName = tokens[0]
-
-                    # Check the given rule name is a review rule
-                    if reviewRuleName not in reviewRules:
-                        logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not a review rule.')
-                        exit(1)
-
-                    reviewRuleReviewers = tokens[1].split(',')
-
-                    if reviewRuleName in reviewers:
-                        logging.error(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
-                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
-                else:
-                    logging.error(f"GRAPE: ERROR: The --reviewers argument should be in the following form:\n\t<rule>:<username>[,<username>]*[\s+<rule>:<username>[,<username>]*]*\n\te.g. --reviewers='rule1:username1,username2 rule2:username3,username4'")
-                    exit(1)
-
-                reviewRule = reviewRules[reviewRuleName]
-
-                # Check for duplicate reviewers
-                uniqueReviewRuleReviewers = set(reviewRuleReviewers)
-
-                if len(reviewRuleReviewers) != len(uniqueReviewRuleReviewers):
-                    logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
-                    reviewRuleReviewers = list(uniqueReviewRuleReviewers)
-
-                # Check that the reviewers are allowed to approve this rule
-                eligibleReviewers = reviewRule["eligibleReviewers"]
-
-                for reviewRuleReviewer in reviewRuleReviewers:
-                    validReviewer = False
-
-                    for eligibleReviewer in eligibleReviewers:
-                        if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
-                            validReviewer = True
-                            break
-
-                    if not validReviewer:
-                        logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
-                        exit(1)
-
-                # Check if the minimum number of reviewers has been met
-                minNumReviewers = reviewRule["minNumReviewers"]
-
-                if len(reviewRuleReviewers) < minNumReviewers:
-                    logging.warning(f"GRAPE: WARNING: {minNumReviewers} reviewer(s) required, but only {len(reviewRuleReviewers)} reviewer(s) given.")
-
-                reviewers[reviewRuleName] = {
-                    'label': reviewRule['label'],
-                    'reviewers': reviewRuleReviewers
-                }
-
-        # Return the dictionary of reviewers
-        return reviewers
-
-
     def getSavedArgs(self, descriptionData):
         """
         Extracts saved arguments from the merge/pull request description.
@@ -569,6 +470,103 @@ class Review(Option, WorkspaceDirHandler):
                 break
 
         return defaultReviewRuleName
+
+
+    def parseReviewers(self, args, reviewRules, defaultReviewRuleName):
+        '''
+        Extracts reviewer groups from the --reviewers argument.
+        The argument should consist of whitespace separated groups, where
+        each group is in one of the following forms:
+
+        <username>[,<username>]* -> these reviewers are assigned to the default rule
+        <rule>:<username>[,<username>] -> these reviewers are assigned to the given rule
+
+        e.g.
+
+        --reviewers="username1,username2 rule1:username1 rule2:username2,username3"
+
+        In this case, username1 and username2 will be assigned to the default
+        review rule. username1 will also be assigned to rule1, and username2
+        along with username3 will be assigned to rule2.
+
+        :param args: A dictionary containing arguments to a prior or current GRAPE call
+        :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
+        '''
+
+        reviewers = {}
+
+        # Parse reviewers from saved arguments
+        arg = args.get("--reviewers")
+
+        if arg is not None:
+            reviewerGroups = arg.split()
+
+            for reviewerGroup in reviewerGroups:
+                tokens = reviewerGroup.split(":")
+
+                if len(tokens) == 1:
+                    # Use the default rule
+                    reviewRuleName = defaultReviewRuleName
+                    reviewRuleReviewers = tokens[0].split(',')
+
+                    if reviewRuleName in reviewers:
+                        logging.warning(f'GRAPE: WARNING: "Reviewers should be separated by commas instead of whitespace (whitespace is used to separate review rules).')
+                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
+                elif len(tokens) == 2:
+                    # Use the given rule
+                    reviewRuleName = tokens[0]
+
+                    # Check the given rule name is a review rule
+                    if reviewRuleName not in reviewRules:
+                        logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not a review rule.')
+                        exit(1)
+
+                    reviewRuleReviewers = tokens[1].split(',')
+
+                    if reviewRuleName in reviewers:
+                        logging.error(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
+                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
+                else:
+                    logging.error(f"GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers='username1,username2 rule:username3,username4'")
+                    exit(1)
+
+                reviewRule = reviewRules[reviewRuleName]
+
+                # Check for duplicate reviewers
+                uniqueReviewRuleReviewers = set(reviewRuleReviewers)
+
+                if len(reviewRuleReviewers) != len(uniqueReviewRuleReviewers):
+                    logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
+                    reviewRuleReviewers = list(uniqueReviewRuleReviewers)
+
+                # Check that the reviewers are allowed to approve this rule
+                eligibleReviewers = reviewRule["eligibleReviewers"]
+
+                for reviewRuleReviewer in reviewRuleReviewers:
+                    validReviewer = False
+
+                    for eligibleReviewer in eligibleReviewers:
+                        if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
+                            validReviewer = True
+                            break
+
+                    if not validReviewer:
+                        logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
+                        exit(1)
+
+                # Check if the minimum number of reviewers has been met
+                minNumReviewers = reviewRule["minNumReviewers"]
+
+                if len(reviewRuleReviewers) < minNumReviewers:
+                    logging.warning(f"GRAPE: WARNING: {minNumReviewers} reviewer(s) required, but only {len(reviewRuleReviewers)} reviewer(s) given.")
+
+                reviewers[reviewRuleName] = {
+                    'label': reviewRule['label'],
+                    'reviewers': reviewRuleReviewers
+                }
+
+        # Return the dictionary of reviewers
+        return reviewers
 
 
     @log_wrapper
