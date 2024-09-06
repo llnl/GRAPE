@@ -961,10 +961,7 @@ class Review(Option, WorkspaceDirHandler):
         self.validateReviewers(reviewers, reviewRules)
 
         # Update description
-        newReviewersArg = self.serializeReviewers(reviewers)
-
-        if newReviewersArg:
-            args['--reviewers'] = newReviewersArg
+        args['--reviewers'] = self.serializeReviewers(reviewers)
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
