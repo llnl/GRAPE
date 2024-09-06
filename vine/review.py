@@ -357,6 +357,7 @@ class Review(Option, WorkspaceDirHandler):
 
         # Names reserved by grape
         reservedReviewRuleNames = ['grape']
+        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
 
         # Extract the rule names from the [review] section
         config = config_parser_global.grapeConfig()
@@ -391,6 +392,10 @@ class Review(Option, WorkspaceDirHandler):
 
                     if config.has_option(sectionName, "label"):
                         label = config.get(sectionName, "label")
+
+                    if label in reservedReviewRuleLabels:
+                        logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
+                        exit(1)
 
                     # Default to one reviewer
                     minNumReviewers = 1
