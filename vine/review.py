@@ -487,7 +487,9 @@ class Review(Option, WorkspaceDirHandler):
         Retrieves the default review rule name for merge/pull requests.
 
         If the user has provided a default in the global config, that is used.
-        Otherwise, the name of the first rule is used.
+        Otherwise, if only one rule is provided, the name of that rule is used
+        instead. If a default cannot be determined, an error message is logged
+        and the program will exit with a code of 1.
 
         :param reviewRules: A dictionary containing review rules
         :return: A string containing the default review rule name.
@@ -506,11 +508,13 @@ class Review(Option, WorkspaceDirHandler):
                     logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify a review rule.')
                     exit(1)
 
-        # Pick the first review rule as a fallback
+        # If there is only one rule, use that as the default
         if not defaultReviewRuleName:
-            for reviewRuleName in reviewRules:
-                defaultReviewRuleName = reviewRuleName
-                break
+            if len(reviewRules) == 1:
+                defaultReviewRuleName = reviewRules.keys()[0]
+            else:
+                logging.error(f'GRAPE: ERROR: "defaultrule" in section "{self.SECTION_REVIEW}" in the global config must be specified.')
+                exit(1)
 
         return defaultReviewRuleName
 
