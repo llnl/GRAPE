@@ -519,7 +519,7 @@ class Review(Option, WorkspaceDirHandler):
         return defaultReviewRuleName
 
 
-    def parseReviewers(self, args, reviewRules, defaultReviewRuleName):
+    def parseReviewers(self, args, reviewRules, reviewRuleMap, defaultReviewRuleName):
         '''
         Extracts reviewer groups from the --reviewers argument.
         The argument should consist of whitespace separated groups, where
@@ -538,6 +538,7 @@ class Review(Option, WorkspaceDirHandler):
 
         :param args: A dictionary containing arguments to a prior or current GRAPE call
         :param reviewRules: A dictionary containing review rules
+        :param reviewRuleMap: A dictionary mapping old rule names (str) to new rule names (str).
         :param defaultReviewRuleName A string containing the name of the default rule
         :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
         '''
@@ -564,6 +565,9 @@ class Review(Option, WorkspaceDirHandler):
                 elif len(tokens) == 2:
                     # Use the given rule
                     reviewRuleName = tokens[0]
+
+                    if reviewRuleName in reviewRuleMap:
+                        reviewRuleName = reviewRuleMap[reviewRuleName]
 
                     # Check the given rule name is a review rule
                     if reviewRuleName not in reviewRules:
@@ -897,6 +901,7 @@ class Review(Option, WorkspaceDirHandler):
 
         # Get review rules
         reviewRules = self.parseReviewRules()
+        reviewRuleMap = self.parseReviewRuleMap(reviewRules)
         defaultReviewRuleName = self.parseDefaultReviewRuleName(reviewRules)
 
         # Determine merge/pull request reviewers
@@ -908,8 +913,8 @@ class Review(Option, WorkspaceDirHandler):
                 'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
             }
 
-        reviewers.update(self.parseReviewers(savedArgs, reviewRules, defaultReviewRuleName))
-        reviewers.update(self.parseReviewers(args, reviewRules, defaultReviewRuleName))
+        reviewers.update(self.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        reviewers.update(self.parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
 
         # Update description
