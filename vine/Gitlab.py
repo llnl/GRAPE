@@ -628,7 +628,7 @@ class PullRequest:
                         try:
                             # Delete the approval rule
                             self.mergerequest.approval_rules.delete(rule_id)
-                            logging.info(f'GRAPE: INFO: Deleted approval rule "{approval_rule_name}".')
+                            logging.info(f'Deleted approval rule "{approval_rule_name}".')
                         except gitlab.exceptions.GitlabDeleteError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')
 
