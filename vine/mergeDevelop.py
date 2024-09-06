@@ -407,7 +407,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                continue
 
-           logging.info(f"NEW: Found branch: {branch} at position {order} ({merged}).")
+           logging.info(f"NEW: Found branch: {branch} at position {order} ({status}).")
            branches[order] = branch
 
        # Put the target branch first in the merge train, dropping out any None entries leftover
