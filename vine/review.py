@@ -371,8 +371,7 @@ class Review(Option, WorkspaceDirHandler):
         set of review rules is used when no user specified rules are found in
         the global config.
 
-        Returns:
-            dict: A dictionary containing the default review rules.
+        :return: A dictionary containing the default review rules.
         """
         return {'grape': {'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
                           'minNumReviewers': 2,
@@ -448,8 +447,8 @@ class Review(Option, WorkspaceDirHandler):
         If the user has provided a default in the global config, that is used.
         Otherwise, the name of the first rule is used.
 
-        Returns:
-            str: A string containing the default review rule name.
+        :param reviewRules: A dictionary containing review rules
+        :return: A string containing the default review rule name.
         """
         defaultReviewRuleName = None
 
