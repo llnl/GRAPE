@@ -836,10 +836,10 @@ class Review(Option, WorkspaceDirHandler):
                     submoduleReviewers = {}
 
                     for reviewRuleName in reviewers:
-                        reviewRule = grapeReviewRules[name]
-                        reviewRuleRepositoryList = grapeReviewRules["repositories"]
+                        reviewRule = reviewRules[reviewRuleName]
+                        reviewRuleRepositories = reviewRule["repositories"]
 
-                        for reviewRuleRepository in reviewRuleRepositoryList:
+                        for reviewRuleRepository in reviewRuleRepositories:
                             if re.fullmatch(reviewRuleRepository, submodule):
                                 submoduleReviewers[reviewRuleName] = reviewers[reviewRuleName]
 
@@ -874,10 +874,10 @@ class Review(Option, WorkspaceDirHandler):
                subprojectReviewers = {}
 
                for reviewRuleName in reviewers:
-                   grapeReviewRule = grapeReviewRules[reviewRuleName]
-                   reviewRuleRepositoryList = grapeReviewRule["repositories"]
+                   reviewRule = reviewRules[reviewRuleName]
+                   reviewRuleRepositories = reviewRule["repositories"]
 
-                   for reviewRuleRepository in reviewRuleRepositoryList:
+                   for reviewRuleRepository in reviewRuleRepositoryies:
                        if re.fullmatch(reviewRuleRepository, proj):
                            subprojectReviewers[reviewRuleName] = reviewers[reviewRuleName]
 
@@ -960,10 +960,10 @@ class Review(Option, WorkspaceDirHandler):
             outerReviewers = {}
 
             for reviewRuleName in reviewers:
-                reviewRule = grapeReviewRules[reviewRuleName]
-                reviewRuleRepositoryList = reviewRule["repositories"]
+                reviewRule = reviewRules[reviewRuleName]
+                reviewRuleRepositories = reviewRule["repositories"]
 
-                for reviewRuleRepository in reviewRuleRepositoryList:
+                for reviewRuleRepository in reviewRuleRepositories:
                     if re.fullmatch(reviewRuleRepository, repo_name):
                         outerReviewers[reviewRuleName] = reviewers[reviewRuleName]
 
