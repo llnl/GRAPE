@@ -471,6 +471,11 @@ class Review(Option, WorkspaceDirHandler):
                         exit(1)
 
                     oldRule = token[0]
+
+                    if oldRule in reviewRules:
+                        logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" is a valid review rule.')
+                        exit(1)
+
                     newRule = token[1]
 
                     if newRule not in reviewRules:
