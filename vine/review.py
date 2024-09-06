@@ -719,26 +719,19 @@ class Review(Option, WorkspaceDirHandler):
         reviewers.update(self.parseReviewers(savedArgs, reviewRules, defaultReviewRuleName))
         reviewers.update(self.parseReviewers(args, reviewRules, defaultReviewRuleName))
 
+        # Update description
         newReviewersArg = self.serializeReviewers(reviewers)
 
         if newReviewersArg:
             args['--reviewers'] = newReviewersArg
 
-        # Update description
+        descriptionData['grape_data'] = self.buildGrapeData(args)
+
         if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
             descriptionData['related_reviews'].append(outerLevelURL)
             descriptionData['related_reviews'].sort()
 
-        descriptionData['grape_data'] = self.buildGrapeData(args)
         updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
-
-        # Determine pull request reviewers
-        reviewers = self.parseReviewers(args)
-        self.validateReviewers(reviewers, grapeReviewRules)
-
-        # TODO: Handle the case where --reviewers is not in current or saved args, but the outer level request has reviewers
-        #if reviewers is None and existingOuterLevelRequest is not None:
-            #reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
