@@ -828,6 +828,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
                 # Check all review rules are completed
+                unsatisfiedReviewRules = []
+
                 for reviewRuleName in reviewRules:
                     reviewRule = reviewRules[reviewRuleName]
                     active = reviewRule['active']
@@ -848,8 +850,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 break
 
                         if numReviewers < minNumReviewers:
-                            verified = False
-                            userMessage += f"\n\t{repo}: Review rule '{reviewRuleName' incomplete"
+                            unsatisfiedReviewRules.append(reviewRuleName)
+
+                if unsatisfiedReviewRules:
+                    verified = False
+                    userMessage += f"\n\t{repo}: Review rules unsatisfied ({', '.join(unsatisfiedReviewRules)})"
 
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
 
