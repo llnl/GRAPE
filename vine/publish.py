@@ -850,7 +850,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 break
 
                         if numReviewers < minNumReviewers:
-                            unsatisfiedReviewRules.append(reviewRuleName)
+                            unsatisfiedReviewRules.append(reviewRule['label'])
 
                 if unsatisfiedReviewRules:
                     verified = False
