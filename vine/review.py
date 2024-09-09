@@ -62,7 +62,7 @@ class Review(Option, WorkspaceDirHandler):
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
         --user=<userName>           Your Bitbucket user name.
-        --reviewers=<userNames>     A space- or comma- separate list of reviewers for <topicBranch>
+        --reviewers=<groups>        A whitespace-separated list of reviewer groups, where each reviewer group is a comma-separated list of reviewers for <topicBranch>, optionally preceded by a rule name and colon.
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
                                     Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
