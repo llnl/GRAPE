@@ -883,6 +883,7 @@ class Review(Option, WorkspaceDirHandler):
             for reviewRuleRepository in reviewRuleRepositories:
                 if re.fullmatch(reviewRuleRepository, repoName):
                     applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
+                    break
 
         return applicableReviewers
 
@@ -1207,7 +1208,7 @@ class Review(Option, WorkspaceDirHandler):
 
             outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
-            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
             # Update related reviews
             outerLevelURL = request.link()
