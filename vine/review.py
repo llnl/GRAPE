@@ -608,11 +608,12 @@ class Review(Option, WorkspaceDirHandler):
                 if len(tokens) == 1:
                     # Use the default rule
                     reviewRuleName = defaultReviewRuleName
-                    reviewRuleReviewers = tokens[0].split(',')
 
                     if reviewRuleName in reviewers:
-                        logging.warning(f'GRAPE: WARNING: Reviewers should be separated by commas.')
-                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
+                        logging.error(f'GRAPE: ERROR: Reviewers must be separated by commas.')
+                        exit(1)
+
+                    reviewRuleReviewers = tokens[0].split(',')
                 elif len(tokens) == 2:
                     # Use the given rule
                     reviewRuleName = tokens[0]
