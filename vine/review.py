@@ -62,7 +62,7 @@ class Review(Option, WorkspaceDirHandler):
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
         --user=<userName>           Your Bitbucket user name.
-        --reviewers=<userNames>     A space- or comma- separate list of reviewers for <topicBranch>
+        --reviewers=<groups>        A whitespace-separated list of reviewer groups, where each reviewer group is a comma-separated list of reviewers for <topicBranch>, optionally preceded by a rule name and colon.
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
                                     Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
@@ -138,12 +138,6 @@ class Review(Option, WorkspaceDirHandler):
             # Remove one backslash from any escaped \n's.
             descr = re.sub('\\\\\\\\n', "\\\\n", descr)
         return descr
-
-    def parseReviewerArgs(self, args):
-        reviewers = args["--reviewers"]
-        if reviewers is not None:
-            reviewers = reviewers.replace(',',' ').split()
-        return reviewers
 
     def buildDescriptionTemplate(self):
         """
@@ -296,7 +290,7 @@ class Review(Option, WorkspaceDirHandler):
                 data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
                 data['grape_data'] = ''
             else:
-                logging.warning(f"GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.")
+                logging.warning(f'GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.')
 
                 data['user_description'] = description
                 data['related_reviews'] = []
@@ -304,6 +298,589 @@ class Review(Option, WorkspaceDirHandler):
 
         return data
 
+
+    def getSavedArgs(self, descriptionData):
+        """
+        Extracts saved arguments from the merge/pull request description.
+
+        :param descriptionData: Data extracted from the merge/pull request description
+        :return: A dictionary where keys are argument names and values are argument values
+        """
+        savedArgs = {}
+
+        if descriptionData:
+            grapeData = descriptionData.get('grape_data')
+
+            if grapeData:
+                grapeDataLines = grapeData.split('\n')
+
+                for line in grapeDataLines:
+                    if line.startswith("--"):
+                        tokens = line.split("=")
+
+                        if len(tokens) == 2:
+                            savedArgs[tokens[0].strip()] = tokens[1].strip()
+
+        return savedArgs
+
+
+    def getGrapeReviewRule(self, active):
+        """
+        Retrieves the GRAPE review rule for merge/pull requests. The GRAPE
+        review rule is used when no user specified rules are found in the
+        global config.
+
+        :param active: Whether or not the GRAPE review rule is active.
+        :return: A dictionary containing the GRAPE review rule.
+        """
+        return {'grape': {'active': active,
+                          'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+                          'minNumReviewers': 2,
+                          'eligibleReviewers': ['.+'],
+                          'repositories': ['.+']}}
+
+
+    def parseReviewRules(self):
+        """
+        Parses the global GRAPE config file and returns a dictionary of review rules.
+
+        :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+        """
+
+        reviewRules = {}
+
+        # Names reserved by grape
+        reservedReviewRuleNames = ['grape']
+        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+        # Count the number of active review rules
+        numActiveRules = 0
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        if config.has_section(self.SECTION_REVIEW):
+            if config.has_option(self.SECTION_REVIEW, "rules"):
+                reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
+
+                for reviewRuleName in reviewRuleNames:
+                    if reviewRuleName in reservedReviewRuleNames:
+                        logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
+                        exit(1)
+
+                    sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
+
+                    if not config.has_section(sectionName):
+                        logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
+                        exit(1)
+
+                    # Default to active
+                    active = True
+
+                    if config.has_option(sectionName, "active"):
+                        active = config.getboolean(sectionName, "active")
+
+                    if active:
+                        numActiveRules += 1
+
+                    # Provide a reasonable default for the rule label
+                    label = f"GRAPE: {reviewRuleName} review"
+
+                    if config.has_option(sectionName, "label"):
+                        label = config.get(sectionName, "label")
+
+                    if label in reservedReviewRuleLabels:
+                        logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
+                        exit(1)
+
+                    # Default to one reviewer
+                    minNumReviewers = 1
+
+                    if config.has_option(sectionName, "minnumreviewers"):
+                        minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                    # Default to all reviewers
+                    eligibleReviewers = [".+"]
+
+                    if config.has_option(sectionName, "eligiblereviewers"):
+                        eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+
+                    # Default to all repositories
+                    repositories = [".+"]
+
+                    if config.has_option(sectionName, "repositories"):
+                        repositories = config.get(sectionName, "repositories").split()
+
+                    # Add the rule
+                    reviewRules[reviewRuleName] = {
+                        "active": active,
+                        "label": label,
+                        "minNumReviewers": minNumReviewers,
+                        "eligibleReviewers": eligibleReviewers,
+                        "repositories": repositories
+                    }
+
+        # Add the GRAPE review rule. It will be active only if the user has
+        # not specified any rules.
+        if not reviewRules:
+            grapeReviewRuleActive = True
+            numActiveRules += 1
+        else:
+            grapeReviewRuleActive = False
+
+        reviewRules.update(self.getGrapeReviewRule(grapeReviewRuleActive))
+
+        if numActiveRules == 0:
+            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+            exit(1)
+
+        return reviewRules
+
+
+    def parseReviewRuleMap(self, reviewRules):
+        """
+        Parses the review rule mappings from the global configuration and
+        creates a mapping of old rules to new rules.
+
+        This function reads the rule mappings defined in the configuration file
+        under the [review] section, validates them against the provided review
+        rules, and constructs a dictionary that maps old rule names to new rule
+        names.
+
+        Parameters:
+        ----------
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is
+            a dictionary containing the details of that review rule.
+
+        Returns:
+        -------
+        dict
+            A dictionary mapping old rule names (str) to new rule names (str).
+            If no valid mappings are found, an empty dictionary is returned.
+
+        Example:
+        --------
+        reviewRules = {
+            'code': {...},
+            'doc': {...}
+        }
+
+        # Assuming the configuration has the following mappings:
+        # rulemap = "oldcode:code olddoc:doc"
+
+        ruleMap = parseReviewRuleMap(reviewRules)
+        # ruleMap would be: {'oldcode': 'code', 'olddoc': 'doc'}
+
+        Notes:
+        -----
+        - The function expects the configuration to have a section defined as `self.SECTION_REVIEW`
+          and an option `rulemap` containing the mappings.
+        - Each mapping should be in the format "oldrule:newrule". If the format is incorrect or if a new rule
+          does not exist in the provided review rules, an error is logged and the program exits with a status code of 1.
+        """
+        reviewRuleMap = {}
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        if config.has_section(self.SECTION_REVIEW):
+            if config.has_option(self.SECTION_REVIEW, 'rulemap'):
+                mappings = config.get(self.SECTION_REVIEW, 'rulemap')
+
+                for mapping in mappings:
+                    tokens = mapping.split(':')
+
+                    if len(tokens) != 2:
+                        logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
+                        exit(1)
+
+                    oldRule = token[0]
+
+                    if oldRule not in reviewRules or reviewRules[oldRule]['active']:
+                        logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
+                        exit(1)
+
+                    newRule = token[1]
+
+                    if newRule not in reviewRules or not reviewRules[newRule]['active']:
+                        logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
+                        exit(1)
+
+                    reviewRuleMap[oldRule] = newRule
+
+        return reviewRuleMap
+
+
+    def parseDefaultReviewRuleName(self, reviewRules):
+        """
+        Retrieves the default review rule name for merge/pull requests.
+
+        If the user has provided a default in the global config, that is used.
+        Otherwise, if only one rule is provided, the name of that rule is used
+        instead. If a default cannot be determined, an error message is logged
+        and the program will exit with a code of 1.
+
+        :param reviewRules: A dictionary containing review rules
+        :return: A string containing the default review rule name.
+        """
+        defaultReviewRuleName = None
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        if config.has_section(self.SECTION_REVIEW):
+            if config.has_option(self.SECTION_REVIEW, "defaultrule"):
+                defaultReviewRuleName = config.get(self.SECTION_REVIEW, "defaultrule")
+
+                # Check that the default matches one of the active review rule names
+                if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
+                    logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
+                    exit(1)
+
+        # If there is only one active review rule, use that as the default
+        if not defaultReviewRuleName:
+            numActiveReviewRules = 0
+
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName]['active']:
+                    numActiveReviewRules += 1
+
+            if numActiveReviewRules == 1:
+                for reviewRuleName in reviewRules:
+                    if reviewRules[reviewRuleName]['active']:
+                        defaultReviewRuleName = reviewRuleName
+                        break
+            else:
+                logging.error(f'GRAPE: ERROR: "defaultrule" in section "{self.SECTION_REVIEW}" in the global config must be specified.')
+                exit(1)
+
+        return defaultReviewRuleName
+
+
+    def parseReviewers(self, args, reviewRules, reviewRuleMap, defaultReviewRuleName):
+        '''
+        Extracts reviewer groups from the --reviewers argument.
+        The argument should consist of whitespace separated groups, where
+        each group is in one of the following forms:
+
+        <username>[,<username>]* -> these reviewers are assigned to the default rule
+        <rule>:<username>[,<username>] -> these reviewers are assigned to the given rule
+
+        e.g.
+
+        --reviewers="username1,username2 rule1:username1 rule2:username2,username3"
+
+        In this case, username1 and username2 will be assigned to the default
+        review rule. username1 will also be assigned to rule1, and username2
+        along with username3 will be assigned to rule2.
+
+        :param args: A dictionary containing arguments to a prior or current GRAPE call
+        :param reviewRules: A dictionary containing review rules
+        :param reviewRuleMap: A dictionary mapping old rule names (str) to new rule names (str).
+        :param defaultReviewRuleName A string containing the name of the default rule
+        :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
+        '''
+
+        reviewers = {}
+
+        # Parse reviewers from saved arguments
+        arg = args.get("--reviewers")
+
+        if arg is not None:
+            if not arg:
+                # The empty string means remove all reviewers
+                for reviewRuleName in reviewRules:
+                    if reviewRules[reviewRuleName]['active']:
+                        reviewers[reviewRuleName] = {
+                            'label': reviewRules[reviewRuleName]['label'],
+                            'reviewers': []
+                        }
+
+                return reviewers
+
+            # Otherwise, parse the given string
+            reviewerGroups = arg.split()
+
+            for reviewerGroup in reviewerGroups:
+                tokens = reviewerGroup.split(":")
+
+                if len(tokens) == 1:
+                    # Use the default rule
+                    reviewRuleName = defaultReviewRuleName
+
+                    if reviewRuleName in reviewers:
+                        logging.error(f'GRAPE: ERROR: Reviewers must be separated by commas.')
+                        exit(1)
+
+                    reviewRuleReviewers = tokens[0].split(',')
+                elif len(tokens) == 2:
+                    # Use the given rule
+                    reviewRuleName = tokens[0]
+
+                    if reviewRuleName in reviewRuleMap:
+                        reviewRuleName = reviewRuleMap[reviewRuleName]
+
+                    # Check the given rule name is a review rule
+                    if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                        logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
+                        exit(1)
+
+                    if tokens[1]:
+                        reviewRuleReviewers = tokens[1].split(',')
+                    else:
+                        reviewRuleReviewers = []
+
+                    if reviewRuleName in reviewers:
+                        logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
+                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
+                else:
+                    logging.error(f'GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers="username1,username2 rule:username3,username4"')
+                    exit(1)
+
+                reviewRule = reviewRules[reviewRuleName]
+
+                # Check for duplicate reviewers
+                uniqueReviewRuleReviewers = set(reviewRuleReviewers)
+
+                if len(reviewRuleReviewers) != len(uniqueReviewRuleReviewers):
+                    logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
+                    reviewRuleReviewers = list(uniqueReviewRuleReviewers)
+
+                reviewers[reviewRuleName] = {
+                    'label': reviewRule['label'],
+                    'reviewers': reviewRuleReviewers
+                }
+
+        # Return the dictionary of reviewers
+        return reviewers
+
+
+    def validateReviewers(self, reviewers, reviewRules):
+        """
+        Validates the provided reviewers against defined review rules.
+
+        This function checks if the specified reviewers are valid according to the review rules,
+        ensuring that each reviewer is eligible and that the minimum number of reviewers is met.
+
+        Parameters:
+        ----------
+        reviewers : dict
+            A dictionary where each key is a review rule name and each value is a dictionary containing:
+                - 'reviewers': A list of reviewers assigned to that rule.
+
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is another dictionary
+            containing:
+                - 'eligibleReviewers': A list of patterns (str) representing eligible reviewers for the rule.
+                - 'minNumReviewers': An integer specifying the minimum number of reviewers required for the rule.
+
+        Returns:
+        -------
+        None
+            The function does not return a value. It logs errors and warnings as necessary and exits
+            the program if validation fails.
+
+        Notes:
+        -----
+        - The function uses regular expression matching to determine if each reviewer is eligible.
+        """
+        for reviewRuleName in reviewers:
+            # Check the given rule name is a review rule
+            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
+                exit(1)
+
+            reviewGroup = reviewers[reviewRuleName]
+            reviewRule = reviewRules[reviewRuleName]
+
+            # Check that the reviewers are allowed to approve this rule
+            reviewRuleReviewers = reviewGroup['reviewers']
+            eligibleReviewers = reviewRule["eligibleReviewers"]
+
+            for reviewRuleReviewer in reviewRuleReviewers:
+                validReviewer = False
+
+                for eligibleReviewer in eligibleReviewers:
+                    if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
+                        validReviewer = True
+                        break
+
+                if not validReviewer:
+                    logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
+                    exit(1)
+
+            # Check if the minimum number of reviewers has been met
+            numReviewers = len(reviewRuleReviewers)
+            minNumReviewers = reviewRule["minNumReviewers"]
+
+            if numReviewers < minNumReviewers:
+                logging.warning(f'GRAPE: WARNING: {minNumReviewers} reviewer(s) required for review rule "{reviewRuleName}", but only {numReviewers} reviewer(s) given.')
+
+        return
+
+
+    def serializeReviewers(self, reviewers):
+        """
+        Serializes a dictionary of reviewers into a formatted string.
+
+        This function takes a dictionary where each key represents a review rule name,
+        and the associated value is another dictionary containing a list of reviewers.
+        It constructs a string representation of the reviewers grouped by their review rule names.
+
+        Parameters:
+        ----------
+        reviewers : dict
+            A dictionary where each key is a review rule name (str) and each value is a dictionary
+            containing:
+                - 'reviewers': A list of reviewer names (str) associated with the review rule.
+
+        Returns:
+        -------
+        str or None
+            A string representing the serialized reviewers in the format:
+            "reviewRuleName:reviewer1,reviewer2,..." for each review rule with reviewers.
+            If there are no reviewers or the input dictionary is empty, returns None.
+
+        Example:
+        --------
+        reviewers = {
+            'code': {
+                'reviewers': ['Alice', 'Bob']
+            },
+            'documentation': {
+                'reviewers': ['Charlie']
+            }
+        }
+
+        result = serializeReviewers(reviewers)
+        # result would be: "code:Alice,Bob documentation:Charlie"
+
+        Notes:
+        -----
+        - If a review rule has no reviewers, it will be skipped in the output.
+        - If the input `reviewers` dictionary is empty or None, or all the review rules have no reviewers, the function will return None.
+        """
+        if reviewers:
+            serializedReviewGroups = []
+
+            for reviewRuleName in reviewers:
+                reviewerGroup = reviewers[reviewRuleName]
+                reviewRuleReviewers = reviewerGroup['reviewers']
+
+                if reviewRuleReviewers:
+                    if len(reviewers) == 1:
+                        serializedReviewGroups.append(f'{",".join(reviewRuleReviewers)}')
+                    else:
+                        serializedReviewGroups.append(f'{reviewRuleName}:{",".join(reviewRuleReviewers)}')
+
+            if serializedReviewGroups:
+                return ' '.join(serializedReviewGroups)
+            else:
+                return None
+        else:
+            return None
+
+
+    def buildGrapeData(self, args):
+        """
+        Builds a string containing info about the current call to grape review.
+        This includes the grape version number and certain arguments that need
+        to be stored in the merge/pull request description for later use.
+
+        Parameters:
+        ----------
+        args : dict
+            A dictionary containing arguments to a prior or current GRAPE call
+
+        Returns:
+        -------
+        str
+            A string representing the grape data, which includes the grape version and,
+            if applicable, other arguments in the format:
+            '--argname=argvalue'.
+
+        Example:
+        --------
+        args = {
+            '--reviewers': 'Alice,Bob'
+        }
+
+        result = self.buildGrapeData(args)
+        # result might be: 'v1.49.26\n--reviewers=Alice,Bob'
+        """
+        grapeData = version.grapeVersion()
+
+        if '--reviewers' in args and args['--reviewers']:
+            grapeData += f'\n--reviewers={args["--reviewers"]}'
+
+        return grapeData
+
+
+    def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
+        """
+        Retrieves applicable reviewers for a given repository based on defined review rules.
+
+        This function checks the provided review rules against the specified repository name
+        and returns a dictionary of reviewers that are applicable for that repository.
+
+        Parameters:
+        ----------
+        repoName : str
+            The name of the repository for which applicable reviewers are to be retrieved.
+
+        allReviewers : dict
+            A dictionary where each key is a review rule name and each value is a dictionary
+            containing a list of reviewers associated with that rule.
+
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is another dictionary
+            containing:
+                - 'repositories': A list of repository patterns (str) that the rule applies to.
+
+        Returns:
+        -------
+        dict
+            A dictionary where each key is a review rule name and each value is a dictionary
+            containing a list of applicable reviewers for that rule. If no applicable reviewers are found, an empty dictionary is returned.
+
+        Example:
+        --------
+        repoName = 'example-repo'
+        allReviewers = {
+            'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']},
+            'documentation': {'label': 'Documentation Review', 'reviewers': ['Charlie']}
+        }
+        reviewRules = {
+            'code': {
+                'repositories': ['example-repo', 'another-repo']
+            },
+            'documentation': {
+                'repositories': ['example-docs']
+            }
+        }
+
+        result = self.getApplicableReviewers(repoName, allReviewers, reviewRules)
+        # result would be: {'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']}}
+
+        Notes:
+        -----
+        - The function uses regular expression matching to determine if the repository name matches
+          any of the patterns defined in the review rules.
+        - If no review rules match the given repository name, the function will return an empty dictionary.
+        """
+        applicableReviewers = {}
+
+        for reviewRuleName in allReviewers:
+            reviewRule = reviewRules[reviewRuleName]
+            reviewRuleRepositories = reviewRule["repositories"]
+
+            for reviewRuleRepository in reviewRuleRepositories:
+                if re.fullmatch(reviewRuleRepository, repoName):
+                    applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
+                    break
+
+        return applicableReviewers
 
     @log_wrapper
     def execute(self, args):
@@ -376,6 +953,39 @@ class Review(Option, WorkspaceDirHandler):
 
         descriptionTemplate = self.buildDescriptionTemplate()
         descriptionData = self.parseDescription(descr, descriptionTemplate)
+        savedArgs = self.getSavedArgs(descriptionData)
+
+        # Get review rules
+        reviewRules = self.parseReviewRules()
+        reviewRuleMap = self.parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = self.parseDefaultReviewRuleName(reviewRules)
+
+        # Determine merge/pull request reviewers
+        reviewers = {}
+
+        if existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
+            reviewers[defaultReviewRuleName] = {
+                'label': reviewRules[defaultReviewRuleName]['label'],
+                'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
+            }
+
+        reviewers.update(self.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        reviewers.update(self.parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        self.validateReviewers(reviewers, reviewRules)
+
+        # Update description
+        args['--reviewers'] = self.serializeReviewers(reviewers)
+
+        # Add inactive rules with empty reviewer lists in order to delete any
+        # outdated approval rules.
+        for reviewRuleName in reviewRules:
+            if not reviewRules[reviewRuleName]['active']:
+                reviewers[reviewRuleName] = {
+                    'label': reviewRules[reviewRuleName]['label'],
+                    'reviewers': []
+                }
+
+        descriptionData['grape_data'] = self.buildGrapeData(args)
 
         if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
             descriptionData['related_reviews'].append(outerLevelURL)
@@ -387,11 +997,6 @@ class Review(Option, WorkspaceDirHandler):
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
         project_reviewer_lists = {}
-
-        # determine pull request reviewers
-        reviewers = self.parseReviewerArgs(args)
-        if reviewers is None and existingOuterLevelRequest is not None:
-            reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
 
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
@@ -488,6 +1093,8 @@ class Review(Option, WorkspaceDirHandler):
                        changed = True 
 
                 if changed:
+                    submoduleReviewers = self.getApplicableReviewers(submodule, reviewers, reviewRules)
+
                     reviewer_list = {}
                     if submodule in projects_with_reviewer_lists:
                         reviewer_list_name = config.get(f"{submodule}-reviewers","reviewer_list_name")
@@ -503,7 +1110,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "title": title,
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
-                                                                         "reviewers": reviewers,
+                                                                         "reviewers": submoduleReviewers,
                                                                          "reviewer_list" : reviewer_list,
                                                                          "active": submodule in activeSubmodules }]))
                     project_reviewer_lists.update(reviewer_list)
@@ -516,6 +1123,8 @@ class Review(Option, WorkspaceDirHandler):
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+               subprojectReviewers = self.getApplicableReviewers(proj, reviewers, reviewRules)
+
                reviewer_list = {}
                if proj in projects_with_reviewer_lists:
                    reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
@@ -532,7 +1141,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "title": title,
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
-                                                                    "reviewers": reviewers,
+                                                                    "reviewers": subprojectReviewers,
                                                                     "reviewer_list" : reviewer_list,
                                                                     "active": proj in activeNestedSubprojects}]))
                project_reviewer_lists.update(reviewer_list)
@@ -591,7 +1200,10 @@ class Review(Option, WorkspaceDirHandler):
             repo_name = args["--repo"]
             repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+
+            outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
+
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
             # Update related reviews
             outerLevelURL = request.link()
@@ -641,7 +1253,7 @@ class Review(Option, WorkspaceDirHandler):
             if updatedDescription != pre_update_description:
                 request = postPullRequest(repo, title, branch, target_branch,
                                           updatedDescription,
-                                          reviewers,
+                                          outerReviewers,
                                           project_reviewer_lists,
                                           args,
                                           self.workspace_dir,
@@ -804,10 +1416,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
             # update the pull request
             logging.info("Updating pull request...")
             try:
-                if not reviewers:
-                    reviewers = [r[0] for r in request.reviewers()]
-                # Remove duplicate reviewers
-                reviewers = list(set(reviewers))
                 logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
 
@@ -824,22 +1432,23 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         else:
                             title = currentTitle + title
 
+                author = request.author()
                 subReviewers = reviewers.copy()
-                if request.author() in subReviewers:
-                    logging.info(
-                            f"{request.author()} is the author of the pull" +
-                            " request and cannot be a reviewer")
-                    subReviewers.remove(request.author())
+
+                for reviewRuleName in subReviewers:
+                    if author in subReviewers[reviewRuleName]['reviewers']:
+                        logging.info(
+                                f"{author} is the author of the pull" +
+                                " request and cannot be a reviewer")
+                        subReviewers[reviewRuleName]['reviewers'].remove(author)
+
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}, add_labels={add_labels}, remove_labels={remove_labels}")
-                    if "gitlab" in args["--codeReviewsURL"]:
-                       combined_reviewers = {Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0)}
-                       combined_reviewers.update(reviewer_list)
-                       request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers, add_labels=add_labels, remove_labels=remove_labels)
-                    else:
-                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
+                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
                     if add_labels or remove_labels:
                        logging.info("Regenerating pipeline...")
                        request.regeneratePipeline()

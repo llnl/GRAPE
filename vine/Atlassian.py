@@ -169,7 +169,19 @@ class Repo(StashyNode):
         """reviewers"""
         if labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
-        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
+
+        flattened_reviewers = set()
+
+        for review_rule_name in reviewers:
+            reviewer_group = reviewers[review_rule_name]
+            users = reviewer_group['reviewers']
+
+            for user in users:
+                flattened_reviewers.add(user)
+
+        flattened_reviewers = list(flattened_reviewers)
+
+        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=flattened_reviewers)
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 
@@ -284,11 +296,22 @@ class PullRequest(StashyNode):
         #if reviewers is not None:
         #    for r in reviewers:
         #        reviewerList.append(dict(user=dict(name=r)))
+        flattened_reviewers = set()
+
+        for review_rule_name in reviewers:
+            reviewer_group = reviewers[review_rule_name]
+            users = reviewer_group['reviewers']
+
+            for user in users:
+                flattened_reviewers.add(user)
+
+        flattened_reviewers = list(flattened_reviewers)
+
         if add_labels or remove_labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
 
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
-        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewers), self._stashy_pull_requests)
+        return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=flattened_reviewers), self._stashy_pull_requests)
 
     def regeneratePipeline(self):
         pass

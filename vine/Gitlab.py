@@ -227,8 +227,9 @@ class Repo:
                                             "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description,
-                   reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)},
+         mr.update(title,
+                   description=description,
+                   reviewers=reviewers,
                    add_labels=labels)
 
          return mr
@@ -522,9 +523,6 @@ class PullRequest:
     def authorName(self):
         return self.mergerequest.author["name"]
 
-    def authorName(self):
-        return self.mergerequest.author["name"]
-
     def authorEmail(self):
         authorID = self.mergerequest.author["id"]
         # This will only return a non-empty value if the public email has been set
@@ -587,13 +585,22 @@ class PullRequest:
     def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
+
         if description:
             self.mergerequest.description = description
+
         if reviewers:
-            for approval_rule_name in reviewers:
-                (users,numRequired) = reviewers[approval_rule_name]
+            all_reviewer_ids = set()
+
+            for review_rule_name in reviewers:
+                reviewer_group = reviewers[review_rule_name]
+                approval_rule_name = reviewer_group['label']
+                users = reviewer_group['reviewers']
+                num_required = len(users)
+
                 if users:
                     reviewer_ids = []
+
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
                         if matching_reviewers:
@@ -602,8 +609,31 @@ class PullRequest:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
-                    self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
-                    self.mergerequest.reviewer_ids = reviewer_ids
+
+                    self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+
+                    for reviewer_id in reviewer_ids:
+                        all_reviewer_ids.add(reviewer_id)
+                else:
+                    approval_rules = self.mergerequest.approval_rules.list()
+
+                    # Find the approval rule by name
+                    rule_id = None
+
+                    for rule in approval_rules:
+                        if rule.name == approval_rule_name:
+                            rule_id = rule.id
+                            break
+
+                    if rule_id is not None:
+                        try:
+                            # Delete the approval rule
+                            self.mergerequest.approval_rules.delete(rule_id)
+                            logging.info(f'Deleted approval rule "{approval_rule_name}".')
+                        except gitlab.exceptions.GitlabDeleteError as e:
+                            logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')
+
+            self.mergerequest.reviewer_ids = list(all_reviewer_ids)
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
