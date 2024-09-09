@@ -316,8 +316,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        config = config_parser_global.grapeConfig()
        target_branch = config.getPublicBranchFor(current_branch)
        # Now that we know the target branch, get the SHAs of all the merges between target branch and HEAD, including the SHAs of the parents.
+       log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --parents --merges --no-abbrev-commit", execution_path=self.workspace_dir).splitlines()
        # Reverse the list so that the target branch is first and newer commits are later.
-       log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --parents --merges --no-abbrev-commit", execution_path=self.workspace_dir).splitlines().reverse()
+       log_descriptions.reverse()
        # Save the SHA of the target branch
        target_SHA = git.SHA(f"origin/{target_branch}", execution_path=self.workspace_dir)
 
@@ -345,7 +346,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
              versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
              logging.info(f"NEW: Found current branch, targeting {target_branch} at {target_SHA}.")
              logging.info(f"NEW: Latest version: {versionTag} at {versionTag_SHA}.")
-             logging.info(f"NEW: Log since {branch}\n{log_descriptions}.")
+             logging.info(f"NEW: Log since {target_branch}\n{log_descriptions}.")
              continue
 
            if mr.toRef() != target_branch:
@@ -406,7 +407,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                continue
 
-           logging.info(f"NEW: Found branch: {branch} at position {order} ({merged}).")
+           logging.info(f"NEW: Found branch: {branch} at position {order} ({status}).")
            branches[order] = branch
 
        # Put the target branch first in the merge train, dropping out any None entries leftover

@@ -1,0 +1,9 @@
+
+
+Fri Sep  6 14:34:11 2024 Benjamin T. Liu
+MR_613
+Reviewers: Alan Dayton
+
+Fix syntax of lookupActiveMergeTrainBranches_new_version
+
+- fix incorrect print variable
