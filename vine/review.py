@@ -139,12 +139,6 @@ class Review(Option, WorkspaceDirHandler):
             descr = re.sub('\\\\\\\\n', "\\\\n", descr)
         return descr
 
-    def parseReviewerArgs(self, args):
-        reviewers = args["--reviewers"]
-        if reviewers is not None:
-            reviewers = reviewers.replace(',',' ').split()
-        return reviewers
-
     def buildDescriptionTemplate(self):
         """
         Constructs a template for the merge/pull request description.

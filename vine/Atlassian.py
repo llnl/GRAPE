@@ -169,7 +169,19 @@ class Repo(StashyNode):
         """reviewers"""
         if labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
-        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=reviewers)
+
+        flattened_reviewers = set()
+
+        for review_rule_name in reviewers:
+            reviewer_group = reviewers[review_rule_name]
+            users = reviewer_group['reviewers']
+
+            for user in users:
+                flattened_reviewers.add(user)
+
+        flattened_reviewers = list(flattened_reviewers)
+
+        stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=flattened_reviewers)
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 

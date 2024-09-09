@@ -227,8 +227,9 @@ class Repo:
                                             "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description,
-                   reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)},
+         mr.update(title,
+                   description=description,
+                   reviewers=reviewers,
                    add_labels=labels)
 
          return mr
