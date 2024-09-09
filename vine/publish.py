@@ -758,6 +758,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_email"] = ""
             return True
 
+        # Get review rules
+        reviewRules = review.parseReviewRules()
+
         verified = True
 
         public = args["--public"]
@@ -824,6 +827,30 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
+                # Check all review rules are completed
+                for reviewRuleName in reviewRules:
+                    reviewRule = reviewRules[reviewRuleName]
+                    active = reviewRule['active']
+
+                    if active:
+                        minNumReviewers = reviewRule["minNumReviewers"]
+                        eligibleReviewers = reviewRule["eligibleReviewers"]
+
+                        numReviewers = 0
+
+                        for reviewer in reviewers:
+                            for eligibleReviewer in eligibleReviewers:
+                                if re.fullmatch(eligibleReviewer, reviewer[2]):
+                                    numReviewers += 1
+                                    break
+
+                            if numReviewers >= minNumReviewers:
+                                break
+
+                        if numReviewers < minNumReviewers:
+                            verified = False
+                            userMessage += f"\n\t{repo}: Review rule '{reviewRuleName' incomplete"
+
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
 
         if topPullRequest:
