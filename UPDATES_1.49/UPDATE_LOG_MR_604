@@ -1,0 +1,75 @@
+
+
+Mon Sep  9 12:28:31 2024 Alan Dayton
+MR_604
+Reviewers: Ben Liu, Peter Robinson (He/Him)
+
+* Adds support for review rules to GRAPE
+
+* Review rules are used to create approval rules in GitLab
+
+* Reviewers are encoded in the merge request description
+
+* Reviewers/approval rules are flattened to just the reviewers in Atlassian
+
+* If no review rules are specified, falls back to a default rule provided by GRAPE. Otherwise, the GRAPE rule is not used.
+
+* Reviewers and approval rules can now be removed with --reviewers=\"\" or --reviewers=\"{rule}:\"
+
+* Old rules can be marked as inactive (they must be kept around so that the corresponding GitLab approval rules can be deleted for existing merge requests)
+
+* Old rules can be mapped to new rules
+
+* If no review rules or only one review rule, --reviewers=\"username1,username2\" defaults to the GRAPE fallback rule or the single provided rule
+
+* If more than one review rule, a default rule can be specified in the .grapeconfig file
+
+* Rules can be specified when adding reviewers: --reviewers=\"{rule1}:username1,username2 {rule2}:username3\"
+
+* If a default rule is specified, the rule name can be left off: --reviewers=\"username1,username2 {rule2}:username3\"
+
+* In order to get people ready for the review rule syntax, there is now a warning for when reviewers are separated by a space instead of a comma. That's to prevent issues like the following: --reviewers=\"{rule1}:username1 username2\", which assigned username1 to rule1 and username2 to the default rule.
+
+Here's an example of what can be added to the .grapeconfig file:
+
+'''
+
+[review]
+
+rules = code dc
+
+defaultrule = code
+
+[review-code]
+
+label = GRAPE: Code Review // defaults to GRAPE: {rulename}
+
+minnumreviewers = 2 // defaults to 1
+
+// eligiblereviewers defaults to all
+
+// repositories defaults to all
+
+[review-dc]
+
+label = GRAPE: DC Review
+
+minnumreviewers = 1
+
+eligiblereviewers = benliu dawson24 # A regex can be used
+
+repositories = test_subproject_1 # A regex can be used
+
+'''
+
+Here's the example in action: https://rzlc.llnl.gov/gitlab/GRP/test_application_1/-/merge_requests/4/diffs
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.39
+
+--reviewers=probinso,benliu
