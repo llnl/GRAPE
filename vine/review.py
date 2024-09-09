@@ -324,119 +324,6 @@ class Review(Option, WorkspaceDirHandler):
         return savedArgs
 
 
-    def getGrapeReviewRule(self, active):
-        """
-        Retrieves the GRAPE review rule for merge/pull requests. The GRAPE
-        review rule is used when no user specified rules are found in the
-        global config.
-
-        :param active: Whether or not the GRAPE review rule is active.
-        :return: A dictionary containing the GRAPE review rule.
-        """
-        return {'grape': {'active': active,
-                          'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-                          'minNumReviewers': 2,
-                          'eligibleReviewers': ['.+'],
-                          'repositories': ['.+']}}
-
-
-    def parseReviewRules(self):
-        """
-        Parses the global GRAPE config file and returns a dictionary of review rules.
-
-        :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
-        """
-
-        reviewRules = {}
-
-        # Names reserved by grape
-        reservedReviewRuleNames = ['grape']
-        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
-
-        # Count the number of active review rules
-        numActiveRules = 0
-
-        # Extract the rule names from the [review] section
-        config = config_parser_global.grapeConfig()
-
-        if config.has_section(self.SECTION_REVIEW):
-            if config.has_option(self.SECTION_REVIEW, "rules"):
-                reviewRuleNames = config.get(self.SECTION_REVIEW, "rules").split()
-
-                for reviewRuleName in reviewRuleNames:
-                    if reviewRuleName in reservedReviewRuleNames:
-                        logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
-                        exit(1)
-
-                    sectionName = f"{self.SECTION_REVIEW}-{reviewRuleName}"
-
-                    if not config.has_section(sectionName):
-                        logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
-                        exit(1)
-
-                    # Default to active
-                    active = True
-
-                    if config.has_option(sectionName, "active"):
-                        active = config.getboolean(sectionName, "active")
-
-                    if active:
-                        numActiveRules += 1
-
-                    # Provide a reasonable default for the rule label
-                    label = f"GRAPE: {reviewRuleName} review"
-
-                    if config.has_option(sectionName, "label"):
-                        label = config.get(sectionName, "label")
-
-                    if label in reservedReviewRuleLabels:
-                        logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
-                        exit(1)
-
-                    # Default to one reviewer
-                    minNumReviewers = 1
-
-                    if config.has_option(sectionName, "minnumreviewers"):
-                        minNumReviewers = config.getint(sectionName, "minnumreviewers")
-
-                    # Default to all reviewers
-                    eligibleReviewers = [".+"]
-
-                    if config.has_option(sectionName, "eligiblereviewers"):
-                        eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
-
-                    # Default to all repositories
-                    repositories = [".+"]
-
-                    if config.has_option(sectionName, "repositories"):
-                        repositories = config.get(sectionName, "repositories").split()
-
-                    # Add the rule
-                    reviewRules[reviewRuleName] = {
-                        "active": active,
-                        "label": label,
-                        "minNumReviewers": minNumReviewers,
-                        "eligibleReviewers": eligibleReviewers,
-                        "repositories": repositories
-                    }
-
-        # Add the GRAPE review rule. It will be active only if the user has
-        # not specified any rules.
-        if not reviewRules:
-            grapeReviewRuleActive = True
-            numActiveRules += 1
-        else:
-            grapeReviewRuleActive = False
-
-        reviewRules.update(self.getGrapeReviewRule(grapeReviewRuleActive))
-
-        if numActiveRules == 0:
-            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
-            exit(1)
-
-        return reviewRules
-
-
     def parseReviewRuleMap(self, reviewRules):
         """
         Parses the review rule mappings from the global configuration and
@@ -956,7 +843,7 @@ class Review(Option, WorkspaceDirHandler):
         savedArgs = self.getSavedArgs(descriptionData)
 
         # Get review rules
-        reviewRules = self.parseReviewRules()
+        reviewRules = parseReviewRules()
         reviewRuleMap = self.parseReviewRuleMap(reviewRules)
         defaultReviewRuleName = self.parseDefaultReviewRuleName(reviewRules)
 
@@ -1467,6 +1354,120 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                          f"{target_branch} already exists, can't add a new one")
 
     return request
+
+
+def getGrapeReviewRule(active):
+    """
+    Retrieves the GRAPE review rule for merge/pull requests. The GRAPE
+    review rule is used when no user specified rules are found in the
+    global config.
+
+    :param active: Whether or not the GRAPE review rule is active.
+    :return: A dictionary containing the GRAPE review rule.
+    """
+    return {'grape': {'active': active,
+                      'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+                      'minNumReviewers': 2,
+                      'eligibleReviewers': ['.+'],
+                      'repositories': ['.+']}}
+
+
+def parseReviewRules():
+    """
+    Parses the global GRAPE config file and returns a dictionary of review rules.
+
+    :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+    """
+    reviewRules = {}
+
+    # Names reserved by grape
+    reservedReviewRuleNames = ['grape']
+    reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+    # Count the number of active review rules
+    numActiveRules = 0
+
+    # Extract the rule names from the [review] section
+    config = config_parser_global.grapeConfig()
+
+    reviewSectionName = "review"
+
+    if config.has_section(reviewSectionName):
+        if config.has_option(reviewSectionName, "rules"):
+            reviewRuleNames = config.get(reviewSectionName, "rules").split()
+
+            for reviewRuleName in reviewRuleNames:
+                if reviewRuleName in reservedReviewRuleNames:
+                    logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
+                    exit(1)
+
+                sectionName = f"{reviewSectionName}-{reviewRuleName}"
+
+                if not config.has_section(sectionName):
+                    logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
+                    exit(1)
+
+                # Default to active
+                active = True
+
+                if config.has_option(sectionName, "active"):
+                    active = config.getboolean(sectionName, "active")
+
+                if active:
+                    numActiveRules += 1
+
+                # Provide a reasonable default for the rule label
+                label = f"GRAPE: {reviewRuleName} review"
+
+                if config.has_option(sectionName, "label"):
+                    label = config.get(sectionName, "label")
+
+                if label in reservedReviewRuleLabels:
+                    logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
+                    exit(1)
+
+                # Default to one reviewer
+                minNumReviewers = 1
+
+                if config.has_option(sectionName, "minnumreviewers"):
+                    minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                # Default to all reviewers
+                eligibleReviewers = [".+"]
+
+                if config.has_option(sectionName, "eligiblereviewers"):
+                    eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+
+                # Default to all repositories
+                repositories = [".+"]
+
+                if config.has_option(sectionName, "repositories"):
+                    repositories = config.get(sectionName, "repositories").split()
+
+                # Add the rule
+                reviewRules[reviewRuleName] = {
+                    "active": active,
+                    "label": label,
+                    "minNumReviewers": minNumReviewers,
+                    "eligibleReviewers": eligibleReviewers,
+                    "repositories": repositories
+                }
+
+    # Add the GRAPE review rule. It will be active only if the user has
+    # not specified any rules.
+    if not reviewRules:
+        grapeReviewRuleActive = True
+        numActiveRules += 1
+    else:
+        grapeReviewRuleActive = False
+
+    reviewRules.update(getGrapeReviewRule(grapeReviewRuleActive))
+
+    if numActiveRules == 0:
+        logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+        exit(1)
+
+    return reviewRules
 
 
 if __name__ == "__main__":
