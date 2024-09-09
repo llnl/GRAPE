@@ -845,7 +845,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                 for reviewer in reviewers:
                                     for eligibleReviewer in eligibleReviewers:
-                                        if re.fullmatch(eligibleReviewer, reviewer[2]):
+                                        if re.fullmatch(eligibleReviewer, reviewer[0]):
                                             numReviewers += 1
                                             break
 
