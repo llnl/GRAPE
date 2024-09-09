@@ -832,25 +832,30 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                 for reviewRuleName in reviewRules:
                     reviewRule = reviewRules[reviewRuleName]
-                    active = reviewRule['active']
 
-                    if active:
-                        minNumReviewers = reviewRule["minNumReviewers"]
-                        eligibleReviewers = reviewRule["eligibleReviewers"]
+                    if reviewRule['active']:
+                        reviewRuleRepositories = reviewRule["repositories"]
 
-                        numReviewers = 0
+                        for reviewRuleRepository in reviewRuleRepositories:
+                            if re.fullmatch(reviewRuleRepository, repo):
+                                minNumReviewers = reviewRule["minNumReviewers"]
+                                eligibleReviewers = reviewRule["eligibleReviewers"]
 
-                        for reviewer in reviewers:
-                            for eligibleReviewer in eligibleReviewers:
-                                if re.fullmatch(eligibleReviewer, reviewer[2]):
-                                    numReviewers += 1
-                                    break
+                                numReviewers = 0
 
-                            if numReviewers >= minNumReviewers:
+                                for reviewer in reviewers:
+                                    for eligibleReviewer in eligibleReviewers:
+                                        if re.fullmatch(eligibleReviewer, reviewer[2]):
+                                            numReviewers += 1
+                                            break
+
+                                    if numReviewers >= minNumReviewers:
+                                        break
+
+                                if numReviewers < minNumReviewers:
+                                    unsatisfiedReviewRules.append(reviewRule['label'])
+
                                 break
-
-                        if numReviewers < minNumReviewers:
-                            unsatisfiedReviewRules.append(reviewRule['label'])
 
                 if unsatisfiedReviewRules:
                     verified = False
