@@ -919,6 +919,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             else:
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
 
+        # TODO: Consider reporting review rule groupings in self.progress
+
         if topPullRequest:
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
