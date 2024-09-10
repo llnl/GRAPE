@@ -332,6 +332,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
        versionTag_SHA = None
 
+       branches = [None]*(len(log_descriptions)+1)
+
        for car in mergeTrainCars:
            mr_iid = car.merge_request['iid']
            mr = repo.pullRequests(state="all", id=mr_iid)[0]
