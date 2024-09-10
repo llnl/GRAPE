@@ -758,6 +758,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_email"] = ""
             return True
 
+        # Get review rules
+        reviewRules = review.parseReviewRules()
+
         verified = True
 
         public = args["--public"]
@@ -824,6 +827,40 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
+                # Check all review rules are completed
+                unsatisfiedReviewRules = []
+
+                for reviewRuleName in reviewRules:
+                    reviewRule = reviewRules[reviewRuleName]
+
+                    if reviewRule['active']:
+                        reviewRuleRepositories = reviewRule["repositories"]
+
+                        for reviewRuleRepository in reviewRuleRepositories:
+                            if re.fullmatch(reviewRuleRepository, repo):
+                                minNumReviewers = reviewRule["minNumReviewers"]
+                                eligibleReviewers = reviewRule["eligibleReviewers"]
+
+                                numReviewers = 0
+
+                                for reviewer in reviewers:
+                                    for eligibleReviewer in eligibleReviewers:
+                                        if re.fullmatch(eligibleReviewer, reviewer[0]):
+                                            numReviewers += 1
+                                            break
+
+                                    if numReviewers >= minNumReviewers:
+                                        break
+
+                                if numReviewers < minNumReviewers:
+                                    unsatisfiedReviewRules.append(reviewRule['label'])
+
+                                break
+
+                if unsatisfiedReviewRules:
+                    verified = False
+                    userMessage += f"\n\t{repo}: Review rules unsatisfied ({', '.join(unsatisfiedReviewRules)})"
+
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
 
         if topPullRequest:
