@@ -914,7 +914,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
                 else:
                     unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False])
-                    userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
+
+                    if unfinishedReviewers:
+                        userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
+                    else:
+                        userMessage += f"\n\t{repo}: Needs additional approvals"
+
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
