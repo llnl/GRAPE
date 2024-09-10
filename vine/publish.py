@@ -760,6 +760,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         # Get review rules
         reviewRules = review.parseReviewRules()
+        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
 
         verified = True
 
@@ -808,16 +810,79 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         userMessage = ""
         finishedReviewers = set()
 
+        reviewersRegex = re.compile("^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
+
         for (repo, pullRequest) in pullRequests:
             if not pullRequest:
                 userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
                 verified = False
                 continue
 
-            approved = pullRequest.approved()
             reviewers = pullRequest.reviewers()
 
-            if not approved:
+            # Check all active review rules are completed.
+            # This includes checking that all rules are assigned at least
+            # the minimum number of required reviewers (this info is stored
+            # by grape in the merge/pull request description).
+            description = pullRequest.description()
+
+            if isinstance(description, bytes):
+                description = description.decode("utf-8")
+
+            savedArgs = {}
+            match = reviewersRegex.search(description)
+
+            if match:
+                savedArgs['--reviewers'] = match.group('reviewers')
+
+            reviewersFromDescription = review.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName)
+
+            unsatisfiedReviewRules = []
+
+            for reviewRuleName in reviewRules:
+                reviewRule = reviewRules[reviewRuleName]
+
+                if reviewRule['active']:
+                    reviewRuleRepositories = reviewRule["repositories"]
+
+                    for reviewRuleRepository in reviewRuleRepositories:
+                        if re.fullmatch(reviewRuleRepository, repo):
+                            if reviewRuleName not in reviewersFromDescription:
+                                unsatisfiedReviewRules.append(reviewRule['label'])
+                                break
+
+                            minNumReviewers = reviewRule["minNumReviewers"]
+
+                            if len(reviewersFromDescription[reviewRuleName]['reviewers']) < minNumReviewers:
+                                unsatisfiedReviewRules.append(reviewRule['label'])
+                                break
+
+                            eligibleReviewers = reviewRule["eligibleReviewers"]
+
+                            numReviewers = 0
+
+                            for reviewer in reviewers:
+                                for eligibleReviewer in eligibleReviewers:
+                                    if re.fullmatch(eligibleReviewer, reviewer[0]):
+                                        numReviewers += 1
+                                        break
+
+                                if numReviewers >= minNumReviewers:
+                                    break
+
+                            if numReviewers < minNumReviewers:
+                                unsatisfiedReviewRules.append(reviewRule['label'])
+
+                            break
+
+            if unsatisfiedReviewRules:
+                verified = False
+                userMessage += f"\n\t{repo}: Review rules unsatisfied ({', '.join(unsatisfiedReviewRules)})"
+
+            # Check if the repository manager's review requirements are all met.
+            approved = pullRequest.approved()
+
+            if verified and not approved:
                 verified = False
 
                 if not reviewers:
@@ -827,40 +892,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
-                # Check all review rules are completed
-                unsatisfiedReviewRules = []
-
-                for reviewRuleName in reviewRules:
-                    reviewRule = reviewRules[reviewRuleName]
-
-                    if reviewRule['active']:
-                        reviewRuleRepositories = reviewRule["repositories"]
-
-                        for reviewRuleRepository in reviewRuleRepositories:
-                            if re.fullmatch(reviewRuleRepository, repo):
-                                minNumReviewers = reviewRule["minNumReviewers"]
-                                eligibleReviewers = reviewRule["eligibleReviewers"]
-
-                                numReviewers = 0
-
-                                for reviewer in reviewers:
-                                    for eligibleReviewer in eligibleReviewers:
-                                        if re.fullmatch(eligibleReviewer, reviewer[0]):
-                                            numReviewers += 1
-                                            break
-
-                                    if numReviewers >= minNumReviewers:
-                                        break
-
-                                if numReviewers < minNumReviewers:
-                                    unsatisfiedReviewRules.append(reviewRule['label'])
-
-                                break
-
-                if unsatisfiedReviewRules:
-                    verified = False
-                    userMessage += f"\n\t{repo}: Review rules unsatisfied ({', '.join(unsatisfiedReviewRules)})"
-
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
 
         if topPullRequest:
