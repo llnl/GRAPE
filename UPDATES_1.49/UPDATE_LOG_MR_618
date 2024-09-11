@@ -1,0 +1,19 @@
+
+
+Wed Sep 11 10:02:45 2024 Alan Dayton
+MR_618
+Reviewers: Ben Liu
+
+* Some repositories (like grape itself) only require 1 reviewer. This merge request changes the default review rule to only require 1 reviewer
+
+* If repositories require more than 1 reviewer, that will still be checked by other machinery in grape
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.46
+
+--reviewers=benliu

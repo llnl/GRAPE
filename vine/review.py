@@ -1148,7 +1148,7 @@ def getGrapeReviewRule(active):
     """
     return {'grape': {'active': active,
                       'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-                      'minNumReviewers': 2,
+                      'minNumReviewers': 1,
                       'eligibleReviewers': ['.+'],
                       'repositories': ['.+']}}
 
