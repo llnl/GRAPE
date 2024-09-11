@@ -363,8 +363,16 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
              # If the merge request corresponds to latest tagged version, we don't need to look at this car
              if merge_sha == versionTag_SHA:
                 # TODO can we ignore merge cars (earlier) after this one?
-                logging.info(f"NEW: {status} MR {mr_iid} matches {versionTag}, skipping...")
+                logging.info(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} matches {versionTag}, skipping...")
                 continue
+             else:
+                try:
+                    git.mergeBase(f"--is-ancestor {merge_sha} {versionTag_SHA}", execution_path=self.workspace_dir)
+                    logging.info(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} is in history of {versionTag}, skipping...")
+                    continue
+                except grape_errors.GrapeGitError:
+                    # the merge SHA is not in the history of the latest version tag, so we may still be interested in it.
+                    pass
              # If the merge request corresponds to the current target branch, we still may need to consider it,
              # as the subprojects may not have been merged yet (and the version number may not have been tagged).
              if merge_sha == target_SHA:
@@ -390,7 +398,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                           logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} found...")
                           break
                  if not found_merge:
-                    logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
+                    logging.debug(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                     continue
            else:
              # The car is still running, need to determine if it's in the history of our car or not.
@@ -406,7 +414,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                   break
              # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
              if not found_merge:
-               logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
+               logging.debug(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
                continue
 
            logging.info(f"NEW: Found branch: {branch} at position {order} ({status}).")
@@ -503,7 +511,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                         break
                   # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
                   if not found_merge:
-                     logging.info(f"{car.status} {merge_sha} for MR {mr_iid} not found, skipping...")
+                     logging.debug(f"{car.status} {merge_sha} for MR {mr_iid} not found, skipping...")
                      continue
 
            # Prepend the branch, since we are looping over the cars backwards
