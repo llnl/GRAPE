@@ -994,9 +994,6 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     else:
         codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
-    #amend the subproject pull request description with the link to the outer pull request
-    getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)
-
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, review_args, repo)
     if newRequest:
         return newRequest.link()
@@ -1013,16 +1010,6 @@ def getReposPullRequest(repo, branch, target_branch, args):
             request = rqst
             break
     return request
-
-
-def getReposPullRequestDescription(repo, branch, target_branch, args):
-    descr = None
-    request = getReposPullRequest(repo, branch, target_branch, args)
-    if request is not None:
-        descr = request.description()
-        if isinstance(descr, bytes):
-            descr = descr.decode("utf-8")
-    return descr
 
 
 def pullRequestAlreadyMerged(errorMessage):
