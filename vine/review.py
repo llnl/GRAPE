@@ -324,225 +324,6 @@ class Review(Option, WorkspaceDirHandler):
         return savedArgs
 
 
-    def parseReviewRuleMap(self, reviewRules):
-        """
-        Parses the review rule mappings from the global configuration and
-        creates a mapping of old rules to new rules.
-
-        This function reads the rule mappings defined in the configuration file
-        under the [review] section, validates them against the provided review
-        rules, and constructs a dictionary that maps old rule names to new rule
-        names.
-
-        Parameters:
-        ----------
-        reviewRules : dict
-            A dictionary where each key is a review rule name and each value is
-            a dictionary containing the details of that review rule.
-
-        Returns:
-        -------
-        dict
-            A dictionary mapping old rule names (str) to new rule names (str).
-            If no valid mappings are found, an empty dictionary is returned.
-
-        Example:
-        --------
-        reviewRules = {
-            'code': {...},
-            'doc': {...}
-        }
-
-        # Assuming the configuration has the following mappings:
-        # rulemap = "oldcode:code olddoc:doc"
-
-        ruleMap = parseReviewRuleMap(reviewRules)
-        # ruleMap would be: {'oldcode': 'code', 'olddoc': 'doc'}
-
-        Notes:
-        -----
-        - The function expects the configuration to have a section defined as `self.SECTION_REVIEW`
-          and an option `rulemap` containing the mappings.
-        - Each mapping should be in the format "oldrule:newrule". If the format is incorrect or if a new rule
-          does not exist in the provided review rules, an error is logged and the program exits with a status code of 1.
-        """
-        reviewRuleMap = {}
-
-        # Extract the rule names from the [review] section
-        config = config_parser_global.grapeConfig()
-
-        if config.has_section(self.SECTION_REVIEW):
-            if config.has_option(self.SECTION_REVIEW, 'rulemap'):
-                mappings = config.get(self.SECTION_REVIEW, 'rulemap')
-
-                for mapping in mappings:
-                    tokens = mapping.split(':')
-
-                    if len(tokens) != 2:
-                        logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
-                        exit(1)
-
-                    oldRule = token[0]
-
-                    if oldRule not in reviewRules or reviewRules[oldRule]['active']:
-                        logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
-                        exit(1)
-
-                    newRule = token[1]
-
-                    if newRule not in reviewRules or not reviewRules[newRule]['active']:
-                        logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
-                        exit(1)
-
-                    reviewRuleMap[oldRule] = newRule
-
-        return reviewRuleMap
-
-
-    def parseDefaultReviewRuleName(self, reviewRules):
-        """
-        Retrieves the default review rule name for merge/pull requests.
-
-        If the user has provided a default in the global config, that is used.
-        Otherwise, if only one rule is provided, the name of that rule is used
-        instead. If a default cannot be determined, an error message is logged
-        and the program will exit with a code of 1.
-
-        :param reviewRules: A dictionary containing review rules
-        :return: A string containing the default review rule name.
-        """
-        defaultReviewRuleName = None
-
-        # Extract the rule names from the [review] section
-        config = config_parser_global.grapeConfig()
-
-        if config.has_section(self.SECTION_REVIEW):
-            if config.has_option(self.SECTION_REVIEW, "defaultrule"):
-                defaultReviewRuleName = config.get(self.SECTION_REVIEW, "defaultrule")
-
-                # Check that the default matches one of the active review rule names
-                if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
-                    logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
-                    exit(1)
-
-        # If there is only one active review rule, use that as the default
-        if not defaultReviewRuleName:
-            numActiveReviewRules = 0
-
-            for reviewRuleName in reviewRules:
-                if reviewRules[reviewRuleName]['active']:
-                    numActiveReviewRules += 1
-
-            if numActiveReviewRules == 1:
-                for reviewRuleName in reviewRules:
-                    if reviewRules[reviewRuleName]['active']:
-                        defaultReviewRuleName = reviewRuleName
-                        break
-            else:
-                logging.error(f'GRAPE: ERROR: "defaultrule" in section "{self.SECTION_REVIEW}" in the global config must be specified.')
-                exit(1)
-
-        return defaultReviewRuleName
-
-
-    def parseReviewers(self, args, reviewRules, reviewRuleMap, defaultReviewRuleName):
-        '''
-        Extracts reviewer groups from the --reviewers argument.
-        The argument should consist of whitespace separated groups, where
-        each group is in one of the following forms:
-
-        <username>[,<username>]* -> these reviewers are assigned to the default rule
-        <rule>:<username>[,<username>] -> these reviewers are assigned to the given rule
-
-        e.g.
-
-        --reviewers="username1,username2 rule1:username1 rule2:username2,username3"
-
-        In this case, username1 and username2 will be assigned to the default
-        review rule. username1 will also be assigned to rule1, and username2
-        along with username3 will be assigned to rule2.
-
-        :param args: A dictionary containing arguments to a prior or current GRAPE call
-        :param reviewRules: A dictionary containing review rules
-        :param reviewRuleMap: A dictionary mapping old rule names (str) to new rule names (str).
-        :param defaultReviewRuleName A string containing the name of the default rule
-        :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
-        '''
-
-        reviewers = {}
-
-        # Parse reviewers from saved arguments
-        arg = args.get("--reviewers")
-
-        if arg is not None:
-            if not arg:
-                # The empty string means remove all reviewers
-                for reviewRuleName in reviewRules:
-                    if reviewRules[reviewRuleName]['active']:
-                        reviewers[reviewRuleName] = {
-                            'label': reviewRules[reviewRuleName]['label'],
-                            'reviewers': []
-                        }
-
-                return reviewers
-
-            # Otherwise, parse the given string
-            reviewerGroups = arg.split()
-
-            for reviewerGroup in reviewerGroups:
-                tokens = reviewerGroup.split(":")
-
-                if len(tokens) == 1:
-                    # Use the default rule
-                    reviewRuleName = defaultReviewRuleName
-
-                    if reviewRuleName in reviewers:
-                        logging.error(f'GRAPE: ERROR: Reviewers must be separated by commas.')
-                        exit(1)
-
-                    reviewRuleReviewers = tokens[0].split(',')
-                elif len(tokens) == 2:
-                    # Use the given rule
-                    reviewRuleName = tokens[0]
-
-                    if reviewRuleName in reviewRuleMap:
-                        reviewRuleName = reviewRuleMap[reviewRuleName]
-
-                    # Check the given rule name is a review rule
-                    if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
-                        logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
-                        exit(1)
-
-                    if tokens[1]:
-                        reviewRuleReviewers = tokens[1].split(',')
-                    else:
-                        reviewRuleReviewers = []
-
-                    if reviewRuleName in reviewers:
-                        logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
-                        reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
-                else:
-                    logging.error(f'GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers="username1,username2 rule:username3,username4"')
-                    exit(1)
-
-                reviewRule = reviewRules[reviewRuleName]
-
-                # Check for duplicate reviewers
-                uniqueReviewRuleReviewers = set(reviewRuleReviewers)
-
-                if len(reviewRuleReviewers) != len(uniqueReviewRuleReviewers):
-                    logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
-                    reviewRuleReviewers = list(uniqueReviewRuleReviewers)
-
-                reviewers[reviewRuleName] = {
-                    'label': reviewRule['label'],
-                    'reviewers': reviewRuleReviewers
-                }
-
-        # Return the dictionary of reviewers
-        return reviewers
-
-
     def validateReviewers(self, reviewers, reviewRules):
         """
         Validates the provided reviewers against defined review rules.
@@ -844,8 +625,8 @@ class Review(Option, WorkspaceDirHandler):
 
         # Get review rules
         reviewRules = parseReviewRules()
-        reviewRuleMap = self.parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = self.parseDefaultReviewRuleName(reviewRules)
+        reviewRuleMap = parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = parseDefaultReviewRuleName(reviewRules)
 
         # Determine merge/pull request reviewers
         reviewers = {}
@@ -856,8 +637,8 @@ class Review(Option, WorkspaceDirHandler):
                 'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
             }
 
-        reviewers.update(self.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
-        reviewers.update(self.parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
 
         # Update description
@@ -1468,6 +1249,229 @@ def parseReviewRules():
         exit(1)
 
     return reviewRules
+
+
+def parseReviewRuleMap(reviewRules):
+    """
+    Parses the review rule mappings from the global configuration and
+    creates a mapping of old rules to new rules.
+
+    This function reads the rule mappings defined in the configuration file
+    under the [review] section, validates them against the provided review
+    rules, and constructs a dictionary that maps old rule names to new rule
+    names.
+
+    Parameters:
+    ----------
+    reviewRules : dict
+        A dictionary where each key is a review rule name and each value is
+        a dictionary containing the details of that review rule.
+
+    Returns:
+    -------
+    dict
+        A dictionary mapping old rule names (str) to new rule names (str).
+        If no valid mappings are found, an empty dictionary is returned.
+
+    Example:
+    --------
+    reviewRules = {
+        'code': {...},
+        'doc': {...}
+    }
+
+    # Assuming the configuration has the following mappings:
+    # rulemap = "oldcode:code olddoc:doc"
+
+    ruleMap = parseReviewRuleMap(reviewRules)
+    # ruleMap would be: {'oldcode': 'code', 'olddoc': 'doc'}
+
+    Notes:
+    -----
+    - The function expects the configuration to have a section defined as `review`
+      and an option `rulemap` containing the mappings.
+    - Each mapping should be in the format "oldrule:newrule". If the format is incorrect or if a new rule
+      does not exist in the provided review rules, an error is logged and the program exits with a status code of 1.
+    """
+    reviewRuleMap = {}
+
+    # Extract the rule names from the [review] section
+    config = config_parser_global.grapeConfig()
+
+    reviewSectionName = "review"
+
+    if config.has_section(reviewSectionName):
+        if config.has_option(reviewSectionName, 'rulemap'):
+            mappings = config.get(reviewSectionName, 'rulemap')
+
+            for mapping in mappings:
+                tokens = mapping.split(':')
+
+                if len(tokens) != 2:
+                    logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
+                    exit(1)
+
+                oldRule = token[0]
+
+                if oldRule not in reviewRules or reviewRules[oldRule]['active']:
+                    logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
+                    exit(1)
+
+                newRule = token[1]
+
+                if newRule not in reviewRules or not reviewRules[newRule]['active']:
+                    logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
+                    exit(1)
+
+                reviewRuleMap[oldRule] = newRule
+
+    return reviewRuleMap
+
+
+def parseDefaultReviewRuleName(reviewRules):
+    """
+    Retrieves the default review rule name for merge/pull requests.
+
+    If the user has provided a default in the global config, that is used.
+    Otherwise, if only one rule is provided, the name of that rule is used
+    instead. If a default cannot be determined, an error message is logged
+    and the program will exit with a code of 1.
+
+    :param reviewRules: A dictionary containing review rules
+    :return: A string containing the default review rule name.
+    """
+    defaultReviewRuleName = None
+
+    # Extract the rule names from the [review] section
+    config = config_parser_global.grapeConfig()
+
+    reviewSectionName = "review"
+
+    if config.has_section(reviewSectionName):
+        if config.has_option(reviewSectionName, "defaultrule"):
+            defaultReviewRuleName = config.get(reviewSectionName, "defaultrule")
+
+            # Check that the default matches one of the active review rule names
+            if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
+                logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
+                exit(1)
+
+    # If there is only one active review rule, use that as the default
+    if not defaultReviewRuleName:
+        numActiveReviewRules = 0
+
+        for reviewRuleName in reviewRules:
+            if reviewRules[reviewRuleName]['active']:
+                numActiveReviewRules += 1
+
+        if numActiveReviewRules == 1:
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName]['active']:
+                    defaultReviewRuleName = reviewRuleName
+                    break
+        else:
+            logging.error(f'GRAPE: ERROR: "defaultrule" in section "{reviewSectionName}" in the global config must be specified.')
+            exit(1)
+
+    return defaultReviewRuleName
+
+
+def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
+    '''
+    Extracts reviewer groups from the --reviewers argument.
+    The argument should consist of whitespace separated groups, where
+    each group is in one of the following forms:
+
+    <username>[,<username>]* -> these reviewers are assigned to the default rule
+    <rule>:<username>[,<username>] -> these reviewers are assigned to the given rule
+
+    e.g.
+
+    --reviewers="username1,username2 rule1:username1 rule2:username2,username3"
+
+    In this case, username1 and username2 will be assigned to the default
+    review rule. username1 will also be assigned to rule1, and username2
+    along with username3 will be assigned to rule2.
+
+    :param args: A dictionary containing arguments to a prior or current GRAPE call
+    :param reviewRules: A dictionary containing review rules
+    :param reviewRuleMap: A dictionary mapping old rule names (str) to new rule names (str).
+    :param defaultReviewRuleName A string containing the name of the default rule
+    :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
+    '''
+
+    reviewers = {}
+
+    # Parse reviewers from saved arguments
+    arg = args.get("--reviewers")
+
+    if arg is not None:
+        if not arg:
+            # The empty string means remove all reviewers
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName]['active']:
+                    reviewers[reviewRuleName] = {
+                        'label': reviewRules[reviewRuleName]['label'],
+                        'reviewers': []
+                    }
+
+            return reviewers
+
+        # Otherwise, parse the given string
+        reviewerGroups = arg.split()
+
+        for reviewerGroup in reviewerGroups:
+            tokens = reviewerGroup.split(":")
+
+            if len(tokens) == 1:
+                # Use the default rule
+                reviewRuleName = defaultReviewRuleName
+
+                if reviewRuleName in reviewers:
+                    logging.error(f'GRAPE: ERROR: Reviewers must be separated by commas.')
+                    exit(1)
+
+                reviewRuleReviewers = tokens[0].split(',')
+            elif len(tokens) == 2:
+                # Use the given rule
+                reviewRuleName = tokens[0]
+
+                if reviewRuleName in reviewRuleMap:
+                    reviewRuleName = reviewRuleMap[reviewRuleName]
+
+                # Check the given rule name is a review rule
+                if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                    logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
+                    exit(1)
+
+                if tokens[1]:
+                    reviewRuleReviewers = tokens[1].split(',')
+                else:
+                    reviewRuleReviewers = []
+
+                if reviewRuleName in reviewers:
+                    logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
+                    reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
+            else:
+                logging.error(f'GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers="username1,username2 rule:username3,username4"')
+                exit(1)
+
+            reviewRule = reviewRules[reviewRuleName]
+
+            # Check for duplicate reviewers
+            uniqueReviewRuleReviewers = set(reviewRuleReviewers)
+
+            if len(reviewRuleReviewers) != len(uniqueReviewRuleReviewers):
+                logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
+                reviewRuleReviewers = list(uniqueReviewRuleReviewers)
+
+            reviewers[reviewRuleName] = {
+                'label': reviewRule['label'],
+                'reviewers': reviewRuleReviewers
+            }
+
+    # Return the dictionary of reviewers
+    return reviewers
 
 
 if __name__ == "__main__":
