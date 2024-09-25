@@ -363,7 +363,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
              # If the merge request corresponds to latest tagged version, we don't need to look at this car
              if merge_sha == versionTag_SHA:
                 # TODO can we ignore merge cars (earlier) after this one?
-                logging.info(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} matches {versionTag}, skipping...")
+                logging.debug(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} matches {versionTag}, skipping...")
                 continue
              else:
                 try:
@@ -391,6 +391,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                  # If the merge commit sha is not found, try using the sha from the merge request (matching with merge commit parents)
                  if not found_merge:
                     merge_sha = mr.mergerequest.sha
+                    # reset the order index
+                    order = -1
                     for line in log_descriptions:
                        order = order + 1
                        if merge_sha in line:
@@ -441,12 +443,8 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                 workspace_dir=self.workspace_dir
                                                )
        repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
-       try:
-           test_branches = self.lookupActiveMergeTrainBranches_new_version(args, repo)
-       except Exception as e:
-           logging.info(f"lookupActiveMergeTrainBranches_new_version threw exception {e}")
-           test_branches = []
 
+       # This old version of the lookup is not currently active (only for comparison)
        branches = []
        current_branch = args['--topic']
        start_time = time.time()
@@ -455,7 +453,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        # TODO If this query gets too large such that it affects performance, we may need to paginate the lookup.
        mergeTrainCars = repo.project.merge_trains.list(all=True, sort='desc')
        end_time = time.time()
-       logging.info(f"Merge train lookup took {end_time-start_time} seconds")
+       logging.info(f"OLD: Merge train lookup took {end_time-start_time} seconds")
 
        target_branch = None
        log_descriptions = None
@@ -479,9 +477,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
               versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
               versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
-              logging.info(f"Found current branch, targeting {target_branch} at {target_SHA}.")
-              logging.info(f"Latest version: {versionTag} at {versionTag_SHA}.")
-              logging.info(f"Log since {target_branch}\n{log_descriptions}.")
+              logging.info(f"OLD: Found current branch, targeting {target_branch} at {target_SHA}.")
+              logging.info(f"OLD: Latest version: {versionTag} at {versionTag_SHA}.")
+              logging.info(f"OLD: Log since {target_branch}\n{log_descriptions}.")
               continue
            elif not target_branch:
               # Don't start considering other branches until we have found the current one
@@ -496,36 +494,41 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               merge_sha = mr.mergerequest.merge_commit_sha
               # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
               if merge_sha == versionTag_SHA:
-                 logging.info(f"{car.status} MR {mr_iid} matches {versionTag}, skipping...")
+                 logging.info(f"OLD: {car.status} MR {mr_iid} matches {versionTag}, skipping...")
                  break
               # If the merge request corresponds to the current target branch, we still may need to consider it,
               # as the nested subprojects may not have been merged yet.
               if merge_sha == target_SHA:
-                 logging.info(f"{car.status} MR {mr_iid} matches {target_branch}...")
+                 logging.info(f"OLD: {car.status} MR {mr_iid} matches {target_branch}...")
               else:
                   found_merge = False
                   for line in log_descriptions:
                      if merge_sha in line:
                         found_merge = True
-                        logging.info(f"{car.status} {merge_sha} for MR {mr_iid} found...")
+                        logging.info(f"OLD: {car.status} {merge_sha} for MR {mr_iid} found...")
                         break
                   # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
                   if not found_merge:
-                     logging.debug(f"{car.status} {merge_sha} for MR {mr_iid} not found, skipping...")
+                     logging.debug(f"OLD: {car.status} {merge_sha} for MR {mr_iid} not found, skipping...")
                      continue
 
            # Prepend the branch, since we are looping over the cars backwards
-           logging.info(f"Found branch: {branch} ({car.status}).")
+           logging.info(f"OLD: Found branch: {branch} ({car.status}).")
            branches = [branch] + branches
 
        if not target_branch:
-           logging.info(f"{current_branch} not found in merge train!")
-           return False
+           logging.info(f"OLD: {current_branch} not found in merge train!")
+           # return False
        else:
            # Put the target branch first in the merge train
            branches = [target_branch] + branches
+    
+       old_branches = branches
 
-       logging.info(f"NEW VERSION BRANCHES {test_branches}, OLD VERSION BRANCHES {branches}")
+       # Overwrite branches using new lookup method
+       branches = self.lookupActiveMergeTrainBranches_new_version(args, repo)
+       logging.info(f"NEW VERSION BRANCHES {branches}, OLD VERSION BRANCHES {old_branches}")
+
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):
