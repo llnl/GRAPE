@@ -1,0 +1,13 @@
+
+
+Wed Sep 25 15:44:32 2024 Benjamin T. Liu
+MR_621
+Reviewers: Peter Robinson (He/Him)
+
+Update merge train lookup
+
+- use new method for lookup (old method just for comparison)
+
+- reset order index for lookup of parent SHAs
+
+- reduce verbosity of skipped merge trains
