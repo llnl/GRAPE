@@ -227,8 +227,42 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                     try:
                         outerLog = git.log(f"{currentLocation}..{outerTag}", execution_path=workspace_dir)
                         if not outerLog:
-                            logging.info(f"*** {reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
-                                         + " Rerun grape up and retry bundle.")
+                            # If there are multiple tags associated with the current location, check for another tag.
+                            # This is to handle the case where the production and development branch are in the same place.
+
+                            # Get SHA of current location (use rev-list in case the location is a tag)
+                            currentSHA = git.gitcmd(f"rev-list -n 1 {currentLocation}", "Rev-list failed", execution_path=execution_path)
+                            # Get the next matching tag, if any. If there is not another matching tag, this may have the
+                            # form <tag>-g<SHA>, which will fail in the git log call.
+                            currentLocation2 = git.describe(
+                                f"--always --exclude {currentLocation} --match '{describePattern}' {branch}",
+                                execution_path=execution_path)
+
+                            # Get SHA of second location (use rev-list in case the location is a tag)
+                            currentSHA2 = git.gitcmd(f"rev-list -n 1 {currentLocation2}", "Rev-list failed", execution_path=execution_path)
+                    
+                            # Make sure that our second tag is the same commit as the original tag
+                            if currentSHA == currentSHA2:
+                                logging.info(f"*** {currentLocation} is the same as {currentLocation2} in {reponame}."
+                                             + f" Checking {currentLocation2} against {outerTag}...")
+                                # Check the second tag against the outer level tag
+                                if outerTag == currentLocation2:
+                                    # Second tag matches outer tag, so we are consistent.
+                                    outerLog = True
+                                    logging.info(f"    {currentLocation2} matches in top level.")
+                                else:
+                                    # Check to see if the second tag is in the history of the outerTag.
+                                    try:
+                                        outerLog = git.log(f"{currentLocation2}..{outerTag}", execution_path=workspace_dir)
+                                        if outerLog:
+                                            logging.info(f"    {currentLocation2} is in the history of {outerTag} in top level.")
+                                    except grape_errors.GrapeGitError:
+                                        # If there was no second tag, git log will fail
+                                        pass
+
+                            if not outerLog:
+                                logging.info(f"*** {reponame} is tagged {currentLocation}, which is ahead of {outerTag} in the top level."
+                                             + " Rerun grape up and retry bundle.")
                     except:
                         logging.info(f"*** Top level does not contain tag for {currentLocation} from {reponame}."
                                          + " Not checking for nested subproject consistency.")
