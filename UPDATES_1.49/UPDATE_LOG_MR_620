@@ -1,0 +1,19 @@
+
+
+Wed Sep 25 12:21:21 2024 Benjamin T. Liu
+MR_620
+Reviewers: Peter Robinson (He/Him), David Dawson
+
+Robustness improvements for bundle tag checking
+
+- handles the case where subproject prod and dev are at the same location
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.48
+
+--reviewers=probinso,dawson24
