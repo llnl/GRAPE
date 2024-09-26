@@ -368,7 +368,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
              else:
                 try:
                     git.mergeBase(f"--is-ancestor {merge_sha} {versionTag_SHA}", execution_path=self.workspace_dir)
-                    logging.info(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} is in history of {versionTag}, skipping...")
+                    logging.debug(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} is in history of {versionTag}, skipping...")
                     continue
                 except grape_errors.GrapeGitError:
                     # the merge SHA is not in the history of the latest version tag, so we may still be interested in it.
