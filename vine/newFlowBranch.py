@@ -209,7 +209,7 @@ def createBranch(repo="unknown", branch="master", args=[], *, workspace_dir):
        try:
            git.push(f"-u origin {fullBranch}", execution_path=repo)
        except grape_errors.GrapeGitError as e:
-           logging.error("{repo}:  {e.gitOutput}")
+           logging.error(f"{repo}:  {e.gitOutput}")
 
 
 if __name__ == "__main__":
