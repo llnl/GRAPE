@@ -1,0 +1,17 @@
+
+
+Wed Nov  6 10:32:51 2024 Benjamin T. Liu
+MR_625
+Reviewers: Peter Robinson (He/Him)
+
+Fix check for newly added submodule with grape uv --branchChanged
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.52
+
+--reviewers=probinso
