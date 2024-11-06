@@ -316,9 +316,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if checkChanged:
            changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+           toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
            # Only check the submodule history if the submodule appears to be changed
            if changed and checkSubmoduleHistory:
-               toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
                # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
                revListCmd = f"rev-list origin/{toppublic} {subprojectPrefix}"
                gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
@@ -343,6 +343,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                         break
                   else:
                      logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitLinkInfo}")
+           else:
+                # If there are no change in the subproject, check to see if it is a newly added submodule
+                try:
+                    gitlinkDiff = git.diff(f"--name-status {toppublic} {subprojectPrefix}", execution_path=workspace_dir)
+                    if gitlinkDiff.startswith("A"):
+                        changed = True
+                except grape_errors.GrapeGitError:
+                    pass
            return changed
         else:
            return branchSHA != None
