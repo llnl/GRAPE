@@ -346,7 +346,7 @@ class UpdateView(Option, WorkspaceDirHandler):
            else:
                 # If there are no change in the subproject, check to see if it is a newly added submodule
                 try:
-                    gitlinkDiff = git.diff(f"--name-status {toppublic} {subprojectPrefix}", execution_path=workspace_dir)
+                    gitlinkDiff = git.diff(f"--name-status origin/{toppublic} {subprojectPrefix}", execution_path=workspace_dir)
                     if gitlinkDiff.startswith("A"):
                         changed = True
                 except grape_errors.GrapeGitError:
