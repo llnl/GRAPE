@@ -781,6 +781,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if args["--noRecurse"]:
             recurse = False
 
+        submodules = []
+
         if recurse and not args["--noReviewSubmodules"]:
             submodules = git.getModifiedSubmodules(self.workspace_dir, public,
                                                    topic, includeAdded=True)
@@ -814,8 +816,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         for (repo, pullRequest) in pullRequests:
             if not pullRequest:
-                userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
-                verified = False
+                # If the submodule gitlink was added in the branch, but the branch in the submodule was already up-to-date
+                # with the public, we can skip the pull request check (since no pull request can be generated).
+                working_dir = os.path.join(self.workspace_dir, repo)
+                if repo in submodules and git.SHA(submodulePublicBranch, execution_path=working_dir) == git.SHA(topic, execution_path=working_dir):
+                    pass
+                else:
+                    userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
+                    verified = False
                 continue
 
             reviewers = pullRequest.reviewers()
