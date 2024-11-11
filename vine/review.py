@@ -209,7 +209,7 @@ class Review(Option, WorkspaceDirHandler):
         relatedReviews = data.get('related_reviews', [])
 
         if relatedReviews:
-            relatedReviews = '  \n'.join(relatedReviews)
+            relatedReviews = '\n\n'.join(relatedReviews)
         else:
             relatedReviews = 'None'
 
