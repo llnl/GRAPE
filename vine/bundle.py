@@ -183,7 +183,7 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
     for branch in branchlist:
         remoteRef = git.join_list_as_git_path(['remotes', 'origin', branch])
         if remoteRef.strip() not in allBranches:
-            logging.info(f"Branch {branch} in {repo} does not exist." +
+            logging.info(f"Branch {branch} in {repo} does not exist. " +
                          f"This is only ok if {repo} was added after or removed before {branch}.")
             continue
         # ensure branch can be fast forwardable to origin/branch and do so
@@ -197,11 +197,15 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
             if branch in submoduleReverseBranchMap.keys():
                 top_branch = submoduleReverseBranchMap[branch]
                 rel_path = os.path.relpath(repo, start=workspace_dir)
-                gitlinkSHA = git.SHA(f"origin/{top_branch}:{rel_path}", execution_path=workspace_dir)
-                SHA = git.SHA(f"origin/{branch}", execution_path=repo)
-                if gitlinkSHA != SHA:
-                    logging.info(f"*** Branch {branch} in {rel_path} inconsistent with gitlink on {top_branch}." 
-                                 + " Rerun grape up and retry bundle.")
+                try:
+                    gitlinkSHA = git.SHA(f"origin/{top_branch}:{rel_path}", execution_path=workspace_dir)
+                    SHA = git.SHA(f"origin/{branch}", execution_path=repo)
+                    if gitlinkSHA != SHA:
+                        logging.info(f"*** Branch {branch} in {rel_path} inconsistent with gitlink on {top_branch}." 
+                                     + " Rerun grape up and retry bundle.")
+                except grape_errors.GrapeGitError:
+                    logging.info(f"Submodule gitlink {rel_path} does not exist on {top_branch}. " +
+                                 f"This is only ok if {repo} was added after or removed before {branch}.")
 
         tagname = f"{tagprefix}/{branch}"
         try:
