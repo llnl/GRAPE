@@ -1,0 +1,17 @@
+
+
+Tue Nov 12 08:04:44 2024 Alan Dayton
+MR_627
+Reviewers: David Dawson, Ben Liu
+
+Sometimes the review links in the publish email contain extra spaces at the end, which makes them invalid. Two spaces were used to try to create line breaks in the markdown of the MR description, but that doesn't work as expected, so this MR switches to newline characters only.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.55
+
+--reviewers=benliu,dawson24
