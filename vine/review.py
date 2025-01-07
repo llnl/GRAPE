@@ -282,7 +282,8 @@ class Review(Option, WorkspaceDirHandler):
                 data['related_reviews'].remove('None')
             data['grape_data'] = match.group('grape_data')
         else:
-            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)+)'
+            # check for either old description format OR new description provided by the command line
+            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)*)'
             match = re.fullmatch(oldRegex, description, re.DOTALL)
 
             if match:
