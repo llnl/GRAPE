@@ -1,7 +1,8 @@
 .test_linux:
   script:
     - cd $CI_PROJECT_DIR
-    - ./grape test
+    - sleep 600
+    - ./grape test --fail
 
 .tick_version:
   script:
