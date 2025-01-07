@@ -282,7 +282,7 @@ class Review(Option, WorkspaceDirHandler):
                 data['related_reviews'].remove('None')
             data['grape_data'] = match.group('grape_data')
         else:
-            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)+)'
+            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)*)'
             match = re.fullmatch(oldRegex, description, re.DOTALL)
 
             if match:
@@ -291,7 +291,6 @@ class Review(Option, WorkspaceDirHandler):
                 data['grape_data'] = ''
             else:
                 logging.warning(f'GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.')
-                logging.info(description)
 
                 data['user_description'] = description
                 data['related_reviews'] = []
