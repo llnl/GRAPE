@@ -362,9 +362,13 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
              merge_sha = mr.mergerequest.merge_commit_sha
              # If the merge request corresponds to latest tagged version, we don't need to look at this car
              if merge_sha == versionTag_SHA:
-                # TODO can we ignore merge cars (earlier) after this one?
-                logging.debug(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} matches {versionTag}, skipping...")
-                continue
+                # The merge train cars are sorted in descending order. The documentation is not clear which
+                # field this is sorted by, but the only dates always available are created_at and updated_at.
+                # For merged cars, the updated_at date is the merge time and the created_at date should reflect
+                # the order in which they were merged, so we can skip remaining merged cars once we find a merged
+                # car with a version tag.
+                logging.info(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} matches {versionTag}, skipping remaining cars...")
+                break
              else:
                 try:
                     git.mergeBase(f"--is-ancestor {merge_sha} {versionTag_SHA}", execution_path=self.workspace_dir)
