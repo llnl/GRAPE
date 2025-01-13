@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import stat
+import time
 from vine import addSubproject
 from vine import checkout
 from vine import config_parser_global
@@ -652,7 +653,12 @@ class UpdateView(Option, WorkspaceDirHandler):
                     else:            
                         jobstr = ""
                     logging.info(f"Updating active submodules...({jobstr} {fstr} {initStr})")
-                    git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    try:
+                        git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    except grape_errors.GrapeGitError:
+                        logging.info("Error detected, retrying in 10 seconds...")
+                        time.sleep(10)
+                        git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
