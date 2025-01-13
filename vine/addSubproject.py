@@ -135,7 +135,7 @@ class AddSubproject(Option, WorkspaceDirHandler):
             destDir = os.path.join(workspace_dir, prefix)
             if not (os.path.isdir(destDir) and os.listdir(destDir)):
                 try:
-                    git.clone(argstr=f"-b {branch} {fstr}", source_repo=fullurl, clone_repo=prefix, execution_path=workspace_dir)
+                    git.clone(argstr=f"-b {branch} {fstr}", source_repo=fullurl, clone_repo=prefix, execution_path=workspace_dir, print_warnings=False)
                 except grape_errors.GrapeGitError as e:
                     if f"Remote branch {branch} not found" in e.gitOutput:
                         # Just clone default branch if branch does not exist

@@ -146,7 +146,7 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def clone(argstr='', *, source_repo, clone_repo, execution_path):
+def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=True):
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
     try:
@@ -158,10 +158,12 @@ def clone(argstr='', *, source_repo, clone_repo, execution_path):
         if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
         if e.commError:
-            logging.warning("GRAPE: clone failed due to connectivity issues.")
+            if print_warning:
+                logging.warning("GRAPE: clone failed due to connectivity issues.")
             return e.gitOutput
-        logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
-        logging.warning(e.gitOutput)
+        if print_warning:
+            logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
+            logging.warning(e.gitOutput)
         raise e
 
 
