@@ -158,10 +158,10 @@ def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=
         if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
         if e.commError:
-            if print_warning:
+            if print_warnings:
                 logging.warning("GRAPE: clone failed due to connectivity issues.")
             return e.gitOutput
-        if print_warning:
+        if print_warnings:
             logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
             logging.warning(e.gitOutput)
         raise e
