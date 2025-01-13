@@ -556,9 +556,11 @@ class UpdateView(Option, WorkspaceDirHandler):
                 deinitStr = ""
                 rmCachedStr = ""
                 resetStr = ""
+                initCount = 0
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
+                        initCount += 1
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
                             if subRemoteProtocol != remoteProtocol:
@@ -636,6 +638,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         except:
                             # Default to no parallelism if this somehow fails
                             jobs = 1
+                    jobs = min(jobs, initCount)
                     filterArg = args["--filter"]
                     fstr = ""
                     gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
