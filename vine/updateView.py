@@ -647,8 +647,9 @@ class UpdateView(Option, WorkspaceDirHandler):
                         else:
                             logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
 
-                    if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9):
-                        # the --jobs argument is supported for git submodule update starting in 2.9.0.
+                    # the --jobs argument is supported for git submodule update starting in 2.9.0.
+                    enableJobs = (int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9))
+                    if enableJobs:
                         jobstr = f"--jobs {jobs}"
                     else:            
                         jobstr = ""
@@ -656,7 +657,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                     try:
                         git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
                     except grape_errors.GrapeGitError:
-                        logging.info("Error detected, retrying in 10 seconds...")
+                        # Scale back the number of jobs if we fail the first time
+                        if jobs > 1 and enableJobs:
+                            jobstr = f"--jobs {int(jobs/2)}"
+                        logging.info(f"Error detected, retrying in 10 seconds...({jobstr} {fstr} {initStr})")
                         time.sleep(10)
                         git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
 
