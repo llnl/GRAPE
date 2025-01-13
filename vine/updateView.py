@@ -626,7 +626,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                    git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
 
                 if initStr:
-                    logging.info(f"Updating active submodules...({initStr})")
                     jobs = multi_repo_cmd_launcher.MultiRepoCommandLauncher.get_concurrency()
                     if jobs < 1:
                         # If the concurrency is unlimited, default to the multiprocessing CPU count
@@ -652,6 +651,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         jobstr = f"--jobs {jobs}"
                     else:            
                         jobstr = ""
+                    logging.info(f"Updating active submodules...({jobstr} {fstr} {initStr})")
                     git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
