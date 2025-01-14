@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import stat
+import time
 from vine import addSubproject
 from vine import checkout
 from vine import config_parser_global
@@ -555,9 +556,11 @@ class UpdateView(Option, WorkspaceDirHandler):
                 deinitStr = ""
                 rmCachedStr = ""
                 resetStr = ""
+                initCount = 0
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
+                        initCount += 1
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
                             if subRemoteProtocol != remoteProtocol:
@@ -626,7 +629,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                    git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
 
                 if initStr:
-                    logging.info(f"Updating active submodules...({initStr})")
                     jobs = multi_repo_cmd_launcher.MultiRepoCommandLauncher.get_concurrency()
                     if jobs < 1:
                         # If the concurrency is unlimited, default to the multiprocessing CPU count
@@ -636,6 +638,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         except:
                             # Default to no parallelism if this somehow fails
                             jobs = 1
+                    jobs = min(jobs, initCount)
                     filterArg = args["--filter"]
                     fstr = ""
                     gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
@@ -647,12 +650,22 @@ class UpdateView(Option, WorkspaceDirHandler):
                         else:
                             logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
 
-                    if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9):
-                        # the --jobs argument is supported for git submodule update starting in 2.9.0.
+                    # the --jobs argument is supported for git submodule update starting in 2.9.0.
+                    enableJobs = (int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9))
+                    if enableJobs:
                         jobstr = f"--jobs {jobs}"
                     else:            
                         jobstr = ""
-                    git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    logging.info(f"Updating active submodules...({jobstr} {fstr} {initStr})")
+                    try:
+                        git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    except grape_errors.GrapeGitError:
+                        # Scale back the number of jobs if we fail the first time
+                        if jobs > 1 and enableJobs:
+                            jobstr = f"--jobs {int(jobs/2)}"
+                        logging.info(f"Error detected, retrying in 10 seconds...({jobstr} {fstr} {initStr})")
+                        time.sleep(10)
+                        git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
