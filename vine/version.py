@@ -18,7 +18,7 @@ def grapeVersion():
         grapeVersion = Version.readVersionFromTag(args={"--tagPrefix":'v',"--tagSuffix":'',"--tagBase":'HEAD'}, workspace_dir=grape_path, asString=True)
         return grapeVersion
     except:
-        return "v.1.37.unknown"
+        return "v1.49.unknown"
 
 def describeLastVersion(args, *, branch, tagPrefix, tagSuffix='', execution_path):
     # We may be describing the repo from the grape directory, so we need to run the git command from the current working
