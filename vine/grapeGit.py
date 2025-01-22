@@ -472,6 +472,7 @@ def gitPathToOsPath(path):
     return path
 
 def lsRemote(args, *, execution_path):
+    print(f"*** lsRemote : execution_path = {execution_path}")
     return gitcmd(f"ls-remote {args}", "ls-remote failed",
                   execution_path=execution_path)
 
