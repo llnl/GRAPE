@@ -300,7 +300,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             lsRemoteFlags = lsRemoteFlags + " --tags"
             refs = f"{refs} refs/tags/{tagPrefix}*"
 
-        # If a submodule is checked out, parseSubprojectRemoteURL should be executed 
+        # If a submproject is checked out, parseSubprojectRemoteURL should be executed 
         # inside the submodule.  If not checked out, the function can be executed
         # from the top level repo.  This is done to ensure the correct remote url 
         # is found for the cases when the submodule remote doesn't match the top level
