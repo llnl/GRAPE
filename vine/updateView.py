@@ -301,9 +301,9 @@ class UpdateView(Option, WorkspaceDirHandler):
             refs = f"{refs} refs/tags/{tagPrefix}*"
 
         # If a subproject is checked out, parseSubprojectRemoteURL should be executed 
-        # inside the submodule.  If not checked out, the function can be executed
+        # inside the subproject.  If not checked out, the function can be executed
         # from the top level repo.  This is done to ensure the correct remote url 
-        # is found for the cases when the submodule remote doesn't match the top level
+        # is found for the cases when the subproject remote doesn't match the top level
         # remote.  This can occur during CI jobs when using repo specific tokens. 
         remote_url_working_dir = os.path.join(workspace_dir, subprojectPrefix)
         if not os.path.isfile(os.path.join(remote_url_working_dir, ".git")):
