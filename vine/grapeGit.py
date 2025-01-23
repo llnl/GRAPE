@@ -388,6 +388,7 @@ def parseSubprojectRemoteURL(url, *, execution_path):
 
     # We have a relative path so start the remote origin URL
     originURL = config("--get remote.origin.url", execution_path=execution_path).strip().split(URL_PATH_SEP)
+    print(f"*** execution_path = {execution_path} : originURL = {originURL}")
 
     #Now parse path and modify originURL to make a hard path
     for p in path:
