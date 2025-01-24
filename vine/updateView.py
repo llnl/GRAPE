@@ -309,6 +309,8 @@ class UpdateView(Option, WorkspaceDirHandler):
         if not os.path.isfile(os.path.join(remote_url_working_dir, ".git")):
             remote_url_working_dir = workspace_dir
 
+        print(f"*** project = {subprojectPrefix} : remote_url_working_dir = {remote_url_working_dir} : test = {os.path.isfile(os.path.join(remote_url_working_dir, subprojectPrefix, '.git'))}")
+
         remotes = git.lsRemote(f"{lsRemoteFlags} {git.parseSubprojectRemoteURL(url, execution_path=remote_url_working_dir)} {refs}", execution_path=workspace_dir)
 
         branchSHA = None
