@@ -306,7 +306,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         # is found for the cases when the subproject remote doesn't match the top level
         # remote.  This can occur during CI jobs when using repo specific tokens. 
         remote_url_working_dir = os.path.join(workspace_dir, subprojectPrefix)
-        if not os.path.isfile(os.path.join(remote_url_working_dir, ".git")):
+        if not os.path.exists(os.path.join(remote_url_working_dir, ".git")):
             remote_url_working_dir = workspace_dir
 
         remotes = git.lsRemote(f"{lsRemoteFlags} {git.parseSubprojectRemoteURL(url, execution_path=remote_url_working_dir)} {refs}", execution_path=workspace_dir)
