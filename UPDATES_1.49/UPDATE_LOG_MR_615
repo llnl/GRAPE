@@ -1,0 +1,17 @@
+
+
+Tue Sep 10 08:42:00 2024 Benjamin T. Liu
+MR_615
+Reviewers: Alan Dayton
+
+Add back variable in merge train lookup that was lost in refactor
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.42
+
+--reviewers=dayton8

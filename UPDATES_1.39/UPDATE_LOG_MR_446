@@ -1,9 +1,0 @@
-
-
-Wed Nov  2 13:40:26 2022 Benjamin T. Liu
-MR_446
-Reviewers: Peter Robinson
-
-Use e.message instead of e.msg for GrapeGitError
-
-- e.message was used in grape publish notify

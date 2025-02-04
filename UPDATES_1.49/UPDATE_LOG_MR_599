@@ -1,0 +1,7 @@
+
+
+Thu Aug 22 14:02:55 2024 Benjamin T. Liu
+MR_599
+Reviewers: Jeremy White, Peter Robinson (He/Him)
+
+Check for required git config variables before publish

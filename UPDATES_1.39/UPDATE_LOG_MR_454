@@ -1,7 +1,0 @@
-
-
-Wed Nov 30 13:45:38 2022 Benjamin T. Liu
-MR_454
-Reviewers: Peter Robinson, David Dawson
-
-Allow grape review to generate merge requests for inactive subprojects

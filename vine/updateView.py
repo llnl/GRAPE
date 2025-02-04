@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import stat
+import time
 from vine import addSubproject
 from vine import checkout
 from vine import config_parser_global
@@ -37,7 +38,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
-                    [--updateRemoteProtocol]
+                    [--updateRemoteProtocol] [--filter=<arg>]
                     [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
@@ -98,6 +99,13 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
+        --filter=<arg>               Optional clone filter argument.
+                                     This option is ignored in nested-subprojects that have disable_clone_filter set in
+                                     their .grapeconfig section (--filter=blob:none has performance issues with some repos with
+                                     many binary blobs).
+                                     WARNING! This is still experimental and may have issues with grape workflows.
+                                     In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                     files (it appears to download each commit separately).
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -291,7 +299,17 @@ class UpdateView(Option, WorkspaceDirHandler):
         if tagPrefix:
             lsRemoteFlags = lsRemoteFlags + " --tags"
             refs = f"{refs} refs/tags/{tagPrefix}*"
-        remotes = git.lsRemote(f"{lsRemoteFlags} {git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)} {refs}", execution_path=workspace_dir)
+
+        # If a subproject is checked out, parseSubprojectRemoteURL should be executed 
+        # inside the subproject.  If not checked out, the function can be executed
+        # from the top level repo.  This is done to ensure the correct remote url 
+        # is found for the cases when the subproject remote doesn't match the top level
+        # remote.  This can occur during CI jobs when using repo specific tokens. 
+        remote_url_working_dir = os.path.join(workspace_dir, subprojectPrefix)
+        if not os.path.exists(os.path.join(remote_url_working_dir, ".git")):
+            remote_url_working_dir = workspace_dir
+
+        remotes = git.lsRemote(f"{lsRemoteFlags} {git.parseSubprojectRemoteURL(url, execution_path=remote_url_working_dir)} {refs}", execution_path=workspace_dir)
 
         branchSHA = None
         publicSHA = None
@@ -309,9 +327,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if checkChanged:
            changed = branchSHA and branchSHA != publicSHA and (not tagSHA or branchSHA not in tagSHA)
+           toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
            # Only check the submodule history if the submodule appears to be changed
            if changed and checkSubmoduleHistory:
-               toppublic = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
                # Get the SHAs in the outer repo corresponding to gitlink commits in the public branch
                revListCmd = f"rev-list origin/{toppublic} {subprojectPrefix}"
                gitLinkCommits = git.gitcmd(revListCmd, f"Could not run '{revListCmd}'", execution_path=workspace_dir)
@@ -336,6 +354,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                         break
                   else:
                      logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitLinkInfo}")
+           else:
+                # If there are no change in the subproject, check to see if it is a newly added submodule
+                try:
+                    gitlinkDiff = git.diff(f"--name-status origin/{toppublic} {subprojectPrefix}", execution_path=workspace_dir)
+                    if gitlinkDiff.startswith("A"):
+                        changed = True
+                except grape_errors.GrapeGitError:
+                    pass
            return changed
         else:
            return branchSHA != None
@@ -540,9 +566,11 @@ class UpdateView(Option, WorkspaceDirHandler):
                 deinitStr = ""
                 rmCachedStr = ""
                 resetStr = ""
+                initCount = 0
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
+                        initCount += 1
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
                             if subRemoteProtocol != remoteProtocol:
@@ -611,8 +639,43 @@ class UpdateView(Option, WorkspaceDirHandler):
                    git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
 
                 if initStr:
-                    logging.info(f"Updating active submodules...({initStr})")
-                    git.submodule("update", execution_path=self.workspace_dir)
+                    jobs = multi_repo_cmd_launcher.MultiRepoCommandLauncher.get_concurrency()
+                    if jobs < 1:
+                        # If the concurrency is unlimited, default to the multiprocessing CPU count
+                        try:
+                            import multiprocessing
+                            jobs = multiprocessing.cpu_count()
+                        except:
+                            # Default to no parallelism if this somehow fails
+                            jobs = 1
+                    jobs = min(jobs, initCount)
+                    filterArg = args["--filter"]
+                    fstr = ""
+                    gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
+                    if filterArg:
+                        if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
+                            # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
+                            # flag to parse correctly, so we add it even though we already inited previously.
+                            fstr = f"--init --filter={filterArg}"
+                        else:
+                            logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
+
+                    # the --jobs argument is supported for git submodule update starting in 2.9.0.
+                    enableJobs = (int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9))
+                    if enableJobs:
+                        jobstr = f"--jobs {jobs}"
+                    else:            
+                        jobstr = ""
+                    logging.info(f"Updating active submodules...({jobstr} {fstr} {initStr})")
+                    try:
+                        git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
+                    except grape_errors.GrapeGitError:
+                        # Scale back the number of jobs if we fail the first time
+                        if jobs > 1 and enableJobs:
+                            jobstr = f"--jobs {int(jobs/2)}"
+                        logging.info(f"Error detected, retrying in 10 seconds...({jobstr} {fstr} {initStr})")
+                        time.sleep(10)
+                        git.submodule(f"update {jobstr} {fstr} {initStr}", execution_path=self.workspace_dir)
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
@@ -629,13 +692,14 @@ class UpdateView(Option, WorkspaceDirHandler):
                     previouslyActive = userConfig.getboolean(section, "active")
                     previouslyActive = previouslyActive and os.path.exists(os.path.join(self.workspace_dir, subproject, ".git"))
                     userConfig.set(section, "active", "True" if previouslyActive else "False")
+                    filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)).split(":")[0]
                             if subRemoteProtocol != remoteProtocol:
                                 logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
                                 if self.rmNestedSubproject(subproject, args):
-                                    toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
+                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
                                     userConfig.set(section, "active", "False")
@@ -646,7 +710,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName,'', {"userConfig" : userConfig, "subprojectName":subprojectName}))
+                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -756,8 +820,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
-    logging.info(f"Activating Nested Subproject {subprojectName}")
-    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, workspace_dir):
+    filterArg = args["filterArg"]
+    logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
+    if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
     logging.info(f"Nested Subproject {subprojectName} activated.")

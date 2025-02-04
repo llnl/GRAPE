@@ -109,6 +109,8 @@ class MultiRepoCommandRunner(WorkspaceDirHandler):
 
 # Used for executing Single Lambda Multiple Repository instructions in parallel.
 # If runInSubmodules is set to true (default), lambdas will run in active submodules.
+# If runInSubmodules is false, lambdas will run in active submodules if the manageSubmodules
+# config is true.  Set skipSubmodules to true to never run in active submodules.
 # If runInSubprojects is set to true (default), lambdas will run in active nested subprojects.
 # If runInOuter is set to true (default), lambdas will also run in the main workspace repository.
 
@@ -287,8 +289,8 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
         return retvals
 
     # determine concurrency based off of whether we are executing on a shared or exclusive resource
-    @property
-    def concurrency(self):
+    @staticmethod
+    def get_concurrency():
         # this is set via the command line, which overrides configuration behavior
         if NUM_TASKS > -1:
             n = NUM_TASKS
@@ -317,3 +319,7 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
                 n = config.getint(SECTION_CONCURRENCY_CONTROL, "defaultnumtasks")
         logging.debug(f"concurrency set to {n}")
         return n
+
+    @property
+    def concurrency(self):
+        return self.get_concurrency()

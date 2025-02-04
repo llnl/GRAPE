@@ -1,7 +1,0 @@
-
-
-Mon Dec 19 15:43:39 2022 Benjamin T. Liu
-MR_486
-Reviewers: Peter Robinson, David Dawson
-
-Fix bug in SHA lookup for merge train refs (again)

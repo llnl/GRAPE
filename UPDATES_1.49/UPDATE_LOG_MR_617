@@ -1,0 +1,21 @@
+
+
+Wed Sep 11 07:46:43 2024 Benjamin T. Liu
+MR_617
+Reviewers: Peter Robinson (He/Him)
+
+Fixes for determining merge train cars
+
+- filter out merge SHAs that are in the history of the version tag
+
+- reduce output from skipped SHAs
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.45
+
+--reviewers=probinso

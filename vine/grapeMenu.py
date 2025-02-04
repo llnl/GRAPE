@@ -31,7 +31,6 @@ from vine import stash
 from vine import status
 from vine import grapeTest as test
 from vine import updateLocal
-from vine import updateSubproject
 from vine import updateView
 from vine import utility
 from vine import version
@@ -96,9 +95,9 @@ class _Menu(WorkspaceDirHandler):
             mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
             deleteBranch.DeleteBranch(), resolveConflicts.ResolveConflicts(),
             review.Review(), test.Test(), updateLocal.UpdateLocal(),
-            updateSubproject.UpdateSubproject(), hooks.InstallHooks(),
-            hooks.RunHook(), updateView.UpdateView(), version.Version(),
-            walkthrough.Walkthrough(), gitlabAdmin.GitlabAdmin(), quit.Quit()
+            hooks.InstallHooks(), hooks.RunHook(), updateView.UpdateView(),
+            version.Version(), walkthrough.Walkthrough(),
+            gitlabAdmin.GitlabAdmin(), quit.Quit()
             ]
 
         self.set_workspace_dir(os.getcwd())
@@ -139,6 +138,7 @@ class _Menu(WorkspaceDirHandler):
             return None
 
     def applyMenuChoice(self, choice, args=None, option_args=None):
+        logging.debug(f"Executing applyMenuChoice {choice} with args: {args} and option_args: {option_args}")
         chosen_option = self.getOption(choice)
         if chosen_option is None:
             return False

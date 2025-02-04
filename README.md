@@ -63,7 +63,7 @@ Almost all of those grape commands have more options associated with them, which
 And that's all you valued developers need to know! Project maintainers, read on!
 
 ## Setting up a project with Grape.
-If your project is simple, with a single repository and no submodules or subtrees with third party
+If your project is simple, with a single repository and no submodules or nested subprojects with third party
 libraries, then this section should be all you need. Read on for more advanced topics as they come up.
 
 ### Assumptions
@@ -196,29 +196,7 @@ Check out `grape version --help` for more info on managing versioning your proje
 
 ## Managing Subprojects with grape
 If you'd like to manage third-party library source-code inline with your project, git provides a couple of ways
-to do it: Submodules and Subtrees. GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
-
-Googling submodules vs. subtrees will yield discussions as vehemently
-idealogical as emacs vs.  vim or git vs. perforce or merge vs rebase.  Grape's philosophy is not to discriminate
-based on religion, so it aims to make life easier regardless of your decision, and to hide inherent complexities
-associated with both as much as possible. That said, here is our take on situations appropriate for submodules vs
-situations more appropriate for subtrees:
-
-### The difference between submodules and subtrees
-Google it for details on the technical differences.  Keep in mind as you read forums that a lot of the negative
-side effects of both are mitigated by grape, athough the submodule functionality is perhaps more fully flushed
-out than the subtree functionality at the current stage of development. That said, the internet probably leans
-toward subtrees. In any case, there are still situations where you definitely want one vs. the other, listed
-below.
-
-### When to definitely use subtrees
-1. When only one or two people on your large team are responsible for library updates, and they can be easily trained on
- the relatively small amount of complexity introduced by subtrees.
-2. When, all things being equal, you have lots of team members who are fairly familiar with git and may ignore the
-fact that you are using grape. Subtrees tend to 'just work' for plain 'ol git commands, whereas all developers
-have to be aware of the fact that they are using submodules if they need access to the submodules.
-3. When you have nested subprojects. Subtrees that contain subtrees will work well, submodules that contain submodules
-adds complexity that grape doesn't handle at the moment.
+to do it: Submodules and Subtrees (GRAPE only supports Submodules). GRAPE provides yet one more way to manage subprojects - dubbed a nested project.
 
 ### When to definitely use submodules
 1. When your subprojects consists of mostly large binary blobs (test baselines, art assets, etc.)
@@ -235,7 +213,7 @@ you can use nested subprojects for things like
 
 
 ### Grape's assumptions about subprojects
-We assume that you're using submodules or subtrees as a means to manage pedigree of your code - when you check out
+We assume that you're using submodules as a means to manage pedigree of your code - when you check out
 version 1.2 of your project, you want to make sure you can always build it with the versions of third party libraries
 you had when you developed version 1.2.  We also assume you need to make changes to the third party libs as a regular course of
 business (e.g. portability fixes), and that such changes are expected to be reviewed in the context of changes to
@@ -250,8 +228,7 @@ libBar might have the branches foo_dev and foo_master.
 Using this model allows one to merge in updates to the third-party codebase with your changes in a natural way. If
 desired, it enables relative easy contributions of your fixes to the library when appropriate.
 
-Currently grape doesn't support recursive subprojects. This doesn't matter too much for subtrees, but for submodules
-it might matter a great deal.
+Currently grape doesn't support recursive subprojects. For submodules, this might matter a great deal.
 
 ## How grape works with submodules
 ### relevant sections in the `.grapeconfig`
@@ -263,7 +240,7 @@ it might matter a great deal.
     submodulepublishpolicy = ?:merge
     submodulepublicmappings = ?:master
 
-`subprojecttype` is used when adding new subprojects, and can be set to either subtree (Default), submodule, or nested.
+`subprojecttype` is used when adding new subprojects, and can be set to either submodule (Default) or nested.
 
 `managesubmodules` should be set to True to enable grape managed subprojects. Otherwise, you're on your own.
 
@@ -333,31 +310,6 @@ append links to those pull requests in your project-level pull request.
 ### `grape db`
 When deleting a branch, grape will delete branches of the same name in your submodules.
 
-## How grape works with subtrees
-Grape uses git-subtree, which is part of the contrib/ section of the official git repository. You'll need to install
-git-subtree for grape's subtree features to work.
-
-### relevant subtree `.grapeconfig` sections
-
-    [subtrees]
-    mergepolicy = nosquash
-    pushonpublish = False
-    names = libBar
-
-    [subtree-libBar]
-    prefix = imports/libBar
-    remote = ../libBar
-    topicprefixmappings = ?:
-
-### Adding subtrees.
-Check out the grape addSubproject --help for more details. When you use addSubproject, grape updates the .grapeconfig
-file as appropriate.
-
-
-### `grape publish`
-Grape can be configured to split-push changes in subtrees to their host repository as part of your publish step by
-setting subtrees.pushonpublish to True.
-
 ## How grape works with nested subprojects
 A nested subproject is a git repository that is ignored by git, but grape manages things like branch consistency, publish
 actions, gathering information with status, etc. Individual developers decide whether they want the nested subproject in
@@ -365,9 +317,6 @@ their workspace by using 'grape uv'.
 
 Grape uses the .grapeconfig to know what nested subprojects are available to developers, and then the .git/.grapeuserconfig
 to know which ones to expect to find in the user's workspace.
-
-nested projects are currently supported by addSubproject, uv, status,  checkout, and commit. Notable lack of support at
-the moment includes publish, merge actions (m, mr, and md), and foreach.
 
 ### relevant nested subproject `.grapeconfig` sections
 
@@ -377,8 +326,6 @@ the moment includes publish, merge actions (m, mr, and md), and foreach.
     [nested-libBar]
     prefix = imports/libBar
     remote = ../libBar
-
-All of these are analagous to the same named options in the subtrees and subtree-libBar counterparts.
 
 ### relevant nested subproject `.grapeuserconfig` sections
     [nested-libBar]
@@ -403,7 +350,7 @@ options are at least listed below.
         Adds a new project to this workspace (such as a new library or a new test suite)
 
         Usage: grape-addSubproject  --name=<name> --prefix=<prefix> --url=<url> --branch=<branch>
-                                    [--subtree [--squash | --nosquash] | --submodule | --nested]
+                                    [--submodule | --nested]
                                     [--noverify]
 
 
@@ -413,19 +360,12 @@ options are at least listed below.
                             directory in your workspace.)
         --url=<url>         The URL (SSH, HTTPS, or Relative URL) of the new project's repository.
         --branch=<branch>   The branch name of the subproject you want to add.
-        --subtree           Add this subproject as a subtree. Default behavior if .grapeconfig.workspace.subprojectType
-                            is subtree.
-        --squash            For subtree projects, if --squash is used, will add <commit> as a squash merge.
-                            This defaults to true if .grapeconfig.subtrees.mergePolicy is squash.
-        --nosquash          For subtree projects, if --nosquash is used, will ensure full history of <branch> is merged
-                            in.
         --submodule         Add this subproject as a submodule. Default behavior if
                             .grapeconfig.workspace.subprojectType is submodule.
         --nested            Add this subproject as a nested git project. While in the main repository, git will ignore
                             all activity in this subproject. GRAPE commands such as checkout, status, and commit will
                             act across all nested subprojects in much the same way as grape manages submodules.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
-
 
     
 ## bundle
@@ -545,7 +485,7 @@ options are at least listed below.
 
     grape checkout
 
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] <branch>
+    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
     -b                  Create the branch off of the current HEAD in each project.
@@ -555,7 +495,11 @@ options are at least listed below.
     --updateView        If your submodules / nested projects change, change your workspace to match the changes.
                         Warning - setting this may cause you to lose unpushed work in nested subprojects.
     --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
-
+    --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
+                        WARNING! This is still experimental and may have issues with grape workflows.
+                        In particular, tree:0 has performance issues with git rev-list/log command on specified
+                        files (it appears to download each commit separately).
+      
 
     Arguments:
     <branch>    The name of the branch to checkout.
@@ -563,13 +507,15 @@ options are at least listed below.
     
 ## push
 
-    grape push pushes your current branch to origin for your outer level repo and all submodules.
-    it uses 'git push -u origin HEAD' for the git command.
+    grape push pushes your current branch to origin for your outer level repo and all subprojects.
+    it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noRecurse]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects]
 
     Options:
-    --noRecurse     Don't perform pushes in submodules.
+    --noTopLevel            Don't perform push in top level repo.
+    --noRecurse             Don't perform pushes in submodules.
+    --noRecurseSubprojects  Don't perform pushes in nested subprojects.
 
     
 ## pull
@@ -613,12 +559,11 @@ options are at least listed below.
                          [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
+                         [--noRecurseSubprojects]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush] [--noUpdateMD]
-                         [--pushSubtrees | --noPushSubtrees]
-                         [--forcePushSubtree=<subtreeName>]...
+                         [--nopush] [--noUpdateMD] [--filter=<arg>]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuild | --noSkipBuild]
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
@@ -634,7 +579,7 @@ options are at least listed below.
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
-                         [--noReview]
+                         [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                          [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
@@ -650,7 +595,7 @@ options are at least listed below.
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
-                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse]
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
@@ -671,14 +616,15 @@ options are at least listed below.
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
     --noRecurse               Do not perform the publish action in submodules.
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
     --topic=<branch>          The branch to publish. Defaults to the current branch.
     --noverify                Set to skip interactive verification of publish commands.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
     --noUpdateMD              Set to skip update of local public branches during md steps.
-    --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
-                              public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
-                              Set by default if .grapeconfig.subtrees.pushOnPublish is True.
-    --noPushSubtrees          Don't perform a git subtree push.
+    --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
+                              WARNING! This is still experimental and may have issues with grape workflows.
+                              In particular, tree:0 has performance issues with git rev-list/log command on specified
+                              files (it appears to download each commit separately).
     --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
                               "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
                               "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
@@ -754,6 +700,8 @@ options are at least listed below.
     -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                               Type grape review --help for valid options.
     --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
+    --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
     --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                               by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
@@ -824,15 +772,19 @@ options are at least listed below.
  grape-clone
     Clones a git repo and configures it for use with git.
 
-    Usage: grape-clone <url> <path> [--recursive] [--allNested]
+    Usage: grape-clone <url> <path> [--recursive] [--allNested] [--filter=<arg>]
 
     Arguments:
         <url>       The URL of the remote repository
         <path>      The directory where you want to clone the repo to.
 
     Options:
-        --recursive   Recursively clone submodules.
-        --allNested   Get all nested subprojects.
+        --recursive        Recursively clone submodules. Does not clone nested submodules.
+        --allNested        Get all nested subprojects.
+        --filter=<arg>     Optional clone filter argument.
+                           WARNING! This is still experimental and may have issues with grape workflows.
+                           In particular, tree:0 has performance issues with git rev-list/log command on specified
+                           files (it appears to download each commit separately).
 
     
 ## config
@@ -921,6 +873,7 @@ options are at least listed below.
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
+                    [--filter=<args>]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
                     [--user=<GitLabUserName>]
                     [--codeReviewsURL=<httpsURL>]
@@ -975,6 +928,10 @@ options are at least listed below.
         --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
                                  into a Code Review service's REST API.
                                  [default: .grapeconfig.repo.ssh_pat_port]
+        --filter=<arg>           Optional clone filter argument to use if any subprojects get cloned during the merge.
+                                 WARNING! This is still experimental and may have issues with grape workflows.
+                                 In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                 files (it appears to download each commit separately).
 
 
     
@@ -1046,7 +1003,7 @@ options are at least listed below.
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noLocal]
+                        [--noLocal | --pushModifiedOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
 
@@ -1062,7 +1019,7 @@ options are at least listed below.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
         --user=<userName>           Your Bitbucket user name.
-        --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
+        --reviewers=<groups>        A whitespace-separated list of reviewer groups, where each reviewer group is a comma-separated list of reviewers for <topicBranch>, optionally preceded by a rule name and colon.
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
                                     Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
@@ -1088,10 +1045,8 @@ options are at least listed below.
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
-        --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
-        --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing reviewers, title, or description instead of replacing it.
+        --prepend                   Prepend <title> to the existing title instead of replacing it.
+        --append                    Append <title> to the existing title instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising in the top level repo.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
@@ -1103,6 +1058,9 @@ options are at least listed below.
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch).
+                                    By default, the entire local workspace will be pushed to ensure consistency.
+                                    In either case, --recurse/--noRecurse/--noRecurseSubprojects arguments are respected.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -1146,21 +1104,6 @@ options are at least listed below.
     --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
     --noTopLevel            Do nothing in the top level repo.
 
-
-    
-## updateSubproject
-
-        grape updateSubproject
-        Updates an existing subproject from its host repository.
-
-        Usage: grape-updateSubproject subtree --name=<name> --branch=<committish>
-
-        Options:
-        --name=<name>           The name of the subproject. Must match a [subtree-<name>]
-                                section in .grapeconfig that has prefix and remote options defined.
-
-        --branch=<committish>   The branch in the subtree's host repository whose state
-                                you want in your repository.
 
     
 ## installHooks
@@ -1221,7 +1164,7 @@ options are at least listed below.
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
-                    [--updateRemoteProtocol]
+                    [--updateRemoteProtocol] [--filter=<arg>]
                     [--spackEnv]
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
@@ -1282,6 +1225,13 @@ options are at least listed below.
                                      repository. These subprojects are updated by recloning using the protocol of the outer
                                      level repo.
         --spackEnv                   Spack Develop Environment build option 
+        --filter=<arg>               Optional clone filter argument.
+                                     This option is ignored in nested-subprojects that have disable_clone_filter set in
+                                     their .grapeconfig section (--filter=blob:none has performance issues with some repos with
+                                     many binary blobs).
+                                     WARNING! This is still experimental and may have issues with grape workflows.
+                                     In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                     files (it appears to download each commit separately).
 
         If --allSubmodules, --noSubmodules, --allNestedSubprojects, --noNestedSubprojects, --branchFilter, --branchChanged,
         --add, --rm, or --ensureCIReposPresent is specified, the workspace will be updated without user intervention. In this
@@ -1391,7 +1341,7 @@ options are at least listed below.
     grape w(alkthrough)
     Usage: grape-w [--difftool=<tool>] [--height=<height>] [--width=<width>] [--fontSize=<font_size>] 
                    [--showUnchanged] [--noFetch] [--mergeDiff | --rawDiff ]
-                   [--noInactive] [--noTopLevel] [--noSubmodules] [--noSubtrees] [--noNestedSubprojects]
+                   [--noInactive] [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
                    [<b1>] [--staged | --workspace | <b2>]
 
     Options:
@@ -1414,7 +1364,6 @@ options are at least listed below.
         --noInactive                Do not show inactive subprojects.
         --noTopLevel                Do not show outer level project.
         --noSubmodules              Do not show submodules.
-        --noSubtrees                Do not show nested subtrees.
         --noNestedSubprojects       Do not show nested subprojects.
         <b1>                        The first branch to compare.
                                     Defaults to the current branch of workspace.
@@ -1430,7 +1379,7 @@ options are at least listed below.
                               [--verbose]
                               [--regenerateMRPipeline]
                               [--createRepo=<name> [--owner=<user>]]
-                              [--setProtectedBranches]
+                              [--setProtectedBranches [--subprojectMergeTrainRestrict=<group_or_user>] | --allowForcePushForFork]
                               [--setKeepMRApprovals]
                               [--disableLFS]
                               [--addSubprojectCIAccess]
@@ -1460,6 +1409,11 @@ options are at least listed below.
                                     set for the new repo (per --allRepoSettings) except protected branches will not be set.
         --owner=<user>              Add user as owner of newly created repo.
         --setProtectedBranches      Protect public branches from force pushes (and remove all other protections).
+        --subprojectMergeTrainRestrict=<group_or_user>
+                                    If merge trains are enabled, only allow merges in subprojects from this group or user.
+                                    [default: .grapeconfig.publish.mergeTrainSubprojectRestrict]
+        --allowForcePushForFork     Protect public branches to only allow maintainers and above to push, but allow force
+                                    pushes. This should only be enabled temporarily during fork.
         --setKeepMRApprovals        Keep merge request approvals after push.
         --disableLFS                Disable LFS in main project and all subprojects.
         --addSubprojectCIAccess     Enable CI token access and disable default CI in all subprojects.

@@ -86,11 +86,6 @@ prefix = v
 name = GRP
 codeReviewsURL = https://rzlc.llnl.gov/gitlab
 
-[subtree-stashy]
-prefix = stashy
-remote = ../stashy.git
-topicprefixmappings = ?:grape
-
 [concurrency-control]
 defaultnumtasks = 8
 exclusivenodenumtasks = -1

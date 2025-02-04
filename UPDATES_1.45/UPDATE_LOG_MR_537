@@ -1,7 +1,0 @@
-
-
-Mon Jun 26 08:03:17 2023 Benjamin T. Liu
-MR_537
-Reviewers: Peter Robinson
-
-Query server for .gitmodules to determine submodules for gitlab-admin tasks

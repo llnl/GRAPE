@@ -1,0 +1,27 @@
+
+
+Tue Jan 14 14:21:16 2025 Benjamin T. Liu
+MR_634
+Reviewers: David Dawson, Peter Robinson (He/Him)
+
+grape uv improvements
+
+- limit submodule update jobs to number of submodules
+
+- retry submodule update on failure (with half as many jobs)
+
+- hide clone failure issues for missing branches during uv
+
+This branch is attempting to deal with clone failures that occur sporadically (but more often with distribution jobs)
+
+Also fix default grape version string to conform with version format (vX.X.X rather than v.X.X.X)
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.59
+
+--reviewers=dawson24,probinso

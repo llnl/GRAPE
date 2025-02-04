@@ -1,0 +1,17 @@
+
+
+Wed Nov  6 13:40:37 2024 Benjamin T. Liu
+MR_626
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Allow publish if newly added submodule is already up-to-date with public branch
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.54
+
+--reviewers=probinso,dayton8

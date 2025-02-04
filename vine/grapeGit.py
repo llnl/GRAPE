@@ -13,11 +13,19 @@ from vine import vine_subprocess
 
 GRAPE_CONFIG = '.grapeconfig'
 GIT_VERY_VERBOSE = False
-GRAPE_GIT_CONFIG_FLAGS = ''
+GRAPE_GIT_CONFIG_FLAGS = []
 
-def setConfigFlags(flags):
+def clearGitConfigFlags():
     global GRAPE_GIT_CONFIG_FLAGS
-    GRAPE_GIT_CONFIG_FLAGS = flags
+    GRAPE_GIT_CONFIG_FLAGS = []
+
+def getGitConfigFlags():
+    global GRAPE_GIT_CONFIG_FLAGS
+    return " ".join(GRAPE_GIT_CONFIG_FLAGS)
+
+def addGitConfigFlag(flag):
+    global GRAPE_GIT_CONFIG_FLAGS
+    GRAPE_GIT_CONFIG_FLAGS.append(flag)
 
 # Note that if capture_output is None, the return code and
 # any errors are ignored.
@@ -27,13 +35,13 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     cnfg = config_parser_global.grapeConfig()
     if cnfg.has_section('git') and cnfg.has_option('git', 'executable'):
         _cmd = cnfg.get("git", "executable")
-        _cmd += f" {GRAPE_GIT_CONFIG_FLAGS} {cmd}"
+        _cmd += f" {getGitConfigFlags()} {cmd}"
     elif os.name == "nt":
         git_path = os.path.join('C:', os.path.sep, 'Program Files',
                                 'Git', 'bin', 'git.exe')
-        _cmd = f"\"{git_path}\" {GRAPE_GIT_CONFIG_FLAGS} {cmd}"
+        _cmd = f"\"{git_path}\" {getGitConfigFlags()} {cmd}"
     else:
-        _cmd = f"git {GRAPE_GIT_CONFIG_FLAGS} {cmd}"
+        _cmd = f"git {getGitConfigFlags()} {cmd}"
 
     completed_process = vine_subprocess.executeSubProcess(
         _cmd, working_dir=execution_path, capture_output=capture_output, debug_log_stdout=debug_log_stdout)
@@ -138,7 +146,7 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def clone(argstr='', *, source_repo, clone_repo, execution_path):
+def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=True):
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
     try:
@@ -150,10 +158,12 @@ def clone(argstr='', *, source_repo, clone_repo, execution_path):
         if "already exists and is not an empty directory" in e.gitOutput.lower():
             raise e
         if e.commError:
-            logging.warning("GRAPE: clone failed due to connectivity issues.")
+            if print_warnings:
+                logging.warning("GRAPE: clone failed due to connectivity issues.")
             return e.gitOutput
-        logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
-        logging.warning(e.gitOutput)
+        if print_warnings:
+            logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
+            logging.warning(e.gitOutput)
         raise e
 
 
@@ -358,7 +368,7 @@ def getModifiedSubmodules(ws_dir, branch1="", branch2="", includeAdded=False):
             return []
 
     # make sure everything in modifiedSubmodules is in the original list of submodules
-    # (this can not be the case if the module existed as a regular directory / subtree in the other branch,
+    # (this can not be the case if the module existed as a regular directory in the other branch,
     #  in which case the diff command will list the contents of the directory as opposed to just the submodule)
     verifiedSubmodules = []
     for s in modifiedSubmodules:
@@ -624,13 +634,6 @@ def submodule(argstr, *, execution_path, capture_output=True):
     return gitcmd(f"submodule {argstr}", f"submodule {argstr} failed",
                   execution_path=execution_path,
                   capture_output=capture_output)
-
-
-def subtree(argstr, *, execution_path):
-    return gitcmd(f"subtree {argstr}",
-                  f"subtree {argstr} failed - maybe subtree isn't installed" \
-                  " on your system?",
-                  execution_path=execution_path)
 
 
 def tag(argstr, *, execution_path):

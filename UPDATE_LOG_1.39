@@ -1,0 +1,573 @@
+
+
+Mon Dec  5 12:59:06 2022 Benjamin T. Liu
+v1.39.95
+Reviewers: Peter Robinson
+
+grape review improvements
+
+- Speed up ls-remote calls
+- Explicitly disable remove_source_branch when creating MR
+
+
+Mon Dec  5 07:51:28 2022 Benjamin T. Liu
+v1.39.94
+Reviewers: Peter Robinson
+
+Fix for empty description in grape review
+
+
+Thu Dec  1 10:57:25 2022 Peter B. Robinson
+v1.39.93
+Reviewers: Ben Liu, David Dawson
+
+Add ability for grape to add repo-specific reviewer list rules and associated description suffixes.
+
+
+Wed Nov 30 13:45:38 2022 Benjamin T. Liu
+v1.39.92
+Reviewers: Peter Robinson, David Dawson
+
+Allow grape review to generate merge requests for inactive subprojects
+
+
+Tue Nov 29 09:30:15 2022 Benjamin T. Liu
+v1.39.91
+Reviewers: Peter Robinson
+
+Fix issue running uv branch filter in clean workspace
+
+
+Tue Nov 29 07:46:16 2022 Benjamin T. Liu
+v1.39.90
+Reviewers: Peter Robinson, David Dawson
+
+Improvements for generating MRs in GitLab CI
+
+- Fetch the branch if not already feched in parseGitModuleDiffOutput
+
+- Change uv --branchFilter/--branchChanged to check for local branches as well
+
+
+Wed Nov 16 14:47:56 2022 Benjamin T. Liu
+v1.39.89
+Reviewers: Peter Robinson
+
+Update for grape uv --checkRemoteSubmodules
+
+- Default to look only at currently active submodules
+
+- Add option to respect --allSubmodules
+
+
+Wed Nov 16 10:44:38 2022 Benjamin T. Liu
+v1.39.88
+Reviewers: Peter Robinson
+
+Add grape commit --failIfNoCommit
+
+
+Wed Nov 16 10:41:40 2022 Benjamin T. Liu
+v1.39.87
+Reviewers: Peter Robinson
+
+- Prevent uv and checkout from creating branches named HEAD
+
+- Allow changed submodules to be determined even if there is a file named develop or release
+
+
+Tue Nov 15 09:02:24 2022 Benjamin T. Liu
+v1.39.86
+Reviewers: Peter Robinson
+
+Fix grape uv --branchChanged without ~
+
+
+Mon Nov 14 14:54:50 2022 Benjamin T. Liu
+v1.39.85
+Reviewers: Peter Robinson
+
+Updates for newFlowBranch
+
+- Add --nopush option
+
+- Remove unused --noverify
+
+- Fix documentation for --recurse/--norecurse to match behavior
+
+
+Thu Nov  3 15:49:22 2022 Benjamin T. Liu
+v1.39.84
+Reviewers: Peter Robinson
+
+Add gitlab-admin --requirePipelineSuccess option
+
+
+Wed Nov  2 13:40:26 2022 Benjamin T. Liu
+v1.39.83
+Reviewers: Peter Robinson
+
+Use e.message instead of e.msg for GrapeGitError
+
+- e.message was used in grape publish notify
+
+
+Tue Oct 25 14:17:08 2022 Benjamin T. Liu
+v1.39.82
+Reviewers: Peter Robinson, Al Nichols
+
+Add md back to merge train publish
+
+
+Mon Oct 24 12:34:30 2022 Benjamin T. Liu
+v1.39.81
+Reviewers: Peter Robinson, David Dawson
+
+Improve gitlab admin tasks
+
+- Keep MR approvals on push
+
+- Prevent push on merge train
+
+
+Thu Oct 20 09:56:23 2022 Benjamin T. Liu
+v1.39.80
+Reviewers: Peter Robinson
+
+- Fix exception handling for grape publish email file list
+
+- Fix syntax for sleep in checkout
+
+
+Mon Oct 17 14:06:14 2022 Benjamin T. Liu
+v1.39.79
+Reviewers: Peter Robinson
+
+Query project and repo for gitlab-admin
+
+
+Thu Oct 13 10:57:49 2022 Benjamin T. Liu
+v1.39.78
+Reviewers: Peter Robinson, Arlie Capps, Jean Paul Fermaint Hernandez
+
+Allow author and author_username to be using in commit messages
+
+
+Wed Oct 12 09:14:58 2022 Benjamin T. Liu
+v1.39.77
+Reviewers: Peter Robinson
+
+Remove spurious uv deinit message that should have been removed in earlier bugfix
+
+
+Wed Oct 12 09:13:51 2022 Benjamin T. Liu
+v1.39.76
+Reviewers: Peter Robinson
+
+Add uv option to not switch to public branch for missing branches
+
+
+Fri Oct  7 13:39:04 2022 Benjamin T. Liu
+v1.39.75
+Reviewers: Peter Robinson
+
+Add gitlab-admin option to list my running jobs
+
+
+Mon Oct  3 10:19:49 2022 Benjamin T. Liu
+v1.39.74
+Reviewers: Peter Robinson
+
+Fix incorrect import for logging
+
+
+Mon Oct  3 09:01:38 2022 Benjamin T. Liu
+v1.39.73
+Reviewers: Peter Robinson, David Dawson
+
+- Add --noSubmodules/--noNestedSubprojects option to uv
+
+- Make uv non-interactive if --branchFilter/Changed is specified
+
+- Update uv documentation
+
+- Echo default values with -d option
+
+
+Fri Sep 30 12:20:41 2022 Benjamin T. Liu
+v1.39.72
+Reviewers: Arlie Capps, Alan Dayton
+
+Add --skipBranchCreation option for grape uv
+
+
+Fri Sep 30 08:07:01 2022 Benjamin T. Liu
+v1.39.71
+Reviewers: Benjamin Isaac
+
+Fix grape uv --checkRemoteSubmodules
+
+- Specify correct branch when called on a public branch
+
+- This is needed to fix gitlab automation
+
+
+Wed Sep 28 14:32:06 2022 Benjamin T. Liu
+v1.39.70
+Reviewers: Peter Robinson, David Dawson
+
+Add ability to check and trigger CI pipeline jobs
+
+
+Mon Sep 26 07:57:06 2022 Benjamin T. Liu
+v1.39.69
+Reviewers: Peter Robinson
+
+Prevent creation of spurious merge requests when branch is in the history of the public branch
+
+- Add --updateRemoteOnly option for grape up
+
+- Update remote tracking branches for public branches before calling grape review
+
+- Prevent merge requests when branch is in history of public branch (origin)
+
+
+Mon Sep 26 07:55:40 2022 Benjamin T. Liu
+v1.39.68
+Reviewers: Peter Robinson, Patrick Greene, David Dawson
+
+Fix bug in updateView refactoring that causes submodules to be unintentionally inited
+
+- Bug introduced v4.39.62
+
+- Revert semantics when remotes are not being updated
+
+- Add additional deinitialization if remotes are updates
+
+
+Tue Sep 20 10:16:29 2022 Benjamin T. Liu
+v1.39.67
+Reviewers: Peter Robinson
+
+Manage scheduled pipelines through gitlab-admin
+
+
+Tue Sep  6 09:58:10 2022 Benjamin T. Liu
+v1.39.66
+Reviewers: Peter Robinson, Al Nichols
+
+Fix grape uv --gui for Windows
+
+
+Tue Aug 30 14:09:07 2022 Benjamin T. Liu
+v1.39.65
+Reviewers: Peter Robinson, Arlie Capps
+
+Limit fetch to public branches in up
+
+- This should reduce spurious warnings about local commits
+
+
+Mon Aug 29 11:52:25 2022 Benjamin T. Liu
+v1.39.64
+Reviewers: Peter Robinson
+
+Updates to grape uv and up
+
+- Default to force update and error on communications errors for up
+
+- Add --noForce and --ignoreCommError options to up to replicate previous behavior
+
+- Fail publish if up fails (including communication error)
+
+- Fail newFlowBranch if up fails (but ignore communication error)
+
+- Add --forceUpdate and --ensureCleanUpdate options to control up options and error checking for md
+
+- Allow multi repo launcher to merge arguments, but only if they are all the same
+
+
+Wed Aug 24 08:58:10 2022 Benjamin T. Liu
+v1.39.63
+Reviewers: Peter Robinson, David Dawson
+
+- Check origin/<public> rather than <public> when looking up tags for grape uv --branchChanged=<branch>~
+
+- Add grape uv --checkRemoteSubmodules option
+
+
+Wed Aug 24 08:48:32 2022 Benjamin T. Liu
+v1.39.63
+Reviewers: Peter Robinson
+
+Fixes for grape uv branch filtering
+
+- Do not filter any subprojects explicitly added
+
+- Ensure that filtering occurs in nested subprojects in the absences of rm/add commands
+
+
+Wed Aug 24 08:52:52 2022 Benjamin T. Liu
+v1.39.63
+Reviewers: Peter Robinson
+
+Respect return code in foreach
+
+
+Wed Aug 24 16:13:18 2022 Benjamin T. Liu
+v1.39.63
+Reviewers: David Dawson, Alan Dayton
+
+Fix logic for grape uv --add/--rm with branch filtering
+
+
+Wed Aug 10 10:44:32 2022 Benjamin T. Liu
+v1.39.62
+Reviewers: Peter Robinson, David Dawson, Alan Dayton
+
+Add grape uv --updateRemoteProtocol to ensure that submodule protocols match top level
+
+
+Tue Aug  9 09:56:49 2022 Benjamin T. Liu
+v1.39.61
+Reviewers: Peter Robinson, David Dawson
+
+Add option to use grape uv --branchChanged=<branch>~ which considers branches that are in the tagged version history to be unchanged
+
+
+Mon Aug  8 09:41:36 2022 Benjamin T. Liu
+v1.39.60
+Reviewers: Peter Robinson, David Dawson
+
+Implement grape uv --branchChanged=<branch> to only activate subprojects where <branch> differs from public
+
+
+Thu Aug  4 14:21:33 2022 Peter B. Robinson
+v1.39.59
+Reviewers: Ben Liu
+
+default has to match y or n, not start with y or n, to be counted as a boolean in non interactive mode.
+
+
+Thu Aug  4 11:53:09 2022 Benjamin T. Liu
+v1.39.58
+Reviewers: Peter Robinson, Alan Dayton
+
+Fix review to respect recurse/norecurse flags in nested subprojects
+
+
+Thu Aug  4 09:26:52 2022 Benjamin T. Liu
+v1.39.57
+Reviewers: Peter Robinson, Alan Dayton
+
+- Prevent recursion during markMRWithVersion
+
+- Prevent push in subprojects for grape review --noLocal
+
+
+Wed Aug  3 11:12:17 2022 Benjamin T. Liu
+v1.39.56
+Reviewers: Peter Robinson
+
+Make send email more robust
+
+
+Tue Aug  2 14:47:24 2022 Peter B. Robinson
+v1.39.55
+Reviewers: Ben Liu
+
+check to make sure modified submodule is actually in modified files.
+
+
+Tue Aug  2 10:27:58 2022 Peter B. Robinson
+v1.39.54
+Reviewers: Ben Liu, Alan Dayton
+
+Fixes some crashes for grape publish --mergeUpdateLogs
+
+
+Tue Jul 26 08:36:10 2022 Peter B. Robinson
+v1.39.53
+Reviewers: Arlie Capps, David Dawson
+
+Changes grape review --noPush to --noLocal. Removes some additional checks when that option is in use to hopefully allow merge train workflows update MR titles.
+
+
+Mon Jul 25 15:59:20 2022 Peter B. Robinson
+v1.39.50
+Reviewers: David Dawson
+
+mergeback of 1.38.5
+
+
+Mon Jul 25 15:35:50 2022 Peter B. Robinson
+v1.39.49
+Reviewers: Arlie Capps, David Dawson
+
+teach grape publish a single pass add version to MR step.
+
+
+Mon Jul 25 10:56:17 2022 Peter B. Robinson
+v1.39.48
+Reviewers: Arlie Capps, Ben Liu
+
+Change traverseTrainRefs to be based off of commit messages instead of remote train refs, removes potential race conditions in the workflow.
+
+
+Wed Jul 20 13:30:38 2022 Peter B. Robinson
+v1.39.47
+Reviewers: Arlie Capps, Alan Dayton
+
+
+
+
+Tue Jul 19 16:17:47 2022 Benjamin T. Liu
+v1.39.46
+Reviewers: Peter Robinson, Alan Dayton
+
+Add <branch> variable for notifications and custom commands
+
+
+Tue Jul 19 15:28:08 2022 Peter B. Robinson
+v1.39.45
+Reviewers: Arlie Capps, Alan Dayton
+
+Summary:
+
+Parallelizes nested subproject activation in grape uv.
+
+Improve efficiency of the multi repo command launcher in SSH repositories.
+
+
+Tue Jul 19 15:26:10 2022 Peter B. Robinson
+v1.39.44
+Reviewers: Arlie Capps, Alan Dayton
+
+Teaches grape db to delete more than one branch at a time.
+
+
+Mon Jul 18 13:21:27 2022 Benjamin T. Liu
+v1.39.38
+Reviewers: Peter Robinson, Alan Dayton
+
+Fix up call in traverseTrainRefs
+
+
+Mon Jul 18 12:28:00 2022 Peter B. Robinson
+v1.39.37
+Reviewers: Ben Liu
+
+
+
+
+Mon Jul 18 10:05:41 2022 Peter B. Robinson
+v1.39.28
+Reviewers: Ben Liu, Alan Dayton
+
+Look all the way back in time to most recent tag instead of tip of public branch to determine proposed version number.
+
+
+Mon Jul 18 09:29:29 2022 Peter B. Robinson
+v1.39.27
+Reviewers: Ben Liu
+
+Add some debugging code to track down KeyError exceptions during traverseTrainRefs.
+ 
+Catches a possible bad state generated by previous versions of grape and fixes it.
+
+
+Thu Jul 14 12:36:15 2022 Peter B. Robinson
+v1.39.26
+Reviewers: Ben Liu, Alan Dayton
+
+Allows users to define multiple potential jobs to be the merge train ticket. 
+',' is still used as an AND semantic. 
+'|' is used as an OR semantic.
+
+
+Wed Jul 13 12:52:07 2022 Peter B. Robinson
+v1.39.17
+Reviewers: Ben Liu, Al Nichols
+
+Mergeback of 1.38.4, tagProposedVersion for grape md now pushes tags and force creates the tag.
+
+
+Wed Jul 13 08:53:49 2022 Peter B. Robinson
+v1.39.16
+Reviewers: Ben Liu, David Dawson
+
+publish only pushes the tags we just created instead of all tags in our local repo.l
+
+
+Wed Jul 13 08:10:43 2022 Peter B. Robinson
+v1.39.15
+Reviewers: Arlie Capps, Ben Liu, Alan Dayton
+
+Teach grape how to write a proposed version tag based off number of merges needed in the merge train and how to set an actual version tag from a proposed version tag.
+
+
+Tue Jul 12 09:57:35 2022 Peter B. Robinson
+v1.39.14
+Reviewers: Ben Liu, Alan Dayton
+
+
+
+
+Tue Jul 12 09:11:45 2022 Benjamin T. Liu
+v1.39.13
+Reviewers: Peter Robinson, Arlie Capps
+
+- Update prompt to join merge train
+
+- Harden grape uv to repo without HEAD
+
+
+Tue Jul 12 08:55:14 2022 Peter B. Robinson
+v1.39.12
+Reviewers: Ben Liu, Alan Dayton
+
+Limit list of modified files to those actually on the desired branch.
+
+
+Mon Jul 11 10:34:52 2022 Peter B. Robinson
+v1.39.8
+Reviewers: Ben Liu, Alan Dayton
+
+Teaches grape how to update nested subprojects in the context of a merge train.
+
+
+Fri Jul  8 10:38:32 2022 Peter B. Robinson
+v1.39.7
+Reviewers: Ben Liu, Alan Dayton
+
+SUMMARY
+Changes strategy to look up merge request tag to describing first parent of the branch the merge came from.
+
+
+Thu Jul  7 13:22:24 2022 Peter B. Robinson
+v1.39.4
+Reviewers: Arlie Capps, Alan Dayton
+
+Teaches grape uv how to filter the workspace based off the existence of a remote reference to a given branch.
+Teaches grape db how to delete branches in inactive repositories.
+
+
+Wed Jul  6 13:53:38 2022 Peter B. Robinson
+v1.39.3
+Reviewers: Ben Liu, Alan Dayton
+
+
+
+
+Thu Jun 30 16:09:03 2022 Peter B. Robinson
+v1.39.2
+Reviewers: Arlie Capps, Ben Liu
+
+Fixes a crash in grape pull --continue.
+
+
+Tue Jun  7 09:06:09 2022 Peter B. Robinson
+v1.39.1
+Reviewers: Ben Liu
+
+mergeback of 1.38, tick develop to 1.39.0

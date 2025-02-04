@@ -1,7 +1,0 @@
-
-
-Mon Jan 30 16:28:10 2023 Benjamin T. Liu
-MR_502
-Reviewers: Peter Robinson
-
-Look for version in public branch rather than HEAD when traversing merge train refs

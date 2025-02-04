@@ -1,7 +1,0 @@
-
-
-Thu Oct 13 10:57:49 2022 Benjamin T. Liu
-MR_440
-Reviewers: Peter Robinson, Arlie Capps, Jean Paul Fermaint Hernandez
-
-Allow author and author_username to be using in commit messages

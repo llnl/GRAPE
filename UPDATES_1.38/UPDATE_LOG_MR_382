@@ -1,9 +1,0 @@
-
-
-Tue Jun  7 08:43:57 2022 Peter B. Robinson
-MR_382
-Reviewers: Ben Liu
-
-Merges in merge train capabilities.
-Updates updatelogdir to know about <major_version> and <minor_version> substition tags.
-Consolidates update UPDATES_1.37 update messages into UPDATE_LOG_1.37.

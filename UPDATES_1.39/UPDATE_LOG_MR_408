@@ -1,7 +1,0 @@
-
-
-Mon Jul 25 15:35:50 2022 Peter B. Robinson
-MR_408
-Reviewers: Arlie Capps, David Dawson
-
-teach grape publish a single pass add version to MR step.

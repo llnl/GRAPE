@@ -27,7 +27,7 @@ class Test(Option):
     @log_wrapper
     def execute(self, args):
         # Allow cloning from file for testing
-        git.setConfigFlags('-c protocol.file.allow=always')
+        git.addGitConfigFlag('-c protocol.file.allow=always')
         from test import testGrape
         good = testGrape.main(args["<suite>"], debug = args["--debug"])
         if not good:

@@ -49,12 +49,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--mergeTrain=<bool>]
                          [-m <msg>]
                          [--recurse | --noRecurse]
+                         [--noRecurseSubprojects]
                          [--public=<public> [--submodulePublic=<submodulePublic>]]
                          [--topic=<branch>]
                          [--noverify]
-                         [--nopush] [--noUpdateMD]
-                         [--pushSubtrees | --noPushSubtrees]
-                         [--forcePushSubtree=<subtreeName>]...
+                         [--nopush] [--noUpdateMD] [--filter=<arg>]
                          [--startAt=<startStep>] [--stopAt=<stopStep>]
                          [--buildCmds=<buildStr>] [--buildDir=<path>] [--skipBuild | --noSkipBuild]
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
@@ -70,7 +69,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--project=<BitbucketProjectKey>]
                          [--repo=<BitbucketRepoName>]
                          [-R <arg>]...
-                         [--noReview]
+                         [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                          [--useBitbucket=<bool>]
                          [--deleteTopic=<bool>]
                          [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str>
@@ -86,7 +85,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
-                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse]
+                                     --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
@@ -107,14 +106,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
     --noRecurse               Do not perform the publish action in submodules.
                               Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+    --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
     --topic=<branch>          The branch to publish. Defaults to the current branch.
     --noverify                Set to skip interactive verification of publish commands.
     --nopush                  Set to skip the push of commits generated during the publish procedure.
     --noUpdateMD              Set to skip update of local public branches during md steps.
-    --pushSubtrees            Push subtrees to their respective remotes (.grapeconfig.subtree-<name>.remote) appropriate
-                              public branches (.grapeconfig.subtree-<name>.topicPrefixMappings)
-                              Set by default if .grapeconfig.subtrees.pushOnPublish is True.
-    --noPushSubtrees          Don't perform a git subtree push.
+    --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
+                              WARNING! This is still experimental and may have issues with grape workflows.
+                              In particular, tree:0 has performance issues with git rev-list/log command on specified
+                              files (it appears to download each commit separately).
     --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
                               "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
                               "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
@@ -190,6 +190,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                               Type grape review --help for valid options.
     --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+    --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
+    --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
     --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
     --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                               by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
@@ -262,7 +264,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self._key = "publish"
         self._section = "Gitflow Tasks"
         self.branchPrefix = None
-        self.modifiedSubtrees = set()
         self.st_prefixes = {}
         self.st_remotes = {}
         self.st_branches = {}
@@ -274,7 +275,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_WORKSPACE)
         config.ensureSection(self.SECTION_FLOW)
-        config.ensureSection(self.SECTION_SUBTREES)
         config.ensureSection(self.SECTION_PUBLISH)
 
         # workspace defaults
@@ -284,9 +284,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # publish policy defaults
         config.set(self.SECTION_FLOW, 'publishPolicy', '?:merge')
         config.set(self.SECTION_PUBLISH, 'mergeTrain', 'False')
-        # subtree publish actions
-        config.set(self.SECTION_SUBTREES, 'names', '')
-        config.set(self.SECTION_SUBTREES, 'pushOnPublish', 'False')
+        config.set(self.SECTION_PUBLISH, 'mergeTrainSubprojectRestrict', '')
         # build steps
         config.set(self.SECTION_PUBLISH, 'buildCmds', '')
         config.set(self.SECTION_PUBLISH, 'buildDir', '.')
@@ -437,6 +435,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
+        try:
+            git.config("--get user.name", execution_path=self.workspace_dir)
+            git.config("--get user.email", execution_path=self.workspace_dir)
+        except grape_errors.GrapeGitError as e:
+            logging.info("Both user.name and user.email must be specified in your .gitconfig for grape publish!\nUse\n  git config --global user.name <Your Name>\n  git config --global user.email <your_email>@<your_domain>\n")
+            return False
+            
         self.set_progress_file(execution_path=self.workspace_dir)
 
         # this is needed for all custom actions, ensure it is initialized for all cases here
@@ -582,6 +587,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         mdArgs = ["--am", f"--public={args['--public']}"]
         if args["--noUpdateMD"]:
             mdArgs.append("--noUpdate")
+        if args["--filter"]:
+            mdArgs.append("--filter="+args["--filter"])
         if  menu.applyMenuChoice("md", mdArgs):
             # update the startingSHA to be after any merges as they cause all sorts of problems for git revert in the
             # event of a grape publish --abort
@@ -603,6 +610,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                       f"--target={args['--public']}",
                       f"--user={args['--user']}",
                       f"--verifySSL={args['--verifySSL']}"]
+        if (args["--noRecurse"] or args["--noReviewSubmodules"]) and "--noRecurse" not in newArgs:
+            finalArgs += ["--noRecurse"]
+        if (args["--noRecurseSubprojects"] or args["--noReviewSubprojects"]) and "--noRecurseSubprojects" not in newArgs:
+            finalArgs += ["--noRecurseSubprojects"]
         if len(newArgs) > 0:
             finalArgs += newArgs
         for arg in reviewArgs:
@@ -612,8 +623,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def markReviewAsInProgress(self, args):
         logging.info("Prepending pull request title with **IN PROGRESS**...")
-        return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend"], "Skipping marking pull request "
-                                                                                "as IN PROGRESS...")
+        return self.markReview(args, ["--title=**IN PROGRESS** ", "--prepend", "--pushModifiedOnly"],
+                               "Skipping marking pull request as IN PROGRESS...")
 
     def markReviewWithVersionNumber(self, args):
         self.loadVersion(args)
@@ -623,7 +634,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               "Skipping marking pull request with version number")
 
     def ensureReview(self, args):
-        return self.markReview(args, [], "Skipping ensuring review exists.", updateOnly=False)
+        return self.markReview(args, ["--pushModifiedOnly"], "Skipping ensuring review exists.", updateOnly=False)
 
     @property
     def codeReviews(self):
@@ -733,7 +744,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                # In certain cases, the merge request is already closed and the pipeline cannot be regenerated
                logging.info(f"Regenerating pipeline without {inprogresslabel} label to release in-progress lock...")
                request.regeneratePipeline(raiseOnFailure=False)
-            return self.markReview(args, [f"--title={title}", f"--state={state}"], "")
+            return self.markReview(args, [f"--title={title}", f"--state={state}", "--pushModifiedOnly"], "")
         else:
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
@@ -746,41 +757,202 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
             return True
-        pullRequest = self.openPullRequest()
-        verified = False
-        if pullRequest:
-            verified = pullRequest.approved()
-            reviewers = pullRequest.reviewers()
-            if not verified:
-                if not reviewers:
-                    logging.info(
-                        "There are no reviewers for your pull request for " +
-                        f"{args['--topic']} targeting {args['--public']}.")
-                    self.progress["reviewers"] = "No reviewers"
+
+        # Get review rules
+        reviewRules = review.parseReviewRules()
+        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
+
+        verified = True
+
+        public = args["--public"]
+        topic = args["--topic"]
+
+        pullRequests = []
+
+        config = config_parser_global.grapeConfig()
+
+        # Gather pull requests for submodules
+        recurse = config.get(self.SECTION_WORKSPACE, 'manageSubmodules')
+
+        if args["--recurse"]:
+            recurse = True
+
+        if args["--noRecurse"]:
+            recurse = False
+
+        submodules = []
+
+        if recurse and not args["--noReviewSubmodules"]:
+            submodules = git.getModifiedSubmodules(self.workspace_dir, public,
+                                                   topic, includeAdded=True)
+
+            submodulePublicMappings = config.getMapping(self.SECTION_WORKSPACE, "submodulePublicMappings")
+            submodulePublicBranch = submodulePublicMappings[public]
+
+            for submodule in submodules:
+                submoduleRepo = CodeReviewsFactory.repoFromSubmodulePath(self.codeReviews, submodule)
+                submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
+                pullRequests.append((submodule, submodulePullRequest))
+
+        # Gather pull requests for subprojects
+        if not args["--noRecurseSubprojects"] and not args["--noReviewSubprojects"]:
+            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojects(public, now=topic, workspaceDir=self.workspace_dir, checkRemote=True)
+
+            for subproject in self.modifiedNestedProjects:
+                repo = CodeReviewsFactory.repoFromNestedSubprojectName(self.codeReviews, subproject)
+                pullRequest = repo.getOpenPullRequest(topic, public)
+                pullRequests.append((subproject, pullRequest))
+
+        # Add top level pull request
+        topPullRequest = self.openPullRequest()
+        pullRequests.append((self.args["--repo"], topPullRequest))
+
+        # Check all reviews are completed
+        userMessage = ""
+        finishedReviewers = set()
+
+        reviewersRegex = re.compile("^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
+
+        for (repo, pullRequest) in pullRequests:
+            if not pullRequest:
+                # If the submodule gitlink was added in the branch, but the branch in the submodule was already up-to-date
+                # with the public, we can skip the pull request check (since no pull request can be generated).
+                working_dir = os.path.join(self.workspace_dir, repo)
+                if repo in submodules and git.SHA(submodulePublicBranch, execution_path=working_dir) == git.SHA(topic, execution_path=working_dir):
+                    pass
                 else:
-                    logging.info("The following reviewers have not approved your request:\n")
-                    approvedReviewerNames = []
-                    for reviewer in reviewers:
-                        if reviewer[1] is False:
-                            logging.info(f"{reviewer[0]} ({reviewer[2]})")
-                        else:
-                            approvedReviewerNames.append(reviewer[2])
-                    if len(approvedReviewerNames) > 0:
-                        self.progress["reviewers"] = ", ".join(approvedReviewerNames)
+                    userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
+                    verified = False
+                continue
+
+            reviewers = pullRequest.reviewers()
+
+            # Check all active review rules are completed.
+            # This includes checking that all rules are assigned at least
+            # the minimum number of required reviewers (this info is stored
+            # by grape in the merge/pull request description).
+            description = pullRequest.description()
+
+            if isinstance(description, bytes):
+                description = description.decode("utf-8")
+
+            savedArgs = {}
+            match = reviewersRegex.search(description)
+
+            if match:
+                savedArgs['--reviewers'] = match.group('reviewers')
+
+            reviewersFromDescription = review.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName)
+
+            for reviewRuleName in reviewRules:
+                reviewRule = reviewRules[reviewRuleName]
+
+                if reviewRule['active']:
+                    reviewRuleRepositories = reviewRule["repositories"]
+
+                    for reviewRuleRepository in reviewRuleRepositories:
+                        if re.fullmatch(reviewRuleRepository, repo):
+                            label = reviewRule["label"]
+                            minNumReviewers = reviewRule["minNumReviewers"]
+                            eligibleReviewers = reviewRule["eligibleReviewers"]
+
+                            # Check if reviewers are assigned to the review rule
+                            if reviewRuleName not in reviewersFromDescription:
+                                userMessage += f'\n\t{repo}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                                verified = False
+                                break
+
+                            # Check if at least the minimum number of required
+                            # reviewers are assigned to the review rule
+                            assignedReviewers = reviewersFromDescription[reviewRuleName]['reviewers']
+
+                            if len(assignedReviewers) < minNumReviewers:
+                                userMessage += f'\n\t{repo}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                                verified = False
+                                break
+
+                            # Check that the assigned reviewers are eligible
+                            # for this review rule.
+                            ineligibleReviewers = []
+
+                            for assignedReviewer in assignedReviewers:
+                                eligible = False
+
+                                for eligibleReviewer in eligibleReviewers:
+                                    if re.fullmatch(eligibleReviewer, assignedReviewer):
+                                        eligible = True
+                                        break
+
+                                if not eligible:
+                                    ineligibleReviewers.append(assignedReviewer)
+
+                            if ineligibleReviewers:
+                                userMessage += f'\n\t{repo}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                                verified = False
+                                break
+
+                            # Check that the assigned reviewers have approved.
+                            unfinishedReviewers = []
+
+                            for assignedReviewer in assignedReviewers:
+                                approved = False
+
+                                for reviewer in reviewers:
+                                    if assignedReviewer == reviewer[0]:
+                                        if reviewer[1]:
+                                            approved = True
+                                            break
+
+                                if not approved:
+                                    unfinishedReviewers.append(assignedReviewer)
+
+                            if unfinishedReviewers:
+                                userMessage += f'\n\t{repo}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
+                                verified = False
+                                break
+
+            # Check if the repository manager's review requirements are all met.
+            approved = pullRequest.approved()
+
+            if verified and not approved:
+                verified = False
+
+                if not reviewers:
+                    userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
+                else:
+                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False])
+
+                    if unfinishedReviewers:
+                        userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
                     else:
-                        self.progress["reviewers"] = "No reviewers"
+                        userMessage += f"\n\t{repo}: Needs additional approvals"
+
+                    finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
-                logging.info("All reviewers have approved your request.")
-                self.progress["reviewers"] = ", ".join(x[2] for x in reviewers)
+                finishedReviewers.update([reviewer[2] for reviewer in reviewers])
+
+        # TODO: Consider reporting review rule groupings in self.progress
+
+        if topPullRequest:
             self.progress["author"] = pullRequest.authorName()
             self.progress["author_username"] = pullRequest.author()
             self.progress["author_email"] = pullRequest.authorEmail()
         else:
-            logging.info("There is no pull request for your current branch.\nStart one using grape review.")
-            self.progress["reviewers"] = "No reviewers"
             self.progress["author"] = ""
             self.progress["author_username"] = ""
             self.progress["author_email"] = ""
+
+        if len(finishedReviewers) > 0:
+            self.progress["reviewers"] = ", ".join(finishedReviewers)
+        else:
+            self.progress["reviewers"] = "No reviewers"
+
+        if userMessage:
+            logging.info(f"Code reviews are not completed in the following repo(s):{userMessage}")
+        else:
+            logging.info("All code reviews have been completed.")
+
         return verified
 
     def testForCleanWorkspace(self, args):
@@ -1005,11 +1177,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # This assumes that we are in the same workspace that published the changes in the nested subproject.
             # Get the first prior SHA on the branch.
             public = f"{args['--public']}"+"@{1}"
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-            execution_path = os.path.join(self.workspace_dir, nested)
-            modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
-            if len(modified) > 0:
-                self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
+        if not args["--noRecurseSubprojects"]:
+            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
+                execution_path = os.path.join(self.workspace_dir, nested)
+                modified = self.getModifiedFileList(public, topic, args, execution_path=execution_path)
+                if len(modified) > 0:
+                    self.progress["modifiedFiles"] += [os.path.join(nested, s) for s in modified]
 
         return True
 
@@ -1122,7 +1295,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             if not args["--noReview"]:
                 logging.info("Updating Pull Request with commit msg...")
-                self.markReview(args, ["--descr", commitMsgFile], "")
+                self.markReview(args, ["--pushModifiedOnly", "--descr", commitMsgFile], "")
             else:
                 logging.info("Skipping update of pull request description from commit message")
         elif args["-m"]:
@@ -1448,7 +1621,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         #s.connect()
         tolist = msg['To'].split(',')
         tolist.append(myemail)
-        s.sendmail(msg['From'], tolist, msg.as_string())
+        try:
+            s.sendmail(msg['From'], tolist, msg.as_string())
+        except smtplib.SMTPSenderRefused:
+            logging.info("Sender refused, waiting 60 seconds...")
+            time.sleep(60)
+            logging.info("Retrying...")
+            s.sendmail(msg['From'], tolist, msg.as_string())
         s.quit()
 
         # Remove the tempfile
@@ -1506,11 +1685,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Type grape publish -h for more details")
         return valid
 
-    def remoteMerge(self, public, topic, repo, args, isSubmodule, isNested):
+    def remoteMerge(self, public, topic, subproject_name, args, isSubmodule, isNested):
         codeReviews = self.codeReviews(args)
-        remoteRepo = codeReviews.repoFromWorkspaceRepoPath(repo,
-                                                        isSubmodule=isSubmodule,
-                                                        isNested=isNested)
+        if isNested:
+            remoteRepo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, subproject_name)
+        elif isSubmodule:
+            remoteRepo = CodeReviewsFactory.repoFromSubmodulePath(codeReviews, subproject_name)
+        else:
+            remoteRepo = CodeReviewsFactory.repoObject(codeReviews)
+
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
             logging.info(f"remotely merging {topic} into {public}")
@@ -1523,7 +1706,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Failed to do a remote merge.")
         else:
             logging.info(
-                f"Could not find open Pull Request for {topic} in {repo}")
+                f"Could not find open Pull Request for {topic} in {subproject_name}")
         return False
 
     @staticmethod
@@ -1655,7 +1838,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
 
 
-    def publish(self, policy, public, topic, repo, args, isSubmodule=False, isNested=False):
+    def publish(self, policy, public, topic, repo, subproject_name, args, isSubmodule=False, isNested=False):
         # don't bother publishing if public and topic are the same commit
         if git.shortSHA(public, execution_path=repo).strip() \
                 == git.shortSHA(topic, execution_path=repo).strip():
@@ -1665,7 +1848,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if policy == "merge":
             if args["--remoteMerge"]:
                 try:
-                    if self.remoteMerge(public, topic, repo, args, isSubmodule, isNested):
+                    if self.remoteMerge(public, topic, subproject_name, args, isSubmodule, isNested):
                         return
                     else:
                         logging.error(
@@ -1710,28 +1893,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 args["--submodulePublic"] = submodulePublic
 
         if not args["--sendEmail"]:
-            # deal with subtrees
-            push_subtrees = config.getboolean(self.SECTION_SUBTREES, 'pushOnPublish') or args["--pushSubtrees"]
-            push_subtrees = push_subtrees and not args["--noPushSubtrees"]
-            args["--pushSubtrees"] = push_subtrees
-            if push_subtrees:
-                allsubtrees = config.get(self.SECTION_SUBTREES, 'names').strip().split()
-                self.modifiedSubtrees = self.modifiedSubtrees.union(set(args["--forcePushSubtree"]))
-                for st in allsubtrees:
-                    prefix = config.get(f'subtree-{st}', 'prefix')
-                    if git.diff(f"--name-only {public} {topic} -- " +
-                                f"{os.path.join(self.workspace_dir, prefix)}",
-                                execution_path=self.workspace_dir):
-                        self.modifiedSubtrees.add(st)
-                for st in self.modifiedSubtrees:
-                    self.st_prefixes[st] = config.get(f'subtree-{st}', 'prefix')
-                    self.st_remotes[st] = git.parseSubprojectRemoteURL(
-                        config.get(f'subtree-{st}', 'remote'),
-                        execution_path=self.workspace_dir)
-                    self.st_branches[st] = config.getMapping(f'subtree-{st}', 'topicPrefixMappings')[topic]
-
-            # deal with nested subprojects. 'workspaceDir' is None on purpose.
-            self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
+            if not args["--noRecurseSubprojects"]:
+                # deal with nested subprojects. 'workspaceDir' is None on purpose.
+                self.modifiedNestedProjects = config_parser_user.getAllModifiedNestedSubprojectPrefixes(public, workspaceDir=self.workspace_dir)
 
             self.modifiedOuter = True if git.log(f"--oneline {public}..{topic}", execution_path=self.workspace_dir) else False
 
@@ -1771,15 +1935,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if self.modifiedOuter:
             maybe_and = "and " if useAnd else ""
             userMsg += f"{maybe_and}{public} for the outer level repo.\n"
-
-        push_subtrees = args["--pushSubtrees"]
-        if push_subtrees:
-            if self.modifiedSubtrees:
-                userMsg += "Additionally, grape will publish the following subtrees to the following destinations:\n"
-                for st in self.modifiedSubtrees:
-                    userMsg += f"subtree: {self.st_prefixes[st]}\t"
-                    userMsg += f"repo: {self.st_remotes[st]}\t"
-                    userMsg += f"branch:{self.st_branches[st]}\n"
 
         proceed = utility.userInput(f"{userMsg}\nProceed? [y/n]", 'y')
         if not proceed:
@@ -1849,7 +2004,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                          f'--wd={subpath}',
                                          f'--public={submodulePublic}'])
                     with self.temp_work_in_dir(subpath):
-                        self.publish(submodulePolicy, submodulePublic, topic, subpath, args, isSubmodule=True)
+                        self.publish(submodulePolicy, submodulePublic, topic, subpath, subpath, args, isSubmodule=True)
                     #add and commit any new merge commits in submodules as a result of the publish
                     git.add(sub, execution_path=self.workspace_dir)
                 try:
@@ -1868,49 +2023,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 args["<<publishedSubmodules>>"] = modifiedSubmodules
                 args["--cascade"] = outerCascadeOption
 
-
-        # push subtrees to their respective remote branches
-        push_subtrees = args["--pushSubtrees"]
-        if push_subtrees:
-            modifiedSubtrees = self.modifiedSubtrees
-            if modifiedSubtrees:
-                proceed = self.verifyPublishTargetsWithUser(args)
-                if proceed:
-                    squash = "--squash" if config.get(self.SECTION_SUBTREES, "mergepolicy").lower() == "squash" else ""
-                    for st in modifiedSubtrees:
-                        logging.info(
-                            f"pushing subtree {self.st_prefixes[st]} " +
-                            f"to {self.st_remotes[st]} " +
-                            f"(branch {self.st_branches[st]})...")
-
-                        try:
-                            git.subtree(
-                                f"push --prefix={self.st_prefixes[st]} " +
-                                f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ",
-                                execution_path=self.workspace_dir)
-                        except grape_errors.GrapeGitError:
-                            # the push can fail if there has never been a subtree add / pull in this repo.
-                            logging.info("First attempt failed. Attempting a subtree pull then push...")
-                            git.subtree(
-                                f"pull {squash} " +
-                                f"--prefix={self.st_prefixes[st]} " +
-                                f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ",
-                                execution_path=self.workspace_dir)
-                            git.subtree(
-                                f"push --prefix={self.st_prefixes[st]} " +
-                                f"{self.st_remotes[st]} " +
-                                f"{self.st_branches[st]} ",
-                                execution_path=self.workspace_dir)
-                            logging.info("Succeeded!")
-
         valid = self.validateInput(policy, args)
         if valid and self.verifyPublishTargetsWithUser(args):
-            for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-                self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested), args, isNested=True)
+            if not args["--noRecurseSubprojects"]:
+                for nested, nested_path in zip(config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir), config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)):
+                    self.publish(policy, public, topic, os.path.join(self.workspace_dir, nested_path), nested, args, isNested=True)
             if self.modifiedOuter:
-                self.publish(policy, public, topic, self.workspace_dir, args)
+                self.publish(policy, public, topic, self.workspace_dir, "Top level", args)
             else:
                 git.checkout(public, execution_path=self.workspace_dir)
             return True
@@ -1956,6 +2075,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("********************************************************************************")
             logging.info(f"Please manually add to Merge Train")
             logging.info("********************************************************************************")
+            return False
         return True
 
 

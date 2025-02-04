@@ -32,6 +32,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                     [--forceUpdate | --noUpdate | --ensureCleanUpdate]
                     [--noChecks]
                     [--squash]
+                    [--filter=<args>]
            grape-md --traverseTrainRefs --topic=<branch> [--tagProposedVersion]
                     [--user=<GitLabUserName>]
                     [--codeReviewsURL=<httpsURL>]
@@ -86,6 +87,10 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         --ssh_pat_port=<int>     Port number to issue ssh command over to generate a Personal Access Token for authentication
                                  into a Code Review service's REST API.
                                  [default: .grapeconfig.repo.ssh_pat_port]
+        --filter=<arg>           Optional clone filter argument to use if any subprojects get cloned during the merge.
+                                 WARNING! This is still experimental and may have issues with grape workflows.
+                                 In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                 files (it appears to download each commit separately).
 
 
     """
@@ -295,13 +300,135 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
             if (set(activeSubmodulesCheck0) != set(activeSubmodulesCheck1)):
                 logging.info("Updating new submodules using grape uv --allSubmodules")
                 original_workspace_dir = menu.workspace_dir
-                menu.applyMenuChoice("uv", ["--allSubmodules", "--skipNestedSubprojects"])
+                uvArgs = ["--allSubmodules", "--skipNestedSubprojects"]
+                if args["--filter"]:
+                    uvArgs.append("--filter="+args["--filter"])
+                menu.applyMenuChoice("uv", uvArgs)
                 menu.set_workspace_dir(original_workspace_dir)
 
         # clear out the progress now that we're done so that when we are called a second time during a publish
         # we don't just skip the md
         self.progress = {}
         return True
+
+    def lookupActiveMergeTrainBranches_new_version(self, args, repo):
+       current_branch = args['--topic']
+       config = config_parser_global.grapeConfig()
+       target_branch = config.getPublicBranchFor(current_branch)
+       # Now that we know the target branch, get the SHAs of all the merges between target branch and HEAD, including the SHAs of the parents.
+       log_descriptions = git.log(f"origin/{target_branch}..HEAD --oneline --parents --merges --no-abbrev-commit", execution_path=self.workspace_dir).splitlines()
+       # Reverse the list so that the target branch is first and newer commits are later.
+       log_descriptions.reverse()
+       # Save the SHA of the target branch
+       target_SHA = git.SHA(f"origin/{target_branch}", execution_path=self.workspace_dir)
+
+       start_time = time.time()
+       # We may need to handle prior cars that have already been merged, so we get all merge train cars and start from the end (latest).
+       # The Python GitLab API doesn't directly support merge train lookups by target branch, but we can hack it by specifying the path.
+       # TODO If this query gets too large such that it affects performance, we may need to paginate the lookup.
+       mergeTrainCars = repo.project.merge_trains.list(all=True, path=f'/projects/{repo.project.id}/merge_trains/{target_branch}', sort='desc')
+       end_time = time.time()
+       logging.info(f"NEW: Merge train lookup took {end_time-start_time} seconds")
+
+       versionTag_SHA = None
+
+       branches = [None]*(len(log_descriptions)+1)
+
+       for car in mergeTrainCars:
+           mr_iid = car.merge_request['iid']
+           mr = repo.pullRequests(state="all", id=mr_iid)[0]
+           branch = mr.fromRef()
+           status = car.status
+           order = -1
+           if branch == current_branch:
+             # Get the SHA of the most recent version tag
+             config = config_parser_global.grapeConfig()
+             prefix = config.get(self.SECTION_VERSIONING, "prefix")
+             versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
+             versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
+             logging.info(f"NEW: Found current branch, targeting {target_branch} at {target_SHA}.")
+             logging.info(f"NEW: Latest version: {versionTag} at {versionTag_SHA}.")
+             logging.info(f"NEW: Log since {target_branch}\n{log_descriptions}.")
+             continue
+
+           if mr.toRef() != target_branch:
+             # Skip merge request if it doesn't target the same branch.
+             # This should not happen since we looked up the merge train by target branch.
+             logging.info(f"NEW: WARNING MR {mr_iid} targets {mr.ToRef()} instead of {target_branch}, skipping...")
+             continue
+
+           if status == 'merged':
+             # The car may be already been merged but not yet accounted for in this car, so we need to check for that.
+             merge_sha = mr.mergerequest.merge_commit_sha
+             # If the merge request corresponds to latest tagged version, we don't need to look at this car
+             if merge_sha == versionTag_SHA:
+                # The merge train cars are sorted in descending order. The documentation is not clear which
+                # field this is sorted by, but the only dates always available are created_at and updated_at.
+                # For merged cars, the updated_at date is the merge time and the created_at date should reflect
+                # the order in which they were merged, so we can skip remaining merged cars once we find a merged
+                # car with a version tag.
+                logging.info(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} matches {versionTag}, skipping remaining cars...")
+                break
+             else:
+                try:
+                    git.mergeBase(f"--is-ancestor {merge_sha} {versionTag_SHA}", execution_path=self.workspace_dir)
+                    logging.debug(f"NEW: {status} MR {mr_iid} merge SHA {merge_sha} is in history of {versionTag}, skipping...")
+                    continue
+                except grape_errors.GrapeGitError:
+                    # the merge SHA is not in the history of the latest version tag, so we may still be interested in it.
+                    pass
+             # If the merge request corresponds to the current target branch, we still may need to consider it,
+             # as the subprojects may not have been merged yet (and the version number may not have been tagged).
+             if merge_sha == target_SHA:
+                # TODO can we ignore merge cars (earlier) after this one?
+                logging.info(f"NEW: {status} MR {mr_iid} matches {target_branch}...")
+                order = 0
+             else:
+                 # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
+                 found_merge = False
+                 for line in log_descriptions:
+                    order = order + 1
+                    if merge_sha in line:
+                       found_merge = True
+                       logging.info(f"NEW: {status} merge commit {merge_sha} for MR {mr_iid} found...")
+                       break
+                 # If the merge commit sha is not found, try using the sha from the merge request (matching with merge commit parents)
+                 if not found_merge:
+                    merge_sha = mr.mergerequest.sha
+                    # reset the order index
+                    order = -1
+                    for line in log_descriptions:
+                       order = order + 1
+                       if merge_sha in line:
+                          found_merge = True
+                          logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} found...")
+                          break
+                 if not found_merge:
+                    logging.debug(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
+                    continue
+           else:
+             # The car is still running, need to determine if it's in the history of our car or not.
+             # Use the sha from the merge request and see if it matches a merge commit parent.
+             merge_sha = mr.mergerequest.sha
+             found_merge = False
+
+             for line in log_descriptions:
+               order = order + 1
+               if merge_sha in line:
+                  found_merge = True
+                  logging.info(f"NEW: {status} {merge_sha} for MR {mr_iid} found...")
+                  break
+             # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
+             if not found_merge:
+               logging.debug(f"NEW: {status} {merge_sha} for MR {mr_iid} not found, skipping...")
+               continue
+
+           logging.info(f"NEW: Found branch: {branch} at position {order} ({status}).")
+           branches[order] = branch
+
+       # Put the target branch first in the merge train, dropping out any None entries leftover
+       branches = [target_branch] + [b for b in branches if b]
+       return branches
 
     def lookupActiveMergeTrainBranches(self, args):
        if "gitlab" not in args["--codeReviewsURL"]:
@@ -321,6 +448,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                                                )
        repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
 
+       # This old version of the lookup is not currently active (only for comparison)
        branches = []
        current_branch = args['--topic']
        start_time = time.time()
@@ -329,7 +457,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
        # TODO If this query gets too large such that it affects performance, we may need to paginate the lookup.
        mergeTrainCars = repo.project.merge_trains.list(all=True, sort='desc')
        end_time = time.time()
-       logging.info(f"Merge train lookup took {end_time-start_time} seconds")
+       logging.info(f"OLD: Merge train lookup took {end_time-start_time} seconds")
 
        target_branch = None
        log_descriptions = None
@@ -353,9 +481,9 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
               versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
               versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
-              logging.info(f"Found current branch, targeting {target_branch} at {target_SHA}.")
-              logging.info(f"Latest version: {versionTag} at {versionTag_SHA}.")
-              logging.info(f"Log since {branch}\n{log_descriptions}.")
+              logging.info(f"OLD: Found current branch, targeting {target_branch} at {target_SHA}.")
+              logging.info(f"OLD: Latest version: {versionTag} at {versionTag_SHA}.")
+              logging.info(f"OLD: Log since {target_branch}\n{log_descriptions}.")
               continue
            elif not target_branch:
               # Don't start considering other branches until we have found the current one
@@ -370,34 +498,41 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
               merge_sha = mr.mergerequest.merge_commit_sha
               # If the merge request corresponds to latest tagged version, we don't need to look at this or earlier cars.
               if merge_sha == versionTag_SHA:
-                 logging.info(f"MR {mr_iid} matches {versionTag}, skipping...")
+                 logging.info(f"OLD: {car.status} MR {mr_iid} matches {versionTag}, skipping...")
                  break
               # If the merge request corresponds to the current target branch, we still may need to consider it,
               # as the nested subprojects may not have been merged yet.
               if merge_sha == target_SHA:
-                 logging.info(f"MR {mr_iid} matches {target_branch}...")
+                 logging.info(f"OLD: {car.status} MR {mr_iid} matches {target_branch}...")
               else:
                   found_merge = False
                   for line in log_descriptions:
                      if merge_sha in line:
                         found_merge = True
-                        logging.info(f"{merge_sha} for MR {mr_iid} found...")
+                        logging.info(f"OLD: {car.status} {merge_sha} for MR {mr_iid} found...")
                         break
                   # Only include a merged branch if the merge associated with its MR is between the target branch and HEAD
                   if not found_merge:
-                     logging.info(f"{merge_sha} for MR {mr_iid} not found, skipping...")
+                     logging.debug(f"OLD: {car.status} {merge_sha} for MR {mr_iid} not found, skipping...")
                      continue
 
            # Prepend the branch, since we are looping over the cars backwards
-           logging.info(f"Found branch: {branch}.")
+           logging.info(f"OLD: Found branch: {branch} ({car.status}).")
            branches = [branch] + branches
 
        if not target_branch:
-           logging.info(f"{current_branch} not found in merge train!")
-           return False
+           logging.info(f"OLD: {current_branch} not found in merge train!")
+           # return False
        else:
            # Put the target branch first in the merge train
            branches = [target_branch] + branches
+    
+       old_branches = branches
+
+       # Overwrite branches using new lookup method
+       branches = self.lookupActiveMergeTrainBranches_new_version(args, repo)
+       logging.info(f"NEW VERSION BRANCHES {branches}, OLD VERSION BRANCHES {old_branches}")
+
        return branches
 
     def numberOfMergesSinceMostRecentTag(self, args, branch):

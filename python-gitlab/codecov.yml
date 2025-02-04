@@ -1,0 +1,18 @@
+codecov:
+  notify:
+    after_n_builds: 3
+  require_ci_to_pass: yes
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+comment:
+  after_n_builds: 3 # coverage, api_func_v4, py_func_cli
+  layout: "diff,flags,files"
+  behavior: default
+  require_changes: yes
+
+github_checks:
+  annotations: true

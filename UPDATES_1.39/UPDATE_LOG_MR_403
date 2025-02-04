@@ -1,7 +1,0 @@
-
-
-Tue Jul 19 15:26:10 2022 Peter B. Robinson
-MR_403
-Reviewers: Arlie Capps, Alan Dayton
-
-Teaches grape db to delete more than one branch at a time.

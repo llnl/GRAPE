@@ -16,6 +16,7 @@ from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine import utility
+from vine import version
 from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -45,7 +46,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--subprojectsOnly]
                         [--ssh_pat_url=<url>]
                         [--ssh_pat_port=<int>]
-                        [--noLocal]
+                        [--noLocal | --pushModifiedOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
 
@@ -61,7 +62,7 @@ class Review(Option, WorkspaceDirHandler):
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
         --user=<userName>           Your Bitbucket user name.
-        --reviewers=<userNames>     A space-separate list of reviewers for <topicBranch>
+        --reviewers=<groups>        A whitespace-separated list of reviewer groups, where each reviewer group is a comma-separated list of reviewers for <topicBranch>, optionally preceded by a rule name and colon.
         --source=<topicBranch>      The branch to review. Defaults to current branch.
         --target=<publicBranch>     The branch to publish <topicBranch> to.
                                     Defaults to .grapeconfig.topicPrefixMappings[topicBranchPrefix].
@@ -87,10 +88,8 @@ class Review(Option, WorkspaceDirHandler):
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
-        --prepend                   For reviewers, title,  and description updates, prepend <userNames>, <title>,  and
-                                    <description> to the existing title / description instead of replacing it.
-        --append                    For reviewers, title,  and description updates, append <userNames>, <title>,  and
-                                    <description> to the existing reviewers, title, or description instead of replacing it.
+        --prepend                   Prepend <title> to the existing title instead of replacing it.
+        --append                    Append <title> to the existing title instead of replacing it.
         --subprojectsOnly           As a work around to when you've only touched a subproject, this will prevent errors
                                     arising in the top level repo.
         --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
@@ -102,6 +101,9 @@ class Review(Option, WorkspaceDirHandler):
         --noLocal                   Do not perform any pushes of the topic branch or any git operations relying on the existence
                                     of the local branch in the local workspace. Branches must still exist on the codeReviews
                                     (Bitbucket, Gitlab) server.
+        --pushModifiedOnly          Only push in repos that are modified (compared to the public branch).
+                                    By default, the entire local workspace will be pushed to ensure consistency.
+                                    In either case, --recurse/--noRecurse/--noRecurseSubprojects arguments are respected.
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
@@ -137,12 +139,417 @@ class Review(Option, WorkspaceDirHandler):
             descr = re.sub('\\\\\\\\n', "\\\\n", descr)
         return descr
 
-    def parseReviewerArgs(self, args):
-        reviewers = args["--reviewers"]
-        if reviewers is not None:
-            reviewers = reviewers.split()
-        return reviewers
+    def buildDescriptionTemplate(self):
+        """
+        Constructs a template for the merge/pull request description.
 
+        The template includes placeholders for the user description,
+        related reviews, and grape data.
+
+        Returns:
+            str: A formatted string template with placeholders for:
+                - user_description: The user's merge/pull request description.
+                - related_reviews: Links to related merge/pull requests.
+                - grape_data: Additional data used by GRAPE.
+        """
+
+        return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+
+    def buildDescriptionRegex(self):
+        """
+        Converts a regex for the merge/pull request description.
+
+        The regex includes capture groups for the user description,
+        related reviews, and grape data.
+
+        Returns:
+            str: A regex pattern that can be used to match and extract data
+            from the merge/pull request description.
+        """
+
+        return '(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
+
+    def buildDescription(self, template, data):
+        """
+        Generates a description by replacing placeholders in the template with
+        values from the provided dictionary.
+
+        Args:
+            template (str): The template string containing placeholders (in the format `{placeholder}`).
+            data (dict): A dictionary containing values to replace in the template.
+                         Expected keys: 'user_description', 'related_reviews', and 'grape_data'.
+
+        Returns:
+            str: The generated description with placeholders replaced by actual values.
+
+        Example:
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+            >>> data = {'user_description': 'Adds a new feature.', 'related_reviews': 'https://github.com/LLNL/GRAPE/pull/1', 'grape_data': 'v1.49.26'}
+            >>> description = self.buildDescription(template, data)
+            >>> print(description)
+            'Adds a new feature
+
+             # Related Reviews
+
+             https://github.com/LLNL/GRAPE/pull/1
+
+             # GRAPE
+
+             v1.49.26'
+        """
+
+        # Start with the description template
+        description = template
+
+        # Substitute user description
+        userDescription = data.get('user_description', '')
+        description = description.replace('{user_description}', userDescription)
+
+        # Substitute related reviews
+        relatedReviews = data.get('related_reviews', [])
+
+        if relatedReviews:
+            relatedReviews = '\n\n'.join(relatedReviews)
+        else:
+            relatedReviews = 'None'
+
+        description = description.replace('{related_reviews}', relatedReviews)
+
+        # Substitute GRAPE data
+        grapeData = data.get('grape_data', '')
+
+        if not grapeData:
+            grapeData = version.grapeVersion()
+
+        description = description.replace('{grape_data}', grapeData)
+
+        return description
+
+    def parseDescription(self, description, template):
+        """
+        Parses a merge/pull request description based on a provided template
+        and extracts relevant data.
+
+        This function uses a regex pattern generated from the provided template
+        to match and extract specific components from the description. If the
+        description does not match the template, it attempts to match an older
+        regex pattern. If neither pattern matches, it defaults to treating the
+        entire description as the user description.
+
+        Args:
+            description (str): The merge/pull request description to be parsed.
+            template (str): The template string used to generate the regex pattern for parsing.
+
+        Returns:
+            dict: A dictionary containing the parsed data with the following keys:
+                - 'user_description': The extracted user description.
+                - 'related_reviews': A list of related merge/pull request links extracted from the description (an empty list if none).
+                - 'grape_data': Additional data used by GRAPE.
+
+        Example 1:
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+            >>> description = 'Adds a new feature.\n\n# Related Reviews\n\nhttps://github.com/LLNL/GRAPE/pull/1\n\n# GRAPE\n\nv1.49.26'
+            >>> result = parseDescription(description, template)
+            >>> print(result)
+            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': 'v1.49.26'}
+
+        Example 2:
+            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
+            >>> description = 'Adds a new feature.\n\nThis merge request is related to the merge request at: https://github.com/LLNL/GRAPE/pull/1'
+            >>> result = parseDescription(description, template)
+            >>> print(result)
+            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': None}
+
+        Notes:
+            - The function uses `re.fullmatch` to ensure the entire description matches the regex pattern.
+            - If the description does not match the new regex, it falls back to an older regex pattern.
+            - If no matches are found, the function defaults to treating the entire description as the user description, with no related reviews or grape data.
+        """
+        data = {'user_description': '',
+                'related_reviews': [],
+                'grape_data': ''}
+
+        if not description:
+            return data
+
+        regex = self.buildDescriptionRegex()
+        match = re.fullmatch(regex, description, re.DOTALL)
+
+        if match:
+            data['user_description'] = match.group('user_description')
+            data['related_reviews'] = match.group('related_reviews').split()
+            if 'None' in data['related_reviews']:
+                data['related_reviews'].remove('None')
+            data['grape_data'] = match.group('grape_data')
+        else:
+            # check for either old description format OR new description provided by the command line
+            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)*)'
+            match = re.fullmatch(oldRegex, description, re.DOTALL)
+
+            if match:
+                data['user_description'] = match.group('user_description')
+                data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
+                data['grape_data'] = ''
+            else:
+                logging.warning(f'GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.')
+
+                data['user_description'] = description
+                data['related_reviews'] = []
+                data['grape_data'] = ''
+
+        return data
+
+
+    def getSavedArgs(self, descriptionData):
+        """
+        Extracts saved arguments from the merge/pull request description.
+
+        :param descriptionData: Data extracted from the merge/pull request description
+        :return: A dictionary where keys are argument names and values are argument values
+        """
+        savedArgs = {}
+
+        if descriptionData:
+            grapeData = descriptionData.get('grape_data')
+
+            if grapeData:
+                grapeDataLines = grapeData.split('\n')
+
+                for line in grapeDataLines:
+                    if line.startswith("--"):
+                        tokens = line.split("=")
+
+                        if len(tokens) == 2:
+                            savedArgs[tokens[0].strip()] = tokens[1].strip()
+
+        return savedArgs
+
+
+    def validateReviewers(self, reviewers, reviewRules):
+        """
+        Validates the provided reviewers against defined review rules.
+
+        This function checks if the specified reviewers are valid according to the review rules,
+        ensuring that each reviewer is eligible and that the minimum number of reviewers is met.
+
+        Parameters:
+        ----------
+        reviewers : dict
+            A dictionary where each key is a review rule name and each value is a dictionary containing:
+                - 'reviewers': A list of reviewers assigned to that rule.
+
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is another dictionary
+            containing:
+                - 'eligibleReviewers': A list of patterns (str) representing eligible reviewers for the rule.
+                - 'minNumReviewers': An integer specifying the minimum number of reviewers required for the rule.
+
+        Returns:
+        -------
+        None
+            The function does not return a value. It logs errors and warnings as necessary and exits
+            the program if validation fails.
+
+        Notes:
+        -----
+        - The function uses regular expression matching to determine if each reviewer is eligible.
+        """
+        for reviewRuleName in reviewers:
+            # Check the given rule name is a review rule
+            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
+                exit(1)
+
+            reviewGroup = reviewers[reviewRuleName]
+            reviewRule = reviewRules[reviewRuleName]
+
+            # Check that the reviewers are allowed to approve this rule
+            reviewRuleReviewers = reviewGroup['reviewers']
+            eligibleReviewers = reviewRule["eligibleReviewers"]
+
+            for reviewRuleReviewer in reviewRuleReviewers:
+                validReviewer = False
+
+                for eligibleReviewer in eligibleReviewers:
+                    if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
+                        validReviewer = True
+                        break
+
+                if not validReviewer:
+                    logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
+                    exit(1)
+
+            # Check if the minimum number of reviewers has been met
+            numReviewers = len(reviewRuleReviewers)
+            minNumReviewers = reviewRule["minNumReviewers"]
+
+            if numReviewers < minNumReviewers:
+                logging.warning(f'GRAPE: WARNING: {minNumReviewers} reviewer(s) required for review rule "{reviewRuleName}", but only {numReviewers} reviewer(s) given.')
+
+        return
+
+
+    def serializeReviewers(self, reviewers):
+        """
+        Serializes a dictionary of reviewers into a formatted string.
+
+        This function takes a dictionary where each key represents a review rule name,
+        and the associated value is another dictionary containing a list of reviewers.
+        It constructs a string representation of the reviewers grouped by their review rule names.
+
+        Parameters:
+        ----------
+        reviewers : dict
+            A dictionary where each key is a review rule name (str) and each value is a dictionary
+            containing:
+                - 'reviewers': A list of reviewer names (str) associated with the review rule.
+
+        Returns:
+        -------
+        str or None
+            A string representing the serialized reviewers in the format:
+            "reviewRuleName:reviewer1,reviewer2,..." for each review rule with reviewers.
+            If there are no reviewers or the input dictionary is empty, returns None.
+
+        Example:
+        --------
+        reviewers = {
+            'code': {
+                'reviewers': ['Alice', 'Bob']
+            },
+            'documentation': {
+                'reviewers': ['Charlie']
+            }
+        }
+
+        result = serializeReviewers(reviewers)
+        # result would be: "code:Alice,Bob documentation:Charlie"
+
+        Notes:
+        -----
+        - If a review rule has no reviewers, it will be skipped in the output.
+        - If the input `reviewers` dictionary is empty or None, or all the review rules have no reviewers, the function will return None.
+        """
+        if reviewers:
+            serializedReviewGroups = []
+
+            for reviewRuleName in reviewers:
+                reviewerGroup = reviewers[reviewRuleName]
+                reviewRuleReviewers = reviewerGroup['reviewers']
+
+                if reviewRuleReviewers:
+                    if len(reviewers) == 1:
+                        serializedReviewGroups.append(f'{",".join(reviewRuleReviewers)}')
+                    else:
+                        serializedReviewGroups.append(f'{reviewRuleName}:{",".join(reviewRuleReviewers)}')
+
+            if serializedReviewGroups:
+                return ' '.join(serializedReviewGroups)
+            else:
+                return None
+        else:
+            return None
+
+
+    def buildGrapeData(self, args):
+        """
+        Builds a string containing info about the current call to grape review.
+        This includes the grape version number and certain arguments that need
+        to be stored in the merge/pull request description for later use.
+
+        Parameters:
+        ----------
+        args : dict
+            A dictionary containing arguments to a prior or current GRAPE call
+
+        Returns:
+        -------
+        str
+            A string representing the grape data, which includes the grape version and,
+            if applicable, other arguments in the format:
+            '--argname=argvalue'.
+
+        Example:
+        --------
+        args = {
+            '--reviewers': 'Alice,Bob'
+        }
+
+        result = self.buildGrapeData(args)
+        # result might be: 'v1.49.26\n--reviewers=Alice,Bob'
+        """
+        grapeData = version.grapeVersion()
+
+        if '--reviewers' in args and args['--reviewers']:
+            grapeData += f'\n--reviewers={args["--reviewers"]}'
+
+        return grapeData
+
+
+    def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
+        """
+        Retrieves applicable reviewers for a given repository based on defined review rules.
+
+        This function checks the provided review rules against the specified repository name
+        and returns a dictionary of reviewers that are applicable for that repository.
+
+        Parameters:
+        ----------
+        repoName : str
+            The name of the repository for which applicable reviewers are to be retrieved.
+
+        allReviewers : dict
+            A dictionary where each key is a review rule name and each value is a dictionary
+            containing a list of reviewers associated with that rule.
+
+        reviewRules : dict
+            A dictionary where each key is a review rule name and each value is another dictionary
+            containing:
+                - 'repositories': A list of repository patterns (str) that the rule applies to.
+
+        Returns:
+        -------
+        dict
+            A dictionary where each key is a review rule name and each value is a dictionary
+            containing a list of applicable reviewers for that rule. If no applicable reviewers are found, an empty dictionary is returned.
+
+        Example:
+        --------
+        repoName = 'example-repo'
+        allReviewers = {
+            'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']},
+            'documentation': {'label': 'Documentation Review', 'reviewers': ['Charlie']}
+        }
+        reviewRules = {
+            'code': {
+                'repositories': ['example-repo', 'another-repo']
+            },
+            'documentation': {
+                'repositories': ['example-docs']
+            }
+        }
+
+        result = self.getApplicableReviewers(repoName, allReviewers, reviewRules)
+        # result would be: {'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']}}
+
+        Notes:
+        -----
+        - The function uses regular expression matching to determine if the repository name matches
+          any of the patterns defined in the review rules.
+        - If no review rules match the given repository name, the function will return an empty dictionary.
+        """
+        applicableReviewers = {}
+
+        for reviewRuleName in allReviewers:
+            reviewRule = reviewRules[reviewRuleName]
+            reviewRuleRepositories = reviewRule["repositories"]
+
+            for reviewRuleRepository in reviewRuleRepositories:
+                if re.fullmatch(reviewRuleRepository, repoName):
+                    applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
+                    break
+
+        return applicableReviewers
 
     @log_wrapper
     def execute(self, args):
@@ -178,14 +585,15 @@ class Review(Option, WorkspaceDirHandler):
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
         #ensure branch is pushed
-        if "--noLocal" not in args or ("--noLocal" in args and not args["--noLocal"]):
+        if "--noLocal" not in args or not args["--noLocal"]:
             logging.info(f"Pushing {branch} to {codeReviews.url}...")
             git.push(f"origin {branch}", execution_path=self.workspace_dir)
+        
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
-        # load pull request from Bitbucket if it already exists
+        # load pull request if it already exists
         wsRepo =  codeReviews.project(project_name).repo(repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
 
@@ -196,8 +604,12 @@ class Review(Option, WorkspaceDirHandler):
 
         #determine pull request URL
         outerLevelURL = None
+
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
+
+            if not isinstance(outerLevelURL, str):
+                outerLevelURL = outerLevelURL.decode("utf-8")
 
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
@@ -207,22 +619,57 @@ class Review(Option, WorkspaceDirHandler):
             if isinstance(pr_description, bytes):
                 pr_description = pr_description.decode("utf-8")
             descr = pr_description
-        
+
+        descriptionTemplate = self.buildDescriptionTemplate()
+        descriptionData = self.parseDescription(descr, descriptionTemplate)
+        savedArgs = self.getSavedArgs(descriptionData)
+
+        # Get review rules
+        reviewRules = parseReviewRules()
+        reviewRuleMap = parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = parseDefaultReviewRuleName(reviewRules)
+
+        # Determine merge/pull request reviewers
+        reviewers = {}
+
+        if existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
+            reviewers[defaultReviewRuleName] = {
+                'label': reviewRules[defaultReviewRuleName]['label'],
+                'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
+            }
+
+        reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
+        self.validateReviewers(reviewers, reviewRules)
+
+        # Update description
+        args['--reviewers'] = self.serializeReviewers(reviewers)
+
+        # Add inactive rules with empty reviewer lists in order to delete any
+        # outdated approval rules.
+        for reviewRuleName in reviewRules:
+            if not reviewRules[reviewRuleName]['active']:
+                reviewers[reviewRuleName] = {
+                    'label': reviewRules[reviewRuleName]['label'],
+                    'reviewers': []
+                }
+
+        descriptionData['grape_data'] = self.buildGrapeData(args)
+
+        if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
+            descriptionData['related_reviews'].append(outerLevelURL)
+            descriptionData['related_reviews'].sort()
+
+        updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
+
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
         description_suffixes = []
         project_reviewer_lists = {}
 
-        # determine pull request reviewers
-        reviewers = self.parseReviewerArgs(args)
-        if reviewers is None and existingOuterLevelRequest is not None:
-            reviewers = [r[0] for r in existingOuterLevelRequest.reviewers()]
-
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
             title = args["--title"]
-            descr = self.parseDescriptionArgs(args)
-            reviewers = self.parseReviewerArgs(args)
 
         logging.info(f"Updating remote tracking branches for {target_branch}...")
 
@@ -315,6 +762,8 @@ class Review(Option, WorkspaceDirHandler):
                        changed = True 
 
                 if changed:
+                    submoduleReviewers = self.getApplicableReviewers(submodule, reviewers, reviewRules)
+
                     reviewer_list = {}
                     if submodule in projects_with_reviewer_lists:
                         reviewer_list_name = config.get(f"{submodule}-reviewers","reviewer_list_name")
@@ -326,11 +775,11 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "isNested": False,
                                                                          "args": args,
                                                                          "target_branch": sub_target_branch,
-                                                                         "descr": descr,
+                                                                         "descr": updatedDescription,
                                                                          "title": title,
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
-                                                                         "reviewers": reviewers,
+                                                                         "reviewers": submoduleReviewers,
                                                                          "reviewer_list" : reviewer_list,
                                                                          "active": submodule in activeSubmodules }]))
                     project_reviewer_lists.update(reviewer_list)
@@ -343,6 +792,8 @@ class Review(Option, WorkspaceDirHandler):
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
+               subprojectReviewers = self.getApplicableReviewers(proj, reviewers, reviewRules)
+
                reviewer_list = {}
                if proj in projects_with_reviewer_lists:
                    reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
@@ -355,11 +806,11 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "isNested": True,
                                                                     "args": args,
                                                                     "target_branch": target_branch,
-                                                                    "descr": descr,
+                                                                    "descr": updatedDescription,
                                                                     "title": title,
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
-                                                                    "reviewers": reviewers,
+                                                                    "reviewers": subprojectReviewers,
                                                                     "reviewer_list" : reviewer_list,
                                                                     "active": proj in activeNestedSubprojects}]))
                project_reviewer_lists.update(reviewer_list)
@@ -367,7 +818,6 @@ class Review(Option, WorkspaceDirHandler):
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
-        pullRequestLinks.sort()
 
         ## OUTER LEVEL REPO
         # load the repo level REST resource
@@ -417,15 +867,54 @@ class Review(Option, WorkspaceDirHandler):
                   pass
 
             repo_name = args["--repo"]
-            repo = codeReviews.repoFromWorkspaceRepoPath(self.workspace_dir, topLevelRepo=repo_name, topLevelProject=project_name)
+            repo = CodeReviewsFactory.repoObject(codeReviews, repoName=repo_name, projectName=project_name)
             logging.info(f"Posting pull request to {project_name},{repo_name}")
-            request = postPullRequest(repo, title, branch, target_branch, descr, reviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
-            updatedDescription = request.description()
-            if isinstance(updatedDescription, bytes):
-                updatedDescription = updatedDescription.decode("utf-8")
 
-            for link in pullRequestLinks:
-                updatedDescription = addLinkToDescription(updatedDescription, link)
+            outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
+
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+
+            # Update related reviews
+            outerLevelURL = request.link()
+            if not isinstance(outerLevelURL, str):
+                outerLevelURL = outerLevelURL.decode("utf-8")
+
+            if runInSubmodules and not args["--noRecurseSubprojects"]:
+                # Ignore related review links scraped from the outer level
+                # merge/pull request description. Then add all the new
+                # submodule/subproject links. Only add the outer level link
+                # if there are any submodule/subproject links.
+                updatedReviewLinks = []
+
+                for link in pullRequestLinks:
+                    if not isinstance(link, str):
+                        link = link.decode("utf-8")
+
+                    updatedReviewLinks.append(link)
+
+                if updatedReviewLinks:
+                    updatedReviewLinks.append(outerLevelURL)
+            else:
+                # Start with related review links scraped from the outer level
+                # merge/pull request description. Then add all the new links if
+                # they are not already in the list.
+                updatedReviewLinks = descriptionData['related_reviews']
+
+                for link in pullRequestLinks:
+                    if not isinstance(link, str):
+                        link = link.decode("utf-8")
+
+                    if link not in updatedReviewLinks:
+                        updatedReviewLinks.append(link)
+
+                if outerLevelURL not in updatedReviewLinks:
+                    updatedReviewLinks.append(outerLevelURL)
+
+            updatedReviewLinks.sort()
+
+            descriptionData['related_reviews'] = updatedReviewLinks
+
+            updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
             pre_update_description = request.description()
             if isinstance(pre_update_description, bytes):
@@ -433,13 +922,27 @@ class Review(Option, WorkspaceDirHandler):
             if updatedDescription != pre_update_description:
                 request = postPullRequest(repo, title, branch, target_branch,
                                           updatedDescription,
-                                          reviewers,
+                                          outerReviewers,
                                           project_reviewer_lists,
                                           args,
                                           self.workspace_dir,
                                           add_labels=add_labels, remove_labels=remove_labels)
 
             logging.info(f"Request generated/updated:\n\n{request}")
+
+        if ("--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]) and ("--noLocal" not in args or not args["--noLocal"]):
+            logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly/--noLocal to skip this step)...")
+            
+            # top level was already pushed at the beginning
+            pushArgs = ['push', '--noTopLevel']
+            if not runInSubmodules:
+                pushArgs.append('--noRecurse')
+            if args["--noRecurseSubprojects"]:
+                pushArgs.append('--noRecurseSubprojects')
+
+            pushed = grapeMenu.menu().applyMenuChoice("push", pushArgs)
+            if not pushed:
+                return False
         return True
 
 
@@ -455,8 +958,10 @@ class Review(Option, WorkspaceDirHandler):
 def MRLinkText():
     return "This merge request is related to the merge request at: "
 
+
 def MRBlockDelimiter():
     return "--------------------"
+
 
 def HandlePostPullRequestForRepoMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
@@ -482,30 +987,19 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     if active and ("--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"])):
         logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
         git.push(f"origin {branch}", execution_path=repo)
-    codeReview_repo = codeReviews.repoFromWorkspaceRepoPath(proj, isSubmodule=isSubmodule, isNested=isNested)
 
-    #amend the subproject pull request description with the link to the outer pull request
-    getReposPullRequestDescription(codeReview_repo, branch, target_branch, review_args)
-    subDescr = addLinkToDescription(descr, outerLevelURL)
-    if review_args["--prepend"] or review_args["--append"]:
-        subDescr = descr
-    descr = subDescr
+    if isNested:
+        codeReview_repo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, proj)
+    elif isSubmodule:
+        codeReview_repo = CodeReviewsFactory.repoFromSubmodulePath(codeReviews, proj)
+    else:
+        codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, review_args, repo)
     if newRequest:
         return newRequest.link()
     else:
         return ""
-
-def addLinkToDescription(descr, link):
-    if descr is not None and link:
-        if not isinstance(link, str):
-            link = link.decode("utf-8")
-        if not isinstance(descr, str):
-            descr = descr.decode("utf-8")
-        if link not in descr:
-            descr += f"\n{MRLinkText()}{link}"
-    return descr
 
 
 def getReposPullRequest(repo, branch, target_branch, args):
@@ -517,16 +1011,6 @@ def getReposPullRequest(repo, branch, target_branch, args):
             request = rqst
             break
     return request
-
-
-def getReposPullRequestDescription(repo, branch, target_branch, args):
-    descr = None
-    request = getReposPullRequest(repo, branch, target_branch, args)
-    if request is not None:
-        descr = request.description()
-        if isinstance(descr, bytes):
-            descr = descr.decode("utf-8")
-    return descr
 
 
 def pullRequestAlreadyMerged(errorMessage):
@@ -588,51 +1072,39 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
             # update the pull request
             logging.info("Updating pull request...")
             try:
-
-                if reviewers:
-                    if args["--prepend"] or args["--append"]:
-                        revList = [r[0] for r in request.reviewers()]
-                    else:
-                        revList = []
-                    reviewers += revList
-                if not reviewers:
-                    reviewers = [r[0] for r in request.reviewers()]
                 logging.info(f"reviewer list is: {reviewers}")
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
                     currentTitle = request.title()
                     if args["--prepend"]:
-                        title = title+currentTitle
+                        if currentTitle.startswith(title):
+                            title = currentTitle
+                        else:
+                            title = title + currentTitle
                     elif args["--append"]:
-                        title = currentTitle+title
-                if descr is not None and (args["--prepend"] or args["--append"]):
-                    currentDescription = request.description()
-                    if isinstance(descr, bytes):
-                        descr = descr.decode("utf-8")
-                    if isinstance(currentDescription, bytes):
-                        currentDescription = currentDescription.decode("utf-8")
-                    if args["--prepend"]:
-                        descr = descr + "\n" + currentDescription
-                    elif args["--append"]:
-                        descr = currentDescription + "\n" + descr
+                        if currentTitle.endswith(title):
+                            title = currentTitle
+                        else:
+                            title = currentTitle + title
 
+                author = request.author()
                 subReviewers = reviewers.copy()
-                if request.author() in subReviewers:
-                    logging.info(
-                            f"{request.author()} is the author of the pull" +
-                            " request and cannot be a reviewer")
-                    subReviewers.remove(request.author())
+
+                for reviewRuleName in subReviewers:
+                    if author in subReviewers[reviewRuleName]['reviewers']:
+                        logging.info(
+                                f"{author} is the author of the pull" +
+                                " request and cannot be a reviewer")
+                        subReviewers[reviewRuleName]['reviewers'].remove(author)
+
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     logging.info(
                         f"updating request with title={title}, " +
                         f"description={descr}, reviewers={subReviewers}, add_labels={add_labels}, remove_labels={remove_labels}")
-                    if "gitlab" in args["--codeReviewsURL"]:
-                       combined_reviewers = {Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME:(subReviewers, len(subReviewers) if subReviewers else 0)}
-                       combined_reviewers.update(reviewer_list)
-                       request = request.update(ver, title=title,  description=descr, reviewers=combined_reviewers, add_labels=add_labels, remove_labels=remove_labels)
-                    else:
-                       request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
+                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
                     if add_labels or remove_labels:
                        logging.info("Regenerating pipeline...")
                        request.regeneratePipeline()
@@ -651,6 +1123,343 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                          f"{target_branch} already exists, can't add a new one")
 
     return request
+
+
+def getGrapeReviewRule(active):
+    """
+    Retrieves the GRAPE review rule for merge/pull requests. The GRAPE
+    review rule is used when no user specified rules are found in the
+    global config.
+
+    :param active: Whether or not the GRAPE review rule is active.
+    :return: A dictionary containing the GRAPE review rule.
+    """
+    return {'grape': {'active': active,
+                      'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+                      'minNumReviewers': 1,
+                      'eligibleReviewers': ['.+'],
+                      'repositories': ['.+']}}
+
+
+def parseReviewRules():
+    """
+    Parses the global GRAPE config file and returns a dictionary of review rules.
+
+    :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+    """
+    reviewRules = {}
+
+    # Names reserved by grape
+    reservedReviewRuleNames = ['grape']
+    reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+    # Count the number of active review rules
+    numActiveRules = 0
+
+    # Extract the rule names from the [review] section
+    config = config_parser_global.grapeConfig()
+
+    reviewSectionName = "review"
+
+    if config.has_section(reviewSectionName):
+        if config.has_option(reviewSectionName, "rules"):
+            reviewRuleNames = config.get(reviewSectionName, "rules").split()
+
+            for reviewRuleName in reviewRuleNames:
+                if reviewRuleName in reservedReviewRuleNames:
+                    logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
+                    exit(1)
+
+                sectionName = f"{reviewSectionName}-{reviewRuleName}"
+
+                if not config.has_section(sectionName):
+                    logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
+                    exit(1)
+
+                # Default to active
+                active = True
+
+                if config.has_option(sectionName, "active"):
+                    active = config.getboolean(sectionName, "active")
+
+                if active:
+                    numActiveRules += 1
+
+                # Provide a reasonable default for the rule label
+                label = f"GRAPE: {reviewRuleName} review"
+
+                if config.has_option(sectionName, "label"):
+                    label = config.get(sectionName, "label")
+
+                if label in reservedReviewRuleLabels:
+                    logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
+                    exit(1)
+
+                # Default to one reviewer
+                minNumReviewers = 1
+
+                if config.has_option(sectionName, "minnumreviewers"):
+                    minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                # Default to all reviewers
+                eligibleReviewers = [".+"]
+
+                if config.has_option(sectionName, "eligiblereviewers"):
+                    eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+
+                # Default to all repositories
+                repositories = [".+"]
+
+                if config.has_option(sectionName, "repositories"):
+                    repositories = config.get(sectionName, "repositories").split()
+
+                # Add the rule
+                reviewRules[reviewRuleName] = {
+                    "active": active,
+                    "label": label,
+                    "minNumReviewers": minNumReviewers,
+                    "eligibleReviewers": eligibleReviewers,
+                    "repositories": repositories
+                }
+
+    # Add the GRAPE review rule. It will be active only if the user has
+    # not specified any rules.
+    if not reviewRules:
+        grapeReviewRuleActive = True
+        numActiveRules += 1
+    else:
+        grapeReviewRuleActive = False
+
+    reviewRules.update(getGrapeReviewRule(grapeReviewRuleActive))
+
+    if numActiveRules == 0:
+        logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+        exit(1)
+
+    return reviewRules
+
+
+def parseReviewRuleMap(reviewRules):
+    """
+    Parses the review rule mappings from the global configuration and
+    creates a mapping of old rules to new rules.
+
+    This function reads the rule mappings defined in the configuration file
+    under the [review] section, validates them against the provided review
+    rules, and constructs a dictionary that maps old rule names to new rule
+    names.
+
+    Parameters:
+    ----------
+    reviewRules : dict
+        A dictionary where each key is a review rule name and each value is
+        a dictionary containing the details of that review rule.
+
+    Returns:
+    -------
+    dict
+        A dictionary mapping old rule names (str) to new rule names (str).
+        If no valid mappings are found, an empty dictionary is returned.
+
+    Example:
+    --------
+    reviewRules = {
+        'code': {...},
+        'doc': {...}
+    }
+
+    # Assuming the configuration has the following mappings:
+    # rulemap = "oldcode:code olddoc:doc"
+
+    ruleMap = parseReviewRuleMap(reviewRules)
+    # ruleMap would be: {'oldcode': 'code', 'olddoc': 'doc'}
+
+    Notes:
+    -----
+    - The function expects the configuration to have a section defined as `review`
+      and an option `rulemap` containing the mappings.
+    - Each mapping should be in the format "oldrule:newrule". If the format is incorrect or if a new rule
+      does not exist in the provided review rules, an error is logged and the program exits with a status code of 1.
+    """
+    reviewRuleMap = {}
+
+    # Extract the rule names from the [review] section
+    config = config_parser_global.grapeConfig()
+
+    reviewSectionName = "review"
+
+    if config.has_section(reviewSectionName):
+        if config.has_option(reviewSectionName, 'rulemap'):
+            mappings = config.get(reviewSectionName, 'rulemap')
+
+            for mapping in mappings:
+                tokens = mapping.split(':')
+
+                if len(tokens) != 2:
+                    logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
+                    exit(1)
+
+                oldRule = token[0]
+
+                if oldRule not in reviewRules or reviewRules[oldRule]['active']:
+                    logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
+                    exit(1)
+
+                newRule = token[1]
+
+                if newRule not in reviewRules or not reviewRules[newRule]['active']:
+                    logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
+                    exit(1)
+
+                reviewRuleMap[oldRule] = newRule
+
+    return reviewRuleMap
+
+
+def parseDefaultReviewRuleName(reviewRules):
+    """
+    Retrieves the default review rule name for merge/pull requests.
+
+    If the user has provided a default in the global config, that is used.
+    Otherwise, if only one rule is provided, the name of that rule is used
+    instead. If a default cannot be determined, an error message is logged
+    and the program will exit with a code of 1.
+
+    :param reviewRules: A dictionary containing review rules
+    :return: A string containing the default review rule name.
+    """
+    defaultReviewRuleName = None
+
+    # Extract the rule names from the [review] section
+    config = config_parser_global.grapeConfig()
+
+    reviewSectionName = "review"
+
+    if config.has_section(reviewSectionName):
+        if config.has_option(reviewSectionName, "defaultrule"):
+            defaultReviewRuleName = config.get(reviewSectionName, "defaultrule")
+
+            # Check that the default matches one of the active review rule names
+            if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
+                logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
+                exit(1)
+
+    # If there is only one active review rule, use that as the default
+    if not defaultReviewRuleName:
+        numActiveReviewRules = 0
+
+        for reviewRuleName in reviewRules:
+            if reviewRules[reviewRuleName]['active']:
+                numActiveReviewRules += 1
+
+        if numActiveReviewRules == 1:
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName]['active']:
+                    defaultReviewRuleName = reviewRuleName
+                    break
+        else:
+            logging.error(f'GRAPE: ERROR: "defaultrule" in section "{reviewSectionName}" in the global config must be specified.')
+            exit(1)
+
+    return defaultReviewRuleName
+
+
+def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
+    '''
+    Extracts reviewer groups from the --reviewers argument.
+    The argument should consist of whitespace separated groups, where
+    each group is in one of the following forms:
+
+    <username>[,<username>]* -> these reviewers are assigned to the default rule
+    <rule>:<username>[,<username>] -> these reviewers are assigned to the given rule
+
+    e.g.
+
+    --reviewers="username1,username2 rule1:username1 rule2:username2,username3"
+
+    In this case, username1 and username2 will be assigned to the default
+    review rule. username1 will also be assigned to rule1, and username2
+    along with username3 will be assigned to rule2.
+
+    :param args: A dictionary containing arguments to a prior or current GRAPE call
+    :param reviewRules: A dictionary containing review rules
+    :param reviewRuleMap: A dictionary mapping old rule names (str) to new rule names (str).
+    :param defaultReviewRuleName A string containing the name of the default rule
+    :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
+    '''
+
+    reviewers = {}
+
+    # Parse reviewers from saved arguments
+    arg = args.get("--reviewers")
+
+    if arg is not None:
+        if not arg:
+            # The empty string means remove all reviewers
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName]['active']:
+                    reviewers[reviewRuleName] = {
+                        'label': reviewRules[reviewRuleName]['label'],
+                        'reviewers': []
+                    }
+
+            return reviewers
+
+        # Otherwise, parse the given string
+        reviewerGroups = arg.split()
+
+        for reviewerGroup in reviewerGroups:
+            tokens = reviewerGroup.split(":")
+
+            if len(tokens) == 1:
+                # Use the default rule
+                reviewRuleName = defaultReviewRuleName
+
+                if reviewRuleName in reviewers:
+                    logging.error(f'GRAPE: ERROR: Reviewers must be separated by commas.')
+                    exit(1)
+
+                reviewRuleReviewers = tokens[0].split(',')
+            elif len(tokens) == 2:
+                # Use the given rule
+                reviewRuleName = tokens[0]
+
+                if reviewRuleName in reviewRuleMap:
+                    reviewRuleName = reviewRuleMap[reviewRuleName]
+
+                # Check the given rule name is a review rule
+                if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                    logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
+                    exit(1)
+
+                if tokens[1]:
+                    reviewRuleReviewers = tokens[1].split(',')
+                else:
+                    reviewRuleReviewers = []
+
+                if reviewRuleName in reviewers:
+                    logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" should be specified only once.')
+                    reviewRuleReviewers.extend(reviewers[reviewRuleName]['reviewers'])
+            else:
+                logging.error(f'GRAPE: ERROR: The --reviewers argument should consist of whitespace separated groups, where each group is in one of the following forms:\n\t<username>[,<username>]*\n\t<rule>:<username>[,<username>]*\n\te.g. --reviewers="username1,username2 rule:username3,username4"')
+                exit(1)
+
+            reviewRule = reviewRules[reviewRuleName]
+
+            # Check for duplicate reviewers
+            uniqueReviewRuleReviewers = set(reviewRuleReviewers)
+
+            if len(reviewRuleReviewers) != len(uniqueReviewRuleReviewers):
+                logging.warning(f'GRAPE: WARNING: "{reviewRuleName}" has duplicate reviewers. Duplicates will be removed.')
+                reviewRuleReviewers = list(uniqueReviewRuleReviewers)
+
+            reviewers[reviewRuleName] = {
+                'label': reviewRule['label'],
+                'reviewers': reviewRuleReviewers
+            }
+
+    # Return the dictionary of reviewers
+    return reviewers
 
 
 if __name__ == "__main__":

@@ -11,15 +11,19 @@ class Clone(Option, WorkspaceDirHandler):
     """ grape-clone
     Clones a git repo and configures it for use with git.
 
-    Usage: grape-clone <url> <path> [--recursive] [--allNested]
+    Usage: grape-clone <url> <path> [--recursive] [--allNested] [--filter=<arg>]
 
     Arguments:
         <url>       The URL of the remote repository
         <path>      The directory where you want to clone the repo to.
 
     Options:
-        --recursive   Recursively clone submodules.
-        --allNested   Get all nested subprojects.
+        --recursive        Recursively clone submodules. Does not clone nested submodules.
+        --allNested        Get all nested subprojects.
+        --filter=<arg>     Optional clone filter argument.
+                           WARNING! This is still experimental and may have issues with grape workflows.
+                           In particular, tree:0 has performance issues with git rev-list/log command on specified
+                           files (it appears to download each commit separately).
 
     """
 
@@ -43,13 +47,14 @@ class Clone(Option, WorkspaceDirHandler):
 
         remotepath = args["<url>"]
         destpath = args["<path>"]
+        filterArg = args["--filter"]
         if destpath == os.path.curdir:
             destpath = self.get_clone_into_dir_from_url(remotepath)
-        rstr = "--recursive" if args["--recursive"] else ""
-        recursively = "recursively" if args["--recursive"] else ""
+        fstr = f"--filter={filterArg}" if filterArg else ""
+
         logging.info(
-            f"Cloning {remotepath} into {destpath} {recursively}")
-        git.clone(argstr=rstr, source_repo=remotepath, clone_repo=destpath,
+            f"Cloning {remotepath} into {destpath} {fstr}")
+        git.clone(argstr=fstr, source_repo=remotepath, clone_repo=destpath,
                   execution_path=self.workspace_dir)
         logging.info("Clone succeeded!")
 
@@ -85,10 +90,17 @@ class Clone(Option, WorkspaceDirHandler):
 
         menu.applyMenuChoice("checkout", args=[initialBranch])
 
+        configArgs = []
         if args["--allNested"]:
-            configArgs = ["--uv","--uvArg=--allNestedSubprojects"]
-        else:
-            configArgs = []
+            configArgs.append("--uvArg=--allNestedSubprojects")
+        if args["--recursive"]:
+            configArgs.append("--uvArg=--allSubmodules")
+
+        if configArgs:
+            configArgs.insert(0, "--uv")
+            if filterArg:
+                configArgs.append("--uvArg=--filter={filterArg}")
+
         return menu.applyMenuChoice("config", configArgs)
 
     def setDefaultConfig(self, config):

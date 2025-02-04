@@ -1,9 +1,0 @@
-
-
-Mon Jan 30 16:45:37 2023 Benjamin T. Liu
-MR_503
-Reviewers: Peter Robinson
-
-Skip labeling when marking version number during review
-
-Skip diff of local branch when local branch not used

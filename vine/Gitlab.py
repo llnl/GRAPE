@@ -7,13 +7,13 @@ import sys
 import time
 import keyring
 try:
+    grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
     import gitlab
 except ModuleNotFoundError:
-    # This was checked on startup
+    # Don't error out here because this is imported even if GitLab is not used
     pass
 from vine import config_parser_global
-from vine import grape_errors
-from vine import grapeGit as git
 from vine import utility
 from vine.option import Option
 
@@ -30,7 +30,7 @@ class GrapeGitlabAdapter:
     # default token expiration
     defaultExpiration = 29
 
-    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, *, workspace_dir):
+    def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, group = None, *, workspace_dir):
 
         if username is None:
             self._userName = utility.getUserName()
@@ -51,7 +51,11 @@ class GrapeGitlabAdapter:
         self._curl = curl
         password = keyring.get_password(self._service, self._userName)
 
-        if self.auth(self._service, self._userName, password, port, ssh_path, verify=verify):
+        if group is None:
+            # If the group is not specified, get it from the .grapeconfig
+            group = config_parser_global.grapeConfig().get(Option.SECTION_PROJECT, "name")
+
+        if self.auth(self._service, self._userName, password, port, ssh_path, group, verify=verify):
             self.url = url
             logging.info("Connected to Gitlab.")
         else:
@@ -66,7 +70,7 @@ class GrapeGitlabAdapter:
                                            shell=True)
         return completed_process.stdout.decode().strip().split()[1].strip()
 
-    def auth(self, service, username, password, port, ssh_path, verify=True):
+    def auth(self, service, username, password, port, ssh_path, group, verify=True):
         # set a password to something bogus to trigger an authentication error
         if (password is None):
             password = "123456_bad_password"
@@ -83,9 +87,14 @@ class GrapeGitlabAdapter:
                 except:
                     pass
                 if projects:
-                    success = True
+                    # There may be projects (groups) that are visible to all users, so check for our project (group).
+                    if group.lower() in [x.lower() for x in projects]:
+                        success = True
+                    else:
+                        logging.info(f"{group} not accessible. Available groups: {projects}")
+                        raise gitlab.exceptions.GitlabAuthenticationError()
                 else:
-                    logging.info("empty list from gitlab project.")
+                    logging.info("empty list of gitlab groups.")
                     raise gitlab.exceptions.GitlabAuthenticationError()
             except gitlab.exceptions.GitlabAuthenticationError as e:
                 logging.debug(e)
@@ -127,9 +136,9 @@ class GrapeGitlabAdapter:
         else:
             return command
 
-    # Return list of project names
+    # Return list of project names (paths)
     def projectlist(self):
-        return [g.name for g in self._gitlab.groups.list(all=True)]
+        return [g.path for g in self._gitlab.groups.list(all=True)]
 
     def project(self, name, min_access_level=None):
         matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
@@ -140,45 +149,6 @@ class GrapeGitlabAdapter:
             raise SystemExit("Abort")
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
-
-    def repoFromWorkspaceRepoPath(self, path, isSubmodule=False, isNested=False, topLevelRepo=None, topLevelProject=None):
-        config = config_parser_global.grapeConfig()
-        if isNested:
-            proj = os.path.split(path)[1]
-            nestedProjectURL = config.get(f"nested-{proj}", "url")
-            url = git.parseSubprojectRemoteURL(
-                nestedProjectURL, execution_path=self.workspace_dir)
-            urlTokens = url.split('/')
-            proj = urlTokens[-2]
-            repo_name = urlTokens[-1]
-            # strip off the git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])
-        elif isSubmodule:
-            fullpath = os.path.abspath(os.path.join(self.workspace_dir,path))
-            wsdir = self.workspace_dir + os.path.sep
-            proj = fullpath.split(wsdir)[1].replace("\\","/")
-            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
-            url = url_map[proj].split('/')
-            if url[-2] == '..':
-               # replace relative path with the top repo project
-               topProjectURL = config.get(f"repo", "url").split('/')
-               url[-2] = topProjectURL[-2]
-            proj = url[-2]
-            repo_name = url[-1]
-
-            # strip off the .git extension
-            repo_name = '.'.join(repo_name.split('.')[:-1])
-        else:
-            if topLevelRepo is None:
-                topLevelRepo = config.get(Option.SECTION_REPO, "name")
-            if topLevelProject is None:
-                topLevelProject = config.get(Option.SECTION_PROJECT, "name")
-
-            repo_name = topLevelRepo
-            proj = topLevelProject
-
-        repo = self.project(proj).repo(repo_name)
-        return repo
 
 class Project:
     def __init__(self, gitlab_group, gitlab):
@@ -200,6 +170,18 @@ class Project:
             raise SystemExit("Abort")
         return Repo(self.gitlab.projects.get(project_id), self.gitlab)
 
+    def groupid(self, groupname):
+        # groups API doesn't include exact match, so we have to iterate over the search
+        for group in self.gitlab.groups.list(all=True, search=groupname):
+            if group.name == groupname:
+                return group.id
+        return 0
+
+    def userid(self, username):
+        users = self.gitlab.users.list(all=True, username=username)
+        if users:
+            return users[0].id
+        return 0
 
 class Repo:
     def __init__(self, gitlab_project, gitlab ):
@@ -245,22 +227,48 @@ class Repo:
                                             "remove_source_branch": False,
                                             "title": title}),
                           self.gitlab)
-         mr.update(title, description=description,
-                   reviewers={GRAPE_GITLAB_APPROVAL_RULE_NAME:(reviewers, len(reviewers) if reviewers else 0)},
+         mr.update(title,
+                   description=description,
+                   reviewers=reviewers,
                    add_labels=labels)
 
          return mr
 
-    def setProtectedBranch(self, name, push_access_level, merge_access_level, allow_force_push):
+    # If restrict_id is positive, it is the group id to restrict the branch to;
+    # if it is negative, it is the negative of the user id to restrict the branch to;
+    # otherwise, the push_access_level and merge_access_level are used.
+    def setProtectedBranch(self, name, push_access_level, merge_access_level, restrict_id, allow_force_push):
         replaced = False
         # Remove the old protected branch if it already exists
         if self.project.protectedbranches.list(all=True, search=name):
            self.project.protectedbranches.delete(name)
            replaced = True
-        self.project.protectedbranches.create({"name": name,
-                                               "push_access_level": push_access_level,
-                                               "merge_access_level": merge_access_level,
-                                               "allow_force_push": allow_force_push})
+        createArgs = {"name": name, "allow_force_push": allow_force_push}
+        if restrict_id > 0:
+           # protect by group
+           if push_access_level != 0:
+              createArgs["allowed_to_push"] = [{"group_id": restrict_id}]
+           else:
+              createArgs["push_access_level"] = 0
+           if merge_access_level != 0:
+              createArgs["allowed_to_merge"] = [{"group_id": restrict_id}]
+           else:
+              createArgs["merge_access_level"] = 0
+        elif restrict_id < 0:
+           # protect by user
+           if push_access_level != 0:
+              createArgs["allowed_to_push"] = [{"user_id": -restrict_id}]
+           else:
+              createArgs["push_access_level"] = 0
+           if merge_access_level != 0:
+              createArgs["allowed_to_merge"] = [{"user_id": -restrict_id}]
+           else:
+              createArgs["merge_access_level"] = 0
+        else:
+           # protect by access level
+           createArgs["push_access_level"] = push_access_level
+           createArgs["merge_access_level"] = merge_access_level
+        self.project.protectedbranches.create(createArgs)
         return replaced
 
     @staticmethod
@@ -515,9 +523,6 @@ class PullRequest:
     def authorName(self):
         return self.mergerequest.author["name"]
 
-    def authorName(self):
-        return self.mergerequest.author["name"]
-
     def authorEmail(self):
         authorID = self.mergerequest.author["id"]
         # This will only return a non-empty value if the public email has been set
@@ -580,13 +585,22 @@ class PullRequest:
     def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
+
         if description:
             self.mergerequest.description = description
+
         if reviewers:
-            for approval_rule_name in reviewers:
-                (users,numRequired) = reviewers[approval_rule_name]
+            all_reviewer_ids = set()
+
+            for review_rule_name in reviewers:
+                reviewer_group = reviewers[review_rule_name]
+                approval_rule_name = reviewer_group['label']
+                users = reviewer_group['reviewers']
+                num_required = len(users)
+
                 if users:
                     reviewer_ids = []
+
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
                         if matching_reviewers:
@@ -595,8 +609,31 @@ class PullRequest:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
-                    self.mergerequest.approvals.set_approvers(numRequired,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
-                    self.mergerequest.reviewer_ids = reviewer_ids
+
+                    self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+
+                    for reviewer_id in reviewer_ids:
+                        all_reviewer_ids.add(reviewer_id)
+                else:
+                    approval_rules = self.mergerequest.approval_rules.list()
+
+                    # Find the approval rule by name
+                    rule_id = None
+
+                    for rule in approval_rules:
+                        if rule.name == approval_rule_name:
+                            rule_id = rule.id
+                            break
+
+                    if rule_id is not None:
+                        try:
+                            # Delete the approval rule
+                            self.mergerequest.approval_rules.delete(rule_id)
+                            logging.info(f'Deleted approval rule "{approval_rule_name}".')
+                        except gitlab.exceptions.GitlabDeleteError as e:
+                            logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')
+
+            self.mergerequest.reviewer_ids = list(all_reviewer_ids)
 
         if self.mergerequest.description:
             self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
