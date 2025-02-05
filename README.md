@@ -33,8 +33,8 @@ push both the new tag and the new commit directly to develop.
 % git add <modified_file>
 % git commit -m <description_of_change>
 % git tag -a v<new_dev_tag> -m  "Manually tagged"
-% git push origin
 % git push origin v<new_dev_tag>
+% git push origin
 
 ## Introducing the `.grapeconfig` file
 
