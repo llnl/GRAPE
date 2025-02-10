@@ -77,7 +77,7 @@ class GrapeGitlabAdapter:
         self._userName = username
         self._service = service
         if 'CI_JOB_TOKEN' in os.environ:
-            self._gitlab = gitlab.Gitlab(service, private_token=hsMh2J2VYXVa2CqWpRxB, api_version=4)
+            self._gitlab = gitlab.Gitlab(service, private_token='hsMh2J2VYXVa2CqWpRxB', api_version=4)
         else:
             self._gitlab = gitlab.Gitlab(service, password, api_version=4)
         numAttempts = 0
