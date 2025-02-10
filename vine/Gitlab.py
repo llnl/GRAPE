@@ -76,7 +76,10 @@ class GrapeGitlabAdapter:
             password = "123456_bad_password"
         self._userName = username
         self._service = service
-        self._gitlab = gitlab.Gitlab(service, password, api_version=4)
+        if 'CI_JOB_TOKEN' in os.environ:
+            self._gitlab = gitlab.Gitlab(service, job_token=os.environ['CI_JOB_TOKEN'], api_version=4)
+        else:
+            self._gitlab = gitlab.Gitlab(service, password, api_version=4)
         numAttempts = 0
         success = False
         while numAttempts < 4 and not success:
