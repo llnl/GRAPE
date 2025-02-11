@@ -5,36 +5,14 @@
 
 # Forking a new version number for grape.
 
-Create and publish an internal_release branch. This will create a branch off of develop that targets master.
-% grape internal_release myReleaseBranch
-% grape review --reviewer=<reviewers>
-% grape publish
+Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
 
-After publish, the CI will have assigned an incorrect version corresponding to the current dev branch.
 Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
-% git checkout master
-% git pull
-% git describe --tags --match "v*"
-v<old_dev_tag>
-% git tag --delete v<old_dev_tag>
-% git push origin --delete v<old_dev_tag>
-% git tag -a v<new_prod_tag> -m "Manually tagged"
 
 Push the new tag.
-% git push origin v<correct_tag>
 
-Check out develop and merge in master.
-% git checkout develop
-% git pull
-% git merge master
-
-Create a new commit directly on develop of some kind, tag that commit with the new develop version (e.g. v1.43.0),
+Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
 push both the new tag and the new commit directly to develop.
-% git add <modified_file>
-% git commit -m <description_of_change>
-% git tag -a v<new_dev_tag> -m  "Manually tagged"
-% git push origin v<new_dev_tag>
-% git push origin
 
 ## Introducing the `.grapeconfig` file
 
