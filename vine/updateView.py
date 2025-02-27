@@ -568,17 +568,20 @@ class UpdateView(Option, WorkspaceDirHandler):
                 resetStr = ""
                 initCount = 0
                 for submodule, nowActive in includedSubmodules.items():
+                    submoduleUpdateRemote = False
+                    if args["--updateRemoteProtocol"]:
+                        subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
+                        if subRemoteProtocol != remoteProtocol:
+                           logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}://, reinitializing with {remoteProtocol}://...")
+                           remoteProtocolSubmodules.append(submodule)
+                           submoduleUpdateRemote = True
                     if nowActive:
                         initStr += f' {submodule}'
                         initCount += 1
-                        if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
-                            if subRemoteProtocol != remoteProtocol:
-                               logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}://, reinitializing with {remoteProtocol}://...")
-                               remoteProtocolSubmodules.append(submodule)
-                               deinitStr += f' {submodule}'
-                               rmCachedStr += f' {submodule}'
-                               resetStr += f' {submodule}'
+                        if submoduleUpdateRemote:
+                            deinitStr += f' {submodule}'
+                            rmCachedStr += f' {submodule}'
+                            resetStr += f' {submodule}'
                     else:
                         deinitStr += f' {submodule}'
                         rmCachedStr += f' {submodule}'
