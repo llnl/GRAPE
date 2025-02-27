@@ -568,6 +568,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 resetStr = ""
                 initCount = 0
                 for submodule, nowActive in includedSubmodules.items():
+                    print(submodule,nowActive)
                     if nowActive:
                         initStr += f' {submodule}'
                         initCount += 1
