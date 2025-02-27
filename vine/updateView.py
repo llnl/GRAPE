@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import re
 import shutil
 import stat
 import time
@@ -559,8 +560,9 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             remoteProtocolSubmodules = []
             if args["--updateRemoteProtocol"]:
-                print(git.remote("get-url origin", execution_path=self.workspace_dir))
-                remoteProtocol = git.remote("get-url origin", execution_path=self.workspace_dir).split(":")[0]
+                # Split on the first single slash
+                url_pattern = r"(?<!/)/(?!/)"
+                remoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=self.workspace_dir))[0]
 
             if hasSubmodules:
                 initStr = ""
@@ -573,8 +575,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         initStr += f' {submodule}'
                         initCount += 1
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
-                            print(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))
+                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
                             print(submodule,nowActive, remoteProtocol, subRemoteProtocol)
                             if subRemoteProtocol != remoteProtocol:
                                logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}://, reinitializing with {remoteProtocol}://...")
@@ -698,7 +699,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)).split(":")[0]
+                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
                             if subRemoteProtocol != remoteProtocol:
                                 logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
                                 if self.rmNestedSubproject(subproject, args):
