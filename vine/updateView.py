@@ -559,6 +559,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             remoteProtocolSubmodules = []
             if args["--updateRemoteProtocol"]:
+                print(git.remote("get-url origin", execution_path=self.workspace_dir))
                 remoteProtocol = git.remote("get-url origin", execution_path=self.workspace_dir).split(":")[0]
 
             if hasSubmodules:
@@ -573,6 +574,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         initCount += 1
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)).split(":")[0]
+                            print(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))
                             print(submodule,nowActive, remoteProtocol, subRemoteProtocol)
                             if subRemoteProtocol != remoteProtocol:
                                logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}://, reinitializing with {remoteProtocol}://...")
