@@ -577,7 +577,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
                             if subRemoteProtocol != remoteProtocol:
-                               logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}://, reinitializing with {remoteProtocol}://...")
+                               logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
                                remoteProtocolSubmodules.append(submodule)
                                deinitStr += f' {submodule}'
                                rmCachedStr += f' {submodule}'
@@ -700,7 +700,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
                             if subRemoteProtocol != remoteProtocol:
-                                logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}://, deleting and recloning with {remoteProtocol}://...")
+                                logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
                                 if self.rmNestedSubproject(subproject, args):
                                     toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
                                     section = f"nested-{subprojectName}"
