@@ -1,0 +1,23 @@
+
+
+Fri Feb 28 13:04:13 2025 Benjamin T. Liu
+MR_639
+Reviewers: Patrick Greene, David Dawson
+
+Fix uv updateRemoteProtocol detection of different remotes
+
+- search for first isolated slash rather than first colon
+
+- this will detect different users/ci tokens in the URL
+
+- fixes issue on Windows when reusing a workspace
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.0
+
+--reviewers=greene30,dawson24
