@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import tempfile
+import time
 from posixpath import join as urljoin
 from vine import grape_errors
 from vine import vine_subprocess
@@ -472,8 +473,16 @@ def gitPathToOsPath(path):
     return path
 
 def lsRemote(args, *, execution_path):
-    return gitcmd(f"ls-remote {args}", "ls-remote failed",
-                  execution_path=execution_path)
+    try:
+        return gitcmd(f"ls-remote {args}", "ls-remote failed",
+                      execution_path=execution_path)
+    except grape_errors.GrapeGitError as e:
+        if e.commError:
+            # Automatically retry if there is a communication error
+            time.sleep(1)
+            return gitcmd(f"ls-remote {args}", "ls-remote failed",
+                          execution_path=execution_path)
+        raise e
 
 
 def merge(args, *, execution_path):
