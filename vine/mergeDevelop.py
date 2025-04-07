@@ -574,6 +574,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                unmergedTrainBranches.append(branch)
             else:
                # Only include other branches in the merge train if they are not contained by the target branch
+               git.fetch("origin {branch}:{branch}", execution_path=self.workspace_dir)
                containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
                if f"origin/{targetBranch}" not in containingBranches:
                   unmergedTrainBranches.append(branch)
