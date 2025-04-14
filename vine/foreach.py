@@ -1,4 +1,5 @@
 import logging
+import os
 from vine import grape_errors
 from vine import multi_repo_cmd_launcher
 from vine import vine_logging
@@ -12,9 +13,10 @@ class ForEach(Option, WorkspaceDirHandler):
     """
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
+    Usage: grape-foreach [-v] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
 
     Options:
+    -v                  Echo output from each command.
     --noTopLevel        Does not call <cmd> in the workspace directory.
     --noSubprojects     Does not call <cmd> in any grape nested subprojects.
     --noSubmodules      Does not call <cmd> in any git submodules.
@@ -56,13 +58,17 @@ class ForEach(Option, WorkspaceDirHandler):
 def foreach(repo='', branch='', args={}, *, workspace_dir):
     cmd = args["<cmd>"]
     completed_process = vine_subprocess.executeSubProcess(cmd, working_dir=repo)
-    if not args["--ignoreReturnCode"] and completed_process.returncode != 0:
+    error_return = (not args["--ignoreReturnCode"] and completed_process.returncode != 0)
+    if error_return or args["-v"]:
         stdout_output = completed_process.stdout.decode()
         stderr_output = completed_process.stderr.decode()
         process_output = '\n'.join([stdout_output, stderr_output]).strip()
-        raise grape_errors.GrapeGitError(
-            f"Error: foreach failed in {repo}", completed_process.returncode, process_output,
-            cmd, cwd=repo)
+        if error_return:
+            raise grape_errors.GrapeGitError(
+                f"Error: foreach failed in {repo}", completed_process.returncode, process_output,
+                cmd, cwd=repo)
+        else:
+            logging.info(f"[{os.path.relpath(repo, workspace_dir)}]\n{process_output}")
 
 def handleForeachMRE(mre):
     for e1 in mre.exceptions():
