@@ -47,6 +47,8 @@ class ForEach(Option, WorkspaceDirHandler):
             globalArgs=args,
             workspace_dir=self.workspace_dir)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleForeachMRE)
+        if args["-v"]:
+            logging.info(f"Executed in {len(retvals)} repos: {cmd}")
         for retval in retvals:
             if isinstance(retval, grape_errors.GrapeGitError):
                 return False
@@ -67,7 +69,7 @@ def foreach(repo='', branch='', args={}, *, workspace_dir):
             raise grape_errors.GrapeGitError(
                 f"Error: foreach failed in {repo}", completed_process.returncode, process_output,
                 cmd, cwd=repo)
-        else:
+        elif process_output:
             logging.info(f"[{os.path.relpath(repo, workspace_dir)}]\n{process_output}")
 
 def handleForeachMRE(mre):

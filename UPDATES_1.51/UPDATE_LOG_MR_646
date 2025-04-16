@@ -1,0 +1,21 @@
+
+
+Wed Apr 16 10:40:26 2025 Benjamin T. Liu
+MR_646
+Reviewers: David Dawson
+
+Mergeback: Tweak foreach -v output
+
+- do not display empty output
+
+- print out number of repos operated on
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.1
+
+--reviewers=dawson24
