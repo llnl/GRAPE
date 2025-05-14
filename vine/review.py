@@ -41,6 +41,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--recurse]
                         [--noRecurse]
                         [--noRecurseSubprojects]
+                        [--skipSubproject=<project>...]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -86,6 +87,7 @@ class Review(Option, WorkspaceDirHandler):
                                     is set to true.
         --noRecurse                 Disables adding pull requests to submodules.
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
+        --skipSubproject=<project>  Nested subproject to skip for review (submodules cannot be skipped). Can be defined multiple times.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   Prepend <title> to the existing title instead of replacing it.
@@ -705,7 +707,7 @@ class Review(Option, WorkspaceDirHandler):
                     description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
         if not args["--noRecurseSubprojects"]:
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-               "origin/"+target_branch, workspaceDir=self.workspace_dir)
+               "origin/"+target_branch, workspaceDir=self.workspace_dir, skippedRepos=args["--skipSubproject"])
            for proj in nestedProjects:
                 if proj in projects_with_reviewer_lists:
                     description_suffix = config.get(f"{proj}-reviewers", "description_suffix")
