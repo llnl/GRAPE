@@ -999,6 +999,7 @@ options are at least listed below.
                         [--recurse]
                         [--noRecurse]
                         [--noRecurseSubprojects]
+                        [--skipSubproject=<project>...]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -1044,6 +1045,7 @@ options are at least listed below.
                                     is set to true.
         --noRecurse                 Disables adding pull requests to submodules.
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
+        --skipSubproject=<project>  Nested subproject to skip for review (submodules cannot be skipped). Can be defined multiple times.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   Prepend <title> to the existing title instead of replacing it.
