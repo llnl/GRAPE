@@ -98,7 +98,7 @@ def getAllActiveNestedSubprojectPrefixes(*, workspaceDir):
     return [config.get(f"nested-{name}", "prefix") for name in getAllActiveNestedSubprojects(workspaceDir=workspaceDir)]
 
 
-def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir, checkRemote=False):
+def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir, checkRemote=False, skippedRepos=[]):
     # Imported here to avoid circular dependencies
     from vine import config as configOption
     from vine import grapeGit as git
@@ -118,6 +118,8 @@ def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir, checkRem
     originPrefix = re.compile('^origin/')
     modified = []
     for repo in nested_subprojects:
+        if repo in skippedRepos:
+           continue
         if repo in active:
            prefix = config.get(f"nested-{repo}", "prefix")
            repo_path = os.path.join(workspaceDir,prefix)
