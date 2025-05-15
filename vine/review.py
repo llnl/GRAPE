@@ -707,7 +707,7 @@ class Review(Option, WorkspaceDirHandler):
                     description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
         if not args["--noRecurseSubprojects"]:
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-               "origin/"+target_branch, workspaceDir=self.workspace_dir, skippedRepos=args["--skipSubproject"])
+               "origin/"+target_branch, workspaceDir=self.workspace_dir)
            for proj in nestedProjects:
                 if proj in projects_with_reviewer_lists:
                     description_suffix = config.get(f"{proj}-reviewers", "description_suffix")
@@ -790,7 +790,7 @@ class Review(Option, WorkspaceDirHandler):
         if not args["--noRecurseSubprojects"]:
            activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)
            nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True)
+               "origin/"+target_branch, now=branch, workspaceDir=self.workspace_dir, checkRemote=True, skippedRepos=args["--skipSubproject"])
            nestedProjectPrefixes = [config.get(f"nested-{name}", "prefix") for name in nestedProjects]
 
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
