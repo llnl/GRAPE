@@ -19,7 +19,7 @@ class GrapeConfigParserBase(ConfigParser):
 
 
     def read(self, *args,**kwargs):
-        ConfigParser.read(self,*args,**kwargs)
+        retval = ConfigParser.read(self,*args,**kwargs)
         # ensure backwards compatibility with stashURL
         stashURL = None
         try:
@@ -29,6 +29,8 @@ class GrapeConfigParserBase(ConfigParser):
             
         if stashURL:
             self.set("project","codeReviewsURL",stashURL)
+
+        return retval
 
     def ensureSection(self, section):
         try:
