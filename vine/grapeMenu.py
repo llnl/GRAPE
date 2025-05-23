@@ -17,7 +17,7 @@ from vine import grape_errors
 from vine import writeConfig
 from vine import hooks
 from vine import merge
-from vine import mergeDevelop
+from vine import mergeDown
 from vine import mergeRemote
 from vine import multi_repo_cmd_launcher
 from vine import newFlowBranch
@@ -92,7 +92,7 @@ class _Menu(WorkspaceDirHandler):
             checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
             publish.Publish(), clone.Clone(), config.Config(),
             writeConfig.WriteConfig(), foreach.ForEach(), merge.Merge(),
-            mergeDevelop.MergeDevelop(), mergeRemote.MergeRemote(),
+            mergeDown.MergeDown(), mergeRemote.MergeRemote(),
             deleteBranch.DeleteBranch(), resolveConflicts.ResolveConflicts(),
             review.Review(), test.Test(), updateLocal.UpdateLocal(),
             hooks.InstallHooks(), hooks.RunHook(), updateView.UpdateView(),

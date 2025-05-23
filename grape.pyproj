@@ -79,7 +79,7 @@
     <Compile Include="vine\grapeGit.py" />
     <Compile Include="vine\grapeMenu.py" />
     <Compile Include="vine\merge.py" />
-    <Compile Include="vine\mergeDevelop.py" />
+    <Compile Include="vine\mergeDown.py" />
     <Compile Include="vine\mergeRemote.py" />
     <Compile Include="vine\option.py" />
     <Compile Include="vine\quit.py" />

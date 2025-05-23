@@ -230,7 +230,7 @@ def main(argv, debug=False):
     from test import testClone
     from test import testConfig
     from test import testDeleteBranch
-    from test import testMergeDevelop
+    from test import testMergeDown
     from test import testGrapeGit
     from test import testResolveConflicts
     from test import testReview
@@ -249,7 +249,7 @@ def main(argv, debug=False):
                    "Config":testConfig.TestConfig,
                    "DeleteBranch":testDeleteBranch.TestDeleteBranch,
                    "GrapeGit":testGrapeGit.TestGrapeGit,
-                   "MergeDevelop":testMergeDevelop.TestMD,
+                   "MergeDown":testMergeDown.TestMD,
                    "ResolveConflicts":testResolveConflicts.TestResolveConflicts,
                    "Review":testReview.TestReview,
                    "Stash":testStash.TestStash,
