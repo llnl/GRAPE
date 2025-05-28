@@ -17,8 +17,12 @@ SECTION_CONCURRENCY_CONTROL = "concurrency-control"
 
 def setDefaultConfig(cfg):
     cfg.ensureSection(SECTION_CONCURRENCY_CONTROL)
+    # throttle to number of tasks to prevent using too many resources on a (shared) node
     cfg.set(SECTION_CONCURRENCY_CONTROL,"defaultnumtasks", "8")
-    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivenodenumtasks", "-1")
+    # in principle, we could use all the resources on an exclusive node using -1,
+    # but throttle this to prevent too many simultaneous git server requests
+    # (which can slow down and even result in denial-of-service)
+    cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivenodenumtasks", "8")
     cfg.set(SECTION_CONCURRENCY_CONTROL,"exclusivevarlist", "SLURM_NODEID LLNL_COMPUTE_NODES")
 
 
