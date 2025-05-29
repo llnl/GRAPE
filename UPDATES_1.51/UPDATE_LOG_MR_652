@@ -1,0 +1,17 @@
+
+
+Thu May 29 10:56:15 2025 Benjamin T. Liu
+MR_652
+Reviewers: Peter Robinson
+
+Mergeback: set default NP to 8 on exclusive nodes
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.51.11
+
+--reviewers=probinso
