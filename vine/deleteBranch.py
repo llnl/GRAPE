@@ -107,6 +107,13 @@ def deleteBranch(repo='', branch='master', args=None, *, workspace_dir, remote_u
             if "remote ref does not exist" in e.gitOutput.lower():
                 logging.warning(f"remote branch origin/{branch} not found in {repo}")
                 pass
+        try:
+            git.branch(f"-dr origin/{branch}", execution_path=repo)
+        except grape_errors.GrapeGitError as e:
+            if "remote tracking branch" in e.gitOutput and "not found" in e.gitOutput:
+                logging.warning(f"remote tracking branch origin/{branch} not found in {repo}")
+                pass
+
 
 
 def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, workspace_dir):
@@ -126,6 +133,13 @@ def detachThenForceDeleteBranch(repo='', branch='master', args=None, *, workspac
             git.push(f"--delete origin {branch}", throwOnFail=False, execution_path=repo)
         else:
             logging.warning(f"remote branch origin/{branch} not found in {repo}")
+        try:
+            git.branch(f"-dr origin/{branch}", execution_path=repo)
+        except grape_errors.GrapeGitError as e:
+            if "remote tracking branch" in e.gitOutput and "not found" in e.gitOutput:
+                logging.warning(f"remote tracking branch origin/{branch} not found in {repo}")
+                pass
+
 
 
 def handleDetachThenForceMRE(mre):
