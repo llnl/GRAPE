@@ -483,7 +483,7 @@ class Review(Option, WorkspaceDirHandler):
         grapeData = version.grapeVersion()
 
         if '--reviewers' in args and args['--reviewers']:
-            grapeData += f'\n--reviewers={args["--reviewers"]}'
+            grapeData += f'\n\n--reviewers={args["--reviewers"]}'
 
         return grapeData
 
@@ -930,7 +930,7 @@ class Review(Option, WorkspaceDirHandler):
                                           self.workspace_dir,
                                           add_labels=add_labels, remove_labels=remove_labels)
 
-            logging.info(f"Request generated/updated:\n\n{request}")
+            logging.debug(f"Request generated/updated:\n\n{request}")
 
         if ("--pushModifiedOnly" not in args or not args["--pushModifiedOnly"]) and ("--noLocal" not in args or not args["--noLocal"]):
             logging.info(f"Pushing {branch} from workspace (use --pushModifiedOnly/--noLocal to skip this step)...")
@@ -1101,12 +1101,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         subReviewers[reviewRuleName]['reviewers'].remove(author)
 
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
-                    logging.info(
-                        f"updating request with title={title}, " +
-                        f"description={descr}, reviewers={subReviewers}, add_labels={add_labels}, remove_labels={remove_labels}")
-
-                    request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
-
+                    # Determine if any labels will be changing
+                    changed_labels = False
                     if add_labels or remove_labels:
                        current_labels = set(request.labels())
                        changed_labels = current_labels.intersection(set(remove_labels))
@@ -1115,11 +1111,33 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                              if label not in current_labels:
                                 changed_labels = True
                                 break
-                       if changed_labels:
-                          logging.info("Regenerating pipeline...")
-                          request.regeneratePipeline()
-                    url = request.link()
-                    logging.info(f"Pull request updated at {url} .")
+
+                    updates = []
+                    if title != request.title():
+                        updates.append(f"title={title}")
+                    if descr.strip() != request.description().decode("utf-8").strip():
+                        # Note that the description will change whenever the reviewers change.
+                        updates.append(f"description={descr}")
+
+                    # We don't have a clean way of determining whether the reviewers have changed or not.
+                    if subReviewers:
+                        updates.append(f"reviewers={subReviewers}")
+
+                    if changed_labels:
+                        if add_labels:
+                           updates.append(f"add_labels={add_labels}")
+                        if remove_labels:
+                           updates.append(f"remove_labels={remove_labels}")
+
+                    if updates:
+                        logging.info(f"updating request with {', '.join(updates)}")
+                        request = request.update(ver, title=title, description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+
+                        if changed_labels:
+                           logging.info("Regenerating pipeline...")
+                           request.regeneratePipeline()
+                        url = request.link()
+                        logging.info(f"Pull request updated at {url} .")
                 else:
                     url = request.link()
                     logging.info(f"Pull request unchanged at {url} .")
@@ -1129,7 +1147,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                 if not pullRequestAlreadyMerged(e.data["errors"][0]["message"]):
                     exit(1)
         else:
-            logging.info(f"BITBUCKET: Pull request from {branch} to " +
+            logging.info(f"Pull request from {branch} to " +
                          f"{target_branch} already exists, can't add a new one")
 
     return request
