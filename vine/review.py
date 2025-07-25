@@ -1102,14 +1102,14 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
 
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
                     # Determine if any labels will be changing
-                    changed_labels = False
+                    have_changed_labels = False
                     if add_labels or remove_labels:
                        current_labels = set(request.labels())
-                       changed_labels = current_labels.intersection(set(remove_labels))
-                       if not changed_labels:
+                       have_changed_labels = bool(current_labels.intersection(set(remove_labels)))
+                       if not have_changed_labels:
                           for label in add_labels:
                              if label not in current_labels:
-                                changed_labels = True
+                                have_changed_labels = True
                                 break
 
                     updates = []
@@ -1123,7 +1123,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     if subReviewers:
                         updates.append(f"reviewers={subReviewers}")
 
-                    if changed_labels:
+                    if have_changed_labels:
                         if add_labels:
                            updates.append(f"add_labels={add_labels}")
                         if remove_labels:
@@ -1133,7 +1133,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         logging.info(f"updating request with {', '.join(updates)}")
                         request = request.update(ver, title=title, description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
 
-                        if changed_labels:
+                        if have_changed_labels:
                            logging.info("Regenerating pipeline...")
                            request.regeneratePipeline()
                         url = request.link()
