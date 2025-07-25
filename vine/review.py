@@ -1108,8 +1108,16 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     request = request.update(ver, title=title,  description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
 
                     if add_labels or remove_labels:
-                       logging.info("Regenerating pipeline...")
-                       request.regeneratePipeline()
+                       current_labels = set(request.labels())
+                       changed_labels = current_labels.intersection(set(remove_labels))
+                       if not changed_labels:
+                          for label in add_labels:
+                             if label not in current_labels:
+                                changed_labels = True
+                                break
+                       if changed_labels:
+                          logging.info("Regenerating pipeline...")
+                          request.regeneratePipeline()
                     url = request.link()
                     logging.info(f"Pull request updated at {url} .")
                 else:

@@ -254,6 +254,10 @@ class PullRequest(StashyNode):
             ret.append((name, approved, displayName))
         return ret
 
+    def labels(self):
+        # Not implemented
+        return []
+
     def state(self):
         return self.node["state"]
 
