@@ -968,7 +968,7 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def handleEnsureLocalUpToDateSkipPushMRE(mre):
+def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
     global _skipPush
     _skipPush = True
     handleEnsureLocalUpToDateMRE(mre)
