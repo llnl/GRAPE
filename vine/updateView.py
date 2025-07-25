@@ -35,7 +35,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -79,6 +79,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                      is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
+        --skipBranchPush             Skip push of created branches.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
         --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.
@@ -746,6 +747,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             skipSubmodules=args["--skipSubmodules"],
             runInSubprojects=not args["--skipNestedSubprojects"],
             skipBranchCreation=args["--skipBranchCreation"],
+            skipBranchPush=args["--skipBranchPush"],
             skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
             fetchPublic=args["--syncPublic"] or args["--forceSyncPublic"],
             forcePublic=args["--forceSyncPublic"],
@@ -917,9 +919,10 @@ def handleCleanupPushMRE(mre):
             logging.error(f"{e2.gitOutput}")
             logging.error("Use grape pull to merge the remote version into the local version.")
 
+_skipPush = False
 def handleEnsureLocalUpToDateMRE(mre):
+    global _skipPush
     _pushBranch = False
-    _skipPush = False
     cleanupPushArgs = []
     for e1, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         try:
@@ -965,14 +968,23 @@ def handleEnsureLocalUpToDateMRE(mre):
     launcher.launchFromWorkspaceDir(handleMRE=handleCleanupPushMRE)
     return
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False ):
+def handleEnsureLocalUpToDateSkipPushMRE(mre):
+    global _skipPush
+    _skipPush = True
+    handleEnsureLocalUpToDateMRE(mre)
+    _skipPush = False
+
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
             globalArgs=[skipSubmoduleSwitch, fetchPublic, forcePublic], workspace_dir=workspace_dir)
-        launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+        if skipBranchPush:
+            launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateSkipBranchPushMRE)
+        else: 
+            launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
@@ -982,7 +994,10 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
     if skipBranchCreation:
        launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutSkipBranchCreationMRE)
     else:
-       launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
+       if skipBranchPush:
+          launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutSkipBranchPushMRE)
+       else:
+          launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutMRE)
 
 
 # Class for selecting subprojects in a workspace
