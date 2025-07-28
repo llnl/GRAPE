@@ -48,9 +48,12 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
 
 _skipBranchCreation = False
 _createNewBranch = False
+_skipPush = False
+
 def handleCheckoutMRE(mre):
     global _skipBranchCreation
     global _createNewBranch
+    global _skipPush
     newBranchReposArgTuples = []
 
     for e1, branch, project, checkoutargs in zip(mre.exceptions(), mre.branches(), mre.repos(), mre.args()):
@@ -79,7 +82,7 @@ def handleCheckoutMRE(mre):
                     _skipBranchCreation = True
                     createNewBranch = False
                 if createNewBranch:
-                    newBranchReposArgTuples.append((project, branch, {"checkout": checkoutargs[0]}))
+                    newBranchReposArgTuples.append((project, branch, {"checkout": checkoutargs[0], "skippush": _skipPush}))
                 else:
                     continue
 
@@ -135,12 +138,20 @@ def handleCheckoutSkipBranchCreationMRE(mre):
     handleCheckoutMRE(mre)
     _skipBranchCreation = False
 
+def handleCheckoutSkipBranchPushMRE(mre):
+    global _skipPush
+    _skipPush = True
+    handleCheckoutMRE(mre)
+    _skipPush = False
+
 def createNewBranches(repo='', branch='', args={}, *, workspace_dir):
     #workspace_dir ignored
     checkoutargs = args["checkout"]
+    skippusharg = args["skippush"]
     logging.info(f"Checking out new branch {branch} in {repo}.")
     git.checkout(f"{checkoutargs} -b {branch}", execution_path=repo)
-    git.push(f"-u origin {branch}", execution_path=repo)
+    if not skippusharg:
+        git.push(f"-u origin {branch}", execution_path=repo)
     return True
 
 def createNewBranchesMREHandler(mre):

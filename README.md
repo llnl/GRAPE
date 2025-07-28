@@ -1163,7 +1163,7 @@ options are at least listed below.
     Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -1207,6 +1207,7 @@ options are at least listed below.
                                      is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
+        --skipBranchPush             Skip push of created branches.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
         --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.

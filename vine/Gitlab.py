@@ -558,6 +558,9 @@ class PullRequest:
 
         return list(ret.values())
 
+    def labels(self):
+        return self.mergerequest.labels
+
     def state(self):
         return self.mergerequest.state
 
