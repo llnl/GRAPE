@@ -1,0 +1,31 @@
+
+
+Mon Jul 28 12:46:18 2025 Benjamin T. Liu
+MR_653
+Reviewers: Peter Robinson, Alan Dayton
+
+Clean up grape review
+
+- prevent spurious generation of pipelines when labels have not changed
+
+- reduce logging output when merge request is unchanged
+
+- only output generated request in verbose mode
+
+Add --skipBranchPush option for grape uv
+
+- allow creation of new branches without pushing
+
+- feature to be used for automatic rebaselining
+
+Update grape db to also remove references to tracking branches
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.51.12
+
+--reviewers=dayton8,probinso
