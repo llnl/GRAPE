@@ -6,7 +6,7 @@ include:
 
 variables:
   GIT_SUBMODULE_STRATEGY: normal
-  TOSS4_CI_PLATFORM: rztrona
+  TOSS4_CI_PLATFORM: rzslic
 
 stages:
   - test
