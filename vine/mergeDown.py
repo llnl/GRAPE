@@ -604,6 +604,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         if versionTag == mergedVersionTag:
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True
+        logging.info(f"{args['--topic']} at {versionTag}, merged result at {mergedVersionTag}.")
         # Get all the version tags after the tagged version, oldest first
         branch_log = git.log(f"--oneline --decorate --reverse --no-color HEAD --not {versionTag}", execution_path=self.workspace_dir)
         tagsFetched = False
