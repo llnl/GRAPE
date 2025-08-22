@@ -694,6 +694,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 updatedActiveList = []
                 toActivate_args = []
                 toRemove = []
+                quiet = args["-q"] or not args["--qq"] or args["--qqq"]
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
                     section = f"nested-{subprojectName}"
@@ -710,7 +711,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                 if not args["--qq"] and not args["--qqq"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
                                 if self.rmNestedSubproject(subproject, args):
-                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
+                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
                                     userConfig.set(section, "active", "False")
@@ -721,7 +722,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
+                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -834,12 +835,13 @@ def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
     filterArg = args["filterArg"]
-    if not args["-q"] and not args["--qq"]:
+    quiet = args["quiet"]
+    if not quiet:
         logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
     if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
-    if not args["-q"] and not args["--qq"]:
+    if not quiet:
         logging.info(f"Nested Subproject {subprojectName} activated.")
     return True
 
