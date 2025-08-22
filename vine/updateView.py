@@ -749,6 +749,15 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
+        if args["--qqq"]:
+            quiet = 3
+        elif args["--qq"]:
+            quiet = 2
+        elif args["-q"]:
+            quiet = 1
+        else:
+            quiet = 0
+
         safeSwitchWorkspaceToBranch(
             branch, checkoutArgs, sync,
             runInOuter=not args["--skipTopLevel"],
@@ -759,7 +768,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
             fetchPublic=args["--syncPublic"] or args["--forceSyncPublic"],
             forcePublic=args["--forceSyncPublic"],
-            quiet=args["-q"] or args["--qq"] or args["--qqq"],
+            quiet=quiet,
             workspace_dir=self.workspace_dir)
 
 
@@ -857,7 +866,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     fetchPublic = args[1]
     forcePublic = args[2]
     quiet = args[3]
-    if not quiet:
+    if quiet == 0:
         logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
@@ -870,7 +879,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
                 logging.error(e.gitOutput)
                 raise e
         else:
-            if not args["--qq"] and not args["--qqq"]:
+            if quiet > 1:
                 logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
@@ -996,7 +1005,7 @@ def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
     handleEnsureLocalUpToDateMRE(mre)
     _skipPush = False
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=False ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=0):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
