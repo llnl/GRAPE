@@ -32,7 +32,7 @@ except ImportError as e:
 class UpdateView(Option, WorkspaceDirHandler):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
+    Usage: grape-uv [-q|--qq] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
                     [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
@@ -44,6 +44,9 @@ class UpdateView(Option, WorkspaceDirHandler):
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
+        -q                           Quiet any normal output from individual directories.
+        --qq                         Quiet all output from individual directories that likely doesn't indicate an issue.
+        --qqq                        Quiet all output from individual directories that does not cause a failure.
         -f                           Force removal of submodules currently in your view that are taken out of the view
                                      as a result to this call to uv.
         -F                           Force removal of nested subprojects currently in your view that are taken out of the
@@ -381,7 +384,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                     "not been pushed, or ignored files will be lost.  Proceed?" +
                                     " (use -F to force removal without this prompt)", 'n')
         if proceed:
-            logging.info(f"removing {subproject}...")
+            if not args["-q"] and not args["--qq"] and not args["--qqq"]:
+                logging.info(f"removing {subproject}...")
             try:
                 shutil.rmtree(subprojectdir, onerror=self.force_rm)
             except OSError as e:
@@ -578,7 +582,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
                             if subRemoteProtocol != remoteProtocol:
-                               logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
+                               if not args["--qq"] and not args["--qqq"]:
+                                   logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
                                remoteProtocolSubmodules.append(submodule)
                                deinitStr += f' {submodule}'
                                rmCachedStr += f' {submodule}'
@@ -625,7 +630,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                 if module:
                                     src = os.path.join(module, ".git")
                                     dest =  os.path.join(self.workspace_dir, ".git", "modules", module)
-                                    logging.info(f"Moving {src} to {dest}")
+                                    if not args["--qq"] and not args["--qqq"]:
+                                        logging.info(f"Moving {src} to {dest}")
                                     shutil.move(src, dest)
                                 else:
                                     raise e
@@ -701,7 +707,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
                             if subRemoteProtocol != remoteProtocol:
-                                logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
+                                if not args["--qq"] and not args["--qqq"]:
+                                    logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
                                 if self.rmNestedSubproject(subproject, args):
                                     toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
                                     section = f"nested-{subprojectName}"
@@ -826,11 +833,13 @@ def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
     filterArg = args["filterArg"]
-    logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
+    if not args["-q"] and not args["--qq"]:
+        logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
     if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
-    logging.info(f"Nested Subproject {subprojectName} activated.")
+    if not args["-q"] and not args["--qq"]:
+        logging.info(f"Nested Subproject {subprojectName} activated.")
     return True
 
 def handleActivateSubprojectMRE(mre):
@@ -844,7 +853,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     skipSubmoduleSwitch = args[0]
     fetchPublic = args[1]
     forcePublic = args[2]
-    logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
+    if not args["-q"] and not args["--qq"] and not args["--qqq"]:
+        logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
@@ -856,7 +866,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
                 logging.error(e.gitOutput)
                 raise e
         else:
-            logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
+            if not args["--qq"] and not args["--qqq"]:
+                logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
     # Get the public branch
@@ -882,7 +893,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
                    logging.error(e.gitOutput)
                    raise e
            else:
-               logging.info(f"Fetch to update {public} in {repo} failed : {e.gitOutput}\n\tContinuing...")
+               if not args["--qq"] and not args["--qqq"]:
+                   logging.info(f"Fetch to update {public} in {repo} failed : {e.gitOutput}\n\tContinuing...")
 
     try:
         if git.currentBranch(execution_path=repo) == branch:
@@ -898,15 +910,18 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
         # switch to corresponding public branch if the branch does not exist
         if isSubmodule:
             if skipSubmoduleSwitch:
-               logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
+               if not args["--qq"] and not args["--qqq"]:
+                   logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
                return
-        logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
+        if not args["--qq"] and not args["--qqq"]:
+            logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
         git.pull(f"origin {public}", execution_path=repo)
         git.checkout("--detach HEAD", execution_path=repo)
 
 def cleanupPush(repo='', branch='', args='none', *, execution_path):
-    logging.info(f"Attempting push of local {branch} in {repo}")
+    if not args["-q"] and not args["--qq"] and not args["--qqq"]:
+        logging.info(f"Attempting push of local {branch} in {repo}")
     git.push(f"origin {branch}", execution_path=repo)
 
 
@@ -931,9 +946,11 @@ def handleEnsureLocalUpToDateMRE(mre):
             if ("[rejected]" in e.gitOutput.lower() and "(non-fast-forward)" in e.gitOutput.lower()) or e.could_not_find_remote_ref():
                 if e.could_not_find_remote_ref():
                     if not _pushBranch:
-                        logging.info(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
+                        if not args["--qqq"]:
+                            logging.info(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
                 else:
-                    logging.info(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
+                    if not args["--qqq"]:
+                        logging.info(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
                 pushBranch = _pushBranch
                 if _skipPush:
                     pushBranch = False
@@ -952,7 +969,8 @@ def handleEnsureLocalUpToDateMRE(mre):
 
                     cleanupPushArgs.append((repo, branch, None))
                 else:
-                    logging.info(f"Skipping push of local {branch} in {repo}")
+                    if not args["--qqq"]:
+                        logging.info(f"Skipping push of local {branch} in {repo}")
 
             elif e.commError:
                 logging.error(f"Could not update {branch} from origin due" +
