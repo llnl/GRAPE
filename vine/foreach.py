@@ -74,7 +74,7 @@ def foreach(repo='', branch='', args={}, *, workspace_dir):
             logging.info(f"[{os.path.relpath(repo, workspace_dir)}]\n{process_output}")
 
 def handleForeachMRE(mre):
-    for e1,args in zip(mre.exceptions(), mre.args()):
+    for e1, repo, args in zip(mre.exceptions(), mre.repos(), mre.args()):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
@@ -83,6 +83,8 @@ def handleForeachMRE(mre):
                 logging.warning(f"GRAPE: Command `{e.gitCommand}' with the following output:")
                 logging.warning(e.gitOutput)
                 logging.warning(f"GRAPE: exited with error code {e.code}.")
+            elif args["-v"]:
+                logging.info(f"[{os.path.relpath(repo, mre.workspace_dir)}]\n{e.gitOutput}")
         except FileNotFoundError as e:
             logging.warning("File not found - perhaps .grapeuserconfig is out of date?")
             logging.warning(e)
