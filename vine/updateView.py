@@ -32,7 +32,7 @@ except ImportError as e:
 class UpdateView(Option, WorkspaceDirHandler):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-q|--qq] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
+    Usage: grape-uv [-q|--qq|--qqq] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
                     [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
@@ -758,6 +758,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
             fetchPublic=args["--syncPublic"] or args["--forceSyncPublic"],
             forcePublic=args["--forceSyncPublic"],
+            quiet=args["-q"] or args["--qq"] or args["--qqq"],
             workspace_dir=self.workspace_dir)
 
 
@@ -853,7 +854,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     skipSubmoduleSwitch = args[0]
     fetchPublic = args[1]
     forcePublic = args[2]
-    if not args["-q"] and not args["--qq"] and not args["--qqq"]:
+    quiet = args[3]
+    if not quiet:
         logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
@@ -992,13 +994,13 @@ def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
     handleEnsureLocalUpToDateMRE(mre)
     _skipPush = False
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=False ):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-            globalArgs=[skipSubmoduleSwitch, fetchPublic, forcePublic], workspace_dir=workspace_dir)
+            globalArgs=[skipSubmoduleSwitch, fetchPublic, forcePublic, quiet], workspace_dir=workspace_dir)
         if skipBranchPush:
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateSkipBranchPushMRE)
         else: 
