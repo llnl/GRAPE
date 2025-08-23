@@ -17,8 +17,10 @@ from vine.vine_logging import log_wrapper
 
 def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
     # 'workspace_dir' included for continuity with multi_repo_cmd_launcher.
-    checkoutargs = args[0]
-    sync = args[1]
+    checkoutargs = args["checkout"]
+    sync = args["sync"]
+    quiet = args["quiet"]
+    verbose = args["verbose"]
     if sync:
         # attempt to fetch the requested branch
         try:
@@ -28,21 +30,26 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
             # and allow the checkout to throw the exception.
             pass
     try:
-        logging.info(f"checking out {branch} in {repo}")
+        if verbose:
+            logging.info(f"checking out {branch} in {repo}")
         git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
         if "already exists" in e.gitOutput and "-b" in checkoutargs:
-            logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
+            if not quiet:
+                logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
             git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
         if "index.lock" in e.gitOutput:
-            logging.info(f"waiting for 3 seconds in {branch} in {repo} due to index.lock detection")
+            if not quiet:
+                logging.info(f"waiting for 3 seconds in {branch} in {repo} due to index.lock detection")
             time.sleep(3)
-            logging.info(f"retrying checkout out of {branch} in {repo}")
+            if not quiet:
+                logging.info(f"retrying checkout out of {branch} in {repo}")
             git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
         else:
             logging.debug(f"checkout failed in {repo}.")
             raise e
-    logging.info(f"Checked out {branch} in {repo}")
+    if verbose:
+        logging.info(f"Checked out {branch} in {repo}")
 
     return True
 
@@ -63,8 +70,9 @@ def handleCheckoutMRE(mre):
             if "pathspec" in e.gitOutput.lower():
                 createNewBranch = _createNewBranch
                 if _skipBranchCreation:
-                    logging.info(f"Skipping checkout of {branch} in " +
-                                 f"{project}")
+                    if checkoutargs["verbose"]:
+                        logging.info(f"Skipping checkout of {branch} in " +
+                                     f"{project}")
                     createNewBranch = False
 
                 elif not createNewBranch:
@@ -82,22 +90,25 @@ def handleCheckoutMRE(mre):
                     _skipBranchCreation = True
                     createNewBranch = False
                 if createNewBranch:
-                    newBranchReposArgTuples.append((project, branch, {"checkout": checkoutargs[0], "skippush": _skipPush}))
+                    newBranchReposArgTuples.append((project, branch, {"checkout": checkoutargs["checkout"], "skippush": _skipPush, "quiet":checkoutargs["quiet"], "verbose":checkoutargs["verbose"]}))
                 else:
                     continue
 
             elif "already exists" in e.gitOutput.lower():
-                logging.info(f"Branch {branch} already exists in " +
-                             f"{project}.")
+                if not checkoutargs["quiet"]:
+                    logging.info(f"Branch {branch} already exists in " +
+                                 f"{project}.")
                 branchDescription = git.commitDescription(branch, execution_path=project)
                 headDescription = git.commitDescription("HEAD", execution_path=project)
                 if branchDescription == headDescription:
-                    logging.info(f"Branch {branch} and HEAD are the " +
-                                 f"same. Switching to {branch}.")
+                    if not checkoutargs["quiet"]:
+                        logging.info(f"Branch {branch} and HEAD are the " +
+                                     f"same. Switching to {branch}.")
                     action = "k"
                 else:
-                    logging.info(f"Branch {branch} and HEAD " +
-                                          "are not the same.")
+                    if not checkoutargs["quiet"]:
+                        logging.info(f"Branch {branch} and HEAD " +
+                                              "are not the same.")
                     action = ''
                     valid = False
                     while not valid:
@@ -116,12 +127,14 @@ def handleCheckoutMRE(mre):
                 logging.info("CONFLICT occurred when pulling {branch} " +
                              "from origin.")
             elif "does not appear to be a git repository" in e.gitOutput.lower():
-                logging.info("Remote 'origin' does not exist. "
+                if not checkoutargs["quiet"]:
+                    logging.info("Remote 'origin' does not exist. "
                                  "This branch was not updated from a remote repository.")
             elif e.could_not_find_remote_ref():
-                logging.info(
-                    f"Remote of {project} does not have reference to " +
-                    f"{branch}. You may want to push this branch. ")
+                if not checkoutargs["quiet"]:
+                    logging.info(
+                        f"Remote of {project} does not have reference to " +
+                        f"{branch}. You may want to push this branch. ")
             else:
                 raise e
 
@@ -148,7 +161,10 @@ def createNewBranches(repo='', branch='', args={}, *, workspace_dir):
     #workspace_dir ignored
     checkoutargs = args["checkout"]
     skippusharg = args["skippush"]
-    logging.info(f"Checking out new branch {branch} in {repo}.")
+    quiet = args["quiet"]
+    verbose = args["verbose"]
+    if verbose:
+        logging.info(f"Checking out new branch {branch} in {repo}.")
     git.checkout(f"{checkoutargs} -b {branch}", execution_path=repo)
     if not skippusharg:
         git.push(f"-u origin {branch}", execution_path=repo)
@@ -281,9 +297,11 @@ class Checkout(Option, WorkspaceDirHandler):
     """
     grape checkout
 
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
+    Usage: grape-checkout [-v] [-q] [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
+    -v                  Print output from individual directories.
+    -q                  Quiet warnings from individual directories that don't cause failure.
     -b                  Create the branch off of the current HEAD in each project.
     --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                         either by pushing or pulling the remote tracking branch.
@@ -364,9 +382,10 @@ class Checkout(Option, WorkspaceDirHandler):
             initiallyActiveSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
             for sub in changedURLModules:
                 maybe_active = "active" if sub in initiallyActiveSubmodules else "inactive"
-                logging.info(
-                    f"url for {sub} changed, attempting to remove " +
-                    f"references for {maybe_active} submodule.")
+                if not args["-q"]:
+                    logging.info(
+                        f"url for {sub} changed, attempting to remove " +
+                        f"references for {maybe_active} submodule.")
                 cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules, workspace_dir=self.workspace_dir)
                 if not cleaned:
                     logging.info(f"Failed to remove old submodule for {sub}.")
@@ -376,7 +395,7 @@ class Checkout(Option, WorkspaceDirHandler):
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             handledCheckout,
             listOfRepoBranchArgTuples=[(self.workspace_dir, branch,
-                                        (checkoutargs, sync))],
+                                        {"checkout":checkoutargs, "sync":sync, "quiet":args["-q"], "verbose":args["-v"]})],
             workspace_dir=self.workspace_dir)
 
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
@@ -439,10 +458,11 @@ class Checkout(Option, WorkspaceDirHandler):
                         if remove:
                             shutil.rmtree(os.path.join(self.workspace_dir, projPrefix))
                     else:
-                        logging.info(
-                            f"Unstaged / committed changes in {projPrefix},"
-                            " not removing. \nNote this project is NOT " +
-                            f"active in {branch}. ")
+                        if not args["-q"]:
+                            logging.info(
+                                f"Unstaged / committed changes in {projPrefix},"
+                                " not removing. \nNote this project is NOT " +
+                                f"active in {branch}. ")
 
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")

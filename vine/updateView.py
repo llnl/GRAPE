@@ -1016,7 +1016,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         checkout.handledCheckout, branch=branch,
         runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-        globalArgs=[checkoutArgs, False], workspace_dir=workspace_dir)
+        globalArgs={"checkout":checkoutArgs, "sync":False, "quiet":quiet, "verbose":verbose}, workspace_dir=workspace_dir)
     if skipBranchCreation:
        launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutSkipBranchCreationMRE)
     else:
