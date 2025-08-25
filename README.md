@@ -819,10 +819,11 @@ options are at least listed below.
 
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [-v] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
+    Usage: grape-foreach [-v] [-q] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
 
     Options:
-    -v                  Echo output from each command.
+    -v                  Echo the command and output from each directory.
+    -q                  Suppress warnings on failed commands.
     --noTopLevel        Does not call <cmd> in the workspace directory.
     --noSubprojects     Does not call <cmd> in any grape nested subprojects.
     --noSubmodules      Does not call <cmd> in any git submodules.
