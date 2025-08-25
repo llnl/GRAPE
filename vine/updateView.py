@@ -734,6 +734,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         self.rmNestedSubproject(subproject, args)
 
                 # activate nested subprojects in parallel
+                logging.info(f"Updating active subprojects...")
                 activate_project_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(activateSubproject,
                                                                                              listOfRepoBranchArgTuples=toActivate_args,
                                                                                              workspace_dir=self.workspace_dir)
@@ -837,12 +838,13 @@ def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     subprojectName = args["subprojectName"]
     filterArg = args["filterArg"]
     quiet = args["quiet"]
-    if not quiet:
+    verbose = args["verbose"]
+    if verbose:
         logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
     if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
-    if not quiet:
+    if verbose:
         logging.info(f"Nested Subproject {subprojectName} activated.")
     return True
 
