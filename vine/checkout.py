@@ -70,9 +70,8 @@ def handleCheckoutMRE(mre):
             if "pathspec" in e.gitOutput.lower():
                 createNewBranch = _createNewBranch
                 if _skipBranchCreation:
-                    if checkoutargs["verbose"]:
-                        logging.info(f"Skipping checkout of {branch} in " +
-                                     f"{project}")
+                    logging.info(f"Skipping checkout of {branch} in " +
+                                 f"{project}")
                     createNewBranch = False
 
                 elif not createNewBranch:
