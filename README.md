@@ -183,8 +183,7 @@ SQA driven requirements, such as successful build(s), testing, etc. You'll want 
     deletetopic = False
     updatelog = .grapepublishlog
     logskipfirstlines = 0
-    logentryheader = <date> <user>
-<version>
+    logentryheader = <date> <user> <version>
 
     emailnotification = False
     emailheader = <public> updated to <version>
@@ -272,8 +271,8 @@ place in your submodules.
 to your submodule's public branches, e.g. `develop:foo_dev master:foo_master`.
 
 ### branch creation
-When you create and checkout a branch in grape using grape <branchType>, branches will be created and checked
-out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[<branchType>]] to
+When you create and checkout a branch in grape using grape \<branchType\>, branches will be created and checked
+out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[\<branchType\>]] to
 determine your submodules' branch's start points.
 For example, with  the following `.grapeconfig`:
 
@@ -356,7 +355,7 @@ individualized.
 
 # Grape Commands
 Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
-at a particular commands documentation using grape <cmd> --help.
+at a particular commands documentation using grape \<cmd\> --help.
 
 Some commands are better documented than others, but our use of the docopt.py module guarantees that all available
 options are at least listed below.
