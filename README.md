@@ -19,16 +19,18 @@ Create internal_release branch.  For this internal_release branch, you should me
    git add UPDATE_LOG_<MAJOR>.<OLDPROD> UPDATE_LOG_<MAJOR>.<OLDDEV>
    git rm -r UPDATES_<MAJOR>.<OLDPROD>
    git rm -r UPDATES_<MAJOR>.<OLDDEV>
-   git commit
+   git commit -m "Merge update logs"
    
 Publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
 
-Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
+Delete the tag created by the CI, and replace it with an appropriate one:
+ v<MAJOR>.<NEWPROD>.0 instead of v<MAJOR>.<OLDDEV>.<most_recent_old_dev_update+1> (e.g. v1.42.0 instead of v1.41.19)
 
 Push the new tag.
 
-Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
-push both the new tag and the new commit directly to develop.
+Check out develop and merge in master. Create a new commit directly on develop by toggling the following line from 0 to 1 (or vice versa):
+  0
+then tag that commit as v<MAJOR>.<NEWDEV>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
 
 ## Introducing the `.grapeconfig` file
 
