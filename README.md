@@ -5,7 +5,23 @@
 
 # Forking a new version number for grape.
 
-Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+Create internal_release branch.  For this internal_release branch, you should merge the update logs:
+
+   # create a file for the develop branch logs, confirm that it contains what you expect
+   grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDDEV> --startVersion=v<MAJOR>.<OLDDEV>.1
+   more UPDATE_LOG_<MAJOR>.<OLDDEV>
+
+   # create a file for the production branch logs, confirm that it contains what you expect
+   grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDPROD> --startVersion=v<MAJOR>.<OLDPROD>.1 --stopVersion=v<MAJOR>.<OLDPROD>.<most_recent_old_prod_update> --updateLogDir=UPDATES_<MAJOR>.<OLDPROD>
+   more UPDATE_LOG_<MAJOR>.<OLDPROD>
+
+   # Clean up and commit the new update logs
+   git add UPDATE_LOG_<MAJOR>.<OLDPROD> UPDATE_LOG_<MAJOR>.<OLDDEV>
+   git rm -r UPDATES_<MAJOR>.<OLDPROD>
+   git rm -r UPDATES_<MAJOR>.<OLDDEV>
+   git commit
+   
+Publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
 
 Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
 
