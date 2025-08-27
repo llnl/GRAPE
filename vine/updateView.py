@@ -32,7 +32,7 @@ except ImportError as e:
 class UpdateView(Option, WorkspaceDirHandler):
     """
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
+    Usage: grape-uv [-v] [-q] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
                     [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
@@ -44,6 +44,8 @@ class UpdateView(Option, WorkspaceDirHandler):
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
+        -v                           Print output from individual directories.
+        -q                           Quiet warnings from individual directories that don't cause failure.
         -f                           Force removal of submodules currently in your view that are taken out of the view
                                      as a result to this call to uv.
         -F                           Force removal of nested subprojects currently in your view that are taken out of the
@@ -381,7 +383,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                     "not been pushed, or ignored files will be lost.  Proceed?" +
                                     " (use -F to force removal without this prompt)", 'n')
         if proceed:
-            logging.info(f"removing {subproject}...")
+            if args["-v"]:
+                logging.info(f"removing {subproject}...")
             try:
                 shutil.rmtree(subprojectdir, onerror=self.force_rm)
             except OSError as e:
@@ -578,7 +581,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
                             if subRemoteProtocol != remoteProtocol:
-                               logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
+                               if args["-v"]:
+                                   logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
                                remoteProtocolSubmodules.append(submodule)
                                deinitStr += f' {submodule}'
                                rmCachedStr += f' {submodule}'
@@ -625,7 +629,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                                 if module:
                                     src = os.path.join(module, ".git")
                                     dest =  os.path.join(self.workspace_dir, ".git", "modules", module)
-                                    logging.info(f"Moving {src} to {dest}")
+                                    if args["-v"]:
+                                        logging.info(f"Moving {src} to {dest}")
                                     shutil.move(src, dest)
                                 else:
                                     raise e
@@ -688,6 +693,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                 updatedActiveList = []
                 toActivate_args = []
                 toRemove = []
+                quiet = args["-q"]
+                verbose = args["-v"]
                 for subproject, nowActive in includedNestedSubprojectPrefixes.items():
                     subprojectName = reverseLookupByPrefix[subproject]
                     section = f"nested-{subprojectName}"
@@ -701,9 +708,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if args["--updateRemoteProtocol"]:
                             subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
                             if subRemoteProtocol != remoteProtocol:
-                                logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
+                                if args["-v"]:
+                                    logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
                                 if self.rmNestedSubproject(subproject, args):
-                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
+                                    toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet, "verbose":verbose}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
                                     userConfig.set(section, "active", "False")
@@ -714,7 +722,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         updatedActiveList.append(subprojectName)
 
                     if nowActive and not previouslyActive:
-                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg}))
+                        toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet, "verbose":verbose}))
 
                         updatedActiveList.append(subprojectName)
 
@@ -726,6 +734,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         self.rmNestedSubproject(subproject, args)
 
                 # activate nested subprojects in parallel
+                logging.info(f"Updating active subprojects...")
                 activate_project_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(activateSubproject,
                                                                                              listOfRepoBranchArgTuples=toActivate_args,
                                                                                              workspace_dir=self.workspace_dir)
@@ -751,6 +760,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             skipSubmoduleSwitch=args["--skipSubmoduleSwitch"],
             fetchPublic=args["--syncPublic"] or args["--forceSyncPublic"],
             forcePublic=args["--forceSyncPublic"],
+            quiet=args["-q"],
+            verbose=args["-v"],
             workspace_dir=self.workspace_dir)
 
 
@@ -826,11 +837,15 @@ def activateSubproject(repo='', branch='develop', args={}, *, workspace_dir):
     userConfig = args["userConfig"]
     subprojectName = args["subprojectName"]
     filterArg = args["filterArg"]
-    logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
+    quiet = args["quiet"]
+    verbose = args["verbose"]
+    if verbose:
+        logging.info(f"Activating Nested Subproject {subprojectName} on {branch}")
     if not addSubproject.AddSubproject.activateNestedSubproject(subprojectName, userConfig, branch, filterArg, workspace_dir):
         logging.info(f"Can't activate {subprojectName}. Exiting...")
         return False
-    logging.info(f"Nested Subproject {subprojectName} activated.")
+    if verbose:
+        logging.info(f"Nested Subproject {subprojectName} activated.")
     return True
 
 def handleActivateSubprojectMRE(mre):
@@ -841,10 +856,13 @@ def handleActivateSubprojectMRE(mre):
 
 
 def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspace_dir):
-    skipSubmoduleSwitch = args[0]
-    fetchPublic = args[1]
-    forcePublic = args[2]
-    logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
+    skipSubmoduleSwitch = args["skipSubmoduleSwitch"]
+    fetchPublic = args["fetchPublic"]
+    forcePublic = args["forcePublic"]
+    quiet = args["quiet"]
+    verbose = args["verbose"]
+    if verbose:
+        logging.info(f"Ensuring local branch {branch} in {repo} is up to date with origin")
     # attempt to fetch the requested branch
     try:
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
@@ -856,7 +874,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
                 logging.error(e.gitOutput)
                 raise e
         else:
-            logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
+            if verbose and not quiet:
+                logging.info(f"Fetch to update {branch} in {repo} failed : {e.gitOutput}\n\tContinuing...")
         pass
 
     # Get the public branch
@@ -882,7 +901,8 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
                    logging.error(e.gitOutput)
                    raise e
            else:
-               logging.info(f"Fetch to update {public} in {repo} failed : {e.gitOutput}\n\tContinuing...")
+               if verbose and not quiet:
+                   logging.info(f"Fetch to update {public} in {repo} failed : {e.gitOutput}\n\tContinuing...")
 
     try:
         if git.currentBranch(execution_path=repo) == branch:
@@ -898,15 +918,18 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
         # switch to corresponding public branch if the branch does not exist
         if isSubmodule:
             if skipSubmoduleSwitch:
-               logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
+               if verbose:
+                   logging.info(f"Branch {branch} does not exist in {repo}, skipping switch to public branch")
                return
-        logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
+        if verbose:
+            logging.info(f"Branch {branch} does not exist in {repo}, switching to {public} and detaching")
         git.checkout(public, execution_path=repo)
         git.pull(f"origin {public}", execution_path=repo)
         git.checkout("--detach HEAD", execution_path=repo)
 
 def cleanupPush(repo='', branch='', args='none', *, execution_path):
-    logging.info(f"Attempting push of local {branch} in {repo}")
+    if args["-v"]:
+        logging.info(f"Attempting push of local {branch} in {repo}")
     git.push(f"origin {branch}", execution_path=repo)
 
 
@@ -923,17 +946,21 @@ _skipPush = False
 def handleEnsureLocalUpToDateMRE(mre):
     global _skipPush
     _pushBranch = False
+    quiet = args["quiet"]
+    verbose = args["verbose"]
     cleanupPushArgs = []
-    for e1, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
+    for e1, repo, branch, args in zip(mre.exceptions(), mre.repos(), mre.branches(), mre.args()):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
             if ("[rejected]" in e.gitOutput.lower() and "(non-fast-forward)" in e.gitOutput.lower()) or e.could_not_find_remote_ref():
                 if e.could_not_find_remote_ref():
                     if not _pushBranch:
-                        logging.info(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
+                        if not quiet:
+                            logging.info(f"No remote reference to {branch} in {repo}'s origin. You may want to push this branch.")
                 else:
-                    logging.info(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
+                    if not quiet:
+                        logging.info(f"Fetch of {branch} rejected as non-fast-forward in repo {repo}")
                 pushBranch = _pushBranch
                 if _skipPush:
                     pushBranch = False
@@ -952,7 +979,8 @@ def handleEnsureLocalUpToDateMRE(mre):
 
                     cleanupPushArgs.append((repo, branch, None))
                 else:
-                    logging.info(f"Skipping push of local {branch} in {repo}")
+                    if not quiet:
+                        logging.info(f"Skipping push of local {branch} in {repo}")
 
             elif e.commError:
                 logging.error(f"Could not update {branch} from origin due" +
@@ -974,13 +1002,13 @@ def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
     handleEnsureLocalUpToDateMRE(mre)
     _skipPush = False
 
-def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False ):
+def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=False, verbose=False):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-            globalArgs=[skipSubmoduleSwitch, fetchPublic, forcePublic], workspace_dir=workspace_dir)
+            globalArgs={"skipSubmoduleSwitch":skipSubmoduleSwitch, "fetchPublic":fetchPublic, "forcePublic":forcePublic, "quiet":quiet, "verbose":verbose}, workspace_dir=workspace_dir)
         if skipBranchPush:
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateSkipBranchPushMRE)
         else: 
@@ -990,7 +1018,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
         checkout.handledCheckout, branch=branch,
         runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
-        globalArgs=[checkoutArgs, False], workspace_dir=workspace_dir)
+        globalArgs={"checkout":checkoutArgs, "sync":False, "quiet":quiet, "verbose":verbose}, workspace_dir=workspace_dir)
     if skipBranchCreation:
        launcher.launchFromWorkspaceDir(handleMRE=checkout.handleCheckoutSkipBranchCreationMRE)
     else:

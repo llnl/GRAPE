@@ -485,9 +485,11 @@ options are at least listed below.
 
     grape checkout
 
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
+    Usage: grape-checkout [-v] [-q] [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
+    -v                  Print output from individual directories.
+    -q                  Quiet warnings from individual directories that don't cause failure.
     -b                  Create the branch off of the current HEAD in each project.
     --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                         either by pushing or pulling the remote tracking branch.
@@ -1161,7 +1163,7 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
+    Usage: grape-uv [-v] [-q] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
                     [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
@@ -1173,6 +1175,8 @@ options are at least listed below.
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
+        -v                           Print output from individual directories.
+        -q                           Quiet warnings from individual directories that don't cause failure.
         -f                           Force removal of submodules currently in your view that are taken out of the view
                                      as a result to this call to uv.
         -F                           Force removal of nested subprojects currently in your view that are taken out of the

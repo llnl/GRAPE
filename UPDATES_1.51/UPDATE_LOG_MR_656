@@ -1,0 +1,21 @@
+
+
+Wed Aug 27 13:48:35 2025 Benjamin T. Liu
+MR_656
+Reviewers: Peter Robinson, Alan Dayton
+
+Reduce default verbosity to grape uv and checkout
+
+- add -v flag to increase verbosity
+
+- add -q flag to suppress non-fatal warnings
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.4
+
+--reviewers=probinso,dayton8
