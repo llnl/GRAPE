@@ -1,7 +1,0 @@
-
-
-Tue Aug 20 15:45:28 2024 Alan Dayton
-MR_597
-Reviewers: Peter Robinson (He/Him), Ben Liu
-
-We really only use --prepend/--append for the title. It doesn't add much benefit and complicates how we handle reviewers and the description, so those use cases are being removed.

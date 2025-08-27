@@ -1,7 +1,34 @@
 
 
+Tue May 21 13:27:19 2024 Benjamin T. Liu
+v1.48.4
+Reviewers: Peter Robinson, David Dawson
+
+Fix grape --version for public grape using newer git versions
+
+- git 2.36+ will not run git commands from directories owned by others
+
+
+Tue Apr 30 14:38:55 2024 Benjamin T. Liu
+v1.48.3
+Reviewers: Peter Robinson
+
+- fixes for updated fetch errors in git 2.36+
+
+- allow git.executable to be set in config file
+
+- testing fixes for git 2.45
+
+
+Tue Apr 23 13:20:32 2024 Benjamin T. Liu
+v1.48.2
+Reviewers: Peter Robinson
+
+Implement required id_tokens for LC Jacamar runners
+
+
 Tue Apr 23 08:42:54 2024 Benjamin T. Liu
-MR_568
+v1.48.1
 Reviewers: Peter Robinson, David Dawson
 
 bundle fixes

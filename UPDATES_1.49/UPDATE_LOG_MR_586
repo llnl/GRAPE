@@ -1,7 +1,0 @@
-
-
-Mon Jul  1 11:13:48 2024 Benjamin T. Liu
-MR_586
-Reviewers: David Dawson
-
-Fix call to new version of lookupActiveMergeTrainBranches

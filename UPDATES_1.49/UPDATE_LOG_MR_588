@@ -1,7 +1,0 @@
-
-
-Tue Jul 23 14:08:29 2024 Alan Dayton
-MR_588
-Reviewers: Ben Liu, David Dawson, Peter Robinson (He/Him)
-
-* Subtree support in GRAPE was incomplete and has not been tested for a long time, so this merge request removes it

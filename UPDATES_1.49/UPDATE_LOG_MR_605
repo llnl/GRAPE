@@ -1,7 +1,0 @@
-
-
-Wed Sep  4 14:03:22 2024 Benjamin T. Liu
-MR_605
-Reviewers: David Dawson
-
-Allow optional group for GitlabAdapter constructor (needed for external scripts)
