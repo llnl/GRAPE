@@ -1,0 +1,285 @@
+
+
+Wed Aug 27 13:48:35 2025 Benjamin T. Liu
+v1.51.16
+Reviewers: Peter Robinson, Alan Dayton
+
+Reduce default verbosity to grape uv and checkout
+
+- add -v flag to increase verbosity
+
+- add -q flag to suppress non-fatal warnings
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.4
+
+--reviewers=probinso,dayton8
+
+
+Mon Aug 25 15:46:10 2025 Benjamin T. Liu
+v1.51.15
+Reviewers: Peter Robinson, Alan Dayton
+
+Add -q option for grape foreach to suppress warnings from failure
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.4
+
+--reviewers=probinso,dayton8
+
+
+Fri Aug 15 12:39:31 2025 Benjamin T. Liu
+v1.51.14
+Reviewers: Alan Dayton
+
+- Move testing to rztrona
+
+- Add additional verbosity when traversing merged result
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.4
+
+--reviewers=dayton8
+
+
+Mon Jul 28 12:46:18 2025 Benjamin T. Liu
+v1.51.13
+Reviewers: Peter Robinson, Alan Dayton
+
+Clean up grape review
+
+- prevent spurious generation of pipelines when labels have not changed
+
+- reduce logging output when merge request is unchanged
+
+- only output generated request in verbose mode
+
+Add --skipBranchPush option for grape uv
+
+- allow creation of new branches without pushing
+
+- feature to be used for automatic rebaselining
+
+Update grape db to also remove references to tracking branches
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.51.12
+
+--reviewers=dayton8,probinso
+
+
+Thu May 29 10:56:15 2025 Benjamin T. Liu
+v1.51.12
+Reviewers: Peter Robinson
+
+Mergeback: set default NP to 8 on exclusive nodes
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.51.11
+
+--reviewers=probinso
+
+
+Wed May 28 13:54:44 2025 Benjamin T. Liu
+v1.51.11
+Reviewers: Peter Robinson, Arlie Capps, Alan Dayton
+
+Rename mergeDevelop to mergeDown to avoid confusion
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.2
+
+--reviewers=dayton8,capps2,probinso
+
+
+Fri May 23 14:47:07 2025 Benjamin T. Liu
+v1.51.10
+Reviewers: Alan Dayton
+
+Mergeback: prevent overwriting user .grapeconfig with default if one already exists
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.2
+
+--reviewers=dayton8
+
+
+Thu May 15 16:34:48 2025 Benjamin T. Liu
+v1.51.9
+Reviewers: Patrick Greene, Peter Robinson
+
+Allow skipping of subprojects for grape review
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.2
+
+--reviewers=greene30,probinso
+
+
+Wed Apr 16 10:40:26 2025 Benjamin T. Liu
+v1.51.8
+Reviewers: David Dawson
+
+Mergeback: Tweak foreach -v output
+
+- do not display empty output
+
+- print out number of repos operated on
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.1
+
+--reviewers=dawson24
+
+
+Mon Apr 14 10:30:09 2025 Benjamin T. Liu
+v1.51.7
+Reviewers: David Dawson
+
+Mergeback: add verbose option for grape foreach
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.0
+
+--reviewers=dawson24
+
+
+Mon Apr  7 15:54:29 2025 Benjamin T. Liu
+v1.51.6
+Reviewers: Patrick Greene
+
+Fix syntax for merge train fetch
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.0
+
+--reviewers=greene30
+
+
+Mon Apr  7 14:59:55 2025 Benjamin T. Liu
+v1.51.5
+Reviewers: Patrick Greene, Peter Robinson, David Dawson
+
+Add fetch of merge train branch during merge train traversal
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.0
+
+--reviewers=probinso,greene30,dawson24
+
+
+Mon Mar 10 10:22:54 2025 Benjamin T. Liu
+v1.51.4
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Automatically retry git ls-remote on connectivity error
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.0
+
+--reviewers=dayton8,probinso
+
+
+Fri Feb 28 13:04:13 2025 Benjamin T. Liu
+v1.51.3
+Reviewers: Patrick Greene, David Dawson
+
+Fix uv updateRemoteProtocol detection of different remotes
+
+- search for first isolated slash rather than first colon
+
+- this will detect different users/ci tokens in the URL
+
+- fixes issue on Windows when reusing a workspace
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.50.0
+
+--reviewers=greene30,dawson24
+
+
+Tue Feb 11 10:58:52 2025 Benjamin T. Liu
+v1.51.2
+Reviewers: Peter Robinson (He/Him), Patrick Greene, David Dawson
+
+Add option to authenticate with GRAPE_GITLAB_ACCESS_TOKEN
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.51.1
+
+--reviewers=greene30,probinso,dawson24

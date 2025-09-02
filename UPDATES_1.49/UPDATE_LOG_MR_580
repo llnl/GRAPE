@@ -1,7 +1,0 @@
-
-
-Thu May 30 14:25:53 2024 Peter B. Robinson
-MR_580
-Reviewers: David Dawson
-
-Adds a new means of determining branches in the merge train. Calls it alongside the old version to check for correctness for a while.

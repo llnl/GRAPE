@@ -485,9 +485,11 @@ options are at least listed below.
 
     grape checkout
 
-    Usage: grape-checkout  [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
+    Usage: grape-checkout [-v] [-q] [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
+    -v                  Print output from individual directories.
+    -q                  Quiet warnings from individual directories that don't cause failure.
     -b                  Create the branch off of the current HEAD in each project.
     --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                         either by pushing or pulling the remote tracking branch.
@@ -819,10 +821,11 @@ options are at least listed below.
 
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [-v] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
+    Usage: grape-foreach [-v] [-q] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
 
     Options:
-    -v                  Echo output from each command.
+    -v                  Echo the command and output from each directory.
+    -q                  Suppress warnings on failed commands.
     --noTopLevel        Does not call <cmd> in the workspace directory.
     --noSubprojects     Does not call <cmd> in any grape nested subprojects.
     --noSubmodules      Does not call <cmd> in any git submodules.
@@ -999,6 +1002,7 @@ options are at least listed below.
                         [--recurse]
                         [--noRecurse]
                         [--noRecurseSubprojects]
+                        [--skipSubproject=<project>...]
                         [--test]
                         [--prepend | --append]
                         [--subprojectsOnly]
@@ -1044,6 +1048,7 @@ options are at least listed below.
                                     is set to true.
         --noRecurse                 Disables adding pull requests to submodules.
         --noRecurseSubprojects      Disables adding pull requests to nested subprojects.
+        --skipSubproject=<project>  Nested subproject to skip for review (submodules cannot be skipped). Can be defined multiple times.
         --test                      Uses a dummy version of stashy that requires no communication to an actual Bitbucket
                                     server.
         --prepend                   Prepend <title> to the existing title instead of replacing it.
@@ -1158,10 +1163,10 @@ options are at least listed below.
 ## uv
 
     grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-    Usage: grape-uv [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
+    Usage: grape-uv [-v] [-q] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                     [--skipSubmodules | --allSubmodules | --noSubmodules]
                     [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
-                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--branchName=<branchName>]
+                    [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
                     [--add=<addedSubmoduleOrSubproject>...] [--rm=<removedSubmoduleOrSubproject>...]
                     [--generateSHAList] [--ensureCIReposPresent] [--verifySHAList]
                     [--branchFilter=<branch> | --branchChanged=<branch>[~]]
@@ -1170,6 +1175,8 @@ options are at least listed below.
            grape-uv --checkRemoteSubmodules [--branchName=<name>] [--allSubmodules]
 
     Options:
+        -v                           Print output from individual directories.
+        -q                           Quiet warnings from individual directories that don't cause failure.
         -f                           Force removal of submodules currently in your view that are taken out of the view
                                      as a result to this call to uv.
         -F                           Force removal of nested subprojects currently in your view that are taken out of the
@@ -1205,6 +1212,7 @@ options are at least listed below.
                                      is not a public branch.
         --skipSubmoduleSwitch        Skip switch to public branch in submodules if branches doesn't exist.
         --skipBranchCreation         Skip creation of branches that don't exist.
+        --skipBranchPush             Skip push of created branches.
         --branchName=<name>          Override the branch name
         --add=<project>              Submodule or subproject to add to the workspace. Can be defined multiple times.
         --rm=<project>               Submodule or subproject to remove from the workspace. Can be defined multiple times.

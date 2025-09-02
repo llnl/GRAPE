@@ -19,8 +19,8 @@ from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
-# pull and merge in an up-to-date development branch
-class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
+# pull and merge down from an up-to-date public branch
+class MergeDown(Resumable, Option, WorkspaceDirHandler):
     """
     grape md  (Merge Down)
     merge changes from a public branch into your current topic branch
@@ -95,7 +95,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
 
     """
     def __init__(self):
-        super(MergeDevelop, self).__init__()
+        super(MergeDown, self).__init__()
         self._key = "md"
         self._section = "Merge"
 
@@ -574,6 +574,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
                unmergedTrainBranches.append(branch)
             else:
                # Only include other branches in the merge train if they are not contained by the target branch
+               git.fetch(f"origin {branch}:{branch}", execution_path=self.workspace_dir)
                containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
                if f"origin/{targetBranch}" not in containingBranches:
                   unmergedTrainBranches.append(branch)
@@ -603,6 +604,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         if versionTag == mergedVersionTag:
             logging.info(f"No versions to merge, already at {versionTag}.")
             return True
+        logging.info(f"{args['--topic']} at {versionTag}, merged result at {mergedVersionTag}.")
         # Get all the version tags after the tagged version, oldest first
         branch_log = git.log(f"--oneline --decorate --reverse --no-color HEAD --not {versionTag}", execution_path=self.workspace_dir)
         tagsFetched = False
@@ -718,7 +720,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_FLOW, "topicDestinationMappings", "none")
 
     def _resume(self, args, *, workspace_dir):
-        super(MergeDevelop, self)._resume(args, workspace_dir=workspace_dir)
+        super(MergeDown, self)._resume(args, workspace_dir=workspace_dir)
         if self.progress["stopPoint"] == "public rebase":
             # recover from conflicts by continuing the rebase
             git.rebase("--continue", execution_path=workspace_dir)
@@ -728,7 +730,7 @@ class MergeDevelop(Resumable, Option, WorkspaceDirHandler):
         return retval
 
     def _saveProgress(self, args):
-        super(MergeDevelop, self)._saveProgress(args)
+        super(MergeDown, self)._saveProgress(args)
         # this lets grape m know that the --continue is for grape md to resume...
         self.progress["inMD"] = True
 
