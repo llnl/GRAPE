@@ -5,14 +5,32 @@
 
 # Forking a new version number for grape.
 
-Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+Create internal_release branch.  For this internal_release branch, you should merge the update logs:
 
-Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
+    # create a file for the develop branch logs, confirm that it contains what you expect
+    grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDDEV> --startVersion=v<MAJOR>.<OLDDEV>.1
+    more UPDATE_LOG_<MAJOR>.<OLDDEV>
+     
+    # create a file for the production branch logs, confirm that it contains what you expect
+    grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDPROD> --startVersion=v<MAJOR>.<OLDPROD>.1 --stopVersion=v<MAJOR>.<OLDPROD>.<most_recent_old_prod_update> --updateLogDir=UPDATES_<MAJOR>.<OLDPROD>
+    more UPDATE_LOG_<MAJOR>.<OLDPROD>
+     
+    # Clean up and commit the new update logs
+    git add UPDATE_LOG_<MAJOR>.<OLDPROD> UPDATE_LOG_<MAJOR>.<OLDDEV>
+    git rm -r UPDATES_<MAJOR>.<OLDPROD>
+    git rm -r UPDATES_<MAJOR>.<OLDDEV>
+    git commit -m "Merge update logs"
+   
+Publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+
+Delete the tag created by the CI, and replace it with an appropriate one:
+ v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
 
 Push the new tag.
 
-Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
-push both the new tag and the new commit directly to develop.
+Check out develop and merge in master. Create a new commit directly on develop by toggling the following line from 0 to 1 (or vice versa):
+  0
+then tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
 
 ## Introducing the `.grapeconfig` file
 
@@ -27,7 +45,7 @@ sample.grapeconfig now contains all of the options various grape commands will u
     option2 = key:value
     option3 = list:of key:values with:VAL as:a default:value ?:VAL
 
-In the man page for any given grape commands (viewable by typing grape <cmd> --help) , if you see a
+In the man page for any given grape commands (viewable by typing grape \<cmd\> --help) , if you see a
 
     [default = .grapeconfig.SECTION_NAME.option]
 
@@ -165,8 +183,7 @@ SQA driven requirements, such as successful build(s), testing, etc. You'll want 
     deletetopic = False
     updatelog = .grapepublishlog
     logskipfirstlines = 0
-    logentryheader = <date> <user>
-<version>
+    logentryheader = <date> <user> <version>
 
     emailnotification = False
     emailheader = <public> updated to <version>
@@ -254,8 +271,8 @@ place in your submodules.
 to your submodule's public branches, e.g. `develop:foo_dev master:foo_master`.
 
 ### branch creation
-When you create and checkout a branch in grape using grape <branchType>, branches will be created and checked
-out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[<branchType>]] to
+When you create and checkout a branch in grape using grape \<branchType\>, branches will be created and checked
+out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[\<branchType\>]] to
 determine your submodules' branch's start points.
 For example, with  the following `.grapeconfig`:
 
@@ -338,7 +355,7 @@ individualized.
 
 # Grape Commands
 Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
-at a particular commands documentation using grape <cmd> --help.
+at a particular commands documentation using grape \<cmd\> --help.
 
 Some commands are better documented than others, but our use of the docopt.py module guarantees that all available
 options are at least listed below.
