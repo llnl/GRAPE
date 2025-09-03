@@ -1459,7 +1459,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 git.SHA(f"{ver2}", execution_path=self.workspace_dir)
             except grape_errors.GrapeGitError:
                 if not lastVer2:
-                    logging.error(f"{ver2} not found, invalid --stopVersion")
+                    logging.error(f"{ver2} not found, invalid --stopVersion or missing tag!")
                     return False
                 else:
                     ver2 = lastVer2
@@ -1469,7 +1469,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 git.SHA(f"{ver1}", execution_path=self.workspace_dir)
             except grape_errors.GrapeGitError:
                 if stopSlots[-1] < startSlots[-1] or not lastVer1:
-                    logging.error(f"{ver1} not found, invalid --startVersion")
+                    logging.error(f"{ver1} not found, invalid --startVersion or missing tag!")
                     return False
                 else:
                     logging.info(f"{ver1} not found, skipping...")
