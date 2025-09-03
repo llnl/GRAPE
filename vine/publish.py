@@ -1457,8 +1457,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             stopSlots[-1] = stopSlots[-1] - 1
             ver1 =  versionOption.slotsToString(slotArgs, stopSlots)
             self.loadMajorAndMinorVersion(args)
-            log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
-            log_files = log_files.split()
+            try:
+                log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
+                log_files = log_files.split()
+            except grape_errors.GrapeGitError as e:
+                logging.info(f"Diff failed between {ver1} and {ver2}\n{e.gitOutput}")
+                log_files = []
             if not log_files:
                 logging.info(f"No log file found for version {ver2}")
             for lf in log_files:
