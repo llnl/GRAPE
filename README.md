@@ -10,11 +10,17 @@ This file is generated with
 
 Create internal_release branch.  For this internal_release branch, you should merge the update logs:
 
-    # create a file for the develop branch logs, confirm that it contains what you expect
+    # If we are forking to v1.42.0:
+    #   <MAJOR>   = 1
+    #   <OLDPROD> = 40
+    #   <OLDDEV>  = 41
+    #   <NEWPROD> = 42
+    #   <NEWDEV>  = 43
+    # Create a file for the develop branch logs and confirm that it contains what you expect.
     grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDDEV> --startVersion=v<MAJOR>.<OLDDEV>.1
     more UPDATE_LOG_<MAJOR>.<OLDDEV>
      
-    # create a file for the production branch logs, confirm that it contains what you expect
+    # Create a file for the production branch logs and confirm that it contains what you expect.
     grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDPROD> --startVersion=v<MAJOR>.<OLDPROD>.1 --stopVersion=v<MAJOR>.<OLDPROD>.<most_recent_old_prod_update> --updateLogDir=UPDATES_<MAJOR>.<OLDPROD>
     more UPDATE_LOG_<MAJOR>.<OLDPROD>
      
@@ -24,7 +30,7 @@ Create internal_release branch.  For this internal_release branch, you should me
     git rm -r UPDATES_<MAJOR>.<OLDDEV>
     git commit -m "Merge update logs"
    
-Publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+Publish an internal_release branch. After publish, the CI will have been assigned an incorrect version.
 
 Delete the tag created by the CI and tag with the appropriate version.
  v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
