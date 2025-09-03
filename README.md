@@ -1,5 +1,8 @@
 ## Tutorial
 
+This file is generated with
+    ./vine/gendocs.py README.md 
+
 ## Contributing to GRAPE
     <section under development>
 
@@ -23,14 +26,29 @@ Create internal_release branch.  For this internal_release branch, you should me
    
 Publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
 
-Delete the tag created by the CI, and replace it with an appropriate one:
+Delete the tag created by the CI and tag with the appropriate version.
  v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
+
+    git checkout master
+    git tag -d v<MAJOR>.<OLDDEV><most_recent_old_dev_update+1>
+    git push origin --delete v<MAJOR>.<OLDDEV><most_recent_old_dev_update+1>
+    git tag -a v<MAJOR>.<NEWPROD>.0 -m "Manually tagged" HEAD
 
 Push the new tag.
 
-Check out develop and merge in master. Create a new commit directly on develop by toggling the following line from 0 to 1 (or vice versa):
-  0
-then tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
+    git push --tags origin v<MAJOR>.<NEWPROD>.0
+
+Check out develop and merge in master. Create a new commit directly on develop by removing the update message from the fork:
+
+    git checkout develop
+    git merge master
+    git rm -r UPDATES_<MAJOR>.<OLDDEV>
+    git commit -m "Remove fork update message"
+
+Tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
+
+    git push origin
+    git push --tags origin v<MAJOR>.<NEWDEV>.0
 
 ## Introducing the `.grapeconfig` file
 
