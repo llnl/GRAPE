@@ -457,8 +457,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.parseArgs(args)
 
         if args["--mergeUpdateLogs"]:
-            self.mergeUpdateLogs(args)
-            return True
+            return self.mergeUpdateLogs(args)
         if args["--markMRWithVersion"]:
             return self.markReviewWithVersionNumber(args)
         if args["--quick"]:
@@ -1452,19 +1451,44 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # we will only merge update logs over the last slot
         mergedLogLines =  []
         slotArgs = {"--prefix":args["--tagPrefix"],"--suffix":args["--tagSuffix"]}
+        lastVer1 = None
+        lastVer2 = None
         while stopSlots[-1] >= startSlots[-1]:
             ver2 =  versionOption.slotsToString(slotArgs, stopSlots)
+            try:
+                git.SHA(f"{ver2}", execution_path=self.workspace_dir)
+            except grape_errors.GrapeGitError:
+                if not lastVer2:
+                    logging.error(f"{ver2} not found, invalid --stopVersion")
+                    return False
+                else:
+                    ver2 = lastVer2
             stopSlots[-1] = stopSlots[-1] - 1
             ver1 =  versionOption.slotsToString(slotArgs, stopSlots)
-            self.loadMajorAndMinorVersion(args)
             try:
-                log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
-                log_files = log_files.split()
-            except grape_errors.GrapeGitError as e:
-                logging.info(f"Diff failed between {ver1} and {ver2}\n{e.gitOutput}")
-                log_files = []
-            if not log_files:
-                logging.info(f"No log file found for version {ver2}")
+                git.SHA(f"{ver1}", execution_path=self.workspace_dir)
+            except grape_errors.GrapeGitError:
+                if stopSlots[-1] < startSlots[-1] or not lastVer1:
+                    logging.error(f"{ver1} not found, invalid --startVersion")
+                    return False
+                else:
+                    logging.info(f"{ver1} not found, skipping...")
+                    ver1 = lastVer1
+            self.loadMajorAndMinorVersion(args)
+
+            log_files = []
+            if ver1 != ver2:
+                try:
+                    logging.info(f"Diffing {ver1} and {ver2} in {args['--updateLogDir']}...")
+                    log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
+                    log_files = log_files.split()
+                except grape_errors.GrapeGitError as e:
+                    logging.info(f"Diff failed between {ver1} and {ver2}\n{e.gitOutput}")
+                if not log_files:
+                    logging.info(f"No log file found for between versions {ver1} and {ver2}")
+
+            lastVer1 = ver1
+            lastVer2 = ver2
             for lf in log_files:
                 logging.info(f"concatenating {lf} as version {ver2}")
                 try:
