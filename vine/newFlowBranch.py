@@ -4,6 +4,7 @@ from vine import checkout
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
+from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine import updateView
 from vine import utility
@@ -125,6 +126,8 @@ class NewBranchOption(Option, WorkspaceDirHandler):
         except:
             pass
 
+        # ensure public branches are up-to-date before proceeding
+        grapeMenu.menu().applyMenuChoice('up', ['--noRecurse'])
 
         if checkoutBeforeCreate:
             logging.info(f"Checking out public branch {start} before branch creation...")
