@@ -489,6 +489,14 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
               config = config_parser_global.grapeConfig()
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
               versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
+              try:
+                 # For mergebacks, the production branch may be the first tag found.
+                 # Check for the existence of the next minor version and use that if it is avaiable.
+                 versionParts = versionTag.split('.')
+                 nextMinorVersion = int(versionParts[1]) + 1
+                 versionTag = git.describe(f"--abbrev=0 --match '{versionParts[0]}.{nextMinorVersion}*'", execution_path=self.workspace_dir)
+              except grape_errors.GrapeGitError:
+                 pass
               versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
               logging.info(f"OLD: Found current branch, targeting {target_branch} at {target_SHA}.")
               logging.info(f"OLD: Latest version: {versionTag} at {versionTag_SHA}.")
