@@ -1655,6 +1655,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Sender refused, waiting 60 seconds...")
             time.sleep(60)
             logging.info("Retrying...")
+            s = smtplib.SMTP(server, timeout=10)
             s.sendmail(msg['From'], tolist, msg.as_string())
         s.quit()
 
