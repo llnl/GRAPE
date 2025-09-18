@@ -1,0 +1,17 @@
+
+
+Thu Sep 18 16:34:51 2025 Benjamin T. Liu
+MR_662
+Reviewers: Peter Robinson
+
+Recreate SMTP object on publish email retry
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=probinso
