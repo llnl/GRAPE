@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from contextlib import contextmanager
-import logging
+#import logging
 import os
 import sys
 
@@ -124,7 +124,7 @@ def startup():
             set_verbosity(logger, args)
             # this check needs to be first
             if args['<command>'] == 'clone':
-                logging.info(f"Starting grape {args['<command>']}...")
+                #print(f"GRAPE: Starting grape clone...")
                 retval = clone_from_anywhere(args["<args>"])
             elif not grapeMenu.menu().hasOption(args["<command>"]):
                 print()
@@ -134,14 +134,14 @@ def startup():
                 grapeMenu.menu().presentTextMenu()
                 retVal = False
             else:
-                logging.info(f"Starting grape {args['<command>']}...")
+                #logging.info(f"Starting grape {args['<command>']}...")
                 retval = grapeMenu.menu().applyMenuChoice(args["<command>"], args["<args>"])
     except KeyboardInterrupt:
         print("GRAPE ERROR: Operation interrupted by user, exiting...")
         retval = False
 
     # Exit the script
-    logging.info("Thank you - good bye")
+    #logging.info("Thank you - good bye")
     return retval
         
 
