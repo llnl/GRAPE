@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from contextlib import contextmanager
+import logging
 import os
 import sys
 
@@ -138,7 +139,7 @@ def startup():
         retval = False
 
     # Exit the script
-    print("Thank you - good bye")
+    logging.info("Thank you - good bye")
     return retval
         
 
