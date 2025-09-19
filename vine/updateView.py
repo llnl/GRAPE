@@ -126,9 +126,11 @@ class UpdateView(Option, WorkspaceDirHandler):
         self._pushBranch = False
         self._skipPush = False
         self.uvManager = None
+        self.clearCache()
+
+    def clearCache(self):
         # save these to avoid having to repeatedly query them
         self._allSubmodules = None
-        self._allSubmoduleURLMap = None
         self._activeSubmodules = None
         self._allNestedSubprojects = None
         self._activeNestedSubprojects = None
@@ -140,13 +142,7 @@ class UpdateView(Option, WorkspaceDirHandler):
     @property
     def allSubmodules(self):
         if self._allSubmodules == None:
-            self._allSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
-        return self._allSubmodules
-
-    @property
-    def allSubmoduleURLMap(self):
-        if self._allSubmoduleURLMap == None:
-            self._allSubmoduleURLMap = git.getActiveSubmoduleURLMap(execution_path=self.workspace_dir)
+            self._allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
         return self._allSubmodules
 
     @property
@@ -438,13 +434,14 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
+        self.clearCache()
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
         if branch == "HEAD":
            logging.error("grape uv cannot check out HEAD, you must specify --branchName or get out of the detached HEAD state!")
            return False
         hasSubmodules = len(self.allSubmodules) > 0 and not args["--skipSubmodules"]
         if hasSubmodules:
-           url_map = self.allSubmoduleURLMap
+           url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
@@ -735,7 +732,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
-                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
+                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in self.allNestedSubprojects}
                 userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir, read_global=False)
                 updatedActiveList = []
                 toActivate_args = []
@@ -842,7 +839,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         grape uv --spackEnv
 
         """
-        activeSubmodules = self.activeSubmodules
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
         spack_projects = config.get("spackProjects", "submodules").split()
@@ -856,7 +852,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if script:
             for submodule in spack_projects:
-                if submodule in activeSubmodules:
+                if submodule in self.activeSubmodules:
                     develop_libs.append(submodule)
                 else:
                     undevelop_libs.append(submodule)
@@ -930,7 +926,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     # figure out if this is a submodule
     relpath = os.path.relpath(repo, workspace_dir)
     # if this is a submodule, get the appropriate public mapping
-    isSubmodule = utility.win_path_to_linux_path(relpath) in self.allSubmoduleURLMap.keys()
+    isSubmodule = utility.win_path_to_linux_path(relpath) in git.getAllSubmoduleURLMap(execution_path=workspace_dir).keys()
     if isSubmodule:
         public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
 
