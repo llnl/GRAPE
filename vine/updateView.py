@@ -631,14 +631,12 @@ class UpdateView(Option, WorkspaceDirHandler):
 
                 if args["--updateRemoteProtocol"] and activeSubmodules:
                     submodule_output = git.submodule("foreach \"git remote get-url origin\"", execution_path=self.workspace_dir, capture_output=True)
-                    print("XXX")
-                    print(submodule_output)
                     # Output should look like:
                     #   Entering '<submodule>'
                     #   <remote protocol>
                     submodule = None
-                    for line in submodule_output.splitlines(): 
-                        if line.starts_with('Entering'): 
+                    for line in submodule_output.splitlines():
+                        if line.startswith('Entering'):
                             submodule = line.split()[1].strip("'")
                             print(submodule)
                         elif submodule:
@@ -811,7 +809,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
-        logging.info("6")
+        logging.info(f"Ensuring all repos are on {branch}...")
         safeSwitchWorkspaceToBranch(
             branch, checkoutArgs, sync,
             runInOuter=not args["--skipTopLevel"],
@@ -825,7 +823,6 @@ class UpdateView(Option, WorkspaceDirHandler):
             quiet=args["-q"],
             verbose=args["-v"],
             workspace_dir=self.workspace_dir)
-        logging.info("7")
 
 
         if args["--generateSHAList"]:
