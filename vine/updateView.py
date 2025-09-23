@@ -612,20 +612,34 @@ class UpdateView(Option, WorkspaceDirHandler):
                 url_re = re.compile(r"(?<!/)/(?!/)")
                 remoteProtocol = url_re.split(git.remote("get-url origin", execution_path=self.workspace_dir))[0]
 
-            logging.info("5")
             if hasSubmodules:
                 initStr = ""
                 deinitStr = ""
                 rmCachedStr = ""
                 resetStr = ""
                 initCount = 0
-                logging.info("6")
+                activeSubmodules = []
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
                         initCount += 1
-                        if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
+                        activeSubmodules.append(submodule)
+                    else:
+                        deinitStr += f' {submodule}'
+                        rmCachedStr += f' {submodule}'
+                        resetStr += f' {submodule}'
+
+                if args["--updateRemoteProtocol"] and activeSubmodules:
+                    submodule_output = git.submodule("foreach 'git remote get-url origin'", execution_path=self.workspace_dir)
+                    # Output should look like:
+                    #   Entering '<submodule>'
+                    #   <remote protocol>
+                    submodule = None
+                    for line in submodule_output: 
+                        if line.starts_with('Entering'): 
+                            submodule = line.split()[1].strip("'")
+                        elif _submodule:
+                            subRemoteProtocol = url_re.split(line)[0]
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
                                    logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
@@ -633,11 +647,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                deinitStr += f' {submodule}'
                                rmCachedStr += f' {submodule}'
                                resetStr += f' {submodule}'
-                    else:
-                        deinitStr += f' {submodule}'
-                        rmCachedStr += f' {submodule}'
-                        resetStr += f' {submodule}'
-                logging.info("7")
+
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
