@@ -629,6 +629,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         rmCachedStr += f' {submodule}'
                         resetStr += f' {submodule}'
 
+                # Gather all the submodule remotes in a single call rather than within the previous loop
+                # so that it is a no-op if there are no current submodules.
                 if args["--updateRemoteProtocol"] and activeSubmodules:
                     submodule_output = git.submodule("foreach \"git remote get-url origin\"", execution_path=self.workspace_dir, capture_output=True)
                     # Output should look like:
@@ -639,6 +641,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                         if line.startswith('Entering'):
                             submodule = line.split()[1].strip("'")
                         elif submodule:
+                            if submodule not in activeSubmodules:
+                               continue
                             subRemoteProtocol = url_re.split(line)[0]
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
