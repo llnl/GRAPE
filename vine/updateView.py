@@ -434,7 +434,6 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
-        logging.info("START")
         self.clearCache()
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
         if branch == "HEAD":
@@ -443,7 +442,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         hasSubmodules = len(self.allSubmodules) > 0 and not args["--skipSubmodules"]
         if hasSubmodules:
            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
-        logging.info("1")
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
@@ -491,8 +489,6 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.error("grape uv --gui cannot be used in non-interactive mode")
             return True
 
-        logging.info("2")
-
         addedSubmodules = []
         addedNestedSubprojects = []
         addedProjects = args["--add"]
@@ -525,7 +521,6 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.info(f"\"{','.join(notFound)}\" not found in submodules {','.join(self.allSubmodules)} \nor\n nested subprojects {','.join(self.allNestedSubprojects)}")
             return False
 
-        logging.info("3")
         delayedMessages = []
 
         if not args["--checkSubprojects"]:
@@ -565,7 +560,6 @@ class UpdateView(Option, WorkspaceDirHandler):
                     includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
 
-            logging.info("4")
             # get subprojects to update
             if not args["--skipNestedSubprojects"]:
                 nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
@@ -615,8 +609,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             remoteProtocolSubmodules = []
             if args["--updateRemoteProtocol"]:
                 # Split on the first single slash
-                url_pattern = r"(?<!/)/(?!/)"
-                remoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=self.workspace_dir))[0]
+                url_re = re.compile(r"(?<!/)/(?!/)")
+                remoteProtocol = url_re.split(git.remote("get-url origin", execution_path=self.workspace_dir))[0]
 
             logging.info("5")
             if hasSubmodules:
@@ -625,12 +619,13 @@ class UpdateView(Option, WorkspaceDirHandler):
                 rmCachedStr = ""
                 resetStr = ""
                 initCount = 0
+                logging.info("6")
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
                         initCount += 1
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
+                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
                                    logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
@@ -642,6 +637,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         deinitStr += f' {submodule}'
                         rmCachedStr += f' {submodule}'
                         resetStr += f' {submodule}'
+                logging.info("7")
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
@@ -757,7 +753,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
+                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
