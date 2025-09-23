@@ -434,6 +434,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
+        logging.info("START")
         self.clearCache()
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
         if branch == "HEAD":
@@ -442,6 +443,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         hasSubmodules = len(self.allSubmodules) > 0 and not args["--skipSubmodules"]
         if hasSubmodules:
            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
+        logging.info("1")
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
@@ -489,6 +491,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.error("grape uv --gui cannot be used in non-interactive mode")
             return True
 
+        logging.info("2")
+
         addedSubmodules = []
         addedNestedSubprojects = []
         addedProjects = args["--add"]
@@ -521,6 +525,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             logging.info(f"\"{','.join(notFound)}\" not found in submodules {','.join(self.allSubmodules)} \nor\n nested subprojects {','.join(self.allNestedSubprojects)}")
             return False
 
+        logging.info("3")
         delayedMessages = []
 
         if not args["--checkSubprojects"]:
@@ -560,6 +565,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     includedSubmodules.update({sub:True for sub in addedSubmodules})
                     includedSubmodules.update({sub:False for sub in rmSubmodules})
 
+            logging.info("4")
             # get subprojects to update
             if not args["--skipNestedSubprojects"]:
                 nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
@@ -612,6 +618,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                 url_pattern = r"(?<!/)/(?!/)"
                 remoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=self.workspace_dir))[0]
 
+            logging.info("5")
             if hasSubmodules:
                 initStr = ""
                 deinitStr = ""
@@ -794,6 +801,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
+        logging.info("6")
         safeSwitchWorkspaceToBranch(
             branch, checkoutArgs, sync,
             runInOuter=not args["--skipTopLevel"],
@@ -807,6 +815,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             quiet=args["-q"],
             verbose=args["-v"],
             workspace_dir=self.workspace_dir)
+        logging.info("7")
 
 
         if args["--generateSHAList"]:
