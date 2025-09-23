@@ -638,10 +638,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                     for line in submodule_output.splitlines():
                         if line.startswith('Entering'):
                             submodule = line.split()[1].strip("'")
-                            print(submodule)
                         elif submodule:
                             subRemoteProtocol = url_re.split(line)[0]
-                            print(subRemoteProtocol, remoteProtocol)
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
                                    logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
