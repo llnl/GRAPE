@@ -629,16 +629,15 @@ class UpdateView(Option, WorkspaceDirHandler):
                         rmCachedStr += f' {submodule}'
                         resetStr += f' {submodule}'
 
-                print(activeSubmodules)
                 if args["--updateRemoteProtocol"] and activeSubmodules:
-                    submodule_output = git.submodule("foreach 'git remote get-url origin'", execution_path=self.workspace_dir)
+                    submodule_output = git.submodule("foreach \"git remote get-url origin\"", execution_path=self.workspace_dir)
                     print("XXX")
                     print(submodule_output)
                     # Output should look like:
                     #   Entering '<submodule>'
                     #   <remote protocol>
                     submodule = None
-                    for line in submodule_output: 
+                    for line in submodule_output.splitlines(): 
                         if line.starts_with('Entering'): 
                             submodule = line.split()[1].strip("'")
                             print(submodule)
