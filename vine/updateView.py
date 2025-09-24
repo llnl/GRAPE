@@ -1066,6 +1066,7 @@ def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
 def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=False, verbose=False):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
+        logging.info("Ensuring local branches are up-to-date with remote...")
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
@@ -1074,6 +1075,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateSkipBranchPushMRE)
         else: 
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+    logging.info(f"Checking out {branch}...")
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
