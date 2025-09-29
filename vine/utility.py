@@ -4,6 +4,8 @@ import os
 import sys
 from docopt.docopt import docopt
 from vine import grapeGit as git
+from vine import config_parser_global
+from vine.option import Option
 if sys.platform == 'linux2':
     import readline
 
@@ -31,6 +33,13 @@ def getDefaultName():
 
 
 def getUserName(defaultName=getDefaultName(), service="LC"):
+    config = config_parser_global.grapeConfig()
+    try:
+        if config.has_section(Option.SECTION_SERVICES) and config.has_option(Option.SECTION_SERVICES, service.lower()):
+            configuredName = config.get(Option.SECTION_SERVICES, service.lower())
+            return configuredName
+    except:
+        pass
     return userInput(f"Enter {service} User Name:", defaultName)
 
 

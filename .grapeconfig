@@ -85,9 +85,17 @@ prefix = v
 [project]
 name = GRP
 codeReviewsURL = https://rzlc.llnl.gov/gitlab
-
 [concurrency-control]
 defaultnumtasks = 8
 exclusivenodenumtasks = -1
 exclusivevarlist = SLURM_NODEID LLNL_COMPUTE_NODES
+
+#[services]
+# Configure default usernames for different services
+# Format: service_name = username
+# Service names are case-insensitive
+# This configuration is only read from global .grapeconfig or .grapeuserconfig
+#lc = your_lc_username
+#gitlab = your_gitlab_username
+
 
