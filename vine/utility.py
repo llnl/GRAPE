@@ -40,47 +40,46 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
             return configuredName
     except:
         pass
-    
     # Ask for the username
     username = userInput(f"Enter {service} User Name:", defaultName)
-    
+
     # Ask if the user wants to remember this username
     remember = userInput(f"Remember this {service} username in .grapeuserconfig? (y/n)", "n")
-    
+
     if remember:
         # Save the username to .grapeuserconfig
         try:
             from vine import config_parser_user
             import os
-            
+
             # Get the workspace directory
             workspace_dir = os.getcwd()
-            
+
             # Create a user config parser
             user_config = config_parser_user.GrapeConfigParserUser(workspace_dir=workspace_dir)
-            
+
             # Ensure the services section exists
             if not user_config.has_section(Option.SECTION_SERVICES):
                 user_config.add_section(Option.SECTION_SERVICES)
-            
+
             # Set the username for this service
             user_config.set(Option.SECTION_SERVICES, service.lower(), username)
-            
+
             # Save the config to .grapeuserconfig
             git_dir = os.path.join(workspace_dir, '.git')
             config_path = os.path.join(git_dir, '.grapeuserconfig')
-            
+
             # Ensure the directory exists
             if not os.path.exists(git_dir):
                 os.makedirs(git_dir)
-            
+
             with open(config_path, 'w') as f:
                 user_config.write(f)
-                
+
             print(f"Username for {service} saved to .grapeuserconfig")
         except Exception as e:
             print(f"Failed to save username to .grapeuserconfig: {e}")
-    
+
     return username
 
 
