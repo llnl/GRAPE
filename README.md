@@ -27,24 +27,6 @@ sample.grapeconfig now contains all of the options various grape commands will u
     option2 = key:value
     option3 = list:of key:values with:VAL as:a default:value ?:VAL
 
-### Service-specific Username Configuration
-
-You can configure default usernames for different services in the `[services]` section of your `.grapeconfig` file:
-
-    [services]
-    # Configure default usernames for different services
-    # Format: service_name = username
-    # Service names are case-insensitive
-    lc = your_lc_username
-    gitlab = your_gitlab_username
-
-This configuration is only read from the global `.grapeconfig` in your home directory or the `.grapeuserconfig` file in your repository's `.git` directory. When grape needs a username for a specific service (like Gitlab), it will:
-
-1. Check if a username is explicitly provided
-2. Look for a service-specific username in the configuration
-3. Fall back to prompting the user for input with the system username as default
-
-Service names are case-insensitive, so `gitlab`, `Gitlab`, and `GITLAB` all refer to the same service.
 
 In the man page for any given grape commands (viewable by typing grape <cmd> --help) , if you see a
 
@@ -78,6 +60,25 @@ makes sense for your team, etc. The lowly peo--, excuse me, Valued Developer vie
 Almost all of those grape commands have more options associated with them, which you can inspect by typing
 
     grape <cmd> --help
+
+### Service-specific Username Configuration
+
+You can configure default usernames for different services in the `[services]` section of your `.grapeconfig` file:
+
+    [services]
+    # Configure default usernames for different services
+    # Format: service_name = username
+    # Service names are case-insensitive
+    lc = your_lc_username
+    gitlab = your_gitlab_username
+
+This configuration is only read from the global `.grapeconfig` in your home directory or the `.grapeuserconfig` file in your repository's `.git` directory. When grape needs a username for a specific service (like Gitlab), it will:
+
+1. Check if a username is explicitly provided
+2. Look for a service-specific username in the configuration
+3. Fall back to prompting the user for input with the system username as default
+
+Service names are case-insensitive, so `gitlab`, `Gitlab`, and `GITLAB` all refer to the same service.
 
 And that's all you valued developers need to know! Project maintainers, read on!
 
