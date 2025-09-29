@@ -76,7 +76,7 @@ def getUserName(defaultName=getDefaultName(), service="LC"):
             with open(config_path, 'w') as f:
                 user_config.write(f)
 
-            print(f"Username for {service} saved to .grapeuserconfig")
+            print(f"Username for {service} saved to {config_path}")
         except Exception as e:
             print(f"Failed to save username to .grapeuserconfig: {e}")
 
