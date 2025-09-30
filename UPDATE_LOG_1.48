@@ -1,0 +1,48 @@
+
+
+Tue May 21 13:27:19 2024 Benjamin T. Liu
+v1.48.4
+Reviewers: Peter Robinson, David Dawson
+
+Fix grape --version for public grape using newer git versions
+
+- git 2.36+ will not run git commands from directories owned by others
+
+
+Tue Apr 30 14:38:55 2024 Benjamin T. Liu
+v1.48.3
+Reviewers: Peter Robinson
+
+- fixes for updated fetch errors in git 2.36+
+
+- allow git.executable to be set in config file
+
+- testing fixes for git 2.45
+
+
+Tue Apr 23 13:20:32 2024 Benjamin T. Liu
+v1.48.2
+Reviewers: Peter Robinson
+
+Implement required id_tokens for LC Jacamar runners
+
+
+Tue Apr 23 08:42:54 2024 Benjamin T. Liu
+v1.48.1
+Reviewers: Peter Robinson, David Dawson
+
+bundle fixes
+
+- do not perform any branch fetches during bundle (this should be done by grape up)
+
+- do not pull if safeForceBranchToOriginRef called from bundle on a public branch
+
+- check for consistency of gitlinks for submodules
+
+- check for nested subproject tags ahead of top level
+
+- distinguish diverged branches from missing branches
+
+Remove prune from fetches (has the potential of affecting pipeline references)
+
+Disable git managed credential caching by default (no longer typically used)

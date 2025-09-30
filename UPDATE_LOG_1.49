@@ -1,0 +1,874 @@
+
+
+Mon Jan 27 08:46:50 2025 Patrick Greene
+v1.49.62
+Reviewers: Peter Robinson (He/Him), Ben Liu
+
+Fix for subproject existence check added in v1.49.61
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.61
+
+--reviewers=benliu,probinso
+
+
+Thu Jan 23 13:03:07 2025 Patrick Greene
+v1.49.61
+Reviewers: Ben Liu, Peter Robinson (He/Him)
+
+Fix for coverting submodule relative url paths to absolute paths. Instead of using the top level repo's remote url, use the submodule's remote url. This is needed for cases when a submodule was initially cloned with a different url than the top level repo (which can occur during CI jobs).
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.60
+
+--reviewers=benliu,probinso
+
+
+Tue Jan 14 14:21:16 2025 Benjamin T. Liu
+v1.49.60
+Reviewers: David Dawson, Peter Robinson (He/Him)
+
+grape uv improvements
+
+- limit submodule update jobs to number of submodules
+
+- retry submodule update on failure (with half as many jobs)
+
+- hide clone failure issues for missing branches during uv
+
+This branch is attempting to deal with clone failures that occur sporadically (but more often with distribution jobs)
+
+Also fix default grape version string to conform with version format (vX.X.X rather than v.X.X.X)
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.59
+
+--reviewers=dawson24,probinso
+
+
+Wed Jan  8 13:29:23 2025 Benjamin T. Liu
+v1.49.59
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Short circuit merge train lookup after merged version is found
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.58
+
+--reviewers=probinso,dayton8
+
+
+Tue Jan  7 10:18:52 2025 Benjamin T. Liu
+v1.49.58
+Reviewers: Alan Dayton
+
+Remove spurious review warning when new description provided at the command line
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.57
+
+--reviewers=dayton8
+
+
+Thu Nov 14 09:41:40 2024 Benjamin T. Liu
+v1.49.57
+Reviewers: David Dawson, Peter Robinson (He/Him)
+
+Update bundle warning for new submodules that have prod branch created
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.56
+
+--reviewers=probinso,dawson24
+
+
+Tue Nov 12 08:04:44 2024 Alan Dayton
+v1.49.56
+Reviewers: David Dawson, Ben Liu
+
+Sometimes the review links in the publish email contain extra spaces at the end, which makes them invalid. Two spaces were used to try to create line breaks in the markdown of the MR description, but that doesn't work as expected, so this MR switches to newline characters only.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.55
+
+--reviewers=benliu,dawson24
+
+
+Wed Nov  6 13:40:37 2024 Benjamin T. Liu
+v1.49.55
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Allow publish if newly added submodule is already up-to-date with public branch
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.54
+
+--reviewers=probinso,dayton8
+
+
+Wed Nov  6 10:32:51 2024 Benjamin T. Liu
+v1.49.54
+Reviewers: Peter Robinson (He/Him)
+
+Fix check for newly added submodule with grape uv --branchChanged
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.52
+
+--reviewers=probinso
+
+
+Wed Nov  6 08:37:15 2024 Benjamin T. Liu
+v1.49.53
+Reviewers: Peter Robinson (He/Him)
+
+Include newly added submodule with grape uv --branchChanged
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.52
+
+--reviewers=probinso
+
+
+Wed Oct 23 16:32:15 2024 Benjamin T. Liu
+v1.49.52
+Reviewers: Peter Robinson (He/Him)
+
+Fix error output for new branch
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.51
+
+--reviewers=probinso
+
+
+Thu Sep 26 13:52:52 2024 Benjamin T. Liu
+v1.49.51
+Reviewers: Peter Robinson (He/Him)
+
+Further reduce verbosity of merge train lookup
+
+
+Wed Sep 25 15:44:32 2024 Benjamin T. Liu
+v1.49.50
+Reviewers: Peter Robinson (He/Him)
+
+Update merge train lookup
+
+- use new method for lookup (old method just for comparison)
+
+- reset order index for lookup of parent SHAs
+
+- reduce verbosity of skipped merge trains
+
+
+Wed Sep 25 12:21:21 2024 Benjamin T. Liu
+v1.49.49
+Reviewers: Peter Robinson (He/Him), David Dawson
+
+Robustness improvements for bundle tag checking
+
+- handles the case where subproject prod and dev are at the same location
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.48
+
+--reviewers=probinso,dawson24
+
+
+Wed Sep 11 16:51:36 2024 Alan Dayton
+v1.49.48
+Reviewers: Ben Liu
+
+Remove unused queries to the repository manager.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.47
+
+--reviewers=benliu
+
+
+Wed Sep 11 10:02:45 2024 Alan Dayton
+v1.49.47
+Reviewers: Ben Liu
+
+* Some repositories (like grape itself) only require 1 reviewer. This merge request changes the default review rule to only require 1 reviewer
+
+* If repositories require more than 1 reviewer, that will still be checked by other machinery in grape
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.46
+
+--reviewers=benliu
+
+
+Wed Sep 11 07:46:43 2024 Benjamin T. Liu
+v1.49.46
+Reviewers: Peter Robinson (He/Him)
+
+Fixes for determining merge train cars
+
+- filter out merge SHAs that are in the history of the version tag
+
+- reduce output from skipped SHAs
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.45
+
+--reviewers=probinso
+
+
+Tue Sep 10 15:27:10 2024 Alan Dayton
+v1.49.45
+Reviewers: Peter Robinson (He/Him), Ben Liu
+
+This branch does much more thorough checking that grape review has actually been run, that each rule has been assigned at least the minimum number of eligible reviewers, and that all the reviewers have approved.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.44
+
+--reviewers=benliu,probinso
+
+
+Tue Sep 10 11:30:36 2024 Alan Dayton
+v1.49.44
+Reviewers: Ben Liu, Peter Robinson (He/Him)
+
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.42
+
+--reviewers=benliu,probinso
+
+
+Tue Sep 10 08:42:00 2024 Benjamin T. Liu
+v1.49.43
+Reviewers: Alan Dayton
+
+Add back variable in merge train lookup that was lost in refactor
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.42
+
+--reviewers=dayton8
+
+
+Mon Sep  9 12:28:31 2024 Alan Dayton
+v1.49.42
+Reviewers: Ben Liu, Peter Robinson (He/Him)
+
+* Adds support for review rules to GRAPE
+
+* Review rules are used to create approval rules in GitLab
+
+* Reviewers are encoded in the merge request description
+
+* Reviewers/approval rules are flattened to just the reviewers in Atlassian
+
+* If no review rules are specified, falls back to a default rule provided by GRAPE. Otherwise, the GRAPE rule is not used.
+
+* Reviewers and approval rules can now be removed with --reviewers=\"\" or --reviewers=\"{rule}:\"
+
+* Old rules can be marked as inactive (they must be kept around so that the corresponding GitLab approval rules can be deleted for existing merge requests)
+
+* Old rules can be mapped to new rules
+
+* If no review rules or only one review rule, --reviewers=\"username1,username2\" defaults to the GRAPE fallback rule or the single provided rule
+
+* If more than one review rule, a default rule can be specified in the .grapeconfig file
+
+* Rules can be specified when adding reviewers: --reviewers=\"{rule1}:username1,username2 {rule2}:username3\"
+
+* If a default rule is specified, the rule name can be left off: --reviewers=\"username1,username2 {rule2}:username3\"
+
+* In order to get people ready for the review rule syntax, there is now a warning for when reviewers are separated by a space instead of a comma. That's to prevent issues like the following: --reviewers=\"{rule1}:username1 username2\", which assigned username1 to rule1 and username2 to the default rule.
+
+Here's an example of what can be added to the .grapeconfig file:
+
+'''
+
+[review]
+
+rules = code dc
+
+defaultrule = code
+
+[review-code]
+
+label = GRAPE: Code Review // defaults to GRAPE: {rulename}
+
+minnumreviewers = 2 // defaults to 1
+
+// eligiblereviewers defaults to all
+
+// repositories defaults to all
+
+[review-dc]
+
+label = GRAPE: DC Review
+
+minnumreviewers = 1
+
+eligiblereviewers = benliu dawson24 # A regex can be used
+
+repositories = test_subproject_1 # A regex can be used
+
+'''
+
+Here's the example in action: https://rzlc.llnl.gov/gitlab/GRP/test_application_1/-/merge_requests/4/diffs
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.39
+
+--reviewers=probinso,benliu
+
+
+Fri Sep  6 14:34:11 2024 Benjamin T. Liu
+v1.49.41
+Reviewers: Alan Dayton
+
+Fix syntax of lookupActiveMergeTrainBranches_new_version
+
+- fix incorrect print variable
+
+
+Fri Sep  6 10:51:58 2024 Benjamin T. Liu
+v1.49.40
+Reviewers: Alan Dayton
+
+Fix syntax of lookupActiveMergeTrainBranches_new_version
+
+- fix usage of reverse() (reverses list in-place and has no return value)
+
+- fix log description output
+
+
+Thu Sep  5 15:54:46 2024 Benjamin T. Liu
+v1.49.39
+Reviewers: Alan Dayton, Peter Robinson (He/Him)
+
+Updates for looking up active merge train branches
+
+- implemented as 'new' (currently only for comparison) algorithm
+
+- get target_branch from grape config (use single pass)
+
+- restrict merge train lookup to target branch
+
+- preserve correct ordering of branches
+
+- check for SHA in parents of merge commits as well (merge commits in merge train may be ephemeral)
+
+- use merge request SHA rather than merge train pipeline SHA for unmerged cars (pipeline SHA may be ephemeral)
+
+
+Thu Sep  5 14:31:14 2024 Alan Dayton
+v1.49.38
+Reviewers: David Dawson, Ben Liu
+
+Prevent text from being prepended/appended twice to the title.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.37
+
+
+Thu Sep  5 12:50:04 2024 Alan Dayton
+v1.49.37
+Reviewers: David Dawson, Ben Liu
+
+Fixed a bug where related review links would disappear if --noRecurse and/or --noRecurseSubprojects was passed as an argument to grape review.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.34
+
+
+Thu Sep  5 12:14:55 2024 Benjamin T. Liu
+v1.49.36
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Clean up push as part of grape review
+
+- skip push in top level (already done at beginning)
+
+- respect --noRecurse/--noRecurseSubprojects
+
+Clean up grape push
+
+- implement unimplemented --noRecurse
+
+- add --noRecurseSubprojects/--noTopLevel options
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.34
+
+
+Thu Sep  5 10:03:55 2024 Benjamin T. Liu
+v1.49.35
+Reviewers: Peter Robinson (He/Him)
+
+- fix syntax in debugging code for merge train lookup
+
+- add more info for debugging merge train lookup
+
+- return failure for grape review if push fails
+
+
+Wed Sep  4 16:17:49 2024 Benjamin T. Liu
+v1.49.34
+Reviewers: Alan Dayton
+
+Fix for bugfix/benliu/reviewPush
+
+- ensure that publish has same semantics for review push as before
+
+- make sure review respects --noLocal
+
+
+Wed Sep  4 14:03:22 2024 Benjamin T. Liu
+v1.49.33
+Reviewers: David Dawson
+
+Allow optional group for GitlabAdapter constructor (needed for external scripts)
+
+
+Tue Sep  3 17:20:57 2024 Benjamin T. Liu
+v1.49.32
+Reviewers: David Dawson, Peter Robinson (He/Him)
+
+Add gitlab-admin option to allow force pushes for fork
+
+
+Tue Sep  3 17:19:42 2024 Benjamin T. Liu
+v1.49.31
+Reviewers: Peter Robinson (He/Him), Alan Dayton, David Dawson
+
+Push entire workspace by default when running grape review
+
+- this ensures that CI grape publish job will be consistent if you run grape md in your local workspace and run grape review without a grape push
+
+- push previously only occurred in repos with pull requests
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.28
+
+
+Tue Sep  3 09:35:39 2024 Benjamin T. Liu
+v1.49.30
+Reviewers: Peter Robinson (He/Him)
+
+Update GitLab authentication to check for access to group (project)
+
+- the previous check failed to recognize an invalid token because of groups that are accessible to all users
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.28
+
+
+Fri Aug 30 15:10:18 2024 Benjamin T. Liu
+v1.49.29
+Reviewers: David Dawson, Alan Dayton
+
+Report as failed if grape publish fails to put branch on the merge train
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.49.28
+
+
+Tue Aug 27 15:48:05 2024 Alan Dayton
+v1.49.28
+Reviewers: Peter Robinson (He/Him), David Dawson, Ben Liu
+
+Provide a template for the merge request description. This will make the extension to add review rule approval blocks easier.
+
+
+Thu Aug 22 14:02:55 2024 Benjamin T. Liu
+v1.49.27
+Reviewers: Jeremy White, Peter Robinson (He/Him)
+
+Check for required git config variables before publish
+
+
+Tue Aug 20 15:45:28 2024 Alan Dayton
+v1.49.26
+Reviewers: Peter Robinson (He/Him), Ben Liu
+
+We really only use --prepend/--append for the title. It doesn't add much benefit and complicates how we handle reviewers and the description, so those use cases are being removed.
+
+
+Thu Aug  1 08:30:30 2024 Benjamin T. Liu
+v1.49.25
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+Retry publish email message if sender is refused (handles transient SMTP issues)
+
+
+Wed Jul 31 09:55:13 2024 Benjamin T. Liu
+v1.49.24
+Reviewers: Peter Robinson (He/Him), Alan Dayton
+
+- Extend grape publish --noRecurseSubprojects throughout publish
+
+- Add grape publish --noReviewSubmodules and --noReviewSubprojects arguments
+
+
+Tue Jul 30 08:46:25 2024 Arlie Capps
+v1.49.23
+Reviewers: Daniel Taller, Peter Robinson (He/Him)
+
+Prepend r to several regular expression strings.
+
+This turns the strings into raw string literals and allows Grape to run with newer Python on Windows.
+
+
+Mon Jul 29 16:37:53 2024 Benjamin T. Liu
+v1.49.22
+Reviewers: Alan Dayton, Peter Robinson (He/Him)
+
+Replace confusing repoFromWorkspaceRepoPath with separate functions for different repo types
+
+- consolidate repo object functions into CodeReviewsFactory
+
+- remove unneed path split for nested subproject case ('path' is actually the subproject name)
+
+- fix incorrect argument for nested subprojects for grape publish --remoteMerge
+
+- remove repoFromURL in favor of repoFromSubprojectName
+
+
+Fri Jul 26 15:35:56 2024 Benjamin T. Liu
+v1.49.21
+Reviewers: Alan Dayton, Daniel Taller
+
+Fix grape uv to work with older versions of git
+
+
+Fri Jul 26 09:14:36 2024 Alan Dayton
+v1.49.20
+Reviewers: Ben Liu
+
+* Get all modified nested subprojects instead of their prefixes
+
+* Check remote subprojects for modifications as well as local subprojects
+
+* Add repoFromURL method
+
+
+Tue Jul 23 14:08:29 2024 Alan Dayton
+v1.49.19
+Reviewers: Ben Liu, David Dawson, Peter Robinson (He/Him)
+
+* Subtree support in GRAPE was incomplete and has not been tested for a long time, so this merge request removes it
+
+
+Fri Jul 19 11:44:58 2024 Alan Dayton
+v1.49.18
+Reviewers: David Dawson, Peter Robinson (He/Him), Ben Liu
+
+* The verifyCompletedReview publish step now checks submodules and subprojects as well as the top level
+* To pass the check, a pull request must exist, the pull request must be approved by the required number of approvers, and the required number of approvers must be greater than 0
+* The author info is still pulled from the top level pull request, but the list of reviewers saved by grape for reporting purposes is now a union of the set of reviewers from each pull request
+
+Example output showing what is reported if each condition is not met:
+'''
+GRAPE: Code reviews are not completed in the following repo(s):
+	<path/to>/test_submodule_1: Needs pull request (run grape review)
+	<path/to>/test_subproject_1: Needs reviewers (run grape review)
+	test_application_1: Needs review from Alan Dayton
+'''
+
+Example output showing what is reported if all checks pass:
+'''
+GRAPE: All reviewers have approved your request.
+'''
+
+This was tested using the test_application_1 repo, which has test_submodule_1 as a submodule and test_subproject_1 as a subproject. All three of these repos are now part of the Grape group for use in future testing.
+
+
+Mon Jul  1 11:13:48 2024 Benjamin T. Liu
+v1.49.17
+Reviewers: David Dawson
+
+Fix call to new version of lookupActiveMergeTrainBranches
+
+
+Mon Jun 24 15:16:44 2024 Benjamin T. Liu
+v1.49.16
+Reviewers: Peter Robinson (He/Him)
+
+Add missing import for error handling
+
+
+Mon Jun 24 13:39:49 2024 Benjamin T. Liu
+v1.49.15
+Reviewers: Peter Robinson (He/Him)
+
+Improvements for grape uv with --filter=blob:none
+
+- disable filter for nested subprojects with disable_clone_filter set in .grapeconfig (repos with many binary blobs have performance issues during checkout)
+
+- perform initial subproject clone at specified branch, if present (so only those blobs need to be checked out)
+
+Add --gc options to pass config parameters to git commands
+
+- docopt doesn't quite parse -c key=value correctly
+
+- checkout.workers=-1 and feature.manyFiles=true may be useful for blobless clones
+
+
+Tue Jun 11 09:30:23 2024 Benjamin T. Liu
+v1.49.14
+Reviewers: Peter Robinson (He/Him)
+
+Add -t option to log timestamps
+
+
+Fri Jun  7 17:01:55 2024 Benjamin T. Liu
+v1.49.13
+Reviewers: Jeremy White, David Dawson
+
+grape review usability improvements
+
+- allow comma delimited reviewers
+
+- remove duplicate reviewers (GitLab gives unhelpful server error if reviewers is not unique)
+
+
+Fri Jun  7 10:49:31 2024 Benjamin T. Liu
+v1.49.12
+Reviewers: Arlie Capps
+
+Fix grape uv submodule update
+
+- previously was updating all submodules rather than submodules that were inited
+
+- only affected calls with --filter set (which adds --init flag)
+
+
+Thu May 30 14:25:53 2024 Peter B. Robinson
+v1.49.11
+Reviewers: David Dawson
+
+Adds a new means of determining branches in the merge train. Calls it alongside the old version to check for correctness for a while.
+
+
+Tue May 21 14:44:30 2024 Benjamin T. Liu
+v1.49.10
+Reviewers: Peter Robinson, David Dawson
+
+Mergeback of v1.48.4
+
+
+Mon May 20 10:41:48 2024 Benjamin T. Liu
+v1.49.9
+Reviewers: Peter Robinson
+
+Re-enable --filter option, but add warning in documentation
+
+- git rev-list <branch> <file> with tree:0 downloads each commit (can cause scripts to timeout)
+
+- git push . <branch>:<public_branch> also takes forever
+
+
+Fri May 17 13:55:11 2024 Benjamin T. Liu
+v1.49.8
+Reviewers: Paul Tsuji
+
+Finish disabling filter tree in uv
+
+- missed one in previous commit
+
+
+Fri May 17 13:28:32 2024 Benjamin T. Liu
+v1.49.7
+Reviewers: Paul Tsuji
+
+Disable uv filter for now
+
+- breaks merge train workflows
+
+
+Wed May  1 10:10:17 2024 Benjamin T. Liu
+v1.49.6
+Reviewers: Peter Robinson
+
+Mergeback of v4.18.3
+
+
+Tue Apr 30 13:26:15 2024 Benjamin T. Liu
+v1.49.5
+Reviewers: Peter Robinson
+
+Fix submodule parallelism if unlimited
+
+- use the multiprocessing CPU count if set to -1
+
+- fixes error for git 2.45
+
+
+Mon Apr 29 13:42:46 2024 Benjamin T. Liu
+v1.49.4
+Reviewers: Peter Robinson
+
+- Add --filter argument for partial clones (only supported in submodules from git 2.36+)
+
+- Add concurrency to git submodule update
+
+- Prevent grape clone recursive from creating nested submodules
+
+- Fix fetch error checking for newer git versions
+
+
+Wed Apr 24 07:24:18 2024 Benjamin T. Liu
+v1.49.3
+Reviewers: Peter Robinson
+
+Mergeback of 1.48.1 and 1.48.2
+
+
+Tue Mar 19 12:03:52 2024 Benjamin T. Liu
+v1.49.2
+Reviewers: Peter Robinson
+
+Allow merges/pushes to protected branches in subprojects to be restricted to specified user/group
+
+
+Tue Mar 19 10:01:22 2024 Benjamin T. Liu
+v1.49.1
+Reviewers: Peter Robinson, Jeremy White
+
+Update to most recent main for python-gitlab
+
+- apply patches for merge train addition and merge request approval handling
+
+- change directory structure to include whole repo contents
+
+- add README

@@ -1,7 +1,0 @@
-
-
-Tue Mar 19 12:03:52 2024 Benjamin T. Liu
-MR_567
-Reviewers: Peter Robinson
-
-Allow merges/pushes to protected branches in subprojects to be restricted to specified user/group

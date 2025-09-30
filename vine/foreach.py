@@ -13,10 +13,11 @@ class ForEach(Option, WorkspaceDirHandler):
     """
     Executes a command in the top level project, each submodule, and each nested subproject in this workspace.
 
-    Usage: grape-foreach [-v] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
+    Usage: grape-foreach [-v] [-q] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
 
     Options:
-    -v                  Echo output from each command.
+    -v                  Echo the command and output from each directory.
+    -q                  Suppress warnings on failed commands.
     --noTopLevel        Does not call <cmd> in the workspace directory.
     --noSubprojects     Does not call <cmd> in any grape nested subprojects.
     --noSubmodules      Does not call <cmd> in any git submodules.
@@ -73,14 +74,17 @@ def foreach(repo='', branch='', args={}, *, workspace_dir):
             logging.info(f"[{os.path.relpath(repo, workspace_dir)}]\n{process_output}")
 
 def handleForeachMRE(mre):
-    for e1 in mre.exceptions():
+    for e1, repo, args in zip(mre.exceptions(), mre.repos(), mre.args()):
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
-            logging.warning(f"GRAPE: Foreach failed in {e.cwd}.")
-            logging.warning(f"GRAPE: Command `{e.gitCommand}' with the following output:")
-            logging.warning(e.gitOutput)
-            logging.warning(f"GRAPE: exited with error code {e.code}.")
+            if not args["-q"]:
+                logging.warning(f"GRAPE: Foreach failed in {e.cwd}.")
+                logging.warning(f"GRAPE: Command `{e.gitCommand}' with the following output:")
+                logging.warning(e.gitOutput)
+                logging.warning(f"GRAPE: exited with error code {e.code}.")
+            elif args["-v"]:
+                logging.info(f"[{os.path.relpath(repo, mre.workspace_dir)}]\n{e.gitOutput}")
         except FileNotFoundError as e:
             logging.warning("File not found - perhaps .grapeuserconfig is out of date?")
             logging.warning(e)

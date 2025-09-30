@@ -1,7 +1,0 @@
-
-
-Tue Aug 27 15:48:05 2024 Alan Dayton
-MR_598
-Reviewers: Peter Robinson (He/Him), David Dawson, Ben Liu
-
-Provide a template for the merge request description. This will make the extension to add review rule approval blocks easier.
