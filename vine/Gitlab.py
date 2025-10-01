@@ -33,7 +33,7 @@ class GrapeGitlabAdapter:
     def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, group = None, *, workspace_dir):
 
         if username is None:
-            self._userName = utility.getUserName()
+            self._userName = utility.getUserName(service="Gitlab")
         else:
             self._userName = username
 

@@ -15,6 +15,7 @@ class Option(ABC):
     SECTION_VERSIONING = 'versioning'
     SECTION_WORKSPACE = 'workspace'
     SECTION_WALKTHROUGH = "walkthrough"
+    SECTION_SERVICES = 'services'
 
     def __init__(self):
         self._key = "UNSET KEY"
