@@ -104,7 +104,7 @@ Almost all of those grape commands have more options associated with them, which
 
 ### Service-specific Username Configuration
 
-You can configure default usernames for different services in the `[services]` section of your `.grapeconfig` file:
+You can configure default usernames for different services in the `[services]` section of your `~/.grapeconfig` or `.git/.grapeuserconfig` file:
 
     [services]
     # Configure default usernames for different services
