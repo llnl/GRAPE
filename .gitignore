@@ -11,6 +11,7 @@ build/
 *.lo
 *.swo
 \.idea
+.vscode/
 *.egg-info
 *.log
 vine/VERSION
