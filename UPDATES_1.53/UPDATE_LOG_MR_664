@@ -1,0 +1,21 @@
+
+
+Thu Oct  2 13:30:37 2025 Benjamin T. Liu
+MR_664
+Reviewers: Alan Dayton, Peter Robinson
+
+grape uv performance tweaks
+
+- Add more timing statements
+
+- gather submodule remotes in a single call
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=dayton8,probinso
