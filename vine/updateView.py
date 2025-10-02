@@ -610,7 +610,7 @@ class UpdateView(Option, WorkspaceDirHandler):
             if args["--updateRemoteProtocol"]:
                 # Split on the first single slash
                 url_re = re.compile(r"(?<!/)/(?!/)")
-                remoteProtocol = url_re.split(git.remote("get-url origin", execution_path=self.workspace_dir))[0]
+                remoteProtocol = url_re.split(git.remote("get-url origin", execution_path=self.workspace_dir), maxsplit=1)[0]
 
             if hasSubmodules:
                 initStr = ""
@@ -643,7 +643,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         elif submodule:
                             if submodule not in activeSubmodules:
                                continue
-                            subRemoteProtocol = url_re.split(line)[0]
+                            subRemoteProtocol = url_re.split(line, maxsplit=1)[0]
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
                                    logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
@@ -767,7 +767,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
+                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)), maxsplit=1)[0]
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
