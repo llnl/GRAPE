@@ -609,8 +609,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             remoteProtocolSubmodules = []
             if args["--updateRemoteProtocol"]:
                 # Split on the first single slash
-                url_pattern = r"(?<!/)/(?!/)"
-                remoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=self.workspace_dir))[0]
+                url_re = re.compile(r"(?<!/)/(?!/)")
+                remoteProtocol = url_re.split(git.remote("get-url origin", execution_path=self.workspace_dir), maxsplit=1)[0]
 
             if hasSubmodules:
                 initStr = ""
@@ -618,12 +618,32 @@ class UpdateView(Option, WorkspaceDirHandler):
                 rmCachedStr = ""
                 resetStr = ""
                 initCount = 0
+                activeSubmodules = []
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
                         initCount += 1
-                        if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
+                        activeSubmodules.append(submodule)
+                    else:
+                        deinitStr += f' {submodule}'
+                        rmCachedStr += f' {submodule}'
+                        resetStr += f' {submodule}'
+
+                # Gather all the submodule remotes in a single call rather than within the previous loop
+                # so that it is a no-op if there are no current submodules.
+                if args["--updateRemoteProtocol"] and activeSubmodules:
+                    submodule_output = git.submodule("foreach \"git remote get-url origin\"", execution_path=self.workspace_dir, capture_output=True)
+                    # Output should look like:
+                    #   Entering '<submodule>'
+                    #   <remote protocol>
+                    submodule = None
+                    for line in submodule_output.splitlines():
+                        if line.startswith('Entering'):
+                            submodule = line.split()[1].strip("'")
+                        elif submodule:
+                            if submodule not in activeSubmodules:
+                               continue
+                            subRemoteProtocol = url_re.split(line, maxsplit=1)[0]
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
                                    logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
@@ -631,10 +651,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                deinitStr += f' {submodule}'
                                rmCachedStr += f' {submodule}'
                                resetStr += f' {submodule}'
-                    else:
-                        deinitStr += f' {submodule}'
-                        rmCachedStr += f' {submodule}'
-                        resetStr += f' {submodule}'
+
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
@@ -750,7 +767,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
+                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)), maxsplit=1)[0]
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
@@ -794,6 +811,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
+        logging.info(f"Ensuring all repos are on {branch}...")
         safeSwitchWorkspaceToBranch(
             branch, checkoutArgs, sync,
             runInOuter=not args["--skipTopLevel"],
@@ -1048,6 +1066,7 @@ def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
 def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=False, verbose=False):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
+        logging.info("Ensuring local branches are up-to-date with remote...")
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
@@ -1056,6 +1075,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateSkipBranchPushMRE)
         else: 
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+    logging.info(f"Checking out {branch}...")
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
