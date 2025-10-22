@@ -17,7 +17,6 @@ from vine import config_parser_global
 from vine import utility
 from vine.option import Option
 
-
 GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
 # Grape has the following definitions, most strongly correllated with Bitbucket definitions:
 # Project - collection of repositories (roughly analogous to a Gitlab Group)
@@ -71,6 +70,11 @@ class GrapeGitlabAdapter:
         return completed_process.stdout.decode().strip().split()[1].strip()
 
     def auth(self, service, username, password, port, ssh_path, group, verify=True):
+        if not verify:
+            import warnings
+            import urllib3
+            warnings.filterwarnings('ignore', category=urllib3.exceptions.InsecureRequestWarning)
+
         # set a password to something bogus to trigger an authentication error
         if (password is None):
             password = "123456_bad_password"
