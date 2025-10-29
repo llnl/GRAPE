@@ -1120,6 +1120,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         updates.append(f"description={descr}")
 
                     # We don't have a clean way of determining whether the reviewers have changed or not.
+                    logging.info(f"new reviewer list is: {subReviewers}")
                     if subReviewers:
                         updates.append(f"reviewers={subReviewers}")
 
