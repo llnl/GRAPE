@@ -1115,6 +1115,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     updates = []
                     if title != request.title():
                         updates.append(f"title={title}")
+                    logging.info(f"XXX{request.description().decode('utf-8').strip()}XXX{descr.strip()}XXX")
                     if descr.strip() != request.description().decode("utf-8").strip():
                         # Note that the description will change whenever the reviewers change.
                         updates.append(f"description={descr}")
