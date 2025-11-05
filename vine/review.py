@@ -1119,9 +1119,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         # Note that the description will change whenever the reviewers change.
                         updates.append(f"description={descr}")
 
-                    # Don't include reviewers if they have not changed.
-                    # Merge request approvals can only be changed by maintainer and above.
-                    if subReviewers and subReviewers != reviewers:
+                    if subReviewers:
                         updates.append(f"reviewers={subReviewers}")
 
                     if have_changed_labels:
