@@ -1115,11 +1115,12 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     updates = []
                     if title != request.title():
                         updates.append(f"title={title}")
-                    logging.info(f"XXX{request.description().decode('utf-8').strip()}XXX{descr.strip()}XXX")
                     if descr.strip() != request.description().decode("utf-8").strip():
                         # Note that the description will change whenever the reviewers change.
                         updates.append(f"description={descr}")
 
+                    # Don't include reviewers if they have not changed.
+                    # Merge request approvals can only be changed by maintainer and above.
                     if subReviewers and subReviewers != reviewers:
                         updates.append(f"reviewers={subReviewers}")
 
