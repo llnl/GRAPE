@@ -1119,6 +1119,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         # Note that the description will change whenever the reviewers change.
                         updates.append(f"description={descr}")
 
+                    # Rely on request.update to determine if reviewers have actually changed.
                     if subReviewers:
                         updates.append(f"reviewers={subReviewers}")
 
