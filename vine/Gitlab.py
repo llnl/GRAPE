@@ -608,6 +608,19 @@ class PullRequest:
                 users = reviewer_group['reviewers']
                 num_required = len(users)
 
+                approval_rules = self.mergerequest.approval_rules.list()
+
+                # Find the approval rule by name
+                matching_rule = None
+
+                for rule in approval_rules:
+                    if rule.name == approval_rule_name:
+                        matching_rule = rule
+                        break
+
+                # Merge request approvals created by others can only be changed by maintainer and above,
+                # so only update them if they are changed and just warn if they cannot be updated.
+
                 if users:
                     reviewer_ids = []
 
@@ -620,25 +633,27 @@ class PullRequest:
                            raise SystemExit("Abort")
                         reviewer_ids.append(gitlab_reviewer.id)
 
-                    self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    update = True
+                    if matching_rule is not None:
+                        eligible_approver_ids = set()
+                        for approver in matching_rule.eligible_approvers:
+                            eligible_approver_ids.add(approver["id"]) 
+                        if eligible_approver_ids == set(reviewer_ids):
+                            logging.info(f'Approval rule "{approval_rule_name}" unchanged.')
+                            update = False 
+                    if update:
+                        try:
+                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                        except gitlab.exceptions.GitlabUpdateError as e:
+                            logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}": {e}')
 
                     for reviewer_id in reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
                 else:
-                    approval_rules = self.mergerequest.approval_rules.list()
-
-                    # Find the approval rule by name
-                    rule_id = None
-
-                    for rule in approval_rules:
-                        if rule.name == approval_rule_name:
-                            rule_id = rule.id
-                            break
-
-                    if rule_id is not None:
+                    if matching_rule is not None:
                         try:
                             # Delete the approval rule
-                            self.mergerequest.approval_rules.delete(rule_id)
+                            self.mergerequest.approval_rules.delete(matching_rule.id)
                             logging.info(f'Deleted approval rule "{approval_rule_name}".')
                         except gitlab.exceptions.GitlabDeleteError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')
