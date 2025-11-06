@@ -1,0 +1,21 @@
+
+
+Thu Nov  6 11:29:42 2025 Benjamin T. Liu
+MR_671
+Reviewers: Peter Robinson
+
+Fixes for uv
+
+- fix arguments for MRE handler
+
+- prevent push of branch from checkout if sync is off
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=probinso

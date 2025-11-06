@@ -487,6 +487,7 @@ class Checkout(Option, WorkspaceDirHandler):
             uvArgs.append("--sync=True")
         else:
             uvArgs.append("--sync=False")
+            uvArgs.append("--skipBranchPush")
 
         if args["--filter"]:
             uvArgs.append("--filter="+args["--filter"])

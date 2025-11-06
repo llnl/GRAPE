@@ -1007,10 +1007,10 @@ _skipPush = False
 def handleEnsureLocalUpToDateMRE(mre):
     global _skipPush
     _pushBranch = False
-    quiet = args["quiet"]
-    verbose = args["verbose"]
     cleanupPushArgs = []
     for e1, repo, branch, args in zip(mre.exceptions(), mre.repos(), mre.branches(), mre.args()):
+        quiet = args["quiet"]
+        verbose = args["verbose"]
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
