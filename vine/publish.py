@@ -914,7 +914,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()
 
-            if verified and not approved:
+            if not approved:
                 verified = False
 
                 if not reviewers:
