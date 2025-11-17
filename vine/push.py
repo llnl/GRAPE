@@ -56,10 +56,7 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
     Default: only push when local branch is ahead of origin/<branch>.
     If --pushAll is provided, always push (previous behavior).
     """
-    try:
-        push_all = args.get("--pushAll", False) if isinstance(args, dict) else False
-    except Exception:
-        push_all = False
+    push_all = args.get("--pushAll", False) if isinstance(args, dict) else False
 
     if push_all:
         logging.info(f"Pushing {branch} in {repo} (pushAll)...")
@@ -94,9 +91,9 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
             if remote_contains_local and local_contains_remote:
                 logging.debug(f"Skipping push for {repo} on {branch}: up to date with origin.")
             elif remote_contains_local and not local_contains_remote:
-                logging.debug(f"Skipping push for {repo} on {branch}: behind origin.")
+                logging.info(f"Skipping push for {repo} on {branch}: behind origin.")
             else:
-                logging.debug(f"Skipping push for {repo} on {branch}: divergent/no ahead commits.")
+                logging.info(f"Skipping push for {repo} on {branch}: divergent")
             return False
     except grape_errors.GrapeGitError as e:
         logging.error("Failed to determine push necessity; attempting push anyway.")
