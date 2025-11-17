@@ -41,11 +41,11 @@ class Push(Option, WorkspaceDirHandler):
             globalArgs=args)
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
-        if args["--noRecurse"] and args["--noRecurseSubprojects"] and args["--noTopLevel"]:
-            logging.info("No repositories were pushed origin")
+        if True not in retvals:
+            logging.info("No repositories were pushed origin, local repos are up to date.")
         else:
             logging.info("Pushed current branch to origin")
-        return False not in retvals
+        return True
 
     def setDefaultConfig(self, config):
         pass
@@ -97,7 +97,7 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
                 logging.debug(f"Skipping push for {repo} on {branch}: behind origin.")
             else:
                 logging.debug(f"Skipping push for {repo} on {branch}: divergent/no ahead commits.")
-            return True
+            return False
     except grape_errors.GrapeGitError as e:
         logging.error("Failed to determine push necessity; attempting push anyway.")
         logging.debug(e.gitOutput)
