@@ -42,7 +42,7 @@ class Push(Option, WorkspaceDirHandler):
         retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE)
 
         if True not in retvals:
-            logging.info("No repositories were pushed origin, local repos are up to date.")
+            logging.info("No repositories were pushed to origin. Local repos are up to date.")
         else:
             logging.info("Pushed current branch to origin")
         return True
