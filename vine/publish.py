@@ -59,6 +59,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
+                         [--postverifyCmds=<cmds>] [--postverifyDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
@@ -151,6 +152,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               [default: .grapeconfig.publish.prepublishCmds]
     --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
                               [default: .grapeconfig.publish.prepublishDir]
+    --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
+                              [default: .grapeconfig.publish.postverifyCmds]
+    --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
+                              [default: .grapeconfig.publish.postverifyDir]
     --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
                               [default: .grapeconfig.publish.postpublishCmds]
     --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
@@ -297,6 +302,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # prepublish steps
         config.set(self.SECTION_PUBLISH, 'prepublishCmds', '')
         config.set(self.SECTION_PUBLISH, 'prepublishDir', '.')
+        # postverify steps
+        config.set(self.SECTION_PUBLISH, 'postverifyCmds', '')
+        config.set(self.SECTION_PUBLISH, 'postverifyDir', '.')
         # postpublish steps
         config.set(self.SECTION_PUBLISH, 'postpublishCmds', '')
         config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
@@ -411,6 +419,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # these aren't actually options, but are put in to prevent KeyErrors for performCustomStep
         args["--skipPostpublish"] = False
         args["--skipPrepublish"] = False
+        args["--skipPostverify"] = False
 
         # store the args in self
         self.args = args
@@ -468,12 +477,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         elif args["--mergeTrain"]:
             # steps for queuing in the merge train
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
-                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "postVerify", "markInProgress",
                           "checkCI", "build", "test",
                           "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "requestUserStartMergeTrain", "done"]
         else:
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
-                          "verifyPublishActions", "ensureReview", "verifyCompletedReview",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "postVerify",
                           "markInProgress", "md2", "checkCI", "tickVersion", "updateLog",
                           "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                           "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
@@ -504,6 +513,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         steps = {"checkCI": self.performCICheck,
                  "build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
+                 "postVerify": self.performCustomPostVerifySteps,
                  "prePublish": self.performCustomPrePublishSteps,
                  "tickVersion": self.tickVersion,
                  "tagVersion": self.tagVersion,
@@ -914,7 +924,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()
 
-            if verified and not approved:
+            if not approved:
                 verified = False
 
                 if not reviewers:
@@ -1093,6 +1103,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def performCustomPostPublishSteps(self, args):
         return self.performCustomStep("postpublish", args)
+
+    def performCustomPostVerifySteps(self, args):
+        return self.performCustomStep("postverify", args)
 
     @staticmethod
     def getModifiedFileList(public, topic, args, *, execution_path):
@@ -2128,4 +2141,3 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             except GitlabMRClosedError:
                 return False
         return success
-

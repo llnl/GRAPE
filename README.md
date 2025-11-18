@@ -612,6 +612,7 @@ options are at least listed below.
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
+                         [--postverifyCmds=<cmds>] [--postverifyDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
@@ -704,6 +705,10 @@ options are at least listed below.
                               [default: .grapeconfig.publish.prepublishCmds]
     --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
                               [default: .grapeconfig.publish.prepublishDir]
+    --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
+                              [default: .grapeconfig.publish.postverifyCmds]
+    --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
+                              [default: .grapeconfig.publish.postverifyDir]
     --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
                               [default: .grapeconfig.publish.postpublishCmds]
     --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
