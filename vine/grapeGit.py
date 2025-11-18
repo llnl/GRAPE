@@ -123,7 +123,10 @@ def branchUpToDateWith(branchName, targetBranch, *, execution_path):
         if e.code == 1:
             return False
         # Propagate other errors (e.g., invalid refs)
-        raise e
+        # print a warning but return False
+        logging.warning(f"Error {e.gitOutput}, thrown when checking if {targetBranch} is an ancestor of {branchName}.")
+        logging.warning(f"Returning False")
+        return False
 
 
 def bundle(argstr, *, execution_path):
