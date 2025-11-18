@@ -122,8 +122,7 @@ def branchUpToDateWith(branchName, targetBranch, *, execution_path):
         # Exit code 1 indicates 'targetBranch' is not an ancestor of 'branchName'
         if e.code == 1:
             return False
-        # Propagate other errors (e.g., invalid refs)
-        # print a warning but return False
+        # For other errors (e.g., invalid refs), print a warning but return False
         logging.warning(f"Error {e.gitOutput}, thrown when checking if {targetBranch} is an ancestor of {branchName}.")
         logging.warning(f"Returning False")
         return False
