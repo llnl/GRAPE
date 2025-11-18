@@ -553,12 +553,13 @@ options are at least listed below.
     grape push pushes your current branch to origin for your outer level repo and all subprojects.
     it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll]
 
     Options:
     --noTopLevel            Don't perform push in top level repo.
     --noRecurse             Don't perform pushes in submodules.
     --noRecurseSubprojects  Don't perform pushes in nested subprojects.
+    --pushAll               Push all repositories regardless of whether local is ahead of origin.
 
     
 ## pull
