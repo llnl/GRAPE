@@ -113,28 +113,19 @@ def branchUpToDateWith(branchName, targetBranch, *, execution_path):
 
     For Windows portability, see 'join_list_as_git_path()'.
     """
+    # Fast path: check if targetBranch is an ancestor of branchName
+    # Equivalent to: does 'branchName' contain the commit at 'targetBranch'?
     try:
-        allUpToDateBranches = gitcmd(f"branch -a --contains {targetBranch}",
-                                     "branch contains failed",
-                                     execution_path=execution_path)
+        mergeBase(f"--is-ancestor {targetBranch} {branchName}", execution_path=execution_path)
+        return True
     except grape_errors.GrapeGitError as e:
-        # Don't fail if the only issue is a dangling reference for origin/HEAD.
-        allUpToDateBranches = e.gitOutput
-        allUpToDateBranches = allUpToDateBranches.replace("error: branch 'origin/HEAD' does not point at a commit\n","")
-        allUpToDateBranches = allUpToDateBranches.replace("error: some refs could not be read\n","")
-        if "error: " in allUpToDateBranches:
-            raise e
-    allUpToDateBranches = allUpToDateBranches.split("\n")
-    upToDate = False
-    for b in allUpToDateBranches:
-        # remove the * prefix from the active branch
-        cleanB = b.strip()
-        if b[0] == '*':
-            cleanB = b[1:].strip()
-        upToDate = cleanB == branchName.strip()
-        if upToDate:
-            break
-    return upToDate
+        # Exit code 1 indicates 'targetBranch' is not an ancestor of 'branchName'
+        if e.code == 1:
+            return False
+        # For other errors (e.g., invalid refs), print a warning but return False
+        logging.warning(f"Error {e.gitOutput}, thrown when checking if {targetBranch} is an ancestor of {branchName}.")
+        logging.warning(f"Returning False")
+        return False
 
 
 def bundle(argstr, *, execution_path):

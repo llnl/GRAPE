@@ -1,0 +1,21 @@
+
+
+Tue Nov 18 08:04:12 2025 Peter B. Robinson
+MR_674
+Reviewers: Ben Liu, Alan Dayton
+
+# Summary
+
+Change grape push to only push repos that have commits that are different than what is known to be on origin.
+
+New option to grape push, --pushAll, to do the push regardless of whether there are new commits.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.11
+
+--reviewers=benliu,dayton8
