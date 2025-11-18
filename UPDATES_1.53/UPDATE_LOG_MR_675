@@ -1,0 +1,18 @@
+
+
+Tue Nov 18 07:14:10 2025 Peter B. Robinson
+MR_675
+Reviewers: Alan Dayton, Ben Liu
+
+# Summary
+Adds a postverifycmds step to the publish process to enable custom hooks between verification and marking in progress.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.12
+
+--reviewers=benliu,dayton8
