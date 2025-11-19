@@ -923,6 +923,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()
+            print(f"APPROVED {repo} {approved}")
 
             if not approved:
                 verified = False
