@@ -592,7 +592,7 @@ class PullRequest:
         return self.mergerequest.iid
 
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, nonapprovers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
 
@@ -631,7 +631,11 @@ class PullRequest:
                         else:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
-                        reviewer_ids.append(gitlab_reviewer.id)
+                        if r in nonapprovers:
+                            logging.info(f"Reviewer {r} is not an approver, not adding to {approval_rule_name}.")
+                            all_reviewer_ids.add(gitlab_reviewer.id)
+                        else:
+                            reviewer_ids.append(gitlab_reviewer.id)
 
                     update = True
                     if matching_rule is not None:
