@@ -913,7 +913,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                             approved = True
                                             break
 
-                                if not approved and assignedReviewer != "gitlabduo":
+                                if not approved:
                                     unfinishedReviewers.append(assignedReviewer)
 
                             if unfinishedReviewers:
@@ -931,15 +931,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 if not reviewers:
                     userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
                 else:
-                    unfinished_non_duo = [f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False and str(reviewer[0]).lower() != "gitlabduo"]
-                    unfinished_duo = any(reviewer[1] is False and str(reviewer[0]).lower() == "gitlabduo" for reviewer in reviewers)
+                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False])
 
-                    if unfinished_non_duo:
-                        userMessage += f"\n\t{repo}: Needs review from " + " ,".join(unfinished_non_duo)
-                    elif unfinished_duo:
-                        verified = True
+                    if unfinishedReviewers:
+                        userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
                     else:
                         userMessage += f"\n\t{repo}: Needs additional approvals"
+
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
                 finishedReviewers.update([reviewer[2] for reviewer in reviewers])
