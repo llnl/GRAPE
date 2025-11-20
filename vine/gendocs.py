@@ -106,6 +106,7 @@ Check out develop and merge in master. Create a new commit directly on develop b
 
 Tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
 
+    git tag -a v<MAJOR>.<NEWDEV>.0 -m "Manually tagged" HEAD
     git push origin
     git push --tags origin v<MAJOR>.<NEWDEV>.0
 
