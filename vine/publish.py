@@ -854,6 +854,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             reviewersFromDescription = review.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
+            # Omit non-approvers from the unfinished reviewers reported
+            non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
+
+            non_approver_list = set()
+            if non_approvers:
+                if len(non_approvers.split()) > 1:
+                    logging.warning(f'GRAPE: WARNING: {self.SECTION_REVIEW}.non_approvers should be comma-delimited. Ignoring...')
+                else:
+                    non_approver_list.update(non_approvers.lower().split(','))
+
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
 
@@ -907,6 +917,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             for assignedReviewer in assignedReviewers:
                                 approved = False
 
+                                if assignedReviewer in non_approver_list:
+                                    continue
+
                                 for reviewer in reviewers:
                                     if assignedReviewer == reviewer[0]:
                                         if reviewer[1]:
@@ -923,7 +936,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()
-            print(f"APPROVED {repo} {approved}")
 
             if not approved:
                 verified = False
@@ -931,7 +943,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 if not reviewers:
                     userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
                 else:
-                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False])
+                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False and reviewer[0].lower() not in non_approver_list])
 
                     if unfinishedReviewers:
                         userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
