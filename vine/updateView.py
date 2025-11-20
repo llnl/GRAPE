@@ -126,9 +126,49 @@ class UpdateView(Option, WorkspaceDirHandler):
         self._pushBranch = False
         self._skipPush = False
         self.uvManager = None
+        self.clearCache()
+
+    def clearCache(self):
+        # save these to avoid having to repeatedly query them
+        self._allSubmodules = None
+        self._activeSubmodules = None
+        self._allNestedSubprojects = None
+        self._activeNestedSubprojects = None
+        self._activeNestedSubprojectPrefixes = None
 
     def description(self):
         return "Update the view of your current working tree"
+
+    @property
+    def allSubmodules(self):
+        if self._allSubmodules == None:
+            self._allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
+        return self._allSubmodules
+
+    @property
+    def activeSubmodules(self):
+        if self._activeSubmodules == None:
+            self._activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        return self._activeSubmodules
+
+    @property
+    def allNestedSubprojects(self):
+        if self._allNestedSubprojects == None:
+            config = config_parser_global.grapeConfig()
+            self._allNestedSubprojects = config.getAllNestedSubprojects()
+        return self._allNestedSubprojects
+
+    @property
+    def activeNestedSubprojects(self):
+        if self._activeNestedSubprojects == None:
+            self._activeNestedSubprojects = config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)
+        return self._activeNestedSubprojects
+
+    @property
+    def activeNestedSubprojectPrefixes(self):
+        if self._activeNestedSubprojectPrefixes == None:
+            self._activeNestedSubprojectPrefixes = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+        return self._activeNestedSubprojectPrefixes
 
     def defineActiveSubprojects(self, projectType="submodule"):
         """
@@ -137,16 +177,16 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         """
         if projectType == "submodule":
-            allSubprojects = git.getAllSubmodules(execution_path=self.workspace_dir)
-            activeSubprojects = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            allSubprojects = self.allSubmodules
+            activeSubprojects = self.activeSubmodules
 
         if projectType == "nested subproject":
             config = config_parser_global.grapeConfig()
-            allSubprojectNames = config.getAllNestedSubprojects()
+            allSubprojectNames = self.allNestedSubprojects
             allSubprojects = []
             for project in allSubprojectNames:
                 allSubprojects.append(config.get(f"nested-{project}", "prefix"))
-            activeSubprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+            activeSubprojects = self.activeNestedSubprojectPrefixes
 
         toplevelDirs = {}
         toplevelActiveDirs = {}
@@ -237,7 +277,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
 
     def verifySHAList(self, sha_dict):
-        active_nested_subprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+        active_nested_subprojects = self.activeNestedSubprojectPrefixes
         config = config_parser_global.grapeConfig()
         CISubprojects = config.get("workspace","CIRepos").split(' ')
         valid = True
@@ -394,21 +434,21 @@ class UpdateView(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
+        self.clearCache()
         branch = args["--branchName"] if args["--branchName"] else git.currentBranch(execution_path=self.workspace_dir)
         if branch == "HEAD":
            logging.error("grape uv cannot check out HEAD, you must specify --branchName or get out of the detached HEAD state!")
            return False
-        hasSubmodules = len(git.getAllSubmodules(execution_path=self.workspace_dir)) > 0 and not args["--skipSubmodules"]
-        allSubmodules = git.getAllSubmodules(execution_path=self.workspace_dir)
+        hasSubmodules = len(self.allSubmodules) > 0 and not args["--skipSubmodules"]
         if hasSubmodules:
            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
 
         if args["--checkRemoteSubmodules"]:
             submodulesConsistent = True
             if args["--allSubmodules"]:
-               checkedSubmodules = allSubmodules
+               checkedSubmodules = self.allSubmodules
             else:
-               checkedSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+               checkedSubmodules = self.activeSubmodules
 
             for submodule in checkedSubmodules:
                remote_url = git.parseSubprojectRemoteURL(url_map[submodule], execution_path=self.workspace_dir)
@@ -443,8 +483,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         includedSubmodules = {}
         includedNestedSubprojectPrefixes = {}
 
-        allNestedSubprojects = config.getAllNestedSubprojects()
-
         nonInteractive = args["--allSubmodules"] or args["--noSubmodules"] or args["--allNestedSubprojects"] or args["--noNestedSubprojects"] or args["--branchFilter"] or args["--branchChanged"] or args["--add"] or args["--rm"] or args["--ensureCIReposPresent"]
 
         if args["--gui"] and nonInteractive:
@@ -460,9 +498,9 @@ class UpdateView(Option, WorkspaceDirHandler):
         notFound = []
 
         for proj in addedProjects:
-            if proj in allSubmodules:
+            if proj in self.allSubmodules:
                 addedSubmodules.append(proj)
-            elif proj in allNestedSubprojects:
+            elif proj in self.allNestedSubprojects:
                 addedNestedSubprojects.append(proj)
             else:
                 notFound.append(proj)
@@ -472,15 +510,15 @@ class UpdateView(Option, WorkspaceDirHandler):
         rmProjects = args["--rm"]
 
         for proj in rmProjects:
-            if proj in allSubmodules:
+            if proj in self.allSubmodules:
                 rmSubmodules.append(proj)
-            elif proj in allNestedSubprojects:
+            elif proj in self.allNestedSubprojects:
                 rmNestedSubprojects.append(proj)
             else:
                 notFound.append(proj)
 
         if notFound:
-            logging.info(f"\"{','.join(notFound)}\" not found in submodules {','.join(allSubmodules)} \nor\n nested subprojects {','.join(allNestedSubprojects)}")
+            logging.info(f"\"{','.join(notFound)}\" not found in submodules {','.join(self.allSubmodules)} \nor\n nested subprojects {','.join(self.allNestedSubprojects)}")
             return False
 
         delayedMessages = []
@@ -492,23 +530,29 @@ class UpdateView(Option, WorkspaceDirHandler):
                 root.title("GRAPE uv - select active subprojects")
                 self.uvManager = UVManager(master=root, fontsize=args["--fontSize"])
 
+            if args["--branchFilter"]:
+                logging.info(f"Filtering using branch {args['--branchFilter']}...")
+            elif args["--branchChanged"]:
+                logging.info(f"Filtering using branch {args['--branchChanged']}, changed relative to public...")
+
             # get submodules to update
             if hasSubmodules:
                 if args["--branchFilter"]:
-                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir))
+                    logging.info(f"Filtering using branch {args['--branchFilter']}...")
+                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, self.activeSubmodules)
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
-                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, git.getActiveSubmodules(execution_path=self.workspace_dir), checkChanged=True, public=subpublic, checkSubmoduleHistory=checkSubmoduleHistory)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, self.activeSubmodules, checkChanged=True, public=subpublic, checkSubmoduleHistory=checkSubmoduleHistory)
                 else:
                     branchFilter = lambda x : True
 
                 if args["--allSubmodules"]:
-                    includedSubmodules = {sub:branchFilter(sub) for sub in allSubmodules}
+                    includedSubmodules = {sub:branchFilter(sub) for sub in self.allSubmodules}
                 elif args["--noSubmodules"]:
-                    includedSubmodules = {sub:False for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
+                    includedSubmodules = {sub:False for sub in self.activeSubmodules}
                 elif nonInteractive:
-                    includedSubmodules = {sub:branchFilter(sub) for sub in git.getActiveSubmodules(execution_path=self.workspace_dir)}
+                    includedSubmodules = {sub:branchFilter(sub) for sub in self.activeSubmodules}
                 else:
                     includedSubmodules = self.defineActiveSubprojects()
 
@@ -521,19 +565,19 @@ class UpdateView(Option, WorkspaceDirHandler):
                 nestedPrefixLookup = lambda x : config.get(f"nested-{x}", "prefix")
 
                 if args["--branchFilter"]:
-                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir))
+                    branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, self.activeNestedSubprojectPrefixes)
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
-                    branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir), checkChanged = True, public=public, tagPrefix=tagPrefix)
+                    branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, self.activeNestedSubprojectPrefixes, checkChanged = True, public=public, tagPrefix=tagPrefix)
                 else:
                     branchFilter = lambda x : True
 
                 if args["--allNestedSubprojects"]:
-                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in allNestedSubprojects}
+                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in self.allNestedSubprojects}
                 elif args["--noNestedSubprojects"]:
-                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):False for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
+                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):False for sub in self.activeNestedSubprojects}
                 elif nonInteractive:
-                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in config_parser_user.getAllActiveNestedSubprojects(workspaceDir=self.workspace_dir)}
+                    includedNestedSubprojectPrefixes = {nestedPrefixLookup(sub):branchFilter(sub) for sub in self.activeNestedSubprojects}
                 else:
                     includedNestedSubprojectPrefixes = self.defineActiveNestedSubprojects()
 
@@ -565,8 +609,8 @@ class UpdateView(Option, WorkspaceDirHandler):
             remoteProtocolSubmodules = []
             if args["--updateRemoteProtocol"]:
                 # Split on the first single slash
-                url_pattern = r"(?<!/)/(?!/)"
-                remoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=self.workspace_dir))[0]
+                url_re = re.compile(r"(?<!/)/(?!/)")
+                remoteProtocol = url_re.split(git.remote("get-url origin", execution_path=self.workspace_dir), maxsplit=1)[0]
 
             if hasSubmodules:
                 initStr = ""
@@ -574,12 +618,32 @@ class UpdateView(Option, WorkspaceDirHandler):
                 rmCachedStr = ""
                 resetStr = ""
                 initCount = 0
+                activeSubmodules = []
                 for submodule, nowActive in includedSubmodules.items():
                     if nowActive:
                         initStr += f' {submodule}'
                         initCount += 1
-                        if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,submodule)))[0]
+                        activeSubmodules.append(submodule)
+                    else:
+                        deinitStr += f' {submodule}'
+                        rmCachedStr += f' {submodule}'
+                        resetStr += f' {submodule}'
+
+                # Gather all the submodule remotes in a single call rather than within the previous loop
+                # so that it is a no-op if there are no current submodules.
+                if args["--updateRemoteProtocol"] and activeSubmodules:
+                    submodule_output = git.submodule("foreach \"git remote get-url origin\"", execution_path=self.workspace_dir, capture_output=True)
+                    # Output should look like:
+                    #   Entering '<submodule>'
+                    #   <remote protocol>
+                    submodule = None
+                    for line in submodule_output.splitlines():
+                        if line.startswith('Entering'):
+                            submodule = line.split()[1].strip("'")
+                        elif submodule:
+                            if submodule not in activeSubmodules:
+                               continue
+                            subRemoteProtocol = url_re.split(line, maxsplit=1)[0]
                             if subRemoteProtocol != remoteProtocol:
                                if args["-v"]:
                                    logging.info(f"Remote protocol for submodule {submodule} is {subRemoteProtocol}, reinitializing with {remoteProtocol}...")
@@ -587,10 +651,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                                deinitStr += f' {submodule}'
                                rmCachedStr += f' {submodule}'
                                resetStr += f' {submodule}'
-                    else:
-                        deinitStr += f' {submodule}'
-                        rmCachedStr += f' {submodule}'
-                        resetStr += f' {submodule}'
+
                 if args["-f"] and deinitStr:
                     deinitStr = "-f"+deinitStr
 
@@ -688,7 +749,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
             # handle nested subprojects
             if not args["--skipNestedSubprojects"]:
-                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in allNestedSubprojects}
+                reverseLookupByPrefix = {nestedPrefixLookup(sub) : sub for sub in self.allNestedSubprojects}
                 userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir, read_global=False)
                 updatedActiveList = []
                 toActivate_args = []
@@ -706,7 +767,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     filterArg = "" if config.getboolean(section, "disable_clone_filter", fallback=False) else args["--filter"]
                     if nowActive and previouslyActive:
                         if args["--updateRemoteProtocol"]:
-                            subRemoteProtocol = re.split(url_pattern, git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)))[0]
+                            subRemoteProtocol = url_re.split(git.remote("get-url origin", execution_path=os.path.join(self.workspace_dir,subproject)), maxsplit=1)[0]
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
@@ -750,6 +811,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         checkoutArgs = "-b" if args["-b"] else ""
 
+        logging.info(f"Ensuring all repos are on {branch}...")
         safeSwitchWorkspaceToBranch(
             branch, checkoutArgs, sync,
             runInOuter=not args["--skipTopLevel"],
@@ -766,7 +828,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
 
         if args["--generateSHAList"]:
-            nested_subprojects = config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir)
+            nested_subprojects = self.activeNestedSubprojectPrefixes
             sha_dict = {}
             for sub in nested_subprojects:
                 sha_dict[sub] = git.SHA(execution_path=os.path.join(self.workspace_dir,sub))
@@ -795,7 +857,6 @@ class UpdateView(Option, WorkspaceDirHandler):
         grape uv --spackEnv
 
         """
-        activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
         # read list of spack projects from configuration
         config = config_parser_global.grapeConfig()
         spack_projects = config.get("spackProjects", "submodules").split()
@@ -809,7 +870,7 @@ class UpdateView(Option, WorkspaceDirHandler):
 
         if script:
             for submodule in spack_projects:
-                if submodule in activeSubmodules:
+                if submodule in self.activeSubmodules:
                     develop_libs.append(submodule)
                 else:
                     undevelop_libs.append(submodule)
@@ -946,10 +1007,10 @@ _skipPush = False
 def handleEnsureLocalUpToDateMRE(mre):
     global _skipPush
     _pushBranch = False
-    quiet = args["quiet"]
-    verbose = args["verbose"]
     cleanupPushArgs = []
     for e1, repo, branch, args in zip(mre.exceptions(), mre.repos(), mre.branches(), mre.args()):
+        quiet = args["quiet"]
+        verbose = args["verbose"]
         try:
             raise e1
         except grape_errors.GrapeGitError as e:
@@ -1005,6 +1066,7 @@ def handleEnsureLocalUpToDateSkipBranchPushMRE(mre):
 def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, runInOuter=True, skipSubmodules=False, runInSubprojects=True, skipBranchCreation=False, skipBranchPush=False, skipSubmoduleSwitch=False, fetchPublic=False, forcePublic=False, quiet=False, verbose=False):
     # Ensure local branches that you are about to check out are up to date with the remote
     if sync:
+        logging.info("Ensuring local branches are up-to-date with remote...")
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             ensureLocalUpToDateWithRemote, branch=branch,
             runInOuter=runInOuter, skipSubmodules=skipSubmodules, runInSubprojects=runInSubprojects,
@@ -1013,6 +1075,7 @@ def safeSwitchWorkspaceToBranch(branch, checkoutArgs, sync, *, workspace_dir, ru
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateSkipBranchPushMRE)
         else: 
             launcher.launchFromWorkspaceDir(handleMRE=handleEnsureLocalUpToDateMRE)
+    logging.info(f"Checking out {branch}...")
     # Do a checkout
     # Pass False instead of sync since if sync is True ensureLocalUpToDateWithRemote will have already performed the fetch
     launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(

@@ -344,7 +344,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
              # Get the SHA of the most recent version tag
              config = config_parser_global.grapeConfig()
              prefix = config.get(self.SECTION_VERSIONING, "prefix")
-             versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
+             versionTag = grapeVersion.describeLastVersion("--abbrev=0", branch="HEAD", tagPrefix=prefix, execution_path=self.workspace_dir)
              versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
              logging.info(f"NEW: Found current branch, targeting {target_branch} at {target_SHA}.")
              logging.info(f"NEW: Latest version: {versionTag} at {versionTag_SHA}.")
@@ -479,7 +479,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
               # Get the SHA of the most recent version tag
               config = config_parser_global.grapeConfig()
               prefix = config.get(self.SECTION_VERSIONING, "prefix")
-              versionTag = git.describe(f"--abbrev=0 --match '{prefix}*'", execution_path=self.workspace_dir)
+              versionTag = grapeVersion.describeLastVersion("--abbrev=0", branch="HEAD", tagPrefix=prefix, execution_path=self.workspace_dir)
               versionTag_SHA = git.gitcmd(f"rev-list -n 1 {versionTag}", "rev-list failed", execution_path=self.workspace_dir)
               logging.info(f"OLD: Found current branch, targeting {target_branch} at {target_SHA}.")
               logging.info(f"OLD: Latest version: {versionTag} at {versionTag_SHA}.")

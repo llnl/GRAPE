@@ -1,18 +1,60 @@
 ## Tutorial
 
+This file is generated with
+    ./vine/gendocs.py README.md 
+
 ## Contributing to GRAPE
     <section under development>
 
 # Forking a new version number for grape.
 
-Create and publish an internal_release branch. After publish, the CI will have assigned an incorrect version.
+Create internal_release branch.  For this internal_release branch, you should merge the update logs:
 
-Delete the tag created by the CI, and replace it with an appropriate one (e.g. v1.42.0 instead of v1.41.19).
+    # If we are forking to v1.42.0:
+    #   <MAJOR>   = 1
+    #   <OLDPROD> = 40
+    #   <OLDDEV>  = 41
+    #   <NEWPROD> = 42
+    #   <NEWDEV>  = 43
+    # Create a file for the develop branch logs and confirm that it contains what you expect.
+    grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDDEV> --startVersion=v<MAJOR>.<OLDDEV>.1
+    more UPDATE_LOG_<MAJOR>.<OLDDEV>
+     
+    # Create a file for the production branch logs and confirm that it contains what you expect.
+    grape -d publish --mergeUpdateLogs --mergedLog=UPDATE_LOG_<MAJOR>.<OLDPROD> --startVersion=v<MAJOR>.<OLDPROD>.1 --stopVersion=v<MAJOR>.<OLDPROD>.<most_recent_old_prod_update> --updateLogDir=UPDATES_<MAJOR>.<OLDPROD>
+    more UPDATE_LOG_<MAJOR>.<OLDPROD>
+     
+    # Clean up and commit the new update logs
+    git add UPDATE_LOG_<MAJOR>.<OLDPROD> UPDATE_LOG_<MAJOR>.<OLDDEV>
+    git rm -r UPDATES_<MAJOR>.<OLDPROD>
+    git rm -r UPDATES_<MAJOR>.<OLDDEV>
+    git commit -m "Merge update logs"
+   
+Publish an internal_release branch. After publish, the CI will have been assigned an incorrect version.
+
+Delete the tag created by the CI and tag with the appropriate version.
+ v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
+
+    git checkout master
+    git tag -d v<MAJOR>.<OLDDEV><most_recent_old_dev_update+1>
+    git push origin --delete v<MAJOR>.<OLDDEV><most_recent_old_dev_update+1>
+    git tag -a v<MAJOR>.<NEWPROD>.0 -m "Manually tagged" HEAD
 
 Push the new tag.
 
-Check out develop and merge in master. Create a new commit directly on develop of some kind, tag that commit as v1.43.0,
-push both the new tag and the new commit directly to develop.
+    git push --tags origin v<MAJOR>.<NEWPROD>.0
+
+Check out develop and merge in master. Create a new commit directly on develop by removing the update message from the fork:
+
+    git checkout develop
+    git merge master
+    git rm -r UPDATES_<MAJOR>.<OLDDEV>
+    git commit -m "Remove fork update message"
+
+Tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
+
+    git push origin
+    git push --tags origin v<MAJOR>.<NEWDEV>.0
 
 ## Introducing the `.grapeconfig` file
 
@@ -27,7 +69,7 @@ sample.grapeconfig now contains all of the options various grape commands will u
     option2 = key:value
     option3 = list:of key:values with:VAL as:a default:value ?:VAL
 
-In the man page for any given grape commands (viewable by typing grape <cmd> --help) , if you see a
+In the man page for any given grape commands (viewable by typing grape \<cmd\> --help) , if you see a
 
     [default = .grapeconfig.SECTION_NAME.option]
 
@@ -165,8 +207,7 @@ SQA driven requirements, such as successful build(s), testing, etc. You'll want 
     deletetopic = False
     updatelog = .grapepublishlog
     logskipfirstlines = 0
-    logentryheader = <date> <user>
-<version>
+    logentryheader = <date> <user> <version>
 
     emailnotification = False
     emailheader = <public> updated to <version>
@@ -254,8 +295,8 @@ place in your submodules.
 to your submodule's public branches, e.g. `develop:foo_dev master:foo_master`.
 
 ### branch creation
-When you create and checkout a branch in grape using grape <branchType>, branches will be created and checked
-out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[<branchType>]] to
+When you create and checkout a branch in grape using grape \<branchType\>, branches will be created and checked
+out in your submodules as well, using workspace.submodulepublicmappings[flow.topicprefixmappings[\<branchType\>]] to
 determine your submodules' branch's start points.
 For example, with  the following `.grapeconfig`:
 
@@ -338,7 +379,7 @@ individualized.
 
 # Grape Commands
 Below is the most detailed documentation that currently exists for each of the grape commands. You can always look
-at a particular commands documentation using grape <cmd> --help.
+at a particular commands documentation using grape \<cmd\> --help.
 
 Some commands are better documented than others, but our use of the docopt.py module guarantees that all available
 options are at least listed below.
@@ -512,12 +553,13 @@ options are at least listed below.
     grape push pushes your current branch to origin for your outer level repo and all subprojects.
     it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll]
 
     Options:
     --noTopLevel            Don't perform push in top level repo.
     --noRecurse             Don't perform pushes in submodules.
     --noRecurseSubprojects  Don't perform pushes in nested subprojects.
+    --pushAll               Push all repositories regardless of whether local is ahead of origin.
 
     
 ## pull
@@ -571,6 +613,7 @@ options are at least listed below.
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
+                         [--postverifyCmds=<cmds>] [--postverifyDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
@@ -663,6 +706,10 @@ options are at least listed below.
                               [default: .grapeconfig.publish.prepublishCmds]
     --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
                               [default: .grapeconfig.publish.prepublishDir]
+    --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
+                              [default: .grapeconfig.publish.postverifyCmds]
+    --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
+                              [default: .grapeconfig.publish.postverifyDir]
     --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
                               [default: .grapeconfig.publish.postpublishCmds]
     --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish

@@ -17,7 +17,6 @@ from vine import config_parser_global
 from vine import utility
 from vine.option import Option
 
-
 GRAPE_GITLAB_APPROVAL_RULE_NAME = "GRAPE Reviewers"
 # Grape has the following definitions, most strongly correllated with Bitbucket definitions:
 # Project - collection of repositories (roughly analogous to a Gitlab Group)
@@ -33,7 +32,7 @@ class GrapeGitlabAdapter:
     def __init__(self, username=None, url=defaultURL, verify=True, port=defaultPort, ssh_path = defaultSSH_Path, curl = defaultCurl, group = None, *, workspace_dir):
 
         if username is None:
-            self._userName = utility.getUserName()
+            self._userName = utility.getUserName(service="Gitlab")
         else:
             self._userName = username
 
@@ -71,6 +70,11 @@ class GrapeGitlabAdapter:
         return completed_process.stdout.decode().strip().split()[1].strip()
 
     def auth(self, service, username, password, port, ssh_path, group, verify=True):
+        if not verify:
+            import warnings
+            import urllib3
+            warnings.filterwarnings('ignore', category=urllib3.exceptions.InsecureRequestWarning)
+
         # set a password to something bogus to trigger an authentication error
         if (password is None):
             password = "123456_bad_password"
@@ -588,7 +592,7 @@ class PullRequest:
         return self.mergerequest.iid
 
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, add_labels=[], remove_labels=[]):
         if title:
             self.mergerequest.title = title
 
@@ -604,6 +608,19 @@ class PullRequest:
                 users = reviewer_group['reviewers']
                 num_required = len(users)
 
+                approval_rules = self.mergerequest.approval_rules.list()
+
+                # Find the approval rule by name
+                matching_rule = None
+
+                for rule in approval_rules:
+                    if rule.name == approval_rule_name:
+                        matching_rule = rule
+                        break
+
+                # Merge request approvals created by others can only be changed by maintainer and above,
+                # so only update them if they are changed and just warn if they cannot be updated.
+
                 if users:
                     reviewer_ids = []
 
@@ -614,27 +631,34 @@ class PullRequest:
                         else:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
-                        reviewer_ids.append(gitlab_reviewer.id)
+                        if r in non_approvers:
+                            logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
+                            num_required -= 1
+                            all_reviewer_ids.add(gitlab_reviewer.id)
+                        else:
+                            reviewer_ids.append(gitlab_reviewer.id)
 
-                    self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                    update = True
+                    if matching_rule is not None:
+                        eligible_approver_ids = set()
+                        for approver in matching_rule.eligible_approvers:
+                            eligible_approver_ids.add(approver["id"]) 
+                        if eligible_approver_ids == set(reviewer_ids) and matching_rule.approvals_required == num_required:
+                            logging.info(f'Approval rule "{approval_rule_name}" unchanged.')
+                            update = False 
+                    if update:
+                        try:
+                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                        except gitlab.exceptions.GitlabUpdateError as e:
+                            logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}": {e}')
 
                     for reviewer_id in reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
                 else:
-                    approval_rules = self.mergerequest.approval_rules.list()
-
-                    # Find the approval rule by name
-                    rule_id = None
-
-                    for rule in approval_rules:
-                        if rule.name == approval_rule_name:
-                            rule_id = rule.id
-                            break
-
-                    if rule_id is not None:
+                    if matching_rule is not None:
                         try:
                             # Delete the approval rule
-                            self.mergerequest.approval_rules.delete(rule_id)
+                            self.mergerequest.approval_rules.delete(matching_rule.id)
                             logging.info(f'Deleted approval rule "{approval_rule_name}".')
                         except gitlab.exceptions.GitlabDeleteError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to delete approval rule "{approval_rule_name}": {e}')

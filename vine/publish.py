@@ -59,6 +59,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--testCmds=<testStr>] [--testDir=<path>] [--skipTest | --noSkipTests]
                          [--testCIJob=<jobStr>]
                          [--prepublishCmds=<cmds>] [--prepublishDir=<path>]
+                         [--postverifyCmds=<cmds>] [--postverifyDir=<path>]
                          [--postpublishCmds=<cmds>] [--postpublishDir=<path>]
                          [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
@@ -151,6 +152,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               [default: .grapeconfig.publish.prepublishCmds]
     --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
                               [default: .grapeconfig.publish.prepublishDir]
+    --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
+                              [default: .grapeconfig.publish.postverifyCmds]
+    --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
+                              [default: .grapeconfig.publish.postverifyDir]
     --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
                               [default: .grapeconfig.publish.postpublishCmds]
     --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
@@ -297,6 +302,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # prepublish steps
         config.set(self.SECTION_PUBLISH, 'prepublishCmds', '')
         config.set(self.SECTION_PUBLISH, 'prepublishDir', '.')
+        # postverify steps
+        config.set(self.SECTION_PUBLISH, 'postverifyCmds', '')
+        config.set(self.SECTION_PUBLISH, 'postverifyDir', '.')
         # postpublish steps
         config.set(self.SECTION_PUBLISH, 'postpublishCmds', '')
         config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
@@ -411,6 +419,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # these aren't actually options, but are put in to prevent KeyErrors for performCustomStep
         args["--skipPostpublish"] = False
         args["--skipPrepublish"] = False
+        args["--skipPostverify"] = False
 
         # store the args in self
         self.args = args
@@ -457,8 +466,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.parseArgs(args)
 
         if args["--mergeUpdateLogs"]:
-            self.mergeUpdateLogs(args)
-            return True
+            return self.mergeUpdateLogs(args)
         if args["--markMRWithVersion"]:
             return self.markReviewWithVersionNumber(args)
         if args["--quick"]:
@@ -469,12 +477,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         elif args["--mergeTrain"]:
             # steps for queuing in the merge train
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
-                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "markInProgress",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "postVerify", "markInProgress",
                           "checkCI", "build", "test",
                           "testForCleanWorkspace2", "updateLog", "prePublish", "tagVersion", "push", "requestUserStartMergeTrain", "done"]
         else:
             self.order = ["testForCleanWorkspace1", "md1", "ensureModifiedSubmodulesAreActive",
-                          "verifyPublishActions", "ensureReview", "verifyCompletedReview",
+                          "verifyPublishActions", "ensureReview", "verifyCompletedReview", "postVerify",
                           "markInProgress", "md2", "checkCI", "tickVersion", "updateLog",
                           "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                           "tagVersion", "performCascades", "markAsDone", "notify", "deleteTopic", "done"]
@@ -505,6 +513,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         steps = {"checkCI": self.performCICheck,
                  "build": self.performCustomBuildStep,
                  "test": self.performCustomTestStep,
+                 "postVerify": self.performCustomPostVerifySteps,
                  "prePublish": self.performCustomPrePublishSteps,
                  "tickVersion": self.tickVersion,
                  "tagVersion": self.tagVersion,
@@ -845,6 +854,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
             reviewersFromDescription = review.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
+            # Omit non-approvers from the unfinished reviewers reported
+            non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
+
+            non_approver_list = set()
+            if non_approvers:
+                if len(non_approvers.split()) > 1:
+                    logging.warning(f'GRAPE: WARNING: {self.SECTION_REVIEW}.non_approvers should be comma-delimited. Ignoring...')
+                else:
+                    non_approver_list.update(non_approvers.lower().split(','))
+
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
 
@@ -898,6 +917,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             for assignedReviewer in assignedReviewers:
                                 approved = False
 
+                                if assignedReviewer in non_approver_list:
+                                    continue
+
                                 for reviewer in reviewers:
                                     if assignedReviewer == reviewer[0]:
                                         if reviewer[1]:
@@ -915,13 +937,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()
 
-            if verified and not approved:
+            if not approved:
                 verified = False
 
                 if not reviewers:
                     userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
                 else:
-                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False])
+                    unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False and reviewer[0].lower() not in non_approver_list])
 
                     if unfinishedReviewers:
                         userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
@@ -1094,6 +1116,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     def performCustomPostPublishSteps(self, args):
         return self.performCustomStep("postpublish", args)
+
+    def performCustomPostVerifySteps(self, args):
+        return self.performCustomStep("postverify", args)
 
     @staticmethod
     def getModifiedFileList(public, topic, args, *, execution_path):
@@ -1452,15 +1477,44 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         # we will only merge update logs over the last slot
         mergedLogLines =  []
         slotArgs = {"--prefix":args["--tagPrefix"],"--suffix":args["--tagSuffix"]}
+        lastVer1 = None
+        lastVer2 = None
         while stopSlots[-1] >= startSlots[-1]:
             ver2 =  versionOption.slotsToString(slotArgs, stopSlots)
+            try:
+                git.SHA(f"{ver2}", execution_path=self.workspace_dir)
+            except grape_errors.GrapeGitError:
+                if not lastVer2:
+                    logging.error(f"{ver2} not found, invalid --stopVersion or missing tag!")
+                    return False
+                else:
+                    ver2 = lastVer2
             stopSlots[-1] = stopSlots[-1] - 1
             ver1 =  versionOption.slotsToString(slotArgs, stopSlots)
+            try:
+                git.SHA(f"{ver1}", execution_path=self.workspace_dir)
+            except grape_errors.GrapeGitError:
+                if stopSlots[-1] < startSlots[-1] or not lastVer1:
+                    logging.error(f"{ver1} not found, invalid --startVersion or missing tag!")
+                    return False
+                else:
+                    logging.info(f"{ver1} not found, skipping...")
+                    ver1 = lastVer1
             self.loadMajorAndMinorVersion(args)
-            log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
-            log_files = log_files.split()
-            if not log_files:
-                logging.info(f"No log file found for version {ver2}")
+
+            log_files = []
+            if ver1 != ver2:
+                try:
+                    logging.info(f"Diffing {ver1} and {ver2} in {args['--updateLogDir']}...")
+                    log_files = git.diff(f"--name-only {ver1} {ver2} -- {args['--updateLogDir']}", execution_path=self.workspace_dir)
+                    log_files = log_files.split()
+                except grape_errors.GrapeGitError as e:
+                    logging.info(f"Diff failed between {ver1} and {ver2}\n{e.gitOutput}")
+                if not log_files:
+                    logging.info(f"No log file found for between versions {ver1} and {ver2}")
+
+            lastVer1 = ver1
+            lastVer2 = ver2
             for lf in log_files:
                 logging.info(f"concatenating {lf} as version {ver2}")
                 try:
@@ -1627,6 +1681,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Sender refused, waiting 60 seconds...")
             time.sleep(60)
             logging.info("Retrying...")
+            s = smtplib.SMTP(server, timeout=10)
             s.sendmail(msg['From'], tolist, msg.as_string())
         s.quit()
 
@@ -2099,4 +2154,3 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             except GitlabMRClosedError:
                 return False
         return success
-
