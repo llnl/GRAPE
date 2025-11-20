@@ -640,6 +640,15 @@ class Review(Option, WorkspaceDirHandler):
                 'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
             }
 
+        non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
+
+        non_approver_list = set()
+        if non_approvers:
+            if len(non_approvers.split()) > 1:
+                logging.warning(f'GRAPE: WARNING: {self.SECTION_REVIEW}.non_approvers should be comma-delimited. Ignoring...')
+            else:
+                non_approver_list.update(non_approvers.lower().split(','))
+
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
@@ -783,6 +792,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "outerLevelURL": outerLevelURL,
                                                                          "reviewers": submoduleReviewers,
                                                                          "reviewer_list" : reviewer_list,
+                                                                         "non_approver_list" : non_approver_list,
                                                                          "active": submodule in activeSubmodules }]))
                     project_reviewer_lists.update(reviewer_list)
 
@@ -814,6 +824,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "outerLevelURL": outerLevelURL,
                                                                     "reviewers": subprojectReviewers,
                                                                     "reviewer_list" : reviewer_list,
+                                                                    "non_approver_list" : non_approver_list,
                                                                     "active": proj in activeNestedSubprojects}]))
                project_reviewer_lists.update(reviewer_list)
 
@@ -874,7 +885,7 @@ class Review(Option, WorkspaceDirHandler):
 
             outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
-            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, non_approver_list, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
 
             # Update related reviews
             outerLevelURL = request.link()
@@ -926,6 +937,7 @@ class Review(Option, WorkspaceDirHandler):
                                           updatedDescription,
                                           outerReviewers,
                                           project_reviewer_lists,
+                                          non_approver_list,
                                           args,
                                           self.workspace_dir,
                                           add_labels=add_labels, remove_labels=remove_labels)
@@ -955,6 +967,8 @@ class Review(Option, WorkspaceDirHandler):
         config.set(self.SECTION_PROJECT, "name", "My unnamed project")
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
+        config.ensureSection(self.SECTION_REVIEW)
+        config.set(self.SECTION_REVIEW, "non_approvers", "gitlabduo")
 
 
 def MRLinkText():
@@ -983,6 +997,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     outerLevelURL = kwargs["outerLevelURL"]
     reviewers = kwargs["reviewers"]
     reviewer_list  = kwargs["reviewer_list"]
+    non_approver_list  = kwargs["non_approver_list"]
     active = kwargs["active"]
 
     # push branch
@@ -997,7 +1012,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     else:
         codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
-    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, review_args, repo)
+    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, review_args, repo)
     if newRequest:
         return newRequest.link()
     else:
@@ -1028,7 +1043,7 @@ def targetBranchMissing(errorMessage):
     return False
 
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path,
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, args, git_execution_path,
                     add_labels=[], remove_labels=[]):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
@@ -1131,7 +1146,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
 
                     if updates:
                         logging.info(f"updating request with {', '.join(updates)}")
-                        request = request.update(ver, title=title, description=descr, reviewers=subReviewers, add_labels=add_labels, remove_labels=remove_labels)
+                        request = request.update(ver, title=title, description=descr, reviewers=subReviewers, non_approvers=non_approver_list, add_labels=add_labels, remove_labels=remove_labels)
 
                         if have_changed_labels:
                            logging.info("Regenerating pipeline...")
@@ -1447,7 +1462,7 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
                     logging.error(f'GRAPE: ERROR: Reviewers must be separated by commas.')
                     exit(1)
 
-                reviewRuleReviewers = tokens[0].split(',')
+                reviewRuleReviewers = tokens[0].lower().split(',')
             elif len(tokens) == 2:
                 # Use the given rule
                 reviewRuleName = tokens[0]
@@ -1461,7 +1476,7 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
                     exit(1)
 
                 if tokens[1]:
-                    reviewRuleReviewers = tokens[1].split(',')
+                    reviewRuleReviewers = tokens[1].lower().split(',')
                 else:
                     reviewRuleReviewers = []
 

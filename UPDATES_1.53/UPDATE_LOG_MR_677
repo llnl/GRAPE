@@ -1,0 +1,25 @@
+
+
+Thu Nov 20 08:23:01 2025 Benjamin T. Liu
+MR_677
+Reviewers: Alan Dayton, Peter Robinson
+
+Remove hard-coded review workaround for gitlabduo reviewer
+
+- this would circumvent repo-level approval requirements, like minimum number of reviewers or DC reviewers
+
+- add review.non_approvers config to indicate reviewers that cannot (or do not need to) approve
+
+- do not add non-approvers to review rules
+
+- do not require non-approvers to approve for publish
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.15
+
+--reviewers=probinso,dayton8
