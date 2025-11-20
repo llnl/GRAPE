@@ -1,0 +1,288 @@
+
+
+Thu Nov 20 08:23:01 2025 Benjamin T. Liu
+v1.53.16
+Reviewers: Alan Dayton, Peter Robinson
+
+Remove hard-coded review workaround for gitlabduo reviewer
+
+- this would circumvent repo-level approval requirements, like minimum number of reviewers or DC reviewers
+
+- add review.non_approvers config to indicate reviewers that cannot (or do not need to) approve
+
+- do not add non-approvers to review rules
+
+- do not require non-approvers to approve for publish
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.15
+
+--reviewers=probinso,dayton8
+
+
+Wed Nov 19 13:11:55 2025 Peter B. Robinson
+v1.53.15
+Reviewers: Ben Liu, Daniel Taller, Alan Dayton
+
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.14
+
+--reviewers=dayton8,taller1,benliu
+
+
+Tue Nov 18 08:04:12 2025 Peter B. Robinson
+v1.53.14
+Reviewers: Ben Liu, Alan Dayton
+
+# Summary
+
+Change grape push to only push repos that have commits that are different than what is known to be on origin.
+
+New option to grape push, --pushAll, to do the push regardless of whether there are new commits.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.11
+
+--reviewers=benliu,dayton8
+
+
+Tue Nov 18 07:14:10 2025 Peter B. Robinson
+v1.53.13
+Reviewers: Alan Dayton, Ben Liu
+
+# Summary
+Adds a postverifycmds step to the publish process to enable custom hooks between verification and marking in progress.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.12
+
+--reviewers=benliu,dayton8
+
+
+Thu Nov 13 13:38:37 2025 Benjamin T. Liu
+v1.53.12
+Reviewers: Alan Dayton
+
+During grape publish, if there are missing approvals, print out all repos that fail, not just the first one to fail
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.11
+
+--reviewers=dayton8
+
+
+Thu Nov  6 11:29:42 2025 Benjamin T. Liu
+v1.53.11
+Reviewers: Peter Robinson
+
+Fixes for uv
+
+- fix arguments for MRE handler
+
+- prevent push of branch from checkout if sync is off
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=probinso
+
+
+Wed Nov  5 09:34:10 2025 Benjamin T. Liu
+v1.53.10
+Reviewers: Peter Robinson
+
+Improve handling of MR approval rules in grape review
+
+- only a Maintainer or above can modify MR approval rules in a MR created by another
+
+- avoid setting MR approval rules if they are unchanged (API no longer allows this)
+
+- just warn (rather than crash) on failed update
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.9
+
+--reviewers=probinso
+
+
+Wed Oct 22 15:31:36 2025 Benjamin T. Liu
+v1.53.9
+Reviewers: Alan Dayton, Peter Robinson
+
+Suppress urllib warnings when --no-verify-ssl is enabled
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=dayton8,probinso
+
+
+Thu Oct  2 13:30:37 2025 Benjamin T. Liu
+v1.53.8
+Reviewers: Alan Dayton, Peter Robinson
+
+grape uv performance tweaks
+
+- Add more timing statements
+
+- gather submodule remotes in a single call
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=dayton8,probinso
+
+
+Wed Oct  1 12:56:34 2025 Peter B. Robinson
+v1.53.7
+Reviewers: David Dawson
+
+
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.6
+
+--reviewers=dawson24
+
+
+Tue Sep 23 10:27:29 2025 Benjamin T. Liu
+v1.53.6
+Reviewers: Alan Dayton, Peter Robinson
+
+- Add more timing statements
+
+- Minor performance improvements for grape uv
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.53.4
+
+--reviewers=dayton8,probinso
+
+
+Thu Sep 18 16:34:51 2025 Benjamin T. Liu
+v1.53.5
+Reviewers: Peter Robinson
+
+Recreate SMTP object on publish email retry
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=probinso
+
+
+Mon Sep 15 14:24:05 2025 Benjamin T. Liu
+v1.53.4
+Reviewers: Peter Robinson
+
+When looking up the merge train, use the most recent minor version
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.1
+
+--reviewers=probinso
+
+
+Thu Sep  4 15:21:22 2025 Benjamin T. Liu
+v1.53.3
+Reviewers: Peter Robinson
+
+Mergeback: ensure public branches are up-to-date before creating a new flow branch
+
+- this may be important after a fork
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.0
+
+--reviewers=probinso
+
+
+Wed Sep  3 15:25:12 2025 Benjamin T. Liu
+v1.53.2
+Reviewers: Peter Robinson, Alan Dayton
+
+- Update grape forking instructions
+
+- Robustness fix for merging update logs
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.52.0
+
+--reviewers=probinso,dayton8

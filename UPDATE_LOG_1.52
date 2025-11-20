@@ -1,10 +1,10 @@
 
 
-Thu Sep  4 15:21:22 2025 Benjamin T. Liu
-MR_660
+Thu Sep  4 14:44:05 2025 Benjamin T. Liu
+v1.52.1
 Reviewers: Peter Robinson
 
-Mergeback: ensure public branches are up-to-date before creating a new flow branch
+Ensure public branches are up-to-date before creating a new flow branch
 
 - this may be important after a fork
 
