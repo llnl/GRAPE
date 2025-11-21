@@ -1063,7 +1063,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     f"Creating new pull request titled '{title}' " + "\n" +
                     f" for branch {branch} targeting {target_branch}. ")
                 logging.info(f"reviewers: {reviewers}, labels={add_labels}")
-                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers,
+                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers, non_approvers=non_approver_list,
                                                  labels=add_labels)
                 if request:
                    url = request.link()
@@ -1078,7 +1078,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
                         git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
                         git.push(f"origin {target_branch}", execution_path=git_execution_path)
-                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path,
+                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, args, git_execution_path,
                                         add_labels=add_labels, remove_labels=remove_labels)
         else:
             logging.info(
