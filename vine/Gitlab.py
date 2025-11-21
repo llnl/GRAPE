@@ -216,7 +216,7 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
@@ -237,6 +237,7 @@ class Repo:
          mr.update(title,
                    description=description,
                    reviewers=reviewers,
+                   non_approvers=non_approvers,
                    add_labels=labels)
 
          return mr
@@ -631,7 +632,7 @@ class PullRequest:
                         else:
                            logging.info(f"Could not find reviewer {r}.")
                            raise SystemExit("Abort")
-                        if r in non_approvers:
+                        if non_approvers and r in non_approvers:
                             logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
                             num_required -= 1
                             all_reviewer_ids.add(gitlab_reviewer.id)
