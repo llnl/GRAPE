@@ -7,6 +7,7 @@ from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 from vine import utility
+import re
 import sys
 
 class Approve(Option, WorkspaceDirHandler):
@@ -49,7 +50,8 @@ class Approve(Option, WorkspaceDirHandler):
         super(Approve, self).__init__()
         self._key = "approve"
         self._section = "Code Reviews"
-        self._review_rules = None
+        self._rules = None
+        self._active_rule_names = None
 
     def description(self):
         return "Approve a merge/pull request."
@@ -61,29 +63,47 @@ class Approve(Option, WorkspaceDirHandler):
 
         return self._rules
 
+    @property
+    def active_rule_names(self):
+        if self._active_rule_names is None:
+            self._active_rule_names = [rule_name for rule_name in self.rules if self.rules[rule_name]['active']]
+
+        return self._active_rule_names
+
     @log_wrapper
     def execute(self, args):
+        # Authenticate to git hosting service
+        user_name = args["--user"] or utility.getUserName()
+        verify = True if args["--verifySSL"].lower() == "true" else False
+        logging.info(f"Logging onto {args['--codeReviewsURL']}")
+
+        codeReviews = CodeReviewsFactory.makeCodeReviews(
+            user_name,
+            url=args["--codeReviewsURL"],
+            verify=verify,
+            port=int(args["--ssh_pat_port"]),
+            ssh_path=args["--ssh_pat_url"],
+            workspace_dir=self.workspace_dir
+        )
+
         # Get and validate review rule
-        rule_name = args["--rule"]
+        rule_name = args['--rule']
 
         if not rule_name:
-            # TODO: List only active rules
-            rule_name = utility.userInput(f"Please enter a review rule name ({', '.join(self._review_rules.keys())}): ")
+            rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(self.active_rule_names)}): ')
 
         if rule_name not in self.rules:
-            # TODO: List valid review rule names
-            logging.error(f'GRAPE: ERROR: "{rule_name}" is not a valid review rule.')
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid ({", ".join(self.active_rule_names)}).')
             exit(1)
 
         rule = self.rules[rule_name]
 
         if not rule['active']:
-            logging.error(f'GRAPE: ERROR: "{rule_name}" is an inactive review rule.')
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is inactive ({", ".join(self.active_rule_names)}).')
             exit(1)
 
         # Check if the user is allowed to approve
-        user_name = args["--user"] or utility.getUserName()
-        eligible_reviewers = rule['eligiblereviewers']
+        eligible_reviewers = rule['eligibleReviewers']
         eligible = False
 
         for eligible_reviewer in eligible_reviewers:
@@ -92,25 +112,11 @@ class Approve(Option, WorkspaceDirHandler):
                 break
 
         if not eligible:
-            logging.error(f'GRAPE: ERROR: {user_name} cannot approve review rule: {rule_name}.')
+            logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule_name}".')
             exit(1)
 
         # Get list of repositories to which the review rule applies
-        review_rule_repositories = review_rule['repositories']
-
-        # Authenticate to git hosting service
-        verify = True if args["--verifySSL"].lower() == "true" else False
-
-        logging.info(f"Logging onto {args['--codeReviewsURL']}")
-
-        codeReviews = CodeReviewsFactory.makeCodeReviews(
-            name,
-            url=args["--codeReviewsURL"],
-            verify=verify,
-            port=int(args["--ssh_pat_port"]),
-            ssh_path=args["--ssh_pat_url"],
-            workspace_dir=self.workspace_dir
-        )
+        review_rule_repositories = rule['repositories']
 
         config = config_parser_global.grapeConfig()
 
