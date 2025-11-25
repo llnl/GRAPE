@@ -3,6 +3,7 @@ import os
 import traceback
 
 from vine import addSubproject
+from vine import approve
 from vine import bundle
 from vine import branches
 from vine import checkout
@@ -87,8 +88,8 @@ class _Menu(WorkspaceDirHandler):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [
-            addSubproject.AddSubproject(), bundle.Bundle(), bundle.Unbundle(),
-            branches.Branches(), status.Status(), stash.Stash(),
+            approve.Approve(), addSubproject.AddSubproject(), bundle.Bundle(),
+            bundle.Unbundle(), branches.Branches(), status.Status(), stash.Stash(),
             checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
             publish.Publish(), clone.Clone(), config.Config(),
             writeConfig.WriteConfig(), foreach.ForEach(), merge.Merge(),

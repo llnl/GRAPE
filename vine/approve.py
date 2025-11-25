@@ -67,6 +67,7 @@ class Approve(Option, WorkspaceDirHandler):
         rule_name = args["--rule"]
 
         if not rule_name:
+            # TODO: List only active rules
             rule_name = utility.userInput(f"Please enter a review rule name ({', '.join(self._review_rules.keys())}): ")
 
         if rule_name not in self.rules:
