@@ -13,7 +13,8 @@ class Approve(Option, WorkspaceDirHandler):
     """
     grape approve
     Manage approval for a pull/merge request.
-    Usage: grape-approve [--source=<topicBranch>]
+    Usage: grape-approve [--rule=<ruleName>]
+                         [--source=<topicBranch>]
                          [--target=<publicBranch>]
                          [--project=<prj>]
                          [--repo=<repo>]
@@ -24,6 +25,7 @@ class Approve(Option, WorkspaceDirHandler):
                          [--ssh_pat_port=<int>]
 
     Options:
+        --rule=<ruleName>           The name of the review rule to apply.
         --source=<topicBranch>      The branch to approve the merge request for.
         --target=<publicBranch>     The public branch targeted by the merge request.
                                     Defaults to mapping for source branch.
@@ -47,17 +49,55 @@ class Approve(Option, WorkspaceDirHandler):
         super(Approve, self).__init__()
         self._key = "approve"
         self._section = "Code Reviews"
+        self._review_rules = None
 
     def description(self):
         return "Approve a merge/pull request."
 
+    @property
+    def rules(self):
+        if self._rules is None:
+            self._rules = review_mod.parseReviewRules()
+
+        return self._rules
+
     @log_wrapper
     def execute(self, args):
-        if "gitlab" not in args["--codeReviewsURL"]:
-            logging.info("The grape approve command is currently only implemented for GitLab.")
-            return False
+        # Get and validate review rule
+        rule_name = args["--rule"]
 
-        name = args["--user"] or utility.getUserName()
+        if not rule_name:
+            rule_name = utility.userInput(f"Please enter a review rule name ({', '.join(self._review_rules.keys())}): ")
+
+        if rule_name not in self.rules:
+            # TODO: List valid review rule names
+            logging.error(f'GRAPE: ERROR: "{rule_name}" is not a valid review rule.')
+            exit(1)
+
+        rule = self.rules[rule_name]
+
+        if not rule['active']:
+            logging.error(f'GRAPE: ERROR: "{rule_name}" is an inactive review rule.')
+            exit(1)
+
+        # Check if the user is allowed to approve
+        user_name = args["--user"] or utility.getUserName()
+        eligible_reviewers = rule['eligiblereviewers']
+        eligible = False
+
+        for eligible_reviewer in eligible_reviewers:
+            if re.fullmatch(eligible_reviewer, user_name):
+                eligible = True
+                break
+
+        if not eligible:
+            logging.error(f'GRAPE: ERROR: {user_name} cannot approve review rule: {rule_name}.')
+            exit(1)
+
+        # Get list of repositories to which the review rule applies
+        review_rule_repositories = review_rule['repositories']
+
+        # Authenticate to git hosting service
         verify = True if args["--verifySSL"].lower() == "true" else False
 
         logging.info(f"Logging onto {args['--codeReviewsURL']}")
@@ -87,6 +127,66 @@ class Approve(Option, WorkspaceDirHandler):
         print(f"target_branch: {target_branch}")
         sys.exit(1)
 
+        # Assemble arguments for parallel execution
+        listOfRepoBranchArgTuples=[]
+
+        ## Top Repo
+        listOfRepoBranchArgTuples.append((repo_name,
+                                          source_branch,
+                                          [{"codeReviews": codeReviews,
+                                            "isSubmodule": False,
+                                            "isNested": False,
+                                            "args": args,
+                                            "target_branch": target_branch,
+                                            "project": submodule}]))
+
+        ##  Submodule Repos
+        submodules = git.getAllSubmodules(self.workspace_dir)
+
+        # update target branch based off of branch prefix
+        submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
+        # determine branch prefix
+        source_branch_prefix = git.branchPrefix(source_branch)
+        submodule_target_branch = submodule_branch_mappings[prefix]
+
+        for submodule in submodules:
+            if not submodule:
+                continue
+
+            listOfRepoBranchArgTuples.append((submodule,
+                                              source_branch,
+                                              [{"codeReviews": codeReviews,
+                                                "isSubmodule": True,
+                                                "isNested": False,
+                                                "args": args,
+                                                "target_branch": submodule_target_branch,
+                                                "project": submodule}]))
+
+        ## NESTED SUBPROJECT REPOS
+        subprojects = config_parser_user.getAllNestedSubprojects(workspaceDir=self.workspace_dir)
+        subproject_prefixes = [config.get(f"nested-{name}", "prefix") for name in subprojects]
+
+        for subproject, prefix in zip(subrojects, subproject_prefixes):
+            prefix_path = os.path.join(self.workspace_dir, prefix)
+            listOfRepoBranchArgTuples.append((prefix_path,
+                                              branch,
+                                              [{"codeReviews":codeReviews,
+                                                "isSubmodule": False,
+                                                "isNested": True,
+                                                "args": args,
+                                                "target_branch": target_branch,
+                                                "project": subproject}]))
+
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            approve,
+            skipSubmodules=False,
+            runInSubprojects=True,
+            runInOuter=True,
+            workspace_dir=self.workspace_dir,
+            globalArgs=args)
+
+        retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE) 
+
         # load pull request if it already exists
         wsRepo = codeReviews.project(project_name).repo(repo_name)
         request = getReposPullRequest(wsRepo, source_branch, target_branch, args)
@@ -103,6 +203,28 @@ class Approve(Option, WorkspaceDirHandler):
             logging.info(f"Failed to approve merge request: {e}")
             return False
 
+    def approve(repo_name, branch, args, *, workspace_dir):
+        kwargs = args[0]
+        git_service = kwargs["codeReviews"]
+        isSubmodule = kwargs["isSubmodule"]
+        isNested = kwargs["isNested"]
+        review_args = kwargs["args"]
+        target_branch = kwargs["target_branch"]
+        project = kwargs["project"]
+
+        if isNested:
+            repo = CodeReviewsFactory.repoFromNestedSubprojectName(git_service, project)
+        elif isSubmodule:
+            repo = CodeReviewsFactory.repoFromSubmodulePath(git_service, project)
+        else:
+            repo = CodeReviewsFactory.repoObject(git_service)
+
+        newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, review_args, repo)
+        if newRequest:
+            return newRequest.link()
+        else:
+            return ""
+
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
         config.set(self.SECTION_PROJECT, "codeReviewsURL", "https://your.host.org/gitlab/or/bitbucket")
@@ -112,3 +234,100 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
+
+    def parseReviewRules():
+        """
+        Parses the global GRAPE config file and returns a dictionary of review rules.
+
+        :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+        """
+        reviewRules = {}
+
+        # Names reserved by grape
+        reservedReviewRuleNames = ['grape']
+        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+        # Count the number of active review rules
+        numActiveRules = 0
+
+        # Extract the rule names from the [review] section
+        config = config_parser_global.grapeConfig()
+
+        reviewSectionName = "review"
+
+        if config.has_section(reviewSectionName):
+            if config.has_option(reviewSectionName, "rules"):
+                reviewRuleNames = config.get(reviewSectionName, "rules").split()
+
+                for reviewRuleName in reviewRuleNames:
+                    if reviewRuleName in reservedReviewRuleNames:
+                        logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
+                        exit(1)
+
+                    sectionName = f"{reviewSectionName}-{reviewRuleName}"
+
+                    if not config.has_section(sectionName):
+                        logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
+                        exit(1)
+
+                    # Default to active
+                    active = True
+
+                    if config.has_option(sectionName, "active"):
+                        active = config.getboolean(sectionName, "active")
+
+                    if active:
+                        numActiveRules += 1
+
+                    # Provide a reasonable default for the rule label
+                    label = f"GRAPE: {reviewRuleName} review"
+
+                    if config.has_option(sectionName, "label"):
+                        label = config.get(sectionName, "label")
+
+                    if label in reservedReviewRuleLabels:
+                        logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
+                        exit(1)
+
+                    # Default to one reviewer
+                    minNumReviewers = 1
+
+                    if config.has_option(sectionName, "minnumreviewers"):
+                        minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                    # Default to all reviewers
+                    eligibleReviewers = [".+"]
+
+                    if config.has_option(sectionName, "eligiblereviewers"):
+                        eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+
+                    # Default to all repositories
+                    repositories = [".+"]
+
+                    if config.has_option(sectionName, "repositories"):
+                        repositories = config.get(sectionName, "repositories").split()
+
+                    # Add the rule
+                    reviewRules[reviewRuleName] = {
+                        "active": active,
+                        "label": label,
+                        "minNumReviewers": minNumReviewers,
+                        "eligibleReviewers": eligibleReviewers,
+                        "repositories": repositories
+                    }
+
+        # Add the GRAPE review rule. It will be active only if the user has
+        # not specified any rules.
+        if not reviewRules:
+            grapeReviewRuleActive = True
+            numActiveRules += 1
+        else:
+            grapeReviewRuleActive = False
+
+        reviewRules.update(getGrapeReviewRule(grapeReviewRuleActive))
+
+        if numActiveRules == 0:
+            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+            exit(1)
+
+        return reviewRules
