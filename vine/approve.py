@@ -115,17 +115,30 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule_name}".')
             exit(1)
 
-        # Get list of repositories to which the review rule applies
+        # Get the list of repositories to which the review rule applies
         review_rule_repositories = rule['repositories']
 
+        # Get config
         config = config_parser_global.grapeConfig()
 
+        # Get repository and containing project/group
         project_name = args["--project"]
         repo_name = args["--repo"]
+
+        # Get and validate source branch
         source_branch = args["--source"]
+
+        if not source_branch:
+            source_branch = utility.userInput(f'Please enter the name of the branch being reviewed: ')
+
+            if not source_branch:
+                logging.error(f'GRAPE: ERROR: Source branch is required.')
+                exit(1)
+
+        # Get target branch
         target_branch = args["--target"]
 
-        if not target_branch and source_branch:
+        if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
 
         print(f"project_name: {project_name}")
