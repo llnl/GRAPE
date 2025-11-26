@@ -168,11 +168,45 @@ class Approve(Option, WorkspaceDirHandler):
         listOfRepoBranchArgTuples = []
         inputs = {}
 
+        # Top level repository
+        rule_applies = False
+
+        for rule_repository in rule_repositories:
+            if re.fullmatch(rule_repository, repo_name):
+                rule_applies = True
+                break
+
+        approval_granted = False
+        approval_description = ''
+
+        if rule_applies:
+            logging.info(f'Applying review rule "{rule_name}" to top level repository "{repo_name}".')
+            # TODO: Show the latest commit hash
+            approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+
+            if approval_granted:
+                for rule_input in rule_inputs:
+                    if repo_name not in inputs:
+                        inputs[repo_name] = {}
+
+                    inputs[repo_name][rule_input] = utility.userInput(f'{rule_input}: ')
+
+        listOfRepoBranchArgTuples.append((repo_name,
+                                          source_branch,
+                                          [{'git_service': codeReviews,
+                                            'top': True,
+                                            'submodule': False,
+                                            'subproject': False,
+                                            'rule': rule,
+                                            'approve': approval_granted,
+                                            'inputs': inputs,
+                                            'args': args,
+                                            'target_branch': target_branch,
+                                            'project': repo_name}]))
+
         # Submodule repositories
         modified_submodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, source_branch, includeAdded=True)
-        # update target branch based off of branch prefix
         submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
-        # determine branch prefix
         source_branch_prefix = git.branchPrefix(source_branch)
         submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
 
@@ -299,7 +333,7 @@ def approve(repo, branch, args, *, workspace_dir):
     # Update merge request description
     if subproject:
         repo = CodeReviewsFactory.repoFromNestedSubprojectName(git_service, project)
-    elif isSubmodule:
+    elif submodule:
         repo = CodeReviewsFactory.repoFromSubmodulePath(git_service, project)
     else:
         repo = CodeReviewsFactory.repoObject(git_service)
