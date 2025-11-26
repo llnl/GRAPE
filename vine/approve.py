@@ -163,31 +163,55 @@ class Approve(Option, WorkspaceDirHandler):
                                             "args": args,
                                             "target_branch": target_branch,
                                             "project": submodule}]))
+        """
 
-        ##  Submodule Repos
-        submodules = git.getAllSubmodules(self.workspace_dir)
+        listOfRepoBranchArgTuples = []
+        inputs = {}
 
+        # Submodule repositories
+        modified_submodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, source_branch, includeAdded=True)
         # update target branch based off of branch prefix
         submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
         # determine branch prefix
         source_branch_prefix = git.branchPrefix(source_branch)
-        submodule_target_branch = submodule_branch_mappings[prefix]
+        submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
 
-        for submodule in submodules:
-            if not submodule:
-                continue
+        for submodule in modified_submodules:
+            # Check if rule applies to submodule
+            rule_applies = False
+
+            for rule_repository in rule_repositories:
+                if re.fullmatch(rule_repository, submodule):
+                    rule_applies = True
+                    break
+
+            approval_granted = False
+            approval_description = ''
+
+            if rule_applies:
+                logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule}".')
+                # TODO: Show the latest commit hash
+                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+
+                if approval_granted:
+                    for rule_input in rule_inputs:
+                        if submodule not in inputs:
+                            inputs[submodule] = {}
+
+                        inputs[submodule][rule_input] = utility.userInput(f'{rule_input}: ')
 
             listOfRepoBranchArgTuples.append((submodule,
                                               source_branch,
-                                              [{"codeReviews": codeReviews,
-                                                "isSubmodule": True,
-                                                "isNested": False,
-                                                "args": args,
-                                                "target_branch": submodule_target_branch,
-                                                "project": submodule}]))
-        """
-        listOfRepoBranchArgTuples = []
-        inputs = {}
+                                              [{'git_service': codeReviews,
+                                                'top': False,
+                                                'submodule': True,
+                                                'subproject': False,
+                                                'rule': rule,
+                                                'approve': approval_granted,
+                                                'inputs': inputs,
+                                                'args': args,
+                                                'target_branch': submodule_target_branch,
+                                                'project': submodule}]))
 
         # Subproject repositories
         modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
