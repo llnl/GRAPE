@@ -242,6 +242,30 @@ class Repo:
 
          return mr
 
+    def getTag(self, name):
+        try:
+            tag = self.project.tags.get(tag_name)
+        except gitlab.exceptions.GitlabGetError:
+            tag = None
+
+        return tag
+
+    def deleteTag(self, name):
+        try:
+            self.project.tags.delete(name)
+        except gitlab.exceptions.GitlabDeleteError:
+            # TODO: Consider logging
+            pass
+
+    def createTag(self, name, ref, message):
+        return project.tags.create({'tag_name': name,
+                                    'ref': ref,
+                                    'message': message})
+
+    def updateTag(self, name, ref, message):
+        self.deleteTag(name)
+        self.createTag(name, ref, message)
+
     # If restrict_id is positive, it is the group id to restrict the branch to;
     # if it is negative, it is the negative of the user id to restrict the branch to;
     # otherwise, the push_access_level and merge_access_level are used.
@@ -577,6 +601,9 @@ class PullRequest:
 
     def toRef(self):
         return self.mergerequest.target_branch
+
+    def approve(self):
+        return self.mergerequest.approve()
 
     def approved(self):
         approvals = self.mergerequest.approvals.get()
