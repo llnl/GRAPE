@@ -1261,14 +1261,21 @@ def parseReviewRules():
                 if config.has_option(sectionName, "inputs"):
                     inputs = config.get(sectionName, "inputs").split(";")
 
+                approve_actions = ['approve', 'update_description']
+
+                if config.has_option(sectionName, "approve_actions"):
+                    approve_actions = config.get(sectionName, "approve_actions").split()
+
                 # Add the rule
                 reviewRules[reviewRuleName] = {
+                    "name": reviewRuleName,
                     "active": active,
                     "label": label,
                     "minNumReviewers": minNumReviewers,
                     "eligibleReviewers": eligibleReviewers,
                     "repositories": repositories,
-                    "inputs": inputs
+                    "inputs": inputs,
+                    "approve_actions": approve_actions
                 }
 
     # Add the GRAPE review rule. It will be active only if the user has

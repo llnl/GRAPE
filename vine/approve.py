@@ -308,17 +308,13 @@ class Approve(Option, WorkspaceDirHandler):
             review_request.update(review_request.version(), description=description)
 
         # Approve reviewed branch
-        action_approve = 'approve_actions' in rule and 'approve' in rule['approve_actions']:
-        
-        if action_approve:
+        if 'approve' in rule['approve_actions']:
             review_request.approve()
 
         # Tag reviewed branch
-        # TODO: Get specific commit
-        action_tag = 'approve_actions' in rule and 'tag' in rule['approve_actions']
-
-        if action_tag:
-            tag_name = f'{rule['id']}_{review_request.iid()}'
+        if 'tag' in rule['approve_actions']:
+            tag_name = f'{rule['name']}_{review_request.iid()}'
+            # TODO: Get specific commit
             tag_ref = branch
             tag_message = ''
 
