@@ -122,7 +122,7 @@ class Approve(Option, WorkspaceDirHandler):
         rule_repositories = rule['repositories']
 
         # Get the command for generating an approval description
-        rule_approval_description_command = rule['approvaldescriptioncommand']
+        rule_inputs = rule['inputs']
 
         # Get config
         config = config_parser_global.grapeConfig()
@@ -186,11 +186,14 @@ class Approve(Option, WorkspaceDirHandler):
                                                 "project": submodule}]))
         """
 
-        approval_descriptions = {}
+        inputs = {}
 
         # Subproject repositories
         modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
             f'origin/{target_branch}', f'origin/{source_branch}', workspaceDir=self.workspace_dir)
+
+        # For testing
+        modified_subprojects = ['test_subproject_1', 'test_subproject_2']
 
         for subproject in modified_subprojects:
             # Check if rule applies to subproject
@@ -202,6 +205,7 @@ class Approve(Option, WorkspaceDirHandler):
                     break
 
             approval_granted = False
+            approval_description = ''
 
             if rule_applies:
                 logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject}".')
@@ -209,9 +213,14 @@ class Approve(Option, WorkspaceDirHandler):
                 approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
 
                 if approval_granted:
-                    process_result = vine_subprocess.executeSubProcess(
-                cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
-                # Then call custom script for building a description
+                    for rule_input in rule_inputs:
+                        if subproject not in inputs:
+                            inputs[subproject] = {}
+
+                        inputs[subproject][rule_input] = utility.userInput(f'{rule_input}: ')
+
+            print(inputs)
+            sys.exit(0)
 
             listOfRepoBranchArgTuples.append((prefix_path,
                                               branch,
@@ -221,6 +230,7 @@ class Approve(Option, WorkspaceDirHandler):
                                                 'subproject': True,
                                                 'rule': rule,
                                                 'approve': approval_granted,
+                                                'inputs': inputs,
                                                 'args': args,
                                                 'target_branch': target_branch,
                                                 'project': subproject}]))
