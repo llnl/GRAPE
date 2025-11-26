@@ -3,6 +3,7 @@ from vine import CodeReviewsFactory
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
+from vine import multi_repo_cmd_launcher
 from vine import review
 from vine import vine_subprocess
 from vine.option import Option
@@ -185,7 +186,7 @@ class Approve(Option, WorkspaceDirHandler):
                                                 "target_branch": submodule_target_branch,
                                                 "project": submodule}]))
         """
-
+        listOfRepoBranchArgTuples = []
         inputs = {}
 
         # Subproject repositories
@@ -219,11 +220,8 @@ class Approve(Option, WorkspaceDirHandler):
 
                         inputs[subproject][rule_input] = utility.userInput(f'{rule_input}: ')
 
-            print(inputs)
-            sys.exit(0)
-
-            listOfRepoBranchArgTuples.append((prefix_path,
-                                              branch,
+            listOfRepoBranchArgTuples.append((config.get(f'nested-{subproject}', 'prefix'),
+                                              source_branch,
                                               [{'git_service': codeReviews,
                                                 'top': False,
                                                 'submodule': False,
@@ -235,76 +233,8 @@ class Approve(Option, WorkspaceDirHandler):
                                                 'target_branch': target_branch,
                                                 'project': subproject}]))
 
-        sys.exit(1)
-
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(approve, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         launcher.launchFromWorkspaceDir() 
-
-    def approve(repo_name, branch, args, *, workspace_dir):
-        kwargs = args[0]
-        git_service = kwargs['git_service']
-        top = kwargs['top']
-        submodule = kwargs['submodule']
-        subproject = kwargs['subproject']
-        rule = kwargs['rule']
-        approval = kwargs['approve']
-        inputs = kwargs['inputs']
-        args = kwargs['args']
-        target_branch = kwargs["target_branch"]
-        project = kwargs["project"]
-
-        # Build rule section for merge request description
-        rule_section = ''
-
-        if inputs:
-            rule_section = f'# {rule["label"]}'
-
-            for key in sorted(inputs.keys()):
-                rule_section += f'\n\n## {key}'
-                project_inputs = inputs[key]
-
-                for project_input in sorted(project_inputs.keys()):
-                    rule_section += f'\n\n{project_input}: {project_inputs[project_input]}'
-
-        # Update merge request description
-        if subproject:
-            repo = CodeReviewsFactory.repoFromNestedSubprojectName(git_service, project)
-        elif isSubmodule:
-            repo = CodeReviewsFactory.repoFromSubmodulePath(git_service, project)
-        else:
-            repo = CodeReviewsFactory.repoObject(git_service)
-
-        review_request = repo.getOpenPullRequest(branch, target_branch)
-
-        if not review_request:
-            # Log warning message
-            pass
-
-        if rule_section:
-            description = f'{review_request.description()}\n\n{rule_section}'
-            review_request.update(review_request.version(), description=description)
-
-        # Approve reviewed branch
-        if 'approve' in rule['approve_actions']:
-            review_request.approve()
-
-        # Tag reviewed branch
-        if 'tag' in rule['approve_actions']:
-            tag_name = f'{rule["name"]}_{review_request.iid()}'
-            # TODO: Get specific commit
-            tag_ref = branch
-            tag_message = ''
-
-            if project in inputs:
-                project_inputs = inputs[project]
-
-                for project_input in project_inputs:
-                    tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
-
-            repo.updateTag(tag_name, tag_ref, tag_message)
-            # TODO: Consider logging if the tag already existed and is being updated
-
-        return
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -315,3 +245,71 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
+
+def approve(repo_name, branch, args, *, workspace_dir):
+    kwargs = args[0]
+    git_service = kwargs['git_service']
+    top = kwargs['top']
+    submodule = kwargs['submodule']
+    subproject = kwargs['subproject']
+    rule = kwargs['rule']
+    approval = kwargs['approve']
+    inputs = kwargs['inputs']
+    args = kwargs['args']
+    target_branch = kwargs["target_branch"]
+    project = kwargs["project"]
+
+    print(project)
+
+    # Build rule section for merge request description
+    rule_section = ''
+
+    if inputs:
+        rule_section = f'# {rule["label"]}'
+
+        for key in sorted(inputs.keys()):
+            rule_section += f'\n\n## {key}'
+            project_inputs = inputs[key]
+
+            for project_input in sorted(project_inputs.keys()):
+                rule_section += f'\n\n{project_input}: {project_inputs[project_input]}'
+
+    # Update merge request description
+    if subproject:
+        repo = CodeReviewsFactory.repoFromNestedSubprojectName(git_service, project)
+    elif isSubmodule:
+        repo = CodeReviewsFactory.repoFromSubmodulePath(git_service, project)
+    else:
+        repo = CodeReviewsFactory.repoObject(git_service)
+
+    review_request = repo.getOpenPullRequest(branch, target_branch)
+
+    if not review_request:
+        # Log warning message
+        pass
+
+    if rule_section:
+        description = f'{review_request.description()}\n\n{rule_section}'
+        review_request.update(review_request.version(), description=description)
+
+    # Approve reviewed branch
+    if 'approve' in rule['approve_actions']:
+        review_request.approve()
+
+    # Tag reviewed branch
+    if 'tag' in rule['approve_actions']:
+        tag_name = f'{rule["name"]}_{review_request.iid()}'
+        # TODO: Get specific commit
+        tag_ref = branch
+        tag_message = ''
+
+        if project in inputs:
+            project_inputs = inputs[project]
+
+            for project_input in project_inputs:
+                tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
+
+        repo.updateTag(tag_name, tag_ref, tag_message)
+        # TODO: Consider logging if the tag already existed and is being updated
+
+    return
