@@ -237,31 +237,8 @@ class Approve(Option, WorkspaceDirHandler):
 
         sys.exit(1)
 
-        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            approve,
-            skipSubmodules=False,
-            runInSubprojects=True,
-            runInOuter=True,
-            workspace_dir=self.workspace_dir,
-            globalArgs=args)
-
-        retvals = launcher.launchFromWorkspaceDir(handleMRE=handlePushMRE) 
-
-        # load pull request if it already exists
-        wsRepo = codeReviews.project(project_name).repo(repo_name)
-        request = getReposPullRequest(wsRepo, source_branch, target_branch, args)
-
-        if not request:
-            logging.info(f"No open merge request found for {source_branch} -> {target_branch} in {project_name}/{repo_name}.")
-            return False
-
-        try:
-            request.approve()
-            logging.info(f"Approved merge request: {request.link()}")
-            return True
-        except Exception as e:
-            logging.info(f"Failed to approve merge request: {e}")
-            return False
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(approve, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
+        launcher.launchFromWorkspaceDir() 
 
     def approve(repo_name, branch, args, *, workspace_dir):
         kwargs = args[0]
@@ -313,7 +290,7 @@ class Approve(Option, WorkspaceDirHandler):
 
         # Tag reviewed branch
         if 'tag' in rule['approve_actions']:
-            tag_name = f'{rule['name']}_{review_request.iid()}'
+            tag_name = f'{rule["name"]}_{review_request.iid()}'
             # TODO: Get specific commit
             tag_ref = branch
             tag_message = ''
