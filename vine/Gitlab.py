@@ -258,9 +258,9 @@ class Repo:
             pass
 
     def createTag(self, name, ref, message):
-        return project.tags.create({'tag_name': name,
-                                    'ref': ref,
-                                    'message': message})
+        return self.project.tags.create({'tag_name': name,
+                                         'ref': ref,
+                                         'message': message})
 
     def updateTag(self, name, ref, message):
         self.deleteTag(name)

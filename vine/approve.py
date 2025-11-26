@@ -234,7 +234,7 @@ class Approve(Option, WorkspaceDirHandler):
                                                 'project': subproject}]))
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(approve, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
-        launcher.launchFromWorkspaceDir() 
+        launcher.launchFromWorkspaceDir(handleMRE=handleApproveMRE)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -246,7 +246,7 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
 
-def approve(repo_name, branch, args, *, workspace_dir):
+def approve(repo, branch, args, *, workspace_dir):
     kwargs = args[0]
     git_service = kwargs['git_service']
     top = kwargs['top']
@@ -258,8 +258,6 @@ def approve(repo_name, branch, args, *, workspace_dir):
     args = kwargs['args']
     target_branch = kwargs["target_branch"]
     project = kwargs["project"]
-
-    print(project)
 
     # Build rule section for merge request description
     rule_section = ''
@@ -286,22 +284,26 @@ def approve(repo_name, branch, args, *, workspace_dir):
 
     if not review_request:
         # Log warning message
-        pass
+        return
 
-    if rule_section:
-        description = f'{review_request.description()}\n\n{rule_section}'
+    if 'update_description' in rule['approve_actions']:
+        # TODO: Detect if description is already present, and if so, replace it
+        description = f'{review_request.description().decode("utf-8").strip()}\n\n{rule_section}'
         review_request.update(review_request.version(), description=description)
 
     # Approve reviewed branch
     if 'approve' in rule['approve_actions']:
-        review_request.approve()
+        try:
+            review_request.approve()
+        except:
+            logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
 
     # Tag reviewed branch
     if 'tag' in rule['approve_actions']:
         tag_name = f'{rule["name"]}_{review_request.iid()}'
         # TODO: Get specific commit
         tag_ref = branch
-        tag_message = ''
+        tag_message = rule['label']
 
         if project in inputs:
             project_inputs = inputs[project]
@@ -313,3 +315,7 @@ def approve(repo_name, branch, args, *, workspace_dir):
         # TODO: Consider logging if the tag already existed and is being updated
 
     return
+
+def handleApproveMRE(mre):
+    for e in mre.exceptions():
+        raise e
