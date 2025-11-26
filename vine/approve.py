@@ -3,7 +3,7 @@ from vine import CodeReviewsFactory
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
-from vine import review as review_mod
+from vine import review
 from vine import vine_subprocess
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -61,7 +61,7 @@ class Approve(Option, WorkspaceDirHandler):
     @property
     def rules(self):
         if self._rules is None:
-            self._rules = review_mod.parseReviewRules()
+            self._rules = review.parseReviewRules()
 
         return self._rules
 
@@ -75,16 +75,17 @@ class Approve(Option, WorkspaceDirHandler):
     @log_wrapper
     def execute(self, args):
         # Authenticate to git hosting service
-        user_name = args["--user"] or utility.getUserName()
-        verify = True if args["--verifySSL"].lower() == "true" else False
-        logging.info(f"Logging onto {args['--codeReviewsURL']}")
+        user_name = args['--user'] or utility.getUserName()
+        url = args['--codeReviewsURL']
+        verify = True if args['--verifySSL'].lower() == 'true' else False
+        logging.info(f'Logging onto {url}')
 
         codeReviews = CodeReviewsFactory.makeCodeReviews(
             user_name,
-            url=args["--codeReviewsURL"],
+            url=url,
             verify=verify,
-            port=int(args["--ssh_pat_port"]),
-            ssh_path=args["--ssh_pat_url"],
+            port=int(args['--ssh_pat_port']),
+            ssh_path=args['--ssh_pat_url'],
             workspace_dir=self.workspace_dir
         )
 
@@ -95,13 +96,13 @@ class Approve(Option, WorkspaceDirHandler):
             rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(self.active_rule_names)}): ')
 
         if rule_name not in self.rules:
-            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid ({", ".join(self.active_rule_names)}).')
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" not found. Active rules: {", ".join(self.active_rule_names)}.')
             exit(1)
 
         rule = self.rules[rule_name]
 
         if not rule['active']:
-            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is inactive ({", ".join(self.active_rule_names)}).')
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is inactive. Active rules: {", ".join(self.active_rule_names)}.')
             exit(1)
 
         # Check if the user is allowed to approve
@@ -120,6 +121,9 @@ class Approve(Option, WorkspaceDirHandler):
         # Get the list of repositories to which the review rule applies
         rule_repositories = rule['repositories']
 
+        # Get the command for generating an approval description
+        rule_approval_description_command = rule['approvaldescriptioncommand']
+
         # Get config
         config = config_parser_global.grapeConfig()
 
@@ -131,7 +135,7 @@ class Approve(Option, WorkspaceDirHandler):
         source_branch = args["--source"]
 
         if not source_branch:
-            source_branch = utility.userInput(f'Please enter the name of the branch being reviewed: ')
+            source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
 
             if not source_branch:
                 logging.error(f'GRAPE: ERROR: Source branch is required.')
@@ -182,11 +186,11 @@ class Approve(Option, WorkspaceDirHandler):
                                                 "project": submodule}]))
         """
 
-        descriptions = {}
+        approval_descriptions = {}
 
         # Subproject repositories
         modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
-            f'origin/{target_branch}', workspaceDir=self.workspace_dir)
+            f'origin/{target_branch}', f'origin/{source_branch}', workspaceDir=self.workspace_dir)
 
         for subproject in modified_subprojects:
             # Check if rule applies to subproject
@@ -280,100 +284,3 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
-
-    def parseReviewRules():
-        """
-        Parses the global GRAPE config file and returns a dictionary of review rules.
-
-        :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
-        """
-        reviewRules = {}
-
-        # Names reserved by grape
-        reservedReviewRuleNames = ['grape']
-        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
-
-        # Count the number of active review rules
-        numActiveRules = 0
-
-        # Extract the rule names from the [review] section
-        config = config_parser_global.grapeConfig()
-
-        reviewSectionName = "review"
-
-        if config.has_section(reviewSectionName):
-            if config.has_option(reviewSectionName, "rules"):
-                reviewRuleNames = config.get(reviewSectionName, "rules").split()
-
-                for reviewRuleName in reviewRuleNames:
-                    if reviewRuleName in reservedReviewRuleNames:
-                        logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
-                        exit(1)
-
-                    sectionName = f"{reviewSectionName}-{reviewRuleName}"
-
-                    if not config.has_section(sectionName):
-                        logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
-                        exit(1)
-
-                    # Default to active
-                    active = True
-
-                    if config.has_option(sectionName, "active"):
-                        active = config.getboolean(sectionName, "active")
-
-                    if active:
-                        numActiveRules += 1
-
-                    # Provide a reasonable default for the rule label
-                    label = f"GRAPE: {reviewRuleName} review"
-
-                    if config.has_option(sectionName, "label"):
-                        label = config.get(sectionName, "label")
-
-                    if label in reservedReviewRuleLabels:
-                        logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
-                        exit(1)
-
-                    # Default to one reviewer
-                    minNumReviewers = 1
-
-                    if config.has_option(sectionName, "minnumreviewers"):
-                        minNumReviewers = config.getint(sectionName, "minnumreviewers")
-
-                    # Default to all reviewers
-                    eligibleReviewers = [".+"]
-
-                    if config.has_option(sectionName, "eligiblereviewers"):
-                        eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
-
-                    # Default to all repositories
-                    repositories = [".+"]
-
-                    if config.has_option(sectionName, "repositories"):
-                        repositories = config.get(sectionName, "repositories").split()
-
-                    # Add the rule
-                    reviewRules[reviewRuleName] = {
-                        "active": active,
-                        "label": label,
-                        "minNumReviewers": minNumReviewers,
-                        "eligibleReviewers": eligibleReviewers,
-                        "repositories": repositories
-                    }
-
-        # Add the GRAPE review rule. It will be active only if the user has
-        # not specified any rules.
-        if not reviewRules:
-            grapeReviewRuleActive = True
-            numActiveRules += 1
-        else:
-            grapeReviewRuleActive = False
-
-        reviewRules.update(getGrapeReviewRule(grapeReviewRuleActive))
-
-        if numActiveRules == 0:
-            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
-            exit(1)
-
-        return reviewRules

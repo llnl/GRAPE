@@ -1256,13 +1256,19 @@ def parseReviewRules():
                 if config.has_option(sectionName, "repositories"):
                     repositories = config.get(sectionName, "repositories").split()
 
+                approval_description_command = ""
+
+                if config.has_option(sectionName, "approvaldescriptioncommand"):
+                    approval_description_command = config.get(sectionName, "approvaldescriptioncommand").strip()
+
                 # Add the rule
                 reviewRules[reviewRuleName] = {
                     "active": active,
                     "label": label,
                     "minNumReviewers": minNumReviewers,
                     "eligibleReviewers": eligibleReviewers,
-                    "repositories": repositories
+                    "repositories": repositories,
+                    "approvaldescriptioncommand": approval_description_command
                 }
 
     # Add the GRAPE review rule. It will be active only if the user has
