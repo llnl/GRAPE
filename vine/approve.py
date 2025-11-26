@@ -181,7 +181,7 @@ class Approve(Option, WorkspaceDirHandler):
                                                 "project": submodule}]))
         """
 
-        user_input = {}
+        descriptions = {}
 
         # Subproject repositories
         modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
@@ -196,25 +196,31 @@ class Approve(Option, WorkspaceDirHandler):
                     rule_applies = True
                     break
 
+            approval_granted = False
+
             if rule_applies:
                 logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject}".')
-                # Get user input
-                pass
+                # TODO: Show the latest commit hash
+                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
 
-        sys.exit(1)
-        subprojects = config_parser_user.getAllNestedSubprojects(workspaceDir=self.workspace_dir)
-        subproject_prefixes = [config.get(f"nested-{name}", "prefix") for name in subprojects]
+                if approval_granted:
+                    process_result = vine_subprocess.executeSubProcess(
+                cmd.strip(), capture_output=capture_output, working_dir=self.workspace_dir)
+                # Then call custom script for building a description
 
-        for subproject, prefix in zip(subrojects, subproject_prefixes):
-            prefix_path = os.path.join(self.workspace_dir, prefix)
             listOfRepoBranchArgTuples.append((prefix_path,
                                               branch,
-                                              [{"codeReviews":codeReviews,
-                                                "isSubmodule": False,
-                                                "isNested": True,
+                                              [{'git_service': codeReviews,
+                                                'top': False,
+                                                'submodule': False,
+                                                'subproject': True,
+                                                'rule': rule,
+                                                'approve': approval_granted,
                                                 "args": args,
                                                 "target_branch": target_branch,
                                                 "project": subproject}]))
+
+        sys.exit(1)
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             approve,
