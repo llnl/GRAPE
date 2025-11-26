@@ -1,6 +1,7 @@
 import logging
 from vine import CodeReviewsFactory
 from vine import config_parser_global
+from vine import config_parser_user
 from vine import grapeGit as git
 from vine import review as review_mod
 from vine.option import Option
@@ -116,7 +117,7 @@ class Approve(Option, WorkspaceDirHandler):
             exit(1)
 
         # Get the list of repositories to which the review rule applies
-        review_rule_repositories = rule['repositories']
+        rule_repositories = rule['repositories']
 
         # Get config
         config = config_parser_global.grapeConfig()
@@ -141,12 +142,9 @@ class Approve(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
 
-        print(f"project_name: {project_name}")
-        print(f"repo_name: {repo_name}")
-        print(f"source_branch: {source_branch}")
-        print(f"target_branch: {target_branch}")
-        sys.exit(1)
+        # Get modified repositories
 
+        """
         # Assemble arguments for parallel execution
         listOfRepoBranchArgTuples=[]
 
@@ -181,8 +179,29 @@ class Approve(Option, WorkspaceDirHandler):
                                                 "args": args,
                                                 "target_branch": submodule_target_branch,
                                                 "project": submodule}]))
+        """
 
-        ## NESTED SUBPROJECT REPOS
+        user_input = {}
+
+        # Subproject repositories
+        modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
+            f'origin/{target_branch}', workspaceDir=self.workspace_dir)
+
+        for subproject in modified_subprojects:
+            # Check if rule applies to subproject
+            rule_applies = False
+
+            for rule_repository in rule_repositories:
+                if re.fullmatch(rule_repository, subproject):
+                    rule_applies = True
+                    break
+
+            if rule_applies:
+                logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject}".')
+                # Get user input
+                pass
+
+        sys.exit(1)
         subprojects = config_parser_user.getAllNestedSubprojects(workspaceDir=self.workspace_dir)
         subproject_prefixes = [config.get(f"nested-{name}", "prefix") for name in subprojects]
 
