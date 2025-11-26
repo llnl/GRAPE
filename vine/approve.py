@@ -4,6 +4,7 @@ from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
 from vine import review as review_mod
+from vine import vine_subprocess
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
@@ -216,9 +217,9 @@ class Approve(Option, WorkspaceDirHandler):
                                                 'subproject': True,
                                                 'rule': rule,
                                                 'approve': approval_granted,
-                                                "args": args,
-                                                "target_branch": target_branch,
-                                                "project": subproject}]))
+                                                'args': args,
+                                                'target_branch': target_branch,
+                                                'project': subproject}]))
 
         sys.exit(1)
 
