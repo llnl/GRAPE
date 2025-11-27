@@ -345,9 +345,23 @@ def approve(repo, branch, args, *, workspace_dir):
         return
 
     if 'update_description' in rule['approve_actions']:
-        # TODO: Detect if description is already present, and if so, replace it
-        description = f'{review_request.description().decode("utf-8").strip()}\n\n{rule_section}'
-        review_request.update(review_request.version(), description=description)
+        current_description = review_request.description().decode("utf-8").strip()
+
+        # Pattern:
+        # - Match "# {section_name}" at line start
+        # - Capture everything until next top-level header ("# " at line start) or end of string
+        pattern = (
+            rf'(?m)^# {re.escape(rule["label"])}\s*\n'    # Top-level section header
+            r'(.*?)'                                      # Non-greedy capture
+            r'(?=^# [^\n]*|\Z)'                           # Stop at next top-level header or end of string
+        )
+
+        def repl(match):
+            # Reconstruct header and new content, preserve section boundary
+            return f'{rule_section}\n\n'
+
+        updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
+        review_request.update(review_request.version(), description=updated_description)
 
     # Approve reviewed branch
     if 'approve' in rule['approve_actions']:
