@@ -357,7 +357,9 @@ def approve(repo, branch, args, *, workspace_dir):
         )
 
         def repl(match):
-            # Reconstruct header and new content, preserve section boundary
+            # Replace section and preserve new lines before next section
+            # If there is no section after this one, the extra new lines
+            # will be stripped off anyway.
             return f'{rule_section}\n\n'
 
         updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
