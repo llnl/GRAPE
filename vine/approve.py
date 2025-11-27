@@ -148,23 +148,7 @@ class Approve(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
 
-        # Get modified repositories
-
-        """
-        # Assemble arguments for parallel execution
-        listOfRepoBranchArgTuples=[]
-
-        ## Top Repo
-        listOfRepoBranchArgTuples.append((repo_name,
-                                          source_branch,
-                                          [{"codeReviews": codeReviews,
-                                            "isSubmodule": False,
-                                            "isNested": False,
-                                            "args": args,
-                                            "target_branch": target_branch,
-                                            "project": submodule}]))
-        """
-
+        # Set up for parallel launch command
         listOfRepoBranchArgTuples = []
         inputs = {}
 

@@ -246,6 +246,7 @@ class Repo:
         try:
             tag = self.project.tags.get(tag_name)
         except gitlab.exceptions.GitlabGetError:
+            # TODO: Consider logging
             tag = None
 
         return tag
@@ -258,9 +259,15 @@ class Repo:
             pass
 
     def createTag(self, name, ref, message):
-        return self.project.tags.create({'tag_name': name,
-                                         'ref': ref,
-                                         'message': message})
+        try:
+            tag = self.project.tags.create({'tag_name': name,
+                                            'ref': ref,
+                                            'message': message})
+        except gitlab.exceptions.GitlabCreateError:
+            # TODO: Consider logging
+            tag = None
+
+        return tag
 
     def updateTag(self, name, ref, message):
         self.deleteTag(name)
@@ -604,6 +611,9 @@ class PullRequest:
 
     def approve(self):
         return self.mergerequest.approve()
+
+    def unapprove(self):
+        return self.mergerequest.unapprove()
 
     def approved(self):
         approvals = self.mergerequest.approvals.get()
