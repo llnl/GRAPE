@@ -233,9 +233,6 @@ class Approve(Option, WorkspaceDirHandler):
         modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
             f'origin/{target_branch}', f'origin/{source_branch}', workspaceDir=self.workspace_dir)
 
-        # For testing
-        modified_subprojects = ['test_subproject_1', 'test_subproject_2']
-
         for subproject in modified_subprojects:
             # Check if rule applies to subproject
             rule_applies = False
