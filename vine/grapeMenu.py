@@ -88,7 +88,7 @@ class _Menu(WorkspaceDirHandler):
         self._optionLookup = {}
         #Add/order your menu option here
         self._options = [
-            approve.Approve(), addSubproject.AddSubproject(), bundle.Bundle(),
+            addSubproject.AddSubproject(), approve.Approve(), bundle.Bundle(),
             bundle.Unbundle(), branches.Branches(), status.Status(), stash.Stash(),
             checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
             publish.Publish(), clone.Clone(), config.Config(),
