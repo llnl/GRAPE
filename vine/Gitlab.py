@@ -635,6 +635,15 @@ class PullRequest:
         return self.mergerequest.target_branch
 
     def approve(self):
+        """
+        Approve this merge request.
+
+        Returns:
+            The GitLab API response from the approve action.
+
+        Notes:
+            Throws exception if the approval cannot be completed (e.g. insufficient permissions).
+        """
         return self.mergerequest.approve()
 
     def approved(self):
