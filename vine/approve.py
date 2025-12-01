@@ -325,23 +325,28 @@ def approve(repo, branch, args, *, workspace_dir):
 
     if 'update_description' in rule['approve_actions']:
         current_description = review_request.description().decode("utf-8").strip()
+        section_header = f'# {rule["label"]}'
 
-        # Pattern:
-        # - Match "# {section_name}" at line start
-        # - Capture everything until next top-level header ("# " at line start) or end of string
-        pattern = (
-            rf'(?m)^# {re.escape(rule["label"])}\s*\n'    # Top-level section header
-            r'(.*?)'                                      # Non-greedy capture
-            r'(?=^# [^\n]*|\Z)'                           # Stop at next top-level header or end of string
-        )
+        if section_header in current_description:
+            # Pattern:
+            # - Match "# {section_name}" at line start
+            # - Capture everything until next top-level header ("# " at line start) or end of string
+            pattern = (
+                rf'^{re.escape(section_header)}\s*\n'    # Section header
+                r'(.*?)'                                 # Section content (non-greedy capture)
+                r'(?=^# [^\n]*|\Z)'                      # Stop at next top-level section header or end of string
+            )
 
-        def repl(match):
-            # Replace section and preserve new lines before next section
-            # If there is no section after this one, the extra new lines
-            # will be stripped off anyway.
-            return f'{rule_section}\n\n'
+            def repl(match):
+                # Replace section and preserve new lines before next section
+                # If there is no section after this one, the extra new lines
+                # will be stripped off anyway.
+                return f'{rule_section}\n\n'
 
-        updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
+            updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
+        else:
+            updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
+
         review_request.update(review_request.version(), description=updated_description)
 
     # Approve reviewed branch
