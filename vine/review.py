@@ -1261,7 +1261,7 @@ def parseReviewRules():
                 if config.has_option(sectionName, "inputs"):
                     inputs = config.get(sectionName, "inputs").split(";")
 
-                approve_actions = ['approve', 'update_description']
+                approve_actions = ['approve']
 
                 if config.has_option(sectionName, "approve_actions"):
                     approve_actions = config.get(sectionName, "approve_actions").split()
