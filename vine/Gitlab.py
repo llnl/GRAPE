@@ -242,34 +242,59 @@ class Repo:
 
          return mr
 
-    def getTag(self, name):
-        try:
-            tag = self.project.tags.get(tag_name)
-        except gitlab.exceptions.GitlabGetError:
-            # TODO: Consider logging
-            tag = None
+    def createTag(self, name, ref, message):
+        """
+        Create a git tag in the repository.
 
-        return tag
+        Args:
+            name (str): The name of the tag to create.
+            ref (str): The commit SHA or branch the tag should point to.
+            message (str): The tag message.
+
+        Notes:
+            Throws exception if the tag cannot be created.
+        """
+        self.project.tags.create({'tag_name': name,
+                                  'ref': ref,
+                                  'message': message})
 
     def deleteTag(self, name):
+        """
+        Delete a git tag from the repository by its name.
+
+        Args:
+            name (str): The name of the tag to delete.
+
+        Returns:
+            None
+
+        Notes:
+            Throws exception if the tag cannot be deleted (e.g. unathorized).
+            Does not throw if the tag does not exist.
+        """
         try:
             self.project.tags.delete(name)
-        except gitlab.exceptions.GitlabDeleteError:
-            # TODO: Consider logging
-            pass
-
-    def createTag(self, name, ref, message):
-        try:
-            tag = self.project.tags.create({'tag_name': name,
-                                            'ref': ref,
-                                            'message': message})
-        except gitlab.exceptions.GitlabCreateError:
-            # TODO: Consider logging
-            tag = None
-
-        return tag
+        except gitlab.exceptions.GitlabDeleteError as e:
+            if e.response_code == 404 and e.error_message == '404 Tag Not Found':
+                return
+            else:
+                raise(e)
 
     def updateTag(self, name, ref, message):
+        """
+        Updates a git tag in the repository.
+
+        Args:
+            name (str): The name of the tag to update.
+            ref (str): The commit SHA or branch the tag should point to.
+            message (str): The tag message.
+
+        Notes:
+            There is no API for updating a tag, so it must be deleted
+            (if present) and then recreated with the new ref and message.
+            Throws exception if the existing tag cannot be deleted or
+            the new tag cannot be created.
+        """
         self.deleteTag(name)
         self.createTag(name, ref, message)
 
@@ -611,9 +636,6 @@ class PullRequest:
 
     def approve(self):
         return self.mergerequest.approve()
-
-    def unapprove(self):
-        return self.mergerequest.unapprove()
 
     def approved(self):
         approvals = self.mergerequest.approvals.get()
