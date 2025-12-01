@@ -323,7 +323,7 @@ def approve(repo, branch, args, *, workspace_dir):
     review_request = repo.getOpenPullRequest(branch, target_branch)
 
     if not review_request:
-        # Log warning message
+        logging.warning(f"No open pull request found for branch {branch} targeting {target_branch}")
         return
 
     if 'update_description' in rule['approve_actions']:
