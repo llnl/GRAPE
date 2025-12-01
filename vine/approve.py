@@ -96,15 +96,11 @@ class Approve(Option, WorkspaceDirHandler):
         if not rule_name:
             rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(self.active_rule_names)}): ')
 
-        if rule_name not in self.rules:
-            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" not found. Active rules: {", ".join(self.active_rule_names)}.')
+        if rule_name not in self.active_rule_names:
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(self.active_rule_names)}.')
             exit(1)
 
         rule = self.rules[rule_name]
-
-        if not rule['active']:
-            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is inactive. Active rules: {", ".join(self.active_rule_names)}.')
-            exit(1)
 
         # Check if the user is allowed to approve
         eligible_reviewers = rule['eligibleReviewers']
@@ -122,7 +118,9 @@ class Approve(Option, WorkspaceDirHandler):
         # Get the list of repositories to which the review rule applies
         rule_repositories = rule['repositories']
 
-        # Get the command for generating an approval description
+        # Get the list of inputs for this review rule.
+        # The inputs are used to build a description if the approval actions
+        # include tagging and/or updating the merge/pull request description.
         rule_inputs = rule['inputs']
 
         # Get config
