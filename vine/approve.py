@@ -230,8 +230,10 @@ class Approve(Option, WorkspaceDirHandler):
                                                 'project': submodule}]))
 
         # Subproject repositories
+        # TODO: We may need an "alwaysRemote" argument
         modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
-            f'origin/{target_branch}', f'origin/{source_branch}', workspaceDir=self.workspace_dir)
+            f'origin/{target_branch}', f'origin/{source_branch}', workspaceDir=self.workspace_dir,
+            checkRemote=True)
 
         for subproject in modified_subprojects:
             # Check if rule applies to subproject
