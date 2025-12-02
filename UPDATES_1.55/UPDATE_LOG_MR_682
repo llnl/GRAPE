@@ -1,0 +1,21 @@
+
+
+Tue Dec  2 08:03:07 2025 Benjamin T. Liu
+MR_682
+Reviewers: Alan Dayton, Peter Robinson
+
+Add option in uv to disable --filter option only in submodules
+
+- blobless clone seems to be slower when cloning many submodules (as well as very large nested subprojects)
+
+- blobless clone seems to still be useful in checking out main/test repo
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.1
+
+--reviewers=dayton8,probinso

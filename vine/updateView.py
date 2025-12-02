@@ -723,12 +723,15 @@ class UpdateView(Option, WorkspaceDirHandler):
                     fstr = ""
                     gitVersions = git.version(execution_path=self.workspace_dir).split()[-1].split(".")
                     if filterArg:
-                        if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
-                            # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
-                            # flag to parse correctly, so we add it even though we already inited previously.
-                            fstr = f"--init --filter={filterArg}"
+                        if config.get(self.SECTION_WORKSPACE, "disable_submodule_clone_filter"):
+                            logging.info(f"Skipping --filter option in submodules (disable_submodule_clone_filter set to True)")
                         else:
-                            logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
+                            if int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 36):
+                                # Note that in 2.36.1, the --filter argument in git submodule update requires the --init
+                                # flag to parse correctly, so we add it even though we already inited previously.
+                                fstr = f"--init --filter={filterArg}"
+                            else:
+                                logging.info(f"Skipping --filter option in submodules (requires git 2.36+)")
 
                     # the --jobs argument is supported for git submodule update starting in 2.9.0.
                     enableJobs = (int(gitVersions[0]) > 2 or (int(gitVersions[0]) == 2 and int(gitVersions[1]) >= 9))
@@ -891,6 +894,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         config.ensureSection(self.SECTION_SPACK_PROJECTS)
         config.set(self.SECTION_WORKSPACE, "submodulepublicmappings", "?:master")
         config.set(self.SECTION_WORKSPACE, "CIRepos", " ")
+        config.set(self.SECTION_WORKSPACE, "disable_submodule_clone_filter", "True")
         config.set(self.SECTION_SPACK_PROJECTS, "submodules", " ")
         config.set(self.SECTION_SPACK_PROJECTS, "script", " ")
 
