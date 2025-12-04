@@ -1143,6 +1143,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                                 have_changed_labels = True
                                 break
 
+                    # Check to see if we actually have something to change
                     updates = []
                     if title != request.title():
                         updates.append(f"title={title}")
@@ -1163,16 +1164,18 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                            updates.append(f"remove_labels={remove_labels}")
 
                     if updates:
+                        # Only perform the request is something actually changed
                         logging.info(f"updating request with {', '.join(updates)}")
-                    request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
-                                             non_approvers=non_approver_list, wip=wip,
-                                             add_labels=add_labels, remove_labels=remove_labels)
-
-                    if have_changed_labels:
-                       logging.info("Regenerating pipeline...")
-                       request.regeneratePipeline()
-                    url = request.link()
-                    logging.info(f"Pull request updated at {url} .")
+                        request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
+                                                 non_approvers=non_approver_list, wip=wip,
+                                                 add_labels=add_labels, remove_labels=remove_labels)
+                        if have_changed_labels:
+                           logging.info("Regenerating pipeline...")
+                           request.regeneratePipeline()
+                        url = request.link()
+                        logging.info(f"Pull request updated at {url} .")
+                    else:
+                        logging.info(f"Pull request unchanged at {url} .")
                 else:
                     url = request.link()
                     logging.info(f"Pull request unchanged at {url} .")
