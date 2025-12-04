@@ -230,17 +230,10 @@ class Repo:
             # In this case, just create the merge request.
             pass
 
-         if wip is not None:
-            if wip:
-                if not PullRequest.wip_prefix_regexp().match(title):
-                    title = "Draft: " + title
-            else:
-                title = PullRequest.wip_prefix_regexp().sub('', title)
-
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "remove_source_branch": False,
-                                            "title": title}),
+                                            "title": PullRequest.get_title_for_wip_state(title, wip)}),
                           self.gitlab)
          mr.update(title,
                    description=description,
@@ -602,24 +595,27 @@ class PullRequest:
         return self.mergerequest.iid
 
     @staticmethod
-    def wip_prefix_regexp():
-        if not hasattr(PullRequest.wip_prefix_regexp, "obj"):
-            PullRequest.wip_prefix_regexp.obj = re.compile(r'^(wip:|draft:)\s*', re.IGNORECASE)
-        return PullRequest.wip_prefix_regexp.obj
+    def get_title_for_wip_state(title, wip):
+        if not hasattr(PullRequest.get_title_for_wip_state, "regexp"):
+            PullRequest.get_title_for_wip_state.regexp = re.compile(r'^(wip:|draft:)\s*', re.IGNORECASE)
+
+        new_title = title
+
+        if wip is not None:
+            if wip:
+                if not PullRequest.get_title_for_wip_state.regexp.match(title):
+                    new_title = "Draft: " + title
+            else:
+                new_title = PullRequest.get_title_for_wip_state.regexp.sub('', title)
+
+        return new_title
 
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
     def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
         if title is None:
             title = self.mergerequest.title
 
-        if wip is not None:
-            if wip:
-                if not self.wip_prefix_regexp().match(title):
-                    title = "Draft: " + title
-            else:
-                title = self.wip_prefix_regexp().sub('', title)
-
-        self.mergerequest.title = title
+        self.mergerequest.title = self.get_title_for_wip_state(title, wip)
 
         if description:
             self.mergerequest.description = description
