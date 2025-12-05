@@ -27,6 +27,7 @@ class Review(Option, WorkspaceDirHandler):
     """
     grape review
     Usage: grape-review [--update | --add]
+                        [--draft | --ready]
                         [--title=<title>]
                         [--descr=<file> | -m <description>]
                         [--user=<userName> ]
@@ -59,6 +60,8 @@ class Review(Option, WorkspaceDirHandler):
         --add                       Add a new pull request. Default behavior if a pull request doesn't exist for
                                     <topicBranch> targeting <publicBranch>. If a pull request already exists and --add
                                     is set, an error will be generated.
+        --draft                     Mark pull request as draft.
+        --ready                     Mark pull request as ready (not draft).
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
@@ -649,6 +652,12 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 non_approver_list.update(non_approvers.lower().split(','))
 
+        wip = None
+        if args['--draft']:
+            wip = True
+        elif args['--ready']:
+            wip = False
+
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
@@ -793,6 +802,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "reviewers": submoduleReviewers,
                                                                          "reviewer_list" : reviewer_list,
                                                                          "non_approver_list" : non_approver_list,
+                                                                         "wip" : wip,
                                                                          "active": submodule in activeSubmodules }]))
                     project_reviewer_lists.update(reviewer_list)
 
@@ -825,6 +835,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "reviewers": subprojectReviewers,
                                                                     "reviewer_list" : reviewer_list,
                                                                     "non_approver_list" : non_approver_list,
+                                                                    "wip" : wip,
                                                                     "active": proj in activeNestedSubprojects}]))
                project_reviewer_lists.update(reviewer_list)
 
@@ -885,7 +896,7 @@ class Review(Option, WorkspaceDirHandler):
 
             outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
-            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, non_approver_list, args, self.workspace_dir, add_labels=add_labels, remove_labels=remove_labels)
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, args, self.workspace_dir, non_approver_list=non_approver_list, wip=wip, add_labels=add_labels, remove_labels=remove_labels)
 
             # Update related reviews
             outerLevelURL = request.link()
@@ -937,9 +948,9 @@ class Review(Option, WorkspaceDirHandler):
                                           updatedDescription,
                                           outerReviewers,
                                           project_reviewer_lists,
-                                          non_approver_list,
                                           args,
                                           self.workspace_dir,
+                                          non_approver_list=non_approver_list, wip=wip,
                                           add_labels=add_labels, remove_labels=remove_labels)
 
             logging.debug(f"Request generated/updated:\n\n{request}")
@@ -998,6 +1009,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     reviewers = kwargs["reviewers"]
     reviewer_list  = kwargs["reviewer_list"]
     non_approver_list  = kwargs["non_approver_list"]
+    wip = kwargs["wip"]
     active = kwargs["active"]
 
     # push branch
@@ -1012,7 +1024,8 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     else:
         codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
-    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, review_args, repo)
+    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list,
+                                 review_args, repo, non_approver_list=non_approver_list, wip=wip)
     if newRequest:
         return newRequest.link()
     else:
@@ -1043,8 +1056,8 @@ def targetBranchMissing(errorMessage):
     return False
 
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, args, git_execution_path,
-                    add_labels=[], remove_labels=[]):
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path,
+                    non_approver_list=[], wip=None, add_labels=[], remove_labels=[]):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
 
@@ -1063,7 +1076,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                     f"Creating new pull request titled '{title}' " + "\n" +
                     f" for branch {branch} targeting {target_branch}. ")
                 logging.info(f"reviewers: {reviewers}, labels={add_labels}")
-                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers, non_approvers=non_approver_list,
+                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers,
+                                                 non_approvers=non_approver_list, wip=wip,
                                                  labels=add_labels)
                 if request:
                    url = request.link()
@@ -1078,7 +1092,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
                         git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
                         git.push(f"origin {target_branch}", execution_path=git_execution_path)
-                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, non_approver_list, args, git_execution_path,
+                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list,
+                                        args, git_execution_path,
+                                        non_approver_list=non_approver_list, wip=wip,
                                         add_labels=add_labels, remove_labels=remove_labels)
         else:
             logging.info(
@@ -1115,7 +1131,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                                 " request and cannot be a reviewer")
                         subReviewers[reviewRuleName]['reviewers'].remove(author)
 
-                if title is not None or descr is not None or subReviewers or add_labels or remove_labels:
+                if title is not None or descr is not None or subReviewers or add_labels or remove_labels or wip is not None:
                     # Determine if any labels will be changing
                     have_changed_labels = False
                     if add_labels or remove_labels:
@@ -1127,9 +1143,12 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                                 have_changed_labels = True
                                 break
 
+                    # Check to see if we actually have something to change
                     updates = []
                     if title != request.title():
                         updates.append(f"title={title}")
+                    if wip is not None:
+                        updates.append(f"draft={wip}")
                     if descr.strip() != request.description().decode("utf-8").strip():
                         # Note that the description will change whenever the reviewers change.
                         updates.append(f"description={descr}")
@@ -1145,14 +1164,18 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                            updates.append(f"remove_labels={remove_labels}")
 
                     if updates:
+                        # Only perform the request is something actually changed
                         logging.info(f"updating request with {', '.join(updates)}")
-                        request = request.update(ver, title=title, description=descr, reviewers=subReviewers, non_approvers=non_approver_list, add_labels=add_labels, remove_labels=remove_labels)
-
+                        request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
+                                                 non_approvers=non_approver_list, wip=wip,
+                                                 add_labels=add_labels, remove_labels=remove_labels)
                         if have_changed_labels:
                            logging.info("Regenerating pipeline...")
                            request.regeneratePipeline()
                         url = request.link()
                         logging.info(f"Pull request updated at {url} .")
+                    else:
+                        logging.info(f"Pull request unchanged at {url} .")
                 else:
                     url = request.link()
                     logging.info(f"Pull request unchanged at {url} .")
