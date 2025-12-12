@@ -216,7 +216,7 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
@@ -229,15 +229,17 @@ class Repo:
             # If the diff is too big, this comparison can throw an exception.
             # In this case, just create the merge request.
             pass
+
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "remove_source_branch": False,
-                                            "title": title}),
+                                            "title": PullRequest.get_title_for_wip_state(title, wip)}),
                           self.gitlab)
          mr.update(title,
                    description=description,
                    reviewers=reviewers,
                    non_approvers=non_approvers,
+                   wip=wip,
                    add_labels=labels)
 
          return mr
@@ -660,10 +662,28 @@ class PullRequest:
     def iid(self):
         return self.mergerequest.iid
 
+    @staticmethod
+    def get_title_for_wip_state(title, wip):
+        if not hasattr(PullRequest.get_title_for_wip_state, "regexp"):
+            PullRequest.get_title_for_wip_state.regexp = re.compile(r'^(wip:|draft:)\s*', re.IGNORECASE)
+
+        new_title = title
+
+        if wip is not None:
+            if wip:
+                if not PullRequest.get_title_for_wip_state.regexp.match(title):
+                    new_title = "Draft: " + title
+            else:
+                new_title = PullRequest.get_title_for_wip_state.regexp.sub('', title)
+
+        return new_title
+
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, add_labels=[], remove_labels=[]):
-        if title:
-            self.mergerequest.title = title
+    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
+        if title is None:
+            title = self.mergerequest.title
+
+        self.mergerequest.title = self.get_title_for_wip_state(title, wip)
 
         if description:
             self.mergerequest.description = description
@@ -746,6 +766,7 @@ class PullRequest:
             except KeyError:
                pass
         self.mergerequest.labels = list(labels)
+
         # Disable removal of source branch on merge (if this merge request was created by hand).
         # This should only affect merging by clicking the merge button (grape manually disables the removal when
         # when merging the merge request). The merge button should be disabled by disabling CI and requiring pipelines

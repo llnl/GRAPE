@@ -1038,6 +1038,7 @@ options are at least listed below.
 
     grape review
     Usage: grape-review [--update | --add]
+                        [--draft | --ready]
                         [--title=<title>]
                         [--descr=<file> | -m <description>]
                         [--user=<userName> ]
@@ -1070,6 +1071,8 @@ options are at least listed below.
         --add                       Add a new pull request. Default behavior if a pull request doesn't exist for
                                     <topicBranch> targeting <publicBranch>. If a pull request already exists and --add
                                     is set, an error will be generated.
+        --draft                     Mark pull request as draft.
+        --ready                     Mark pull request as ready (not draft).
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.

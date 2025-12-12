@@ -165,7 +165,7 @@ class Repo(StashyNode):
                 ret.append(r)
         return ret
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
         """reviewers"""
         if labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
@@ -285,7 +285,7 @@ class PullRequest(StashyNode):
         return self.node["version"]
 
     # reviewers is a list of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -313,6 +313,10 @@ class PullRequest(StashyNode):
 
         if add_labels or remove_labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
+        if non_approvers:
+           logging.warning("GRAPE: WARNING: non_approvers not implemented Bitbucket Pull Requests")
+        if wip is not None:
+           logging.warning("GRAPE: WARNING: wip not implemented Bitbucket Pull Requests")
 
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
         return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=flattened_reviewers), self._stashy_pull_requests)
