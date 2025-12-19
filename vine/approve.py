@@ -5,6 +5,7 @@ from vine import config_parser_user
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import review
+from vine import submodules
 from vine import vine_subprocess
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -155,15 +156,73 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
             exit(1)
 
-        # TODO: Get modified submodules from remote .gitmodules
-        # gitmodules = topRepo.getFile(".gitmodules", source_branch)
-        # Parse gitmodules
-        # Resolve URLs
-        # git ls-remote url target_branch source_branch
-        # Add to a list if modified
+        # Get modified submodules from remote .gitmodules
+        modified_submodules = []
+        inputs = {}
+
+        gitmodules = topRepo.getFile(".gitmodules", source_branch)
+        submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
+        submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
+        source_branch_prefix = git.branchPrefix(source_branch)
+        submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
+
+        for submodule_name in submodules_metadata:
+            submodule_metadata = submodules_metadata[submodule_name]
+            url = submodule_metadata['url']
+            # Check url matches the top level git service
+            components = url.split('/')
+            submodule_repo_name = components[-1].split('.')[0] # Remove .git
+            submodule_project_name = components[-2]
+
+            if submodule_project_name == '..':
+                submodule_project_name = project_name
+
+            submodule_repo = codeReviews.project(submodule_project_name).repo(submodule_repo_name)
+            submodule_source_hash = submodule_repo.getBranchHeadCommitHash(source_branch)
+
+            if not submodule_source_hash:
+                # Source branch does not exist, which means there are no changes
+                continue
+
+            submodule_target_hash = submodule_repo.getBranchHeadCommitHash(submodule_target_branch)
+
+            if not submodule_target_hash:
+                logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
+                exit(1)
+
+            if submodule_source_hash == submodule_target_hash:
+                # Source and target branches on the same hash, so no changes
+                continue
+
+            # Save modified submodules
+            modified_submodules.append(submodule_repo)
+
+            # Check if rule applies to submodule
+            rule_applies = False
+
+            for rule_repository in rule_repositories:
+                if re.fullmatch(rule_repository, submodule_repo_name):
+                    rule_applies = True
+                    break
+
+            approval_granted = False
+
+            if rule_applies:
+                logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule}".')
+                # TODO: Show the latest commit hash
+                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+
+                if approval_granted:
+                    for rule_input in rule_inputs:
+                        if submodule not in inputs:
+                            inputs[submodule] = {}
+
+                        inputs[submodule][rule_input] = utility.userInput(f'{rule_input}: ')
 
         # TODO: Get modified subprojects from remote .grapeconfig
-        # grapeconfig = topRepo.getFile(source_branch, '.grapeconfig')
+        #grapeconfig = topRepo.getFile(source_branch, '.grapeconfig')
+        #print(grapeconfig)
+        #exit(0)
         # Parse grapeconfig
         # Resolve URLs
         # git ls-remote url target_branch source_branch
@@ -183,7 +242,6 @@ class Approve(Option, WorkspaceDirHandler):
                 break
 
         approval_granted = False
-        approval_description = ''
 
         if rule_applies:
             logging.info(f'Applying review rule "{rule_name}" to top level repository "{repo_name}".')
@@ -226,7 +284,6 @@ class Approve(Option, WorkspaceDirHandler):
                     break
 
             approval_granted = False
-            approval_description = ''
 
             if rule_applies:
                 logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule}".')
@@ -269,7 +326,6 @@ class Approve(Option, WorkspaceDirHandler):
                     break
 
             approval_granted = False
-            approval_description = ''
 
             if rule_applies:
                 logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject}".')

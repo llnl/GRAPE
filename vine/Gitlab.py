@@ -205,6 +205,15 @@ class Repo:
             else:
                 raise e
 
+    def getBranchHeadCommitHash(self, name):
+        try:
+            return self.project.branches.get(name).commit["id"]
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404:
+                return None
+            else:
+                raise e
+
     def getFile(self, path, revision):
         return self.project.files.raw(path, revision).decode('utf-8')
 
