@@ -1,4 +1,6 @@
 import logging
+import configparser
+from io import StringIO
 from vine import CodeReviewsFactory
 from vine import config_parser_global
 from vine import config_parser_user
@@ -208,26 +210,81 @@ class Approve(Option, WorkspaceDirHandler):
             approval_granted = False
 
             if rule_applies:
-                logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule}".')
+                logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule_repo_name}".')
                 # TODO: Show the latest commit hash
                 approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
 
                 if approval_granted:
                     for rule_input in rule_inputs:
-                        if submodule not in inputs:
-                            inputs[submodule] = {}
+                        if submodule_repo_name not in inputs:
+                            inputs[submodule_repo_name] = {}
 
-                        inputs[submodule][rule_input] = utility.userInput(f'{rule_input}: ')
+                        inputs[submodule_repo_name][rule_input] = utility.userInput(f'{rule_input}: ')
 
-        # TODO: Get modified subprojects from remote .grapeconfig
-        #grapeconfig = topRepo.getFile(source_branch, '.grapeconfig')
-        #print(grapeconfig)
+        # Get modified subprojects from remote .grapeconfig
+        grapeconfig = topRepo.getFile('.grapeconfig', source_branch)
+        config = configparser.ConfigParser()
+        config.optionxform = str  # keep key case as-is
+        # Use read_file on a StringIO wrapper
+        config.read_file(StringIO(grapeconfig))
+        subproject_names = config["nestedProjects"]["names"].split()
+        subproject_target_branch = target_branch
+        modified_subprojects = []
+
+        for subproject_name in subproject_names:
+            url = config[f'nested-{subproject_name}']['url']
+
+            # Check url matches the top level git service
+            components = url.split('/')
+            subproject_repo_name = components[-1].split('.')[0] # Remove .git
+            subproject_project_name = components[-2]
+
+            if subproject_project_name == '..':
+                subproject_project_name = project_name
+
+            subproject_repo = codeReviews.project(subproject_project_name).repo(subproject_repo_name)
+            subproject_source_hash = subproject_repo.getBranchHeadCommitHash(source_branch)
+
+            if not subproject_source_hash:
+                # Source branch does not exist, which means there are no changes
+                continue
+
+            subproject_target_hash = subproject_repo.getBranchHeadCommitHash(subproject_target_branch)
+
+            if not subproject_target_hash:
+                logging.error(f"GRAPE: ERROR: Target branch '{subproject_target_branch}' does not exist in '{subproject_project_name}/{subproject_repo_name}'")
+                exit(1)
+
+            if subproject_source_hash == subproject_target_hash:
+                # Source and target branches on the same hash, so no changes
+                continue
+
+            # Save modified subprojects
+            modified_subprojects.append(subproject_repo)
+
+            # Check if rule applies to subproject
+            rule_applies = False
+
+            for rule_repository in rule_repositories:
+                if re.fullmatch(rule_repository, subproject_repo_name):
+                    rule_applies = True
+                    break
+
+            approval_granted = False
+
+            if rule_applies:
+                logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject_name}".')
+                # TODO: Show the latest commit hash
+                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+
+                if approval_granted:
+                    for rule_input in rule_inputs:
+                        if subproject_name not in inputs:
+                            inputs[subproject_name] = {}
+
+                        inputs[subproject_name][rule_input] = utility.userInput(f'{rule_input}: ')
+
         #exit(0)
-        # Parse grapeconfig
-        # Resolve URLs
-        # git ls-remote url target_branch source_branch
-        # Add to a list if modified
-
 
         # Set up for parallel launch command
         listOfRepoBranchArgTuples = []
