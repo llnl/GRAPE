@@ -145,6 +145,14 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
+    def hasBranch(self, name):
+        logging.error("GRAPE: ERROR: hasBranch not implemented for Atlassian")
+        exit(1)
+
+    def getFile(self, path, revision):
+        logging.error("GRAPE: ERROR: getFile not implemented for Atlassian")
+        exit(1)
+
     def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 

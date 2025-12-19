@@ -194,7 +194,20 @@ class Repo:
     def __init__(self, gitlab_project, gitlab ):
         self.project = gitlab_project
         self.gitlab = gitlab
-        
+
+    def hasBranch(self, name):
+        try:
+            self.project.branches.get(name)
+            return True
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404:
+                return False
+            else:
+                raise e
+
+    def getFile(self, path, revision):
+        return self.project.files.raw(path, revision).decode('utf-8')
+
     # state can be "all", "merged", "opened", or "closed"
     def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
         if id == None:
