@@ -129,6 +129,7 @@ class Approve(Option, WorkspaceDirHandler):
         # Get repository and containing project/group
         project_name = args["--project"]
         repo_name = args["--repo"]
+        topRepo = codeReviews.project(project_name).repo(repo_name)
 
         # Get and validate source branch
         source_branch = args["--source"]
@@ -140,11 +141,34 @@ class Approve(Option, WorkspaceDirHandler):
                 logging.error(f'GRAPE: ERROR: Source branch is required.')
                 exit(1)
 
-        # Get target branch
+        if not topRepo.hasBranch(source_branch):
+            logging.error(f"GRAPE: ERROR: Source branch '{source_branch}' does not exist in '{project_name}/{repo_name}'")
+            exit(1)
+
+        # Get and validate target branch
         target_branch = args["--target"]
 
         if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
+
+        if not topRepo.hasBranch(target_branch):
+            logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
+            exit(1)
+
+        # TODO: Get modified submodules from remote .gitmodules
+        # gitmodules = topRepo.getFile(".gitmodules", source_branch)
+        # Parse gitmodules
+        # Resolve URLs
+        # git ls-remote url target_branch source_branch
+        # Add to a list if modified
+
+        # TODO: Get modified subprojects from remote .grapeconfig
+        # grapeconfig = topRepo.getFile(source_branch, '.grapeconfig')
+        # Parse grapeconfig
+        # Resolve URLs
+        # git ls-remote url target_branch source_branch
+        # Add to a list if modified
+
 
         # Set up for parallel launch command
         listOfRepoBranchArgTuples = []
