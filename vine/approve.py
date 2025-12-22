@@ -126,13 +126,10 @@ class Approve(Option, WorkspaceDirHandler):
         # include tagging and/or updating the merge/pull request description.
         rule_inputs = rule['inputs']
 
-        # Get config
-        config = config_parser_global.grapeConfig()
-
         # Get repository and containing project/group
         project_name = args["--project"]
         repo_name = args["--repo"]
-        topRepo = codeReviews.project(project_name).repo(repo_name)
+        top_repo = codeReviews.project(project_name).repo(repo_name)
 
         # Get and validate source branch
         source_branch = args["--source"]
@@ -144,25 +141,63 @@ class Approve(Option, WorkspaceDirHandler):
                 logging.error(f'GRAPE: ERROR: Source branch is required.')
                 exit(1)
 
-        if not topRepo.hasBranch(source_branch):
+        # TODO: It may not have to exist in the top level branch
+        if not top_repo.hasBranch(source_branch):
             logging.error(f"GRAPE: ERROR: Source branch '{source_branch}' does not exist in '{project_name}/{repo_name}'")
             exit(1)
+
+        # Get config
+        grapeconfig = top_repo.getFile('.grapeconfig', source_branch)
+        config = configparser.ConfigParser()
+        config.optionxform = str  # keep key case as-is
+        config.read_file(StringIO(grapeconfig))
 
         # Get and validate target branch
         target_branch = args["--target"]
 
         if not target_branch:
-            target_branch = config.getPublicBranchFor(source_branch)
+            source_branch_prefix = source_branch.split('/')[0]
+            topic_destination_mappings = config['flow']['topicDestinationMappings']
+            if source_branch_prefix in topic_destination_mappings:
+                target_branch = topic_destination_mappings[source_branch_prefix]
+            else:
+                public_branches = config['flow']['publicbranches'].split()
 
-        if not topRepo.hasBranch(target_branch):
+                if source_branch in public_branches:
+                    target_branch = source_branch
+                else:
+                    public_mapping_string = config['flow']['topicPrefixMappings']
+                    public_mappings = {}
+
+                    for mapping in public_mapping_string.split():
+                        entries = mapping.split(':')
+                        public_mappings[entries[0]] = entries[1]
+
+                    target_branch = public_mappings[source_branch_prefix]
+
+        if not top_repo.hasBranch(target_branch):
             logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
             exit(1)
+
+        # TODO: Apply approval rule to top level repo.
+        # Get the branch hashes instead of checking whether the branches exist.
+        top_source_hash = top_repo.getBranchHeadCommitHash(source_branch)
+
+        if top_source_hash:
+            top_target_hash = top_repo.getBranchHeadCommitHash(target_branch)
+
+            if not top_target_hash:
+                logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
+                exit(1)
+
+            if top_source_hash != top_target_hash:
+                modified = True
 
         # Get modified submodules from remote .gitmodules
         modified_submodules = []
         inputs = {}
 
-        gitmodules = topRepo.getFile(".gitmodules", source_branch)
+        gitmodules = top_repo.getFile(".gitmodules", source_branch)
         submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
         submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
         source_branch_prefix = git.branchPrefix(source_branch)
@@ -222,11 +257,6 @@ class Approve(Option, WorkspaceDirHandler):
                         inputs[submodule_repo_name][rule_input] = utility.userInput(f'{rule_input}: ')
 
         # Get modified subprojects from remote .grapeconfig
-        grapeconfig = topRepo.getFile('.grapeconfig', source_branch)
-        config = configparser.ConfigParser()
-        config.optionxform = str  # keep key case as-is
-        # Use read_file on a StringIO wrapper
-        config.read_file(StringIO(grapeconfig))
         subproject_names = config["nestedProjects"]["names"].split()
         subproject_target_branch = target_branch
         modified_subprojects = []
@@ -284,11 +314,12 @@ class Approve(Option, WorkspaceDirHandler):
 
                         inputs[subproject_name][rule_input] = utility.userInput(f'{rule_input}: ')
 
-        #exit(0)
+        print(inputs)
+        exit(0)
 
         # Set up for parallel launch command
         listOfRepoBranchArgTuples = []
-        inputs = {}
+        #inputs = {}
 
         # Top level repository
         rule_applies = False
