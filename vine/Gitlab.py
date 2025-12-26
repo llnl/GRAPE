@@ -215,7 +215,13 @@ class Repo:
                 raise e
 
     def getFile(self, path, revision):
-        return self.project.files.raw(path, revision).decode('utf-8')
+        try:
+            return self.project.files.raw(path, revision).decode('utf-8')
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404:
+                return None
+            else:
+                raise e
 
     # state can be "all", "merged", "opened", or "closed"
     def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):

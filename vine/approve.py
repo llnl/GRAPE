@@ -2,6 +2,7 @@ import logging
 import configparser
 from io import StringIO
 from vine import CodeReviewsFactory
+from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grapeGit as git
@@ -93,17 +94,55 @@ class Approve(Option, WorkspaceDirHandler):
             workspace_dir=self.workspace_dir
         )
 
+        # Get repository and containing project/group
+        project_name = args["--project"]
+        repo_name = args["--repo"]
+        top_repo = codeReviews.project(project_name).repo(repo_name)
+
+        # Get and validate source branch
+        source_branch = self._get_source_branch(args)
+        top_source_hash = top_repo.getBranchHeadCommitHash(source_branch)
+
+        if not top_source_hash:
+            logging.error(f"GRAPE: ERROR: Source branch '{source_branch}' does not exist in '{project_name}/{repo_name}'")
+            exit(1)
+
+        # Get config
+        grapeconfig = top_repo.getFile('.grapeconfig', source_branch)
+
+        if not grapeconfig:
+            logging.error(f"GRAPE: ERROR: File '.grapeconfig' does not exist in '{project_name}/{repo_name}'")
+            exit(1)
+
+        config = config_parser_base.GrapeConfigParserBase(workspaceDir=None, configString=grapeconfig)
+
+        # Get and validate target branch
+        target_branch = args["--target"]
+
+        if not target_branch:
+            target_branch = config.getPublicBranchFor(source_branch)
+
+        top_target_hash = top_repo.getBranchHeadCommitHash(source_branch)
+
+        if not top_target_hash:
+            logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
+            exit(1)
+
+        # Get review rules
+        rules = review.parseReviewRules(config)
+        active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
+
         # Get and validate review rule
         rule_name = args['--rule']
 
         if not rule_name:
-            rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(self.active_rule_names)}): ')
+            rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(active_rule_names)}): ')
 
-        if rule_name not in self.active_rule_names:
-            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(self.active_rule_names)}.')
+        if rule_name not in active_rule_names:
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
             exit(1)
 
-        rule = self.rules[rule_name]
+        rule = rules[rule_name]
 
         # Check if the user is allowed to approve
         eligible_reviewers = rule['eligibleReviewers']
@@ -126,145 +165,27 @@ class Approve(Option, WorkspaceDirHandler):
         # include tagging and/or updating the merge/pull request description.
         rule_inputs = rule['inputs']
 
-        # Get repository and containing project/group
-        project_name = args["--project"]
-        repo_name = args["--repo"]
-        top_repo = codeReviews.project(project_name).repo(repo_name)
+        # Gather all modified repositories (top level, submodules, and subprojects)
+        modified_repositories = {}
 
-        # Get and validate source branch
-        source_branch = args["--source"]
+        # Check if top level is modified
+        if top_source_hash != top_target_hash:
+            modified_repositories[repo_name] = {
+                'project_name': project_name,
+                'source_branch': source_branch,
+                'source_commit': top_source_hash,
+                'target_branch': target_branch,
+                'target_commit': top_target_hash,
+                'api_facade': top_repo
+            }
 
-        if not source_branch:
-            source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
-
-            if not source_branch:
-                logging.error(f'GRAPE: ERROR: Source branch is required.')
-                exit(1)
-
-        # TODO: It may not have to exist in the top level branch
-        if not top_repo.hasBranch(source_branch):
-            logging.error(f"GRAPE: ERROR: Source branch '{source_branch}' does not exist in '{project_name}/{repo_name}'")
-            exit(1)
-
-        # Get config
-        grapeconfig = top_repo.getFile('.grapeconfig', source_branch)
-        config = configparser.ConfigParser()
-        config.optionxform = str  # keep key case as-is
-        config.read_file(StringIO(grapeconfig))
-
-        # Get and validate target branch
-        target_branch = args["--target"]
-
-        if not target_branch:
-            source_branch_prefix = source_branch.split('/')[0]
-            topic_destination_mappings = config['flow']['topicDestinationMappings']
-            if source_branch_prefix in topic_destination_mappings:
-                target_branch = topic_destination_mappings[source_branch_prefix]
-            else:
-                public_branches = config['flow']['publicbranches'].split()
-
-                if source_branch in public_branches:
-                    target_branch = source_branch
-                else:
-                    public_mapping_string = config['flow']['topicPrefixMappings']
-                    public_mappings = {}
-
-                    for mapping in public_mapping_string.split():
-                        entries = mapping.split(':')
-                        public_mappings[entries[0]] = entries[1]
-
-                    target_branch = public_mappings[source_branch_prefix]
-
-        if not top_repo.hasBranch(target_branch):
-            logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
-            exit(1)
-
-        # TODO: Apply approval rule to top level repo.
-        # Get the branch hashes instead of checking whether the branches exist.
-        top_source_hash = top_repo.getBranchHeadCommitHash(source_branch)
-
-        if top_source_hash:
-            top_target_hash = top_repo.getBranchHeadCommitHash(target_branch)
-
-            if not top_target_hash:
-                logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
-                exit(1)
-
-            if top_source_hash != top_target_hash:
-                modified = True
-
-        # Get modified submodules from remote .gitmodules
-        modified_submodules = []
-        inputs = {}
-
-        gitmodules = top_repo.getFile(".gitmodules", source_branch)
-        submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
-        submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
-        source_branch_prefix = git.branchPrefix(source_branch)
-        submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
-
-        for submodule_name in submodules_metadata:
-            submodule_metadata = submodules_metadata[submodule_name]
-            url = submodule_metadata['url']
-            # Check url matches the top level git service
-            components = url.split('/')
-            submodule_repo_name = components[-1].split('.')[0] # Remove .git
-            submodule_project_name = components[-2]
-
-            if submodule_project_name == '..':
-                submodule_project_name = project_name
-
-            submodule_repo = codeReviews.project(submodule_project_name).repo(submodule_repo_name)
-            submodule_source_hash = submodule_repo.getBranchHeadCommitHash(source_branch)
-
-            if not submodule_source_hash:
-                # Source branch does not exist, which means there are no changes
-                continue
-
-            submodule_target_hash = submodule_repo.getBranchHeadCommitHash(submodule_target_branch)
-
-            if not submodule_target_hash:
-                logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
-                exit(1)
-
-            if submodule_source_hash == submodule_target_hash:
-                # Source and target branches on the same hash, so no changes
-                continue
-
-            # Save modified submodules
-            modified_submodules.append(submodule_repo)
-
-            # Check if rule applies to submodule
-            rule_applies = False
-
-            for rule_repository in rule_repositories:
-                if re.fullmatch(rule_repository, submodule_repo_name):
-                    rule_applies = True
-                    break
-
-            approval_granted = False
-
-            if rule_applies:
-                logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule_repo_name}".')
-                # TODO: Show the latest commit hash
-                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
-
-                if approval_granted:
-                    for rule_input in rule_inputs:
-                        if submodule_repo_name not in inputs:
-                            inputs[submodule_repo_name] = {}
-
-                        inputs[submodule_repo_name][rule_input] = utility.userInput(f'{rule_input}: ')
-
-        # Get modified subprojects from remote .grapeconfig
-        subproject_names = config["nestedProjects"]["names"].split()
-        subproject_target_branch = target_branch
-        modified_subprojects = []
+        # Check if subprojects are modified
+        subproject_names = config.getAllNestedSubprojects()
 
         for subproject_name in subproject_names:
-            url = config[f'nested-{subproject_name}']['url']
+            url = config.get(f"nested-{subproject_name}","url")
 
-            # Check url matches the top level git service
+            # TODO: Check url matches the top level git service
             components = url.split('/')
             subproject_repo_name = components[-1].split('.')[0] # Remove .git
             subproject_project_name = components[-2]
@@ -279,169 +200,197 @@ class Approve(Option, WorkspaceDirHandler):
                 # Source branch does not exist, which means there are no changes
                 continue
 
-            subproject_target_hash = subproject_repo.getBranchHeadCommitHash(subproject_target_branch)
+            subproject_target_hash = subproject_repo.getBranchHeadCommitHash(target_branch)
 
             if not subproject_target_hash:
-                logging.error(f"GRAPE: ERROR: Target branch '{subproject_target_branch}' does not exist in '{subproject_project_name}/{subproject_repo_name}'")
+                logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{subproject_project_name}/{subproject_repo_name}'")
                 exit(1)
 
-            if subproject_source_hash == subproject_target_hash:
-                # Source and target branches on the same hash, so no changes
+            if subproject_source_hash != subproject_target_hash:
+                modified_repositories[subproject_repo_name] = {
+                    'project_name': subproject_project_name,
+                    'source_branch': source_branch,
+                    'source_commit': subproject_source_hash,
+                    'target_branch': target_branch,
+                    'target_commit': subproject_target_hash,
+                    'api_facade': subproject_repo
+                }
+
+        # Check if submodules are modified
+        gitmodules = top_repo.getFile(".gitmodules", source_branch)
+
+        if gitmodules:
+            submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
+            submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
+            source_branch_prefix = git.branchPrefix(source_branch)
+            submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
+
+            for submodule_name in submodules_metadata:
+                submodule_metadata = submodules_metadata[submodule_name]
+                url = submodule_metadata['url']
+
+                # TODO: Check url matches the top level git service
+                components = url.split('/')
+                submodule_repo_name = components[-1].split('.')[0] # Remove .git
+                submodule_project_name = components[-2]
+
+                if submodule_project_name == '..':
+                    submodule_project_name = project_name
+
+                submodule_repo = codeReviews.project(submodule_project_name).repo(submodule_repo_name)
+                submodule_source_hash = submodule_repo.getBranchHeadCommitHash(source_branch)
+
+                if not submodule_source_hash:
+                    # Source branch does not exist, which means there are no changes
+                    continue
+
+                submodule_target_hash = subproject_repo.getBranchHeadCommitHash(submodule_target_branch)
+
+                if not submodule_target_hash:
+                    logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
+                    exit(1)
+
+                if submodule_source_hash != submodule_target_hash:
+                    modified_repositories[submodule_repo_name] = {
+                        'project_name': submodule_project_name,
+                        'source_branch': source_branch,
+                        'source_commit': submodule_source_hash,
+                        'target_branch': submodule_target_branch,
+                        'target_commit': submodule_target_hash,
+                        'api_facade': submodule_repo
+                    }
+            
+        # Check if rule applies to modified repositories and ask for approval and input
+        approvals = {}
+
+        for modified_repo_name in modified_repositories:
+            # Check if the rule applies to this repository
+            rule_applies = False
+
+            for rule_repository in rule_repositories:
+                if re.fullmatch(rule_repository, modified_repo_name):
+                    rule_applies = True
+                    break
+
+            if not rule_applies:
                 continue
 
-            # Save modified subprojects
-            modified_subprojects.append(subproject_repo)
+            # Get modified repo info
+            modified_repo = modified_repositories[modified_repo_name]
 
-            # Check if rule applies to subproject
-            rule_applies = False
+            # Check if there is an open Merge/Pull request
+            modified_repo_api_facade = modified_repo['api_facade']
+            source_branch = modified_repo['source_branch']
+            review_request = modified_repo_api_facade.getOpenPullRequest(source_branch, modified_repo['target_branch'])
 
-            for rule_repository in rule_repositories:
-                if re.fullmatch(rule_repository, subproject_repo_name):
-                    rule_applies = True
-                    break
+            if not review_request:
+                # TODO: log a message
+                continue
 
-            approval_granted = False
+            # Ask for approval
+            logging.info(f'Applying review rule "{rule_name}" to subproject "{modified_repo_name}".')
+            source_commit = modified_repo['source_commit']
+            approval_granted = utility.userInput(f'I have reviewed and approve the changes on branch "{source_branch}" (commit {source_commit}).', default='y')
 
-            if rule_applies:
-                logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject_name}".')
-                # TODO: Show the latest commit hash
-                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+            if not approval_granted:
+                continue
 
-                if approval_granted:
-                    for rule_input in rule_inputs:
-                        if subproject_name not in inputs:
-                            inputs[subproject_name] = {}
+            # Ask for input
+            approvals[modified_repo_name] = {
+                'commit': source_commit,
+                'inputs': {}
+            }
 
-                        inputs[subproject_name][rule_input] = utility.userInput(f'{rule_input}: ')
+            approval_input = approvals[modified_repo_name]['inputs']
 
-        print(inputs)
-        exit(0)
+            for rule_input in rule_inputs:
+                # TODO: Add case for username/user display name
+                if rule_input == 'commit':
+                    approval_input[rule_input] = source_commit
+                else:
+                    approval_input[rule_input] = utility.userInput(f'{rule_input}: ')
 
-        # Set up for parallel launch command
-        listOfRepoBranchArgTuples = []
-        #inputs = {}
+        if not approvals:
+            # TODO: log message about nothing being approved
+            exit(0)
 
-        # Top level repository
-        rule_applies = False
+        # Build rule section for merge request description
+        rule_section = ''
 
-        for rule_repository in rule_repositories:
-            if re.fullmatch(rule_repository, repo_name):
-                rule_applies = True
-                break
+        if 'update_description' in rule['approve_actions']:
+            rule_section = f'# {rule["label"]}'
 
-        approval_granted = False
+            for key in sorted(approvals.keys()):
+                rule_section += f'\n\n## {key}'
+                approval = approvals[key]
+                project_inputs = approval['inputs']
 
-        if rule_applies:
-            logging.info(f'Applying review rule "{rule_name}" to top level repository "{repo_name}".')
-            # TODO: Show the latest commit hash
-            approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+                for project_input in sorted(project_inputs.keys()):
+                    rule_section += f'\n\n{project_input}: {project_inputs[project_input]}'
 
-            if approval_granted:
-                for rule_input in rule_inputs:
-                    if repo_name not in inputs:
-                        inputs[repo_name] = {}
+        # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
+        for modified_repo_name in modified_repositories:
+            modified_repo = modified_repositories[modified_repo_name]
+            repo = modified_repo['api_facade']
+            source_branch = modified_repo['source_branch']
+            source_commit = modified_repo['source_commit']
+            target_branch = modified_repo['target_branch']
 
-                    inputs[repo_name][rule_input] = utility.userInput(f'{rule_input}: ')
+            # Update merge request description
+            review_request = repo.getOpenPullRequest(source_branch, target_branch)
 
-        listOfRepoBranchArgTuples.append((repo_name,
-                                          source_branch,
-                                          [{'git_service': codeReviews,
-                                            'top': True,
-                                            'submodule': False,
-                                            'subproject': False,
-                                            'rule': rule,
-                                            'approve': approval_granted,
-                                            'inputs': inputs,
-                                            'args': args,
-                                            'target_branch': target_branch,
-                                            'project': repo_name}]))
+            if not review_request:
+                logging.warning(f"No open pull request found for branch {source_branch} targeting {target_branch}")
+                continue
 
-        # Submodule repositories
-        modified_submodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, source_branch, includeAdded=True)
-        submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
-        source_branch_prefix = git.branchPrefix(source_branch)
-        submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
+            if 'update_description' in rule['approve_actions']:
+                current_description = review_request.description().decode("utf-8").strip()
+                section_header = f'# {rule["label"]}'
 
-        for submodule in modified_submodules:
-            # Check if rule applies to submodule
-            rule_applies = False
+                if section_header in current_description:
+                    # Pattern:
+                    # - Match "# {section_name}" at line start
+                    # - Capture everything until next top-level header ("# " at line start) or end of string
+                    pattern = (
+                        rf'^{re.escape(section_header)}\s*\n'    # Section header
+                        r'(.*?)'                                 # Section content (non-greedy capture)
+                        r'(?=^# [^\n]*|\Z)'                      # Stop at next top-level section header or end of string
+                    )
 
-            for rule_repository in rule_repositories:
-                if re.fullmatch(rule_repository, submodule):
-                    rule_applies = True
-                    break
+                    def repl(match):
+                        # Replace section and preserve new lines before next section
+                        # If there is no section after this one, the extra new lines
+                        # will be stripped off anyway.
+                        return f'{rule_section}\n\n'
 
-            approval_granted = False
+                    updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
+                else:
+                    updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
 
-            if rule_applies:
-                logging.info(f'Applying review rule "{rule_name}" to submodule "{submodule}".')
-                # TODO: Show the latest commit hash
-                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
+                review_request.update(review_request.version(), description=updated_description)
 
-                if approval_granted:
-                    for rule_input in rule_inputs:
-                        if submodule not in inputs:
-                            inputs[submodule] = {}
+            if modified_repo_name in approvals:
+                # Approve reviewed branch
+                if 'approve' in rule['approve_actions']:
+                    try:
+                        review_request.approve()
+                    except:
+                        logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
 
-                        inputs[submodule][rule_input] = utility.userInput(f'{rule_input}: ')
+                # Tag reviewed branch
+                if 'tag' in rule['approve_actions']:
+                    tag_name = f'{rule["name"]}_{review_request.iid()}'
+                    tag_ref = source_commit
+                    tag_message = rule['label']
 
-            listOfRepoBranchArgTuples.append((submodule,
-                                              source_branch,
-                                              [{'git_service': codeReviews,
-                                                'top': False,
-                                                'submodule': True,
-                                                'subproject': False,
-                                                'rule': rule,
-                                                'approve': approval_granted,
-                                                'inputs': inputs,
-                                                'args': args,
-                                                'target_branch': submodule_target_branch,
-                                                'project': submodule}]))
+                    project_inputs = approvals[modified_repo_name]['inputs']
 
-        # Subproject repositories
-        # TODO: We may need an "alwaysRemote" argument
-        modified_subprojects = config_parser_user.getAllModifiedNestedSubprojects(
-            f'origin/{target_branch}', f'origin/{source_branch}', workspaceDir=self.workspace_dir,
-            checkRemote=True)
+                    for project_input in project_inputs:
+                        tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
 
-        for subproject in modified_subprojects:
-            # Check if rule applies to subproject
-            rule_applies = False
+                    repo.updateTag(tag_name, tag_ref, tag_message)
+                    # TODO: Consider logging if the tag already existed and is being updated
 
-            for rule_repository in rule_repositories:
-                if re.fullmatch(rule_repository, subproject):
-                    rule_applies = True
-                    break
-
-            approval_granted = False
-
-            if rule_applies:
-                logging.info(f'Applying review rule "{rule_name}" to subproject "{subproject}".')
-                # TODO: Show the latest commit hash
-                approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}".', default='y')
-
-                if approval_granted:
-                    for rule_input in rule_inputs:
-                        if subproject not in inputs:
-                            inputs[subproject] = {}
-
-                        inputs[subproject][rule_input] = utility.userInput(f'{rule_input}: ')
-
-            listOfRepoBranchArgTuples.append((config.get(f'nested-{subproject}', 'prefix'),
-                                              source_branch,
-                                              [{'git_service': codeReviews,
-                                                'top': False,
-                                                'submodule': False,
-                                                'subproject': True,
-                                                'rule': rule,
-                                                'approve': approval_granted,
-                                                'inputs': inputs,
-                                                'args': args,
-                                                'target_branch': target_branch,
-                                                'project': subproject}]))
-
-        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(approve, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
-        launcher.launchFromWorkspaceDir(handleMRE=handleApproveMRE)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -452,6 +401,40 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
+
+    @staticmethod
+    def _get_source_branch(args):
+        source_branch = args["--source"]
+
+        if not source_branch:
+            source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
+
+            if not source_branch:
+                logging.error(f'GRAPE: ERROR: Source branch is required.')
+                exit(1)
+
+        return source_branch
+
+    @staticmethod
+    def _is_modified(repo, source_branch, target_branch, project_name, repo_name):
+        source_hash = repo.getBranchHeadCommitHash(source_branch)
+
+        if not source_hash:
+            # Source branch does not exist, which means there are no changes
+            return False
+
+        target_hash = repo.getBranchHeadCommitHash(target_branch)
+
+        if not target_hash:
+            # Target branch does not exist, which is a problem
+            logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
+            exit(1)
+
+        if source_hash == target_hash:
+            # Source and target branches on the same hash, so no changes
+            return False
+
+        return True
 
 def approve(repo, branch, args, *, workspace_dir):
     kwargs = args[0]

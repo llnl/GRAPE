@@ -1207,7 +1207,7 @@ def getGrapeReviewRule(active):
                       'repositories': ['.+']}}
 
 
-def parseReviewRules():
+def parseReviewRules(config=None):
     """
     Parses the global GRAPE config file and returns a dictionary of review rules.
 
@@ -1223,7 +1223,8 @@ def parseReviewRules():
     numActiveRules = 0
 
     # Extract the rule names from the [review] section
-    config = config_parser_global.grapeConfig()
+    if not config:
+        config = config_parser_global.grapeConfig()
 
     reviewSectionName = "review"
 
