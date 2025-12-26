@@ -1,0 +1,7 @@
+
+
+Fri Dec 26 09:16:09 2025 Alan Dayton
+MR_684
+Reviewers: Daniel Taller
+
+The variable 'url' was used in one case before it was initialized.
