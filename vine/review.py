@@ -1131,6 +1131,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                                 " request and cannot be a reviewer")
                         subReviewers[reviewRuleName]['reviewers'].remove(author)
 
+                url = request.link()
+
                 if title is not None or descr is not None or subReviewers or add_labels or remove_labels or wip is not None:
                     # Determine if any labels will be changing
                     have_changed_labels = False
@@ -1172,12 +1174,10 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         if have_changed_labels:
                            logging.info("Regenerating pipeline...")
                            request.regeneratePipeline()
-                        url = request.link()
                         logging.info(f"Pull request updated at {url} .")
                     else:
                         logging.info(f"Pull request unchanged at {url} .")
                 else:
-                    url = request.link()
                     logging.info(f"Pull request unchanged at {url} .")
             except stashy_errors.GenericException as e:
                 logging.error(f"BITBUCKET: {e.data['errors'][0]['message']}")
