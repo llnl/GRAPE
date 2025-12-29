@@ -135,9 +135,6 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule_name}".')
             exit(1)
 
-        # Get the list of repositories to which the review rule applies
-        rule_repositories = rule['repositories']
-
         # Get the list of inputs for this review rule.
         # The inputs are used to build a description if the approval actions
         # include tagging and/or updating the merge/pull request description.
@@ -242,15 +239,7 @@ class Approve(Option, WorkspaceDirHandler):
         approvals = {}
 
         for modified_repo_name in modified_repositories:
-            # Check if the rule applies to this repository
-            rule_applies = False
-
-            for rule_repository in rule_repositories:
-                if re.fullmatch(rule_repository, modified_repo_name):
-                    rule_applies = True
-                    break
-
-            if not rule_applies:
+            if not self._rule_applies(modified_repo_name, rule):
                 continue
 
             # Get modified repo info
@@ -395,8 +384,16 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _is_eligible_reviewer(user_name, rule):
-        for eligible_reviewer in rule['eligibleReviewers']:
-            if re.fullmatch(eligible_reviewer, user_name):
+        for reviewer_pattern in rule['eligibleReviewers']:
+            if re.fullmatch(reviewer_pattern, user_name):
+                return True
+
+        return False
+
+    @staticmethod
+    def _rule_applies(repo_name, rule):
+        for repo_pattern in rule['repositories']:
+            if re.fullmatch(repo_pattern, repo_name):
                 return True
 
         return False
