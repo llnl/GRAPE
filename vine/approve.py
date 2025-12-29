@@ -63,20 +63,6 @@ class Approve(Option, WorkspaceDirHandler):
     def description(self):
         return "Approve a merge/pull request."
 
-    @property
-    def rules(self):
-        if self._rules is None:
-            self._rules = review.parseReviewRules()
-
-        return self._rules
-
-    @property
-    def active_rule_names(self):
-        if self._active_rule_names is None:
-            self._active_rule_names = [rule_name for rule_name in self.rules if self.rules[rule_name]['active']]
-
-        return self._active_rule_names
-
     @log_wrapper
     def execute(self, args):
         # Authenticate to git hosting service
@@ -122,7 +108,7 @@ class Approve(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
 
-        top_target_hash = top_repo.getBranchHeadCommitHash(source_branch)
+        top_target_hash = top_repo.getBranchHeadCommitHash(target_branch)
 
         if not top_target_hash:
             logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
@@ -414,119 +400,3 @@ class Approve(Option, WorkspaceDirHandler):
                 exit(1)
 
         return source_branch
-
-    @staticmethod
-    def _is_modified(repo, source_branch, target_branch, project_name, repo_name):
-        source_hash = repo.getBranchHeadCommitHash(source_branch)
-
-        if not source_hash:
-            # Source branch does not exist, which means there are no changes
-            return False
-
-        target_hash = repo.getBranchHeadCommitHash(target_branch)
-
-        if not target_hash:
-            # Target branch does not exist, which is a problem
-            logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
-            exit(1)
-
-        if source_hash == target_hash:
-            # Source and target branches on the same hash, so no changes
-            return False
-
-        return True
-
-def approve(repo, branch, args, *, workspace_dir):
-    kwargs = args[0]
-    git_service = kwargs['git_service']
-    top = kwargs['top']
-    submodule = kwargs['submodule']
-    subproject = kwargs['subproject']
-    rule = kwargs['rule']
-    approval = kwargs['approve']
-    inputs = kwargs['inputs']
-    args = kwargs['args']
-    target_branch = kwargs["target_branch"]
-    project = kwargs["project"]
-
-    # Build rule section for merge request description
-    rule_section = ''
-
-    if inputs:
-        rule_section = f'# {rule["label"]}'
-
-        for key in sorted(inputs.keys()):
-            rule_section += f'\n\n## {key}'
-            project_inputs = inputs[key]
-
-            for project_input in sorted(project_inputs.keys()):
-                rule_section += f'\n\n{project_input}: {project_inputs[project_input]}'
-
-    # Update merge request description
-    if subproject:
-        repo = CodeReviewsFactory.repoFromNestedSubprojectName(git_service, project)
-    elif submodule:
-        repo = CodeReviewsFactory.repoFromSubmodulePath(git_service, project)
-    else:
-        repo = CodeReviewsFactory.repoObject(git_service)
-
-    review_request = repo.getOpenPullRequest(branch, target_branch)
-
-    if not review_request:
-        logging.warning(f"No open pull request found for branch {branch} targeting {target_branch}")
-        return
-
-    if 'update_description' in rule['approve_actions']:
-        current_description = review_request.description().decode("utf-8").strip()
-        section_header = f'# {rule["label"]}'
-
-        if section_header in current_description:
-            # Pattern:
-            # - Match "# {section_name}" at line start
-            # - Capture everything until next top-level header ("# " at line start) or end of string
-            pattern = (
-                rf'^{re.escape(section_header)}\s*\n'    # Section header
-                r'(.*?)'                                 # Section content (non-greedy capture)
-                r'(?=^# [^\n]*|\Z)'                      # Stop at next top-level section header or end of string
-            )
-
-            def repl(match):
-                # Replace section and preserve new lines before next section
-                # If there is no section after this one, the extra new lines
-                # will be stripped off anyway.
-                return f'{rule_section}\n\n'
-
-            updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
-        else:
-            updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
-
-        review_request.update(review_request.version(), description=updated_description)
-
-    # Approve reviewed branch
-    if 'approve' in rule['approve_actions']:
-        try:
-            review_request.approve()
-        except:
-            logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
-
-    # Tag reviewed branch
-    if 'tag' in rule['approve_actions']:
-        tag_name = f'{rule["name"]}_{review_request.iid()}'
-        # TODO: Get specific commit
-        tag_ref = branch
-        tag_message = rule['label']
-
-        if project in inputs:
-            project_inputs = inputs[project]
-
-            for project_input in project_inputs:
-                tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
-
-        repo.updateTag(tag_name, tag_ref, tag_message)
-        # TODO: Consider logging if the tag already existed and is being updated
-
-    return
-
-def handleApproveMRE(mre):
-    for e in mre.exceptions():
-        raise e
