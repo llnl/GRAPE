@@ -67,18 +67,7 @@ class Approve(Option, WorkspaceDirHandler):
     def execute(self, args):
         # Authenticate to git hosting service
         user_name = args['--user'] or utility.getUserName()
-        url = args['--codeReviewsURL']
-        verify = True if args['--verifySSL'].lower() == 'true' else False
-        logging.info(f'Logging onto {url}')
-
-        git_host = CodeReviewsFactory.makeCodeReviews(
-            user_name,
-            url=url,
-            verify=verify,
-            port=int(args['--ssh_pat_port']),
-            ssh_path=args['--ssh_pat_url'],
-            workspace_dir=self.workspace_dir
-        )
+        git_host = self._authenticate_to_git_host(user_name, args)
 
         # Get repository and containing project/group
         project_name = args["--project"]
@@ -172,6 +161,21 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
+
+    @staticmethod
+    def _authenticate_to_git_host(user_name, args):
+        url = args['--codeReviewsURL']
+        verify = True if args['--verifySSL'].lower() == 'true' else False
+        logging.info(f'Logging onto {url}')
+
+        return CodeReviewsFactory.makeCodeReviews(
+            user_name,
+            url=url,
+            verify=verify,
+            port=int(args['--ssh_pat_port']),
+            ssh_path=args['--ssh_pat_url'],
+            workspace_dir=self.workspace_dir
+        )
 
     @staticmethod
     def _get_source_branch(args):
