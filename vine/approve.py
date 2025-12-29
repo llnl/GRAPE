@@ -161,83 +161,7 @@ class Approve(Option, WorkspaceDirHandler):
         # Ask the user for approvals and rule input
         self._get_approval_input(rule, modified_repos)
 
-        # Build rule section for merge request description
-        rule_section = ''
-
-        if 'update_description' in rule['approve_actions']:
-            rule_section = f'# {rule["label"]}'
-
-            for key in sorted(approvals.keys()):
-                rule_section += f'\n\n## {key}'
-                approval = approvals[key]
-                project_inputs = approval['inputs']
-
-                for project_input in sorted(project_inputs.keys()):
-                    rule_section += f'\n\n{project_input}: {project_inputs[project_input]}'
-
-        # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
-        for modified_repo_name in modified_repos:
-            modified_repo = modified_repos[modified_repo_name]
-            repo = modified_repo['repo_facade']
-            source_branch = modified_repo['source_branch']
-            source_commit = modified_repo['source_commit']
-            target_branch = modified_repo['target_branch']
-
-            # Update merge request description
-            review_request = repo.getOpenPullRequest(source_branch, target_branch)
-
-            if not review_request:
-                logging.warning(f"No open pull request found for branch {source_branch} targeting {target_branch}")
-                continue
-
-            if 'update_description' in rule['approve_actions']:
-                current_description = review_request.description().decode("utf-8").strip()
-                section_header = f'# {rule["label"]}'
-
-                if section_header in current_description:
-                    # Pattern:
-                    # - Match "# {section_name}" at line start
-                    # - Capture everything until next top-level header ("# " at line start) or end of string
-                    pattern = (
-                        rf'^{re.escape(section_header)}\s*\n'    # Section header
-                        r'(.*?)'                                 # Section content (non-greedy capture)
-                        r'(?=^# [^\n]*|\Z)'                      # Stop at next top-level section header or end of string
-                    )
-
-                    def repl(match):
-                        # Replace section and preserve new lines before next section
-                        # If there is no section after this one, the extra new lines
-                        # will be stripped off anyway.
-                        return f'{rule_section}\n\n'
-
-                    updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
-                else:
-                    updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
-
-                review_request.update(review_request.version(), description=updated_description)
-
-            if modified_repo_name in approvals:
-                # Approve reviewed branch
-                if 'approve' in rule['approve_actions']:
-                    try:
-                        review_request.approve()
-                    except:
-                        logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
-
-                # Tag reviewed branch
-                if 'tag' in rule['approve_actions']:
-                    tag_name = f'{rule["name"]}_{review_request.iid()}'
-                    tag_ref = source_commit
-                    tag_message = rule['label']
-
-                    project_inputs = approvals[modified_repo_name]['inputs']
-
-                    for project_input in project_inputs:
-                        tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
-
-                    repo.updateTag(tag_name, tag_ref, tag_message)
-                    # TODO: Consider logging if the tag already existed and is being updated
-
+        self._apply_approve_actions(rule, modified_repos)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -427,3 +351,76 @@ class Approve(Option, WorkspaceDirHandler):
         if not any_approvals:
             logging.info(f'No merge/pull requests approved. Exiting...')
             exit(0)
+
+    def _apply_approve_actions(rule, modified_repos):
+        # Build rule section for merge request description
+        rule_section = ''
+
+        if 'update_description' in rule['approve_actions']:
+            rule_section = f'# {rule["label"]}'
+
+            for name in sorted(modified_repos.keys()):
+                repo_context = modified_repos[name]
+
+                if repo_context['approved']:
+                    rule_section += f'\n\n## {name}'
+                    approval_inputs = repo_context['input']
+
+                    for approval_input in sorted(approval_inputs.keys()):
+                        rule_section += f'\n\n{approval_input}: {approval_inputs[approval_input]}'
+
+        # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
+        for name in modified_repos:
+            repo_context = modified_repos[modified_repo_name]
+            repo = repo_context['repo_facade']
+            source_commit = repo_context['source_commit']
+            review_request = repo_context['review_request']
+
+            # Update merge request description
+            if 'update_description' in rule['approve_actions']:
+                current_description = review_request.description().decode("utf-8").strip()
+                section_header = f'# {rule["label"]}'
+
+                if section_header in current_description:
+                    # Pattern:
+                    # - Match "# {section_name}" at line start
+                    # - Capture everything until next top-level header ("# " at line start) or end of string
+                    pattern = (
+                        rf'^{re.escape(section_header)}\s*\n'    # Section header
+                        r'(.*?)'                                 # Section content (non-greedy capture)
+                        r'(?=^# [^\n]*|\Z)'                      # Stop at next top-level section header or end of string
+                    )
+
+                    def repl(match):
+                        # Replace section and preserve new lines before next section
+                        # If there is no section after this one, the extra new lines
+                        # will be stripped off anyway.
+                        return f'{rule_section}\n\n'
+
+                    updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
+                else:
+                    updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
+
+                review_request.update(review_request.version(), description=updated_description)
+
+            if repo_context['approved']:
+                # Approve reviewed branch
+                if 'approve' in rule['approve_actions']:
+                    try:
+                        review_request.approve()
+                    except:
+                        logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
+
+                # Tag reviewed branch
+                if 'tag' in rule['approve_actions']:
+                    tag_name = f'{rule["name"]}_{review_request.iid()}'
+                    tag_ref = source_commit
+                    tag_message = rule['label']
+
+                    project_inputs = repo_context['input']
+
+                    for project_input in sorted(project_inputs.keys()):
+                        tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
+
+                    repo.updateTag(tag_name, tag_ref, tag_message)
+                    # TODO: Consider logging if the tag already existed and is being updated
