@@ -152,59 +152,14 @@ class Approve(Option, WorkspaceDirHandler):
         # Gather all modified repositories (top level, submodules, and subprojects)
         modified_repos = {}
 
-        # Check if top level is modified
         if top_source_commit != top_target_commit:
             modified_repos[repo_name] = top_repo
 
-        # Get modified subprojects and submodules
-        self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
         self._get_modified_submodules(config, top_repo, git_host, modified_repos)
-            
-        # Check if rule applies to modified repositories and ask for approval and input
-        approvals = {}
+        self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
 
-        for modified_repo_name in modified_repos:
-            if not self._rule_applies(modified_repo_name, rule):
-                continue
-
-            # Get modified repo info
-            modified_repo = modified_repos[modified_repo_name]
-
-            # Check if there is an open Merge/Pull request
-            modified_repo_api_facade = modified_repo['repo_facade']
-            source_branch = modified_repo['source_branch']
-            review_request = modified_repo_api_facade.getOpenPullRequest(source_branch, modified_repo['target_branch'])
-
-            if not review_request:
-                # TODO: log a message
-                continue
-
-            # Ask for approval
-            logging.info(f'Applying review rule "{rule_name}" to subproject "{modified_repo_name}".')
-            source_commit = modified_repo['source_commit']
-            approval_granted = utility.userInput(f'I have reviewed and approve the changes on branch "{source_branch}" (commit {source_commit}).', default='y')
-
-            if not approval_granted:
-                continue
-
-            # Ask for input
-            approvals[modified_repo_name] = {
-                'commit': source_commit,
-                'inputs': {}
-            }
-
-            approval_input = approvals[modified_repo_name]['inputs']
-
-            for rule_input in rule_inputs:
-                # TODO: Add case for username/user display name
-                if rule_input == 'commit':
-                    approval_input[rule_input] = source_commit
-                else:
-                    approval_input[rule_input] = utility.userInput(f'{rule_input}: ')
-
-        if not approvals:
-            # TODO: log message about nothing being approved
-            exit(0)
+        # Ask the user for approvals and rule input
+        self._get_approval_input(rule, modified_repos)
 
         # Build rule section for merge request description
         rule_section = ''
@@ -359,10 +314,17 @@ class Approve(Option, WorkspaceDirHandler):
                 # No changes
                 continue
 
+            review_request = repo_facade.getOpenPullRequest(source_branch, target_branch)
+
+            if not review_request:
+                logging.warning(f'GRAPE: WARNING: Subproject "{subproject}" missing open pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
+                continue
+
             modified_repos[repo_name] = {
                 'repo_name': repo_name,
                 'project_name': project_name,
                 'repo_facade': repo_facade,
+                'review_request': review_request,
                 'source_branch': source_branch,
                 'source_commit': source_commit,
                 'target_branch': target_branch
@@ -402,7 +364,7 @@ class Approve(Option, WorkspaceDirHandler):
                     # Source branch does not exist, which means there are no changes
                     continue
 
-                submodule_target_commit = subproject_repo.getBranchHeadCommitHash(submodule_target_branch)
+                submodule_target_commit = submodule_repo.getBranchHeadCommitHash(submodule_target_branch)
 
                 if not submodule_target_commit:
                     logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
@@ -412,11 +374,56 @@ class Approve(Option, WorkspaceDirHandler):
                     # No changes
                     continue
 
+                review_request = submodule_repo.getOpenPullRequest(submodule_source_branch, submodule_branch)
+
+                if not review_request:
+                    logging.warning(f'GRAPE: WARNING: Submodule "{submodule_name}" missing open pull request for "{submodule_source_branch}" targeting "{submodule_target_branch}". Skipping...')
+                    continue
+
                 modified_repos[submodule_repo_name] = {
                     'repo_name': submodule_repo_name,
                     'project_name': submodule_project_name,
                     'repo_facade': submodule_repo,
+                    'review_request': review_request,
                     'source_branch': source_branch,
                     'source_commit': submodule_source_commit,
                     'target_branch': submodule_target_branch
                 }
+
+    def _get_approval_input(rule, modified_repos):
+        any_approvals = False
+
+        for name in modified_repos:
+            # Set default approval and input state
+            repo_context = modified_repos[name]
+            repo_context['approved'] = False
+            repo_context['input'] = {}
+
+            # Check if rule applies
+            if not self._rule_applies(name, rule):
+                continue
+
+            # Ask for approval
+            logging.info(f'Applying review rule "{rule['name']}" to project "{name}"...')
+            source_branch = repo_context['source_branch']
+            source_commit = repo_context['source_commit']
+            approval_granted = utility.userInput(f'I approve the changes on branch "{source_branch}" ({source_commit}).', default='y').lower() == 'y'
+
+            if not approval_granted:
+                continue
+
+            any_approvals = True
+
+            # Ask for input
+            approval_input = repo_context['input']
+
+            for rule_input in rule['input']:
+                # TODO: Add case for username/user display name
+                if rule_input == 'commit':
+                    approval_input[rule_input] = source_commit
+                else:
+                    approval_input[rule_input] = utility.userInput(f'{rule_input}: ')
+
+        if not any_approvals:
+            logging.info(f'No merge/pull requests approved. Exiting...')
+            exit(0)
