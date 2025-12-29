@@ -131,15 +131,7 @@ class Approve(Option, WorkspaceDirHandler):
         rule = rules[rule_name]
 
         # Check if the user is allowed to approve
-        eligible_reviewers = rule['eligibleReviewers']
-        eligible = False
-
-        for eligible_reviewer in eligible_reviewers:
-            if re.fullmatch(eligible_reviewer, user_name):
-                eligible = True
-                break
-
-        if not eligible:
+        if not _is_eligible_reviewer(user_name, rule):
             logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule_name}".')
             exit(1)
 
@@ -400,3 +392,11 @@ class Approve(Option, WorkspaceDirHandler):
                 exit(1)
 
         return source_branch
+
+    @staticmethod
+    def _is_eligible_reviewer(user_name, rule):
+        for eligible_reviewer in rule['eligibleReviewers']:
+            if re.fullmatch(eligible_reviewer, user_name):
+                return True
+
+        return False
