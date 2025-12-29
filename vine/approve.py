@@ -156,6 +156,7 @@ class Approve(Option, WorkspaceDirHandler):
         if top_source_commit != top_target_commit:
             modified_repos[repo_name] = top_repo
 
+        # Get modified subprojects and submodules
         self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
         self._get_modified_submodules(config, top_repo, git_host, modified_repos)
             
