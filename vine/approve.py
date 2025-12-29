@@ -71,7 +71,7 @@ class Approve(Option, WorkspaceDirHandler):
         verify = True if args['--verifySSL'].lower() == 'true' else False
         logging.info(f'Logging onto {url}')
 
-        codeReviews = CodeReviewsFactory.makeCodeReviews(
+        git_host = CodeReviewsFactory.makeCodeReviews(
             user_name,
             url=url,
             verify=verify,
@@ -83,13 +83,13 @@ class Approve(Option, WorkspaceDirHandler):
         # Get repository and containing project/group
         project_name = args["--project"]
         repo_name = args["--repo"]
-        top_repo = codeReviews.project(project_name).repo(repo_name)
+        top_repo = git_host.project(project_name).repo(repo_name)
 
         # Get and validate source branch
         source_branch = self._get_source_branch(args)
-        top_source_hash = top_repo.getBranchHeadCommitHash(source_branch)
+        top_source_commit = top_repo.getBranchHeadCommitHash(source_branch)
 
-        if not top_source_hash:
+        if not top_source_commit:
             logging.error(f"GRAPE: ERROR: Source branch '{source_branch}' does not exist in '{project_name}/{repo_name}'")
             exit(1)
 
@@ -108,9 +108,9 @@ class Approve(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
 
-        top_target_hash = top_repo.getBranchHeadCommitHash(target_branch)
+        top_target_commit = top_repo.getBranchHeadCommitHash(target_branch)
 
-        if not top_target_hash:
+        if not top_target_commit:
             logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
             exit(1)
 
@@ -140,113 +140,37 @@ class Approve(Option, WorkspaceDirHandler):
         # include tagging and/or updating the merge/pull request description.
         rule_inputs = rule['inputs']
 
+        top_repo = {
+            'repo_name': repo_name,
+            'project_name': project_name,
+            'repo_facade': repo_facade,
+            'source_branch': source_branch,
+            'source_commit': top_source_commit,
+            'target_branch': target_branch
+        }
+
         # Gather all modified repositories (top level, submodules, and subprojects)
-        modified_repositories = {}
+        modified_repos = {}
 
         # Check if top level is modified
-        if top_source_hash != top_target_hash:
-            modified_repositories[repo_name] = {
-                'project_name': project_name,
-                'source_branch': source_branch,
-                'source_commit': top_source_hash,
-                'target_branch': target_branch,
-                'target_commit': top_target_hash,
-                'api_facade': top_repo
-            }
+        if top_source_commit != top_target_commit:
+            modified_repos[repo_name] = top_repo
 
-        # Check if subprojects are modified
-        subproject_names = config.getAllNestedSubprojects()
-
-        for subproject_name in subproject_names:
-            url = config.get(f"nested-{subproject_name}","url")
-
-            # TODO: Check url matches the top level git service
-            components = url.split('/')
-            subproject_repo_name = components[-1].split('.')[0] # Remove .git
-            subproject_project_name = components[-2]
-
-            if subproject_project_name == '..':
-                subproject_project_name = project_name
-
-            subproject_repo = codeReviews.project(subproject_project_name).repo(subproject_repo_name)
-            subproject_source_hash = subproject_repo.getBranchHeadCommitHash(source_branch)
-
-            if not subproject_source_hash:
-                # Source branch does not exist, which means there are no changes
-                continue
-
-            subproject_target_hash = subproject_repo.getBranchHeadCommitHash(target_branch)
-
-            if not subproject_target_hash:
-                logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{subproject_project_name}/{subproject_repo_name}'")
-                exit(1)
-
-            if subproject_source_hash != subproject_target_hash:
-                modified_repositories[subproject_repo_name] = {
-                    'project_name': subproject_project_name,
-                    'source_branch': source_branch,
-                    'source_commit': subproject_source_hash,
-                    'target_branch': target_branch,
-                    'target_commit': subproject_target_hash,
-                    'api_facade': subproject_repo
-                }
-
-        # Check if submodules are modified
-        gitmodules = top_repo.getFile(".gitmodules", source_branch)
-
-        if gitmodules:
-            submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
-            submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
-            source_branch_prefix = git.branchPrefix(source_branch)
-            submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
-
-            for submodule_name in submodules_metadata:
-                submodule_metadata = submodules_metadata[submodule_name]
-                url = submodule_metadata['url']
-
-                # TODO: Check url matches the top level git service
-                components = url.split('/')
-                submodule_repo_name = components[-1].split('.')[0] # Remove .git
-                submodule_project_name = components[-2]
-
-                if submodule_project_name == '..':
-                    submodule_project_name = project_name
-
-                submodule_repo = codeReviews.project(submodule_project_name).repo(submodule_repo_name)
-                submodule_source_hash = submodule_repo.getBranchHeadCommitHash(source_branch)
-
-                if not submodule_source_hash:
-                    # Source branch does not exist, which means there are no changes
-                    continue
-
-                submodule_target_hash = subproject_repo.getBranchHeadCommitHash(submodule_target_branch)
-
-                if not submodule_target_hash:
-                    logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
-                    exit(1)
-
-                if submodule_source_hash != submodule_target_hash:
-                    modified_repositories[submodule_repo_name] = {
-                        'project_name': submodule_project_name,
-                        'source_branch': source_branch,
-                        'source_commit': submodule_source_hash,
-                        'target_branch': submodule_target_branch,
-                        'target_commit': submodule_target_hash,
-                        'api_facade': submodule_repo
-                    }
+        self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
+        self._get_modified_submodules(config, top_repo, git_host, modified_repos)
             
         # Check if rule applies to modified repositories and ask for approval and input
         approvals = {}
 
-        for modified_repo_name in modified_repositories:
+        for modified_repo_name in modified_repos:
             if not self._rule_applies(modified_repo_name, rule):
                 continue
 
             # Get modified repo info
-            modified_repo = modified_repositories[modified_repo_name]
+            modified_repo = modified_repos[modified_repo_name]
 
             # Check if there is an open Merge/Pull request
-            modified_repo_api_facade = modified_repo['api_facade']
+            modified_repo_api_facade = modified_repo['repo_facade']
             source_branch = modified_repo['source_branch']
             review_request = modified_repo_api_facade.getOpenPullRequest(source_branch, modified_repo['target_branch'])
 
@@ -296,9 +220,9 @@ class Approve(Option, WorkspaceDirHandler):
                     rule_section += f'\n\n{project_input}: {project_inputs[project_input]}'
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
-        for modified_repo_name in modified_repositories:
-            modified_repo = modified_repositories[modified_repo_name]
-            repo = modified_repo['api_facade']
+        for modified_repo_name in modified_repos:
+            modified_repo = modified_repos[modified_repo_name]
+            repo = modified_repo['repo_facade']
             source_branch = modified_repo['source_branch']
             source_commit = modified_repo['source_commit']
             target_branch = modified_repo['target_branch']
@@ -397,3 +321,101 @@ class Approve(Option, WorkspaceDirHandler):
                 return True
 
         return False
+
+    @staticmethod
+    def _get_modified_subprojects(config, top_repo, git_host, modified_repos):
+        top_project_name = top_repo['project_name']
+        source_branch = top_repo['source_branch']
+        target_branch = top_repo['target_branch']
+
+        subprojects = config.getAllNestedSubprojects()
+
+        for subproject in subprojects:
+            # TODO: Check url matches the top level git service
+            url = config.get(f"nested-{subproject}","url")
+            components = url.split('/')
+            base_name = components[-1]
+            repo_name = base_name.split('.')[0] # Remove .git if present
+            project_name = components[-2]
+
+            if project_name == '..':
+                project_name = top_project_name
+
+            repo_facade = git_host.project(project_name).repo(repo_name)
+            source_commit = repo_facade.getBranchHeadCommitHash(source_branch)
+
+            if not source_commit:
+                # Source branch does not exist, which means there are no changes
+                continue
+
+            target_commit = repo_facade.getBranchHeadCommitHash(target_branch)
+
+            if not target_commit:
+                logging.error(f'GRAPE: ERROR: Target branch "{target_branch}" does not exist in subproject "{subproject}".')
+                exit(1)
+
+            if source_commit == target_commit:
+                # No changes
+                continue
+
+            modified_repos[repo_name] = {
+                'repo_name': repo_name,
+                'project_name': project_name,
+                'repo_facade': repo_facade,
+                'source_branch': source_branch,
+                'source_commit': source_commit,
+                'target_branch': target_branch
+            }
+
+    @staticmethod
+    def _get_modified_submodules(config, top_repo, git_host, modified_repos):
+        top_project_name = top_repo['project_name']
+        top_repo_facade = top_repo['repo_facade']
+        top_source_branch = top_repo['source_branch']
+        top_target_branch = top_repo['target_branch']
+
+        gitmodules = top_repo_facade.getFile(".gitmodules", source_branch)
+
+        if gitmodules:
+            submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
+            submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
+            submodule_source_branch = top_source_branch
+            source_branch_prefix = git.branchPrefix(submodule_source_branch)
+            submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
+
+            for submodule_name in submodules_metadata:
+                submodule_metadata = submodules_metadata[submodule_name]
+                # TODO: Check url matches the top level git service
+                url = submodule_metadata['url']
+                components = url.split('/')
+                submodule_repo_name = components[-1].split('.')[0] # Remove .git
+                submodule_project_name = components[-2]
+
+                if submodule_project_name == '..':
+                    submodule_project_name = project_name
+
+                submodule_repo = git_host.project(submodule_project_name).repo(submodule_repo_name)
+                submodule_source_commit = submodule_repo.getBranchHeadCommitHash(submodule_source_branch)
+
+                if not submodule_source_commit:
+                    # Source branch does not exist, which means there are no changes
+                    continue
+
+                submodule_target_commit = subproject_repo.getBranchHeadCommitHash(submodule_target_branch)
+
+                if not submodule_target_commit:
+                    logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
+                    exit(1)
+
+                if submodule_source_commit == submodule_target_commit:
+                    # No changes
+                    continue
+
+                modified_repos[submodule_repo_name] = {
+                    'repo_name': submodule_repo_name,
+                    'project_name': submodule_project_name,
+                    'repo_facade': submodule_repo,
+                    'source_branch': source_branch,
+                    'source_commit': submodule_source_commit,
+                    'target_branch': submodule_target_branch
+                }
