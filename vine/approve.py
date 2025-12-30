@@ -771,17 +771,18 @@ class Approve(Option, WorkspaceDirHandler):
         rule_section = ''
         rule_section_header = ''
         rule_section_pattern = None
+        rule_section_repl = None
 
         if 'update_description' in rule['approve_actions']:
             rule_section_header = f'# {rule["label"]}'
 
             # Pattern:
--           # - Match "# {section_name}" at line start
--           # - Capture everything until next top-level header ("# " at line start) or end of string
+            # - Match "# {section_name}" at line start
+            # - Capture everything until next top-level header ("# " at line start) or end of string
             rule_section_pattern = re.compile(
-                rf'^{re.escape(rule_section_header)}\s*\n'   # Section header
-                r'(.*?)'                                # Section content (non-greedy capture)
-                r'(?=^# [^\n]*|\Z)',                    # Stop at next top-level section header or end of string
+                rf'^{re.escape(rule_section_header)}\s*\n'  # Section header
+                r'(.*?)'                                    # Section content (non-greedy capture)
+                r'(?=^# [^\n]*|\Z)',                        # Stop at next top-level section header or end of string
                 flags=re.DOTALL | re.MULTILINE
             )
 
@@ -797,6 +798,12 @@ class Approve(Option, WorkspaceDirHandler):
                     for repo_input in sorted(repo_inputs.keys()):
                         rule_section += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
 
+            def rule_section_repl(_match):
+                # Replace section and preserve new lines before next section
+                # If there is no section after this one, the extra new lines
+                # will be stripped off anyway.
+                return f'{rule_section}\n\n'
+
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
             repo_context = modified_repos[repo_name]
@@ -808,13 +815,7 @@ class Approve(Option, WorkspaceDirHandler):
                 current_description = review_request.description().decode("utf-8").strip()
 
                 if rule_section_header in current_description:
-                    def repl(match):
-                        # Replace section and preserve new lines before next section
-                        # If there is no section after this one, the extra new lines
-                        # will be stripped off anyway.
-                        return f'{rule_section}\n\n'
-
-                    updated_description = rule_section_pattern.sub(repl, current_description).rstrip()
+                    updated_description = rule_section_pattern.sub(rule_section_repl, current_description).rstrip()
                 else:
                     updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
 
