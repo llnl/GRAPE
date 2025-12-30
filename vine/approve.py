@@ -836,10 +836,10 @@ class Approve(Option, WorkspaceDirHandler):
                     tag_ref = repo_context['source_commit']
                     tag_message = rule['label']
 
-                    project_inputs = repo_context['input']
+                    repo_inputs = repo_context['input']
 
-                    for project_input in sorted(project_inputs.keys()):
-                        tag_message += f'\n\n{project_input}: {project_inputs[project_input]}'
+                    for repo_input in sorted(repo_inputs.keys()):
+                        tag_message += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
 
                     repo.updateTag(tag_name, tag_ref, tag_message)
                     # TODO: Consider logging if the tag already existed and is being updated
