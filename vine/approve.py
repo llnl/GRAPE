@@ -66,10 +66,8 @@ class Approve(Option, WorkspaceDirHandler):
         user_name = self._get_user_name(args)
         git_host = self._authenticate_to_git_host(user_name, args)
         top_repo_context = self._get_top_repo_context(git_host, args)
-        rule = self._get_review_rule(top_repo_context, user_name, args)
-        self._validate_approver(rule, user_name)
-        approve_input = self._get_approve_input(git_host, top_repo_context, rule)
-        self._apply_approve_actions(rule, approve_input)
+        rule = self._get_review_rule(top_repo_context, args)
+        self._approve(user_name, git_host, top_repo_context, rule)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -187,7 +185,7 @@ class Approve(Option, WorkspaceDirHandler):
             Context containing:
             - repo_name
             - project_name
-            - repo_facade
+            - repo
             - source_branch
             - source_commit
             - target_branch
@@ -246,7 +244,7 @@ class Approve(Option, WorkspaceDirHandler):
         return {
             'repo_name': repo_name,
             'project_name': project_name,
-            'repo_facade': repo,
+            'repo': repo,
             'source_branch': source_branch,
             'source_commit': source_commit,
             'target_branch': target_branch,
@@ -299,7 +297,7 @@ class Approve(Option, WorkspaceDirHandler):
         return rules[rule_name]
 
     @staticmethod
-    def _validate_approver(rule, user_name):
+    def _validate_approver(user_name, rule):
         """
         Validate that the given user is eligible to approve the provided review rule.
 
@@ -309,12 +307,12 @@ class Approve(Option, WorkspaceDirHandler):
 
         Parameters
         ----------
+        user_name : str
+            User name to validate.
         rule : dict
             Review rule definition containing:
             - "eligibleReviewers": list[str] of regex patterns for eligible approvers
             - "name": str rule name (used for error messages)
-        user_name : str
-            User name to validate.
 
         Exits
         -----
@@ -327,6 +325,13 @@ class Approve(Option, WorkspaceDirHandler):
 
         logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule["name"]}".')
         exit(1)
+
+    @staticmethod
+    def _approve(user_name, git_host, top_repo_context, rule):
+        Approve._validate_approver(user_name, rule)
+        modified_repos = Approve._get_modified_repos(git_host, top_repo_context)
+        approve_input = Approve._get_approve_input(git_host, top_repo_context, rule)
+        Approve._apply_approve_actions(rule, approve_input)
 
     @staticmethod
     def _rule_applies(repo_name, rule):
@@ -358,129 +363,224 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _get_modified_repos(git_host, top_repo_context):
-        # Gather all modified repositories (top level, submodules, and subprojects)
+        """
+        Determine which repositories have changes between the source and target branches.
+
+        This builds and returns a dictionary of repository context objects for all
+        repositories that have differing head commits between the source and target
+        branches, including:
+          - the top-level repository (if source_commit != target_commit)
+          - modified submodules (via `_add_modified_submodules`)
+          - modified nested subprojects (via `_add_modified_subprojects`)
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review / git hosting client used to access repos.
+        top_repo_context : dict
+            Context dictionary returned by `_get_top_repo_context`, expected to
+            contain at least:
+              - repo_name
+              - source_commit
+              - target_commit
+              - source_branch
+              - target_branch
+              - project_name
+              - repo
+
+        Returns
+        -------
+        dict
+            Mapping of repo_name -> repo_context for each repository detected as
+            modified relative to the target branch.
+        """
         modified_repos = {}
 
-        if top_source_commit != top_target_commit:
-            modified_repos[repo_name] = top_repo
+        if top_repo_context['source_commit'] != top_repo_context['target_commit']:
+            modified_repos[top_repo_context['repo_name']] = top_repo_context
 
-        self._get_modified_submodules(config, top_repo, git_host, modified_repos)
-        self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
+        Approve._add_modified_submodules(git_host, top_repo_context, modified_repos)
+        Approve._add_modified_subprojects(git_host, top_repo_context, modified_repos)
 
         return modified_repos
 
     @staticmethod
-    def _get_modified_subprojects(config, top_repo, git_host, modified_repos):
-        top_project_name = top_repo['project_name']
-        source_branch = top_repo['source_branch']
-        target_branch = top_repo['target_branch']
+    def _add_modified_submodules(git_host, top_repo_context, modified_repos):
+        top_repo = top_repo_context['repo']
+        top_source_branch = top_repo_context['source_branch']
 
+        gitmodules = top_repo.getFile(".gitmodules", top_source_branch)
+
+        if not gitmodules:
+            return
+
+        submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
+
+        if not submodules_metadata:
+            return
+
+        submodule_source_branch = top_source_branch
+
+        config = top_repo_context['grape_config']
+        submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings')
+        source_branch_prefix = git.branchPrefix(submodule_source_branch)
+        submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
+
+        top_project_name = top_repo_context['project_name']
+
+        for submodule_name in submodules_metadata:
+            submodule_metadata = submodules_metadata[submodule_name]
+            # TODO: Check url matches the top level git service
+            url = submodule_metadata['url']
+
+            modified_repo_context = Approve._get_modified_repo_context(git_host, top_project_name, submodule_source_branch, submodule_target_branch, url)
+
+            if modified_repo_context:
+                modified_repos[modified_repo_context['repo_name']] = modified_repo_context
+
+    @staticmethod
+    def _add_modified_subprojects(git_host, top_repo_context, modified_repos):
+        """
+        Add nested subprojects with changes and open review requests to the modified repos map.
+
+        Iterates all nested subprojects defined in the top repository's `.grapeconfig`,
+        resolves each subproject URL, and uses `_get_modified_repo_context` to determine
+        whether the subproject:
+          - has a source branch,
+          - has the required target branch,
+          - differs between source and target commits, and
+          - has an open merge/pull request from source -> target.
+
+        When a subproject meets these criteria, its repo context is added to
+        `modified_repos` keyed by repo name.
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review / git hosting client.
+        top_repo_context : dict
+            Context dictionary for the top-level repository, expected to include:
+              - "project_name"
+              - "source_branch"
+              - "target_branch"
+              - "grape_config"
+        modified_repos : dict
+            Mapping of repo_name -> repo_context that will be updated in-place.
+
+        Side Effects
+        ------------
+        Mutates `modified_repos` by adding entries for modified nested subprojects.
+        """
+        top_project_name = top_repo_context['project_name']
+        subproject_source_branch = top_repo_context['source_branch']
+        subproject_target_branch = top_repo_context['target_branch']
+
+        config = top_repo_context['grape_config']
         subprojects = config.getAllNestedSubprojects()
 
         for subproject in subprojects:
-            # TODO: Check url matches the top level git service
-            url = config.get(f"nested-{subproject}","url")
-            components = url.split('/')
-            base_name = components[-1]
-            repo_name = base_name.split('.')[0] # Remove .git if present
-            project_name = components[-2]
+            url = config.get(f'nested-{subproject}', 'url')
+            modified_repo_context = Approve._get_modified_repo_context(
+                git_host, top_project_name, subproject_source_branch, subproject_target_branch, url
+            )
 
-            if project_name == '..':
-                project_name = top_project_name
-
-            repo_facade = git_host.project(project_name).repo(repo_name)
-            source_commit = repo_facade.getBranchHeadCommitHash(source_branch)
-
-            if not source_commit:
-                # Source branch does not exist, which means there are no changes
-                continue
-
-            target_commit = repo_facade.getBranchHeadCommitHash(target_branch)
-
-            if not target_commit:
-                logging.error(f'GRAPE: ERROR: Target branch "{target_branch}" does not exist in subproject "{subproject}".')
-                exit(1)
-
-            if source_commit == target_commit:
-                # No changes
-                continue
-
-            review_request = repo_facade.getOpenPullRequest(source_branch, target_branch)
-
-            if not review_request:
-                logging.warning(f'GRAPE: WARNING: Subproject "{subproject}" missing open pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
-                continue
-
-            modified_repos[repo_name] = {
-                'repo_name': repo_name,
-                'project_name': project_name,
-                'repo_facade': repo_facade,
-                'review_request': review_request,
-                'source_branch': source_branch,
-                'source_commit': source_commit,
-                'target_branch': target_branch
-            }
+            if modified_repo_context:
+                modified_repos[modified_repo_context['repo_name']] = modified_repo_context
 
     @staticmethod
-    def _get_modified_submodules(config, top_repo, git_host, modified_repos):
-        top_project_name = top_repo['project_name']
-        top_repo_facade = top_repo['repo_facade']
-        top_source_branch = top_repo['source_branch']
-        top_target_branch = top_repo['target_branch']
+    def _get_modified_repo_context(git_host, top_project_name, source_branch, target_branch, url):
+        """
+        Build repository context for a nested repo (submodule/subproject) only if it has changes and an open review request.
 
-        gitmodules = top_repo_facade.getFile(".gitmodules", source_branch)
+        This resolves the repository's project/name from the given repository URL, verifies that the source branch exists,
+        verifies that the target branch exists (fatal if missing), compares the branch head commits to determine whether
+        there are changes, and finally locates an open merge/pull request from `source_branch` into `target_branch`.
 
-        if gitmodules:
-            submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
-            submodule_branch_mappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
-            submodule_source_branch = top_source_branch
-            source_branch_prefix = git.branchPrefix(submodule_source_branch)
-            submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review / git hosting client.
+        top_project_name : str
+            Project/group name of the top-level repository. Used when the URL specifies a relative project ("..").
+        source_branch : str
+            Source/topic branch name to compare and to locate an open merge/pull request for.
+        target_branch : str
+            Target/public branch name to compare against and to locate an open merge/pull request into.
+        url : str
+            Repository URL (typically from .gitmodules or nested subproject config). Expected to end with `<repo>.git`
+            optionally, and to include the project/group segment immediately before the repo segment.
+        Returns
+        -------
+        dict | None
+            Returns a repo context dict when:
+              - the source branch exists
+              - the target branch exists
+              - source and target head commits differ
+              - an open merge/pull request exists from source -> target
 
-            for submodule_name in submodules_metadata:
-                submodule_metadata = submodules_metadata[submodule_name]
-                # TODO: Check url matches the top level git service
-                url = submodule_metadata['url']
-                components = url.split('/')
-                submodule_repo_name = components[-1].split('.')[0] # Remove .git
-                submodule_project_name = components[-2]
+            Otherwise returns None when:
+              - the source branch does not exist (treated as "no changes")
+              - source and target commits are identical ("no changes")
+              - no open merge/pull request exists (skips with warning)
 
-                if submodule_project_name == '..':
-                    submodule_project_name = project_name
+            The returned dict contains:
+              - repo_name
+              - project_name
+              - repo
+              - review_request
+              - source_branch
+              - source_commit
 
-                submodule_repo = git_host.project(submodule_project_name).repo(submodule_repo_name)
-                submodule_source_commit = submodule_repo.getBranchHeadCommitHash(submodule_source_branch)
+        Exits
+        -----
+        Terminates the process with exit code 1 if the target branch does not exist in the repository.
+        """
+        # Get repo
+        components = url.split('/')
+        repo_name = components[-1].split('.')[0] # Remove .git if present
+        project_name = components[-2]
 
-                if not submodule_source_commit:
-                    # Source branch does not exist, which means there are no changes
-                    continue
+        if project_name == '..':
+            project_name = top_project_name
 
-                submodule_target_commit = submodule_repo.getBranchHeadCommitHash(submodule_target_branch)
+        repo = git_host.project(project_name).repo(repo_name)
 
-                if not submodule_target_commit:
-                    logging.error(f"GRAPE: ERROR: Target branch '{submodule_target_branch}' does not exist in '{submodule_project_name}/{submodule_repo_name}'")
-                    exit(1)
+        # Check source branch
+        source_commit = repo.getBranchHeadCommitHash(source_branch)
 
-                if submodule_source_commit == submodule_target_commit:
-                    # No changes
-                    continue
+        if not source_commit:
+            # Source branch does not exist, which means there are no changes
+            return None
 
-                review_request = submodule_repo.getOpenPullRequest(submodule_source_branch, submodule_branch)
+        # Check target branch
+        target_commit = repo.getBranchHeadCommitHash(target_branch)
 
-                if not review_request:
-                    logging.warning(f'GRAPE: WARNING: Submodule "{submodule_name}" missing open pull request for "{submodule_source_branch}" targeting "{submodule_target_branch}". Skipping...')
-                    continue
+        if not target_commit:
+            logging.error(f'GRAPE: ERROR: Repository "{repo_name}" is missing target branch "{target_branch}".')
+            exit(1)
 
-                modified_repos[submodule_repo_name] = {
-                    'repo_name': submodule_repo_name,
-                    'project_name': submodule_project_name,
-                    'repo_facade': submodule_repo,
-                    'review_request': review_request,
-                    'source_branch': source_branch,
-                    'source_commit': submodule_source_commit,
-                    'target_branch': submodule_target_branch
-                }
+        # Compare source and target branches
+        if source_commit == target_commit:
+            # No changes
+            return None
 
+        # Check merge/pull request
+        review_request = repo.getOpenPullRequest(source_branch, target_branch)
+
+        if not review_request:
+            logging.warning(f'GRAPE: WARNING: Repository "{repo_name}" is missing open merge/pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
+            return None
+
+        return {
+            'repo_name': repo_name,
+            'project_name': project_name,
+            'repo': repo,
+            'review_request': review_request,
+            'source_branch': source_branch,
+            'source_commit': source_commit
+        }
+
+    @staticmethod
     def _get_approve_input(git_host, top_repo_context, rule):
         modified_repos = self._get_modified_repos(git_host, top_repo_context)
         any_approvals = False
@@ -542,7 +642,7 @@ class Approve(Option, WorkspaceDirHandler):
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for name in modified_repos:
             repo_context = modified_repos[modified_repo_name]
-            repo = repo_context['repo_facade']
+            repo = repo_context['repo']
             source_commit = repo_context['source_commit']
             review_request = repo_context['review_request']
 
