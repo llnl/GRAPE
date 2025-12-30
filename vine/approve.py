@@ -679,6 +679,7 @@ class Approve(Option, WorkspaceDirHandler):
             if not approval_granted:
                 continue
 
+            repo_context['approved'] = True
             any_approvals = True
 
             # Ask for input
@@ -726,28 +727,66 @@ class Approve(Option, WorkspaceDirHandler):
 
         return False
 
+    @staticmethod
     def _apply_approve_actions(rule, modified_repos):
-        # Build rule section for merge request description
+        """
+        Apply rule approval actions to each modified repository.
+
+        When `"update_description"` is present in `rule["approve_actions"]`, this builds a markdown
+        section headed by `# {rule["label"]}` and containing per-repo inputs for repositories that
+        were approved by the user. That section is then inserted into (or replaces an existing
+        section within) each review request's description.
+
+        When a repository context is marked approved (`repo_context["approved"] is True`), the
+        method also performs any of the following actions configured in `rule["approve_actions"]`:
+          - `"approve"`: approve the merge/pull request.
+          - `"tag"`: create/update a tag named `{rule["name"]}_{review_request.iid()}` at the approved source commit,
+            with a tag message containing `rule["label"]` and the collected inputs for that repo.
+
+        Parameters
+        ----------
+        rule : dict
+            Review rule definition. Expected keys:
+              - "name": str
+              - "label": str
+              - "approve_actions": list[str]
+        modified_repos : dict
+            Mapping of repo_name -> repo_context. Each repo_context is expected to contain:
+              - "repo": repository client
+              - "review_request": open merge/pull request object
+              - "approved": bool
+              - "input": dict[str, str]
+              - "source_commit": str
+
+        Side Effects
+        ------------
+        May update merge/pull request descriptions; may approve review requests; may create/update tags.
+
+        Raises
+        ------
+        Exception
+            Propagates exceptions thrown by the underlying code review client operations.
+        """
+        # Build rule section for merge/pull request description
         rule_section = ''
 
         if 'update_description' in rule['approve_actions']:
             rule_section = f'# {rule["label"]}'
 
-            for name in sorted(modified_repos.keys()):
-                repo_context = modified_repos[name]
+            for repo_name in sorted(modified_repos.keys()):
+                repo_context = modified_repos[repo_name]
 
                 if repo_context['approved']:
-                    rule_section += f'\n\n## {name}'
-                    approval_inputs = repo_context['input']
+                    rule_section += f'\n\n## {repo_name}'
+                    repo_inputs = repo_context['input']
 
-                    for approval_input in sorted(approval_inputs.keys()):
-                        rule_section += f'\n\n{approval_input}: {approval_inputs[approval_input]}'
+                    for repo_input in sorted(repo_inputs.keys()):
+                        rule_section += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
-        for name in modified_repos:
-            repo_context = modified_repos[modified_repo_name]
+        for repo_name in modified_repos:
+            repo_context = modified_repos[repo_name]
             repo = repo_context['repo']
-            source_commit = repo_context['source_commit']
             review_request = repo_context['review_request']
 
             # Update merge request description
@@ -784,11 +823,12 @@ class Approve(Option, WorkspaceDirHandler):
                         review_request.approve()
                     except:
                         logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
+                        raise
 
                 # Tag reviewed branch
                 if 'tag' in rule['approve_actions']:
                     tag_name = f'{rule["name"]}_{review_request.iid()}'
-                    tag_ref = source_commit
+                    tag_ref = repo_context['source_commit']
                     tag_message = rule['label']
 
                     project_inputs = repo_context['input']
