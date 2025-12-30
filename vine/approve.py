@@ -862,6 +862,7 @@ class Approve(Option, WorkspaceDirHandler):
 
             # Update merge request description
             if 'update_description' in rule['approve_actions']:
+                logging.info('  Updating merge/pull request description...')
                 current_description = review_request.description().decode("utf-8").strip()
 
                 if rule_section_header in current_description:
@@ -874,6 +875,8 @@ class Approve(Option, WorkspaceDirHandler):
             if repo_context['approved']:
                 # Approve reviewed branch
                 if 'approve' in rule['approve_actions']:
+                    logging.info('  Approving merge/pull request...')
+
                     try:
                         review_request.approve()
                     except:
@@ -883,6 +886,7 @@ class Approve(Option, WorkspaceDirHandler):
                 # Tag reviewed branch
                 if 'tag' in rule['approve_actions']:
                     tag_name = f'{rule["name"]}_{review_request.iid()}'
+                    logging.info(f'  Creating/updating tag "{tag_name}"...')
                     tag_ref = repo_context['source_commit']
                     tag_message = rule['label']
 
