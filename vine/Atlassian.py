@@ -193,6 +193,18 @@ class Repo(StashyNode):
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 
+    def createTag(self, name, ref, message):
+        logging.error("GRAPE: ERROR: createTag not implemented for Atlassian")
+        exit(1)
+
+    def deleteTag(self, name):
+        logging.error("GRAPE: ERROR: deleteTag not implemented for Atlassian")
+        exit(1)
+
+    def updateTag(self, name, ref, message):
+        logging.error("GRAPE: ERROR: updateTag not implemented for Atlassian")
+        exit(1)
+
     def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
         logging.info("GRAPE does not support CI integration with Atlassian tools.")
         return None
