@@ -82,10 +82,70 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _get_user_name(args):
+        """
+        Resolve the user name from parsed command line arguments.
+
+        This method first checks the `--user` option in the given `args`
+        dictionary. If a value is provided for `--user`, that value is
+        returned. Otherwise, it falls back to `utility.getUserName()`.
+
+        Parameters
+        ----------
+        args : dict
+            Dictionary of command line arguments. May contain the key `"--user"`.
+
+        Returns
+        -------
+        str
+            The user name supplied via `--user`, or the default user name
+            returned by `utility.getUserName()` if `--user` is not set or is
+            falsey.
+        """
         return args['--user'] or utility.getUserName()
 
     @staticmethod
     def _authenticate_to_git_host(user_name, args):
+        """
+        Authenticate to the git hosting service and create a client instance.
+
+        This method builds the connection parameters from the provided
+        command line arguments, logs the target URL, and delegates client
+        creation to `CodeReviewsFactory.makeCodeReviews`.
+
+        Parameters
+        ----------
+        user_name : str
+            The user name to authenticate as.
+        args : dict
+            Dictionary of command line arguments, expected to contain:
+
+            - `"--codeReviewsURL"` : str
+            Base URL of the code review or Git host.
+            - `"--verifySSL"` : str
+            String flag indicating whether SSL certificates should be
+            verified, for example `"true"` or `"false"`.
+            - `"--ssh_pat_port"` : str or int
+            Port number used for SSH or PAT based communication.
+            - `"--ssh_pat_url"` : str
+            SSH or PAT endpoint or URL segment used for authentication.
+
+        Returns
+        -------
+        CodeReviews
+            An instance returned by `CodeReviewsFactory.makeCodeReviews`
+            configured for the given user and git hosting service.
+
+        Side Effects
+        ------------
+        Logs an informational message indicating the URL that is being used
+        to authenticate.
+
+        Notes
+        -----
+        The `"--verifySSL"` argument is treated as case insensitive; only
+        the string `"true"` (ignoring case) results in certificate
+        verification being enabled.
+        """
         url = args['--codeReviewsURL']
         verify = True if args['--verifySSL'].lower() == 'true' else False
         logging.info(f'Logging onto {url}')
