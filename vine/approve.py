@@ -67,6 +67,7 @@ class Approve(Option, WorkspaceDirHandler):
         git_host = self._authenticate_to_git_host(user_name, args)
         top_repo_context = self._get_top_repo_context(git_host, args)
         rule = self._get_review_rule(top_repo_context, user_name, args)
+        self._validate_approver(rule, user_name)
         approve_input = self._get_approve_input(git_host, top_repo_context, rule)
         self._apply_approve_actions(rule, approve_input)
 
@@ -254,7 +255,35 @@ class Approve(Option, WorkspaceDirHandler):
         }
 
     @staticmethod
-    def _get_review_rule(top_repo_context, user_name, args):
+    def _get_review_rule(top_repo_context, args):
+        """
+        Resolve and validate the active review rule to apply.
+
+        This loads review rules from the repository's `.grapeconfig`, filters to
+        active rules, obtains the requested rule name from `args["--rule"]` or
+        prompts the user, validates that the rule is active, and returns the rule
+        definition.
+
+        Parameters
+        ----------
+        top_repo_context : dict
+            Context dictionary returned by `_get_top_repo_context`, expected to
+            include:
+            - "grape_config": config_parser_base.GrapeConfigParserBase
+        args : dict
+            Parsed command-line arguments. Expected key:
+            - "--rule": str (optional)
+
+        Returns
+        -------
+        dict
+            The selected review rule definition.
+
+        Exits
+        -----
+        Terminates the process with exit code 1 if the selected rule name is not
+        among the active rules.
+        """
         rules = review.parseReviewRules(top_repo_context['grape_config'])
         active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
 
@@ -267,9 +296,7 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
             exit(1)
 
-        rule = rules[rule_name]
-        self._validate_approver(rule, user_name)
-        return rule
+        return rules[rule_name]
 
     @staticmethod
     def _validate_approver(rule, user_name):
@@ -303,7 +330,27 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _rule_applies(repo_name, rule):
-        for repo_pattern in rule['repositories']:
+        """
+        Determine whether a review rule applies to a repository.
+
+        Checks the given `repo_name` against each regex pattern listed in
+        `rule["repositories"]` using `re.fullmatch`.
+
+        Parameters
+        ----------
+        repo_name : str
+            Repository name to test.
+        rule : dict
+            Review rule definition containing:
+            - "repositories": list[str] of regex patterns.
+
+        Returns
+        -------
+        bool
+            True if any repository pattern fully matches `repo_name`, otherwise
+            False.
+        """
+        for repo_pattern in rule["repositories"]:
             if re.fullmatch(repo_pattern, repo_name):
                 return True
 
