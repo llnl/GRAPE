@@ -196,22 +196,49 @@ class Repo:
         self.gitlab = gitlab
 
     def getBranchHeadCommitHash(self, name):
+        """
+        Get the commit SHA (hash) at the head of a branch.
+
+        Args:
+            name (str): Branch name.
+
+        Returns:
+            str | None: The head commit SHA if the branch exists; otherwise None if
+            the branch is not found.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If an error other than 404 occurs.
+        """
         try:
             return self.project.branches.get(name).commit["id"]
         except gitlab.exceptions.GitlabGetError as e:
             if e.response_code == 404:
                 return None
             else:
-                raise e
+                raise
 
     def getFile(self, path, revision):
+        """
+        Retrieve a file's contents from the repository at a specific revision.
+
+        Args:
+            path (str): Repository-relative file path.
+            revision (str): Git reference (e.g., branch name, tag, or commit SHA).
+
+        Returns:
+            str | None: UTF-8 decoded file contents if found; otherwise None if the file
+            does not exist at the specified revision.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If an error other than 404 occurs.
+        """
         try:
             return self.project.files.raw(path, revision).decode('utf-8')
         except gitlab.exceptions.GitlabGetError as e:
             if e.response_code == 404:
                 return None
             else:
-                raise e
+                raise
 
     # state can be "all", "merged", "opened", or "closed"
     def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):

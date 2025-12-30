@@ -290,6 +290,10 @@ class PullRequest(StashyNode):
     def toRef(self):
         return self.node["toRef"]["displayId"]
 
+    def approve(self):
+        logging.error("GRAPE: ERROR: approve not implemented for Atlassian")
+        exit(1)
+
     def approved(self):
         reviewers = self.reviewers()
         ret = True if len(reviewers) else False
