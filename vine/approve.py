@@ -900,7 +900,7 @@ class Approve(Option, WorkspaceDirHandler):
                     tag = repo.getTag(tag_name)
 
                     if tag:
-                        logging.info(f'  Updating tag "{tag_name}"...')
+                        logging.info(f'  Replacing tag "{tag_name}"...')
                         tag.delete()
                     else:
                         logging.info(f'  Creating tag "{tag_name}"...')
