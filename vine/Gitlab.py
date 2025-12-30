@@ -289,6 +289,28 @@ class Repo:
 
          return mr
 
+    def getTag(self, name):
+        """
+        Retrieve a git tag from the repository by its name.
+
+        Args:
+            name (str): The name of the tag to retrieve.
+
+        Returns:
+            ProjectTag | None: ProjectTag object if the tag exists; otherwise None
+
+        Notes:
+            Throws exception if the tag cannot be retrieved (e.g. unathorized).
+            Does not throw if the tag does not exist.
+        """
+        try:
+            return self.project.tags.get(name)
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404 and e.error_message == '404 Tag Not Found':
+                return None
+            else:
+                raise
+
     def createTag(self, name, ref, message):
         """
         Create a git tag in the repository.
@@ -325,7 +347,7 @@ class Repo:
             if e.response_code == 404 and e.error_message == '404 Tag Not Found':
                 return
             else:
-                raise(e)
+                raise
 
     def updateTag(self, name, ref, message):
         """

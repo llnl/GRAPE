@@ -193,6 +193,10 @@ class Repo(StashyNode):
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
 
+    def getTag(self, name):
+        logging.error("GRAPE: ERROR: getTag not implemented for Atlassian")
+        exit(1)
+
     def createTag(self, name, ref, message):
         logging.error("GRAPE: ERROR: createTag not implemented for Atlassian")
         exit(1)

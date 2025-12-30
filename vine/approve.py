@@ -886,7 +886,6 @@ class Approve(Option, WorkspaceDirHandler):
                 # Tag reviewed branch
                 if 'tag' in rule['approve_actions']:
                     tag_name = f'{rule["name"]}_{review_request.iid()}'
-                    logging.info(f'  Creating/updating tag "{tag_name}"...')
                     tag_ref = repo_context['source_commit']
                     tag_message = rule['label']
 
@@ -898,5 +897,12 @@ class Approve(Option, WorkspaceDirHandler):
                         else:
                             tag_message += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
 
-                    repo.updateTag(tag_name, tag_ref, tag_message)
-                    # TODO: Consider logging if the tag already existed and is being updated
+                    tag = repo.getTag(tag_name)
+
+                    if tag:
+                        logging.info(f'  Updating tag "{tag_name}"...')
+                        tag.delete()
+                    else:
+                        logging.info(f'  Creating tag "{tag_name}"...')
+
+                    repo.createTag(tag_name, tag_ref, tag_message)
