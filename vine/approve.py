@@ -66,11 +66,9 @@ class Approve(Option, WorkspaceDirHandler):
         user_name = self._get_user_name(args)
         git_host = self._authenticate_to_git_host(user_name, args)
         top_repo_context = self._get_top_repo_context(git_host, args)
-        rule = self._get_review_rule(top_repo_context, args)
-        self._validate_approver(rule, user_name)
-        modified_repos = self._get_modified_repos(git_host, top_repo_context)
-        self._get_approval_input(rule, modified_repos)
-        self._apply_approve_actions(rule, modified_repos)
+        rule = self._get_review_rule(top_repo_context, user_name, args)
+        approve_input = self._get_approve_input(git_host, top_repo_context, rule)
+        self._apply_approve_actions(rule, approve_input)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -149,7 +147,7 @@ class Approve(Option, WorkspaceDirHandler):
         }
 
     @staticmethod
-    def _get_review_rule(top_repo_context, args):
+    def _get_review_rule(top_repo_context, user_name, args):
         rules = review.parseReviewRules(top_repo_context['grape_config'])
         active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
 
@@ -162,7 +160,9 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
             exit(1)
 
-        return rules[rule_name]
+        rule = rules[rule_name]
+        self._validate_approver(rule, user_name)
+        return rule
 
     @staticmethod
     def _get_source_branch(args):
@@ -319,7 +319,8 @@ class Approve(Option, WorkspaceDirHandler):
                     'target_branch': submodule_target_branch
                 }
 
-    def _get_approval_input(rule, modified_repos):
+    def _get_approve_input(git_host, top_repo_context, rule):
+        modified_repos = self._get_modified_repos(git_host, top_repo_context)
         any_approvals = False
 
         for name in modified_repos:
@@ -356,6 +357,8 @@ class Approve(Option, WorkspaceDirHandler):
         if not any_approvals:
             logging.info(f'No merge/pull requests approved. Exiting...')
             exit(0)
+
+        return modified_repos
 
     def _apply_approve_actions(rule, modified_repos):
         # Build rule section for merge request description
