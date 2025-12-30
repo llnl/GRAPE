@@ -717,7 +717,7 @@ class Approve(Option, WorkspaceDirHandler):
                 continue
 
             # Ask for approval
-            logging.info(f'Applying review rule "{rule["name"]}" to project "{repo_name}"...')
+            logging.info(f'Getting repository "{repo_name}" input for review rule "{rule["name"]}"...')
             source_branch = repo_context['source_branch']
             source_commit = repo_context['source_commit']
             approval_granted = utility.userInput(
@@ -855,6 +855,7 @@ class Approve(Option, WorkspaceDirHandler):
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
+            logging.info(f'Applying approve actions to repository "{repo_name}"...')
             repo_context = modified_repos[repo_name]
             repo = repo_context['repo']
             review_request = repo_context['review_request']
