@@ -769,9 +769,23 @@ class Approve(Option, WorkspaceDirHandler):
         """
         # Build rule section for merge/pull request description
         rule_section = ''
+        rule_section_header = ''
+        rule_section_pattern = None
 
         if 'update_description' in rule['approve_actions']:
-            rule_section = f'# {rule["label"]}'
+            rule_section_header = f'# {rule["label"]}'
+
+            # Pattern:
+-           # - Match "# {section_name}" at line start
+-           # - Capture everything until next top-level header ("# " at line start) or end of string
+            rule_section_pattern = re.compile(
+                rf'^{re.escape(rule_section_header)}\s*\n'   # Section header
+                r'(.*?)'                                # Section content (non-greedy capture)
+                r'(?=^# [^\n]*|\Z)',                    # Stop at next top-level section header or end of string
+                flags=re.DOTALL | re.MULTILINE
+            )
+
+            rule_section = rule_section_header
 
             for repo_name in sorted(modified_repos.keys()):
                 repo_context = modified_repos[repo_name]
@@ -792,25 +806,15 @@ class Approve(Option, WorkspaceDirHandler):
             # Update merge request description
             if 'update_description' in rule['approve_actions']:
                 current_description = review_request.description().decode("utf-8").strip()
-                section_header = f'# {rule["label"]}'
 
-                if section_header in current_description:
-                    # Pattern:
-                    # - Match "# {section_name}" at line start
-                    # - Capture everything until next top-level header ("# " at line start) or end of string
-                    pattern = (
-                        rf'^{re.escape(section_header)}\s*\n'    # Section header
-                        r'(.*?)'                                 # Section content (non-greedy capture)
-                        r'(?=^# [^\n]*|\Z)'                      # Stop at next top-level section header or end of string
-                    )
-
+                if rule_section_header in current_description:
                     def repl(match):
                         # Replace section and preserve new lines before next section
                         # If there is no section after this one, the extra new lines
                         # will be stripped off anyway.
                         return f'{rule_section}\n\n'
 
-                    updated_description = re.sub(pattern, repl, current_description, flags=re.DOTALL|re.MULTILINE).rstrip()
+                    updated_description = rule_section_pattern.sub(repl, current_description).rstrip()
                 else:
                     updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
 
