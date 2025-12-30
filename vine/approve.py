@@ -717,7 +717,7 @@ class Approve(Option, WorkspaceDirHandler):
                 continue
 
             # Ask for approval
-            logging.info(f'Getting "{rule["name"]}" rule input for repository "{repo_name}"...')
+            logging.info(f'Getting rule "{rule["name"]}" input for repository "{repo_name}"...')
             source_branch = repo_context['source_branch']
             source_commit = repo_context['source_commit']
             approval_granted = utility.userInput(
