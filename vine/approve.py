@@ -57,99 +57,19 @@ class Approve(Option, WorkspaceDirHandler):
         super(Approve, self).__init__()
         self._key = "approve"
         self._section = "Code Reviews"
-        self._rules = None
-        self._active_rule_names = None
 
     def description(self):
         return "Approve a merge/pull request."
 
     @log_wrapper
     def execute(self, args):
-        # Authenticate to git hosting service
-        user_name = args['--user'] or utility.getUserName()
+        user_name = self._get_user_name(args)
         git_host = self._authenticate_to_git_host(user_name, args)
-
-        # Get repository and containing project/group
-        project_name = args["--project"]
-        repo_name = args["--repo"]
-        top_repo = git_host.project(project_name).repo(repo_name)
-
-        # Get and validate source branch
-        source_branch = self._get_source_branch(args)
-        top_source_commit = top_repo.getBranchHeadCommitHash(source_branch)
-
-        if not top_source_commit:
-            logging.error(f"GRAPE: ERROR: Source branch '{source_branch}' does not exist in '{project_name}/{repo_name}'")
-            exit(1)
-
-        # Get config
-        grapeconfig = top_repo.getFile('.grapeconfig', source_branch)
-
-        if not grapeconfig:
-            logging.error(f"GRAPE: ERROR: File '.grapeconfig' does not exist in '{project_name}/{repo_name}'")
-            exit(1)
-
-        config = config_parser_base.GrapeConfigParserBase(workspaceDir=None, configString=grapeconfig)
-
-        # Get and validate target branch
-        target_branch = args["--target"]
-
-        if not target_branch:
-            target_branch = config.getPublicBranchFor(source_branch)
-
-        top_target_commit = top_repo.getBranchHeadCommitHash(target_branch)
-
-        if not top_target_commit:
-            logging.error(f"GRAPE: ERROR: Target branch '{target_branch}' does not exist in '{project_name}/{repo_name}'")
-            exit(1)
-
-        # Get review rules
-        rules = review.parseReviewRules(config)
-        active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
-
-        # Get and validate review rule
-        rule_name = args['--rule']
-
-        if not rule_name:
-            rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(active_rule_names)}): ')
-
-        if rule_name not in active_rule_names:
-            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
-            exit(1)
-
-        rule = rules[rule_name]
-
-        # Check if the user is allowed to approve
-        if not _is_eligible_reviewer(user_name, rule):
-            logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule_name}".')
-            exit(1)
-
-        # Get the list of inputs for this review rule.
-        # The inputs are used to build a description if the approval actions
-        # include tagging and/or updating the merge/pull request description.
-        rule_inputs = rule['inputs']
-
-        top_repo = {
-            'repo_name': repo_name,
-            'project_name': project_name,
-            'repo_facade': repo_facade,
-            'source_branch': source_branch,
-            'source_commit': top_source_commit,
-            'target_branch': target_branch
-        }
-
-        # Gather all modified repositories (top level, submodules, and subprojects)
-        modified_repos = {}
-
-        if top_source_commit != top_target_commit:
-            modified_repos[repo_name] = top_repo
-
-        self._get_modified_submodules(config, top_repo, git_host, modified_repos)
-        self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
-
-        # Ask the user for approvals and rule input
+        top_repo_context = self._get_top_repo_context(git_host, args)
+        rule = self._get_review_rule(top_repo_context, args)
+        self._validate_approver(rule, user_name)
+        modified_repos = self._get_modified_repos(git_host, top_repo_context)
         self._get_approval_input(rule, modified_repos)
-
         self._apply_approve_actions(rule, modified_repos)
 
     def setDefaultConfig(self, config):
@@ -161,6 +81,10 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
+
+    @staticmethod
+    def _get_user_name(args):
+        return args['--user'] or utility.getUserName()
 
     @staticmethod
     def _authenticate_to_git_host(user_name, args):
@@ -178,6 +102,69 @@ class Approve(Option, WorkspaceDirHandler):
         )
 
     @staticmethod
+    def _get_top_repo_context(git_host, args):
+        # Get repo info
+        project_name = args['--project']
+        repo_name = args['--repo']
+        repo = git_host.project(project_name).repo(repo_name)
+
+        # Get and validate source branch
+        source_branch = self._get_source_branch(args)
+        source_commit = repo.getBranchHeadCommitHash(source_branch)
+
+        if not source_commit:
+            logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
+            exit(1)
+
+        # Get grape config
+        grapeconfig = repo.getFile('.grapeconfig', source_branch)
+
+        if not grapeconfig:
+            logging.error(f'GRAPE: ERROR: File ".grapeconfig" does not exist in "{project_name}/{repo_name}"')
+            exit(1)
+
+        config = config_parser_base.GrapeConfigParserBase(workspaceDir=None, configString=grapeconfig)
+
+        # Get and validate target branch
+        target_branch = args['--target']
+
+        if not target_branch:
+            target_branch = config.getPublicBranchFor(source_branch)
+
+        target_commit = repo.getBranchHeadCommitHash(target_branch)
+
+        if not target_commit:
+            logging.error(f'GRAPE: ERROR: Target branch "{target_branch}" does not exist in "{project_name}/{repo_name}"')
+            exit(1)
+
+        return {
+            'repo_name': repo_name,
+            'project_name': project_name,
+            'repo_facade': repo,
+            'source_branch': source_branch,
+            'source_commit': source_commit,
+            'target_branch': target_branch,
+            'target_commit': target_commit,
+            'grape_config': config
+        }
+
+    @staticmethod
+    def _get_review_rule(top_repo_context, args):
+        rules = review.parseReviewRules(top_repo_context['grape_config'])
+        active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
+
+        rule_name = args['--rule']
+
+        if not rule_name:
+            rule_name = utility.userInput(f'Please enter a review rule name ({", ".join(active_rule_names)}): ')
+
+        if rule_name not in active_rule_names:
+            logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
+            exit(1)
+
+        return rules[rule_name]
+
+    @staticmethod
     def _get_source_branch(args):
         source_branch = args["--source"]
 
@@ -191,12 +178,13 @@ class Approve(Option, WorkspaceDirHandler):
         return source_branch
 
     @staticmethod
-    def _is_eligible_reviewer(user_name, rule):
-        for reviewer_pattern in rule['eligibleReviewers']:
-            if re.fullmatch(reviewer_pattern, user_name):
-                return True
+    def _validate_approver(rule, user_name):
+        for approver_pattern in rule['eligibleReviewers']:
+            if re.fullmatch(approver_pattern, user_name):
+                return
 
-        return False
+        logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule['name']}".')
+        exit(1)
 
     @staticmethod
     def _rule_applies(repo_name, rule):
@@ -205,6 +193,19 @@ class Approve(Option, WorkspaceDirHandler):
                 return True
 
         return False
+
+    @staticmethod
+    def _get_modified_repos(git_host, top_repo_context):
+        # Gather all modified repositories (top level, submodules, and subprojects)
+        modified_repos = {}
+
+        if top_source_commit != top_target_commit:
+            modified_repos[repo_name] = top_repo
+
+        self._get_modified_submodules(config, top_repo, git_host, modified_repos)
+        self._get_modified_subprojects(config, top_repo, git_host, modified_repos)
+
+        return modified_repos
 
     @staticmethod
     def _get_modified_subprojects(config, top_repo, git_host, modified_repos):
