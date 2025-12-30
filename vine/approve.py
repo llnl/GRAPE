@@ -161,13 +161,60 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _get_top_repo_context(git_host, args):
+        """
+        Build and validate the top-level repository context needed for approvals.
+
+        This resolves the project/repo from CLI args, validates the existence of
+        the source and target branches, loads the `.grapeconfig` from the source
+        branch, and returns a context dictionary used by downstream approval
+        logic.
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review / git hosting client.
+        args : dict
+            Parsed command-line arguments. Expected keys:
+            - "--project" : str
+            - "--repo" : str
+            - "--source" : str (optional; may be prompted)
+            - "--target" : str (optional; defaults via .grapeconfig mapping)
+
+        Returns
+        -------
+        dict
+            Context containing:
+            - repo_name
+            - project_name
+            - repo_facade
+            - source_branch
+            - source_commit
+            - target_branch
+            - target_commit
+            - grape_config (GrapeConfigParserBase)
+
+        Exits
+        -----
+        Terminates the process with exit code 1 if:
+        - source branch does not exist
+        - `.grapeconfig` is missing on the source branch
+        - target branch does not exist
+        """
         # Get repo info
         project_name = args['--project']
         repo_name = args['--repo']
         repo = git_host.project(project_name).repo(repo_name)
 
         # Get and validate source branch
-        source_branch = self._get_source_branch(args)
+        source_branch = args["--source"]
+
+        if not source_branch:
+            source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
+
+            if not source_branch:
+                logging.error(f'GRAPE: ERROR: Source branch is required.')
+                exit(1)
+
         source_commit = repo.getBranchHeadCommitHash(source_branch)
 
         if not source_commit:
@@ -225,25 +272,33 @@ class Approve(Option, WorkspaceDirHandler):
         return rule
 
     @staticmethod
-    def _get_source_branch(args):
-        source_branch = args["--source"]
-
-        if not source_branch:
-            source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
-
-            if not source_branch:
-                logging.error(f'GRAPE: ERROR: Source branch is required.')
-                exit(1)
-
-        return source_branch
-
-    @staticmethod
     def _validate_approver(rule, user_name):
+        """
+        Validate that the given user is eligible to approve the provided review rule.
+
+        This checks the supplied `user_name` against each regex pattern in
+        `rule["eligibleReviewers"]`. If any pattern matches (via `re.fullmatch`),
+        the user is considered eligible and the method returns normally.
+
+        Parameters
+        ----------
+        rule : dict
+            Review rule definition containing:
+            - "eligibleReviewers": list[str] of regex patterns for eligible approvers
+            - "name": str rule name (used for error messages)
+        user_name : str
+            User name to validate.
+
+        Exits
+        -----
+        Terminates the process with exit code 1 if the user does not match any
+        eligible reviewer pattern.
+        """
         for approver_pattern in rule['eligibleReviewers']:
             if re.fullmatch(approver_pattern, user_name):
                 return
 
-        logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule['name']}".')
+        logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule["name"]}".')
         exit(1)
 
     @staticmethod
