@@ -406,6 +406,44 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _add_modified_submodules(git_host, top_repo_context, modified_repos):
+        """
+        Add modified submodules (with open review requests) to the modified repos map.
+
+        This inspects the top repository's `.gitmodules` file on the source branch,
+        parses submodule definitions, derives the corresponding target branch for
+        submodules using the workspace mapping `submoduleTopicPrefixMappings` from
+        the repository's `.grapeconfig`, and then checks each submodule repository
+        for:
+          - existence of the source branch,
+          - existence of the derived target branch (fatal if missing),
+          - differing head commits between source and target, and
+          - an open merge/pull request from source -> target.
+
+        Submodules meeting these criteria are added to `modified_repos` keyed by
+        repository name.
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review / git hosting client.
+        top_repo_context : dict
+            Context dictionary for the top-level repository, expected to include:
+              - "repo": repository client for the top repo
+              - "source_branch": str
+              - "project_name": str
+              - "grape_config": config_parser_base.GrapeConfigParserBase
+        modified_repos : dict
+            Mapping of repo_name -> repo_context that will be updated in-place.
+
+        Side Effects
+        ------------
+        Mutates `modified_repos` by adding entries for modified submodule repositories.
+
+        Notes
+        -----
+        This method returns early when `.gitmodules` is missing or contains no
+        submodule definitions.
+        """
         top_repo = top_repo_context['repo']
         top_source_branch = top_repo_context['source_branch']
 
@@ -433,7 +471,9 @@ class Approve(Option, WorkspaceDirHandler):
             # TODO: Check url matches the top level git service
             url = submodule_metadata['url']
 
-            modified_repo_context = Approve._get_modified_repo_context(git_host, top_project_name, submodule_source_branch, submodule_target_branch, url)
+            modified_repo_context = Approve._get_modified_repo_context(
+                git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
+            )
 
             if modified_repo_context:
                 modified_repos[modified_repo_context['repo_name']] = modified_repo_context
