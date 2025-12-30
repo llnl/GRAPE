@@ -399,13 +399,59 @@ class Approve(Option, WorkspaceDirHandler):
         """
         modified_repos = {}
 
-        if top_repo_context['source_commit'] != top_repo_context['target_commit']:
-            modified_repos[top_repo_context['repo_name']] = top_repo_context
-
+        Approve._add_top_repo_if_modified(top_repo_context, modified_repos)
         Approve._add_modified_submodules(git_host, top_repo_context, modified_repos)
         Approve._add_modified_subprojects(git_host, top_repo_context, modified_repos)
 
         return modified_repos
+
+    @staticmethod
+    def _add_top_repo_if_modified(top_repo_context, modified_repos):
+        """
+        Add the top-level repository to the modified repos map if it has changes and an open review request.
+
+        Compares the source and target branch head commits for the top repository. If they differ,
+        checks for an open merge/pull request from source -> target. If an open request exists,
+        the top repository context is added to `modified_repos` keyed by the repo name.
+
+        Parameters
+        ----------
+        top_repo_context : dict
+            Context dictionary returned by `_get_top_repo_context`, expected to include:
+              - "repo_name": str
+              - "repo": repository client
+              - "source_branch": str
+              - "target_branch": str
+              - "source_commit": str
+              - "target_commit": str
+        modified_repos : dict
+            Mapping of repo_name -> repo_context that will be updated in-place.
+
+        Side Effects
+        ------------
+        Mutates `modified_repos` by adding an entry for the top repository when applicable.
+
+        Notes
+        -----
+        If no open merge/pull request exists for the source -> target branch pair, this method
+        logs a warning and does not add the repository.
+        """
+        if top_repo_context['source_commit'] == top_repo_context['target_commit']:
+            # No changes
+            return
+
+        # Check merge/pull request
+        repo = top_repo_context['repo']
+        repo_name = top_repo_context['repo_name']
+        source_branch = top_repo_context['source_branch']
+        target_branch = top_repo_context['target_branch']
+        review_request = repo.getOpenPullRequest(source_branch, target_branch)
+
+        if not review_request:
+            logging.warning(f'GRAPE: WARNING: Repository "{repo_name}" is missing open merge/pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
+            return
+
+        modified_repos[repo_name] = top_repo_context
 
     @staticmethod
     def _add_modified_submodules(git_host, top_repo_context, modified_repos):
@@ -674,7 +720,7 @@ class Approve(Option, WorkspaceDirHandler):
             approval_granted = utility.userInput(
                 f'I approve the changes on branch "{source_branch}" ({source_commit}).',
                 default='y'
-            ).lower() == 'y'
+            )
 
             if not approval_granted:
                 continue
@@ -685,7 +731,7 @@ class Approve(Option, WorkspaceDirHandler):
             # Ask for input
             repo_input = repo_context['input']
 
-            for rule_input in rule['input']:
+            for rule_input in rule['inputs']:
                 # TODO: Add case for username/user display name
                 if rule_input == 'commit':
                     repo_input[rule_input] = source_commit
