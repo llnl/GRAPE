@@ -145,8 +145,8 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
-    def hasBranch(self, name):
-        logging.error("GRAPE: ERROR: hasBranch not implemented for Atlassian")
+    def getBranchHeadCommitHash(self, name):
+        logging.error("GRAPE: ERROR: getBranchHeadCommitHash not implemented for Atlassian")
         exit(1)
 
     def getFile(self, path, revision):

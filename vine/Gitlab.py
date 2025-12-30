@@ -195,16 +195,6 @@ class Repo:
         self.project = gitlab_project
         self.gitlab = gitlab
 
-    def hasBranch(self, name):
-        try:
-            self.project.branches.get(name)
-            return True
-        except gitlab.exceptions.GitlabGetError as e:
-            if e.response_code == 404:
-                return False
-            else:
-                raise e
-
     def getBranchHeadCommitHash(self, name):
         try:
             return self.project.branches.get(name).commit["id"]
