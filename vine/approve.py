@@ -397,7 +397,7 @@ class Approve(Option, WorkspaceDirHandler):
             Mapping of repo_name -> repo_context for each repository detected as
             modified relative to the target branch.
         """
-        logging.info(f'Getting modified repos...')
+        logging.info(f'Getting modified repositories...')
 
         modified_repos = {}
 
