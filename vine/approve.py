@@ -736,7 +736,7 @@ class Approve(Option, WorkspaceDirHandler):
 
             for rule_input in rule['inputs']:
                 # TODO: Add case for username/user display name
-                if rule_input == 'commit':
+                if rule_input == 'Commit':
                     repo_input[rule_input] = source_commit
                 else:
                     repo_input[rule_input] = utility.userInput(f'{rule_input}: ')
@@ -889,7 +889,10 @@ class Approve(Option, WorkspaceDirHandler):
                     repo_inputs = repo_context['input']
 
                     for repo_input in sorted(repo_inputs.keys()):
-                        tag_message += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
+                        if repo_input == 'Commit':
+                            continue
+                        else:
+                            tag_message += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
 
                     repo.updateTag(tag_name, tag_ref, tag_message)
                     # TODO: Consider logging if the tag already existed and is being updated
