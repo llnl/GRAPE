@@ -710,7 +710,7 @@ class Approve(Option, WorkspaceDirHandler):
             # Set default approval and input state
             repo_context = modified_repos[repo_name]
             repo_context['approved'] = False
-            repo_context['input'] = {}
+            repo_context['inputs'] = {}
 
             # Check if rule applies
             if not Approve._rule_applies(repo_name, rule):
@@ -732,14 +732,14 @@ class Approve(Option, WorkspaceDirHandler):
             any_approvals = True
 
             # Ask for input
-            repo_input = repo_context['input']
+            repo_inputs = repo_context['inputs']
 
             for rule_input in rule['inputs']:
                 # TODO: Add case for username/user display name
                 if rule_input == 'Commit':
-                    repo_input[rule_input] = source_commit
+                    repo_inputs[rule_input] = source_commit
                 else:
-                    repo_input[rule_input] = utility.userInput(f'{rule_input}: ')
+                    repo_inputs[rule_input] = utility.userInput(f'{rule_input}: ')
 
         # Check if any approvals were granted
         if not any_approvals:
@@ -842,7 +842,7 @@ class Approve(Option, WorkspaceDirHandler):
 
                 if repo_context['approved']:
                     rule_section += f'\n\n## {repo_name}'
-                    repo_inputs = repo_context['input']
+                    repo_inputs = repo_context['inputs']
 
                     for repo_input in sorted(repo_inputs.keys()):
                         rule_section += f'\n\n{repo_input}: {repo_inputs[repo_input]}'
@@ -886,7 +886,7 @@ class Approve(Option, WorkspaceDirHandler):
                     tag_ref = repo_context['source_commit']
                     tag_message = rule['label']
 
-                    repo_inputs = repo_context['input']
+                    repo_inputs = repo_context['inputs']
 
                     for repo_input in sorted(repo_inputs.keys()):
                         if repo_input == 'Commit':
