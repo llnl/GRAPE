@@ -451,6 +451,7 @@ class Approve(Option, WorkspaceDirHandler):
             logging.warning(f'GRAPE: WARNING: Repository "{repo_name}" is missing open merge/pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
             return
 
+        top_repo_context['review_request'] = review_request
         modified_repos[repo_name] = top_repo_context
 
     @staticmethod
