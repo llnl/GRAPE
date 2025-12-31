@@ -1302,6 +1302,7 @@ def parseReviewRules(config=None):
                         'label': approveInputName,
                         'tag': True,
                         'description': True,
+                        'required': False,
                         'cache': False,
                     }
 
@@ -1346,6 +1347,9 @@ def parseReviewRules(config=None):
                             if approveInput['description'] and 'description' not in approveActions:
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
                                 exit(1)
+
+                        if config.has_option(approveInputSectionName, "required"):
+                            approveInput['required'] = config.getboolean(approveInputSectionName, "required")
 
                         if config.has_option(approveInputSectionName, "cache"):
                             if approveInput['source'] == "commit":

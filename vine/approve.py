@@ -753,6 +753,12 @@ class Approve(Option, WorkspaceDirHandler):
                     else:
                         value = utility.userInput(f'{rule_input["prompt"]}: ', rule_input['default'])
 
+                        if rule_input['required'] and not value:
+                            logging.info(f'{rule_input["prompt"]} is required.')
+
+                            while not value:
+                                value = utility.userInput(f'{rule_input["prompt"]}: ', rule_input['default'])
+
                     if rule_input['cache']:
                         rule_input['value'] = value
 
