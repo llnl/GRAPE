@@ -758,7 +758,9 @@ class Approve(Option, WorkspaceDirHandler):
 
                 repo_inputs.append({
                     'label': rule_input['label'],
-                    'value': value
+                    'value': value,
+                    'tag': rule_input['tag'],
+                    'description': rule_input['description']
                 })
 
         # Check if any approvals were granted
@@ -801,7 +803,7 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Apply rule approval actions to each modified repository.
 
-        When `"update_description"` is present in `rule["approveActions"]`, this builds a markdown
+        When `"description"` is present in `rule["approveActions"]`, this builds a markdown
         section headed by `# {rule["label"]}` and containing per-repo inputs for repositories that
         were approved by the user. That section is then inserted into (or replaces an existing
         section within) each review request's description.
@@ -842,7 +844,7 @@ class Approve(Option, WorkspaceDirHandler):
         rule_section_pattern = None
         rule_section_repl = None
 
-        if 'update_description' in rule['approveActions']:
+        if 'description' in rule['approveActions']:
             rule_section_header = f'# {rule["label"]}'
 
             # Pattern:
@@ -865,7 +867,8 @@ class Approve(Option, WorkspaceDirHandler):
                     repo_inputs = repo_context['approve_inputs']
 
                     for repo_input in repo_inputs:
-                        rule_section += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
+                        if repo_input['description']:
+                            rule_section += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
 
             def rule_section_repl(_match):
                 # Replace section and preserve new lines before next section
@@ -881,7 +884,7 @@ class Approve(Option, WorkspaceDirHandler):
             review_request = repo_context['review_request']
 
             # Update merge request description
-            if 'update_description' in rule['approveActions']:
+            if 'description' in rule['approveActions']:
                 logging.info('  Updating merge/pull request description...')
                 current_description = review_request.description().decode("utf-8").strip()
 
@@ -912,8 +915,8 @@ class Approve(Option, WorkspaceDirHandler):
                     repo_inputs = repo_context['approve_inputs']
 
                     for repo_input in repo_inputs:
-                        # TODO: Consider excluding commit?
-                        tag_message += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
+                        if repo_input['tag']:
+                            tag_message += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
 
                     tag = repo.getTag(tag_name)
 

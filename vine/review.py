@@ -1280,6 +1280,12 @@ def parseReviewRules(config=None):
                 if config.has_option(sectionName, "repositories"):
                     repositories = config.get(sectionName, "repositories").split()
 
+                # Get approve actions
+                approveActions = ['approve']
+
+                if config.has_option(sectionName, "approveactions"):
+                    approveActions = config.get(sectionName, "approveactions").split()
+
                 # Get approve inputs
                 approveInputNames = []
 
@@ -1294,6 +1300,8 @@ def parseReviewRules(config=None):
                         'prompt': approveInputName,
                         'default': None,
                         'label': approveInputName,
+                        'tag': True,
+                        'description': True,
                         'cache': False,
                     }
 
@@ -1325,6 +1333,20 @@ def parseReviewRules(config=None):
                         if config.has_option(approveInputSectionName, "label"):
                             approveInput['label'] = config.get(approveInputSectionName, "label")
 
+                        if config.has_option(approveInputSectionName, "tag"):
+                            approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
+
+                            if approveInput['tag'] and 'tag' not in approveActions:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "tag" option (review rule "{reviewRuleName}" does not create a tag on approval).')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "description"):
+                            approveInput['description'] = config.getboolean(approveInputSectionName, "description")
+
+                            if approveInput['description'] and 'description' not in approveActions:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
+                                exit(1)
+
                         if config.has_option(approveInputSectionName, "cache"):
                             if approveInput['source'] == "commit":
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" cannot cache if the source is "commit".')
@@ -1334,12 +1356,6 @@ def parseReviewRules(config=None):
 
                     approveInputs.append(approveInput)
 
-                # Get approve actions
-                approveActions = ['approve']
-
-                if config.has_option(sectionName, "approveactions"):
-                    approveActions = config.get(sectionName, "approveactions").split()
-
                 # Add the rule
                 reviewRules[reviewRuleName] = {
                     "name": reviewRuleName,
@@ -1348,8 +1364,8 @@ def parseReviewRules(config=None):
                     "minNumReviewers": minNumReviewers,
                     "eligibleReviewers": eligibleReviewers,
                     "repositories": repositories,
-                    "approveInputs": approveInputs,
-                    "approveActions": approveActions
+                    "approveActions": approveActions,
+                    "approveInputs": approveInputs
                 }
 
     # Add the GRAPE review rule. It will be active only if the user has
