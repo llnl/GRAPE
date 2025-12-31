@@ -1280,15 +1280,65 @@ def parseReviewRules(config=None):
                 if config.has_option(sectionName, "repositories"):
                     repositories = config.get(sectionName, "repositories").split()
 
-                inputs = []
+                # Get approve inputs
+                approveInputNames = []
 
-                if config.has_option(sectionName, "inputs"):
-                    inputs = config.get(sectionName, "inputs").split(";")
+                if config.has_option(sectionName, "approveinputs"):
+                    approveInputNames = config.get(sectionName, "approveinputs").split()
 
-                approve_actions = ['approve']
+                approveInputs = []
 
-                if config.has_option(sectionName, "approve_actions"):
-                    approve_actions = config.get(sectionName, "approve_actions").split()
+                for approveInputName in approveInputNames:
+                    approveInput = {
+                        'source': 'prompt',
+                        'prompt': approveInputName,
+                        'default': None,
+                        'label': approveInputName,
+                        'cache': False,
+                    }
+
+                    approveInputSectionName = f"{sectionName}-approve-inputs-{approveInputName}"
+
+                    if config.has_section(approveInputSectionName):
+                        if config.has_option(approveInputSectionName, "source"):
+                            approveInput["source"] = config.get(approveInputSectionName, "source")
+                            validSources = ["prompt", "username", "commit"]
+
+                            if approveInput["source"] not in validSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "prompt"):
+                            if approveInput['source'] != "prompt":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a prompt if the source is not a prompt.')
+                                exit(1)
+
+                            approveInput['prompt'] = config.get(approveInputSectionName, "prompt")
+
+                        if config.has_option(approveInputSectionName, "default"):
+                            if approveInput['source'] != "prompt":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a default value if the source is not a prompt.')
+                                exit(1)
+
+                            approveInput['default'] = config.get(approveInputSectionName, "default")
+
+                        if config.has_option(approveInputSectionName, "label"):
+                            approveInput['label'] = config.get(approveInputSectionName, "label")
+
+                        if config.has_option(approveInputSectionName, "cache"):
+                            if approveInput['source'] == "commit":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" cannot cache if the source is "commit".')
+                                exit(1)
+
+                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
+
+                    approveInputs.append(approveInput)
+
+                # Get approve actions
+                approveActions = ['approve']
+
+                if config.has_option(sectionName, "approveactions"):
+                    approveActions = config.get(sectionName, "approveactions").split()
 
                 # Add the rule
                 reviewRules[reviewRuleName] = {
@@ -1298,8 +1348,8 @@ def parseReviewRules(config=None):
                     "minNumReviewers": minNumReviewers,
                     "eligibleReviewers": eligibleReviewers,
                     "repositories": repositories,
-                    "inputs": inputs,
-                    "approve_actions": approve_actions
+                    "approveInputs": approveInputs,
+                    "approveActions": approveActions
                 }
 
     # Add the GRAPE review rule. It will be active only if the user has
