@@ -1352,11 +1352,11 @@ def parseReviewRules(config=None):
                             approveInput['required'] = config.getboolean(approveInputSectionName, "required")
 
                         if config.has_option(approveInputSectionName, "cache"):
-                            if approveInput['source'] == "commit":
+                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
+
+                            if approveInput['cache'] and approveInput['source'] == "commit":
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" cannot cache if the source is "commit".')
                                 exit(1)
-
-                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
 
                     approveInputs.append(approveInput)
 
