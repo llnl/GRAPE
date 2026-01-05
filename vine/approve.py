@@ -363,6 +363,8 @@ class Approve(Option, WorkspaceDirHandler):
             # No changes
             return
 
+        # TODO: Consider what to do if the target branch is ahead of the source branch
+
         # Check merge/pull request
         repo = top_repo_context['repo']
         repo_name = top_repo_context['repo_name']
@@ -576,6 +578,8 @@ class Approve(Option, WorkspaceDirHandler):
         if source_commit == target_commit:
             # No changes
             return None
+
+        # TODO: Consider what to do if the target branch is ahead of the source branch
 
         # Check merge/pull request
         review_request = repo.getOpenPullRequest(source_branch, target_branch)
