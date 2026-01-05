@@ -703,6 +703,9 @@ class PullRequest:
     def toRef(self):
         return self.mergerequest.target_branch
 
+    def fromSHA(self):
+        return self.mergerequest.sha
+
     def approve(self):
         """
         Approve this merge request.

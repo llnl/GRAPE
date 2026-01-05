@@ -108,9 +108,7 @@ class Approve(Option, WorkspaceDirHandler):
             - project_name
             - repo
             - source_branch
-            - source_commit
             - target_branch
-            - target_commit
             - grape_config (GrapeConfigParserBase)
 
         Exits
@@ -167,9 +165,7 @@ class Approve(Option, WorkspaceDirHandler):
             'project_name': project_name,
             'repo': repo,
             'source_branch': source_branch,
-            'source_commit': source_commit,
             'target_branch': target_branch,
-            'target_commit': target_commit,
             'grape_config': config
         }
 
@@ -291,9 +287,8 @@ class Approve(Option, WorkspaceDirHandler):
         Determine which repositories have changes between the source and target branches.
 
         This builds and returns a dictionary of repository context objects for all
-        repositories that have differing head commits between the source and target
-        branches, including:
-          - the top-level repository (if source_commit != target_commit)
+        repositories that have a merge/pull request:
+          - the top-level repository (via `_add_top_repo_if_modified`)
           - modified submodules (via `_add_modified_submodules`)
           - modified nested subprojects (via `_add_modified_subprojects`)
 
@@ -305,8 +300,6 @@ class Approve(Option, WorkspaceDirHandler):
             Context dictionary returned by `_get_top_repo_context`, expected to
             contain at least:
               - repo_name
-              - source_commit
-              - target_commit
               - source_branch
               - target_branch
               - project_name
@@ -345,8 +338,6 @@ class Approve(Option, WorkspaceDirHandler):
               - "repo": repository client
               - "source_branch": str
               - "target_branch": str
-              - "source_commit": str
-              - "target_commit": str
         modified_repos : dict
             Mapping of repo_name -> repo_context that will be updated in-place.
 
@@ -359,13 +350,7 @@ class Approve(Option, WorkspaceDirHandler):
         If no open merge/pull request exists for the source -> target branch pair, this method
         logs a warning and does not add the repository.
         """
-        if top_repo_context['source_commit'] == top_repo_context['target_commit']:
-            # No changes
-            return
-
-        # TODO: Consider what to do if the target branch is ahead of the source branch
-
-        # Check merge/pull request
+        # Get merge/pull request
         repo = top_repo_context['repo']
         repo_name = top_repo_context['repo_name']
         source_branch = top_repo_context['source_branch']
@@ -373,7 +358,6 @@ class Approve(Option, WorkspaceDirHandler):
         review_request = repo.getOpenPullRequest(source_branch, target_branch)
 
         if not review_request:
-            logging.warning(f'GRAPE: WARNING: Repository "{repo_name}" is missing open merge/pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
             return
 
         top_repo_context['review_request'] = review_request
@@ -460,13 +444,9 @@ class Approve(Option, WorkspaceDirHandler):
 
         Iterates all nested subprojects defined in the top repository's `.grapeconfig`,
         resolves each subproject URL, and uses `_get_modified_repo_context` to determine
-        whether the subproject:
-          - has a source branch,
-          - has the required target branch,
-          - differs between source and target commits, and
-          - has an open merge/pull request from source -> target.
+        whether the subproject has an open merge/pull request from source -> target.
 
-        When a subproject meets these criteria, its repo context is added to
+        When a subproject meets this criterion, its repo context is added to
         `modified_repos` keyed by repo name.
 
         Parameters
@@ -543,8 +523,6 @@ class Approve(Option, WorkspaceDirHandler):
               - project_name
               - repo
               - review_request
-              - source_branch
-              - source_commit
 
         Exits
         -----
@@ -560,41 +538,17 @@ class Approve(Option, WorkspaceDirHandler):
 
         repo = git_host.project(project_name).repo(repo_name)
 
-        # Check source branch
-        source_commit = repo.getBranchHeadCommitHash(source_branch)
-
-        if not source_commit:
-            # Source branch does not exist, which means there are no changes
-            return None
-
-        # Check target branch
-        target_commit = repo.getBranchHeadCommitHash(target_branch)
-
-        if not target_commit:
-            logging.error(f'GRAPE: ERROR: Repository "{repo_name}" is missing target branch "{target_branch}".')
-            exit(1)
-
-        # Compare source and target branches
-        if source_commit == target_commit:
-            # No changes
-            return None
-
-        # TODO: Consider what to do if the target branch is ahead of the source branch
-
-        # Check merge/pull request
+        # Get merge/pull request
         review_request = repo.getOpenPullRequest(source_branch, target_branch)
 
         if not review_request:
-            logging.warning(f'GRAPE: WARNING: Repository "{repo_name}" is missing open merge/pull request for "{source_branch}" targeting "{target_branch}". Skipping...')
             return None
 
         return {
             'repo_name': repo_name,
             'project_name': project_name,
             'repo': repo,
-            'review_request': review_request,
-            'source_branch': source_branch,
-            'source_commit': source_commit
+            'review_request': review_request
         }
 
     @staticmethod
@@ -645,8 +599,9 @@ class Approve(Option, WorkspaceDirHandler):
 
             # Ask for approval
             logging.info(f'Getting rule "{rule["name"]}" input for repository "{repo_name}"...')
-            source_branch = repo_context['source_branch']
-            source_commit = repo_context['source_commit']
+            review_request = repo_context['review_request']
+            source_branch = review_request.fromRef()
+            source_commit = review_request.fromSHA()
             approval_granted = utility.userInput(
                 f'I approve the changes on branch "{source_branch}" ({source_commit}).',
                 default='y'
@@ -757,7 +712,6 @@ class Approve(Option, WorkspaceDirHandler):
               - "review_request": open merge/pull request object
               - "approved": bool
               - "input": dict[str, str]
-              - "source_commit": str
 
         Side Effects
         ------------
@@ -839,7 +793,7 @@ class Approve(Option, WorkspaceDirHandler):
                 # Tag reviewed branch
                 if 'tag' in rule['approveActions']:
                     tag_name = f'{rule["name"]}_{review_request.iid()}'
-                    tag_ref = repo_context['source_commit']
+                    tag_ref = review_request.fromSHA()
                     tag_message = rule['label']
 
                     repo_inputs = repo_context['approve_inputs']

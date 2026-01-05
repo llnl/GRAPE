@@ -294,6 +294,10 @@ class PullRequest(StashyNode):
     def toRef(self):
         return self.node["toRef"]["displayId"]
 
+    def fromSHA(self):
+        logging.error("GRAPE: ERROR: fromSHA not implemented for Atlassian")
+        exit(1)
+
     def approve(self):
         logging.error("GRAPE: ERROR: approve not implemented for Atlassian")
         exit(1)
