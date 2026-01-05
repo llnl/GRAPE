@@ -32,15 +32,43 @@ def getDefaultName():
         return os.getenv("USER")
 
 
-def getUserName(defaultName=getDefaultName(), service="LC"):
+def getUserName(cliArgs=None, defaultName=None, service="LC"):
+    """
+    Resolve the username for a given service.
+
+    Precedence:
+      1) CLI argument: cliArgs['--user'] (if provided and non-empty)
+      2) Global grape config: [services] <service.lower()>
+      3) Interactive prompt (or default in non-interactive mode)
+
+    If the user opts in, persist the username to:
+      <workspace>/.git/.grapeuserconfig under [services] <service.lower()>.
+
+    Args:
+        cliArgs: Parsed CLI args dict (e.g., from docopt) that may include '--user'.
+        defaultName: Default username to present in prompt; if None, uses getDefaultName().
+        service: Service identifier (e.g., "LC"); stored/looked up as lowercase.
+
+    Returns:
+        The resolved username (str).
+    """
+    # Use the CLI argument if provided
+    if cliArgs and cliArgs.get('--user'):
+        return cliArgs['--user']
+
+    # Check for a saved entry in the grape user config
     config = config_parser_global.grapeConfig()
+
     try:
         if config.has_section(Option.SECTION_SERVICES) and config.has_option(Option.SECTION_SERVICES, service.lower()):
-            configuredName = config.get(Option.SECTION_SERVICES, service.lower())
-            return configuredName
+            return config.get(Option.SECTION_SERVICES, service.lower())
     except:
         pass
+
     # Ask for the username
+    if defaultName is None:
+        defaultName = getDefaultName()
+
     username = userInput(f"Enter {service} User Name:", defaultName)
 
     # Ask if the user wants to remember this username

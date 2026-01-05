@@ -63,8 +63,7 @@ class Approve(Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
-        user_name = Approve._get_user_name(args)
-        print(user_name)
+        user_name = utility.getUserName(args)
         git_host = Approve._authenticate_to_git_host(user_name, args)
         top_repo_context = Approve._get_top_repo_context(git_host, args)
         rule = Approve._get_review_rule(top_repo_context, args)
@@ -79,29 +78,6 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
-
-    @staticmethod
-    def _get_user_name(args):
-        """
-        Resolve the user name from parsed command line arguments.
-
-        This method first checks the `--user` option in the given `args`
-        dictionary. If a value is provided for `--user`, that value is
-        returned. Otherwise, it falls back to `utility.getUserName()`.
-
-        Parameters
-        ----------
-        args : dict
-            Dictionary of command line arguments. May contain the key `"--user"`.
-
-        Returns
-        -------
-        str
-            The user name supplied via `--user`, or the default user name
-            returned by `utility.getUserName()` if `--user` is not set or is
-            falsey.
-        """
-        return args['--user'] or utility.getUserName()
 
     @staticmethod
     def _authenticate_to_git_host(user_name, args):
