@@ -300,7 +300,7 @@ class Repo:
             ProjectTag | None: ProjectTag object if the tag exists; otherwise None
 
         Notes:
-            Throws exception if the tag cannot be retrieved (e.g. unathorized).
+            Throws exception if the tag cannot be retrieved (e.g. unauthorized).
             Does not throw if the tag does not exist.
         """
         try:
@@ -338,7 +338,7 @@ class Repo:
             None
 
         Notes:
-            Throws exception if the tag cannot be deleted (e.g. unathorized).
+            Throws exception if the tag cannot be deleted (e.g. unauthorized).
             Does not throw if the tag does not exist.
         """
         try:
