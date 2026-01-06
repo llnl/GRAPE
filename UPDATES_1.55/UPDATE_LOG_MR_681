@@ -1,0 +1,19 @@
+
+
+Tue Jan  6 09:41:56 2026 Alan Dayton
+MR_681
+Reviewers: Ben Liu, Peter Robinson, David Dawson
+
+Adds an approve command. Approve actions can be specified in .grapeconfig and include creating a tag, updating a merge/pull request description, and approving the merge/pull request. Approve inputs can be specified in .grapeconfig for information that should be added to the merge/pull request description or tag message.
+
+For what a review rule looks like in the .grapeconfig, see https://rzlc.llnl.gov/gitlab/GRP/test_application_1/-/merge_requests/5/diffs.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.1
+
+--reviewers=benliu,probinso,dawson24
