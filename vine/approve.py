@@ -155,16 +155,14 @@ class Approve(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(source_branch)
 
-        target_commit = repo.getBranchHeadCommitHash(target_branch)
-
-        if not target_commit:
-            logging.error(f'GRAPE: ERROR: Target branch "{target_branch}" does not exist in "{project_name}/{repo_name}"')
-            exit(1)
+        # Get review request
+        review_request = repo.getOpenPullRequest(source_branch, target_branch)
 
         return {
             'repo_name': repo_name,
             'project_name': project_name,
             'repo': repo,
+            'review_request': review_request,
             'source_branch': source_branch,
             'target_branch': target_branch,
             'grape_config': config
@@ -221,8 +219,8 @@ class Approve(Option, WorkspaceDirHandler):
 
         This method:
           1) Validates that `user_name` is eligible to approve `rule`.
-          2) Detects which repositories (top repo, submodules, subprojects) have changes
-             between the source and target branches and have open review requests.
+          2) Detects which repositories (top repo, submodules, subprojects) have open
+             review requests.
           3) Prompts the user for per-repository approval and collects any rule-defined input.
           4) Applies the configured approve actions (e.g., approve, tag, update description)
              to each relevant open review request.
@@ -298,13 +296,7 @@ class Approve(Option, WorkspaceDirHandler):
         git_host : CodeReviews
             Authenticated code review / git hosting client used to access repos.
         top_repo_context : dict
-            Context dictionary returned by `_get_top_repo_context`, expected to
-            contain at least:
-              - repo_name
-              - source_branch
-              - target_branch
-              - project_name
-              - repo
+            Context dictionary returned by `_get_top_repo_context`.
 
         Returns
         -------
@@ -325,44 +317,26 @@ class Approve(Option, WorkspaceDirHandler):
     @staticmethod
     def _add_top_repo_if_modified(top_repo_context, modified_repos):
         """
-        Add the top-level repository to the modified repos map if it has changes and an open review request.
+        Add the top-level repository to the modified repos map if it has an open review request.
 
-        Compares the source and target branch head commits for the top repository. If they differ,
-        checks for an open merge/pull request from source -> target. If an open request exists,
-        the top repository context is added to `modified_repos` keyed by the repo name.
+        If an open review request exists, the top repository context is added to `modified_repos`
+        keyed by the repo name.
 
         Parameters
         ----------
         top_repo_context : dict
             Context dictionary returned by `_get_top_repo_context`, expected to include:
               - "repo_name": str
-              - "repo": repository client
-              - "source_branch": str
-              - "target_branch": str
+              - "review_request": review request | None
         modified_repos : dict
             Mapping of repo_name -> repo_context that will be updated in-place.
 
         Side Effects
         ------------
         Mutates `modified_repos` by adding an entry for the top repository when applicable.
-
-        Notes
-        -----
-        If no open merge/pull request exists for the source -> target branch pair, this method
-        logs a warning and does not add the repository.
         """
-        # Get merge/pull request
-        repo = top_repo_context['repo']
-        repo_name = top_repo_context['repo_name']
-        source_branch = top_repo_context['source_branch']
-        target_branch = top_repo_context['target_branch']
-        review_request = repo.getOpenPullRequest(source_branch, target_branch)
-
-        if not review_request:
-            return
-
-        top_repo_context['review_request'] = review_request
-        modified_repos[repo_name] = top_repo_context
+        if top_repo_context['review_request']:
+            modified_repos[top_repo_context['repo_name']] = top_repo_context
 
     @staticmethod
     def _add_modified_submodules(git_host, top_repo_context, modified_repos):
