@@ -347,13 +347,9 @@ class Approve(Option, WorkspaceDirHandler):
         parses submodule definitions, derives the corresponding target branch for
         submodules using the workspace mapping `submoduleTopicPrefixMappings` from
         the repository's `.grapeconfig`, and then checks each submodule repository
-        for:
-          - existence of the source branch,
-          - existence of the derived target branch (fatal if missing),
-          - differing head commits between source and target, and
-          - an open merge/pull request from source -> target.
+        for an open merge/pull request from source -> target.
 
-        Submodules meeting these criteria are added to `modified_repos` keyed by
+        Submodules meeting this criterion are added to `modified_repos` keyed by
         repository name.
 
         Parameters
@@ -362,9 +358,9 @@ class Approve(Option, WorkspaceDirHandler):
             Authenticated code review / git hosting client.
         top_repo_context : dict
             Context dictionary for the top-level repository, expected to include:
+              - "project_name": str
               - "repo": repository client for the top repo
               - "source_branch": str
-              - "project_name": str
               - "grape_config": config_parser_base.GrapeConfigParserBase
         modified_repos : dict
             Mapping of repo_name -> repo_context that will be updated in-place.
@@ -460,11 +456,10 @@ class Approve(Option, WorkspaceDirHandler):
     @staticmethod
     def _get_modified_repo_context(git_host, top_project_name, source_branch, target_branch, url):
         """
-        Build repository context for a nested repo (submodule/subproject) only if it has changes and an open review request.
+        Build repository context for a nested repo (submodule/subproject) if it has an open review request.
 
-        This resolves the repository's project/name from the given repository URL, verifies that the source branch exists,
-        verifies that the target branch exists (fatal if missing), compares the branch head commits to determine whether
-        there are changes, and finally locates an open merge/pull request from `source_branch` into `target_branch`.
+        This resolves the repository's project/name from the given repository URL and locates an
+        open merge/pull request from `source_branch` into `target_branch` if it exists.
 
         Parameters
         ----------
@@ -482,26 +477,13 @@ class Approve(Option, WorkspaceDirHandler):
         Returns
         -------
         dict | None
-            Returns a repo context dict when:
-              - the source branch exists
-              - the target branch exists
-              - source and target head commits differ
-              - an open merge/pull request exists from source -> target
-
-            Otherwise returns None when:
-              - the source branch does not exist (treated as "no changes")
-              - source and target commits are identical ("no changes")
-              - no open merge/pull request exists (skips with warning)
-
-            The returned dict contains:
+            When an open merge/pull request exists from source -> target returns a repo context dict containing:
               - repo_name
               - project_name
               - repo
               - review_request
 
-        Exits
-        -----
-        Terminates the process with exit code 1 if the target branch does not exist in the repository.
+            Otherwise returns None.
         """
         # Get repo
         components = url.split('/')
