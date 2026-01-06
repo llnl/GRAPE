@@ -1207,7 +1207,7 @@ def getGrapeReviewRule(active):
                       'repositories': ['.+']}}
 
 
-def parseReviewRules():
+def parseReviewRules(config=None):
     """
     Parses the global GRAPE config file and returns a dictionary of review rules.
 
@@ -1223,7 +1223,8 @@ def parseReviewRules():
     numActiveRules = 0
 
     # Extract the rule names from the [review] section
-    config = config_parser_global.grapeConfig()
+    if not config:
+        config = config_parser_global.grapeConfig()
 
     reviewSectionName = "review"
 
@@ -1279,13 +1280,96 @@ def parseReviewRules():
                 if config.has_option(sectionName, "repositories"):
                     repositories = config.get(sectionName, "repositories").split()
 
+                # Get approve actions
+                approveActions = ['approve']
+
+                if config.has_option(sectionName, "approveactions"):
+                    approveActions = config.get(sectionName, "approveactions").split()
+
+                # Get approve inputs
+                approveInputNames = []
+
+                if config.has_option(sectionName, "approveinputs"):
+                    approveInputNames = config.get(sectionName, "approveinputs").split()
+
+                approveInputs = []
+
+                for approveInputName in approveInputNames:
+                    approveInput = {
+                        'source': 'prompt',
+                        'prompt': approveInputName,
+                        'default': None,
+                        'label': approveInputName,
+                        'tag': True,
+                        'description': True,
+                        'required': False,
+                        'cache': False,
+                    }
+
+                    approveInputSectionName = f"{sectionName}-approve-inputs-{approveInputName}"
+
+                    if config.has_section(approveInputSectionName):
+                        if config.has_option(approveInputSectionName, "source"):
+                            approveInput["source"] = config.get(approveInputSectionName, "source")
+                            validSources = ["prompt", "username", "commit"]
+
+                            if approveInput["source"] not in validSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "prompt"):
+                            if approveInput['source'] != "prompt":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a prompt if the source is not a prompt.')
+                                exit(1)
+
+                            approveInput['prompt'] = config.get(approveInputSectionName, "prompt")
+
+                        if config.has_option(approveInputSectionName, "default"):
+                            if approveInput['source'] != "prompt":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a default value if the source is not a prompt.')
+                                exit(1)
+
+                            approveInput['default'] = config.get(approveInputSectionName, "default")
+
+                        if config.has_option(approveInputSectionName, "label"):
+                            approveInput['label'] = config.get(approveInputSectionName, "label")
+
+                        if config.has_option(approveInputSectionName, "tag"):
+                            approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
+
+                            if approveInput['tag'] and 'tag' not in approveActions:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "tag" option (review rule "{reviewRuleName}" does not create a tag on approval).')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "description"):
+                            approveInput['description'] = config.getboolean(approveInputSectionName, "description")
+
+                            if approveInput['description'] and 'description' not in approveActions:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "required"):
+                            approveInput['required'] = config.getboolean(approveInputSectionName, "required")
+
+                        if config.has_option(approveInputSectionName, "cache"):
+                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
+
+                            if approveInput['cache'] and approveInput['source'] == "commit":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" cannot cache if the source is "commit".')
+                                exit(1)
+
+                    approveInputs.append(approveInput)
+
                 # Add the rule
                 reviewRules[reviewRuleName] = {
+                    "name": reviewRuleName,
                     "active": active,
                     "label": label,
                     "minNumReviewers": minNumReviewers,
                     "eligibleReviewers": eligibleReviewers,
-                    "repositories": repositories
+                    "repositories": repositories,
+                    "approveActions": approveActions,
+                    "approveInputs": approveInputs
                 }
 
     # Add the GRAPE review rule. It will be active only if the user has
