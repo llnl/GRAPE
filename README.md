@@ -412,6 +412,42 @@ options are at least listed below.
         --noverify          Set to prevent grape from asking for user verification before adding the subproject.
 
     
+## approve
+
+    grape approve
+    Manage approval for a pull/merge request.
+    Usage: grape-approve [--rule=<ruleName>]
+                         [--source=<topicBranch>]
+                         [--target=<publicBranch>]
+                         [--project=<prj>]
+                         [--repo=<repo>]
+                         [--user=<userName>]
+                         [--codeReviewsURL=<url>]
+                         [--verifySSL=<bool>]
+                         [--ssh_pat_url=<url>]
+                         [--ssh_pat_port=<int>]
+
+    Options:
+        --rule=<ruleName>           The name of the review rule to apply.
+        --source=<topicBranch>      The branch to approve the merge request for.
+        --target=<publicBranch>     The public branch targeted by the merge request.
+                                    Defaults to mapping for source branch.
+        --project=<prj>             The project/group name.
+                                    [default: .grapeconfig.project.name]
+        --repo=<repo>               The repository name.
+                                    [default: .grapeconfig.repo.name]
+        --user=<userName>           Your GitLab user name.
+        --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
+                                    [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>          Set to False to ignore SSL certificate verification issues.
+                                    [default: .grapeconfig.project.verifySSL]
+        --ssh_pat_url=<url>         SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                    REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                    into a Code Review service's REST API.
+                                    [default: .grapeconfig.repo.ssh_pat_port]
+    
 ## bundle
 
     grape bundle uses the 'git bundle' feature to extract a subset of history into a git bundle file,
