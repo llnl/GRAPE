@@ -374,6 +374,7 @@ class Approve(Option, WorkspaceDirHandler):
         This method returns early when `.gitmodules` is missing or contains no
         submodule definitions.
         """
+        # TODO: Investigate approach using top level merge request diffs if available
         top_repo = top_repo_context['repo']
         top_source_branch = top_repo_context['source_branch']
 
