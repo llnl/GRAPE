@@ -133,18 +133,19 @@ class Approve(Option, WorkspaceDirHandler):
                 logging.error(f'GRAPE: ERROR: Source branch is required.')
                 exit(1)
 
-        source_commit = repo.getBranchHeadCommitHash(source_branch)
-
-        if not source_commit:
-            logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
-            exit(1)
-
         # Get grape config
-        grapeconfig = repo.getFile('.grapeconfig', source_branch)
+        try:
+            grapeconfig = repo.getFile('.grapeconfig', source_branch)
+        except Exception as e:
+            if e.response_code == 404:
+                if e.error_message == '404 Commit Not Found':
+                    logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
+                    exit(1)
+                elif e.error_message == '404 File Not Found':
+                    logging.error(f'GRAPE: ERROR: File ".grapeconfig" does not exist on source branch "{source_branch}" in "{project_name}/{repo_name}"')
+                    exit(1)
 
-        if not grapeconfig:
-            logging.error(f'GRAPE: ERROR: File ".grapeconfig" does not exist in "{project_name}/{repo_name}"')
-            exit(1)
+            raise
 
         config = config_parser_base.GrapeConfigParserBase(workspaceDir=None, configString=grapeconfig)
 

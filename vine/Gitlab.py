@@ -226,19 +226,13 @@ class Repo:
             revision (str): Git reference (e.g., branch name, tag, or commit SHA).
 
         Returns:
-            str | None: UTF-8 decoded file contents if found; otherwise None if the file
-            does not exist at the specified revision.
+            str: UTF-8 decoded file contents if found
 
         Raises:
-            gitlab.exceptions.GitlabGetError: If an error other than 404 occurs.
+            gitlab.exceptions.GitlabAuthenticationError: If authentication is not correct
+            gitlab.exceptions.GitlabGetError: If the file could not be retrieved
         """
-        try:
-            return self.project.files.raw(path, revision).decode('utf-8')
-        except gitlab.exceptions.GitlabGetError as e:
-            if e.response_code == 404:
-                return None
-            else:
-                raise
+        return self.project.files.raw(path, revision).decode('utf-8')
 
     # state can be "all", "merged", "opened", or "closed"
     def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
