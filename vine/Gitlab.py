@@ -742,18 +742,6 @@ class PullRequest:
     def iid(self):
         return self.mergerequest.iid
 
-"""
-        Retrieve file diffs (changes) for this merge request.
-
-        Returns:
-            list[dict]: A list of change objects as returned by the GitLab Merge Request
-            changes API; returns an empty list if no changes are present.
-
-        Note: The changes API is deprecated in favor of the diffs API, but the diffs API
-              does not yet provide the needed information (or perhaps we need to update
-              the python-gitlab library).
-        """
-
     def diffs(self):
         """
         Retrieve the merge request's changes, including file diffs and related metadata.
