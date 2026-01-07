@@ -361,6 +361,22 @@ class Repo:
         self.deleteTag(name)
         self.createTag(name, ref, message)
 
+    def getDiffs(self, fromRevision, toRevision):
+        """
+        Compare two revisions in the repository and return their diff/compare data.
+
+        Args:
+            fromRevision (str): The base git reference (e.g., branch, tag, or commit SHA).
+            toRevision (str): The head git reference (e.g., branch, tag, or commit SHA).
+
+        Returns:
+            dict: The GitLab compare API response, including commit and diff information.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If the comparison cannot be retrieved.
+        """
+        return self.project.repository_compare(fromRevision, toRevision)
+
     # If restrict_id is positive, it is the group id to restrict the branch to;
     # if it is negative, it is the negative of the user id to restrict the branch to;
     # otherwise, the push_access_level and merge_access_level are used.
@@ -725,6 +741,23 @@ class PullRequest:
 
     def iid(self):
         return self.mergerequest.iid
+
+    def diffs(self):
+        """
+        Retrieve the merge request's changes, including file diffs and related metadata.
+
+        Returns:
+            dict: GitLab API response from the merge request changes endpoint.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If the changes cannot be retrieved.
+
+        Note:
+            The changes API is deprecated in favor of the diffs API, but the diffs API
+            does not yet provide the needed information (or perhaps we need to update
+            the python-gitlab library).
+        """
+        return self.mergerequest.changes()
 
     @staticmethod
     def get_title_for_wip_state(title, wip):

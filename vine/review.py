@@ -1200,11 +1200,14 @@ def getGrapeReviewRule(active):
     :param active: Whether or not the GRAPE review rule is active.
     :return: A dictionary containing the GRAPE review rule.
     """
-    return {'grape': {'active': active,
+    return {'grape': {'name': 'grape',
+                      'active': active,
                       'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
                       'minNumReviewers': 1,
                       'eligibleReviewers': ['.+'],
-                      'repositories': ['.+']}}
+                      'repositories': ['.+'],
+                      'approveActions': ['approve'],
+                      'approveInputs': []}}
 
 
 def parseReviewRules(config=None):
