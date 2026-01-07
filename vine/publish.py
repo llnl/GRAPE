@@ -934,7 +934,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 verified = False
                                 break
 
-                            # Check approve actions are completed
+                            # Check approve actions are completed.
+                            # - "approve" has already been covered by other checks
+                            # - "tag" requires checking that a tag for the review rule exists and no changes have occurred since
+                            # - "description" is not yet handled, but would involve checks similar to that for the tag message below
                             approveActions = reviewRule['approveActions']
 
                             if 'tag' in approveActions:
