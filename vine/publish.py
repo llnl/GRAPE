@@ -950,6 +950,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     verified = False
                                     break
 
+                                # TODO: If the GitLab tags API ever returns the tag creator,
+                                #       check that it is an eligible approver and not the
+                                #       merge/pull request author.
+
                                 # Check tag commit
                                 if tag.target != pullRequest.fromSHA():
                                     def normalizeDiff(diff):
