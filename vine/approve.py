@@ -555,6 +555,8 @@ class Approve(Option, WorkspaceDirHandler):
             if not Approve._rule_applies(repo_name, rule):
                 continue
 
+            # TODO: Check that the approver is not the merge/pull request author.
+
             # Ask for approval
             logging.info(f'Getting rule "{rule["name"]}" input for repository "{repo_name}"...')
             review_request = repo_context['review_request']
