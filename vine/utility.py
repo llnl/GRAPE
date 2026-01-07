@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from docopt.docopt import docopt
+from vine import CodeReviewsFactory
 from vine import grapeGit as git
 from vine import config_parser_global
 from vine.option import Option
@@ -32,15 +33,43 @@ def getDefaultName():
         return os.getenv("USER")
 
 
-def getUserName(defaultName=getDefaultName(), service="LC"):
+def getUserName(cliArgs=None, defaultName=None, service="LC"):
+    """
+    Resolve the username for a given service.
+
+    Precedence:
+      1) CLI argument: cliArgs['--user'] (if provided and non-empty)
+      2) Global grape config: [services] <service.lower()>
+      3) Interactive prompt (or default in non-interactive mode)
+
+    If the user opts in, persist the username to:
+      <workspace>/.git/.grapeuserconfig under [services] <service.lower()>.
+
+    Args:
+        cliArgs: Parsed CLI args dict (e.g., from docopt) that may include '--user'.
+        defaultName: Default username to present in prompt; if None, uses getDefaultName().
+        service: Service identifier (e.g., "LC"); stored/looked up as lowercase.
+
+    Returns:
+        The resolved username (str).
+    """
+    # Use the CLI argument if provided
+    if cliArgs and cliArgs.get('--user'):
+        return cliArgs['--user']
+
+    # Check for a saved entry in the grape user config
     config = config_parser_global.grapeConfig()
+
     try:
         if config.has_section(Option.SECTION_SERVICES) and config.has_option(Option.SECTION_SERVICES, service.lower()):
-            configuredName = config.get(Option.SECTION_SERVICES, service.lower())
-            return configuredName
+            return config.get(Option.SECTION_SERVICES, service.lower())
     except:
         pass
+
     # Ask for the username
+    if defaultName is None:
+        defaultName = getDefaultName()
+
     username = userInput(f"Enter {service} User Name:", defaultName)
 
     # Ask if the user wants to remember this username
@@ -180,3 +209,61 @@ def win_path_to_linux_path(path):
     path = path.replace(' ', f'{os.path.sep} ')
     path = path.replace('(x86)', f'{os.path.sep}(x86{os.path.sep})')
     return path
+
+
+def authenticateToGitHost(user_name, workspace_dir, args):
+        """
+        Authenticate to the git hosting service and create a client instance.
+
+        This method builds the connection parameters from the provided
+        command line arguments, logs the target URL, and delegates client
+        creation to `CodeReviewsFactory.makeCodeReviews`.
+
+        Parameters
+        ----------
+        user_name : str
+            The user name to authenticate as.
+        workspace_dir : str
+            The workspace directory.
+        args : dict
+            Dictionary of command line arguments, expected to contain:
+
+            - `"--codeReviewsURL"` : str
+            Base URL of the code review or Git host.
+            - `"--verifySSL"` : str
+            String flag indicating whether SSL certificates should be
+            verified, for example `"true"` or `"false"`.
+            - `"--ssh_pat_port"` : str or int
+            Port number used for SSH or PAT based communication.
+            - `"--ssh_pat_url"` : str
+            SSH or PAT endpoint or URL segment used for authentication.
+
+        Returns
+        -------
+        CodeReviews
+            An instance returned by `CodeReviewsFactory.makeCodeReviews`
+            configured for the given user, workspace directory, and git hosting service.
+
+        Side Effects
+        ------------
+        Logs an informational message indicating the URL that is being used
+        to authenticate.
+
+        Notes
+        -----
+        The `"--verifySSL"` argument is treated as case insensitive; only
+        the string `"true"` (ignoring case) results in certificate
+        verification being enabled.
+        """
+        url = args['--codeReviewsURL']
+        verify = True if args['--verifySSL'].lower() == 'true' else False
+        logging.info(f'Logging onto {url}')
+
+        return CodeReviewsFactory.makeCodeReviews(
+            user_name,
+            url=url,
+            verify=verify,
+            port=int(args['--ssh_pat_port']),
+            ssh_path=args['--ssh_pat_url'],
+            workspace_dir=workspace_dir
+        )

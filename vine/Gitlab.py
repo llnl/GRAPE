@@ -194,7 +194,46 @@ class Repo:
     def __init__(self, gitlab_project, gitlab ):
         self.project = gitlab_project
         self.gitlab = gitlab
-        
+
+    def getBranchHeadCommitHash(self, name):
+        """
+        Get the commit SHA (hash) at the head of a branch.
+
+        Args:
+            name (str): Branch name.
+
+        Returns:
+            str | None: The head commit SHA if the branch exists; otherwise None if
+            the branch is not found.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If an error other than 404 occurs.
+        """
+        try:
+            return self.project.branches.get(name).commit["id"]
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404:
+                return None
+            else:
+                raise
+
+    def getFile(self, path, revision):
+        """
+        Retrieve a file's contents from the repository at a specific revision.
+
+        Args:
+            path (str): Repository-relative file path.
+            revision (str): Git reference (e.g., branch name, tag, or commit SHA).
+
+        Returns:
+            str: UTF-8 decoded file contents if found
+
+        Raises:
+            gitlab.exceptions.GitlabAuthenticationError: If authentication is not correct
+            gitlab.exceptions.GitlabGetError: If the file could not be retrieved
+        """
+        return self.project.files.raw(path, revision).decode('utf-8')
+
     # state can be "all", "merged", "opened", or "closed"
     def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
         if id == None:
@@ -243,6 +282,84 @@ class Repo:
                    add_labels=labels)
 
          return mr
+
+    def getTag(self, name):
+        """
+        Retrieve a git tag from the repository by its name.
+
+        Args:
+            name (str): The name of the tag to retrieve.
+
+        Returns:
+            ProjectTag | None: ProjectTag object if the tag exists; otherwise None
+
+        Notes:
+            Throws exception if the tag cannot be retrieved (e.g. unauthorized).
+            Does not throw if the tag does not exist.
+        """
+        try:
+            return self.project.tags.get(name)
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404 and e.error_message == '404 Tag Not Found':
+                return None
+            else:
+                raise
+
+    def createTag(self, name, ref, message):
+        """
+        Create a git tag in the repository.
+
+        Args:
+            name (str): The name of the tag to create.
+            ref (str): The commit SHA or branch the tag should point to.
+            message (str): The tag message.
+
+        Notes:
+            Throws exception if the tag cannot be created.
+        """
+        self.project.tags.create({'tag_name': name,
+                                  'ref': ref,
+                                  'message': message})
+
+    def deleteTag(self, name):
+        """
+        Delete a git tag from the repository by its name.
+
+        Args:
+            name (str): The name of the tag to delete.
+
+        Returns:
+            None
+
+        Notes:
+            Throws exception if the tag cannot be deleted (e.g. unauthorized).
+            Does not throw if the tag does not exist.
+        """
+        try:
+            self.project.tags.delete(name)
+        except gitlab.exceptions.GitlabDeleteError as e:
+            if e.response_code == 404 and e.error_message == '404 Tag Not Found':
+                return
+            else:
+                raise
+
+    def updateTag(self, name, ref, message):
+        """
+        Updates a git tag in the repository.
+
+        Args:
+            name (str): The name of the tag to update.
+            ref (str): The commit SHA or branch the tag should point to.
+            message (str): The tag message.
+
+        Notes:
+            There is no API for updating a tag, so it must be deleted
+            (if present) and then recreated with the new ref and message.
+            Throws exception if the existing tag cannot be deleted or
+            the new tag cannot be created.
+        """
+        self.deleteTag(name)
+        self.createTag(name, ref, message)
 
     # If restrict_id is positive, it is the group id to restrict the branch to;
     # if it is negative, it is the negative of the user id to restrict the branch to;
@@ -579,6 +696,21 @@ class PullRequest:
 
     def toRef(self):
         return self.mergerequest.target_branch
+
+    def fromSHA(self):
+        return self.mergerequest.sha
+
+    def approve(self):
+        """
+        Approve this merge request.
+
+        Returns:
+            The GitLab API response from the approve action.
+
+        Notes:
+            Throws exception if the approval cannot be completed (e.g. insufficient permissions).
+        """
+        return self.mergerequest.approve()
 
     def approved(self):
         approvals = self.mergerequest.approvals.get()

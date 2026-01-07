@@ -145,6 +145,14 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
+    def getBranchHeadCommitHash(self, name):
+        logging.error("GRAPE: ERROR: getBranchHeadCommitHash not implemented for Atlassian")
+        exit(1)
+
+    def getFile(self, path, revision):
+        logging.error("GRAPE: ERROR: getFile not implemented for Atlassian")
+        exit(1)
+
     def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
@@ -184,6 +192,22 @@ class Repo(StashyNode):
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=flattened_reviewers)
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
+
+    def getTag(self, name):
+        logging.error("GRAPE: ERROR: getTag not implemented for Atlassian")
+        exit(1)
+
+    def createTag(self, name, ref, message):
+        logging.error("GRAPE: ERROR: createTag not implemented for Atlassian")
+        exit(1)
+
+    def deleteTag(self, name):
+        logging.error("GRAPE: ERROR: deleteTag not implemented for Atlassian")
+        exit(1)
+
+    def updateTag(self, name, ref, message):
+        logging.error("GRAPE: ERROR: updateTag not implemented for Atlassian")
+        exit(1)
 
     def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
         logging.info("GRAPE does not support CI integration with Atlassian tools.")
@@ -269,6 +293,14 @@ class PullRequest(StashyNode):
 
     def toRef(self):
         return self.node["toRef"]["displayId"]
+
+    def fromSHA(self):
+        logging.error("GRAPE: ERROR: fromSHA not implemented for Atlassian")
+        exit(1)
+
+    def approve(self):
+        logging.error("GRAPE: ERROR: approve not implemented for Atlassian")
+        exit(1)
 
     def approved(self):
         reviewers = self.reviewers()
