@@ -802,7 +802,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             for submodule in submodules:
                 submoduleRepo = CodeReviewsFactory.repoFromSubmodulePath(self.codeReviews, submodule)
                 submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
-                pullRequests.append((submodule, submodulePullRequest))
+                pullRequests.append((submodule, submoduleRepo, submodulePullRequest))
 
         # Gather pull requests for subprojects
         if not args["--noRecurseSubprojects"] and not args["--noReviewSubprojects"]:
@@ -811,11 +811,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             for subproject in self.modifiedNestedProjects:
                 repo = CodeReviewsFactory.repoFromNestedSubprojectName(self.codeReviews, subproject)
                 pullRequest = repo.getOpenPullRequest(topic, public)
-                pullRequests.append((subproject, pullRequest))
+                pullRequests.append((subproject, repo, pullRequest))
 
         # Add top level pull request
         topPullRequest = self.openPullRequest()
-        pullRequests.append((self.args["--repo"], topPullRequest))
+        pullRequests.append((self.args["--repo"], self.repo, topPullRequest))
 
         # Check all reviews are completed
         userMessage = ""
@@ -823,7 +823,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         reviewersRegex = re.compile("^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
 
-        for (repo, pullRequest) in pullRequests:
+        for (repo, repoFacade, pullRequest) in pullRequests:
             if not pullRequest:
                 # If the submodule gitlink was added in the branch, but the branch in the submodule was already up-to-date
                 # with the public, we can skip the pull request check (since no pull request can be generated).
@@ -933,6 +933,50 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 userMessage += f'\n\t{repo}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
                                 verified = False
                                 break
+
+                            # Check approve actions are completed
+                            approveActions = reviewRule['approveActions']
+
+                            if 'tag' in approveActions:
+                                tag_name = f'{reviewRule["name"]}_{pullRequest.iid()}'
+                                tag = repoFacade.getTag(tag_name)
+
+                                # Check tag exists
+                                if not tag:
+                                    userMessage += f'\n\t{repo}: "{label}" needs approve tag.'
+                                    verified = False
+                                    break
+
+                                # TODO: Check tag message
+
+                                # Check tag commit
+                                if tag.target != pullRequest.fromSHA():
+                                    EXCLUDED_KEY = "id"
+
+                                    def normalize_diff(diff):
+                                        # This entry is populated differently for merge request diffs and revision comparison diffs
+                                        diff.pop('generated_file', None)
+                                        return tuple(sorted(diff.items()))
+
+                                    def lists_equal_ignore_order_no_dupes_excluding_key(list1, list2, excluded_key=EXCLUDED_KEY):
+                                        norm1 = {normalize_dict_excluding_key(d, excluded_key) for d in list1}
+                                        norm2 = {normalize_dict_excluding_key(d, excluded_key) for d in list2}
+                                        return norm1 == norm2
+
+                                    source_diffs = pullRequest.diffs()
+                                    source_diffs = {normalize_diff(diff) for diff in source_diffs}
+
+                                    tag_diffs = repoFacade.getDiffs(pullRequest.toRef(), tag.target)
+                                    tag_diffs = {normalize_diff(diff) for diff in tag_diffs}
+
+                                    # TODO: Determine what to do if diffs are truncated.
+
+                                    if tag_diffs != source_diffs:
+                                        userMessage += f'\n\t{repo}: "{label}" has changes since tag and needs reapproval.'
+                                        verified = False
+                                        break
+
+                                # TODO: Make sure progress can't be resumed after commits
 
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()

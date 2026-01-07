@@ -361,6 +361,9 @@ class Repo:
         self.deleteTag(name)
         self.createTag(name, ref, message)
 
+    def getDiffs(self, fromRevision, toRevision):
+        return self.project.repository_compare(fromRevision, toRevision).get('diffs', [])
+
     # If restrict_id is positive, it is the group id to restrict the branch to;
     # if it is negative, it is the negative of the user id to restrict the branch to;
     # otherwise, the push_access_level and merge_access_level are used.
@@ -725,6 +728,9 @@ class PullRequest:
 
     def iid(self):
         return self.mergerequest.iid
+
+    def diffs(self):
+        return self.mergerequest.changes().get('changes', [])
 
     @staticmethod
     def get_title_for_wip_state(title, wip):
