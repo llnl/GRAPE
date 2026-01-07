@@ -823,15 +823,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         reviewersRegex = re.compile("^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
 
-        for (repo, repoFacade, pullRequest) in pullRequests:
+        for (repoName, repo, pullRequest) in pullRequests:
             if not pullRequest:
                 # If the submodule gitlink was added in the branch, but the branch in the submodule was already up-to-date
                 # with the public, we can skip the pull request check (since no pull request can be generated).
-                working_dir = os.path.join(self.workspace_dir, repo)
-                if repo in submodules and git.SHA(submodulePublicBranch, execution_path=working_dir) == git.SHA(topic, execution_path=working_dir):
+                working_dir = os.path.join(self.workspace_dir, repoName)
+                if repoName in submodules and git.SHA(submodulePublicBranch, execution_path=working_dir) == git.SHA(topic, execution_path=working_dir):
                     pass
                 else:
-                    userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
+                    userMessage += f"\n\t{repoName}: Needs pull request (run grape review)"
                     verified = False
                 continue
 
@@ -871,14 +871,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     reviewRuleRepositories = reviewRule["repositories"]
 
                     for reviewRuleRepository in reviewRuleRepositories:
-                        if re.fullmatch(reviewRuleRepository, repo):
+                        if re.fullmatch(reviewRuleRepository, repoName):
                             label = reviewRule["label"]
                             minNumReviewers = reviewRule["minNumReviewers"]
                             eligibleReviewers = reviewRule["eligibleReviewers"]
 
                             # Check if reviewers are assigned to the review rule
                             if reviewRuleName not in reviewersFromDescription:
-                                userMessage += f'\n\t{repo}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
                                 verified = False
                                 break
 
@@ -887,7 +887,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             assignedReviewers = reviewersFromDescription[reviewRuleName]['reviewers']
 
                             if len(assignedReviewers) < minNumReviewers:
-                                userMessage += f'\n\t{repo}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
                                 verified = False
                                 break
 
@@ -907,7 +907,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     ineligibleReviewers.append(assignedReviewer)
 
                             if ineligibleReviewers:
-                                userMessage += f'\n\t{repo}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                                userMessage += f'\n\t{repoName}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
                                 verified = False
                                 break
 
@@ -930,7 +930,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     unfinishedReviewers.append(assignedReviewer)
 
                             if unfinishedReviewers:
-                                userMessage += f'\n\t{repo}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
+                                userMessage += f'\n\t{repoName}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
                                 verified = False
                                 break
 
@@ -942,11 +942,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             if 'tag' in approveActions:
                                 tagName = f'{reviewRule["name"]}_{pullRequest.iid()}'
-                                tag = repoFacade.getTag(tagName)
+                                tag = repo.getTag(tagName)
 
                                 # Check tag exists
                                 if not tag:
-                                    userMessage += f'\n\t{repo}: "{label}" needs approve tag.'
+                                    userMessage += f'\n\t{repoName}: "{label}" needs approve tag.'
                                     verified = False
                                     break
 
@@ -982,7 +982,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     sourceDiffs = pullRequest.diffs()
 
                                     if sourceDiffs['overflow']:
-                                        userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
                                         verified = False
                                         break
 
@@ -990,18 +990,18 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                     for diff in sourceDiffs:
                                         if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
-                                            userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                            userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
                                             verified = False
                                             break
 
                                     sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
 
                                     # Get tag diffs, check for truncation, and normalize for comparison
-                                    tagDiffs = repoFacade.getDiffs(pullRequest.toRef(), tag.target).get('diffs', [])
+                                    tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target).get('diffs', [])
 
                                     for diff in tagDiffs:
                                         if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
-                                            userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                            userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
                                             verified = False
                                             break
 
@@ -1009,13 +1009,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                     # Compare source and tag diffs
                                     if tagDiffs != sourceDiffs:
-                                        userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
+                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
                                         verified = False
                                         break
 
                                 # Check tag message
                                 if label not in tag.message:
-                                    userMessage += f'\n\t{repo}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+                                    userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
                                     verified = False
                                     break
 
@@ -1023,7 +1023,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                 for approveInput in approveInputs:
                                     if approveInput['tag'] and approveInput['label'] not in tag.message:
-                                        userMessage += f'\n\t{repo}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+                                        userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
                                         verified = False
                                         break
 
@@ -1036,14 +1036,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 verified = False
 
                 if not reviewers:
-                    userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
+                    userMessage += f"\n\t{repoName}: Needs reviewers (run grape review)"
                 else:
                     unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False and reviewer[0].lower() not in non_approver_list])
 
                     if unfinishedReviewers:
-                        userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
+                        userMessage += f"\n\t{repoName}: Needs review from {unfinishedReviewers}"
                     else:
-                        userMessage += f"\n\t{repo}: Needs additional approvals"
+                        userMessage += f"\n\t{repoName}: Needs additional approvals"
 
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
