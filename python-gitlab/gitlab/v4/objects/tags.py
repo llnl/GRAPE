@@ -1,6 +1,4 @@
-from typing import Any, cast, Union
-
-from gitlab.base import RESTManager, RESTObject
+from gitlab.base import RESTObject
 from gitlab.mixins import NoUpdateMixin, ObjectDeleteMixin
 from gitlab.types import RequiredOptional
 
@@ -17,16 +15,14 @@ class ProjectTag(ObjectDeleteMixin, RESTObject):
     _repr_attr = "name"
 
 
-class ProjectTagManager(NoUpdateMixin, RESTManager):
+class ProjectTagManager(NoUpdateMixin[ProjectTag]):
     _path = "/projects/{project_id}/repository/tags"
     _obj_cls = ProjectTag
     _from_parent_attrs = {"project_id": "id"}
+    _list_filters = ("order_by", "sort", "search")
     _create_attrs = RequiredOptional(
         required=("tag_name", "ref"), optional=("message",)
     )
-
-    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> ProjectTag:
-        return cast(ProjectTag, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class ProjectProtectedTag(ObjectDeleteMixin, RESTObject):
@@ -34,15 +30,10 @@ class ProjectProtectedTag(ObjectDeleteMixin, RESTObject):
     _repr_attr = "name"
 
 
-class ProjectProtectedTagManager(NoUpdateMixin, RESTManager):
+class ProjectProtectedTagManager(NoUpdateMixin[ProjectProtectedTag]):
     _path = "/projects/{project_id}/protected_tags"
     _obj_cls = ProjectProtectedTag
     _from_parent_attrs = {"project_id": "id"}
     _create_attrs = RequiredOptional(
         required=("name",), optional=("create_access_level",)
     )
-
-    def get(
-        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
-    ) -> ProjectProtectedTag:
-        return cast(ProjectProtectedTag, super().get(id=id, lazy=lazy, **kwargs))

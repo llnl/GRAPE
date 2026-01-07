@@ -1,6 +1,5 @@
 import base64
 import os
-import sys
 import tarfile
 import time
 import zipfile
@@ -49,6 +48,9 @@ def test_repository_files(project):
     raw_file = project.files.raw(file_path="README.rst", ref="main")
     assert os.fsdecode(raw_file) == "Initial content"
 
+    raw_file = project.files.raw(file_path="README.rst")
+    assert os.fsdecode(raw_file) == "Initial content"
+
 
 def test_repository_tree(project):
     tree = project.repository_tree()
@@ -71,9 +73,6 @@ def test_repository_archive(project):
     assert archive == archive2
 
 
-# NOTE(jlvillal): Support for using tarfile.is_tarfile() on a file or file-like object
-# was added in Python 3.9
-@pytest.mark.skipif(sys.version_info < (3, 9), reason="requires python3.9 or higher")
 @pytest.mark.parametrize(
     "format,assertion",
     [
@@ -158,10 +157,25 @@ def test_commit_discussion(project):
     note_from_get.body = "updated body"
     note_from_get.save()
     discussion = commit.discussions.get(discussion.id)
-    # assert discussion.attributes["notes"][-1]["body"] == "updated body"
+
     note_from_get.delete()
-    discussion = commit.discussions.get(discussion.id)
-    # assert len(discussion.attributes["notes"]) == 1
+
+
+def test_cherry_pick_commit(project):
+    commits = project.commits.list()
+    commit = commits[1]
+    parent_commit = commit.parent_ids[0]
+
+    # create a branch to cherry pick onto
+    project.branches.create({"branch": "test", "ref": parent_commit})
+    cherry_pick_commit = commit.cherry_pick(branch="test")
+
+    expected_message = f"{commit.message}\n\n(cherry picked from commit {commit.id})"
+    assert cherry_pick_commit["message"].startswith(expected_message)
+
+    with pytest.raises(gitlab.GitlabCherryPickError):
+        # Two cherry pick attempts should raise GitlabCherryPickError
+        commit.cherry_pick(branch="test")
 
 
 def test_revert_commit(project):

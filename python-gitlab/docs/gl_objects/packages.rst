@@ -17,18 +17,18 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPackageManager`
   + :attr:`gitlab.v4.objects.Project.packages`
 
-* GitLab API: https://docs.gitlab.com/ee/api/packages.html#within-a-project
+* GitLab API: https://docs.gitlab.com/api/packages#within-a-project
 
 Examples
 --------
 
 List the packages in a project::
 
-    packages = project.packages.list()
+    packages = project.packages.list(get_all=True)
 
 Filter the results by ``package_type`` or ``package_name`` ::
 
-    packages = project.packages.list(package_type='pypi')
+    packages = project.packages.list(package_type='pypi', get_all=True)
 
 Get a specific package of a project by id::
 
@@ -53,18 +53,18 @@ Reference
   + :class:`gitlab.v4.objects.GroupPackageManager`
   + :attr:`gitlab.v4.objects.Group.packages`
 
-* GitLab API: https://docs.gitlab.com/ee/api/packages.html#within-a-group
+* GitLab API: https://docs.gitlab.com/api/packages#within-a-group
 
 Examples
 --------
 
 List the packages in a group::
 
-    packages = group.packages.list()
+    packages = group.packages.list(get_all=True)
 
 Filter the results by ``package_type`` or ``package_name`` ::
 
-    packages = group.packages.list(package_type='pypi')
+    packages = group.packages.list(package_type='pypi', get_all=True)
 
 
 Project Package Files
@@ -79,7 +79,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPackageFileManager`
   + :attr:`gitlab.v4.objects.ProjectPackage.package_files`
 
-* GitLab API: https://docs.gitlab.com/ee/api/packages.html#list-package-files
+* GitLab API: https://docs.gitlab.com/api/packages#list-package-files
 
 Examples
 --------
@@ -87,12 +87,12 @@ Examples
 List package files for package in project::
 
     package = project.packages.get(1)
-    package_files = package.package_files.list()
+    package_files = package.package_files.list(get_all=True)
 
 Delete a package file in a project::
 
     package = project.packages.get(1)
-    file = package.package_files.list()[0]
+    file = package.package_files.list(get_all=False)[0]
     file.delete()
 
 Project Package Pipelines
@@ -107,7 +107,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPackagePipelineManager`
   + :attr:`gitlab.v4.objects.ProjectPackage.pipelines`
 
-* GitLab API: https://docs.gitlab.com/ee/api/packages.html#list-package-pipelines
+* GitLab API: https://docs.gitlab.com/api/packages#list-package-pipelines
 
 Examples
 --------
@@ -115,7 +115,7 @@ Examples
 List package pipelines for package in project::
 
     package = project.packages.get(1)
-    package_pipelines = package.pipelines.list()
+    package_pipelines = package.pipelines.list(get_all=True)
 
 Generic Packages
 ================
@@ -131,7 +131,7 @@ Reference
   + :class:`gitlab.v4.objects.GenericPackageManager`
   + :attr:`gitlab.v4.objects.Project.generic_packages`
 
-* GitLab API: https://docs.gitlab.com/ee/user/packages/generic_packages
+* GitLab API: https://docs.gitlab.com/user/packages/generic_packages
 
 Examples
 --------

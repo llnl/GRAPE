@@ -1,23 +1,14 @@
+from __future__ import annotations
+
 import argparse
+import dataclasses
 import functools
 import os
 import pathlib
 import re
 import sys
-import textwrap
 from types import ModuleType
-from typing import (
-    Any,
-    Callable,
-    cast,
-    Dict,
-    Optional,
-    Tuple,
-    Type,
-    TYPE_CHECKING,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, cast, NoReturn, TYPE_CHECKING, TypeVar
 
 from requests.structures import CaseInsensitiveDict
 
@@ -29,12 +20,22 @@ from gitlab.base import RESTObject
 camel_upperlower_regex = re.compile(r"([A-Z]+)([A-Z][a-z])")
 camel_lowerupper_regex = re.compile(r"([a-z\d])([A-Z])")
 
+
+@dataclasses.dataclass
+class CustomAction:
+    required: tuple[str, ...]
+    optional: tuple[str, ...]
+    in_object: bool
+    requires_id: bool  # if the `_id_attr` value should be a required argument
+    help: str | None  # help text for the custom action
+
+
 # custom_actions = {
 #    cls: {
-#        action: (mandatory_args, optional_args, in_obj),
+#        action: CustomAction,
 #    },
 # }
-custom_actions: Dict[str, Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...], bool]]] = {}
+custom_actions: dict[str, dict[str, CustomAction]] = {}
 
 
 # For an explanation of how these type-hints work see:
@@ -44,38 +45,14 @@ custom_actions: Dict[str, Dict[str, Tuple[Tuple[str, ...], Tuple[str, ...], bool
 __F = TypeVar("__F", bound=Callable[..., Any])
 
 
-class VerticalHelpFormatter(argparse.HelpFormatter):
-    def format_help(self) -> str:
-        result = super().format_help()
-        output = ""
-        indent = self._indent_increment * " "
-        for line in result.splitlines(keepends=True):
-            # All of our resources are on one line and wrapped inside braces.
-            # For example: {application,resource1,resource2}
-            # except if there are fewer resources - then the line and help text
-            # are collapsed on the same line.
-            # For example:  {list}      Action to execute on the GitLab resource.
-            # We then put each resource on its own line to make it easier to read.
-            if line.strip().startswith("{"):
-                choice_string, help_string = line.split("}", 1)
-                choice_list = choice_string.strip(" {").split(",")
-                help_string = help_string.strip()
-
-                if help_string:
-                    help_indent = len(max(choice_list, key=len)) * " "
-                    choice_list.append(f"{help_indent} {help_string}")
-
-                choices = "\n".join(choice_list)
-                line = f"{textwrap.indent(choices, indent)}\n"
-            output += line
-        return output
-
-
 def register_custom_action(
-    cls_names: Union[str, Tuple[str, ...]],
-    mandatory: Tuple[str, ...] = (),
-    optional: Tuple[str, ...] = (),
-    custom_action: Optional[str] = None,
+    *,
+    cls_names: str | tuple[str, ...],
+    required: tuple[str, ...] = (),
+    optional: tuple[str, ...] = (),
+    custom_action: str | None = None,
+    requires_id: bool = True,  # if the `_id_attr` value should be a required argument
+    help: str | None = None,  # help text for the action
 ) -> Callable[[__F], __F]:
     def wrap(f: __F) -> __F:
         @functools.wraps(f)
@@ -98,14 +75,20 @@ def register_custom_action(
                 custom_actions[final_name] = {}
 
             action = custom_action or f.__name__.replace("_", "-")
-            custom_actions[final_name][action] = (mandatory, optional, in_obj)
+            custom_actions[final_name][action] = CustomAction(
+                required=required,
+                optional=optional,
+                in_object=in_obj,
+                requires_id=requires_id,
+                help=help,
+            )
 
         return cast(__F, wrapped_f)
 
     return wrap
 
 
-def die(msg: str, e: Optional[Exception] = None) -> None:
+def die(msg: str, e: Exception | None = None) -> NoReturn:
     if e:
         msg = f"{msg} ({e})"
     sys.stderr.write(f"{msg}\n")
@@ -114,7 +97,7 @@ def die(msg: str, e: Optional[Exception] = None) -> None:
 
 def gitlab_resource_to_cls(
     gitlab_resource: str, namespace: ModuleType
-) -> Type[RESTObject]:
+) -> type[RESTObject]:
     classes = CaseInsensitiveDict(namespace.__dict__)
     lowercase_class = gitlab_resource.replace("-", "")
     class_type = classes[lowercase_class]
@@ -124,7 +107,7 @@ def gitlab_resource_to_cls(
     return class_type
 
 
-def cls_to_gitlab_resource(cls: RESTObject) -> str:
+def cls_to_gitlab_resource(cls: type[RESTObject]) -> str:
     dasherized_uppercase = camel_upperlower_regex.sub(r"\1-\2", cls.__name__)
     dasherized_lowercase = camel_lowerupper_regex.sub(r"\1-\2", dasherized_uppercase)
     return dasherized_lowercase.lower()
@@ -134,7 +117,6 @@ def _get_base_parser(add_help: bool = True) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         add_help=add_help,
         description="GitLab API Command Line Interface",
-        formatter_class=VerticalHelpFormatter,
         allow_abbrev=False,
     )
     parser.add_argument("--version", help="Display the version.", action="store_true")
@@ -282,6 +264,22 @@ def _get_base_parser(add_help: bool = True) -> argparse.ArgumentParser:
         help=("GitLab CI job token [env var: CI_JOB_TOKEN]"),
         required=False,
     )
+    parser.add_argument(
+        "--skip-login",
+        help=(
+            "Skip initial authenticated API call to the current user endpoint. "
+            "This may  be useful when invoking the CLI in scripts. "
+            "[env var: GITLAB_SKIP_LOGIN]"
+        ),
+        action="store_true",
+        default=os.getenv("GITLAB_SKIP_LOGIN"),
+    )
+    parser.add_argument(
+        "--no-mask-credentials",
+        help="Don't mask credentials in debug mode",
+        dest="mask_credentials",
+        action="store_false",
+    )
     return parser
 
 
@@ -368,28 +366,32 @@ def main() -> None:
     debug = args.debug
     gitlab_resource = args.gitlab_resource
     resource_action = args.resource_action
+    skip_login = args.skip_login
+    mask_credentials = args.mask_credentials
 
     args_dict = vars(args)
     # Remove CLI behavior-related args
     for item in (
-        "gitlab",
+        "api_version",
         "config_file",
-        "verbose",
         "debug",
-        "gitlab_resource",
-        "resource_action",
-        "version",
-        "output",
         "fields",
+        "gitlab",
+        "gitlab_resource",
+        "job_token",
+        "mask_credentials",
+        "oauth_token",
+        "output",
+        "pagination",
+        "private_token",
+        "resource_action",
         "server_url",
+        "skip_login",
         "ssl_verify",
         "timeout",
-        "api_version",
-        "pagination",
         "user_agent",
-        "private_token",
-        "oauth_token",
-        "job_token",
+        "verbose",
+        "version",
     ):
         args_dict.pop(item)
     args_dict = {k: _parse_value(v) for k, v in args_dict.items() if v is not None}
@@ -397,8 +399,8 @@ def main() -> None:
     try:
         gl = gitlab.Gitlab.merge_config(vars(options), gitlab_id, config_files)
         if debug:
-            gl.enable_debug()
-        if gl.private_token or gl.oauth_token:
+            gl.enable_debug(mask_credentials=mask_credentials)
+        if not skip_login and (gl.private_token or gl.oauth_token):
             gl.auth()
     except Exception as e:
         die(str(e))

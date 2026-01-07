@@ -9,21 +9,12 @@ import re
 import pytest
 import responses
 
+import gitlab
 from gitlab.v4.objects import GroupHook, Hook, ProjectHook
 
 hooks_content = [
-    {
-        "id": 1,
-        "url": "testurl",
-        "push_events": True,
-        "tag_push_events": True,
-    },
-    {
-        "id": 2,
-        "url": "testurl_second",
-        "push_events": False,
-        "tag_push_events": False,
-    },
+    {"id": 1, "url": "testurl", "push_events": True, "tag_push_events": True},
+    {"id": 2, "url": "testurl_second", "push_events": False, "tag_push_events": False},
 ]
 
 hook_content = hooks_content[0]
@@ -90,6 +81,58 @@ def resp_hook_update():
 
 
 @pytest.fixture
+def resp_hook_test():
+    with responses.RequestsMock() as rsps:
+        hook_pattern = re.compile(
+            r"http://localhost/api/v4/((groups|projects)/1/|)hooks/1"
+        )
+        test_pattern = re.compile(
+            r"http://localhost/api/v4/((groups|projects)/1/|)hooks/1/test/[a-z_]+"
+        )
+        rsps.add(
+            method=responses.GET,
+            url=hook_pattern,
+            json=hook_content,
+            content_type="application/json",
+            status=200,
+        )
+        rsps.add(
+            method=responses.POST,
+            url=test_pattern,
+            json={"message": "201 Created"},
+            content_type="application/json",
+            status=201,
+        )
+        yield rsps
+
+
+@pytest.fixture
+def resp_hook_test_error():
+    with responses.RequestsMock() as rsps:
+        hook_pattern = re.compile(
+            r"http://localhost/api/v4/((groups|projects)/1/|)hooks/1"
+        )
+        test_pattern = re.compile(
+            r"http://localhost/api/v4/((groups|projects)/1/|)hooks/1/test/[a-z_]+"
+        )
+        rsps.add(
+            method=responses.GET,
+            url=hook_pattern,
+            json=hook_content,
+            content_type="application/json",
+            status=200,
+        )
+        rsps.add(
+            method=responses.POST,
+            url=test_pattern,
+            json={"message": "<html>error</html>"},
+            content_type="application/json",
+            status=422,
+        )
+        yield rsps
+
+
+@pytest.fixture
 def resp_hook_delete():
     with responses.RequestsMock() as rsps:
         pattern = re.compile(r"http://localhost/api/v4/((groups|projects)/1/|)hooks/1")
@@ -100,11 +143,7 @@ def resp_hook_delete():
             content_type="application/json",
             status=200,
         )
-        rsps.add(
-            method=responses.DELETE,
-            url=pattern,
-            status=204,
-        )
+        rsps.add(method=responses.DELETE, url=pattern, status=204)
         yield rsps
 
 
@@ -172,6 +211,17 @@ def test_delete_group_hook(group, resp_hook_delete):
     hook = group.hooks.get(1)
     hook.delete()
     group.hooks.delete(1)
+
+
+def test_test_group_hook(group, resp_hook_test):
+    hook = group.hooks.get(1)
+    hook.test("push_events")
+
+
+def test_test_error_group_hook(group, resp_hook_test_error):
+    hook = group.hooks.get(1)
+    with pytest.raises(gitlab.exceptions.GitlabHookTestError):
+        hook.test("push_events")
 
 
 def test_list_project_hooks(project, resp_hooks_list):

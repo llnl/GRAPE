@@ -67,7 +67,7 @@ subgroup_descgroup_content = [
         "file_template_project_id": 1,
         "parent_id": 123,
         "created_at": "2020-01-15T12:36:29.590Z",
-    },
+    }
 ]
 push_rules_content = {
     "id": 2,
@@ -81,6 +81,11 @@ push_rules_content = {
     "author_email_regex": "^[A-Za-z0-9.]+@gitlab.com$",
     "file_name_regex": "(exe)$",
     "max_file_size": 100,
+}
+
+service_account_content = {
+    "name": "gitlab-service-account",
+    "username": "gitlab-service-account",
 }
 
 
@@ -325,6 +330,19 @@ def resp_restore_group(created_content):
         yield rsps
 
 
+@pytest.fixture
+def resp_create_group_service_account():
+    with responses.RequestsMock() as rsps:
+        rsps.add(
+            method=responses.POST,
+            url="http://localhost/api/v4/groups/1/service_accounts",
+            json=service_account_content,
+            content_type="application/json",
+            status=200,
+        )
+        yield rsps
+
+
 def test_get_group(gl, resp_groups):
     data = gl.groups.get(1)
     assert isinstance(data, gitlab.v4.objects.Group)
@@ -417,10 +435,7 @@ def test_create_group_push_rule(group, resp_create_push_rules_group):
     group.pushrules.create({"deny_delete_tag": True})
 
 
-def test_update_group_push_rule(
-    group,
-    resp_update_push_rules_group,
-):
+def test_update_group_push_rule(group, resp_update_push_rules_group):
     pr = group.pushrules.get()
     pr.deny_delete_tag = False
     pr.save()
@@ -466,3 +481,11 @@ def test_delete_saml_group_link(group, resp_delete_saml_group_link):
 
 def test_group_restore(group, resp_restore_group):
     group.restore()
+
+
+def test_create_group_service_account(group, resp_create_group_service_account):
+    service_account = group.service_accounts.create(
+        {"name": "gitlab-service-account", "username": "gitlab-service-account"}
+    )
+    assert service_account.name == "gitlab-service-account"
+    assert service_account.username == "gitlab-service-account"

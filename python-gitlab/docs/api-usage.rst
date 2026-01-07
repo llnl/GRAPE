@@ -1,8 +1,8 @@
-############################
-Getting started with the API
-############################
+##################
+Using the REST API
+##################
 
-python-gitlab only supports GitLab API v4.
+python-gitlab currently only supports v4 of the GitLab REST API.
 
 ``gitlab.Gitlab`` class
 =======================
@@ -16,7 +16,7 @@ To connect to GitLab.com or another GitLab instance, create a ``gitlab.Gitlab`` 
    access token.
 
    For the full list of available options and how to obtain these tokens, please see
-   https://docs.gitlab.com/ee/api/index.html#authentication.
+   https://docs.gitlab.com/api/rest/authentication/.
 
 .. code-block:: python
 
@@ -39,7 +39,7 @@ To connect to GitLab.com or another GitLab instance, create a ``gitlab.Gitlab`` 
 
    # job token authentication (to be used in CI)
    # bear in mind the limitations of the API endpoints it supports:
-   # https://docs.gitlab.com/ee/ci/jobs/ci_job_token.html
+   # https://docs.gitlab.com/ci/jobs/ci_job_token
    import os
    gl = gitlab.Gitlab('https://gitlab.example.com', job_token=os.environ['CI_JOB_TOKEN'])
 
@@ -83,7 +83,7 @@ Note on password authentication
 -------------------------------
 
 GitLab has long removed password-based basic authentication. You can currently still use the
-`resource owner password credentials <https://docs.gitlab.com/ee/api/oauth2.html#resource-owner-password-credentials-flow>`_
+`resource owner password credentials <https://docs.gitlab.com/api/oauth2#resource-owner-password-credentials-flow>`_
 flow to obtain an OAuth token.
 
 However, we do not recommend this as it will not work with 2FA enabled, and GitLab is removing
@@ -158,9 +158,14 @@ with the GitLab server error message:
 
 .. code-block:: python
 
-   >>> gl.projects.list(sort='invalid value')
+   >>> gl.projects.list(get_all=True, sort='invalid value')
    ...
    GitlabListError: 400: sort does not have a valid value
+
+.. _conflicting_parameters:
+
+Conflicting Parameters
+======================
 
 You can use the ``query_parameters`` argument to send arguments that would
 conflict with python or python-gitlab when using them as kwargs:
@@ -217,7 +222,7 @@ the value on the object is accepted:
 
 .. code-block:: python
 
-   issues = project.issues.list(state='opened')
+   issues = project.issues.list(get_all=True, state='opened')
    for issue in issues:
       issue.my_super_awesome_feature_flag = "random_value"
       issue.save()
@@ -356,10 +361,10 @@ order options. At the time of writing, only ``order_by="id"`` works.
 .. code-block:: python
 
    gl = gitlab.Gitlab(url, token, pagination="keyset", order_by="id", per_page=100)
-   gl.projects.list()
+   gl.projects.list(get_all=True)
 
 Reference:
-https://docs.gitlab.com/ce/api/README.html#keyset-based-pagination
+https://docs.gitlab.com/api/rest/#keyset-based-pagination
 
 ``list()`` methods can also return a generator object, by passing the argument
 ``iterator=True``, which will handle the next calls to the API when required. This
@@ -387,7 +392,7 @@ The generator exposes extra listing information as received from the server:
    ``total_pages`` and ``total`` will have a value of ``None``.
 
    For more information see:
-   https://docs.gitlab.com/ee/user/gitlab_com/index.html#pagination-response-headers
+   https://docs.gitlab.com/user/gitlab_com/index#pagination-response-headers
 
 .. note::
    Prior to python-gitlab 3.6.0 the argument ``as_list`` was used instead of
@@ -405,6 +410,27 @@ user. For example:
 .. code-block:: python
 
    p = gl.projects.create({'name': 'awesome_project'}, sudo='user1')
+
+.. warning::
+   When using ``sudo``, its usage is not remembered. If you use ``sudo`` to
+   retrieve an object and then later use ``save()`` to modify the object, it
+   will not use ``sudo``.  You should use ``save(sudo='user1')`` if you want to
+   perform subsequent actions as the  user.
+
+Updating with ``sudo``
+----------------------
+
+An example of how to ``get`` an object (using ``sudo``), modify the object, and
+then ``save`` the object (using ``sudo``):
+
+.. code-block:: python
+
+   group = gl.groups.get('example-group')
+   notification_setting = group.notificationsettings.get(sudo='user1')
+   notification_setting.level = gitlab.const.NOTIFICATION_LEVEL_GLOBAL
+   # Must use 'sudo' again when doing the save.
+   notification_setting.save(sudo='user1')
+
 
 Logging
 =======

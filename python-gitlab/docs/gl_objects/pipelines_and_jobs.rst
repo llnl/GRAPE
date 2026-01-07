@@ -16,14 +16,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPipelineManager`
   + :attr:`gitlab.v4.objects.Project.pipelines`
 
-* GitLab API: https://docs.gitlab.com/ce/api/pipelines.html
+* GitLab API: https://docs.gitlab.com/api/pipelines
 
 Examples
 --------
 
 List pipelines for a project::
 
-    pipelines = project.pipelines.list()
+    pipelines = project.pipelines.list(get_all=True)
 
 Get a pipeline for a project::
 
@@ -31,7 +31,7 @@ Get a pipeline for a project::
 
 Get variables of a pipeline::
 
-    variables = pipeline.variables.list()
+    variables = pipeline.variables.list(get_all=True)
 
 Create a pipeline for a particular reference with custom variables::
 
@@ -49,6 +49,11 @@ Delete a pipeline::
 
     pipeline.delete()
 
+Get latest pipeline::
+
+    project.pipelines.latest(ref="main")
+
+
 Triggers
 ========
 
@@ -64,14 +69,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectTriggerManager`
   + :attr:`gitlab.v4.objects.Project.triggers`
 
-* GitLab API: https://docs.gitlab.com/ce/api/pipeline_triggers.html
+* GitLab API: https://docs.gitlab.com/api/pipeline_triggers
 
 Examples
 --------
 
 List triggers::
 
-    triggers = project.triggers.list()
+    triggers = project.triggers.list(get_all=True)
 
 Get a trigger::
 
@@ -91,7 +96,7 @@ Full example with wait for finish::
 
     def get_or_create_trigger(project):
         trigger_decription = 'my_trigger_id'
-        for t in project.triggers.list():
+        for t in project.triggers.list(iterator=True):
             if t.description == trigger_decription:
                 return t
         return project.triggers.create({'description': trigger_decription})
@@ -110,7 +115,7 @@ objects to get the associated project::
     project = gl.projects.get(project_id, lazy=True)  # no API call
     project.trigger_pipeline('main', trigger_token)
 
-Reference: https://docs.gitlab.com/ee/ci/triggers/#trigger-token
+Reference: https://docs.gitlab.com/ci/triggers/#trigger-token
 
 Pipeline schedules
 ==================
@@ -133,14 +138,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPipelineSchedulePipelineManager`
   + :attr:`gitlab.v4.objects.ProjectPipelineSchedule.pipelines`
 
-* GitLab API: https://docs.gitlab.com/ce/api/pipeline_schedules.html
+* GitLab API: https://docs.gitlab.com/api/pipeline_schedules
 
 Examples
 --------
 
 List pipeline schedules::
 
-    scheds = project.pipelineschedules.list()
+    scheds = project.pipelineschedules.list(get_all=True)
 
 Get a single schedule::
 
@@ -193,7 +198,7 @@ Delete a schedule variable::
 
 List all pipelines triggered by a pipeline schedule::
 
-    pipelines = sched.pipelines.list()
+    pipelines = sched.pipelines.list(get_all=True)
 
 Jobs
 ====
@@ -211,7 +216,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectJobManager`
   + :attr:`gitlab.v4.objects.Project.jobs`
 
-* GitLab API: https://docs.gitlab.com/ce/api/jobs.html
+* GitLab API: https://docs.gitlab.com/api/jobs
 
 Examples
 --------
@@ -224,7 +229,7 @@ job::
 
 List jobs for the project::
 
-    jobs = project.jobs.list()
+    jobs = project.jobs.list(get_all=True)
 
 Get a single job::
 
@@ -234,7 +239,7 @@ List the jobs of a pipeline::
 
     project = gl.projects.get(project_id)
     pipeline = project.pipelines.get(pipeline_id)
-    jobs = pipeline.jobs.list()
+    jobs = pipeline.jobs.list(get_all=True)
 
 .. note::
 
@@ -242,7 +247,7 @@ List the jobs of a pipeline::
    ``ProjectPipelineJob`` objects. To use these methods create a ``ProjectJob``
    object::
 
-       pipeline_job = pipeline.jobs.list()[0]
+       pipeline_job = pipeline.jobs.list(get_all=False)[0]
        job = project.jobs.get(pipeline_job.id, lazy=True)
        job.retry()
 
@@ -345,14 +350,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPipelineBridgeManager`
   + :attr:`gitlab.v4.objects.ProjectPipeline.bridges`
 
-* GitLab API: https://docs.gitlab.com/ee/api/jobs.html#list-pipeline-bridges
+* GitLab API: https://docs.gitlab.com/api/jobs#list-pipeline-bridges
 
 Examples
 --------
 
 List bridges for the pipeline::
 
-    bridges = pipeline.bridges.list()
+    bridges = pipeline.bridges.list(get_all=True)
 
 Pipeline test report
 ====================
@@ -368,7 +373,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPipelineTestReportManager`
   + :attr:`gitlab.v4.objects.ProjectPipeline.test_report`
 
-* GitLab API: https://docs.gitlab.com/ee/api/pipelines.html#get-a-pipelines-test-report
+* GitLab API: https://docs.gitlab.com/api/pipelines#get-a-pipelines-test-report
 
 Examples
 --------
@@ -391,7 +396,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPipelineTestReportSummaryManager`
   + :attr:`gitlab.v4.objects.ProjectPipeline.test_report_summary`
 
-* GitLab API: https://docs.gitlab.com/ee/api/pipelines.html#get-a-pipelines-test-report-summary
+* GitLab API: https://docs.gitlab.com/api/pipelines#get-a-pipelines-test-report-summary
 
 Examples
 --------

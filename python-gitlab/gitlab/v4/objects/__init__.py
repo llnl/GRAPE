@@ -10,6 +10,7 @@ from .branches import *
 from .broadcast_messages import *
 from .bulk_imports import *
 from .ci_lint import *
+from .cluster_agents import *
 from .clusters import *
 from .commits import *
 from .container_registry import *
@@ -38,6 +39,7 @@ from .jobs import *
 from .keys import *
 from .labels import *
 from .ldap import *
+from .member_roles import *
 from .members import *
 from .merge_request_approvals import *
 from .merge_requests import *
@@ -46,6 +48,7 @@ from .milestones import *
 from .namespaces import *
 from .notes import *
 from .notification_settings import *
+from .package_protection_rules import *
 from .packages import *
 from .pages import *
 from .personal_access_tokens import *
@@ -53,16 +56,20 @@ from .pipelines import *
 from .project_access_tokens import *
 from .projects import *
 from .push_rules import *
+from .registry_protection_repository_rules import *
+from .registry_protection_rules import *
 from .releases import *
 from .repositories import *
 from .resource_groups import *
 from .reviewers import *
 from .runners import *
 from .secure_files import *
+from .service_accounts import *
 from .settings import *
 from .sidekiq import *
 from .snippets import *
 from .statistics import *
+from .status_checks import *
 from .tags import *
 from .templates import *
 from .todos import *

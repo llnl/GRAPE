@@ -15,19 +15,19 @@ References
   + :class:`gitlab.v4.objects.GroupWikiManager`
   + :attr:`gitlab.v4.objects.Group.wikis`
 
-* GitLab API for Projects: https://docs.gitlab.com/ce/api/wikis.html
-* GitLab API for Groups: https://docs.gitlab.com/ee/api/group_wikis.html
+* GitLab API for Projects: https://docs.gitlab.com/api/wikis
+* GitLab API for Groups: https://docs.gitlab.com/api/group_wikis
 
 Examples
 --------
 
 Get the list of wiki pages for a project. These do not contain the contents of the wiki page. You will need to call get(slug) to retrieve the content by accessing the content attribute::
 
-    pages = project.wikis.list()
+    pages = project.wikis.list(get_all=True)
 
 Get the list of wiki pages for a group. These do not contain the contents of the wiki page. You will need to call get(slug) to retrieve the content by accessing the content attribute::
 
-    pages = group.wikis.list()
+    pages = group.wikis.list(get_all=True)
 
 Get a single wiki page for a project::
 
@@ -68,8 +68,8 @@ Reference
   + :attr:`gitlab.v4.objects.GrouptWiki.upload`
 
 
-* Gitlab API for Projects: https://docs.gitlab.com/ee/api/wikis.html#upload-an-attachment-to-the-wiki-repository
-* Gitlab API for Groups: https://docs.gitlab.com/ee/api/group_wikis.html#upload-an-attachment-to-the-wiki-repository
+* Gitlab API for Projects: https://docs.gitlab.com/api/wikis#upload-an-attachment-to-the-wiki-repository
+* Gitlab API for Groups: https://docs.gitlab.com/api/group_wikis#upload-an-attachment-to-the-wiki-repository
 
 Examples
 --------

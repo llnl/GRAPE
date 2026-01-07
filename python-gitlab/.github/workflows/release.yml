@@ -14,14 +14,14 @@ jobs:
       id-token: write
     environment: pypi.org
     steps:
-    - uses: actions/checkout@v4.1.1
+    - uses: actions/checkout@v6.0.1
       with:
         fetch-depth: 0
         token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
 
     - name: Python Semantic Release
       id: release
-      uses: python-semantic-release/python-semantic-release@v9.1.1
+      uses: python-semantic-release/python-semantic-release@v10.5.3
       with:
         github_token: ${{ secrets.RELEASE_GITHUB_TOKEN }}
 
@@ -32,8 +32,7 @@ jobs:
       if: steps.release.outputs.released == 'true'
 
     - name: Publish package distributions to GitHub Releases
-      # TODO: track tags after https://github.com/python-semantic-release/upload-to-gh-release/issues/2
-      uses: python-semantic-release/upload-to-gh-release@0f96c02a48278aff14251e9f1a0d73122a8c638b
+      uses: python-semantic-release/publish-action@v10.5.3
       if: steps.release.outputs.released == 'true'
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.RELEASE_GITHUB_TOKEN }}

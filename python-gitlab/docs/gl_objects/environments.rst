@@ -11,14 +11,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectEnvironmentManager`
   + :attr:`gitlab.v4.objects.Project.environments`
 
-* GitLab API: https://docs.gitlab.com/ce/api/environments.html
+* GitLab API: https://docs.gitlab.com/api/environments
 
 Examples
 --------
 
 List environments for a project::
 
-    environments = project.environments.list()
+    environments = project.environments.list(get_all=True)
 
 Create an environment for a project::
 

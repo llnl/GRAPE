@@ -13,14 +13,14 @@ References
   + :class:`gitlab.v4.objects.ProjectRemoteMirrorManager`
   + :attr:`gitlab.v4.objects.Project.remote_mirrors`
 
-* GitLab API: https://docs.gitlab.com/ce/api/remote_mirrors.html
+* GitLab API: https://docs.gitlab.com/api/remote_mirrors
 
 Examples
 --------
 
 Get the list of a project's remote mirrors::
 
-    mirrors = project.remote_mirrors.list()
+    mirrors = project.remote_mirrors.list(get_all=True)
 
 Create (and enable) a remote mirror for a project::
 
@@ -36,3 +36,7 @@ Update an existing remote mirror's attributes::
 Delete an existing remote mirror::
 
   mirror.delete()
+
+Force push mirror update::
+
+  mirror.sync()

@@ -13,7 +13,7 @@ Reference
   + :class:`gitlab.v4.objects.TopicManager`
   + :attr:`gitlab.Gitlab.topics`
 
-* GitLab API: https://docs.gitlab.com/ce/api/topics.html
+* GitLab API: https://docs.gitlab.com/api/topics
 
 This endpoint requires admin access for creating, updating and deleting objects.
 
@@ -22,7 +22,7 @@ Examples
 
 List project topics on the GitLab instance::
 
-    topics = gl.topics.list()
+    topics = gl.topics.list(get_all=True)
 
 Get a specific topic by its ID::
 
@@ -50,3 +50,16 @@ Delete a topic::
 Merge a source topic into a target topic::
 
     gl.topics.merge(topic_id, target_topic_id)
+
+Set the avatar image for a topic::
+
+    # the avatar image can be passed as data (content of the file) or as a file
+    # object opened in binary mode
+    topic.avatar = open('path/to/file.png', 'rb')
+    topic.save()
+
+Remove the avatar image for a topic::
+
+    topic.avatar = ""
+    topic.save()
+

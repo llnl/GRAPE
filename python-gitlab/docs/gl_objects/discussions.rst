@@ -37,14 +37,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectSnippetDiscussionNoteManager`
   + :attr:`gitlab.v4.objects.ProjectSnippet.notes`
 
-* GitLab API: https://docs.gitlab.com/ce/api/discussions.html
+* GitLab API: https://docs.gitlab.com/api/discussions
 
 Examples
 ========
 
 List the discussions for a resource (issue, merge request, snippet or commit)::
 
-    discussions = resource.discussions.list()
+    discussions = resource.discussions.list(get_all=True)
 
 Get a single discussion::
 

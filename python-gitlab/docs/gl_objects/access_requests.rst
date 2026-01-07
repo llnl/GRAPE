@@ -25,15 +25,15 @@ References
   + :class:`gitlab.v4.objects.GroupAccessRequestManager`
   + :attr:`gitlab.v4.objects.Group.accessrequests`
 
-* GitLab API: https://docs.gitlab.com/ce/api/access_requests.html
+* GitLab API: https://docs.gitlab.com/api/access_requests
 
 Examples
 --------
 
 List access requests from projects and groups::
 
-    p_ars = project.accessrequests.list()
-    g_ars = group.accessrequests.list()
+    p_ars = project.accessrequests.list(get_all=True)
+    g_ars = group.accessrequests.list(get_all=True)
 
 Create an access request::
 

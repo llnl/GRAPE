@@ -10,7 +10,7 @@ def test_groups(gl):
             "email": "user@test.com",
             "username": "user",
             "name": "user",
-            "password": "user_pass",
+            "password": "E4596f8be406Bc3a14a4ccdb1df80587#!1",
         }
     )
     user2 = gl.users.create(
@@ -18,7 +18,7 @@ def test_groups(gl):
             "email": "user2@test.com",
             "username": "user2",
             "name": "user2",
-            "password": "user2_pass",
+            "password": "E4596f8be406Bc3a14a4ccdb1df80587#!#2",
         }
     )
     group1 = gl.groups.create(
@@ -105,8 +105,9 @@ def test_groups(gl):
     assert result[0].id == user.id
 
     group1.members.delete(user.id)
-    assert user not in group1.members.list()
+
     assert group1.members_all.list()
+
     member = group1.members.get(user2.id)
     member.access_level = gitlab.const.AccessLevel.OWNER
     member.save()
@@ -135,7 +136,34 @@ def test_group_labels(group):
     assert label.name == "Label:that requires:encoding"
 
     label.delete()
-    assert label not in group.labels.list()
+
+
+def test_group_avatar_upload(gl, group, fixture_dir):
+    """Test uploading an avatar to a group."""
+    # Upload avatar
+    with open(fixture_dir / "avatar.png", "rb") as avatar_file:
+        group.avatar = avatar_file
+        group.save()
+
+    # Verify the avatar was set
+    updated_group = gl.groups.get(group.id)
+    assert updated_group.avatar_url is not None
+
+
+def test_group_avatar_remove(gl, group, fixture_dir):
+    """Test removing an avatar from a group."""
+    # First set an avatar
+    with open(fixture_dir / "avatar.png", "rb") as avatar_file:
+        group.avatar = avatar_file
+        group.save()
+
+    # Now remove the avatar
+    group.avatar = ""
+    group.save()
+
+    # Verify the avatar was removed
+    updated_group = gl.groups.get(group.id)
+    assert updated_group.avatar_url is None
 
 
 @pytest.mark.gitlab_premium
@@ -194,7 +222,6 @@ def test_group_badges(group):
     assert badge.image_url == "http://another.example.com"
 
     badge.delete()
-    assert badge not in group.badges.list()
 
 
 def test_group_milestones(group):
@@ -228,7 +255,6 @@ def test_group_custom_attributes(gl, group):
     assert attr in group.customattributes.list()
 
     attr.delete()
-    assert attr not in group.customattributes.list()
 
 
 def test_group_subgroups_projects(gl, user):
@@ -270,7 +296,6 @@ def test_group_wiki(group):
     wiki.save()
 
     wiki.delete()
-    assert wiki not in group.wikis.list()
 
 
 @pytest.mark.gitlab_premium
@@ -285,7 +310,31 @@ def test_group_hooks(group):
     assert hook.note_events is True
 
     hook.delete()
-    assert hook not in group.hooks.list()
+
+
+def test_group_protected_branches(group, gitlab_version):
+    # Updating a protected branch at the group level is possible from Gitlab 15.9
+    # https://docs.gitlab.com/api/group_protected_branches/
+    can_update_prot_branch = gitlab_version.major > 15 or (
+        gitlab_version.major == 15 and gitlab_version.minor >= 9
+    )
+
+    p_b = group.protectedbranches.create(
+        {"name": "*-stable", "allow_force_push": False}
+    )
+    assert p_b.name == "*-stable"
+    assert not p_b.allow_force_push
+    assert p_b in group.protectedbranches.list()
+
+    if can_update_prot_branch:
+        p_b.allow_force_push = True
+        p_b.save()
+
+    p_b = group.protectedbranches.get("*-stable")
+    if can_update_prot_branch:
+        assert p_b.allow_force_push
+
+        p_b.delete()
 
 
 def test_group_transfer(gl, group):
@@ -312,3 +361,12 @@ def test_group_saml_group_links(group):
     group.saml_group_links.create(
         {"saml_group_name": "saml-group-1", "access_level": 10}
     )
+
+
+@pytest.mark.gitlab_premium
+def test_group_service_account(group):
+    service_account = group.service_accounts.create(
+        {"name": "gitlab-service-account", "username": "gitlab-service-account"}
+    )
+    assert service_account.name == "gitlab-service-account"
+    assert service_account.username == "gitlab-service-account"

@@ -13,7 +13,7 @@ It is likely that you used a ``MergeRequest``, ``GroupMergeRequest``,
 can create a new ``ProjectMergeRequest`` or ``ProjectIssue`` object to
 apply changes. For example::
 
-    issue = gl.issues.list()[0]
+    issue = gl.issues.list(get_all=False)[0]
     project = gl.projects.get(issue.project_id, lazy=True)
     editable_issue = project.issues.get(issue.iid, lazy=True)
     # you can now edit the object
@@ -58,7 +58,7 @@ To retrieve an object with all attributes, use a ``get()`` call.
 
 Example with projects::
 
-    for projects in gl.projects.list():
+    for project in gl.projects.list(iterator=True):
         # Retrieve project object with all attributes
         project = gl.projects.get(project.id)
 
@@ -78,3 +78,23 @@ access an attribute that is shadowed by python-gitlab's own methods or managers.
 
 You can use the object's ``attributes`` dictionary to access it directly instead.
 See the :ref:`objects` section for more details on how attributes are exposed.
+
+.. _conflicting_parameters_faq:
+
+I cannot use the parameter ``path`` (or some other parameter) as it conflicts with the library
+""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""
+
+``path`` is used by the python-gitlab library and cannot be used as a parameter
+if wanting to send it to the GitLab instance.  You can use the
+``query_parameters`` argument to send arguments that would conflict with python
+or python-gitlab when using them as kwargs:
+
+.. code-block:: python
+
+   ## invalid, as ``path`` is interpreted by python-gitlab as the Path or full
+   ## URL to query ('/projects' or 'http://whatever/v4/api/projects')
+   project.commits.list(path='some_file_path', iterator=True)
+
+   project.commits.list(query_parameters={'path': 'some_file_path'}, iterator=True)  # OK
+
+See :ref:`Conflicting Parameters <conflicting_parameters>` for more information.

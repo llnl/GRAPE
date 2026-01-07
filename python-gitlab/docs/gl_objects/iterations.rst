@@ -14,7 +14,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectIterationManager`
   + :attr:`gitlab.v4.objects.Project.iterations`
 
-* GitLab API: https://docs.gitlab.com/ee/api/iterations.html
+* GitLab API: https://docs.gitlab.com/api/iterations
 
 Examples
 --------
@@ -26,8 +26,18 @@ Examples
 
 List iterations for a project's ancestor groups::
 
-    iterations = project.iterations.list()
+    iterations = project.iterations.list(get_all=True)
 
 List iterations for a group::
 
-    iterations = group.iterations.list()
+    iterations = group.iterations.list(get_all=True)
+
+Unavailable filters or keyword conflicts::
+    
+    In case you are trying to pass a parameter that collides with a python
+    keyword (i.e. `in`) or with python-gitlab's internal arguments, you'll have
+    to use the `query_parameters` argument:
+
+    ```
+    group.iterations.list(query_parameters={"in": "title"}, get_all=True)
+    ```
