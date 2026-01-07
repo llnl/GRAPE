@@ -947,21 +947,12 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     verified = False
                                     break
 
-                                # TODO: Check tag message
-
                                 # Check tag commit
                                 if tag.target != pullRequest.fromSHA():
-                                    EXCLUDED_KEY = "id"
-
                                     def normalize_diff(diff):
                                         # This entry is populated differently for merge request diffs and revision comparison diffs
                                         diff.pop('generated_file', None)
                                         return tuple(sorted(diff.items()))
-
-                                    def lists_equal_ignore_order_no_dupes_excluding_key(list1, list2, excluded_key=EXCLUDED_KEY):
-                                        norm1 = {normalize_dict_excluding_key(d, excluded_key) for d in list1}
-                                        norm2 = {normalize_dict_excluding_key(d, excluded_key) for d in list2}
-                                        return norm1 == norm2
 
                                     source_diffs = pullRequest.diffs()
                                     source_diffs = {normalize_diff(diff) for diff in source_diffs}
@@ -972,7 +963,21 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     # TODO: Determine what to do if diffs are truncated.
 
                                     if tag_diffs != source_diffs:
-                                        userMessage += f'\n\t{repo}: "{label}" has changes since tag and needs reapproval.'
+                                        userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag.'
+                                        verified = False
+                                        break
+
+                                # Check tag message
+                                if label not in tag.message:
+                                    userMessage += f'\n\t{repo}: "{label}" has invalid tag message. Reapproval may fix the message.'
+                                    verified = False
+                                    break
+
+                                approveInputs = reviewRule['approveInputs']
+
+                                for approveInput in approveInputs:
+                                    if approveInput['label'] not in tag.message:
+                                        userMessage += f'\n\t{repo}: "{label}" has invalid tag message. Reapproval may fix the message.'
                                         verified = False
                                         break
 
