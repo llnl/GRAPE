@@ -956,18 +956,58 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                 # Check tag commit
                                 if tag.target != pullRequest.fromSHA():
+                                    # If the diff of the tag with respect to develop is the same
+                                    # as the diff of the source branch with respect to develop,
+                                    # then no reapproval is needed. If diffs are truncated,
+                                    # require reapproval.
+
                                     def normalizeDiff(diff):
+                                        """Normalize a diff object for stable comparison.
+
+                                        Extracts a consistent subset of keys from a diff dict to allow set/tuple-based
+                                        comparisons across sources.
+
+                                        Args:
+                                            diff (dict): A diff dictionary expected to contain 'old_path', 'new_path',
+                                                and 'diff' keys.
+
+                                        Returns:
+                                            tuple: (key, value) pairs for 'old_path', 'new_path', and 'diff', in that
+                                                order.
+                                        """
                                         keysForComparison = ['old_path', 'new_path', 'diff']
                                         return tuple((key, diff[key]) for key in keysForComparison)
 
+                                    # Get source diffs, check for truncation, and normalize for comparison
                                     sourceDiffs = pullRequest.diffs()
+
+                                    if sourceDiffs['overflow']:
+                                        userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                        verified = False
+                                        break
+
+                                    sourceDiffs = sourceDiffs.get('changes', [])
+
+                                    for diff in sourceDiffs:
+                                        if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
+                                            userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                            verified = False
+                                            break
+
                                     sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
 
-                                    tagDiffs = repoFacade.getDiffs(pullRequest.toRef(), tag.target)
+                                    # Get tag diffs, check for truncation, and normalize for comparison
+                                    tagDiffs = repoFacade.getDiffs(pullRequest.toRef(), tag.target).get('diffs', [])
+
+                                    for diff in tagDiffs:
+                                        if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
+                                            userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                            verified = False
+                                            break
+
                                     tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
 
-                                    # TODO: Determine what to do if diffs are truncated.
-
+                                    # Compare source and tag diffs
                                     if tagDiffs != sourceDiffs:
                                         userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
                                         verified = False
