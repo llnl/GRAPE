@@ -209,6 +209,10 @@ class Repo(StashyNode):
         logging.error("GRAPE: ERROR: updateTag not implemented for Atlassian")
         exit(1)
 
+    def getDiffs(self, fromRevision, toRevision):
+        logging.error("GRAPE: ERROR: getDiffs not implemented for Atlassian")
+        exit(1)
+
     def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
         logging.info("GRAPE does not support CI integration with Atlassian tools.")
         return None
@@ -300,6 +304,14 @@ class PullRequest(StashyNode):
 
     def approve(self):
         logging.error("GRAPE: ERROR: approve not implemented for Atlassian")
+        exit(1)
+
+    def iid(self):
+        logging.error("GRAPE: ERROR: iid not implemented for Atlassian")
+        exit(1)
+
+    def diffs(self):
+        logging.error("GRAPE: ERROR: diffs not implemented for Atlassian")
         exit(1)
 
     def approved(self):

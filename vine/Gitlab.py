@@ -362,6 +362,20 @@ class Repo:
         self.createTag(name, ref, message)
 
     def getDiffs(self, fromRevision, toRevision):
+        """
+        Retrieve file diffs between two git revisions.
+
+        Args:
+            fromRevision (str): The base git reference (e.g., branch, tag, or commit SHA).
+            toRevision (str): The target git reference to compare against.
+
+        Returns:
+            list[dict]: A list of diff objects as returned by GitLab's repository compare API.
+            Returns an empty list if no diffs are present in the response.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If the compare request fails (e.g., permissions, bad ref).
+        """
         return self.project.repository_compare(fromRevision, toRevision).get('diffs', [])
 
     # If restrict_id is positive, it is the group id to restrict the branch to;
@@ -730,6 +744,17 @@ class PullRequest:
         return self.mergerequest.iid
 
     def diffs(self):
+        """
+        Retrieve file diffs (changes) for this merge request.
+
+        Returns:
+            list[dict]: A list of change objects as returned by the GitLab Merge Request
+            changes API; returns an empty list if no changes are present.
+
+        Note: The changes API is deprecated in favor of the diffs API, but the diffs API
+              does not yet provide the needed information (or perhaps we need to update
+              the python-gitlab library).
+        """
         return self.mergerequest.changes().get('changes', [])
 
     @staticmethod

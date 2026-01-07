@@ -941,8 +941,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             approveActions = reviewRule['approveActions']
 
                             if 'tag' in approveActions:
-                                tag_name = f'{reviewRule["name"]}_{pullRequest.iid()}'
-                                tag = repoFacade.getTag(tag_name)
+                                tagName = f'{reviewRule["name"]}_{pullRequest.iid()}'
+                                tag = repoFacade.getTag(tagName)
 
                                 # Check tag exists
                                 if not tag:
@@ -952,35 +952,34 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                 # Check tag commit
                                 if tag.target != pullRequest.fromSHA():
-                                    def normalize_diff(diff):
-                                        # This entry is populated differently for merge request diffs and revision comparison diffs
-                                        diff.pop('generated_file', None)
-                                        return tuple(sorted(diff.items()))
+                                    def normalizeDiff(diff):
+                                        keysForComparison = ['old_path', 'new_path', 'diff']
+                                        return tuple((key, diff[key]) for key in keysForComparison)
 
-                                    source_diffs = pullRequest.diffs()
-                                    source_diffs = {normalize_diff(diff) for diff in source_diffs}
+                                    sourceDiffs = pullRequest.diffs()
+                                    sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
 
-                                    tag_diffs = repoFacade.getDiffs(pullRequest.toRef(), tag.target)
-                                    tag_diffs = {normalize_diff(diff) for diff in tag_diffs}
+                                    tagDiffs = repoFacade.getDiffs(pullRequest.toRef(), tag.target)
+                                    tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
 
                                     # TODO: Determine what to do if diffs are truncated.
 
-                                    if tag_diffs != source_diffs:
-                                        userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag.'
+                                    if tagDiffs != sourceDiffs:
+                                        userMessage += f'\n\t{repo}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
                                         verified = False
                                         break
 
                                 # Check tag message
                                 if label not in tag.message:
-                                    userMessage += f'\n\t{repo}: "{label}" has invalid tag message. Reapproval may fix the message.'
+                                    userMessage += f'\n\t{repo}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
                                     verified = False
                                     break
 
                                 approveInputs = reviewRule['approveInputs']
 
                                 for approveInput in approveInputs:
-                                    if approveInput['label'] not in tag.message:
-                                        userMessage += f'\n\t{repo}: "{label}" has invalid tag message. Reapproval may fix the message.'
+                                    if approveInput['tag'] and approveInput['label'] not in tag.message:
+                                        userMessage += f'\n\t{repo}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
                                         verified = False
                                         break
 
