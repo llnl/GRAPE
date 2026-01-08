@@ -1,0 +1,67 @@
+
+
+Wed Jan  7 15:21:12 2026 Alan Dayton
+MR_685
+Reviewers: Peter Robinson, Ben Liu
+
+Checks for approve tag during the verifyCompletedReview step of publish.
+
+* Checks that the tag exists
+
+* Checks that it contains the required information
+
+* Checks that it is on the same commit as the source branch or that the diffs with respect to develop are unchanged
+
+For what a review rule looks like in the .grapeconfig, see https://rzlc.llnl.gov/gitlab/GRP/test_application_1/-/merge_requests/5/diffs. That merge request also shows what the merge request description will contain for the approval. Here's what the corresponding tag looks like:
+
+'''
+
+git show dc_4
+
+tag dc_4
+
+Tagger: Alan Dayton <dayton8@llnl.gov>
+
+Date:   Tue Jan 6 15:52:56 2026 -0800
+
+Derivative Classifier Review(s)
+
+Derivative Classifer: dayton8
+
+Guide(s): fdsfs
+
+Reason: None
+
+commit 32ed8d73e80e17c9b15c205b908c1ecc288441e8 (tag: dc_4)
+
+Author: Alan Dayton <dayton8@llnl.gov>
+
+Date:   Tue Jan 6 11:15:30 2026 -0800
+
+    Add new file
+
+diff --git a/new_change.txt b/new_change.txt
+
+new file mode 100644
+
+index 0000000..8b13789
+
+--- /dev/null
+
++++ b/new_change.txt
+
+@@ -0,0 +1 @@
+
++
+
+'''
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.5
+
+--reviewers=benliu,probinso
