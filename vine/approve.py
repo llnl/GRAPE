@@ -555,11 +555,16 @@ class Approve(Option, WorkspaceDirHandler):
             if not Approve._rule_applies(repo_name, rule):
                 continue
 
-            # TODO: Check that the approver is not the merge/pull request author.
+            # Get review request
+            review_request = repo_context['review_request']
+
+            # Prevent author from approving
+            if review_request.author() == user_name:
+                logging.warning(f'GRAPE: WARNING: Merge request author not allowed to approve. Skipping "{repo_name}"...')
+                continue
 
             # Ask for approval
             logging.info(f'Getting rule "{rule["name"]}" input for repository "{repo_name}"...')
-            review_request = repo_context['review_request']
             source_branch = review_request.fromRef()
             source_commit = review_request.fromSHA()
             approval_granted = utility.userInput(
