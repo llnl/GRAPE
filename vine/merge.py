@@ -89,6 +89,7 @@ class Merge(Resumable, Option, WorkspaceDirHandler):
         mdArgs["--ensureCleanUpdate"] = args["--ensureCleanUpdate"]
         mdArgs["--noChecks"] = False
         mdArgs["--squash"] = args["--squash"]
+        mdArgs["--filter"] = False
 
         merge_down_command = grapeMenu.menu().getOption("md")
         merge_down_command.workspace_dir = self.workspace_dir
