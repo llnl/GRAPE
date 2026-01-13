@@ -510,6 +510,24 @@ class Approve(Option, WorkspaceDirHandler):
         }
 
     @staticmethod
+    def _get_user_input(rule_input):
+        print(f'\n{rule_input["prompt"]}')
+
+        default = rule_input['default']
+
+        if default:
+            value = input(f'(def: {default}) ==> ').strip() or default
+        else:
+            value = input('==> ').strip()
+
+        if rule_input['required']:
+            while not value:
+                print(f'Please enter a non-empty string.')
+                value = input('==> ').strip()
+
+        return value
+
+    @staticmethod
     def _get_approve_input(rule, user_name, modified_repos):
         """
         Prompt the user for approvals and collect rule-defined input per modified repository.
@@ -595,13 +613,7 @@ class Approve(Option, WorkspaceDirHandler):
                     elif source == 'username':
                         value = user_name
                     else:
-                        value = utility.userInput(f'{rule_input["prompt"]}: ', rule_input['default'])
-
-                        if rule_input['required'] and not value:
-                            logging.info(f'{rule_input["prompt"]} is required.')
-
-                            while not value:
-                                value = utility.userInput(f'{rule_input["prompt"]}: ', rule_input['default'])
+                        value = Approve._get_user_input(rule_input)
 
                     if rule_input['cache']:
                         rule_input['value'] = value
