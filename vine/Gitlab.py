@@ -639,7 +639,14 @@ class Repo:
         return self.project.artifact(ref_name,artifact_path, job)
 
     def addToMergeTrain(self, pull_request, sha):
-        return self.project.merge_trains_merge_request.add(pull_request.iid(), sha=sha)
+        path = f"/projects/{self.project.id}/merge_trains/merge_requests/{pull_request.iid()}"
+        data = {
+            "auto_merge": True,
+            "sha": sha,
+            "squash": False
+        }
+
+        self.gitlab.http_post(path, post_data=data)
 
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
