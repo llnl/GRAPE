@@ -118,7 +118,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                               files (it appears to download each commit separately).
     --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
                               "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                              "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
+                              "verifyCompletedReview", "postVerify", "markInProgress", "md2", "tickVersion", "updateLog",
                               "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
                               "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
     --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
