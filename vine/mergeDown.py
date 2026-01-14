@@ -253,6 +253,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 self.progress["stopPoint"] = "resolve conflicts"
                 self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool " +
                                         f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
+                return False
             else:
                 raise e 
 
