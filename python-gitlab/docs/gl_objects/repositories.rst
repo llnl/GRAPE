@@ -11,14 +11,14 @@ References
   + :class:`gitlab.v4.objects.ProjectRegistryRepositoryManager`
   + :attr:`gitlab.v4.objects.Project.repositories`
 
-* Gitlab API: https://docs.gitlab.com/ce/api/container_registry.html
+* Gitlab API: https://docs.gitlab.com/api/container_registry
 
 Examples
 --------
 
 Get the list of container registry repositories associated with the project::
 
-      repositories = project.repositories.list()
+      repositories = project.repositories.list(get_all=True)
 
 Get the list of all project container registry repositories in a group::
 

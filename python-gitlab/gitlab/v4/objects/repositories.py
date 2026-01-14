@@ -4,7 +4,9 @@ GitLab API: https://docs.gitlab.com/ee/api/repositories.html
 Currently this module only contains repository-related methods for projects.
 """
 
-from typing import Any, Callable, Dict, Iterator, List, Optional, TYPE_CHECKING, Union
+from __future__ import annotations
+
+from typing import Any, Callable, Iterator, Literal, overload, TYPE_CHECKING
 
 import requests
 
@@ -21,11 +23,13 @@ else:
 
 
 class RepositoryMixin(_RestObjectBase):
-    @cli.register_custom_action("Project", ("submodule", "branch", "commit_sha"))
+    @cli.register_custom_action(
+        cls_names="Project", required=("submodule", "branch", "commit_sha")
+    )
     @exc.on_http_error(exc.GitlabUpdateError)
     def update_submodule(
         self, submodule: str, branch: str, commit_sha: str, **kwargs: Any
-    ) -> Union[Dict[str, Any], requests.Response]:
+    ) -> dict[str, Any] | requests.Response:
         """Update a project submodule
 
         Args:
@@ -47,18 +51,20 @@ class RepositoryMixin(_RestObjectBase):
             data["commit_message"] = kwargs["commit_message"]
         return self.manager.gitlab.http_put(path, post_data=data)
 
-    @cli.register_custom_action("Project", (), ("path", "ref", "recursive"))
+    @cli.register_custom_action(
+        cls_names="Project", optional=("path", "ref", "recursive")
+    )
     @exc.on_http_error(exc.GitlabGetError)
     def repository_tree(
         self, path: str = "", ref: str = "", recursive: bool = False, **kwargs: Any
-    ) -> Union[gitlab.client.GitlabList, List[Dict[str, Any]]]:
+    ) -> gitlab.client.GitlabList | list[dict[str, Any]]:
         """Return a list of files in the repository.
 
         Args:
             path: Path of the top folder (/ by default)
             ref: Reference to a commit or branch
             recursive: Whether to get the tree recursively
-            all: If True, return all the items, without pagination
+            get_all: If True, return all the items, without pagination
             per_page: Number of items to retrieve per request
             page: ID of the page to return (starts with page 1)
             iterator: If set to True and no pagination option is
@@ -73,18 +79,18 @@ class RepositoryMixin(_RestObjectBase):
             The representation of the tree
         """
         gl_path = f"/projects/{self.encoded_id}/repository/tree"
-        query_data: Dict[str, Any] = {"recursive": recursive}
+        query_data: dict[str, Any] = {"recursive": recursive}
         if path:
             query_data["path"] = path
         if ref:
             query_data["ref"] = ref
         return self.manager.gitlab.http_list(gl_path, query_data=query_data, **kwargs)
 
-    @cli.register_custom_action("Project", ("sha",))
+    @cli.register_custom_action(cls_names="Project", required=("sha",))
     @exc.on_http_error(exc.GitlabGetError)
     def repository_blob(
         self, sha: str, **kwargs: Any
-    ) -> Union[Dict[str, Any], requests.Response]:
+    ) -> dict[str, Any] | requests.Response:
         """Return a file by blob SHA.
 
         Args:
@@ -102,18 +108,54 @@ class RepositoryMixin(_RestObjectBase):
         path = f"/projects/{self.encoded_id}/repository/blobs/{sha}"
         return self.manager.gitlab.http_get(path, **kwargs)
 
-    @cli.register_custom_action("Project", ("sha",))
+    @overload
+    def repository_raw_blob(
+        self,
+        sha: str,
+        streamed: Literal[False] = False,
+        action: None = None,
+        chunk_size: int = 1024,
+        *,
+        iterator: Literal[False] = False,
+        **kwargs: Any,
+    ) -> bytes: ...
+
+    @overload
+    def repository_raw_blob(
+        self,
+        sha: str,
+        streamed: bool = False,
+        action: None = None,
+        chunk_size: int = 1024,
+        *,
+        iterator: Literal[True] = True,
+        **kwargs: Any,
+    ) -> Iterator[Any]: ...
+
+    @overload
+    def repository_raw_blob(
+        self,
+        sha: str,
+        streamed: Literal[True] = True,
+        action: Callable[[bytes], Any] | None = None,
+        chunk_size: int = 1024,
+        *,
+        iterator: Literal[False] = False,
+        **kwargs: Any,
+    ) -> None: ...
+
+    @cli.register_custom_action(cls_names="Project", required=("sha",))
     @exc.on_http_error(exc.GitlabGetError)
     def repository_raw_blob(
         self,
         sha: str,
         streamed: bool = False,
-        action: Optional[Callable[..., Any]] = None,
+        action: Callable[..., Any] | None = None,
         chunk_size: int = 1024,
         *,
         iterator: bool = False,
         **kwargs: Any,
-    ) -> Optional[Union[bytes, Iterator[Any]]]:
+    ) -> bytes | Iterator[Any] | None:
         """Return the raw file contents for a blob.
 
         Args:
@@ -145,11 +187,11 @@ class RepositoryMixin(_RestObjectBase):
             result, streamed, action, chunk_size, iterator=iterator
         )
 
-    @cli.register_custom_action("Project", ("from_", "to"))
+    @cli.register_custom_action(cls_names="Project", required=("from_", "to"))
     @exc.on_http_error(exc.GitlabGetError)
     def repository_compare(
         self, from_: str, to: str, **kwargs: Any
-    ) -> Union[Dict[str, Any], requests.Response]:
+    ) -> dict[str, Any] | requests.Response:
         """Return a diff between two branches/commits.
 
         Args:
@@ -168,15 +210,15 @@ class RepositoryMixin(_RestObjectBase):
         query_data = {"from": from_, "to": to}
         return self.manager.gitlab.http_get(path, query_data=query_data, **kwargs)
 
-    @cli.register_custom_action("Project")
+    @cli.register_custom_action(cls_names="Project")
     @exc.on_http_error(exc.GitlabGetError)
     def repository_contributors(
         self, **kwargs: Any
-    ) -> Union[gitlab.client.GitlabList, List[Dict[str, Any]]]:
+    ) -> gitlab.client.GitlabList | list[dict[str, Any]]:
         """Return a list of contributors for the project.
 
         Args:
-            all: If True, return all the items, without pagination
+            get_all: If True, return all the items, without pagination
             per_page: Number of items to retrieve per request
             page: ID of the page to return (starts with page 1)
             iterator: If set to True and no pagination option is
@@ -193,20 +235,56 @@ class RepositoryMixin(_RestObjectBase):
         path = f"/projects/{self.encoded_id}/repository/contributors"
         return self.manager.gitlab.http_list(path, **kwargs)
 
-    @cli.register_custom_action("Project", (), ("sha", "format"))
+    @overload
+    def repository_archive(
+        self,
+        sha: str | None = None,
+        streamed: Literal[False] = False,
+        action: None = None,
+        chunk_size: int = 1024,
+        *,
+        iterator: Literal[False] = False,
+        **kwargs: Any,
+    ) -> bytes: ...
+
+    @overload
+    def repository_archive(
+        self,
+        sha: str | None = None,
+        streamed: bool = False,
+        action: None = None,
+        chunk_size: int = 1024,
+        *,
+        iterator: Literal[True] = True,
+        **kwargs: Any,
+    ) -> Iterator[Any]: ...
+
+    @overload
+    def repository_archive(
+        self,
+        sha: str | None = None,
+        streamed: Literal[True] = True,
+        action: Callable[[bytes], Any] | None = None,
+        chunk_size: int = 1024,
+        *,
+        iterator: Literal[False] = False,
+        **kwargs: Any,
+    ) -> None: ...
+
+    @cli.register_custom_action(cls_names="Project", optional=("sha", "format"))
     @exc.on_http_error(exc.GitlabListError)
     def repository_archive(
         self,
-        sha: Optional[str] = None,
+        sha: str | None = None,
         streamed: bool = False,
-        action: Optional[Callable[..., Any]] = None,
+        action: Callable[..., Any] | None = None,
         chunk_size: int = 1024,
-        format: Optional[str] = None,
-        path: Optional[str] = None,
+        format: str | None = None,
+        path: str | None = None,
         *,
         iterator: bool = False,
         **kwargs: Any,
-    ) -> Optional[Union[bytes, Iterator[Any]]]:
+    ) -> bytes | Iterator[Any] | None:
         """Return an archive of the repository.
 
         Args:
@@ -247,11 +325,11 @@ class RepositoryMixin(_RestObjectBase):
             result, streamed, action, chunk_size, iterator=iterator
         )
 
-    @cli.register_custom_action("Project", ("refs",))
+    @cli.register_custom_action(cls_names="Project", required=("refs",))
     @exc.on_http_error(exc.GitlabGetError)
     def repository_merge_base(
-        self, refs: List[str], **kwargs: Any
-    ) -> Union[Dict[str, Any], requests.Response]:
+        self, refs: list[str], **kwargs: Any
+    ) -> dict[str, Any] | requests.Response:
         """Return a diff between two branches/commits.
 
         Args:
@@ -273,7 +351,7 @@ class RepositoryMixin(_RestObjectBase):
         )
         return self.manager.gitlab.http_get(path, query_data=query_data, **kwargs)
 
-    @cli.register_custom_action("Project")
+    @cli.register_custom_action(cls_names="Project")
     @exc.on_http_error(exc.GitlabDeleteError)
     def delete_merged_branches(self, **kwargs: Any) -> None:
         """Delete merged branches.

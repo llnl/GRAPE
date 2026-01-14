@@ -14,7 +14,7 @@ References
   + :class:`gitlab.v4.objects.ProjectSecureFileManager`
   + :attr:`gitlab.v4.objects.Project.secure_files`
 
-* GitLab API: https://docs.gitlab.com/ee/api/secure_files.html
+* GitLab API: https://docs.gitlab.com/api/secure_files
 
 Examples
 --------
@@ -26,7 +26,7 @@ Get a project secure file::
 
 List project secure files::
 
-    secure_files = gl.projects.get(1, lazy=True).secure_files.list()
+    secure_files = gl.projects.get(1, lazy=True).secure_files.list(get_all=True)
     print(secure_files[0].name)
 
 Create project secure file::

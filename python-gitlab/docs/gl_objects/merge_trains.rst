@@ -11,14 +11,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectMergeTrainManager`
   + :attr:`gitlab.v4.objects.Project.merge_trains`
 
-* GitLab API: https://docs.gitlab.com/ee/api/merge_trains.html
+* GitLab API: https://docs.gitlab.com/api/merge_trains
 
 Examples
 --------
 
 List merge trains for a project::
 
-    merge_trains = project.merge_trains.list()
+    merge_trains = project.merge_trains.list(get_all=True)
 
 List active merge trains for a project::
 

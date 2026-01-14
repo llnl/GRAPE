@@ -16,7 +16,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectInvitationManager`
   + :attr:`gitlab.v4.objects.Project.invitations`
 
-* GitLab API: https://docs.gitlab.com/ce/api/invitations.html
+* GitLab API: https://docs.gitlab.com/api/invitations
 
 Examples
 --------
@@ -45,7 +45,7 @@ Create an invitation::
 
 List invitations for a group or project::
 
-    invitations = group_or_project.invitations.list()
+    invitations = group_or_project.invitations.list(get_all=True)
 
 .. warning::
 

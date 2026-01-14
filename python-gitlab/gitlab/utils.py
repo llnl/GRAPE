@@ -1,14 +1,19 @@
+from __future__ import annotations
+
+import dataclasses
 import email.message
 import logging
 import pathlib
+import time
 import traceback
 import urllib.parse
 import warnings
-from typing import Any, Callable, Dict, Iterator, Literal, Optional, Tuple, Type, Union
+from collections.abc import Iterator, MutableMapping
+from typing import Any, Callable, Literal
 
 import requests
 
-from gitlab import types
+from gitlab import const, types
 
 
 class _StdoutStream:
@@ -16,9 +21,22 @@ class _StdoutStream:
         print(chunk)
 
 
-def get_content_type(content_type: Optional[str]) -> str:
+def get_base_url(url: str | None = None) -> str:
+    """Return the base URL with the trailing slash stripped.
+    If the URL is a Falsy value, return the default URL.
+    Returns:
+        The base URL
+    """
+    if not url:
+        return const.DEFAULT_URL
+
+    return url.rstrip("/")
+
+
+def get_content_type(content_type: str | None) -> str:
     message = email.message.Message()
-    message["content-type"] = content_type
+    if content_type is not None:
+        message["content-type"] = content_type
 
     return message.get_content_type()
 
@@ -28,11 +46,11 @@ class MaskingFormatter(logging.Formatter):
 
     def __init__(
         self,
-        fmt: Optional[str] = logging.BASIC_FORMAT,
-        datefmt: Optional[str] = None,
+        fmt: str | None = logging.BASIC_FORMAT,
+        datefmt: str | None = None,
         style: Literal["%", "{", "$"] = "%",
         validate: bool = True,
-        masked: Optional[str] = None,
+        masked: str | None = None,
     ) -> None:
         super().__init__(fmt, datefmt, style, validate)
         self.masked = masked
@@ -51,11 +69,11 @@ class MaskingFormatter(logging.Formatter):
 def response_content(
     response: requests.Response,
     streamed: bool,
-    action: Optional[Callable[[bytes], None]],
+    action: Callable[[bytes], Any] | None,
     chunk_size: int,
     *,
     iterator: bool,
-) -> Optional[Union[bytes, Iterator[Any]]]:
+) -> bytes | Iterator[Any] | None:
     if iterator:
         return response.iter_content(chunk_size=chunk_size)
 
@@ -71,13 +89,76 @@ def response_content(
     return None
 
 
+class Retry:
+    def __init__(
+        self,
+        max_retries: int,
+        obey_rate_limit: bool | None = True,
+        retry_transient_errors: bool | None = False,
+    ) -> None:
+        self.cur_retries = 0
+        self.max_retries = max_retries
+        self.obey_rate_limit = obey_rate_limit
+        self.retry_transient_errors = retry_transient_errors
+
+    def _retryable_status_code(self, status_code: int | None, reason: str = "") -> bool:
+        if status_code == 429 and self.obey_rate_limit:
+            return True
+
+        if not self.retry_transient_errors:
+            return False
+        if status_code in const.RETRYABLE_TRANSIENT_ERROR_CODES:
+            return True
+        if status_code == 409 and "Resource lock" in reason:
+            return True
+
+        return False
+
+    def handle_retry_on_status(
+        self,
+        status_code: int | None,
+        headers: MutableMapping[str, str] | None = None,
+        reason: str = "",
+    ) -> bool:
+        if not self._retryable_status_code(status_code, reason):
+            return False
+
+        if headers is None:
+            headers = {}
+
+        # Response headers documentation:
+        # https://docs.gitlab.com/ee/user/admin_area/settings/user_and_ip_rate_limits.html#response-headers
+        if self.max_retries == -1 or self.cur_retries < self.max_retries:
+            wait_time = 2**self.cur_retries * 0.1
+            if "Retry-After" in headers:
+                wait_time = int(headers["Retry-After"])
+            elif "RateLimit-Reset" in headers:
+                wait_time = max(0, int(headers["RateLimit-Reset"]) - time.time())
+            self.cur_retries += 1
+            time.sleep(wait_time)
+            return True
+
+        return False
+
+    def handle_retry(self) -> bool:
+        if self.retry_transient_errors and (
+            self.max_retries == -1 or self.cur_retries < self.max_retries
+        ):
+            wait_time = 2**self.cur_retries * 0.1
+            self.cur_retries += 1
+            time.sleep(wait_time)
+            return True
+
+        return False
+
+
 def _transform_types(
-    data: Dict[str, Any],
-    custom_types: Dict[str, Any],
+    data: dict[str, Any],
+    custom_types: dict[str, Any],
     *,
     transform_data: bool,
-    transform_files: Optional[bool] = True,
-) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    transform_files: bool | None = True,
+) -> tuple[dict[str, Any], dict[str, Any]]:
     """Copy the data dict with attributes that have custom types and transform them
     before being sent to the server.
 
@@ -107,6 +188,12 @@ def _transform_types(
 
         # if the type is FileAttribute we need to pass the data as file
         if isinstance(gitlab_attribute, types.FileAttribute) and transform_files:
+            # The GitLab API accepts mixed types
+            # (e.g. a file for avatar image or empty string for removing the avatar)
+            # So if string is empty, keep it in data dict
+            if isinstance(data[attr_name], str) and data[attr_name] == "":
+                continue
+
             key = gitlab_attribute.get_file_name(attr_name)
             files[attr_name] = (key, data.pop(attr_name))
             continue
@@ -123,11 +210,7 @@ def _transform_types(
     return data, files
 
 
-def copy_dict(
-    *,
-    src: Dict[str, Any],
-    dest: Dict[str, Any],
-) -> None:
+def copy_dict(*, src: dict[str, Any], dest: dict[str, Any]) -> None:
     for k, v in src.items():
         if isinstance(v, dict):
             # NOTE(jlvillal): This provides some support for the `hash` type
@@ -156,7 +239,7 @@ class EncodedId(str):
         https://docs.gitlab.com/ee/api/index.html#path-parameters
     """
 
-    def __new__(cls, value: Union[str, int, "EncodedId"]) -> "EncodedId":
+    def __new__(cls, value: str | int | EncodedId) -> EncodedId:
         if isinstance(value, EncodedId):
             return value
 
@@ -167,15 +250,16 @@ class EncodedId(str):
         return super().__new__(cls, value)
 
 
-def remove_none_from_dict(data: Dict[str, Any]) -> Dict[str, Any]:
+def remove_none_from_dict(data: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in data.items() if v is not None}
 
 
 def warn(
     message: str,
     *,
-    category: Optional[Type[Warning]] = None,
-    source: Optional[Any] = None,
+    category: type[Warning] | None = None,
+    source: Any | None = None,
+    show_caller: bool = True,
 ) -> None:
     """This `warnings.warn` wrapper function attempts to show the location causing the
     warning in the user code that called the library.
@@ -195,9 +279,14 @@ def warn(
         frame_dir = str(pathlib.Path(frame.filename).parent.resolve())
         if not frame_dir.startswith(str(pg_dir)):
             break
+    if show_caller:
+        message += warning_from
     warnings.warn(
-        message=message + warning_from,
-        category=category,
-        stacklevel=stacklevel,
-        source=source,
+        message=message, category=category, stacklevel=stacklevel, source=source
     )
+
+
+@dataclasses.dataclass
+class WarnMessageData:
+    message: str
+    show_caller: bool

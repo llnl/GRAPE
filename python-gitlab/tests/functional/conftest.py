@@ -1,11 +1,14 @@
+from __future__ import annotations
+
 import dataclasses
+import datetime
 import logging
 import pathlib
 import tempfile
 import time
 import uuid
 from subprocess import check_output
-from typing import Optional
+from typing import Sequence, TYPE_CHECKING
 
 import pytest
 import requests
@@ -70,28 +73,26 @@ def reset_gitlab(gl: gitlab.Gitlab) -> None:
     exist."""
     if helpers.get_gitlab_plan(gl):
         logging.info("GitLab EE detected")
-        # NOTE(jlvillal): By default in GitLab EE it will wait 7 days before
-        # deleting a group. Disable delayed group/project deletion.
+        # NOTE(jlvillal, timknight): By default in GitLab EE it will wait 7 days before
+        # deleting a group or project.
+        # In GL 16.0 we need to call delete with `permanently_remove=True` for projects and sub groups
+        # (handled in helpers.py safe_delete)
         settings = gl.settings.get()
         modified_settings = False
-        if settings.delayed_group_deletion:
-            logging.info("Setting `delayed_group_deletion` to False")
-            settings.delayed_group_deletion = False
-            modified_settings = True
-        if settings.delayed_project_deletion:
-            logging.info("Setting `delayed_project_deletion` to False")
-            settings.delayed_project_deletion = False
+        if settings.deletion_adjourned_period != 1:
+            logging.info("Setting `deletion_adjourned_period` to 1 Day")
+            settings.deletion_adjourned_period = 1
             modified_settings = True
         if modified_settings:
             settings.save()
 
     for project in gl.projects.list():
-        for deploy_token in project.deploytokens.list():
+        for project_deploy_token in project.deploytokens.list():
             logging.info(
-                f"Deleting deploy token: {deploy_token.username!r} in "
+                f"Deleting deploy token: {project_deploy_token.username!r} in "
                 f"project: {project.path_with_namespace!r}"
             )
-            helpers.safe_delete(deploy_token)
+            helpers.safe_delete(project_deploy_token)
         logging.info(f"Deleting project: {project.path_with_namespace!r}")
         helpers.safe_delete(project)
 
@@ -105,12 +106,12 @@ def reset_gitlab(gl: gitlab.Gitlab) -> None:
             )
             continue
 
-        for deploy_token in group.deploytokens.list():
+        for group_deploy_token in group.deploytokens.list():
             logging.info(
-                f"Deleting deploy token: {deploy_token.username!r} in "
+                f"Deleting deploy token: {group_deploy_token.username!r} in "
                 f"group: {group.path_with_namespace!r}"
             )
-            helpers.safe_delete(deploy_token)
+            helpers.safe_delete(group_deploy_token)
         logging.info(f"Deleting group: {group.full_path!r}")
         helpers.safe_delete(group)
     for topic in gl.topics.list():
@@ -122,14 +123,14 @@ def reset_gitlab(gl: gitlab.Gitlab) -> None:
     for user in gl.users.list():
         if user.username not in ["root", "ghost"]:
             logging.info(f"Deleting user: {user.username!r}")
-            helpers.safe_delete(user, hard_delete=True)
+            helpers.safe_delete(user)
 
 
 def set_token(container: str, fixture_dir: pathlib.Path) -> str:
     logging.info("Creating API token.")
     set_token_rb = fixture_dir / "set_token.rb"
 
-    with open(set_token_rb, "r", encoding="utf-8") as f:
+    with open(set_token_rb, encoding="utf-8") as f:
         set_token_command = f.read().strip()
 
     rails_command = [
@@ -146,7 +147,9 @@ def set_token(container: str, fixture_dir: pathlib.Path) -> str:
     return output
 
 
-def pytest_report_collectionfinish(config, startdir, items):
+def pytest_report_collectionfinish(
+    config: pytest.Config, start_path: pathlib.Path, items: Sequence[pytest.Item]
+):
     return [
         "",
         "Starting GitLab container.",
@@ -174,12 +177,7 @@ def check_is_alive():
     Return a healthcheck function fixture for the GitLab container spinup.
     """
 
-    def _check(
-        *,
-        container: str,
-        start_time: float,
-        gitlab_url: str,
-    ) -> bool:
+    def _check(*, container: str, start_time: float, gitlab_url: str) -> bool:
         setup_time = time.perf_counter() - start_time
         minutes, seconds = int(setup_time / 60), int(setup_time % 60)
         logging.info(
@@ -207,31 +205,6 @@ def check_is_alive():
         return True
 
     return _check
-
-
-@pytest.fixture
-def wait_for_sidekiq(gl):
-    """
-    Return a helper function to wait until there are no busy sidekiq processes.
-
-    Use this with asserts for slow tasks (group/project/user creation/deletion).
-    """
-
-    def _wait(timeout: int = 30, step: float = 0.5, allow_fail: bool = False) -> bool:
-        for count in range(timeout):
-            time.sleep(step)
-            busy = False
-            processes = gl.sidekiq.process_metrics()["processes"]
-            for process in processes:
-                if process["busy"]:
-                    busy = True
-            if not busy:
-                return True
-            logging.info(f"sidekiq busy {count} of {timeout}")
-        assert allow_fail, "sidekiq process should have terminated but did not."
-        return False
-
-    return _wait
 
 
 @pytest.fixture(scope="session")
@@ -287,6 +260,7 @@ def gl(gitlab_url: str, gitlab_token: str) -> gitlab.Gitlab:
 
     logging.info("Instantiating python-gitlab gitlab.Gitlab instance")
     instance = gitlab.Gitlab(gitlab_url, private_token=gitlab_token)
+    instance.auth()
 
     logging.info("Reset GitLab")
     reset_gitlab(instance)
@@ -295,7 +269,7 @@ def gl(gitlab_url: str, gitlab_token: str) -> gitlab.Gitlab:
 
 
 @pytest.fixture(scope="session")
-def gitlab_plan(gl: gitlab.Gitlab) -> Optional[str]:
+def gitlab_plan(gl: gitlab.Gitlab) -> str | None:
     return helpers.get_gitlab_plan(gl)
 
 
@@ -318,21 +292,25 @@ def gitlab_ultimate(gitlab_plan, request) -> None:
 
 
 @pytest.fixture(scope="session")
-def gitlab_runner(gl):
+def gitlab_runner(gl: gitlab.Gitlab):
     container = "gitlab-runner-test"
-    runner_name = "python-gitlab-runner"
-    token = "registration-token"
+    runner_description = "python-gitlab-runner"
+    if TYPE_CHECKING:
+        assert gl.user is not None
+
+    runner = gl.user.runners.create(
+        {"runner_type": "instance_type", "run_untagged": True}
+    )
     url = "http://gitlab"
 
     docker_exec = ["docker", "exec", container, "gitlab-runner"]
     register = [
         "register",
-        "--run-untagged",
         "--non-interactive",
-        "--registration-token",
-        token,
-        "--name",
-        runner_name,
+        "--token",
+        runner.token,
+        "--description",
+        runner_description,
         "--url",
         url,
         "--clone-url",
@@ -340,21 +318,17 @@ def gitlab_runner(gl):
         "--executor",
         "shell",
     ]
-    unregister = ["unregister", "--name", runner_name]
 
     yield check_output(docker_exec + register).decode()
 
-    check_output(docker_exec + unregister).decode()
+    gl.runners.delete(token=runner.token)
 
 
 @pytest.fixture(scope="module")
 def group(gl):
     """Group fixture for group API resource tests."""
     _id = uuid.uuid4().hex
-    data = {
-        "name": f"test-group-{_id}",
-        "path": f"group-{_id}",
-    }
+    data = {"name": f"test-group-{_id}", "path": f"group-{_id}"}
     group = gl.groups.create(data)
 
     yield group
@@ -376,7 +350,7 @@ def project(gl):
 
 
 @pytest.fixture(scope="function")
-def make_merge_request(project, wait_for_sidekiq):
+def make_merge_request(project):
     """Fixture factory used to create a merge_request.
 
     It will create a branch, add a commit to the branch, and then create a
@@ -396,10 +370,11 @@ def make_merge_request(project, wait_for_sidekiq):
         # NOTE(jlvillal): Sometimes the CI would give a "500 Internal Server
         # Error". Hoping that waiting until all other processes are done will
         # help with that.
-        result = wait_for_sidekiq(timeout=60)
-        assert result is True, "sidekiq process should have terminated but did not"
+        # Pause to let GL catch up (happens on hosted too, sometimes takes a while for server to be ready to merge)
+        time.sleep(30)
 
         project.refresh()  # Gets us the current default branch
+        logging.info(f"Creating branch {source_branch}")
         mr_branch = project.branches.create(
             {"branch": source_branch, "ref": project.default_branch}
         )
@@ -413,6 +388,7 @@ def make_merge_request(project, wait_for_sidekiq):
                 "commit_message": "New commit in new branch",
             }
         )
+
         if create_pipeline:
             project.files.create(
                 {
@@ -436,16 +412,23 @@ test:
                 "remove_source_branch": True,
             }
         )
-        result = wait_for_sidekiq(timeout=60)
-        assert result is True, "sidekiq process should have terminated but did not"
+
+        # Pause to let GL catch up (happens on hosted too, sometimes takes a while for server to be ready to merge)
+        time.sleep(5)
 
         mr_iid = mr.iid
         for _ in range(60):
             mr = project.mergerequests.get(mr_iid)
-            if mr.merge_status != "checking":
+            if (
+                mr.detailed_merge_status == "checking"
+                or mr.detailed_merge_status == "unchecked"
+            ):
+                time.sleep(0.5)
+            else:
                 break
-            time.sleep(0.5)
-        assert mr.merge_status != "checking"
+
+        assert mr.detailed_merge_status != "checking"
+        assert mr.detailed_merge_status != "unchecked"
 
         to_delete.extend([mr, mr_branch])
         return mr
@@ -523,14 +506,13 @@ def user(gl):
     email = f"user{_id}@email.com"
     username = f"user{_id}"
     name = f"User {_id}"
-    password = "fakepassword"
+    password = "E4596f8be406Bc3a14a4ccdb1df80587"
 
     user = gl.users.create(email=email, username=username, name=name, password=password)
 
     yield user
 
-    # Use `hard_delete=True` or a 'Ghost User' may be created.
-    helpers.safe_delete(user, hard_delete=True)
+    helpers.safe_delete(user)
 
 
 @pytest.fixture(scope="module")
@@ -599,7 +581,7 @@ def deploy_token(project):
     data = {
         "name": f"token-{_id}",
         "username": "root",
-        "expires_at": "2021-09-09",
+        "expires_at": datetime.date.today().isoformat(),
         "scopes": "read_registry",
     }
 
@@ -613,7 +595,7 @@ def group_deploy_token(group):
     data = {
         "name": f"group-token-{_id}",
         "username": "root",
-        "expires_at": "2021-09-09",
+        "expires_at": datetime.date.today().isoformat(),
         "scopes": "read_registry",
     }
 

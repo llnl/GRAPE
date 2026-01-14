@@ -13,14 +13,14 @@ References
   + :class:`gitlab.v4.objects.ProjectProtectedEnvironmentManager`
   + :attr:`gitlab.v4.objects.Project.protected_environment`
 
-* GitLab API: https://docs.gitlab.com/ee/api/protected_environments.html
+* GitLab API: https://docs.gitlab.com/api/protected_environments
 
 Examples
 --------
 
 Get the list of protected environments for a project::
 
-    p_environments = project.protected_environments.list()
+    p_environments = project.protected_environments.list(get_all=True)
 
 Get a single protected environment::
 

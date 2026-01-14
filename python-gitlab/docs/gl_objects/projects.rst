@@ -14,14 +14,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectManager`
   + :attr:`gitlab.Gitlab.projects`
 
-* GitLab API: https://docs.gitlab.com/ce/api/projects.html
+* GitLab API: https://docs.gitlab.com/api/projects
 
 Examples
 --------
 
 List projects::
 
-    projects = gl.projects.list()
+    projects = gl.projects.list(get_all=True)
 
 The API provides several filtering parameters for the listing methods:
 
@@ -42,18 +42,18 @@ Results can also be sorted using the following parameters:
     # List all projects (default 20)
     projects = gl.projects.list(get_all=True)
     # Archived projects
-    projects = gl.projects.list(archived=1)
+    projects = gl.projects.list(archived=1, get_all=True)
     # Limit to projects with a defined visibility
-    projects = gl.projects.list(visibility='public')
+    projects = gl.projects.list(visibility='public', get_all=True)
 
     # List owned projects
-    projects = gl.projects.list(owned=True)
+    projects = gl.projects.list(owned=True, get_all=True)
 
     # List starred projects
-    projects = gl.projects.list(starred=True)
+    projects = gl.projects.list(starred=True, get_all=True)
 
     # Search projects
-    projects = gl.projects.list(search='keyword')
+    projects = gl.projects.list(search='keyword', get_all=True)
 
 .. note::
 
@@ -81,21 +81,21 @@ Create a project::
 
 Create a project for a user (admin only)::
 
-    alice = gl.users.list(username='alice')[0]
+    alice = gl.users.list(username='alice', get_all=False)[0]
     user_project = alice.projects.create({'name': 'project'})
-    user_projects = alice.projects.list()
+    user_projects = alice.projects.list(get_all=True)
 
 Create a project in a group::
 
     # You need to get the id of the group, then use the namespace_id attribute
     # to create the group
-    group_id = gl.groups.list(search='my-group')[0].id
+    group_id = gl.groups.list(search='my-group', get_all=False)[0].id
     project = gl.projects.create({'name': 'myrepo', 'namespace_id': group_id})
 
 List a project's groups::
 
     # Get a list of ancestor/parent groups for a project.
-    groups = project.groups.list()
+    groups = project.groups.list(get_all=True)
 
 Update a project::
 
@@ -107,6 +107,11 @@ Set the avatar image for a project::
     # the avatar image can be passed as data (content of the file) or as a file
     # object opened in binary mode
     project.avatar = open('path/to/file.png', 'rb')
+    project.save()
+
+Remove the avatar image for a project::
+
+    project.avatar = ""
     project.save()
 
 Delete a project::
@@ -128,7 +133,7 @@ Fork a project::
 
 Get a list of forks for the project::
 
-    forks = project.forks.list()
+    forks = project.forks.list(get_all=True)
 
 Create/delete a fork relation between projects (requires admin permissions)::
 
@@ -190,7 +195,7 @@ Get the repository archive::
 .. note::
 
    For the formats available, refer to
-   https://docs.gitlab.com/ce/api/repositories.html#get-file-archive
+   https://docs.gitlab.com/api/repositories#get-file-archive
 
 .. warning::
 
@@ -241,18 +246,10 @@ Get a list of contributors for the repository::
 
 Get a list of users for the repository::
 
-    users = p.users.list()
+    users = p.users.list(get_all=True)
 
     # search for users
-    users = p.users.list(search='pattern')
-
-Start the pull mirroring process (EE edition)::
-
-    project.mirror_pull()
-
-Get a project’s pull mirror details (EE edition)::
-
-    mirror_pull_details = project.mirror_pull_details()
+    users = p.users.list(search='pattern', get_all=True)
 
 Import / Export
 ===============
@@ -273,7 +270,7 @@ Reference
   + :attr:`gitlab.v4.objects.Project.imports`
   + :attr:`gitlab.v4.objects.ProjectManager.import_project`
 
-* GitLab API: https://docs.gitlab.com/ce/api/project_import_export.html
+* GitLab API: https://docs.gitlab.com/api/project_import_export
 
 .. _project_import_export:
 
@@ -353,7 +350,7 @@ Import the project using file stored on a remote URL::
     output = gl.projects.remote_import(
         url="https://whatever.com/url/file.tar.gz",
         path="my_new_remote_project",
-        name="My New Remote Project", 
+        name="My New Remote Project",
         namespace="my-group",
         override_params={'visibility': 'private'},
     )
@@ -367,7 +364,7 @@ Import the project using file stored on AWS S3::
         file_key="aws-file-key",
         access_key_id="aws-access-key-id",
         secret_access_key="secret-access-key",
-        name="My New Remote Project", 
+        name="My New Remote Project",
         namespace="my-group",
         override_params={'visibility': 'private'},
     )
@@ -384,14 +381,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectCustomAttributeManager`
   + :attr:`gitlab.v4.objects.Project.customattributes`
 
-* GitLab API: https://docs.gitlab.com/ce/api/custom_attributes.html
+* GitLab API: https://docs.gitlab.com/api/custom_attributes
 
 Examples
 --------
 
 List custom attributes for a project::
 
-    attrs = project.customattributes.list()
+    attrs = project.customattributes.list(get_all=True)
 
 Get a custom attribute for a project::
 
@@ -410,7 +407,7 @@ Delete a custom attribute for a project::
 Search projects by custom attribute::
 
     project.customattributes.set('type', 'internal')
-    gl.projects.list(custom_attributes={'type': 'internal'})
+    gl.projects.list(custom_attributes={'type': 'internal'}, get_all=True)
 
 Project files
 =============
@@ -424,7 +421,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectFileManager`
   + :attr:`gitlab.v4.objects.Project.files`
 
-* GitLab API: https://docs.gitlab.com/ce/api/repository_files.html
+* GitLab API: https://docs.gitlab.com/api/repository_files
 
 Examples
 --------
@@ -445,11 +442,11 @@ Get file details from headers, without fetching its entire content::
 
     # Get the file size:
     # For a full list of headers returned, see upstream documentation.
-    # https://docs.gitlab.com/ee/api/repository_files.html#get-file-from-repository
+    # https://docs.gitlab.com/api/repository_files#get-file-from-repository
     print(headers["X-Gitlab-Size"])
 
 Get a raw file::
-    
+
     raw_content = project.files.raw(file_path='README.rst', ref='main')
     print(raw_content)
     with open('/tmp/raw-download.txt', 'wb') as f:
@@ -498,14 +495,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectTagManager`
   + :attr:`gitlab.v4.objects.Project.tags`
 
-* GitLab API: https://docs.gitlab.com/ce/api/tags.html
+* GitLab API: https://docs.gitlab.com/api/tags
 
 Examples
 --------
 
 List the project tags::
 
-    tags = project.tags.list()
+    tags = project.tags.list(get_all=True)
 
 Get a tag::
 
@@ -541,14 +538,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectSnippetManager`
   + :attr:`gitlab.v4.objects.Project.files`
 
-* GitLab API: https://docs.gitlab.com/ce/api/project_snippets.html
+* GitLab API: https://docs.gitlab.com/api/project_snippets
 
 Examples
 --------
 
 List the project snippets::
 
-    snippets = project.snippets.list()
+    snippets = project.snippets.list(get_all=True)
 
 Get a snippet::
 
@@ -607,14 +604,14 @@ Reference
   + :attr:`gitlab.v4.objects.Project.members`
   + :attr:`gitlab.v4.objects.Project.members_all`
 
-* GitLab API: https://docs.gitlab.com/ce/api/members.html
+* GitLab API: https://docs.gitlab.com/api/members
 
 Examples
 --------
 
 List only direct project members::
 
-    members = project.members.list()
+    members = project.members.list(get_all=True)
 
 List the project members recursively (including inherited members through
 ancestor groups)::
@@ -623,7 +620,7 @@ ancestor groups)::
 
 Search project members matching a query string::
 
-    members = project.members.list(query='bar')
+    members = project.members.list(query='bar', get_all=True)
 
 Get only direct project member::
 
@@ -667,14 +664,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectHookManager`
   + :attr:`gitlab.v4.objects.Project.hooks`
 
-* GitLab API: https://docs.gitlab.com/ce/api/projects.html#hooks
+* GitLab API: https://docs.gitlab.com/api/projects#hooks
 
 Examples
 --------
 
 List the project hooks::
 
-    hooks = project.hooks.list()
+    hooks = project.hooks.list(get_all=True)
 
 Get a project hook::
 
@@ -688,6 +685,10 @@ Update a project hook::
 
     hook.push_events = 0
     hook.save()
+
+Test a project hook::
+
+    hook.test("push_events")
 
 Delete a project hook::
 
@@ -707,7 +708,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectIntegrationManager`
   + :attr:`gitlab.v4.objects.Project.integrations`
 
-* GitLab API: https://docs.gitlab.com/ce/api/integrations.html
+* GitLab API: https://docs.gitlab.com/api/integrations
 
 Examples
 ---------
@@ -736,7 +737,7 @@ Get an existing integration::
 
 List active project integrations::
 
-    integration = project.integrations.list()
+    integration = project.integrations.list(get_all=True)
 
 List the code names of available integrations (doesn't return objects)::
 
@@ -756,7 +757,7 @@ Reference
 
   + :attr:`gitlab.v4.objects.Project.upload`
 
-* Gitlab API: https://docs.gitlab.com/ce/api/projects.html#upload-a-file
+* Gitlab API: https://docs.gitlab.com/api/projects#upload-a-file
 
 Examples
 --------
@@ -799,7 +800,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectPushRulesManager`
   + :attr:`gitlab.v4.objects.Project.pushrules`
 
-* GitLab API: https://docs.gitlab.com/ee/api/projects.html#push-rules
+* GitLab API: https://docs.gitlab.com/api/projects#push-rules
 
 Examples
 ---------
@@ -833,14 +834,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectProtectedTagManager`
   + :attr:`gitlab.v4.objects.Project.protectedtags`
 
-* GitLab API: https://docs.gitlab.com/ce/api/protected_tags.html
+* GitLab API: https://docs.gitlab.com/api/protected_tags
 
 Examples
 ---------
 
 Get a list of protected tags from a project::
 
-    protected_tags = project.protectedtags.list()
+    protected_tags = project.protectedtags.list(get_all=True)
 
 Get a single protected tag or wildcard protected tag::
 
@@ -866,7 +867,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectAdditionalStatisticsManager`
   + :attr:`gitlab.v4.objects.Project.additionalstatistics`
 
-* GitLab API: https://docs.gitlab.com/ce/api/project_statistics.html
+* GitLab API: https://docs.gitlab.com/api/project_statistics
 
 Examples
 ---------
@@ -893,7 +894,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectStorageManager`
   + :attr:`gitlab.v4.objects.Project.storage`
 
-* GitLab API: https://docs.gitlab.com/ee/api/projects.html#get-the-path-to-repository-storage
+* GitLab API: https://docs.gitlab.com/api/projects#get-the-path-to-repository-storage
 
 Examples
 ---------

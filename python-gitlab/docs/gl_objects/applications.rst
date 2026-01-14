@@ -11,14 +11,14 @@ Reference
   + :class:`gitlab.v4.objects.ApplicationManager`
   + :attr:`gitlab.Gitlab.applications`
 
-* GitLab API: https://docs.gitlab.com/ce/api/applications.html
+* GitLab API: https://docs.gitlab.com/api/applications
 
 Examples
 --------
 
 List all OAuth applications::
 
-    applications = gl.applications.list()
+    applications = gl.applications.list(get_all=True)
 
 Create an application::
 

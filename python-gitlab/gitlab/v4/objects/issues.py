@@ -1,9 +1,13 @@
-from typing import Any, cast, Dict, Optional, Tuple, TYPE_CHECKING, Union
+from __future__ import annotations
 
-from gitlab import cli
+from typing import Any, TYPE_CHECKING
+
+import requests
+
+from gitlab import cli, client
 from gitlab import exceptions as exc
 from gitlab import types
-from gitlab.base import RESTManager, RESTObject
+from gitlab.base import RESTObject
 from gitlab.mixins import (
     CreateMixin,
     CRUDMixin,
@@ -48,7 +52,7 @@ class Issue(RESTObject):
     _repr_attr = "title"
 
 
-class IssueManager(RetrieveMixin, RESTManager):
+class IssueManager(RetrieveMixin[Issue]):
     _path = "/issues"
     _obj_cls = Issue
     _list_filters = (
@@ -71,15 +75,12 @@ class IssueManager(RetrieveMixin, RESTManager):
     )
     _types = {"iids": types.ArrayAttribute, "labels": types.CommaSeparatedListAttribute}
 
-    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> Issue:
-        return cast(Issue, super().get(id=id, lazy=lazy, **kwargs))
-
 
 class GroupIssue(RESTObject):
     pass
 
 
-class GroupIssueManager(ListMixin, RESTManager):
+class GroupIssueManager(ListMixin[GroupIssue]):
     _path = "/groups/{group_id}/issues"
     _obj_cls = GroupIssue
     _from_parent_attrs = {"group_id": "id"}
@@ -118,7 +119,7 @@ class ProjectIssue(
 
     awardemojis: ProjectIssueAwardEmojiManager
     discussions: ProjectIssueDiscussionManager
-    links: "ProjectIssueLinkManager"
+    links: ProjectIssueLinkManager
     notes: ProjectIssueNoteManager
     resourcelabelevents: ProjectIssueResourceLabelEventManager
     resourcemilestoneevents: ProjectIssueResourceMilestoneEventManager
@@ -126,7 +127,7 @@ class ProjectIssue(
     resource_iteration_events: ProjectIssueResourceIterationEventManager
     resource_weight_events: ProjectIssueResourceWeightEventManager
 
-    @cli.register_custom_action("ProjectIssue", ("to_project_id",))
+    @cli.register_custom_action(cls_names="ProjectIssue", required=("to_project_id",))
     @exc.on_http_error(exc.GitlabUpdateError)
     def move(self, to_project_id: int, **kwargs: Any) -> None:
         """Move the issue to another project.
@@ -146,12 +147,14 @@ class ProjectIssue(
             assert isinstance(server_data, dict)
         self._update_attrs(server_data)
 
-    @cli.register_custom_action("ProjectIssue", ("move_after_id", "move_before_id"))
+    @cli.register_custom_action(
+        cls_names="ProjectIssue", required=("move_after_id", "move_before_id")
+    )
     @exc.on_http_error(exc.GitlabUpdateError)
     def reorder(
         self,
-        move_after_id: Optional[int] = None,
-        move_before_id: Optional[int] = None,
+        move_after_id: int | None = None,
+        move_before_id: int | None = None,
         **kwargs: Any,
     ) -> None:
         """Reorder an issue on a board.
@@ -166,7 +169,7 @@ class ProjectIssue(
             GitlabUpdateError: If the issue could not be reordered
         """
         path = f"{self.manager.path}/{self.encoded_id}/reorder"
-        data: Dict[str, Any] = {}
+        data: dict[str, Any] = {}
 
         if move_after_id is not None:
             data["move_after_id"] = move_after_id
@@ -178,9 +181,11 @@ class ProjectIssue(
             assert isinstance(server_data, dict)
         self._update_attrs(server_data)
 
-    @cli.register_custom_action("ProjectIssue")
+    @cli.register_custom_action(cls_names="ProjectIssue")
     @exc.on_http_error(exc.GitlabGetError)
-    def related_merge_requests(self, **kwargs: Any) -> Dict[str, Any]:
+    def related_merge_requests(
+        self, **kwargs: Any
+    ) -> client.GitlabList | list[dict[str, Any]]:
         """List merge requests related to the issue.
 
         Args:
@@ -194,14 +199,14 @@ class ProjectIssue(
             The list of merge requests.
         """
         path = f"{self.manager.path}/{self.encoded_id}/related_merge_requests"
-        result = self.manager.gitlab.http_get(path, **kwargs)
+        result = self.manager.gitlab.http_list(path, **kwargs)
         if TYPE_CHECKING:
-            assert isinstance(result, dict)
+            assert not isinstance(result, requests.Response)
         return result
 
-    @cli.register_custom_action("ProjectIssue")
+    @cli.register_custom_action(cls_names="ProjectIssue")
     @exc.on_http_error(exc.GitlabGetError)
-    def closed_by(self, **kwargs: Any) -> Dict[str, Any]:
+    def closed_by(self, **kwargs: Any) -> client.GitlabList | list[dict[str, Any]]:
         """List merge requests that will close the issue when merged.
 
         Args:
@@ -215,13 +220,13 @@ class ProjectIssue(
             The list of merge requests.
         """
         path = f"{self.manager.path}/{self.encoded_id}/closed_by"
-        result = self.manager.gitlab.http_get(path, **kwargs)
+        result = self.manager.gitlab.http_list(path, **kwargs)
         if TYPE_CHECKING:
-            assert isinstance(result, dict)
+            assert not isinstance(result, requests.Response)
         return result
 
 
-class ProjectIssueManager(CRUDMixin, RESTManager):
+class ProjectIssueManager(CRUDMixin[ProjectIssue]):
     _path = "/projects/{project_id}/issues"
     _obj_cls = ProjectIssue
     _from_parent_attrs = {"project_id": "id"}
@@ -271,21 +276,20 @@ class ProjectIssueManager(CRUDMixin, RESTManager):
             "updated_at",
             "due_date",
             "discussion_locked",
-        ),
+        )
     )
     _types = {"iids": types.ArrayAttribute, "labels": types.CommaSeparatedListAttribute}
-
-    def get(
-        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
-    ) -> ProjectIssue:
-        return cast(ProjectIssue, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class ProjectIssueLink(ObjectDeleteMixin, RESTObject):
     _id_attr = "issue_link_id"
 
 
-class ProjectIssueLinkManager(ListMixin, CreateMixin, DeleteMixin, RESTManager):
+class ProjectIssueLinkManager(
+    ListMixin[ProjectIssueLink],
+    CreateMixin[ProjectIssueLink],
+    DeleteMixin[ProjectIssueLink],
+):
     _path = "/projects/{project_id}/issues/{issue_iid}/links"
     _obj_cls = ProjectIssueLink
     _from_parent_attrs = {"project_id": "project_id", "issue_iid": "iid"}
@@ -294,9 +298,9 @@ class ProjectIssueLinkManager(ListMixin, CreateMixin, DeleteMixin, RESTManager):
     @exc.on_http_error(exc.GitlabCreateError)
     # NOTE(jlvillal): Signature doesn't match CreateMixin.create() so ignore
     # type error
-    def create(  # type: ignore
-        self, data: Dict[str, Any], **kwargs: Any
-    ) -> Tuple[RESTObject, RESTObject]:
+    def create(  # type: ignore[override]
+        self, data: dict[str, Any], **kwargs: Any
+    ) -> tuple[ProjectIssue, ProjectIssue]:
         """Create a new object.
 
         Args:
@@ -312,8 +316,6 @@ class ProjectIssueLinkManager(ListMixin, CreateMixin, DeleteMixin, RESTManager):
             GitlabCreateError: If the server cannot perform the request
         """
         self._create_attrs.validate_attrs(data=data)
-        if TYPE_CHECKING:
-            assert self.path is not None
         server_data = self.gitlab.http_post(self.path, post_data=data, **kwargs)
         if TYPE_CHECKING:
             assert isinstance(server_data, dict)

@@ -14,7 +14,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectCiLintManager`
   + :attr:`gitlab.v4.objects.Project.ci_lint`
 
-* GitLab API: https://docs.gitlab.com/ee/api/lint.html
+* GitLab API: https://docs.gitlab.com/api/lint
 
 Examples
 ---------
@@ -43,6 +43,18 @@ Lint a CI YAML configuration::
 Lint a project's CI configuration::
 
     lint_result = project.ci_lint.get()
+    assert lint_result.valid is True  # Test that the .gitlab-ci.yml is valid
+    print(lint_result.merged_yaml)    # Print the merged YAML file
+
+Lint a project's CI configuration from a specific branch or tag::
+
+    lint_result = project.ci_lint.get(content_ref="main")
+    assert lint_result.valid is True  # Test that the .gitlab-ci.yml is valid
+    print(lint_result.merged_yaml)    # Print the merged YAML file
+
+Lint a project's CI configuration with dry run simulation::
+
+    lint_result = project.ci_lint.get(dry_run=True, dry_run_ref="develop")
     assert lint_result.valid is True  # Test that the .gitlab-ci.yml is valid
     print(lint_result.merged_yaml)    # Print the merged YAML file
 

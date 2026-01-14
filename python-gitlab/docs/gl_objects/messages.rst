@@ -15,14 +15,14 @@ References
   + :class:`gitlab.v4.objects.BroadcastMessageManager`
   + :attr:`gitlab.Gitlab.broadcastmessages`
 
-* GitLab API: https://docs.gitlab.com/ce/api/broadcast_messages.html
+* GitLab API: https://docs.gitlab.com/api/broadcast_messages
 
 Examples
 --------
 
 List the messages::
 
-    msgs = gl.broadcastmessages.list()
+    msgs = gl.broadcastmessages.list(get_all=True)
 
 Get a single message::
 

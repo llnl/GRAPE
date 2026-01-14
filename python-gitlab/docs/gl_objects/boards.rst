@@ -23,8 +23,8 @@ Reference
 
 * GitLab API:
 
-  + https://docs.gitlab.com/ce/api/boards.html
-  + https://docs.gitlab.com/ce/api/group_boards.html
+  + https://docs.gitlab.com/api/boards
+  + https://docs.gitlab.com/api/group_boards
 
 Examples
 --------
@@ -32,7 +32,7 @@ Examples
 Get the list of existing boards for a project or a group::
 
     # item is a Project or a Group
-    boards = project_or_group.boards.list()
+    boards = project_or_group.boards.list(get_all=True)
 
 Get a single board for a project or a group::
 
@@ -72,15 +72,15 @@ Reference
 
 * GitLab API:
 
-  + https://docs.gitlab.com/ce/api/boards.html
-  + https://docs.gitlab.com/ce/api/group_boards.html
+  + https://docs.gitlab.com/api/boards
+  + https://docs.gitlab.com/api/group_boards
 
 Examples
 --------
 
 List the issue lists for a board::
 
-    b_lists = board.lists.list()
+    b_lists = board.lists.list(get_all=True)
 
 Get a single list::
 

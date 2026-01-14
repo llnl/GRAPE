@@ -1,6 +1,5 @@
-from typing import Any, cast, Union
-
-from gitlab.base import RESTManager, RESTObject
+from gitlab import exceptions as exc
+from gitlab.base import RESTObject
 from gitlab.mixins import CRUDMixin, NoUpdateMixin, ObjectDeleteMixin, SaveMixin
 from gitlab.types import RequiredOptional
 
@@ -19,20 +18,31 @@ class Hook(ObjectDeleteMixin, RESTObject):
     _repr_attr = "url"
 
 
-class HookManager(NoUpdateMixin, RESTManager):
+class HookManager(NoUpdateMixin[Hook]):
     _path = "/hooks"
     _obj_cls = Hook
     _create_attrs = RequiredOptional(required=("url",))
-
-    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> Hook:
-        return cast(Hook, super().get(id=id, lazy=lazy, **kwargs))
 
 
 class ProjectHook(SaveMixin, ObjectDeleteMixin, RESTObject):
     _repr_attr = "url"
 
+    @exc.on_http_error(exc.GitlabHookTestError)
+    def test(self, trigger: str) -> None:
+        """
+        Test a Project Hook
 
-class ProjectHookManager(CRUDMixin, RESTManager):
+        Args:
+            trigger: Type of trigger event to test
+
+        Raises:
+            GitlabHookTestError: If the hook test attempt failed
+        """
+        path = f"{self.manager.path}/{self.encoded_id}/test/{trigger}"
+        self.manager.gitlab.http_post(path)
+
+
+class ProjectHookManager(CRUDMixin[ProjectHook]):
     _path = "/projects/{project_id}/hooks"
     _obj_cls = ProjectHook
     _from_parent_attrs = {"project_id": "id"}
@@ -69,17 +79,26 @@ class ProjectHookManager(CRUDMixin, RESTManager):
         ),
     )
 
-    def get(
-        self, id: Union[str, int], lazy: bool = False, **kwargs: Any
-    ) -> ProjectHook:
-        return cast(ProjectHook, super().get(id=id, lazy=lazy, **kwargs))
-
 
 class GroupHook(SaveMixin, ObjectDeleteMixin, RESTObject):
     _repr_attr = "url"
 
+    @exc.on_http_error(exc.GitlabHookTestError)
+    def test(self, trigger: str) -> None:
+        """
+        Test a Group Hook
 
-class GroupHookManager(CRUDMixin, RESTManager):
+        Args:
+            trigger: Type of trigger event to test
+
+        Raises:
+            GitlabHookTestError: If the hook test attempt failed
+        """
+        path = f"{self.manager.path}/{self.encoded_id}/test/{trigger}"
+        self.manager.gitlab.http_post(path)
+
+
+class GroupHookManager(CRUDMixin[GroupHook]):
     _path = "/groups/{group_id}/hooks"
     _obj_cls = GroupHook
     _from_parent_attrs = {"group_id": "id"}
@@ -123,6 +142,3 @@ class GroupHookManager(CRUDMixin, RESTManager):
             "token",
         ),
     )
-
-    def get(self, id: Union[str, int], lazy: bool = False, **kwargs: Any) -> GroupHook:
-        return cast(GroupHook, super().get(id=id, lazy=lazy, **kwargs))

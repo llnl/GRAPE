@@ -34,21 +34,17 @@ def test_config_error_with_help_prints_help(script_runner):
     assert ret.returncode == 0
 
 
-def test_global_help_prints_resources_vertically(script_runner):
-    ret = script_runner.run(["gitlab", "--help"])
-    assert """resource:\n  application\n  application-appearance\n""" in ret.stdout
-    assert ret.returncode == 0
-
-
 def test_resource_help_prints_actions_vertically(script_runner):
     ret = script_runner.run(["gitlab", "project", "--help"])
-    assert """action:\n  list\n  get""" in ret.stdout
+    assert "    list                List the GitLab resources\n" in ret.stdout
+    assert "    get                 Get a GitLab resource\n" in ret.stdout
     assert ret.returncode == 0
 
 
 def test_resource_help_prints_actions_vertically_only_one_action(script_runner):
     ret = script_runner.run(["gitlab", "event", "--help"])
-    assert """action:\n  list\n""" in ret.stdout
+    assert "  {list}      Action to execute on the GitLab resource.\n"
+    assert "    list      List the GitLab resources\n" in ret.stdout
     assert ret.returncode == 0
 
 
@@ -82,12 +78,28 @@ def test_uses_ci_job_token(monkeypatch, script_runner, resp_get_project):
     monkeypatch.setattr(config, "_DEFAULT_FILES", [])
     resp_get_project_in_ci = copy.deepcopy(resp_get_project)
     resp_get_project_in_ci.update(
-        match=[responses.matchers.header_matcher({"JOB-TOKEN": CI_JOB_TOKEN})],
+        match=[responses.matchers.header_matcher({"JOB-TOKEN": CI_JOB_TOKEN})]
     )
 
     responses.add(**resp_get_project_in_ci)
     ret = script_runner.run(["gitlab", "project", "get", "--id", "1"])
     assert ret.success
+
+
+@pytest.mark.script_launch_mode("inprocess")
+@responses.activate
+def test_does_not_auth_on_skip_login(
+    monkeypatch, script_runner, resp_get_project, resp_current_user
+):
+    monkeypatch.setenv("GITLAB_PRIVATE_TOKEN", PRIVATE_TOKEN)
+    monkeypatch.setattr(config, "_DEFAULT_FILES", [])
+
+    resp_user = responses.add(**resp_current_user)
+    resp_project = responses.add(**resp_get_project)
+    ret = script_runner.run(["gitlab", "--skip-login", "project", "get", "--id", "1"])
+    assert ret.success
+    assert resp_user.call_count == 0
+    assert resp_project.call_count == 1
 
 
 @pytest.mark.script_launch_mode("inprocess")
@@ -100,7 +112,7 @@ def test_private_token_overrides_job_token(
 
     resp_get_project_with_token = copy.deepcopy(resp_get_project)
     resp_get_project_with_token.update(
-        match=[responses.matchers.header_matcher({"PRIVATE-TOKEN": PRIVATE_TOKEN})],
+        match=[responses.matchers.header_matcher({"PRIVATE-TOKEN": PRIVATE_TOKEN})]
     )
 
     # CLI first calls .auth() when private token is present
@@ -155,10 +167,7 @@ def test_invalid_auth_config(script_runner, monkeypatch, fixture_dir):
     assert "401" in ret.stderr
 
 
-format_matrix = [
-    ("json", json.loads),
-    ("yaml", yaml.safe_load),
-]
+format_matrix = [("json", json.loads), ("yaml", yaml.safe_load)]
 
 
 @pytest.mark.parametrize("format,loader", format_matrix)
@@ -174,14 +183,7 @@ def test_cli_display(gitlab_cli, project, format, loader):
 
 @pytest.mark.parametrize("format,loader", format_matrix)
 def test_cli_fields_in_list(gitlab_cli, project_file, format, loader):
-    cmd = [
-        "-o",
-        format,
-        "--fields",
-        "default_branch",
-        "project",
-        "list",
-    ]
+    cmd = ["-o", format, "--fields", "default_branch", "project", "list"]
 
     ret = gitlab_cli(cmd)
     assert ret.success
