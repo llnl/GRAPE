@@ -435,9 +435,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
            logging.info("merge train should only be used with GitLab.")
            return False
 
-       name = args["--user"]
-       if not name:
-           name = utility.getUserName()
+       name = utility.getUserName(args)
        verify = True if args["--verifySSL"].lower() == "true" else False
 
        grape_gitlab = Gitlab.GrapeGitlabAdapter(name, url=args["--codeReviewsURL"],
