@@ -747,7 +747,7 @@ class Approve(Option, WorkspaceDirHandler):
             # Update merge request description
             if 'description' in rule['approveActions']:
                 logging.info('  Updating merge/pull request description...')
-                current_description = review_request.description().decode("utf-8").strip()
+                current_description = review_request.description().strip()
 
                 if rule_section_header in current_description:
                     updated_description = rule_section_pattern.sub(rule_section_repl, current_description).rstrip()
