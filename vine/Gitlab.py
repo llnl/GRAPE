@@ -673,6 +673,7 @@ class PullRequest:
 
     def description(self):
         description = self.mergerequest.description or ""
+        # Drop non-ascii characters
         return description.encode('ascii', 'ignore').decode('ascii')
 
     def date(self):

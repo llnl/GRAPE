@@ -250,6 +250,7 @@ class PullRequest(StashyNode):
 
     def description(self):
         try:
+            # Drop non-ascii characters
             return self.node["description"].encode('ascii', 'ignore').decode('ascii')
         except KeyError:
             return ""
