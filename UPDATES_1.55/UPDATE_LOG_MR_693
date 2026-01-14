@@ -1,0 +1,17 @@
+
+
+Wed Jan 14 10:28:50 2026 Alan Dayton
+MR_693
+Reviewers: Ben Liu
+
+The merge request link returned from gitlab may be encoded. Instead of decoding the link in a whole bunch of different places, decode once in the 'link()' function so the rest of review.py doesn't have to care about encoding.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.9
+
+--reviewers=benliu

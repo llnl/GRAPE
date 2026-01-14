@@ -733,7 +733,13 @@ class PullRequest:
         return approvals.approvals_required > 0 and approvals.approvals_left == 0
 
     def link(self):
-        return self.mergerequest.web_url
+        url = self.mergerequest.web_url
+
+        if not isinstance(url, str):
+            url = url.decode("utf-8")
+
+        return url
+
 
     def version(self):
         # gitlab does not seem to have the same concept of a version exposed to the REST API

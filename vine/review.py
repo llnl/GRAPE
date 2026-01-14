@@ -563,10 +563,7 @@ class Review(Option, WorkspaceDirHandler):
         https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
         """
         config = config_parser_global.grapeConfig()
-        name = args["--user"]
-        if not name:
-            name = utility.getUserName()
-
+        name = utility.getUserName(args)
         logging.info(f"Logging onto {args['--codeReviewsURL']}")
         if args["--test"]:
             codeReviews = Atlassian.TestAtlassian(name)
@@ -612,9 +609,6 @@ class Review(Option, WorkspaceDirHandler):
 
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
-
-            if not isinstance(outerLevelURL, str):
-                outerLevelURL = outerLevelURL.decode("utf-8")
 
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
@@ -900,8 +894,6 @@ class Review(Option, WorkspaceDirHandler):
 
             # Update related reviews
             outerLevelURL = request.link()
-            if not isinstance(outerLevelURL, str):
-                outerLevelURL = outerLevelURL.decode("utf-8")
 
             if runInSubmodules and not args["--noRecurseSubprojects"]:
                 # Ignore related review links scraped from the outer level
@@ -911,9 +903,6 @@ class Review(Option, WorkspaceDirHandler):
                 updatedReviewLinks = []
 
                 for link in pullRequestLinks:
-                    if not isinstance(link, str):
-                        link = link.decode("utf-8")
-
                     updatedReviewLinks.append(link)
 
                 if updatedReviewLinks:
@@ -925,9 +914,6 @@ class Review(Option, WorkspaceDirHandler):
                 updatedReviewLinks = descriptionData['related_reviews']
 
                 for link in pullRequestLinks:
-                    if not isinstance(link, str):
-                        link = link.decode("utf-8")
-
                     if link not in updatedReviewLinks:
                         updatedReviewLinks.append(link)
 
