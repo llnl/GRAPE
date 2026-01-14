@@ -246,7 +246,16 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         conflictedFiles = self.outerLevelMerge(args, branch)
 
         # get active submodules post-merge
-        reinitActiveSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        try:
+            reinitActiveSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
+        except grape_errors.GrapeGitError as e:
+            if len(conflictedFiles) != 0:
+                self.progress["stopPoint"] = "resolve conflicts"
+                self.dumpProgress(args, "GRAPE: Outer level merge generated conflicts. Please resolve using git mergetool " +
+                                        f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
+            else:
+                raise e 
+
         # add in active submodules pre-merge
         reinitActiveSubmodulesCheck.extend(activeSubmodulesCheck0)
 
