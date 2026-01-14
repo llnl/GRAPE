@@ -563,10 +563,7 @@ class Review(Option, WorkspaceDirHandler):
         https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
         """
         config = config_parser_global.grapeConfig()
-        name = args["--user"]
-        if not name:
-            name = utility.getUserName()
-
+        name = utility.getUserName(args)
         logging.info(f"Logging onto {args['--codeReviewsURL']}")
         if args["--test"]:
             codeReviews = Atlassian.TestAtlassian(name)
