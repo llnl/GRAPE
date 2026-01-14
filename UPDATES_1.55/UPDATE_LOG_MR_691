@@ -1,0 +1,17 @@
+
+
+Wed Jan 14 10:42:53 2026 Benjamin T. Liu
+MR_691
+Reviewers: Alan Dayton, Peter Robinson
+
+Gracefully exit md for conflicted .gitmodules
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.54.1
+
+--reviewers=dayton8,probinso
