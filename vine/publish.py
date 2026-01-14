@@ -843,9 +843,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # by grape in the merge/pull request description).
             description = pullRequest.description()
 
-            if isinstance(description, bytes):
-                description = description.decode("utf-8")
-
             savedArgs = {}
             match = reviewersRegex.search(description)
 
@@ -1362,7 +1359,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            self.progress["MR_tag"] = tag
            pr_id = tag.split("MR_")[1]
            pull_request = self.repo.pullRequests(id=pr_id)[0]
-           escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
+           escapedCommitMsg = pull_request.description().splitlines(True)+['\n']
            if len(tags) > 1:
               escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag} (tags: {tags}, last version: {last_version}, branch: {args['--topic']}).\n")
            escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
@@ -1431,7 +1428,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Retrieving pull request description for use as commit message...")
             pullRequest = self.openPullRequest()
             if pullRequest:
-                commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
+                commitMsg = pullRequest.description().splitlines(True)+['\n']
             else:
                 commitMsg = ""
 

@@ -563,10 +563,7 @@ class Review(Option, WorkspaceDirHandler):
         https://developer.atlassian.com/static/rest/stash/2.12.1/stash-rest.html
         """
         config = config_parser_global.grapeConfig()
-        name = args["--user"]
-        if not name:
-            name = utility.getUserName()
-
+        name = utility.getUserName(args)
         logging.info(f"Logging onto {args['--codeReviewsURL']}")
         if args["--test"]:
             codeReviews = Atlassian.TestAtlassian(name)
@@ -613,17 +610,11 @@ class Review(Option, WorkspaceDirHandler):
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
 
-            if not isinstance(outerLevelURL, str):
-                outerLevelURL = outerLevelURL.decode("utf-8")
-
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
 
         if not descr and existingOuterLevelRequest:
-            pr_description = existingOuterLevelRequest.description()
-            if isinstance(pr_description, bytes):
-                pr_description = pr_description.decode("utf-8")
-            descr = pr_description
+            descr = existingOuterLevelRequest.description()
 
         descriptionTemplate = self.buildDescriptionTemplate()
         descriptionData = self.parseDescription(descr, descriptionTemplate)
@@ -900,8 +891,6 @@ class Review(Option, WorkspaceDirHandler):
 
             # Update related reviews
             outerLevelURL = request.link()
-            if not isinstance(outerLevelURL, str):
-                outerLevelURL = outerLevelURL.decode("utf-8")
 
             if runInSubmodules and not args["--noRecurseSubprojects"]:
                 # Ignore related review links scraped from the outer level
@@ -911,9 +900,6 @@ class Review(Option, WorkspaceDirHandler):
                 updatedReviewLinks = []
 
                 for link in pullRequestLinks:
-                    if not isinstance(link, str):
-                        link = link.decode("utf-8")
-
                     updatedReviewLinks.append(link)
 
                 if updatedReviewLinks:
@@ -925,9 +911,6 @@ class Review(Option, WorkspaceDirHandler):
                 updatedReviewLinks = descriptionData['related_reviews']
 
                 for link in pullRequestLinks:
-                    if not isinstance(link, str):
-                        link = link.decode("utf-8")
-
                     if link not in updatedReviewLinks:
                         updatedReviewLinks.append(link)
 
@@ -941,8 +924,7 @@ class Review(Option, WorkspaceDirHandler):
             updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
 
             pre_update_description = request.description()
-            if isinstance(pre_update_description, bytes):
-                pre_update_description = pre_update_description.decode("utf-8")
+
             if updatedDescription != pre_update_description:
                 request = postPullRequest(repo, title, branch, target_branch,
                                           updatedDescription,
@@ -1151,7 +1133,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         updates.append(f"title={title}")
                     if wip is not None:
                         updates.append(f"draft={wip}")
-                    if descr.strip() != request.description().decode("utf-8").strip():
+                    if descr.strip() != request.description().strip():
                         # Note that the description will change whenever the reviewers change.
                         updates.append(f"description={descr}")
 
