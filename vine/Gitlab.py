@@ -638,8 +638,44 @@ class Repo:
     def artifact(self, ref_name, artifact_path, job):
         return self.project.artifact(ref_name,artifact_path, job)
 
-    def addToMergeTrain(self, pull_request, sha):
-        path = f"/projects/{self.project.id}/merge_trains/merge_requests/{pull_request.iid()}"
+    def addToMergeTrain(self, merge_request, sha):
+        """
+        Add the given pull request to the GitLab merge train for this project.
+
+        This method sends a POST request to the GitLab API to enqueue the
+        specified merge request into the project's merge train.
+
+        Parameters
+        ----------
+        merge_request : Any
+            An object representing the merge request. It must provide an `iid()`
+            method that returns the internal ID of the merge request in GitLab.
+        sha : str
+            The SHA must match the HEAD of the merge request branch, otherwise
+            the merge fails.
+
+        Side Effects
+        ------------
+        Sends an HTTP POST request to the GitLab API endpoint:
+        `/projects/{project_id}/merge_trains/merge_requests/{iid}`
+
+        The request body includes:
+            {
+                "sha": "<provided sha>"
+            }
+
+        The call is expected to be made via `self.gitlab.http_post`.
+
+        Raises
+        ------
+        Any exception that `self.gitlab.http_post` may raise in case of
+        network errors, authentication failures, or non-successful responses.
+
+        Notes
+        -----
+        Adapted from https://github.com/python-gitlab/python-gitlab/pull/2552.
+        """
+        path = f"/projects/{self.project.id}/merge_trains/merge_requests/{merge_request.iid()}"
 
         data = {
             "sha": sha
