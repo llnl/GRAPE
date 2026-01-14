@@ -640,13 +640,17 @@ class Repo:
 
     def addToMergeTrain(self, pull_request, sha):
         path = f"/projects/{self.project.id}/merge_trains/merge_requests/{pull_request.iid()}"
+
         data = {
             "auto_merge": True,
-            "sha": sha,
-            "squash": False
+            "squash": False,
+            "sha": sha
         }
 
         self.gitlab.http_post(path, post_data=data)
+
+
+
 
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
