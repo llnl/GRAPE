@@ -642,9 +642,7 @@ class Repo:
         path = f"/projects/{self.project.id}/merge_trains/merge_requests/{pull_request.iid()}"
 
         data = {
-            #"auto_merge": True,
-            "squash": False,
-            #"sha": sha
+            "sha": sha
         }
 
         self.gitlab.http_post(path, post_data=data)
