@@ -672,10 +672,9 @@ class PullRequest:
         return self.gitlab.users.get(authorID).public_email
 
     def description(self):
-        if self.mergerequest.description != None:
-            return self.mergerequest.description.encode('ascii', 'ignore')
-        else:
-            return "".encode('ascii', 'ignore')
+        description = self.mergerequest.description or ""
+        # Drop non-ascii characters
+        return description.encode('ascii', 'ignore').decode('ascii')
 
     def date(self):
         return self.mergerequest.created_at
@@ -901,7 +900,7 @@ class PullRequest:
                f"From: {self.fromRef()}\n" + \
                f"To: {self.toRef()}\n" + \
                f"Reviewers: {all_reviewers}\n" + \
-               f"Description: {self.description().decode('utf-8')}\n"
+               f"Description: {self.description()}\n"
 
     def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
         try:
