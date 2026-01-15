@@ -1284,6 +1284,9 @@ def parseReviewRules(config=None):
                 if config.has_option(sectionName, "approveinputs"):
                     approveInputNames = config.get(sectionName, "approveinputs").split()
 
+                    if len(approveInputNames) != len(set(approveInputNames)):
+                        logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
+
                 approveInputs = []
 
                 for approveInputName in approveInputNames:
