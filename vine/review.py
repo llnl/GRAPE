@@ -1352,6 +1352,11 @@ def parseReviewRules(config=None):
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInput["source"]}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
                                 exit(1)
 
+                        # Check if the approve input is actually used
+                        if not approveInput['description'] and not approveInput['tag']:
+                            logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
+                            continue
+
                     approveInputs.append(approveInput)
 
                 # Add the rule
