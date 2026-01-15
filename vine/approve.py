@@ -578,8 +578,9 @@ class Approve(Option, WorkspaceDirHandler):
 
             # Prevent author from approving
             if review_request.author() == user_name:
-                logging.warning(f'GRAPE: WARNING: Merge request author not allowed to approve. Skipping "{repo_name}"...')
-                continue
+                if not rule['authorEligible']:
+                    logging.warning(f'GRAPE: WARNING: Merge request author not allowed to approve. Skipping "{repo_name}"...')
+                    continue
 
             # Ask for approval
             logging.info(f'Getting rule "{rule["name"]}" input for repository "{repo_name}"...')
@@ -612,6 +613,8 @@ class Approve(Option, WorkspaceDirHandler):
                         value = source_commit
                     elif source == 'username':
                         value = user_name
+                    elif source == 'tag':
+                        value = f'{rule["name"]}_{review_request.iid()}'
                     else:
                         value = Approve._get_user_input(rule_input)
 
@@ -729,7 +732,7 @@ class Approve(Option, WorkspaceDirHandler):
 
                     for repo_input in repo_inputs:
                         if repo_input['description']:
-                            rule_section += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
+                            rule_section += f'\n\n* {repo_input["label"]}: {repo_input["value"]}'
 
             def rule_section_repl(_match):
                 # Replace section and preserve new lines before next section
@@ -774,10 +777,15 @@ class Approve(Option, WorkspaceDirHandler):
                     tag_message = rule['label']
 
                     repo_inputs = repo_context['approve_inputs']
+                    first = True
 
                     for repo_input in repo_inputs:
                         if repo_input['tag']:
-                            tag_message += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
+                            if first:
+                                tag_message += '\n'
+                                first = False
+
+                            tag_message += f'\n* {repo_input["label"]}: {repo_input["value"]}'
 
                     tag = repo.getTag(tag_name)
 

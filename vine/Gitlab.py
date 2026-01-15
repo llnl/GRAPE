@@ -770,7 +770,11 @@ class PullRequest:
         Notes:
             Throws exception if the approval cannot be completed (e.g. insufficient permissions).
         """
-        return self.mergerequest.approve()
+        try:
+            return self.mergerequest.approve()
+        except gitlab.exceptions.GitlabAuthenticationError as e:
+            logging.error(f'GRAPE: ERROR: User not authorized to approve merge request.')
+
 
     def approved(self):
         approvals = self.mergerequest.approvals.get()

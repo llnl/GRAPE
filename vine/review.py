@@ -1186,6 +1186,7 @@ def getGrapeReviewRule(active):
                       'active': active,
                       'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
                       'minNumReviewers': 1,
+                      'authorEligible': False,
                       'eligibleReviewers': ['.+'],
                       'repositories': ['.+'],
                       'approveActions': ['approve'],
@@ -1253,6 +1254,12 @@ def parseReviewRules(config=None):
                 if config.has_option(sectionName, "minnumreviewers"):
                     minNumReviewers = config.getint(sectionName, "minnumreviewers")
 
+                # Default to not allowing the author to review/approve
+                authorEligible = False
+
+                if config.has_option(sectionName, "authoreligible"):
+                    authorEligible = config.getboolean(sectionName, "authoreligible")
+
                 # Default to all reviewers
                 eligibleReviewers = [".+"]
 
@@ -1277,6 +1284,9 @@ def parseReviewRules(config=None):
                 if config.has_option(sectionName, "approveinputs"):
                     approveInputNames = config.get(sectionName, "approveinputs").split()
 
+                    if len(approveInputNames) != len(set(approveInputNames)):
+                        logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
+
                 approveInputs = []
 
                 for approveInputName in approveInputNames:
@@ -1296,7 +1306,7 @@ def parseReviewRules(config=None):
                     if config.has_section(approveInputSectionName):
                         if config.has_option(approveInputSectionName, "source"):
                             approveInput["source"] = config.get(approveInputSectionName, "source")
-                            validSources = ["prompt", "username", "commit"]
+                            validSources = ["prompt", "username", "commit", "tag"]
 
                             if approveInput["source"] not in validSources:
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
@@ -1339,9 +1349,16 @@ def parseReviewRules(config=None):
                         if config.has_option(approveInputSectionName, "cache"):
                             approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
 
-                            if approveInput['cache'] and approveInput['source'] == "commit":
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" cannot cache if the source is "commit".')
+                            cacheableSources = ["prompt", "username"]
+
+                            if approveInput['cache'] and approveInput['source'] not in cacheableSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInput["source"]}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
                                 exit(1)
+
+                        # Check if the approve input is actually used
+                        if not approveInput['description'] and not approveInput['tag']:
+                            logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
+                            continue
 
                     approveInputs.append(approveInput)
 
@@ -1351,6 +1368,7 @@ def parseReviewRules(config=None):
                     "active": active,
                     "label": label,
                     "minNumReviewers": minNumReviewers,
+                    "authorEligible": authorEligible,
                     "eligibleReviewers": eligibleReviewers,
                     "repositories": repositories,
                     "approveActions": approveActions,
