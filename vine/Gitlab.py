@@ -802,6 +802,11 @@ class PullRequest:
             A list of dictionaries, each representing a diff and containing
             entries such as "diff", "old_path", and "new_path". It appears
             there is one diff dictionary per changed file.
+
+        Notes:
+            We do not use self.mergerequest.changes() because it uses a
+            deprecated endpoint. The correct endpoint is not exposed in
+            the python-gitlab library as of v7.1.0.
         """
         path = f"{self.mergerequest.manager.path}/{self.mergerequest.encoded_id}/diffs"
         return self.gitlab.http_list(path, get_all=True)
