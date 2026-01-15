@@ -1186,6 +1186,7 @@ def getGrapeReviewRule(active):
                       'active': active,
                       'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
                       'minNumReviewers': 1,
+                      'authorEligible': False,
                       'eligibleReviewers': ['.+'],
                       'repositories': ['.+'],
                       'approveActions': ['approve'],
@@ -1252,6 +1253,12 @@ def parseReviewRules(config=None):
 
                 if config.has_option(sectionName, "minnumreviewers"):
                     minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                # Default to not allowing the author to review/approve
+                authorEligible = False
+
+                if config.has_option(sectionName, "authoreligible"):
+                    authorEligible = config.getboolean(sectionName, "authoreligible")
 
                 # Default to all reviewers
                 eligibleReviewers = [".+"]
@@ -1351,6 +1358,7 @@ def parseReviewRules(config=None):
                     "active": active,
                     "label": label,
                     "minNumReviewers": minNumReviewers,
+                    "authorEligible": authorEligible,
                     "eligibleReviewers": eligibleReviewers,
                     "repositories": repositories,
                     "approveActions": approveActions,
