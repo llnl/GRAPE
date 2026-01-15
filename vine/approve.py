@@ -730,7 +730,7 @@ class Approve(Option, WorkspaceDirHandler):
 
                     for repo_input in repo_inputs:
                         if repo_input['description']:
-                            rule_section += f'\n\n{repo_input["label"]}: {repo_input["value"]}'
+                            rule_section += f'\n\n* {repo_input["label"]}: {repo_input["value"]}'
 
             def rule_section_repl(_match):
                 # Replace section and preserve new lines before next section
