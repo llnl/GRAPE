@@ -794,20 +794,17 @@ class PullRequest:
 
     def diffs(self):
         """
-        Retrieve the merge request's changes, including file diffs and related metadata.
+        Retrieve the list of all diffs for the current merge request.
 
-        Returns:
-            dict: GitLab API response from the merge request changes endpoint.
-
-        Raises:
-            gitlab.exceptions.GitlabGetError: If the changes cannot be retrieved.
-
-        Note:
-            The changes API is deprecated in favor of the diffs API, but the diffs API
-            does not yet provide the needed information (or perhaps we need to update
-            the python-gitlab library).
+        Returns
+        -------
+        list
+            A list of dictionaries, each representing a diff and containing
+            entries such as "diff", "old_path", and "new_path". It appears
+            there is one diff dictionary per changed file.
         """
-        return self.mergerequest.changes()
+        path = f"{self.mergerequest.manager.path}/{self.mergerequest.encoded_id}/diffs"
+        return self.gitlab.http_list(path, get_all=True)
 
     @staticmethod
     def get_title_for_wip_state(title, wip):
