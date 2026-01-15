@@ -978,13 +978,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     # Get source diffs, check for truncation, and normalize for comparison
                                     sourceDiffs = pullRequest.diffs()
 
-                                    if sourceDiffs['overflow']:
-                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
-                                        verified = False
-                                        break
-
-                                    sourceDiffs = sourceDiffs.get('changes', [])
-
                                     for diff in sourceDiffs:
                                         if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
                                             userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
@@ -994,7 +987,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
 
                                     # Get tag diffs, check for truncation, and normalize for comparison
-                                    tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target).get('diffs', [])
+                                    tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target)
+
+                                    if tagDiffs['compare_timeout']:
+                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                        verified = False
+
+                                    tagDiffs = tagDiffs.get('diffs', [])
 
                                     for diff in tagDiffs:
                                         if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
