@@ -1303,7 +1303,7 @@ def parseReviewRules(config=None):
                     if config.has_section(approveInputSectionName):
                         if config.has_option(approveInputSectionName, "source"):
                             approveInput["source"] = config.get(approveInputSectionName, "source")
-                            validSources = ["prompt", "username", "commit"]
+                            validSources = ["prompt", "username", "commit", "tag"]
 
                             if approveInput["source"] not in validSources:
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
@@ -1346,8 +1346,10 @@ def parseReviewRules(config=None):
                         if config.has_option(approveInputSectionName, "cache"):
                             approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
 
-                            if approveInput['cache'] and approveInput['source'] == "commit":
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" cannot cache if the source is "commit".')
+                            cacheableSources = ["prompt", "username"]
+
+                            if approveInput['cache'] and approveInput['source'] not in cacheableSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInput["source"]}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
                                 exit(1)
 
                     approveInputs.append(approveInput)
