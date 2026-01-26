@@ -587,12 +587,20 @@ class Approve(Option, WorkspaceDirHandler):
             source_branch = review_request.fromRef()
             source_commit = review_request.fromSHA()
             approval_granted = utility.userInput(
-                f'I approve the changes on branch "{source_branch}" ({source_commit}).',
+                f'I approve the changes on branch "{source_branch}".',
                 default='y'
             )
 
             if not approval_granted:
                 continue
+
+            commit_approved = utility.userInput(
+                f'Enter the commit reviewed:'
+            )
+
+            if commit_approved != source_commit:
+                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_approved}" does not match branch head commit sha "{source_commit}". Exiting...')
+                exit(1)
 
             repo_context['approved'] = True
             any_approvals = True
