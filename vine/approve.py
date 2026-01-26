@@ -594,12 +594,12 @@ class Approve(Option, WorkspaceDirHandler):
             if not approval_granted:
                 continue
 
-            commit_approved = utility.userInput(
+            commit_reviewed = utility.userInput(
                 f'Enter the commit reviewed:'
             )
 
-            if commit_approved != source_commit:
-                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_approved}" does not match branch head commit sha "{source_commit}". Exiting...')
+            if commit_reviewed != source_commit:
+                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" does not match branch head commit sha "{source_commit}". Exiting...')
                 exit(1)
 
             repo_context['approved'] = True
