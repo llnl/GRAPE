@@ -57,6 +57,9 @@ class Status(Option, WorkspaceDirHandler):
             status[r] = s
 
         for sub in status.keys():
+            if status[sub] is None:
+                logging.info(f' {sub} is invalid!')
+                continue
             for line in status[sub]:
                 lstripped = line.strip()
                 if lstripped:
@@ -91,13 +94,23 @@ class Status(Option, WorkspaceDirHandler):
         subPubMap = cfg.getMapping(self.SECTION_WORKSPACE, "submodulepublicmappings")
         if wsBranch in publicBranches:
             for sub in git.getActiveSubmodules(execution_path=self.workspace_dir):
-                subbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, sub))
+                try:
+                    subbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, sub))
+                except FileNotFoundError:
+                    consistentBranchState = False
+                    logging.info(f"Submodule directory {os.path.join(self.workspace_dir, sub)} is invalid!")
+                    continue
                 if subbranch != subPubMap[wsBranch]:
                     consistentBranchState = False
                     logging.info(f"Submodule {sub} on branch {subbranch} when grape expects it to be on {subPubMap[wsBranch]}")
         else:
             for sub in git.getActiveSubmodules(execution_path=self.workspace_dir):
-                subbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, sub))
+                try:
+                    subbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, sub))
+                except FileNotFoundError:
+                    consistentBranchState = False
+                    logging.info(f"Submodule directory {os.path.join(self.workspace_dir, sub)} is invalid!")
+                    continue
                 if subbranch != wsBranch:
                     consistentBranchState = False
                     logging.info(f"Submodule {sub} on branch {subbranch}" +
@@ -105,7 +118,12 @@ class Status(Option, WorkspaceDirHandler):
 
         # check that nested subproject branching is consistent
         for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=self.workspace_dir):
-            nestedbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, nested))
+            try:
+                nestedbranch = git.currentBranch(execution_path=os.path.join(self.workspace_dir, nested))
+            except FileNotFoundError:
+                consistentBranchState = False
+                logging.info(f"Nested subproject directory {os.path.join(self.workspace_dir, nested)} is invalid!")
+                continue
             if nestedbranch != wsBranch:
                 consistentBranchState = False
                 logging.info(f"Nested Project {nested} on branch " +
