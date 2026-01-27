@@ -606,7 +606,7 @@ class Approve(Option, WorkspaceDirHandler):
                 local_dt = dt.astimezone()
                 formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
 
-                print(f'  {commit.short_id}  {formatted_dt}  {commit.title}')
+                print(f'  {commit.short_id}    {formatted_dt}    {commit.title}')
 
                 # Limit the number of commits printed
                 commits_printed = commits_printed + 1
