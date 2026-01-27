@@ -598,13 +598,19 @@ class Approve(Option, WorkspaceDirHandler):
             short_source_commit = ""
             commits = review_request.commits()
 
-            for commit in commits:
+            sorted_commits_desc = sorted(
+                commits,
+                key=lambda c: datetime.fromisoformat(c.committed_date),
+                reverse=True,
+            )
+
+            for commit in sorted_commits_desc:
                 if commit.id == source_commit:
                     short_source_commit = commit.short_id
 
                 dt = datetime.fromisoformat(commit.committed_date)
                 local_dt = dt.astimezone()
-                formatted_dt = local_dt.strftime("%a %d %b %Y  %I:%M %p")
+                formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
 
                 print(f'  {commit.short_id}    {formatted_dt}    {commit.title}')
 
