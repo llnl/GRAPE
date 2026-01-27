@@ -518,7 +518,7 @@ class Approve(Option, WorkspaceDirHandler):
         examples = rule_input['examples']
 
         if examples:
-            print('Examples:')
+            print('\nExamples:')
 
             for example, description in examples.items():
                 if example:
@@ -531,7 +531,7 @@ class Approve(Option, WorkspaceDirHandler):
         substitutions = rule_input['substitutions']
 
         if substitutions:
-            print('Shortcuts/Substitutions:')
+            print('\nShortcuts/Substitutions:')
 
             for old, new in substitutions.items():
                 print(f'  "{old}" -> "{new}"')
@@ -540,9 +540,9 @@ class Approve(Option, WorkspaceDirHandler):
         default = rule_input['default']
 
         if default:
-            value = input(f'(def: {default}) ==> ').strip() or default
+            value = input(f'\n(def: {default}) ==> ').strip() or default
         else:
-            value = input('==> ').strip()
+            value = input('\n==> ').strip()
 
         # Loop if required and no value was entered
         if rule_input['required']:
