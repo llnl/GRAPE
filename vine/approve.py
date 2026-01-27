@@ -513,6 +513,14 @@ class Approve(Option, WorkspaceDirHandler):
     def _get_user_input(rule_input):
         print(f'\n{rule_input["prompt"]}')
 
+        substitutions = rule_input['substitutions']
+
+        if substitutions:
+            print('Substitutions:')
+
+            for substitution in substitutions:
+                print(f'  "{substitution}" -> "{substitutions[substitution]}"')
+
         default = rule_input['default']
 
         if default:
@@ -524,6 +532,9 @@ class Approve(Option, WorkspaceDirHandler):
             while not value:
                 print(f'Please enter a non-empty string.')
                 value = input('==> ').strip()
+
+        for old, new in substitutions.items():
+            value = value.replace(old, new)
 
         return value
 

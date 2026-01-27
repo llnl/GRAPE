@@ -1,3 +1,4 @@
+import ast
 import io
 import os
 import logging
@@ -1295,6 +1296,7 @@ def parseReviewRules(config=None):
                         'prompt': approveInputName,
                         'default': None,
                         'label': approveInputName,
+                        'substitutions': {},
                         'tag': True,
                         'description': True,
                         'required': False,
@@ -1328,6 +1330,23 @@ def parseReviewRules(config=None):
 
                         if config.has_option(approveInputSectionName, "label"):
                             approveInput['label'] = config.get(approveInputSectionName, "label")
+
+                        if config.has_option(approveInputSectionName, "substitutions"):
+                            substitutions = config.get(approveInputSectionName, "substitutions")
+
+                            try:
+                                substitutions = ast.literal_eval(substitutions)
+                            except:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" in the following format: {{"key1": "value1", "key2": "value2"}}')
+                                exit(1)
+
+                            temp = {}
+
+                            for key in substitutions:
+                                temp[str(key)] = str(substitutions[key])
+
+                            substitutions = temp
+                            approveInput['substitutions'] = substitutions
 
                         if config.has_option(approveInputSectionName, "tag"):
                             approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
