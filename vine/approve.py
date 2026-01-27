@@ -511,16 +511,32 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _get_user_input(rule_input):
+        # Print prompt
         print(f'\n{rule_input["prompt"]}')
 
+        # Print examples
+        examples = rule_input['examples']
+
+        if examples:
+            print('Examples:')
+
+            for example, description in examples.items():
+                if example:
+                    if description:
+                        print(f'  "{example}"  {description}')
+                    else:
+                        print(f'  "{example}"')
+
+        # Print substitutions
         substitutions = rule_input['substitutions']
 
         if substitutions:
             print('Shortcuts/Substitutions:')
 
-            for substitution in substitutions:
-                print(f'  "{substitution}" -> "{substitutions[substitution]}"')
+            for old, new in substitutions.items():
+                print(f'  "{old}" -> "{new}"')
 
+        # Print default
         default = rule_input['default']
 
         if default:
@@ -528,11 +544,13 @@ class Approve(Option, WorkspaceDirHandler):
         else:
             value = input('==> ').strip()
 
+        # Loop if required and no value was entered
         if rule_input['required']:
             while not value:
                 print(f'Please enter a non-empty string.')
                 value = input('==> ').strip()
 
+        # Perform substitutions
         for old, new in substitutions.items():
             value = value.replace(old, new)
 
