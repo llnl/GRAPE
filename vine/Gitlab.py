@@ -760,6 +760,18 @@ class PullRequest:
     def fromSHA(self):
         return self.mergerequest.sha
 
+    def commits(self):
+        """
+        Return all commits associated with this merge request.
+
+        Returns
+        -------
+        List[ProjectCommit]
+            A list of `ProjectCommit` objects for this merge request, in the order
+            returned by the GitLab API (appears to be newest to oldest).
+        """
+        return self.mergerequest.commits(get_all=True)
+
     def approve(self):
         """
         Approve this merge request.
