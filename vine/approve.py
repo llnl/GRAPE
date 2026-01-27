@@ -519,43 +519,43 @@ class Approve(Option, WorkspaceDirHandler):
         help = rule_input['help']
 
         if help:
-            print(f'\nHelp: {help}')
+            print(f'\n  Help: {help}')
 
         # Print examples
         examples = rule_input['examples']
 
         if examples:
-            print('\nExamples:')
+            print('\n  Examples:')
 
             for example, description in examples.items():
                 if example:
                     if description:
-                        print(f'  "{example}"  {description}')
+                        print(f'    "{example}"  {description}')
                     else:
-                        print(f'  "{example}"')
+                        print(f'    "{example}"')
 
         # Print substitutions
         substitutions = rule_input['substitutions']
 
         if substitutions:
-            print('\nShortcuts/Substitutions:')
+            print('\n  Shortcuts/Substitutions:')
 
             for old, new in substitutions.items():
-                print(f'  "{old}" -> "{new}"')
+                print(f'    "{old}" -> "{new}"')
 
         # Print default
         default = rule_input['default']
 
         if default:
-            value = input(f'\n(def: {default}) ==> ').strip() or default
-        else:
-            value = input('\n==> ').strip()
+            print(f'\n  Default: "{default}"')
+
+        value = input('\n==> ').strip()
 
         # Loop if required and no value was entered
         if rule_input['required']:
             while not value:
                 print(f'\nPlease enter a non-empty string.')
-                value = input('==> ').strip()
+                value = input('\n==> ').strip()
 
         # Perform substitutions
         for old, new in substitutions.items():
