@@ -303,6 +303,10 @@ class PullRequest(StashyNode):
         logging.error("GRAPE: ERROR: fromSHA not implemented for Atlassian")
         exit(1)
 
+    def commits(self):
+        logging.error("GRAPE: ERROR: commits not implemented for Atlassian")
+        exit(1)
+
     def approve(self):
         logging.error("GRAPE: ERROR: approve not implemented for Atlassian")
         exit(1)

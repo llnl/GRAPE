@@ -1,5 +1,6 @@
 import logging
 import configparser
+from datetime import datetime
 from io import StringIO
 from vine import CodeReviewsFactory
 from vine import config_parser_base
@@ -562,6 +563,7 @@ class Approve(Option, WorkspaceDirHandler):
         Exits with status code 0 when no approvals are granted.
         """
         any_approvals = False
+        logging.info(f'Getting approval input for rule "{rule["name"]}"...')
 
         for repo_name in modified_repos:
             # Set default approval and input state
@@ -583,16 +585,68 @@ class Approve(Option, WorkspaceDirHandler):
                     continue
 
             # Ask for approval
-            logging.info(f'Getting rule "{rule["name"]}" input for repository "{repo_name}"...')
             source_branch = review_request.fromRef()
-            source_commit = review_request.fromSHA()
+            source_commit = review_request.fromSHA().lower()
+
+            print(f'\nRepo: {repo_name}')
+            print(f'Branch: {source_branch}')
+            print(f'Merge Request: {review_request.link()}')
+            print(f'Changes:')
+
+            commits_printed = 0
+            max_commits_printed = 5
+            short_source_commit = ""
+            commits = review_request.commits()
+
+            sorted_commits_desc = sorted(
+                commits,
+                key=lambda c: datetime.fromisoformat(c.committed_date),
+                reverse=True,
+            )
+
+            for commit in sorted_commits_desc:
+                if commit.id.lower() == source_commit:
+                    short_source_commit = commit.short_id.lower()
+
+                dt = datetime.fromisoformat(commit.committed_date)
+                local_dt = dt.astimezone()
+                formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
+
+                print(f'  {commit.short_id}    {formatted_dt}    {commit.title}')
+
+                # Limit the number of commits printed
+                commits_printed = commits_printed + 1
+
+                if commits_printed == max_commits_printed:
+                    break
+
+            if commits_printed == max_commits_printed and len(commits) != max_commits_printed:
+                print(f'  ...')
+
+            if not short_source_commit:
+                logging.error(f'GRAPE: ERROR: Latest commit "{source_commit}" not found. Contact a GRAPE developer.')
+                exit(1)
+
             approval_granted = utility.userInput(
-                f'I approve the changes on branch "{source_branch}" ({source_commit}).',
+                'I approve these changes.',
                 default='y'
             )
 
             if not approval_granted:
+                logging.info(f'Skipping approval for "{repo_name}"...')
                 continue
+
+            commit_reviewed = utility.userInput(
+                f'Enter the most recent commit reviewed to confirm approval:'
+            ).lower()
+
+            if not source_commit.startswith(commit_reviewed):
+                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" does not match branch head commit sha "{source_commit}". Exiting...')
+                exit(1)
+
+            if not commit_reviewed.startswith(short_source_commit):
+                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" must have at least the same number of characters as the branch head commit short sha "{short_source_commit}". Exiting...')
+                exit(1)
 
             repo_context['approved'] = True
             any_approvals = True
