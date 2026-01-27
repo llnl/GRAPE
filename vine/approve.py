@@ -519,7 +519,7 @@ class Approve(Option, WorkspaceDirHandler):
         help = rule_input['help']
 
         if help:
-            print(f'\n  Help: {help}')
+            print(f'\n  Help:\n    {help}')
 
         # Print examples
         examples = rule_input['examples']
@@ -527,10 +527,15 @@ class Approve(Option, WorkspaceDirHandler):
         if examples:
             print('\n  Examples:')
 
+            longest_len = 0
+
+            for example in examples:
+                longest_len = max(longest_len, len(example))
+
             for example, description in examples.items():
                 if example:
                     if description:
-                        print(f'    "{example}"  {description}')
+                        print(f'    "{example}"{" " * (longest_len - len(example))}    {description}')
                     else:
                         print(f'    "{example}"')
 
@@ -540,16 +545,21 @@ class Approve(Option, WorkspaceDirHandler):
         if substitutions:
             print('\n  Shortcuts/Substitutions:')
 
-            for old, new in substitutions.items():
-                print(f'    "{old}" -> "{new}"')
+            longest_len = 0
 
-        # Print default
+            for substitution in substitutions:
+                longest_len = max(longest_len, len(substitution))
+
+            for old, new in substitutions.items():
+                print(f'    "{old}"{" " * (longest_len - len(old))} -> "{new}"')
+
+        # Print default and prompt for input
         default = rule_input['default']
 
         if default:
-            print(f'\n  Default: "{default}"')
-
-        value = input('\n==> ').strip()
+            value = input(f'\n(def: {default}) ==> ').strip()
+        else:
+            value = input('\n==> ').strip()
 
         # Loop if required and no value was entered
         if rule_input['required']:
