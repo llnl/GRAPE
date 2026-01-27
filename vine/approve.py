@@ -594,6 +594,7 @@ class Approve(Option, WorkspaceDirHandler):
             print(f'Changes:')
 
             commits_printed = 0
+            max_commits_printed = 5
             short_source_commit = ""
             commits = review_request.commits()
 
@@ -607,13 +608,13 @@ class Approve(Option, WorkspaceDirHandler):
 
                 print(f'  {commit.short_id}  {formatted_dt}  {commit.title}')
 
-                # Limit to 10 lines
+                # Limit the number of commits printed
                 commits_printed = commits_printed + 1
 
-                if commits_printed == 10:
+                if commits_printed == max_commits_printed:
                     break
 
-            if commits_printed == 10 and len(commits) != 10:
+            if commits_printed == max_commits_printed and len(commits) != max_commits_printed:
                 print(f'  ...')
 
             if not short_source_commit:
