@@ -586,7 +586,7 @@ class Approve(Option, WorkspaceDirHandler):
 
             # Ask for approval
             source_branch = review_request.fromRef()
-            source_commit = review_request.fromSHA()
+            source_commit = review_request.fromSHA().lower()
 
             print(f'\nRepo: {repo_name}')
             print(f'Branch: {source_branch}')
@@ -605,8 +605,8 @@ class Approve(Option, WorkspaceDirHandler):
             )
 
             for commit in sorted_commits_desc:
-                if commit.id == source_commit:
-                    short_source_commit = commit.short_id
+                if commit.id.lower() == source_commit:
+                    short_source_commit = commit.short_id.lower()
 
                 dt = datetime.fromisoformat(commit.committed_date)
                 local_dt = dt.astimezone()
@@ -638,12 +638,15 @@ class Approve(Option, WorkspaceDirHandler):
 
             commit_reviewed = utility.userInput(
                 f'Enter the most recent commit reviewed to confirm approval:'
-            )
+            ).lower()
 
-            if commit_reviewed != short_source_commit and commit_reviewed != source_commit:
+            if not source_commit.startswith(commit_reviewed):
                 logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" does not match branch head commit sha "{source_commit}". Exiting...')
                 exit(1)
 
+            if not commit_reviewed.startswith(short_source_commit):
+                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" must have at least the same number of characters as the branch head commit short sha "{short_source_commit}". Exiting...')
+                exit(1)
 
             repo_context['approved'] = True
             any_approvals = True
