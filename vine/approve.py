@@ -516,7 +516,7 @@ class Approve(Option, WorkspaceDirHandler):
         substitutions = rule_input['substitutions']
 
         if substitutions:
-            print('Substitutions:')
+            print('Shortcuts/Substitutions:')
 
             for substitution in substitutions:
                 print(f'  "{substitution}" -> "{substitutions[substitution]}"')
