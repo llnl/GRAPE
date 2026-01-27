@@ -1337,13 +1337,22 @@ def parseReviewRules(config=None):
                             try:
                                 substitutions = ast.literal_eval(substitutions)
                             except:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" in the following format: {{"key1": "value1", "key2": "value2"}}')
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" in the following format: {{"key1": "value1", "key2": "value2", ...}}')
                                 exit(1)
 
                             temp = {}
+                            values = set()
 
-                            for key in substitutions:
-                                temp[str(key)] = str(substitutions[key])
+                            for key, val in substitutions.items():
+                                key_str = str(key)
+                                val_str = str(val)
+                                temp[key_str] = val_str
+
+                                for value in values:
+                                    if key_str in value:
+                                        logging.warning(f'GRAPE: WARNING: Global config section "{approveInputSectionName}" has overlapping substitutions. This may result in unexpected substitutions.')
+
+                                values.add(val_str)
 
                             substitutions = temp
                             approveInput['substitutions'] = substitutions
