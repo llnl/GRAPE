@@ -1,0 +1,70 @@
+
+
+Tue Jan 27 13:19:01 2026 Alan Dayton
+MR_700
+Reviewers: Ben Liu, David Dawson
+
+* Adds the option to specify a help string for approve input
+
+* Adds the option to specify example input with option descriptions of each input
+
+* Adds the option to specify input shortcuts/substitutions (e.g. \"gt\" -> \"General Topics (A.1, B.2)\")
+
+* If these options aren't specified, they are simply left out
+
+In the .grapeconfig (the MR description is adding extra new lines):
+
+'''
+
+[review-dc-approve-inputs-guides]
+
+source = prompt
+
+prompt = Enter Guide(s):
+
+default =
+
+label = Guide(s)
+
+help = Guide(s) used for Derivative Classifier review
+
+examples = {\"C 2.4\": \"Some subject\", \"D 5.5\": \"Another subject\"}
+
+substitutions = {\"General Topics\": \"General Topics (A 1.1, B 1.2)\", \"gt\": \"General Topics (A 1.1, B 1.2)\"}
+
+required = True
+
+cache = False
+
+'''
+
+Displayed to the user (the MR description is adding extra new lines):
+
+'''
+
+Enter Guide(s):
+
+  Help:
+    Guide(s) used for Derivative Classifier review
+
+  Examples:
+    \"C 2.4 8.1\"    Some subject
+    \"D 5.5\"        Another subject
+
+  Shortcuts/Substitutions:
+    \"General Topics\" -> \"General Topics (A 1.1, B 1.2)\"
+    \"gt\"             -> \"General Topics (A 1.1, B 1.2)\"
+
+==>
+
+'''
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.19
+
+--reviewers=benliu,dawson24

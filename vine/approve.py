@@ -512,19 +512,64 @@ class Approve(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _get_user_input(rule_input):
+        # Print prompt
         print(f'\n{rule_input["prompt"]}')
 
+        # Print help
+        help = rule_input['help']
+
+        if help:
+            print(f'\n  Help:\n    {help}')
+
+        # Print examples
+        examples = rule_input['examples']
+
+        if examples:
+            print('\n  Examples:')
+
+            longest_len = 0
+
+            for example in examples:
+                longest_len = max(longest_len, len(example))
+
+            for example, description in examples.items():
+                if example:
+                    if description:
+                        print(f'    "{example}"{" " * (longest_len - len(example))}    {description}')
+                    else:
+                        print(f'    "{example}"')
+
+        # Print substitutions
+        substitutions = rule_input['substitutions']
+
+        if substitutions:
+            print('\n  Shortcuts/Substitutions:')
+
+            longest_len = 0
+
+            for substitution in substitutions:
+                longest_len = max(longest_len, len(substitution))
+
+            for old, new in substitutions.items():
+                print(f'    "{old}"{" " * (longest_len - len(old))} -> "{new}"')
+
+        # Print default and prompt for input
         default = rule_input['default']
 
         if default:
-            value = input(f'(def: {default}) ==> ').strip() or default
+            value = input(f'\n(def: {default}) ==> ').strip()
         else:
-            value = input('==> ').strip()
+            value = input('\n==> ').strip()
 
+        # Loop if required and no value was entered
         if rule_input['required']:
             while not value:
-                print(f'Please enter a non-empty string.')
-                value = input('==> ').strip()
+                print(f'\nPlease enter a non-empty string.')
+                value = input('\n==> ').strip()
+
+        # Perform substitutions
+        for old, new in substitutions.items():
+            value = value.replace(old, new)
 
         return value
 

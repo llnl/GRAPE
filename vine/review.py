@@ -1,3 +1,4 @@
+import ast
 import io
 import os
 import logging
@@ -1295,6 +1296,9 @@ def parseReviewRules(config=None):
                         'prompt': approveInputName,
                         'default': None,
                         'label': approveInputName,
+                        'help': '',
+                        'examples': {},
+                        'substitutions': {},
                         'tag': True,
                         'description': True,
                         'required': False,
@@ -1328,6 +1332,54 @@ def parseReviewRules(config=None):
 
                         if config.has_option(approveInputSectionName, "label"):
                             approveInput['label'] = config.get(approveInputSectionName, "label")
+
+                        if config.has_option(approveInputSectionName, "help"):
+                            approveInput['help'] = config.get(approveInputSectionName, "help")
+
+                        if config.has_option(approveInputSectionName, "examples"):
+                            examples = config.get(approveInputSectionName, "examples")
+
+                            try:
+                                examples = ast.literal_eval(examples)
+                            except:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
+                                exit(1)
+
+                            if not isinstance(examples, dict):
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
+                                exit(1)
+
+                            approveInput['examples'] = examples
+
+                        if config.has_option(approveInputSectionName, "substitutions"):
+                            substitutions = config.get(approveInputSectionName, "substitutions")
+
+                            try:
+                                substitutions = ast.literal_eval(substitutions)
+                            except:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
+                                exit(1)
+
+                            if not isinstance(substitutions, dict):
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
+                                exit(1)
+
+                            temp = {}
+                            values = set()
+
+                            for key, val in substitutions.items():
+                                key_str = str(key)
+                                val_str = str(val)
+                                temp[key_str] = val_str
+
+                                for value in values:
+                                    if key_str in value:
+                                        logging.warning(f'GRAPE: WARNING: Global config section "{approveInputSectionName}" has overlapping substitutions. This may result in unexpected substitutions.')
+
+                                values.add(val_str)
+
+                            substitutions = temp
+                            approveInput['substitutions'] = substitutions
 
                         if config.has_option(approveInputSectionName, "tag"):
                             approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
