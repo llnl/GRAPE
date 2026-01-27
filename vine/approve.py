@@ -604,7 +604,7 @@ class Approve(Option, WorkspaceDirHandler):
 
                 dt = datetime.fromisoformat(commit.committed_date)
                 local_dt = dt.astimezone()
-                formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
+                formatted_dt = local_dt.strftime("%a %d %b %Y  %I:%M %p")
 
                 print(f'  {commit.short_id}    {formatted_dt}    {commit.title}')
 
