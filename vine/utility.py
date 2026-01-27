@@ -257,7 +257,7 @@ def authenticateToGitHost(user_name, workspace_dir, args):
         """
         url = args['--codeReviewsURL']
         verify = True if args['--verifySSL'].lower() == 'true' else False
-        logging.info(f'Logging onto {url}')
+        logging.info(f'Logging onto {url}...')
 
         return CodeReviewsFactory.makeCodeReviews(
             user_name,
