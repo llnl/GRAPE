@@ -608,10 +608,13 @@ class Approve(Option, WorkspaceDirHandler):
                 print(f'  {commit.short_id}  {formatted_dt}  {commit.title}')
 
                 # Limit to 10 lines
+                commits_printed = commits_printed + 1
+
                 if commits_printed == 10:
                     break
-                else:
-                    commits_printed = commits_printed + 1
+
+            if commits_printed == 10 and len(commits) != 10:
+                print(f'  ...')
 
             if not short_source_commit:
                 logging.error(f'GRAPE: ERROR: Latest commit "{source_commit}" not found. Contact a GRAPE developer.')
