@@ -1296,6 +1296,7 @@ def parseReviewRules(config=None):
                         'prompt': approveInputName,
                         'default': None,
                         'label': approveInputName,
+                        'help': '',
                         'examples': {},
                         'substitutions': {},
                         'tag': True,
@@ -1331,6 +1332,9 @@ def parseReviewRules(config=None):
 
                         if config.has_option(approveInputSectionName, "label"):
                             approveInput['label'] = config.get(approveInputSectionName, "label")
+
+                        if config.has_option(approveInputSectionName, "help"):
+                            approveInput['help'] = config.get(approveInputSectionName, "help")
 
                         if config.has_option(approveInputSectionName, "examples"):
                             examples = config.get(approveInputSectionName, "examples")

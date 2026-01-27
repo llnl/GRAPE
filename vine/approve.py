@@ -514,6 +514,12 @@ class Approve(Option, WorkspaceDirHandler):
         # Print prompt
         print(f'\n{rule_input["prompt"]}')
 
+        # Print help
+        help = rule_input['help']
+
+        if help:
+            print(f'\nHelp: {help}')
+
         # Print examples
         examples = rule_input['examples']
 
@@ -547,7 +553,7 @@ class Approve(Option, WorkspaceDirHandler):
         # Loop if required and no value was entered
         if rule_input['required']:
             while not value:
-                print(f'Please enter a non-empty string.')
+                print(f'\nPlease enter a non-empty string.')
                 value = input('==> ').strip()
 
         # Perform substitutions
