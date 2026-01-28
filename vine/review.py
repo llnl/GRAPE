@@ -1505,20 +1505,20 @@ def parseReviewRuleMap(reviewRules):
         if config.has_option(reviewSectionName, 'rulemap'):
             mappings = config.get(reviewSectionName, 'rulemap')
 
-            for mapping in mappings:
+            for mapping in mappings.split():
                 tokens = mapping.split(':')
 
                 if len(tokens) != 2:
                     logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
                     exit(1)
 
-                oldRule = token[0]
+                oldRule = tokens[0]
 
                 if oldRule not in reviewRules or reviewRules[oldRule]['active']:
                     logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
                     exit(1)
 
-                newRule = token[1]
+                newRule = tokens[1]
 
                 if newRule not in reviewRules or not reviewRules[newRule]['active']:
                     logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
