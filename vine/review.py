@@ -1414,6 +1414,13 @@ def parseReviewRules(config=None):
 
                     approveInputs.append(approveInput)
 
+                # Controls whether publish checks are just reported or actually
+                # prevent a publish.
+                dryRun = False
+
+                if config.has_option(sectionName, "dryrun"):
+                    dryRun = config.getboolean(sectionName, "dryrun")
+
                 # Add the rule
                 reviewRules[reviewRuleName] = {
                     "name": reviewRuleName,
@@ -1424,7 +1431,8 @@ def parseReviewRules(config=None):
                     "eligibleReviewers": eligibleReviewers,
                     "repositories": repositories,
                     "approveActions": approveActions,
-                    "approveInputs": approveInputs
+                    "approveInputs": approveInputs,
+                    "dryRun": dryRun
                 }
 
     # Add the GRAPE review rule. It will be active only if the user has
