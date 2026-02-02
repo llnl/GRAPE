@@ -865,6 +865,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 reviewRule = reviewRules[reviewRuleName]
 
                 if reviewRule['active']:
+                    ruleDryRun = reviewRule['dryRun']
                     reviewRuleRepositories = reviewRule["repositories"]
 
                     for reviewRuleRepository in reviewRuleRepositories:
@@ -876,7 +877,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             # Check if reviewers are assigned to the review rule
                             if reviewRuleName not in reviewersFromDescription:
                                 userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
-                                verified = False
+
+                                if not ruleDryRun:
+                                    verified = False
+
                                 break
 
                             # Check if at least the minimum number of required
@@ -885,7 +889,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             if len(assignedReviewers) < minNumReviewers:
                                 userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
-                                verified = False
+
+                                if not ruleDryRun:
+                                    verified = False
+
                                 break
 
                             # Check that the assigned reviewers are eligible
@@ -905,7 +912,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             if ineligibleReviewers:
                                 userMessage += f'\n\t{repoName}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
-                                verified = False
+
+                                if not ruleDryRun:
+                                    verified = False
+
                                 break
 
                             # Check that the assigned reviewers have approved.
@@ -928,7 +938,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             if unfinishedReviewers:
                                 userMessage += f'\n\t{repoName}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
-                                verified = False
+
+                                if not ruleDryRun:
+                                    verified = False
+
                                 break
 
                             # Check approve actions are completed.
@@ -944,7 +957,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 # Check tag exists
                                 if not tag:
                                     userMessage += f'\n\t{repoName}: "{label}" needs approve tag.'
-                                    verified = False
+
+                                    if not ruleDryRun:
+                                        verified = False
+
                                     break
 
                                 # TODO: If the GitLab tags API ever returns the tag creator,
@@ -981,7 +997,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     for diff in sourceDiffs:
                                         if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
                                             userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
-                                            verified = False
+
+                                            if not ruleDryRun:
+                                                verified = False
+
                                             break
 
                                     sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
@@ -991,14 +1010,21 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                     if tagDiffs['compare_timeout']:
                                         userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
-                                        verified = False
+
+                                        if not ruleDryRun:
+                                            verified = False
+
+                                        break
 
                                     tagDiffs = tagDiffs.get('diffs', [])
 
                                     for diff in tagDiffs:
                                         if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
                                             userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
-                                            verified = False
+
+                                            if not ruleDryRun:
+                                                verified = False
+
                                             break
 
                                     tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
@@ -1006,13 +1032,19 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     # Compare source and tag diffs
                                     if tagDiffs != sourceDiffs:
                                         userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
-                                        verified = False
+
+                                        if not ruleDryRun:
+                                            verified = False
+
                                         break
 
                                 # Check tag message
                                 if label not in tag.message:
                                     userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
-                                    verified = False
+
+                                    if not ruleDryRun:
+                                        verified = False
+
                                     break
 
                                 approveInputs = reviewRule['approveInputs']
@@ -1020,7 +1052,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 for approveInput in approveInputs:
                                     if approveInput['tag'] and approveInput['label'] not in tag.message:
                                         userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
-                                        verified = False
+
+                                        if not ruleDryRun:
+                                            verified = False
+
                                         break
 
                                 # TODO: Make sure progress can't be resumed after commits
