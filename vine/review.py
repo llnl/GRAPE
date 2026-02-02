@@ -1191,7 +1191,8 @@ def getGrapeReviewRule(active):
                       'eligibleReviewers': ['.+'],
                       'repositories': ['.+'],
                       'approveActions': ['approve'],
-                      'approveInputs': []}}
+                      'approveInputs': [],
+                      'dryRun': False}}
 
 
 def parseReviewRules(config=None):
