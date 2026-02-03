@@ -134,7 +134,7 @@ class GrapeGitlabAdapter:
         # enable inbound allowlist and add top level repo to list
         data = '\'{ "query": "' + query.replace('"', '\\"') + '" } \''
         # strip newlines from query
-        data = re.sub(' +', ' ', data.replace("\n"," "))
+        data = re.sub(r' +', ' ', data.replace("\n"," "))
         command = f'{self._curl} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary ' + data
         if not dryRun:
             completed_process = subprocess.run(command, capture_output=True, shell=True)
@@ -920,7 +920,7 @@ class PullRequest:
             self.mergerequest.reviewer_ids = list(all_reviewer_ids)
 
         if self.mergerequest.description:
-            self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
+            self.mergerequest.description = re.sub(r"([^\n])\n([^\n])", r"\1\n\n\2", self.mergerequest.description)
 
         labels = set(self.mergerequest.labels)
         for label in add_labels:

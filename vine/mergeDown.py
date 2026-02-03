@@ -616,8 +616,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         # Get all the version tags after the tagged version, oldest first
         branch_log = git.log(f"--oneline --decorate --reverse --no-color HEAD --not {versionTag}", execution_path=self.workspace_dir)
         tagsFetched = False
+        pattern = re.compile(rf"tag: ({re.escape(prefix)}[^),]+)")
+
         for line in branch_log.splitlines():
-           match = re.search(f"tag: ({prefix}[^),]+)", line)
+           match = pattern.search(line)
+
            if match:
               if not tagsFetched:
                  logging.info(f"Calling grape up --noTopLevel --noRecurse --recurseSubprojects to ensure tags are fetched.")
