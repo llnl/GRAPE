@@ -268,7 +268,7 @@ def fixActiveSubmodules(ws_dir, user_input_func):
                                   execution_path=ws_dir, capture_output=True)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]
-    pattern = re.compile("fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
+    pattern = re.compile(r"fatal: no submodule mapping found in .gitmodules for path '([^']+)'")
     submoduleFixed = False
     for output in submoduleList:
         match = pattern.match(output)

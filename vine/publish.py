@@ -744,7 +744,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     request = r
                     break
         if request:
-            title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
+            title = re.sub(r"^.*\*\*IN PROGRESS\*\* *", "", request.title())
             config = config_parser_global.grapeConfig()
             inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
             if inprogresslabel:
@@ -821,7 +821,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         userMessage = ""
         finishedReviewers = set()
 
-        reviewersRegex = re.compile("^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
+        reviewersRegex = re.compile(r"^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
 
         for (repoName, repo, pullRequest) in pullRequests:
             if not pullRequest:
@@ -1375,11 +1375,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         last_version = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
         branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []
+        pattern = re.compile(r"tag: (MR_[^),]+)")
+
         for line in branch_log.splitlines():
-           match = re.search("tag: (MR_[^),]+)", line)
+           match = pattern.search(line)
+
            if match:
               logging.debug(match.group(1))
               tags.append(match.group(1))
+
         # This step occurs during grape publish --sendEmail, which should follow grape version tick,
         # so it cannot easily be rerun as part of the same job (as the version tick will fail on rerun).
         if len(tags) == 0:

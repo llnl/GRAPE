@@ -211,12 +211,14 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
     if submoduleListWillChange:
         output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules", execution_path=workspace_dir)
         currentSubmodule = False
+        pattern = re.compile(r"-\s+url\s*=")
+
         for line in output.split('\n'):
             if "[submodule" in line:
                 currentSubmodule = line.split('"')[1]
             # This relies on the diff context being sufficient to catch the submodule line.
             # Only 2 lines of backwards context should be required, so this should be ok.
-            if re.match("-\s+url\s*=", line):
+            if pattern.match(line):
                 if currentSubmodule:
                     changedURLModules.append(currentSubmodule)
             if "+[submodule" in line:

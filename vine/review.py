@@ -140,9 +140,11 @@ class Review(Option, WorkspaceDirHandler):
         else:
             # Convert \n to a newline, but only if it is not escaped
             # (alternation allows newline on separate line)
-            descr = re.sub('([^\\\\]|)\\\\n', r'\1\n', descr)
+            descr = re.sub(r'([^\\]|)\\n', r'\1\n', descr)
+
             # Remove one backslash from any escaped \n's.
-            descr = re.sub('\\\\\\\\n', "\\\\n", descr)
+            descr = re.sub(r'\\\\n', r'\\n', descr)
+
         return descr
 
     def buildDescriptionTemplate(self):
@@ -173,7 +175,7 @@ class Review(Option, WorkspaceDirHandler):
             from the merge/pull request description.
         """
 
-        return '(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
+        return r'(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
 
     def buildDescription(self, template, data):
         """
@@ -289,7 +291,7 @@ class Review(Option, WorkspaceDirHandler):
             data['grape_data'] = match.group('grape_data')
         else:
             # check for either old description format OR new description provided by the command line
-            oldRegex = f'(?P<user_description>.*?)\s*(?P<related_reviews>({MRLinkText()}\S+\s*)*)'
+            oldRegex = rf"(?P<user_description>.*?)\s*(?P<related_reviews>({re.escape(MRLinkText())}\S+\s*)*)"
             match = re.fullmatch(oldRegex, description, re.DOTALL)
 
             if match:

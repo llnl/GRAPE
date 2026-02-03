@@ -115,7 +115,7 @@ def getAllModifiedNestedSubprojects(since, now="HEAD", *, workspaceDir, checkRem
     else:
         nested_subprojects = active
 
-    originPrefix = re.compile('^origin/')
+    originPrefix = re.compile(r'^origin/')
     modified = []
     for repo in nested_subprojects:
         if repo in skippedRepos:
