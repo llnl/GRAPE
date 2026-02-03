@@ -1,0 +1,21 @@
+
+
+Tue Feb  3 11:11:51 2026 Alan Dayton
+MR_702
+Reviewers: Ben Liu
+
+* Starting in python 3.12, some escape sequences are a SyntaxError.
+
+* Raw strings can fix that and are recommended when working with regular expressions anyway.
+
+* Compile some regex patterns that are used in a loop
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.21
+
+--reviewers=benliu
