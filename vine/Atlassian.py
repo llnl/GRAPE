@@ -3,9 +3,9 @@ import logging
 import os
 import sys
 import time
-import keyring
 from stashy.stashy import connect as stashy_connect
 import stashy.stashy.errors as stashy_errors
+from vine import GrapeKeyring
 from vine import utility
 
 
@@ -22,16 +22,8 @@ class Atlassian:
 
         self.workspace_dir = workspace_dir
 
-        # Ensures same keyring used across all OSes
-        MAGIC_PRIORITY_NUM = .5
-        if keyring.get_keyring().priority != MAGIC_PRIORITY_NUM:
-            key_rings = [kr for kr in keyring.backend.get_all_keyring()
-                         if kr.priority == MAGIC_PRIORITY_NUM]
-            keyring.set_keyring(key_rings.pop())
-        self.keyring = keyring.get_keyring()
-
         self._service = url
-        password = keyring.get_password(self._service, self._userName)
+        password = GrapeKeyring.get_password(self._service, self._userName)
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
@@ -56,10 +48,10 @@ class Atlassian:
                 else:
                     logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                keyring.set_password(service, self._userName,
-                                     getpass.getpass("Enter password for " +
-                                                     f"{service}: "))
-                self._stash = stashy_connect(service, self._userName, keyring.get_password(service, self._userName),
+                GrapeKeyring.set_password(service, self._userName,
+                                          getpass.getpass("Enter password for " +
+                                                          f"{service}: "))
+                self._stash = stashy_connect(service, self._userName, GrapeKeyring.get_password(service, self._userName),
                                             verify=verify)
                 numAttempts += 1
 
