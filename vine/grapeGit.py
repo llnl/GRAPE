@@ -248,9 +248,11 @@ def fetch(repo="", branchArg="", recurseSubmodules="no", raiseOnCommError=False,
 
 def getActiveSubmodules(*, execution_path):
     if os.name == "nt":
-        submoduleList = submodule("foreach --quiet \"echo $path\"", execution_path=execution_path, capture_output=True)
+        submoduleList = submodule(r'foreach --quiet "echo $path"',
+                                  execution_path=execution_path, capture_output=True)
     else:
-        submoduleList = submodule("foreach --quiet \"echo \$path\"", execution_path=execution_path, capture_output=True)
+        submoduleList = submodule(r'foreach --quiet "echo \$path"',
+                                  execution_path=execution_path, capture_output=True)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]
     # ignore any submodules that are not in .gitmodules
@@ -261,10 +263,10 @@ def getActiveSubmodules(*, execution_path):
 # Remove any active submodules that are not found in gitmodules
 def fixActiveSubmodules(ws_dir, user_input_func):
     if os.name == "nt":
-        submoduleList = submodule("foreach --quiet \"echo $path\"",
+        submoduleList = submodule(r'foreach --quiet "echo $path"',
                                   execution_path=ws_dir, capture_output=True)
     else:
-        submoduleList = submodule("foreach --quiet \"echo \$path\"",
+        submoduleList = submodule(r'foreach --quiet "echo \$path"',
                                   execution_path=ws_dir, capture_output=True)
     submoduleList = [] if not submoduleList else submoduleList.split('\n')
     submoduleList = [x.strip() for x in submoduleList]

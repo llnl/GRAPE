@@ -108,7 +108,7 @@ class Config(Option, WorkspaceDirHandler):
             git.config("merge.keepBackup", "false", execution_path=self.workspace_dir)
             git.config("merge.tool", "p4merge", execution_path=self.workspace_dir)
             git.config("mergetool.keepBackup", "false", execution_path=self.workspace_dir)
-            git.config("mergetool.p4merge.cmd", 'p4merge \"\$BASE\" \"\$LOCAL\" \"\$REMOTE\" \"\$MERGED\"', execution_path=self.workspace_dir)
+            git.config("mergetool.p4merge.cmd", r'p4merge "\$BASE" "\$LOCAL" "\$REMOTE" "\$MERGED"', execution_path=self.workspace_dir)
             git.config("mergetool.p4merge.keepTemporaries", "false", execution_path=self.workspace_dir)
             git.config("mergetool.p4merge.trustExitCode", "false", execution_path=self.workspace_dir)
             git.config("mergetool.p4merge.keepBackup", "false", execution_path=self.workspace_dir)
