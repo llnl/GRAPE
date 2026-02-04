@@ -6,7 +6,6 @@ import re
 import urllib
 from configparser import NoSectionError, NoOptionError
 from stashy import errors as stashy_errors
-from requests import adapters
 from vine import CodeReviewsFactory
 from vine import Atlassian
 from vine import Gitlab

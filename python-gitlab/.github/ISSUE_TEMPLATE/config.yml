@@ -1,8 +1,0 @@
-blank_issues_enabled: false
-contact_links:
-  - name: Python Gitlab Community Support
-    url: https://github.com/python-gitlab/python-gitlab/discussions
-    about: Please ask and answer questions here.
-  - name: 💬 Gitter Chat
-    url: https://gitter.im/python-gitlab/Lobby
-    about: Chat with devs and community
