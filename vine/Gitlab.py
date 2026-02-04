@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 import time
-import keyring
 try:
     grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
@@ -14,6 +13,7 @@ except ModuleNotFoundError:
     # Don't error out here because this is imported even if GitLab is not used
     pass
 from vine import config_parser_global
+from vine import GrapeKeyring
 from vine import utility
 from vine.option import Option
 
@@ -38,17 +38,9 @@ class GrapeGitlabAdapter:
 
         self.workspace_dir = workspace_dir
 
-        # Ensures same keyring used across all OSes
-        MAGIC_PRIORITY_NUM = .5
-        if keyring.get_keyring().priority != MAGIC_PRIORITY_NUM:
-            key_rings = [kr for kr in keyring.backend.get_all_keyring()
-                         if kr.priority == MAGIC_PRIORITY_NUM]
-            keyring.set_keyring(key_rings.pop())
-        self.keyring = keyring.get_keyring()
-
         self._service = url
         self._curl = curl
-        password = keyring.get_password(self._service, self._userName)
+        password = GrapeKeyring.get_password(self._service, self._userName)
 
         if group is None:
             # If the group is not specified, get it from the .grapeconfig
@@ -110,8 +102,8 @@ class GrapeGitlabAdapter:
                 if numAttempts == 0:
                     logging.info("session expired...")
                     try:
-                        keyring.set_password(service, self._userName,
-                                             self.generate_personal_access_token(port, ssh_path))
+                        GrapeKeyring.set_password(service, self._userName,
+                                                  self.generate_personal_access_token(port, ssh_path))
                     except Exception as e:
                         logging.error("Generating personal access token via ssh failed.")
                         logging.error(e)
@@ -120,16 +112,16 @@ class GrapeGitlabAdapter:
                 else:
                     logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                    keyring.set_password(service, self._userName,
-                                         getpass.getpass("Enter personal access token for " +
-                                                         f"{service}: "))
-                self._gitlab = gitlab.Gitlab(service,  keyring.get_password(service, self._userName), api_version=4, ssl_verify=verify)
+                    GrapeKeyring.set_password(service, self._userName,
+                                              getpass.getpass("Enter personal access token for " +
+                                                              f"{service}: "))
+                self._gitlab = gitlab.Gitlab(service,  GrapeKeyring.get_password(service, self._userName), api_version=4, ssl_verify=verify)
                 numAttempts += 1
 
         return success
 
     def graphQL_query(self, query, dryRun=False):
-        token = keyring.get_password(self._service, self._userName)
+        token = GrapeKeyring.get_password(self._service, self._userName)
         graphqlurl = f'{self._service}/api/graphql'
         # enable inbound allowlist and add top level repo to list
         data = '\'{ "query": "' + query.replace('"', '\\"') + '" } \''

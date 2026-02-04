@@ -1,5 +1,4 @@
 import configparser
-import keyring
 import json
 import logging
 import os
