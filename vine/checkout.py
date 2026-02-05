@@ -333,7 +333,7 @@ class Checkout(Option, WorkspaceDirHandler):
         # Imported here to avoid circular dependencies
         from vine import grapeMenu
 
-        sync = args["--sync"].lower().strip() in ['true', 'yes']
+        sync = (args["--sync"] or "false").lower().strip() in ['true', 'yes']
         args["--sync"] = sync
         branch = args["<branch>"]
 
