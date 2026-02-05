@@ -43,7 +43,7 @@ def describeLastVersion(args, *, branch, tagPrefix, tagSuffix='', execution_path
 
 
 class Version(Option, WorkspaceDirHandler):
-    """
+    r"""
     grape version
     This command is used for projects that wish to have their version numbers managed by grape.
     The read subcommand is a no-op - it is used internally by other grape/vine modules.

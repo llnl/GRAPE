@@ -50,7 +50,7 @@ class Section:
 
 
 class Tutorial(Section):
-    """
+    r"""
 This file is generated with
     ./vine/gendocs.py README.md 
 
