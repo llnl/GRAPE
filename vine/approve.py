@@ -38,9 +38,9 @@ class Approve(Option, WorkspaceDirHandler):
         --source=<topicBranch>      The branch to approve the merge request for.
         --target=<publicBranch>     The public branch targeted by the merge request.
                                     Defaults to mapping for source branch.
-        --project=<prj>             The project/group name.
+        --project=<prj>             The top level project (Bitbucket) or group (GitLab) name.
                                     [default: .grapeconfig.project.name]
-        --repo=<repo>               The repository name.
+        --repo=<repo>               The top level repository name.
                                     [default: .grapeconfig.repo.name]
         --user=<userName>           Your GitLab user name.
         --codeReviewsURL=<url>      The code review platform url, e.g. https://your.host.org/gitlab.
