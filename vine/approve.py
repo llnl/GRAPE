@@ -121,6 +121,8 @@ class Approve(Option, WorkspaceDirHandler):
         - `.grapeconfig` is missing on the source branch
         - target branch does not exist
         """
+        logging.info(f'Getting top level repository...')
+
         # Get repo info
         project_name = args['--project']
         project = git_host.project(project_name)
