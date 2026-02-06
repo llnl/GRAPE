@@ -1,0 +1,17 @@
+
+
+Fri Feb  6 13:22:54 2026 Alan Dayton
+MR_710
+Reviewers: Ben Liu
+
+Searching through the top level merge request diffs for modified repositories is generally much faster than querying GitLab for each submodule repository and merge request. In one application, this dropped the run time for finding modified repositories from ~45 seconds to ~12 seconds.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.30
+
+--reviewers=benliu
