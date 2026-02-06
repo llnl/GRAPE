@@ -145,7 +145,10 @@ class Repo(StashyNode):
         logging.error("GRAPE: ERROR: getFile not implemented for Atlassian")
         exit(1)
 
-    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
+    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None, reviewer_username=None):
+        if reviewer_username:
+            logging.error("GRAPE: ERROR: reviewer_ids for pullRequests not implemented for Atlassian")
+            exit(1)
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):

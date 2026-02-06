@@ -67,7 +67,7 @@ class Approve(Option, WorkspaceDirHandler):
     def execute(self, args):
         user_name = utility.getUserName(args)
         git_host = utility.authenticateToGitHost(user_name, self.workspace_dir, args)
-        top_repo_context = Approve._get_top_repo_context(git_host, args)
+        top_repo_context = Approve._get_top_repo_context(git_host, user_name, args)
         rule = Approve._get_review_rule(top_repo_context, args)
         Approve._approve(user_name, git_host, top_repo_context, rule)
 
@@ -82,7 +82,7 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
 
     @staticmethod
-    def _get_top_repo_context(git_host, args):
+    def _get_top_repo_context(git_host, user_name, args):
         """
         Build and validate the top-level repository context needed for approvals.
 
@@ -132,6 +132,14 @@ class Approve(Option, WorkspaceDirHandler):
         source_branch = args["--source"]
 
         if not source_branch:
+            print("Open merge requests you are reviewing:")
+            for request in repo.pullRequests(reviewer_username=user_name, target_branch=args["--target"]):
+                reviewers = request.reviewers()
+                for reviewer,approved,displayname in reviewers:
+                    if reviewer == user_name:
+                        if not approved:
+                            print(f"  {request.fromRef()} -> {request.toRef()}")
+                        break
             source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
 
             if not source_branch:
