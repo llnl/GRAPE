@@ -462,31 +462,9 @@ def parse_defaults(doc):
 
 
 def parse_section(name, source):
-    # This regular expression used does not work in python 3.13 due to changes
-    # in the handling of regexp (particularly greediness+multiline) and docstrings.
-    #pattern = re.compile('^([^\n]*' + name + '[^\n]*\n?(?:[ \t].*?(?:\n|$))*)',
-    #                     re.IGNORECASE | re.MULTILINE)
-    #return [s.strip() for s in pattern.findall(source)]
-
-    # Patch it here with the following assumptions:
-    # - there is only a single section for each name (prior regexp allowed multiples)
-    # - there is a blank line or end of the docopt after each section.
-
-    # Convert the docstring into a single string with no newlines.
-    source_one_line = source.replace('\n','#')
-    # Find the beginning of the section
-    start_match = re.search(name, source_one_line, re.IGNORECASE)
-    if not start_match:
-        return []
-    start_offset = start_match.start()
-    # Find the end of the section
-    end_match = re.search('#[ \t]*#', source_one_line[start_offset:])
-    if end_match:
-        end_offset = end_match.start() + start_offset
-    else:
-        end_offset = None
-    # Put the newlines back in and return the section
-    return [source_one_line[start_offset:end_offset].replace('#','\n').strip()]
+    pattern = re.compile('^([^\n]*' + name + '[^\n]*\n?(?:[ \t].*?(?:\n|$))*)',
+                         re.IGNORECASE | re.MULTILINE)
+    return [s.strip() for s in pattern.findall(source)]
 
 
 def formal_usage(section):

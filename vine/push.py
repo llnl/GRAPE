@@ -16,10 +16,10 @@ class Push(Option, WorkspaceDirHandler):
     Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll]
 
     Options:
-    --noTopLevel            Don't perform push in top level repo.
-    --noRecurse             Don't perform pushes in submodules.
-    --noRecurseSubprojects  Don't perform pushes in nested subprojects.
-    --pushAll               Push all repositories regardless of whether local is ahead of origin.
+        --noTopLevel            Don't perform push in top level repo.
+        --noRecurse             Don't perform pushes in submodules.
+        --noRecurseSubprojects  Don't perform pushes in nested subprojects.
+        --pushAll               Push all repositories regardless of whether local is ahead of origin.
 
     """
     def __init__(self):
