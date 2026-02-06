@@ -178,10 +178,13 @@ class Project:
                 logging.info(f"Could not find project {name}.")
                 raise SystemExit("Abort")
 
-            project = self.gitlab.projects.get(project_id)
+            try:
+                project = self.gitlab.projects.get(project_id)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find project {name}: {e}")
+                raise SystemExit("Abort")
 
         return Repo(project, self.gitlab)
-
 
     def groupid(self, groupname):
         # groups API doesn't include exact match, so we have to iterate over the search
