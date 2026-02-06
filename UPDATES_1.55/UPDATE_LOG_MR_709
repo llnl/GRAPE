@@ -1,0 +1,17 @@
+
+
+Fri Feb  6 08:59:39 2026 Alan Dayton
+MR_709
+Reviewers: Ben Liu
+
+Retrieving modified repositories was taking about 8 minutes in a repository with a large number of submodules and subprojects. It turns out most of them are in the same GitLab group (what grape and Bitbucket call a project), and caching/reusing the retrieved group cut the run time down to about 40 seconds.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.28
+
+--reviewers=benliu
