@@ -490,7 +490,8 @@ class Approve(Option, WorkspaceDirHandler):
         """
         # Get repo
         components = url.split('/')
-        repo_name = components[-1].split('.')[0] # Remove .git if present
+        repo_name = components[-1]
+        repo_name = repo_name[:-4] if repo_name.endswith('.git') else repo_name
         project_name = components[-2]
 
         if project_name == '..':

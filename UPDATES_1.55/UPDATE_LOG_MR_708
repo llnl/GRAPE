@@ -1,0 +1,17 @@
+
+
+Thu Feb  5 17:24:35 2026 Alan Dayton
+MR_708
+Reviewers: David Dawson
+
+Names with periods (e.g. llnl.wci.mapp) were tripping up the repo name parser. This makes the parser more resilient.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.27
+
+--reviewers=dawson24
