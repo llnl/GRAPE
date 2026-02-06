@@ -162,6 +162,7 @@ class Project:
 
     def repo(self, name, min_access_level=None):
         if min_access_level is None:
+            # Faster, but does not support min_access_level
             path = f'{self.group.full_path}/{name}'  # e.g. 'llnl/GRAPE'
 
             try:
@@ -170,6 +171,7 @@ class Project:
                 logging.info(f"Could not find project {path}: {e}")
                 raise SystemExit("Abort")
         else:
+            # Slower, but supports min_access_level
             matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
 
             if matching_ids:
