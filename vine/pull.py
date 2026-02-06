@@ -14,8 +14,8 @@ class Pull(Resumable, Option, WorkspaceDirHandler):
     Usage: grape-pull [--continue] [--noRecurse]
 
     Options:
-    --continue     Finish a pull that failed due to merge conflicts.
-    --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.
+        --continue     Finish a pull that failed due to merge conflicts.
+        --noRecurse    Simply do a git pull origin <currentBranch> in the current directory.
 
 
     """

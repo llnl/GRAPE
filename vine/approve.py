@@ -53,6 +53,7 @@ class Approve(Option, WorkspaceDirHandler):
         --ssh_pat_port=<int>        Port number to issue ssh command over to generate a Personal Access Token for authentication
                                     into a Code Review service's REST API.
                                     [default: .grapeconfig.repo.ssh_pat_port]
+
     """
     def __init__(self):
         super(Approve, self).__init__()

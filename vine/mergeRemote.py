@@ -34,7 +34,7 @@ class MergeRemote(Option, WorkspaceDirHandler):
         --squash                Perform squash merges.
 
     Arguments:
-    <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
+        <branch>      The name of the remote branch to merge in (without remote/origin or origin/ prefix)
 
     """
     def __init__(self):

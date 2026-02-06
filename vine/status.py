@@ -20,12 +20,12 @@ class Status(Option, WorkspaceDirHandler):
               [--checkWSOnly]
 
     Options:
-    --uno                          Do not show untracked files
-    -u                             Show untracked files.
-    --failIfInconsistent           Fail if any consistency checks fail.
-    --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches.
-    --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace.
-    --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
+        --uno                          Do not show untracked files
+        -u                             Show untracked files.
+        --failIfInconsistent           Fail if any consistency checks fail.
+        --failIfMissingPublicBranches  Fail if your workspace or your origin's workspace is missing public branches.
+        --failIfOnInconsistentBranches Fail if your subprojects are on branches that are inconsistent with what is checked out in your workspace.
+        --checkWSOnly                  Only check the workspace's projects' branches for consistency. Don't gather git statuses.
 
 
     """

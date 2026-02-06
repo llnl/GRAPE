@@ -91,7 +91,7 @@ class TestPublish(testGrape.TestGrape):
 
             ret = self.menu.applyMenuChoice("publish", args=args)
 
-            self.assertEquals(ret, not assertFail, msg="publish returned " +str(ret))
+            self.assertEqual(ret, not assertFail, msg="publish returned " +str(ret))
         except SystemExit as e:
             self.fail(f"{self.get_output()}\n{e.message}")
         #origin has not been set up for these repos yet
