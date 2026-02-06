@@ -301,23 +301,23 @@ class Checkout(Option, WorkspaceDirHandler):
     Usage: grape-checkout [-v] [-q] [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
-    -v                  Print output from individual directories.
-    -q                  Quiet warnings from individual directories that don't cause failure.
-    -b                  Create the branch off of the current HEAD in each project.
-    --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
-                        either by pushing or pulling the remote tracking branch.
-                        [default: .grapeconfig.post-checkout.syncWithOrigin]
-    --updateView        If your submodules / nested projects change, change your workspace to match the changes.
-                        Warning - setting this may cause you to lose unpushed work in nested subprojects.
-    --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
-    --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
-                        WARNING! This is still experimental and may have issues with grape workflows.
-                        In particular, tree:0 has performance issues with git rev-list/log command on specified
-                        files (it appears to download each commit separately).
-      
+        -v                  Print output from individual directories.
+        -q                  Quiet warnings from individual directories that don't cause failure.
+        -b                  Create the branch off of the current HEAD in each project.
+        --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
+                            either by pushing or pulling the remote tracking branch.
+                            [default: .grapeconfig.post-checkout.syncWithOrigin]
+        --updateView        If your submodules / nested projects change, change your workspace to match the changes.
+                            Warning - setting this may cause you to lose unpushed work in nested subprojects.
+        --noUpdateView      If your submodules / nested projects change, do not change your workspace to match the changes.
+        --filter=<arg>      Optional clone filter argument to use if any subprojects get cloned during checkout.
+                            WARNING! This is still experimental and may have issues with grape workflows.
+                            In particular, tree:0 has performance issues with git rev-list/log command on specified
+                            files (it appears to download each commit separately).
+          
 
     Arguments:
-    <branch>    The name of the branch to checkout.
+        <branch>    The name of the branch to checkout.
 
     """
     def __init__(self):

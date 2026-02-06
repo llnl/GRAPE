@@ -21,18 +21,18 @@ class UpdateLocal(Option, WorkspaceDirHandler):
 
 
     Options:
-    --public=<branch>       The public branches to update in addition to the current one,
-                            e.g. --public="master develop"
-                            [default: .grapeconfig.flow.publicBranches ]
-    --noForce               Do not force update of public branches.
-    --updateRemoteOnly      Only fetch the remote tracking branches, do not update the local branches
-    --ignoreCommError       Ignore communications errors.
-    --recurse               Update branches in submodules and nested subprojects.
-    --noRecurse             Do not update branches in submodules and nested subprojects.
-    --wd=<working dir>      Working directory which should be updated.
-                            Top level workspace will be updated if this is unspecified.
-    --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
-    --noTopLevel            Do nothing in the top level repo.
+        --public=<branch>       The public branches to update in addition to the current one,
+                                e.g. --public="master develop"
+                                [default: .grapeconfig.flow.publicBranches ]
+        --noForce               Do not force update of public branches.
+        --updateRemoteOnly      Only fetch the remote tracking branches, do not update the local branches
+        --ignoreCommError       Ignore communications errors.
+        --recurse               Update branches in submodules and nested subprojects.
+        --noRecurse             Do not update branches in submodules and nested subprojects.
+        --wd=<working dir>      Working directory which should be updated.
+                                Top level workspace will be updated if this is unspecified.
+        --recurseSubprojects    Recurse in nested subprojects even if you're not recursing in submodules.
+        --noTopLevel            Do nothing in the top level repo.
 
 
     """

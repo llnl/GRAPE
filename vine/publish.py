@@ -90,175 +90,175 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
-    --squash                  Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade=<branch>        For squash merges, can choose to cascade back to <branch> after the merge is
-                              completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
-                              nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
-                              submodule publish policies.
-    --merge                   Perform a normal merge.
-    --mergeTrain=<bool>       Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
-                              in an active merge train.
-                              [default: .grapeconfig.publish.mergeTrain]
-    -m <msg>                  The commit message to use for a successful merge / squash merge. Ignored if used with
-                              --rebase.
-    --rebase                  Rebases the topic branch to the public, then fast forwards the public to the tip of the
-                              topic.
-    --recurse                 Perform the publish action in submodules.
-                              Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --noRecurse               Do not perform the publish action in submodules.
-                              Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
-    --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
-    --topic=<branch>          The branch to publish. Defaults to the current branch.
-    --noverify                Set to skip interactive verification of publish commands.
-    --nopush                  Set to skip the push of commits generated during the publish procedure.
-    --noUpdateMD              Set to skip update of local public branches during md steps.
-    --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
-                              WARNING! This is still experimental and may have issues with grape workflows.
-                              In particular, tree:0 has performance issues with git rev-list/log command on specified
-                              files (it appears to download each commit separately).
-    --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
-                              "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                              "verifyCompletedReview", "postVerify", "markInProgress", "md2", "tickVersion", "updateLog",
-                              "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                              "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
-    --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
-                              perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
-    --continue                Resume a previous call to grape publish that encountered a failure at one of the publish
-                              steps.
-    --abort                   Abort a previously failed call to grape publish.
-    --buildCmds=<buildStr>    The comma-delimited list of build commands to execute.
-                              [default: .grapeconfig.publish.buildCmds]
-    --buildDir=<path>         The directory (relative to the workspace root directory) to execute the build steps in.
-                              [default: .grapeconfig.publish.buildDir]
-    --skipBuild               Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
-                              if mergeTrain is enabled, otherwise default is False.
-    --noSkipBuild             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
-                              enabled. Default behavior is to not skip builds.
-    --testCmds=<testStr>      The comma-delimited list of test commands to execute.
-                              [default: .grapeconfig.publish.testCmds]
-    --testDir=<path>          The directory (relative to the workspace root directory) to execute the test steps in.
-                              [default: .grapeconfig.publish.testDir]
-    --skipTest                Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
-                              if mergeTrain is enabled, otherwise default is False.
-    --noSkipTests             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
-                              enabled. Default behavior is to not skip tests.
-    --testCIJob=<jobStr>      The comma-delimited list of required passing CI jobs that allows short circuiting of
-                              builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
-                              to indicate that entry may be satisfied by one of multiple possible jobs.
-                              E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
-                              passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
-                              [default: .grapeconfig.publish.testCIJob]
-    --prepublishCmds=<str>    The comma-delimited list of commands to execute just before the publish step.
-                              [default: .grapeconfig.publish.prepublishCmds]
-    --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
-                              [default: .grapeconfig.publish.prepublishDir]
-    --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
-                              [default: .grapeconfig.publish.postverifyCmds]
-    --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
-                              [default: .grapeconfig.publish.postverifyDir]
-    --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
-                              [default: .grapeconfig.publish.postpublishCmds]
-    --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
-                              cmds in.
-                              [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>      Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
-    --noUpdateLog             Set to skip the updateLog step.
-    --updateLogDir=<dir>      Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
-                              a directory named after current development version.
-                              [default: .grapeconfig.publish.updateLogDir]
-    --updateLogCmds=<cmds>    The comma-delimited list of commands to execute as part of the update log construction.
-                              [default: .grapeconfig.publish.updateLogCmds]
-    --updateLog=<file>        The log file to update with the commit message for this branch. If --updateLogDir is defined,
-                              this is the base file name for update message files.
-                              [default: .grapeconfig.publish.updateLog]
-    --skipFirstLines=<int>    The number of lines to skip in the updateLog file before inserting the commit message.
-                              [default: .grapeconfig.publish.logSkipFirstLines]
-    --entryHeader=<string>    The format for the commit message header. The string literals <date>, <user>, and <version>
-                              will be replaced by the date, the result of git config --get user.name, and the result of
-                              git describe --abbrev=0 after the tickversion step, respectively.
-                              [default: .grapeconfig.publish.logEntryHeader]
-    --tickVersion=<bool>      Tick a version number as a part of this publish action.
-                              [default: .grapeconfig.publish.tickVersion]
-    --tickOnCascade=<slot>    Tick the <slot> version number when performing a cascade.
-                              Default behavior governed by the flow.topicCascadeTick mapping.
-    -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
-                              and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>             Your Bitbucket/Gitlab username.
-    --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
-                              [default: .grapeconfig.project.codeReviewsURL]
-    --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
-                              [default: .grapeconfig.project.verifySSL]
-    --project=<project>       Your Bitbucket Project. See grape-review for more details.
-                              [default: .grapeconfig.project.name]
-    --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
-                              [default: .grapeconfig.repo.name]
-    -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
-                              Type grape review --help for valid options.
-    --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
-    --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
-    --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
-    --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
-                              by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
-                              if no option for .grapeconfig.flow.topicDestinationMappings exists.
-    --submodulePublic=<b>     The branch to publish to in submodules. Defaults to the mapping for the current topic branch
-                              as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
-    --emailNotification=<b>   Set to true to send a notification email after you've published. The email will consist of
-                              a header <header> and a message, generally the contents of <CommitMessageFile> and/or
-                              the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
-                              and will be CC'd to the user.
-                              For the email subject, header and footer, the string literals
-                              '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
-                              <user>: the result of git config --get user.name
-                              <date>: the current timestamp.
-                              <version>: The version of the project, so long as grape is managing your versioning.
-                              <public>: The branch to publish to.
-                              <branch>: The branch to publish from.
-                              [default: .grapeconfig.publish.emailNotification]
-    --emailHeader=<header>    The email header. See above.
-                              [default: .grapeconfig.publish.emailHeader]
-    --emailFooter=<footer>    The email footer. See above.
-                              [default: .grapeconfig.publish.emailFooter]
-    --emailSubject=<sbj>      The email subject. See above.
-                              [default: .grapeconfig.publish.emailSubject]
-    --emailSendTo=<addr>      The comma-delimited list of receivers of the email.
-                              [default: .grapeconfig.publish.emailSendTo]
-    --emailServer=<server>    The smtp email server address.
-                              [default: .grapeconfig.publish.emailServer]
-    --emailMaxFiles=<int>     Maximum number of modified files (per subproject) to show in email.
-                              [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
-                              markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge             Perform the merge using the Bitbucket REST API.
-    --quiet                   Suppress output from custom build and test steps unless there is a failure.
-    --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
-                              REST API.
-                              [default: .grapeconfig.repo.ssh_pat_url]
-    --ssh_pat_port=<int>      Port number to issue ssh command over to generate a Personal Access Token for authentication
-                              into a Code Review service's REST API.
-                              [default: .grapeconfig.repo.ssh_pat_port]
-    --mergeUpdateLogs         If you are using a merge train workflow, this command can be used to produce a file that
-                              is a concatenation of merge request update log files, with the merge request version
-                              substituted out for appropriate version tags.
-    --mergedLog=<file>        The file to write the merged update logs to.
-    --startVersion=<ver>      Starting version to search for relevant update message files.
-    --stopVersion=<ver>       Most recent version to search for relevant update message files. Defaults to HEAD.
-    --tagPrefix=<str>         The prefix for the git version tags. [default: v]
-    --tagSuffix=<str>         The suffix for the git version tags. Default value comes from
-                              .grapeconfig.versioning.branchTagSuffixMappings.
-    --sendEmail               Just send the notification email.
-    --topLevelMergeSHA=<SHA>  Specify the SHA in the top level repo corresponding to the merge commit of the topic branch
-                              into the public branch for use in generating the commit file list for an email notification.
-    --markMRWithVersion       Update a merge request title with the given version string.
+        --squash                  Squash merges the topic into the public, then performs a commit if the merge goes clean.
+        --cascade=<branch>        For squash merges, can choose to cascade back to <branch> after the merge is
+                                  completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
+                                  nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
+                                  submodule publish policies.
+        --merge                   Perform a normal merge.
+        --mergeTrain=<bool>       Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
+                                  in an active merge train.
+                                  [default: .grapeconfig.publish.mergeTrain]
+        -m <msg>                  The commit message to use for a successful merge / squash merge. Ignored if used with
+                                  --rebase.
+        --rebase                  Rebases the topic branch to the public, then fast forwards the public to the tip of the
+                                  topic.
+        --recurse                 Perform the publish action in submodules.
+                                  Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
+        --noRecurse               Do not perform the publish action in submodules.
+                                  Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+        --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
+        --topic=<branch>          The branch to publish. Defaults to the current branch.
+        --noverify                Set to skip interactive verification of publish commands.
+        --nopush                  Set to skip the push of commits generated during the publish procedure.
+        --noUpdateMD              Set to skip update of local public branches during md steps.
+        --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
+                                  WARNING! This is still experimental and may have issues with grape workflows.
+                                  In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                  files (it appears to download each commit separately).
+        --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
+                                  "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                                  "verifyCompletedReview", "postVerify", "markInProgress", "md2", "tickVersion", "updateLog",
+                                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                                  "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
+        --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
+                                  perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
+        --continue                Resume a previous call to grape publish that encountered a failure at one of the publish
+                                  steps.
+        --abort                   Abort a previously failed call to grape publish.
+        --buildCmds=<buildStr>    The comma-delimited list of build commands to execute.
+                                  [default: .grapeconfig.publish.buildCmds]
+        --buildDir=<path>         The directory (relative to the workspace root directory) to execute the build steps in.
+                                  [default: .grapeconfig.publish.buildDir]
+        --skipBuild               Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
+                                  if mergeTrain is enabled, otherwise default is False.
+        --noSkipBuild             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
+                                  enabled. Default behavior is to not skip builds.
+        --testCmds=<testStr>      The comma-delimited list of test commands to execute.
+                                  [default: .grapeconfig.publish.testCmds]
+        --testDir=<path>          The directory (relative to the workspace root directory) to execute the test steps in.
+                                  [default: .grapeconfig.publish.testDir]
+        --skipTest                Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
+                                  if mergeTrain is enabled, otherwise default is False.
+        --noSkipTests             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
+                                  enabled. Default behavior is to not skip tests.
+        --testCIJob=<jobStr>      The comma-delimited list of required passing CI jobs that allows short circuiting of
+                                  builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
+                                  to indicate that entry may be satisfied by one of multiple possible jobs.
+                                  E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                                  passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
+                                  [default: .grapeconfig.publish.testCIJob]
+        --prepublishCmds=<str>    The comma-delimited list of commands to execute just before the publish step.
+                                  [default: .grapeconfig.publish.prepublishCmds]
+        --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
+                                  [default: .grapeconfig.publish.prepublishDir]
+        --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
+                                  [default: .grapeconfig.publish.postverifyCmds]
+        --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
+                                  [default: .grapeconfig.publish.postverifyDir]
+        --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
+                                  [default: .grapeconfig.publish.postpublishCmds]
+        --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
+                                  cmds in.
+                                  [default: .grapeconfig.publish.postpublishDir]
+        --deleteTopic=<bool>      Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+        --noUpdateLog             Set to skip the updateLog step.
+        --updateLogDir=<dir>      Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
+                                  a directory named after current development version.
+                                  [default: .grapeconfig.publish.updateLogDir]
+        --updateLogCmds=<cmds>    The comma-delimited list of commands to execute as part of the update log construction.
+                                  [default: .grapeconfig.publish.updateLogCmds]
+        --updateLog=<file>        The log file to update with the commit message for this branch. If --updateLogDir is defined,
+                                  this is the base file name for update message files.
+                                  [default: .grapeconfig.publish.updateLog]
+        --skipFirstLines=<int>    The number of lines to skip in the updateLog file before inserting the commit message.
+                                  [default: .grapeconfig.publish.logSkipFirstLines]
+        --entryHeader=<string>    The format for the commit message header. The string literals <date>, <user>, and <version>
+                                  will be replaced by the date, the result of git config --get user.name, and the result of
+                                  git describe --abbrev=0 after the tickversion step, respectively.
+                                  [default: .grapeconfig.publish.logEntryHeader]
+        --tickVersion=<bool>      Tick a version number as a part of this publish action.
+                                  [default: .grapeconfig.publish.tickVersion]
+        --tickOnCascade=<slot>    Tick the <slot> version number when performing a cascade.
+                                  Default behavior governed by the flow.topicCascadeTick mapping.
+        -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
+                                  and defaults. -T can be used multiple times to pass multiple arguments.
+        --user=<user>             Your Bitbucket/Gitlab username.
+        --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+                                  [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
+                                  [default: .grapeconfig.project.verifySSL]
+        --project=<project>       Your Bitbucket Project. See grape-review for more details.
+                                  [default: .grapeconfig.project.name]
+        --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+                                  [default: .grapeconfig.repo.name]
+        -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
+                                  Type grape review --help for valid options.
+        --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+        --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
+        --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
+        --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+        --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
+                                  by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
+                                  if no option for .grapeconfig.flow.topicDestinationMappings exists.
+        --submodulePublic=<b>     The branch to publish to in submodules. Defaults to the mapping for the current topic branch
+                                  as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+        --emailNotification=<b>   Set to true to send a notification email after you've published. The email will consist of
+                                  a header <header> and a message, generally the contents of <CommitMessageFile> and/or
+                                  the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
+                                  and will be CC'd to the user.
+                                  For the email subject, header and footer, the string literals
+                                  '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
+                                  <user>: the result of git config --get user.name
+                                  <date>: the current timestamp.
+                                  <version>: The version of the project, so long as grape is managing your versioning.
+                                  <public>: The branch to publish to.
+                                  <branch>: The branch to publish from.
+                                  [default: .grapeconfig.publish.emailNotification]
+        --emailHeader=<header>    The email header. See above.
+                                  [default: .grapeconfig.publish.emailHeader]
+        --emailFooter=<footer>    The email footer. See above.
+                                  [default: .grapeconfig.publish.emailFooter]
+        --emailSubject=<sbj>      The email subject. See above.
+                                  [default: .grapeconfig.publish.emailSubject]
+        --emailSendTo=<addr>      The comma-delimited list of receivers of the email.
+                                  [default: .grapeconfig.publish.emailSendTo]
+        --emailServer=<server>    The smtp email server address.
+                                  [default: .grapeconfig.publish.emailServer]
+        --emailMaxFiles=<int>     Maximum number of modified files (per subproject) to show in email.
+                                  [default: .grapeconfig.publish.emailMaxFiles]
+        --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
+                                  markInProgress, md2, publish, markAsDone, deleteTopic, done]
+        --remoteMerge             Perform the merge using the Bitbucket REST API.
+        --quiet                   Suppress output from custom build and test steps unless there is a failure.
+        --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                  REST API.
+                                  [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>      Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                  into a Code Review service's REST API.
+                                  [default: .grapeconfig.repo.ssh_pat_port]
+        --mergeUpdateLogs         If you are using a merge train workflow, this command can be used to produce a file that
+                                  is a concatenation of merge request update log files, with the merge request version
+                                  substituted out for appropriate version tags.
+        --mergedLog=<file>        The file to write the merged update logs to.
+        --startVersion=<ver>      Starting version to search for relevant update message files.
+        --stopVersion=<ver>       Most recent version to search for relevant update message files. Defaults to HEAD.
+        --tagPrefix=<str>         The prefix for the git version tags. [default: v]
+        --tagSuffix=<str>         The suffix for the git version tags. Default value comes from
+                                  .grapeconfig.versioning.branchTagSuffixMappings.
+        --sendEmail               Just send the notification email.
+        --topLevelMergeSHA=<SHA>  Specify the SHA in the top level repo corresponding to the merge commit of the topic branch
+                                  into the public branch for use in generating the commit file list for an email notification.
+        --markMRWithVersion       Update a merge request title with the given version string.
 
 
     Optional Arguments:
-    <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
-                            this branch will be updated to contain this message. If you don't specify a filename, grape
-                            will give you an opportunity to use contents of the pull request description are intended for the update
-                            message. Both the commit message for the merge and an update log will contain this message.
-                            Additionally, if email notification is configured, the contents of the email will have
-                            this message.
+        <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
+                                this branch will be updated to contain this message. If you don't specify a filename, grape
+                                will give you an opportunity to use contents of the pull request description are intended for the update
+                                message. Both the commit message for the merge and an update log will contain this message.
+                                Additionally, if email notification is configured, the contents of the email will have
+                                this message.
 
 
 

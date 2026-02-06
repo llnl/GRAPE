@@ -16,17 +16,17 @@ class ForEach(Option, WorkspaceDirHandler):
     Usage: grape-foreach [-v] [-q] [--noTopLevel] [--noSubprojects] [--noSubmodules] [--currentCWD] [--ignoreReturnCode] <cmd>
 
     Options:
-    -v                  Echo the command and output from each directory.
-    -q                  Suppress warnings on failed commands.
-    --noTopLevel        Does not call <cmd> in the workspace directory.
-    --noSubprojects     Does not call <cmd> in any grape nested subprojects.
-    --noSubmodules      Does not call <cmd> in any git submodules.
-    --currentCWD        grape foreach normally starts work from the workspace top level directory. This flag
-                        starts work from the current working directory.
-    --ignoreReturnCode  Ignore return code from <cmd>. Otherwise, returns 0 if all commands succeeded, 1 otherwise.
+        -v                  Echo the command and output from each directory.
+        -q                  Suppress warnings on failed commands.
+        --noTopLevel        Does not call <cmd> in the workspace directory.
+        --noSubprojects     Does not call <cmd> in any grape nested subprojects.
+        --noSubmodules      Does not call <cmd> in any git submodules.
+        --currentCWD        grape foreach normally starts work from the workspace top level directory. This flag
+                            starts work from the current working directory.
+        --ignoreReturnCode  Ignore return code from <cmd>. Otherwise, returns 0 if all commands succeeded, 1 otherwise.
 
     Arguments:
-    <cmd>        The cmd to execute.
+        <cmd>        The cmd to execute.
 
     """
     def __init__(self):

@@ -219,7 +219,7 @@ def buildSuite(cls, appendTo, sub=None):
     if sub:
         suite.addTest(cls(sub))
     else:
-        suite.addTest(unittest.makeSuite(cls))
+        suite.addTest(unittest.defaultTestLoader.loadTestsFromTestCase(cls))
     return suite
 
 

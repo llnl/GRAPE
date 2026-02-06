@@ -13,16 +13,16 @@ class DeleteBranch(Option, WorkspaceDirHandler):
     Usage: grape-db [-D] [<branch>...] [--verify] [--local-only|--remote-only] [--inactive-repos]
 
     Options:
-    -D                Forces the deletion of unmerged branches. If you are on the branch you
-                      are trying to delete, this will detach you from the branch and then
-                      delete it, issuing a warning that you are in a detached state.
-    --local-only      Only deletes the local branch.
-    --remote-only     Only deletes the remote branch.
-    --verify          Verifies the delete before performing it.
-    --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
+        -D                Forces the deletion of unmerged branches. If you are on the branch you
+                          are trying to delete, this will detach you from the branch and then
+                          delete it, issuing a warning that you are in a detached state.
+        --local-only      Only deletes the local branch.
+        --remote-only     Only deletes the remote branch.
+        --verify          Verifies the delete before performing it.
+        --inactive-repos  Deletes the remote branch in any repos that are not currently active in your workspace.
 
     Arguments:
-    <branch>         The branches to delete. Will ask for branch name if not included.
+        <branch>         The branches to delete. Will ask for branch name if not included.
 
 
     """
