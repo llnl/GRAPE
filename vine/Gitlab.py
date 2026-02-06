@@ -161,13 +161,15 @@ class Project:
         return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name, min_access_level=None):
-        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
-        if matching_ids:
-            project_id = matching_ids[0]
-        else:
-            logging.info(f"Could not find project {name}.")
+        path = f'{self.group.full_path}/{name}'  # e.g. 'llnl/GRAPE'
+
+        try:
+            project = self.gitlab.projects.get(path)
+        except gitlab.exceptions.GitlabGetError as e:
+            logging.info(f"Could not find project {path}: {e}")
             raise SystemExit("Abort")
-        return Repo(self.gitlab.projects.get(project_id), self.gitlab)
+
+        return Repo(project, self.gitlab)
 
     def groupid(self, groupname):
         # groups API doesn't include exact match, so we have to iterate over the search
