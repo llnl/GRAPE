@@ -133,13 +133,26 @@ class Approve(Option, WorkspaceDirHandler):
 
         if not source_branch:
             print("Open merge requests you are reviewing:")
-            for request in repo.pullRequests(reviewer_username=user_name, target_branch=args["--target"]):
-                reviewers = request.reviewers()
-                for reviewer,approved,displayname in reviewers:
-                    if reviewer == user_name:
-                        if not approved:
-                            print(f"  {request.fromRef()} -> {request.toRef()}")
-                        break
+            reviewer_search = re.compile(r'\-\-reviewers=(.*)\n')
+            user_search = re.compile(rf'([^ ,]+):[^ :]*{user_name}')
+            for request in repo.pullRequests(target_branch=args["--target"]):
+                descr = request.description()
+                if "--reviewers" in descr:
+                    match = reviewer_search.search(descr) 
+                    if match:
+                        rules = []
+                        for rule in user_search.findall(match.group(1)):
+                            rules.append(rule) 
+                        print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
+                #        continue
+                # if we didn't find a match in the grape --reviewers string,
+                # check for unapproved reviews (for older reviews). 
+                #for reviewer,approved,displayname in request.reviewers():
+                #    if reviewer == user_name:
+                #        if not approved:
+                #            print(f"  {request.fromRef()} -> {request.toRef()} [legacy]")
+                #        break
+                        
             source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
 
             if not source_branch:
