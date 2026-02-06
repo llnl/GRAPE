@@ -47,7 +47,7 @@ class TestClone(testGrape.TestGrape):
         with self.assertRaises(SystemExit):
             ret = self.menu.applyMenuChoice("clone", args)
         # NOTE: Below assertion is testing 'docopt' logic.
-        self.assertIn(clone.Clone.__doc__, doc_output.getvalue())
+        self.assertIn(clone.Clone.__doc__.strip("\n"), doc_output.getvalue())
         sys.stdout = tmp_stdout
         doc_output.close()
         # grape clone changes the working directory, so reset it
