@@ -404,17 +404,39 @@ class Approve(Option, WorkspaceDirHandler):
         top_project_name = top_repo_context['project_name']
         top_project = top_repo_context['project']
 
-        for submodule_name in submodules_metadata:
-            submodule_metadata = submodules_metadata[submodule_name]
-            # TODO: Check url matches the top level git service
-            url = submodule_metadata['url']
+        # Checking top-level diffs for modified submodules is generally faster
+        # than querying GitLab for each submodule repository and merge request.
+        top_review_request = top_repo_context['review_request']
 
-            modified_repo_context = Approve._get_modified_repo_context(
-                git_host, top_project_name, top_project, submodule_source_branch, submodule_target_branch, url
-            )
+        if top_review_request:
+            submodule_path_to_url_map = {submodule['path']: submodule['url'] for submodule in submodules_metadata.values()}
 
-            if modified_repo_context:
-                modified_repos[modified_repo_context['repo_name']] = modified_repo_context
+            top_diffs = top_review_request.diffs()
+
+            for diff in top_diffs:
+                new_path = diff.get('new_path')
+                url = submodule_path_to_url_map.get(new_path)
+
+                if url:
+                    modified_repo_context = Approve._get_modified_repo_context(
+                        git_host, top_project_name, top_project, submodule_source_branch, submodule_target_branch, url
+                    )
+
+                    if modified_repo_context:
+                        modified_repos[modified_repo_context['repo_name']] = modified_repo_context
+
+        else:
+            for submodule_name in submodules_metadata:
+                submodule_metadata = submodules_metadata[submodule_name]
+                # TODO: Check url matches the top level git service
+                url = submodule_metadata['url']
+
+                modified_repo_context = Approve._get_modified_repo_context(
+                    git_host, top_project_name, top_project, submodule_source_branch, submodule_target_branch, url
+                )
+
+                if modified_repo_context:
+                    modified_repos[modified_repo_context['repo_name']] = modified_repo_context
 
     @staticmethod
     def _add_modified_subprojects(git_host, top_repo_context, modified_repos):
