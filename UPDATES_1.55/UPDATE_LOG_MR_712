@@ -1,0 +1,23 @@
+
+
+Fri Feb  6 15:47:08 2026 Alan Dayton
+MR_712
+Reviewers: Ben Liu
+
+Previously, repo lookups would occur by an API call that could return a list of repos, filtered by the name and access level. A second lookup would then occur once the repo ID was found (to get an object that could actually be used to update the repo).
+
+Now, the main path is to do a direct lookup with project/name (e.g. llnl/GRAPE), which is much faster. This path does not handle access level, so the other path is maintained as a fallback.
+
+For an application, the runtime for \"grape approve\" retrieving modified repositories dropped from ~10 to ~5 seconds.
+
+This update will likely improve the performance of other commands such as \"grape review\" and \"grape publish\".
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.31
+
+--reviewers=benliu
