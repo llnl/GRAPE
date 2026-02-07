@@ -71,6 +71,10 @@ class Atlassian:
 
         return None
 
+    def repo(self, project_name, repo_name):
+        logging.error("GRAPE: ERROR: repo not implemented for Atlassian")
+        exit(1)
+
 class StashyNode:
     def __init__(self, node, stashynode):
         self.node = node
