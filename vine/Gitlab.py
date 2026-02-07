@@ -149,6 +149,46 @@ class GrapeGitlabAdapter:
         p = Project(self._gitlab.groups.get(group_id),self._gitlab)
         return  p
 
+    def repo(self, project_name, repo_name):
+        """
+        Retrieve a GitLab project and wrap it in a Repo object.
+
+        This method looks up a GitLab project using the combined
+        `project_name/repo_name` path (for example, "llnl/GRAPE"). If the
+        project cannot be found or GitLab returns an error, the method will:
+          - Log an informational message with the failure reason.
+          - Terminate the program by raising SystemExit("Abort").
+
+        Parameters
+        ----------
+        project_name : str
+            The GitLab namespace or group name that owns the project
+            (for example, "llnl").
+        repo_name : str
+            The repository name within the given project or namespace
+            (for example, "GRAPE").
+
+        Returns
+        -------
+        Repo
+            A Repo instance that wraps the underlying GitLab project.
+
+        Raises
+        ------
+        SystemExit
+            If the GitLab project cannot be retrieved (for example, it does
+            not exist or the user does not have permission).
+        """
+        path = f'{project_name}/{repo_name}'  # e.g. 'llnl/GRAPE'
+
+        try:
+            project = self._gitlab.projects.get(path)
+        except gitlab.exceptions.GitlabGetError as e:
+            logging.info(f"Could not find project {path}: {e}")
+            raise SystemExit("Abort")
+
+        return Repo(project, self._gitlab)
+
 class Project:
     def __init__(self, gitlab_group, gitlab):
         self.group = gitlab_group
