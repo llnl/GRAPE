@@ -133,25 +133,7 @@ class Approve(Option, WorkspaceDirHandler):
 
         if not source_branch:
             print("Open merge requests you are reviewing:")
-            reviewer_search = re.compile(r'\-\-reviewers=(.*)\n')
-            user_search = re.compile(rf'([^ ,]+):[^ :]*{user_name}')
-            for request in repo.pullRequests(target_branch=args["--target"]):
-                descr = request.description()
-                if "--reviewers" in descr:
-                    match = reviewer_search.search(descr) 
-                    if match:
-                        rules = []
-                        for rule in user_search.findall(match.group(1)):
-                            rules.append(rule) 
-                        print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
-                #        continue
-                # if we didn't find a match in the grape --reviewers string,
-                # check for unapproved reviews (for older reviews). 
-                #for reviewer,approved,displayname in request.reviewers():
-                #    if reviewer == user_name:
-                #        if not approved:
-                #            print(f"  {request.fromRef()} -> {request.toRef()} [legacy]")
-                #        break
+            Approve._print_open_reviews(repo, user_name, args["--target"])
                         
             source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
 
@@ -194,6 +176,41 @@ class Approve(Option, WorkspaceDirHandler):
             'target_branch': target_branch,
             'grape_config': config
         }
+
+    @staticmethod
+    def _print_open_reviews(repo, user_name, target_branch):
+        """
+        Prints open merge requests targeting `target_branch` where `user_name`
+        has been added using `grape review`. 
+
+        Relies on grape review adding a line in the description in the form
+        `--reviewers=rule1:username1 rule2:username2,username3`
+          or
+        `--reviewers=username1,username2,username3`
+
+        Parameters
+        ----------
+        repo : Repo
+            Repo/project to search
+        user_name : str
+            User name of the approver.
+        target_branch : str or None
+            Target branch for merge requests (any target if None)
+
+        """
+        reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
+        user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
+        for request in repo.pullRequests(target_branch=target_branch):
+            descr = request.description()
+            if "--reviewers" in descr:
+                match = reviewer_search.search(descr) 
+                if match:
+                    rules = []
+                    user_matches = user_search.findall(match.group(1))
+                    if user_matches:
+                        for rule in user_matches:
+                            rules.append(rule.strip(':')) 
+                        print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
 
     @staticmethod
     def _get_review_rule(top_repo_context, args):
