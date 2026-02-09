@@ -430,7 +430,7 @@ class Repo:
         return self.project.files.raw(path, revision).decode('utf-8')
 
     # state can be "all", "merged", "opened", or "closed"
-    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
+    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None, reviewer_username=None):
         if id == None:
             # translates from bitbucket to gitlab state types
             state_dict = {"open":"opened", "opened":"opened",
@@ -439,7 +439,11 @@ class Repo:
                           "all":"all"
                           }
             state = state_dict[state.lower()]
-            return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
+            if reviewer_username:
+                mrs = self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch, reviewer_username=reviewer_username)
+            else:
+                mrs = self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch)
+            return [PullRequest(x, self.gitlab) for x in mrs]
         else:
             return [PullRequest(self.project.mergerequests.list(iids=[id])[0], self.gitlab)]
 
