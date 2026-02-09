@@ -1,0 +1,17 @@
+
+
+Mon Feb  9 08:32:31 2026 Alan Dayton
+MR_714
+Reviewers: Ben Liu
+
+Retrieving a GitLab group takes ~3-4 seconds and is actually unnecessary for grape approve.
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.32
+
+--reviewers=benliu
