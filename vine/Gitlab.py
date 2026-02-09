@@ -140,14 +140,134 @@ class GrapeGitlabAdapter:
         return [g.path for g in self._gitlab.groups.list(all=True)]
 
     def project(self, name, min_access_level=None):
-        matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
-        if matching_ids:
-            group_id = matching_ids[0]
+        """
+        Resolve a GitLab group by name and wrap it in a Project.
+
+        Behavior
+        --------
+        This helper locates a group returns a `Project` wrapper around the
+        corresponding `python-gitlab` Group object. It supports two modes,
+        depending on whether a `min_access_level` is provided.
+
+        Parameters
+        ----------
+        name : str
+            The short group name (path) to look up.
+            For example, if the project path is "llnl/GRAPE", `name` should be "llnl".
+        min_access_level : int or None, optional
+            If provided, the lookup is restricted to groups where the current user
+            has at least this GitLab access level. Access levels follow GitLab's
+            `GitlabAccessLevel` constants, for example:
+                10 = Guest
+                20 = Reporter
+                30 = Developer
+                40 = Maintainer
+                50 = Owner
+
+            When:
+              * `min_access_level is None`:
+                  - A single `GET /groups/:path` request is used via
+                    `self._gitlab.groups.get(path_with_namespace)`.
+                  - This is fast, but the GitLab API does not support a
+                    `min_access_level` parameter on this endpoint, so no server-side
+                    access-level filtering is applied. You get the group if you can
+                    see it at all, or a `GitlabGetError` if you cannot.
+              * `min_access_level is not None`:
+                  - A group-scoped list call is used:
+                        GET /groups?search=...&min_access_level=...
+                    via `self._gitlab.groups.list(...)`.
+                  - The result is then filtered client-side by exact group name
+                    (case-insensitive) and the first matching group id is used.
+                  - This is slower, but the `min_access_level` filter is enforced
+                    by the GitLab API, so you will not get back groups for which
+                    the current user has lower access than requested.
+
+        Returns
+        -------
+        Project
+            A `Project` wrapper around the resolved `Group` instance.
+
+        Raises
+        ------
+        SystemExit
+            If no matching group is found, or if the user does not have sufficient
+            access to see the group. In both cases, a message is logged at INFO
+            level and the process exits with "Abort".
+
+        Notes
+        -----
+        - When using the fast path (`min_access_level is None`), subsequent operations
+          on the returned `Project` may still fail with GitLab permission errors if the
+          current user's access level is insufficient for those specific operations.
+        - The slow path relies on `self._gitlab.groups.list` supporting the
+          `min_access_level` filter, which is provided by GitLab's groups
+          list API. After selecting the group id, a second `self._gitlab.groups.get(id)` call
+          fetches the full group object.
+        """
+        if min_access_level is None:
+            # Faster, but does not support min_access_level
+            try:
+                group = self._gitlab.groups.get(name)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find group {name}: {e}")
+                raise SystemExit("Abort")
         else:
-            logging.info(f"Could not find group {name}.")
+            # Slower, but supports min_access_level
+            matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
+
+            if matching_ids:
+                group_id = matching_ids[0]
+            else:
+                logging.info(f"Could not find group {name}.")
+                raise SystemExit("Abort")
+
+            try:
+                group = self._gitlab.groups.get(group_id)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find group {name}: {e}")
+                raise SystemExit("Abort")
+
+        return Project(group, self._gitlab)
+
+    def repo(self, project_name, repo_name):
+        """
+        Retrieve a GitLab project and wrap it in a Repo object.
+
+        This method looks up a GitLab project using the combined
+        `project_name/repo_name` path (for example, "llnl/GRAPE"). If the
+        project cannot be found or GitLab returns an error, the method will:
+          - Log an informational message with the failure reason.
+          - Terminate the program by raising SystemExit("Abort").
+
+        Parameters
+        ----------
+        project_name : str
+            The GitLab namespace or group name that owns the project
+            (for example, "llnl").
+        repo_name : str
+            The repository name within the given project or namespace
+            (for example, "GRAPE").
+
+        Returns
+        -------
+        Repo
+            A Repo instance that wraps the underlying GitLab project.
+
+        Raises
+        ------
+        SystemExit
+            If the GitLab project cannot be retrieved (for example, it does
+            not exist or the user does not have permission).
+        """
+        path = f'{project_name}/{repo_name}'  # e.g. 'llnl/GRAPE'
+
+        try:
+            project = self._gitlab.projects.get(path)
+        except gitlab.exceptions.GitlabGetError as e:
+            logging.info(f"Could not find project {path}: {e}")
             raise SystemExit("Abort")
-        p = Project(self._gitlab.groups.get(group_id),self._gitlab)
-        return  p
+
+        return Repo(project, self._gitlab)
 
 class Project:
     def __init__(self, gitlab_group, gitlab):
@@ -161,13 +281,96 @@ class Project:
         return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name, min_access_level=None):
-        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
-        if matching_ids:
-            project_id = matching_ids[0]
+        """
+        Resolve a GitLab project by name within this manager's group and wrap it in a Repo.
+
+        Behavior
+        --------
+        This helper locates a project under `self.group` and returns a `Repo` wrapper
+        around the corresponding `python-gitlab` Project object. It supports two modes,
+        depending on whether a `min_access_level` is provided.
+
+        Parameters
+        ----------
+        name : str
+            The short project name (path) to look up within the group.
+            For example, if the full path is "llnl/GRAPE", `name` should be "GRAPE".
+        min_access_level : int or None, optional
+            If provided, the lookup is restricted to projects where the current user
+            has at least this GitLab access level. Access levels follow GitLab's
+            `GitlabAccessLevel` constants, for example:
+                10 = Guest
+                20 = Reporter
+                30 = Developer
+                40 = Maintainer
+                50 = Owner
+
+            When:
+              * `min_access_level is None`:
+                  - A single `GET /projects/:path` request is used via
+                    `self.gitlab.projects.get(path_with_namespace)`.
+                  - This is fast, but the GitLab API does not support a
+                    `min_access_level` parameter on this endpoint, so no server-side
+                    access-level filtering is applied. You get the project if you can
+                    see it at all, or a `GitlabGetError` if you cannot.
+              * `min_access_level is not None`:
+                  - A group-scoped list call is used:
+                        GET /groups/:id/projects?search=...&min_access_level=...
+                    via `self.group.projects.list(...)`.
+                  - The result is then filtered client-side by exact project name
+                    (case-insensitive) and the first matching project id is used.
+                  - This is slower, but the `min_access_level` filter is enforced
+                    by the GitLab API, so you will not get back projects for which
+                    the current user has lower access than requested.
+
+        Returns
+        -------
+        Repo
+            A `Repo` wrapper around the resolved `Project` instance.
+
+        Raises
+        ------
+        SystemExit
+            If no matching project is found, or if the user does not have sufficient
+            access to see the project. In both cases, a message is logged at INFO
+            level and the process exits with "Abort".
+
+        Notes
+        -----
+        - When using the fast path (`min_access_level is None`), subsequent operations
+          on the returned `Repo` may still fail with GitLab permission errors if the
+          current user's access level is insufficient for those specific operations.
+        - The slow path relies on `self.group.projects.list` supporting the
+          `min_access_level` filter, which is provided by GitLab's group projects
+          list API. After selecting the project id, a second `projects.get(id)` call
+          fetches the full project object.
+        """
+        if min_access_level is None:
+            # Faster, but does not support min_access_level
+            path = f'{self.group.full_path}/{name}'  # e.g. 'llnl/GRAPE'
+
+            try:
+                project = self.gitlab.projects.get(path)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find project {path}: {e}")
+                raise SystemExit("Abort")
         else:
-            logging.info(f"Could not find project {name}.")
-            raise SystemExit("Abort")
-        return Repo(self.gitlab.projects.get(project_id), self.gitlab)
+            # Slower, but supports min_access_level
+            matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
+
+            if matching_ids:
+                project_id = matching_ids[0]
+            else:
+                logging.info(f"Could not find project {name}.")
+                raise SystemExit("Abort")
+
+            try:
+                project = self.gitlab.projects.get(project_id)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find project {name}: {e}")
+                raise SystemExit("Abort")
+
+        return Repo(project, self.gitlab)
 
     def groupid(self, groupname):
         # groups API doesn't include exact match, so we have to iterate over the search
