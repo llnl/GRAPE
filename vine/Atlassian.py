@@ -72,8 +72,24 @@ class Atlassian:
         return None
 
     def repo(self, project_name, repo_name):
-        logging.error("GRAPE: ERROR: repo not implemented for Atlassian")
-        exit(1)
+        """
+        Retrieve a Bitbucket repository and wrap it in a grape Repo object.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the Bitbucket project that owns the repository
+            (for example, "llnl").
+        repo_name : str
+            The repository name within the given project
+            (for example, "GRAPE").
+
+        Returns
+        -------
+        Repo
+            A Repo instance that wraps the underlying Bitbucket repository.
+        """
+        return self.project(project_name).repo(repo_name)
 
 class StashyNode:
     def __init__(self, node, stashynode):
