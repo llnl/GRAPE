@@ -107,7 +107,6 @@ class Approve(Option, WorkspaceDirHandler):
         dict
             Context containing:
             - project_name
-            - project
             - repo_name
             - repo
             - source_branch
@@ -125,10 +124,8 @@ class Approve(Option, WorkspaceDirHandler):
 
         # Get repo info
         project_name = args['--project']
-        project = git_host.project(project_name)
-
         repo_name = args['--repo']
-        repo = project.repo(repo_name)
+        repo = git_host.repo(project_name, repo_name)
 
         # Get and validate source branch
         source_branch = args["--source"]
@@ -167,7 +164,6 @@ class Approve(Option, WorkspaceDirHandler):
 
         return {
             'project_name': project_name,
-            'project': project,
             'repo_name': repo_name,
             'repo': repo,
             'review_request': review_request,
@@ -404,7 +400,6 @@ class Approve(Option, WorkspaceDirHandler):
         submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
 
         top_project_name = top_repo_context['project_name']
-        top_project = top_repo_context['project']
 
         # Checking top-level diffs for modified submodules is generally faster
         # than querying GitLab for each submodule repository and merge request.
@@ -421,7 +416,7 @@ class Approve(Option, WorkspaceDirHandler):
 
                 if url:
                     modified_repo_context = Approve._get_modified_repo_context(
-                        git_host, top_project_name, top_project, submodule_source_branch, submodule_target_branch, url
+                        git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
                     )
 
                     if modified_repo_context:
@@ -434,7 +429,7 @@ class Approve(Option, WorkspaceDirHandler):
                 url = submodule_metadata['url']
 
                 modified_repo_context = Approve._get_modified_repo_context(
-                    git_host, top_project_name, top_project, submodule_source_branch, submodule_target_branch, url
+                    git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
                 )
 
                 if modified_repo_context:
@@ -470,7 +465,6 @@ class Approve(Option, WorkspaceDirHandler):
         Mutates `modified_repos` by adding entries for modified nested subprojects.
         """
         top_project_name = top_repo_context['project_name']
-        top_project = top_repo_context['project']
         subproject_source_branch = top_repo_context['source_branch']
         subproject_target_branch = top_repo_context['target_branch']
 
@@ -480,14 +474,14 @@ class Approve(Option, WorkspaceDirHandler):
         for subproject in subprojects:
             url = config.get(f'nested-{subproject}', 'url')
             modified_repo_context = Approve._get_modified_repo_context(
-                git_host, top_project_name, top_project, subproject_source_branch, subproject_target_branch, url
+                git_host, top_project_name, subproject_source_branch, subproject_target_branch, url
             )
 
             if modified_repo_context:
                 modified_repos[modified_repo_context['repo_name']] = modified_repo_context
 
     @staticmethod
-    def _get_modified_repo_context(git_host, top_project_name, top_project, source_branch, target_branch, url):
+    def _get_modified_repo_context(git_host, top_project_name, source_branch, target_branch, url):
         """
         Build repository context for a nested repo (submodule/subproject) if it has an open review request.
 
@@ -512,7 +506,6 @@ class Approve(Option, WorkspaceDirHandler):
         dict | None
             When an open merge/pull request exists from source -> target returns a repo context dict containing:
               - project_name
-              - project
               - repo_name
               - repo
               - review_request
@@ -527,14 +520,11 @@ class Approve(Option, WorkspaceDirHandler):
         if project_name == '..':
             # Same as top level project
             project_name = top_project_name
-            project = top_project
-        else:
-            project = git_host.project(project_name)
 
         repo_name = components[-1]
         repo_name = repo_name[:-4] if repo_name.endswith('.git') else repo_name
 
-        repo = project.repo(repo_name)
+        repo = git_host.repo(project_name, repo_name)
 
         # Get merge/pull request
         review_request = repo.getOpenPullRequest(source_branch, target_branch)
@@ -544,7 +534,6 @@ class Approve(Option, WorkspaceDirHandler):
 
         return {
             'project_name': project_name,
-            'project': project,
             'repo_name': repo_name,
             'repo': repo,
             'review_request': review_request
