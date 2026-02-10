@@ -131,9 +131,9 @@ def parseArgs(docstr, arguments, config):
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATMENT for y/n/Y/N defaults:
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate
-# to True if the user inputs anything that starts with a 'y' or 'Y',
-# and will evaluate to False if the user inputs anything that starts
-# with a 'N' or 'n'.
+# to True if the user inputs 'y' or 'yes' (case-insensitive)
+# and will evaluate to False if the user inputs 'n' or 'no'
+# (case insensitive).
 def userInput(message, default=None):
     print(f"\n{message}")
     if IS_NON_INTERACTIVE:
@@ -155,8 +155,7 @@ def userInput(message, default=None):
     if value == "":
         value = default
     if default.lower() == "y" or default.lower() == "n":
-        ok = False
-        while not ok:
+        while True:
             if value.lower() == "y":
                 return True
             if value.lower() == "yes":
