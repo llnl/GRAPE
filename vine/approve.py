@@ -67,7 +67,7 @@ class Approve(Option, WorkspaceDirHandler):
     def execute(self, args):
         user_name = utility.getUserName(args)
         git_host = utility.authenticateToGitHost(user_name, self.workspace_dir, args)
-        top_repo_context = Approve._get_top_repo_context(git_host, user_name, args)
+        top_repo_context = Approve._get_top_repo_context_for_approval(git_host, user_name, args)
         rule = Approve._get_review_rule(top_repo_context, args)
         Approve._approve(user_name, git_host, top_repo_context, rule)
 
@@ -82,7 +82,7 @@ class Approve(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "name", "My unnamed repo")
 
     @staticmethod
-    def _get_top_repo_context(git_host, user_name, args):
+    def _get_top_repo_context_for_approval(git_host, user_name, args):
         """
         Build and validate the top-level repository context needed for approvals.
 
@@ -95,6 +95,8 @@ class Approve(Option, WorkspaceDirHandler):
         ----------
         git_host : CodeReviews
             Authenticated code review / git hosting client.
+        user_name : str
+            Username for git host client
         args : dict
             Parsed command-line arguments. Expected keys:
             - "--project" : str
@@ -118,20 +120,20 @@ class Approve(Option, WorkspaceDirHandler):
         Terminates the process with exit code 1 if:
         - source branch does not exist
         - `.grapeconfig` is missing on the source branch
-        - target branch does not exist
         """
         logging.info(f'Getting top level repository...')
 
         # Get repo info
         project_name = args['--project']
         repo_name = args['--repo']
-        repo = git_host.repo(project_name, repo_name)
-
         # Get and validate source branch
         source_branch = args["--source"]
+        # Get target branch
+        target_branch = args['--target']
 
         if not source_branch:
             print("Open merge requests you are reviewing:")
+            repo = git_host.repo(project_name, repo_name)
             Approve._print_open_reviews(repo, user_name, args["--target"])
                         
             source_branch = utility.userInput(f'Please enter the name of the branch being approved: ')
@@ -140,40 +142,8 @@ class Approve(Option, WorkspaceDirHandler):
                 logging.error(f'GRAPE: ERROR: Source branch is required.')
                 exit(1)
 
-        # Get grape config
-        try:
-            grapeconfig = repo.getFile('.grapeconfig', source_branch)
-        except Exception as e:
-            if e.response_code == 404:
-                if e.error_message == '404 Commit Not Found':
-                    logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
-                    exit(1)
-                elif e.error_message == '404 File Not Found':
-                    logging.error(f'GRAPE: ERROR: File ".grapeconfig" does not exist on source branch "{source_branch}" in "{project_name}/{repo_name}"')
-                    exit(1)
 
-            raise
-
-        config = config_parser_base.GrapeConfigParserBase(workspaceDir=None, configString=grapeconfig)
-
-        # Get and validate target branch
-        target_branch = args['--target']
-
-        if not target_branch:
-            target_branch = config.getPublicBranchFor(source_branch)
-
-        # Get review request
-        review_request = repo.getOpenPullRequest(source_branch, target_branch)
-
-        return {
-            'project_name': project_name,
-            'repo_name': repo_name,
-            'repo': repo,
-            'review_request': review_request,
-            'source_branch': source_branch,
-            'target_branch': target_branch,
-            'grape_config': config
-        }
+        return review.Review._get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch)
 
     @staticmethod
     def _print_open_reviews(repo, user_name, target_branch):
@@ -288,7 +258,7 @@ class Approve(Option, WorkspaceDirHandler):
         no approvals are granted.
         """
         Approve._validate_approver(user_name, rule)
-        modified_repos = Approve._get_modified_repos(git_host, top_repo_context)
+        modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
         approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
         Approve._apply_approve_actions(rule, approve_input)
 
@@ -321,261 +291,6 @@ class Approve(Option, WorkspaceDirHandler):
 
         logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule["name"]}".')
         exit(1)
-
-    @staticmethod
-    def _get_modified_repos(git_host, top_repo_context):
-        """
-        Determine which repositories have changes between the source and target branches.
-
-        This builds and returns a dictionary of repository context objects for all
-        repositories that have a merge/pull request:
-          - the top-level repository (via `_add_top_repo_if_modified`)
-          - modified submodules (via `_add_modified_submodules`)
-          - modified nested subprojects (via `_add_modified_subprojects`)
-
-        Parameters
-        ----------
-        git_host : CodeReviews
-            Authenticated code review / git hosting client used to access repos.
-        top_repo_context : dict
-            Context dictionary returned by `_get_top_repo_context`.
-
-        Returns
-        -------
-        dict
-            Mapping of repo_name -> repo_context for each repository detected as
-            modified relative to the target branch.
-        """
-        logging.info(f'Getting modified repositories...')
-
-        modified_repos = {}
-
-        Approve._add_top_repo_if_modified(top_repo_context, modified_repos)
-        Approve._add_modified_submodules(git_host, top_repo_context, modified_repos)
-        Approve._add_modified_subprojects(git_host, top_repo_context, modified_repos)
-
-        return modified_repos
-
-    @staticmethod
-    def _add_top_repo_if_modified(top_repo_context, modified_repos):
-        """
-        Add the top-level repository to the modified repos map if it has an open review request.
-
-        If an open review request exists, the top repository context is added to `modified_repos`
-        keyed by the repo name.
-
-        Parameters
-        ----------
-        top_repo_context : dict
-            Context dictionary returned by `_get_top_repo_context`, expected to include:
-              - "repo_name": str
-              - "review_request": review request | None
-        modified_repos : dict
-            Mapping of repo_name -> repo_context that will be updated in-place.
-
-        Side Effects
-        ------------
-        Mutates `modified_repos` by adding an entry for the top repository when applicable.
-        """
-        if top_repo_context['review_request']:
-            modified_repos[top_repo_context['repo_name']] = top_repo_context
-
-    @staticmethod
-    def _add_modified_submodules(git_host, top_repo_context, modified_repos):
-        """
-        Add modified submodules (with open review requests) to the modified repos map.
-
-        This inspects the top repository's `.gitmodules` file on the source branch,
-        parses submodule definitions, derives the corresponding target branch for
-        submodules using the workspace mapping `submoduleTopicPrefixMappings` from
-        the repository's `.grapeconfig`, and then checks each submodule repository
-        for an open merge/pull request from source -> target.
-
-        Submodules meeting this criterion are added to `modified_repos` keyed by
-        repository name.
-
-        Parameters
-        ----------
-        git_host : CodeReviews
-            Authenticated code review / git hosting client.
-        top_repo_context : dict
-            Context dictionary for the top-level repository, expected to include:
-              - "project_name": str
-              - "repo": repository client for the top repo
-              - "source_branch": str
-              - "grape_config": config_parser_base.GrapeConfigParserBase
-        modified_repos : dict
-            Mapping of repo_name -> repo_context that will be updated in-place.
-
-        Side Effects
-        ------------
-        Mutates `modified_repos` by adding entries for modified submodule repositories.
-
-        Notes
-        -----
-        This method returns early when `.gitmodules` is missing or contains no
-        submodule definitions.
-        """
-        # TODO: Investigate approach using top level merge request diffs if available
-        top_repo = top_repo_context['repo']
-        top_source_branch = top_repo_context['source_branch']
-
-        gitmodules = top_repo.getFile(".gitmodules", top_source_branch)
-
-        if not gitmodules:
-            return
-
-        submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
-
-        if not submodules_metadata:
-            return
-
-        submodule_source_branch = top_source_branch
-
-        config = top_repo_context['grape_config']
-        submodule_branch_mappings = config.getMapping(Approve.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings')
-        source_branch_prefix = git.branchPrefix(submodule_source_branch)
-        submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
-
-        top_project_name = top_repo_context['project_name']
-
-        # Checking top-level diffs for modified submodules is generally faster
-        # than querying GitLab for each submodule repository and merge request.
-        top_review_request = top_repo_context['review_request']
-
-        if top_review_request:
-            submodule_path_to_url_map = {submodule['path']: submodule['url'] for submodule in submodules_metadata.values()}
-
-            top_diffs = top_review_request.diffs()
-
-            for diff in top_diffs:
-                new_path = diff.get('new_path')
-                url = submodule_path_to_url_map.get(new_path)
-
-                if url:
-                    modified_repo_context = Approve._get_modified_repo_context(
-                        git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
-                    )
-
-                    if modified_repo_context:
-                        modified_repos[modified_repo_context['repo_name']] = modified_repo_context
-
-        else:
-            for submodule_name in submodules_metadata:
-                submodule_metadata = submodules_metadata[submodule_name]
-                # TODO: Check url matches the top level git service
-                url = submodule_metadata['url']
-
-                modified_repo_context = Approve._get_modified_repo_context(
-                    git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
-                )
-
-                if modified_repo_context:
-                    modified_repos[modified_repo_context['repo_name']] = modified_repo_context
-
-    @staticmethod
-    def _add_modified_subprojects(git_host, top_repo_context, modified_repos):
-        """
-        Add nested subprojects with changes and open review requests to the modified repos map.
-
-        Iterates all nested subprojects defined in the top repository's `.grapeconfig`,
-        resolves each subproject URL, and uses `_get_modified_repo_context` to determine
-        whether the subproject has an open merge/pull request from source -> target.
-
-        When a subproject meets this criterion, its repo context is added to
-        `modified_repos` keyed by repo name.
-
-        Parameters
-        ----------
-        git_host : CodeReviews
-            Authenticated code review / git hosting client.
-        top_repo_context : dict
-            Context dictionary for the top-level repository, expected to include:
-              - "project_name"
-              - "source_branch"
-              - "target_branch"
-              - "grape_config"
-        modified_repos : dict
-            Mapping of repo_name -> repo_context that will be updated in-place.
-
-        Side Effects
-        ------------
-        Mutates `modified_repos` by adding entries for modified nested subprojects.
-        """
-        top_project_name = top_repo_context['project_name']
-        subproject_source_branch = top_repo_context['source_branch']
-        subproject_target_branch = top_repo_context['target_branch']
-
-        config = top_repo_context['grape_config']
-        subprojects = config.getAllNestedSubprojects()
-
-        for subproject in subprojects:
-            url = config.get(f'nested-{subproject}', 'url')
-            modified_repo_context = Approve._get_modified_repo_context(
-                git_host, top_project_name, subproject_source_branch, subproject_target_branch, url
-            )
-
-            if modified_repo_context:
-                modified_repos[modified_repo_context['repo_name']] = modified_repo_context
-
-    @staticmethod
-    def _get_modified_repo_context(git_host, top_project_name, source_branch, target_branch, url):
-        """
-        Build repository context for a nested repo (submodule/subproject) if it has an open review request.
-
-        This resolves the repository's project/name from the given repository URL and locates an
-        open merge/pull request from `source_branch` into `target_branch` if it exists.
-
-        Parameters
-        ----------
-        git_host : CodeReviews
-            Authenticated code review / git hosting client.
-        top_project_name : str
-            Project/group name of the top-level repository. Used when the URL specifies a relative project ("..").
-        source_branch : str
-            Source/topic branch name to compare and to locate an open merge/pull request for.
-        target_branch : str
-            Target/public branch name to compare against and to locate an open merge/pull request into.
-        url : str
-            Repository URL (typically from .gitmodules or nested subproject config). Expected to end with `<repo>.git`
-            optionally, and to include the project/group segment immediately before the repo segment.
-        Returns
-        -------
-        dict | None
-            When an open merge/pull request exists from source -> target returns a repo context dict containing:
-              - project_name
-              - repo_name
-              - repo
-              - review_request
-
-            Otherwise returns None.
-        """
-        # Get project and repo
-        components = url.split('/')
-
-        project_name = components[-2]
-
-        if project_name == '..':
-            # Same as top level project
-            project_name = top_project_name
-
-        repo_name = components[-1]
-        repo_name = repo_name[:-4] if repo_name.endswith('.git') else repo_name
-
-        repo = git_host.repo(project_name, repo_name)
-
-        # Get merge/pull request
-        review_request = repo.getOpenPullRequest(source_branch, target_branch)
-
-        if not review_request:
-            return None
-
-        return {
-            'project_name': project_name,
-            'repo_name': repo_name,
-            'repo': repo,
-            'review_request': review_request
-        }
 
     @staticmethod
     def _get_user_input(rule_input):
