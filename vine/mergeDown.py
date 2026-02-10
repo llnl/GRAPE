@@ -454,7 +454,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                                                 ssh_path = args["--ssh_pat_url"],
                                                 workspace_dir=self.workspace_dir
                                                )
-       repo = grape_gitlab.project(args["--project"]).repo(args["--repo"])
+       repo = grape_gitlab.repo(args["--project"], args["--repo"])
 
        # This old version of the lookup is not currently active (only for comparison)
        branches = []
