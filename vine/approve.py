@@ -322,6 +322,7 @@ class Approve(Option, WorkspaceDirHandler):
         logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule["name"]}".')
         exit(1)
 
+    # TODO REMOVE
     @staticmethod
     def _get_modified_repos(git_host, top_repo_context):
         """
@@ -350,9 +351,9 @@ class Approve(Option, WorkspaceDirHandler):
 
         modified_repos = {}
 
-        Approve._add_top_repo_if_modified(top_repo_context, modified_repos)
-        Approve._add_modified_submodules(git_host, top_repo_context, modified_repos)
-        Approve._add_modified_subprojects(git_host, top_repo_context, modified_repos)
+        Review._add_top_repo_if_modified(top_repo_context, modified_repos)
+        Review._add_modified_submodules(git_host, top_repo_context, modified_repos)
+        Review._add_modified_subprojects(git_host, top_repo_context, modified_repos)
 
         return modified_repos
 
@@ -433,7 +434,7 @@ class Approve(Option, WorkspaceDirHandler):
         submodule_source_branch = top_source_branch
 
         config = top_repo_context['grape_config']
-        submodule_branch_mappings = config.getMapping(Approve.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings')
+        submodule_branch_mappings = config.getMapping(Review.SECTION_WORKSPACE, 'submoduleTopicPrefixMappings')
         source_branch_prefix = git.branchPrefix(submodule_source_branch)
         submodule_target_branch = submodule_branch_mappings[source_branch_prefix]
 
@@ -453,7 +454,7 @@ class Approve(Option, WorkspaceDirHandler):
                 url = submodule_path_to_url_map.get(new_path)
 
                 if url:
-                    modified_repo_context = Approve._get_modified_repo_context(
+                    modified_repo_context = Review._get_modified_repo_context(
                         git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
                     )
 
@@ -466,7 +467,7 @@ class Approve(Option, WorkspaceDirHandler):
                 # TODO: Check url matches the top level git service
                 url = submodule_metadata['url']
 
-                modified_repo_context = Approve._get_modified_repo_context(
+                modified_repo_context = Review._get_modified_repo_context(
                     git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
                 )
 
@@ -511,7 +512,7 @@ class Approve(Option, WorkspaceDirHandler):
 
         for subproject in subprojects:
             url = config.get(f'nested-{subproject}', 'url')
-            modified_repo_context = Approve._get_modified_repo_context(
+            modified_repo_context = Review._get_modified_repo_context(
                 git_host, top_project_name, subproject_source_branch, subproject_target_branch, url
             )
 
