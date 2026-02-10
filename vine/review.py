@@ -563,7 +563,7 @@ class Review(Option, WorkspaceDirHandler):
     @staticmethod
     def _get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch):
         """
-        Build and validate the top-level repository context needed for approvals.
+        Build and validate the top-level repository context needed for reviews/approvals.
 
         This resolves the project/repo and target branch, loads the `.grapeconfig` from the source
         branch, and returns a context dictionary used by downstream review/approval logic.
