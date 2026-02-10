@@ -552,3 +552,6 @@ class TestAtlassian:
 
     def project(self, name):
         return self.stash.project(name)
+
+    def repo(self, project_name, repo_name):
+        return self.project(project_name).repo(repo_name)
