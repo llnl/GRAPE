@@ -748,17 +748,18 @@ class Approve(Option, WorkspaceDirHandler):
                 logging.info(f'Skipping approval for "{repo_name}"...')
                 continue
 
-            commit_reviewed = utility.userInput(
-                f'Enter the most recent commit reviewed to confirm approval:'
-            ).lower()
+            if 'tag' in rule['approveActions']:
+                commit_reviewed = utility.userInput(
+                    f'Enter the most recent commit reviewed to confirm approval:'
+                ).lower()
 
-            if not source_commit.startswith(commit_reviewed):
-                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" does not match branch head commit sha "{source_commit}". Exiting...')
-                exit(1)
+                if not source_commit.startswith(commit_reviewed):
+                    logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" does not match branch head commit sha "{source_commit}". Exiting...')
+                    exit(1)
 
-            if not commit_reviewed.startswith(short_source_commit):
-                logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" must have at least the same number of characters as the branch head commit short sha "{short_source_commit}". Exiting...')
-                exit(1)
+                if not commit_reviewed.startswith(short_source_commit):
+                    logging.error(f'GRAPE: ERROR: Reviewed commit sha "{commit_reviewed}" must have at least the same number of characters as the branch head commit short sha "{short_source_commit}". Exiting...')
+                    exit(1)
 
             repo_context['approved'] = True
             any_approvals = True
