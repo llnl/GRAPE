@@ -1,0 +1,21 @@
+
+
+Tue Feb 10 12:25:25 2026 Benjamin T. Liu
+MR_717
+Reviewers: David Dawson, Alan Dayton
+
+User input improvements for grape approve
+
+- give more informative message if MR already approved
+
+- only perform SHA verification if tag action is active
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.35
+
+--reviewers=dawson24,dayton8
