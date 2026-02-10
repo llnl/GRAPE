@@ -929,12 +929,7 @@ class Approve(Option, WorkspaceDirHandler):
                 # Approve reviewed branch
                 if 'approve' in rule['approveActions']:
                     logging.info('  Approving merge/pull request...')
-
-                    try:
-                        review_request.approve()
-                    except:
-                        logging.error(f'GRAPE: ERROR: Unable to approve merge request.')
-                        raise
+                    review_request.approve()
 
                 # Tag reviewed branch
                 if 'tag' in rule['approveActions']:

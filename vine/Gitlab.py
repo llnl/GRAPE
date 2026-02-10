@@ -979,12 +979,25 @@ class PullRequest:
             The GitLab API response from the approve action.
 
         Notes:
-            Throws exception if the approval cannot be completed (e.g. insufficient permissions).
+            Returns None if authentication failed (including already approved).
         """
         try:
             return self.mergerequest.approve()
         except gitlab.exceptions.GitlabAuthenticationError as e:
-            logging.error(f'GRAPE: ERROR: User not authorized to approve merge request.')
+            try:
+                # authenticate to ensure that the user info is populated
+                self.gitlab.auth()
+                username = self.gitlab.user.username
+                approvals = self.mergerequest.approvals.get()
+                for reviewer in approvals.approved_by:
+                    if username == reviewer["user"]["username"]:
+                        logging.info(f'User {username} already approved merge request.')
+                        return None
+            except:
+                pass
+
+            logging.error(f'GRAPE: ERROR: User not authorized to approve merge request: {e}')
+            return None
 
 
     def approved(self):
