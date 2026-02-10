@@ -9,12 +9,14 @@ from stashy import errors as stashy_errors
 from vine import CodeReviewsFactory
 from vine import Atlassian
 from vine import Gitlab
+from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
+from vine import submodules
 from vine import utility
 from vine import version
 from vine import vine_logging
@@ -557,6 +559,81 @@ class Review(Option, WorkspaceDirHandler):
                     break
 
         return applicableReviewers
+
+    @staticmethod
+    def _get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch):
+        """
+        Build and validate the top-level repository context needed for approvals.
+
+        This resolves the project/repo and target branch, loads the `.grapeconfig` from the source
+        branch, and returns a context dictionary used by downstream review/approval logic.
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review / git hosting client.
+        user_name : str
+            Username for git host client
+        project : str
+            Name of project/group containing repository
+        repo : str
+            Name of repository
+        source : str
+            Name of source branch
+        target : str
+            Name of target branch (if None, defaults via .grapeconfig mapping)
+
+        Returns
+        -------
+        dict
+            Context containing:
+            - project_name
+            - repo_name
+            - repo
+            - source_branch
+            - target_branch
+            - grape_config (GrapeConfigParserBase)
+
+        Exits
+        -----
+        Terminates the process with exit code 1 if:
+        - source branch does not exist
+        - `.grapeconfig` is missing on the source branch
+        """
+
+        repo = git_host.repo(project_name, repo_name)
+
+        # Get grape config
+        try:
+            grapeconfig = repo.getFile('.grapeconfig', source_branch)
+        except Exception as e:
+            if e.response_code == 404:
+                if e.error_message == '404 Commit Not Found':
+                    logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
+                    exit(1)
+                elif e.error_message == '404 File Not Found':
+                    logging.error(f'GRAPE: ERROR: File ".grapeconfig" does not exist on source branch "{source_branch}" in "{project_name}/{repo_name}"')
+                    exit(1)
+
+            raise
+
+        config = config_parser_base.GrapeConfigParserBase(workspaceDir=None, configString=grapeconfig)
+
+        if not target_branch:
+            target_branch = config.getPublicBranchFor(source_branch)
+
+        # Get review request
+        review_request = repo.getOpenPullRequest(source_branch, target_branch)
+
+        return {
+            'project_name': project_name,
+            'repo_name': repo_name,
+            'repo': repo,
+            'review_request': review_request,
+            'source_branch': source_branch,
+            'target_branch': target_branch,
+            'grape_config': config
+        }
 
     @staticmethod
     def _get_modified_repos(git_host, top_repo_context):
