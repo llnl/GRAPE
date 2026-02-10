@@ -598,7 +598,7 @@ class Review(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
         # load pull request if it already exists
-        wsRepo =  codeReviews.project(project_name).repo(repo_name)
+        wsRepo =  codeReviews.repo(project_name, repo_name)
         existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
 
         # determine pull request title
