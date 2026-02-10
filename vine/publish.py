@@ -657,7 +657,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     @property
     def repo(self):
         if self._repo is None:
-            self._repo = self.codeReviews.project(self.args["--project"]).repo(self.args["--repo"])
+            self._repo = self.codeReviews.repo(self.args["--project"], self.args["--repo"])
         return self._repo
 
     def pullRequests(self):
