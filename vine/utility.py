@@ -164,6 +164,7 @@ def userInput(message, default=None):
                 return False
             if value.lower() == "no":
                 return False
+            print("Please enter y/yes/n/no...")
             value = input(f"(def: {default}) ==> ").strip()
     return value
 
