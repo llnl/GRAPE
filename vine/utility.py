@@ -155,10 +155,17 @@ def userInput(message, default=None):
     if value == "":
         value = default
     if default.lower() == "y" or default.lower() == "n":
-        if value.lower()[0] == "y":
-            return True
-        if value.lower()[0] == "n":
-            return False
+        ok = False
+        while not ok:
+            if value.lower() == "y":
+                return True
+            if value.lower() == "yes":
+                return True
+            if value.lower() == "n":
+                return False
+            if value.lower() == "no":
+                return False
+            value = input(f"(def: {default}) ==> ").strip()
     return value
 
 
