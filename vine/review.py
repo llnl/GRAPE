@@ -992,12 +992,13 @@ class Review(Option, WorkspaceDirHandler):
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
-        for reviewRuleName in reviewRules:
-            if not reviewRules[reviewRuleName]['active']:
-                reviewers[reviewRuleName] = {
-                    'label': reviewRules[reviewRuleName]['label'],
-                    'reviewers': []
-                }
+        if reviewers:
+            for reviewRuleName in reviewRules:
+                if not reviewRules[reviewRuleName]['active']:
+                    reviewers[reviewRuleName] = {
+                        'label': reviewRules[reviewRuleName]['label'],
+                        'reviewers': []
+                    }
 
         descriptionData['grape_data'] = self.buildGrapeData(args)
 
