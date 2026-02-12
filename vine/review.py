@@ -164,20 +164,6 @@ class Review(Option, WorkspaceDirHandler):
 
         return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
 
-    def buildDescriptionRegex(self):
-        """
-        Converts a regex for the merge/pull request description.
-
-        The regex includes capture groups for the user description,
-        related reviews, and grape data.
-
-        Returns:
-            str: A regex pattern that can be used to match and extract data
-            from the merge/pull request description.
-        """
-
-        return r'(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
-
     def buildDescription(self, template, data):
         """
         Generates a description by replacing placeholders in the template with
@@ -234,6 +220,7 @@ class Review(Option, WorkspaceDirHandler):
 
         return description
 
+
     def parseDescription(self, description, template):
         """
         Parses a merge/pull request description based on a provided template
@@ -274,39 +261,64 @@ class Review(Option, WorkspaceDirHandler):
             - If the description does not match the new regex, it falls back to an older regex pattern.
             - If no matches are found, the function defaults to treating the entire description as the user description, with no related reviews or grape data.
         """
-        data = {'user_description': '',
-                'related_reviews': [],
-                'grape_data': ''}
+        user_description_section_name = 'User Description'
+        grape_section_name = 'GRAPE'
+        related_reviews_section_name = 'Related Reviews'
+        review_rules_section_name = 'Review Rules'
+        metadata_section_name = 'Metadata'
 
-        if not description:
-            return data
+        # user_description_section_name should not actually appear in the description - it's just for internal bookkeeping.
+        section_names = [
+            grape_section_name,
+            related_reviews_section_name,
+            review_rules_section_name,
+            metadata_section_name
+        ]
 
-        regex = self.buildDescriptionRegex()
-        match = re.fullmatch(regex, description, re.DOTALL)
+        user_description_lines = []
+        related_review_lines = []
+        review_rule_lines = []
+        metadata_lines = []
 
-        if match:
-            data['user_description'] = match.group('user_description')
-            data['related_reviews'] = match.group('related_reviews').split()
-            if 'None' in data['related_reviews']:
-                data['related_reviews'].remove('None')
-            data['grape_data'] = match.group('grape_data')
-        else:
-            # check for either old description format OR new description provided by the command line
-            oldRegex = rf"(?P<user_description>.*?)\s*(?P<related_reviews>({re.escape(MRLinkText())}\S+\s*)*)"
-            match = re.fullmatch(oldRegex, description, re.DOTALL)
+        section = user_description_section_name
+
+        section_pattern = re.compile(r'#*\s+(.*)')
+
+        for line in description.strip().splitlines():
+
+            # Check if we are entering a new section
+            match = section_pattern.match(line.strip())
 
             if match:
-                data['user_description'] = match.group('user_description')
-                data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
-                data['grape_data'] = ''
+                section_name = match.group(1)
+
+                if section_name in section_names:
+                    section = section_name
+                    continue
+
+            if section == grape_section_name:
+                if line.strip().startswith('v'):
+                    section = metadata_section_name
+                    metadata_lines.append(line)
+            elif section == related_reviews_section_name:
+                related_review_lines.append(line)
+            elif section == review_rules_section_name:
+                review_rule_lines.append(line)
+            elif section == metadata_section_name:
+                metadata_lines.append(line)
+            elif section == user_description_section_name:
+                user_description_lines.append(line)
             else:
-                logging.warning(f'GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.')
+                # TODO: Warn about unexpected format
+                user_description_lines.append(line)
 
-                data['user_description'] = description
-                data['related_reviews'] = []
-                data['grape_data'] = ''
-
-        return data
+        print({
+            'user_description': user_description_lines,
+            'related_reviews': related_review_lines,
+            'review_rules': review_rule_lines,
+            'metadata': metadata_lines
+        })
+        exit(0)
 
 
     def getSavedArgs(self, descriptionData):
