@@ -221,45 +221,72 @@ class Review(Option, WorkspaceDirHandler):
         return description
 
 
-    def parseDescription(self, description, template):
+    @staticmethod
+    def parseDescription(description):
         """
-        Parses a merge/pull request description based on a provided template
-        and extracts relevant data.
+        Parse a multi section description string into logical sections.
 
-        This function uses a regex pattern generated from the provided template
-        to match and extract specific components from the description. If the
-        description does not match the template, it attempts to match an older
-        regex pattern. If neither pattern matches, it defaults to treating the
-        entire description as the user description.
+        The input `description` is expected to be a text block that may contain
+        headings identifying specific sections. Recognized section headings are:
 
-        Args:
-            description (str): The merge/pull request description to be parsed.
-            template (str): The template string used to generate the regex pattern for parsing.
+          - "GRAPE"
+          - "Related Reviews"
+          - "Review Rules"
+          - "Metadata"
 
-        Returns:
-            dict: A dictionary containing the parsed data with the following keys:
-                - 'user_description': The extracted user description.
-                - 'related_reviews': A list of related merge/pull request links extracted from the description (an empty list if none).
-                - 'grape_data': Additional data used by GRAPE.
+        Any content that appears before the first recognized section heading is
+        treated as the "User Description" section, which is used only for internal
+        bookkeeping and is not expected to appear as a heading in the text.
 
-        Example 1:
-            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> description = 'Adds a new feature.\n\n# Related Reviews\n\nhttps://github.com/LLNL/GRAPE/pull/1\n\n# GRAPE\n\nv1.49.26'
-            >>> result = parseDescription(description, template)
-            >>> print(result)
-            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': 'v1.49.26'}
+        Section semantics:
+          - User Description:
+              Free form user provided text before any known section heading.
 
-        Example 2:
-            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> description = 'Adds a new feature.\n\nThis merge request is related to the merge request at: https://github.com/LLNL/GRAPE/pull/1'
-            >>> result = parseDescription(description, template)
-            >>> print(result)
-            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': None}
+          - GRAPE:
+              Top level section storing all GRAPE generated description. Historically,
+              this section contained metadata, but now it is meant to hold GRAPE's
+              descriptive content. However, if a line in this section starts with
+              'v' (after stripping leading whitespace), parsing switches to the
+              Metadata section and that line is treated as metadata.
 
-        Notes:
-            - The function uses `re.fullmatch` to ensure the entire description matches the regex pattern.
-            - If the description does not match the new regex, it falls back to an older regex pattern.
-            - If no matches are found, the function defaults to treating the entire description as the user description, with no related reviews or grape data.
+          - Related Reviews:
+              Lines under the "Related Reviews" heading.
+
+          - Review Rules:
+              Lines under the "Review Rules" heading.
+
+          - Metadata:
+              Lines under the "Metadata" heading, plus any lines in the GRAPE section
+              that trigger a switch to metadata (lines starting with 'v') and all
+              subsequent lines until another section heading is encountered.
+
+        Parameters
+        ----------
+        description : str
+            Multi line string containing the top level merge request description.
+
+        Returns
+        -------
+        dict
+            A dictionary with the following keys:
+              - 'user_description': list[str]
+                  Lines belonging to the user description section.
+              - 'related_reviews': list[str]
+                  Lines belonging to the related reviews section.
+              - 'review_rules': list[str]
+                  Lines belonging to the review rules section.
+              - 'metadata': list[str]
+                  Lines belonging to the metadata section.
+
+        Notes
+        -----
+        - Section headers are compared using exact string equality with the
+          recognized section names, including capitalization and spacing.
+        - Lines returned in each list are unmodified except for the fact that
+          heading lines are not included in any section.
+        - Leading and trailing blank lines in `description` are trimmed before
+          parsing via `description.strip()`, but blank lines in the middle of
+          sections are preserved in the corresponding lists.
         """
         user_description_section_name = 'User Description'
         grape_section_name = 'GRAPE'
@@ -280,12 +307,11 @@ class Review(Option, WorkspaceDirHandler):
         review_rule_lines = []
         metadata_lines = []
 
-        section = user_description_section_name
+        current_section = user_description_section_name
 
         section_pattern = re.compile(r'#*\s+(.*)')
 
         for line in description.strip().splitlines():
-
             # Check if we are entering a new section
             match = section_pattern.match(line.strip())
 
@@ -293,32 +319,30 @@ class Review(Option, WorkspaceDirHandler):
                 section_name = match.group(1)
 
                 if section_name in section_names:
-                    section = section_name
+                    current_section = section_name
                     continue
 
-            if section == grape_section_name:
+            if current_section == grape_section_name:
+                # GRAPE used to store the metadata.
+                # Now it is a top level section for storing all of the GRAPE generated description
                 if line.strip().startswith('v'):
-                    section = metadata_section_name
+                    current_section = metadata_section_name
                     metadata_lines.append(line)
-            elif section == related_reviews_section_name:
+            elif current_section == related_reviews_section_name:
                 related_review_lines.append(line)
-            elif section == review_rules_section_name:
+            elif current_section == review_rules_section_name:
                 review_rule_lines.append(line)
-            elif section == metadata_section_name:
+            elif current_section == metadata_section_name:
                 metadata_lines.append(line)
-            elif section == user_description_section_name:
-                user_description_lines.append(line)
-            else:
-                # TODO: Warn about unexpected format
+            elif current_section == user_description_section_name:
                 user_description_lines.append(line)
 
-        print({
+        return {
             'user_description': user_description_lines,
             'related_reviews': related_review_lines,
             'review_rules': review_rule_lines,
             'metadata': metadata_lines
-        })
-        exit(0)
+        }
 
 
     def getSavedArgs(self, descriptionData):
@@ -963,7 +987,7 @@ class Review(Option, WorkspaceDirHandler):
             descr = existingOuterLevelRequest.description()
 
         descriptionTemplate = self.buildDescriptionTemplate()
-        descriptionData = self.parseDescription(descr, descriptionTemplate)
+        descriptionData = Review.parseDescription(descr)
         savedArgs = self.getSavedArgs(descriptionData)
 
         # Get review rules
