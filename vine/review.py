@@ -345,29 +345,67 @@ class Review(Option, WorkspaceDirHandler):
         }
 
 
-    def getSavedArgs(self, descriptionData):
+    @staticmethod
+    def getSavedArgs(description_data):
         """
-        Extracts saved arguments from the merge/pull request description.
+        Extract saved GRAPE argument flags from description metadata.
 
-        :param descriptionData: Data extracted from the merge/pull request description
-        :return: A dictionary where keys are argument names and values are argument values
+        This method is intended to be used with the output of `parseDescription(...)`.
+        It looks in the `metadata` section for lines that represent saved CLI style
+        arguments and returns them as a dictionary.
+
+        Input format
+        ------------
+        `description_data` is expected to be a dict like:
+
+            {
+                "user_description": [...],
+                "related_reviews": [...],
+                "review_rules": [...],
+                "metadata": [
+                    "v1.55.20",
+                    "--flag_name=value_string",
+                    ...
+                ]
+            }
+
+        Within the `metadata` list, this method considers only lines such as:
+
+            --flag_name=value_string
+
+        Parameters
+        ----------
+        description_data : dict | None
+            Parsed description data, typically the result of `parseDescription`.
+            If `description_data` is falsy (None, empty dict, etc.), an empty
+            dictionary is returned.
+
+        Returns
+        -------
+        dict[str, str]
+            A mapping of CLI style flag names to their string values.
+            Example:
+
+                {
+                    "--flag_name": "value_string",
+                    ...
+                }
+
+            If there are no matching metadata lines, an empty dict is returned.
         """
-        savedArgs = {}
+        saved_args = {}
 
-        if descriptionData:
-            grapeData = descriptionData.get('grape_data')
+        if description_data:
+            metadata_lines = description_data.get('metadata', [])
 
-            if grapeData:
-                grapeDataLines = grapeData.split('\n')
+            for line in metadata_lines:
+                if line.startswith("--"):
+                    tokens = line.split("=")
 
-                for line in grapeDataLines:
-                    if line.startswith("--"):
-                        tokens = line.split("=")
+                    if len(tokens) == 2:
+                        saved_args[tokens[0].strip()] = tokens[1].strip()
 
-                        if len(tokens) == 2:
-                            savedArgs[tokens[0].strip()] = tokens[1].strip()
-
-        return savedArgs
+        return saved_args
 
 
     def validateReviewers(self, reviewers, reviewRules):
@@ -988,7 +1026,7 @@ class Review(Option, WorkspaceDirHandler):
 
         descriptionTemplate = self.buildDescriptionTemplate()
         descriptionData = Review.parseDescription(descr)
-        savedArgs = self.getSavedArgs(descriptionData)
+        savedArgs = Review.getSavedArgs(descriptionData)
 
         # Get review rules
         reviewRules = parseReviewRules()
