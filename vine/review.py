@@ -333,7 +333,11 @@ class Review(Option, WorkspaceDirHandler):
             elif current_section == review_rules_section_name:
                 review_rule_lines.append(line)
             elif current_section == metadata_section_name:
-                metadata_lines.append(line)
+                # Only save non-empty lines
+                line = line.strip()
+
+                if line:
+                    metadata_lines.append(line)
             elif current_section == user_description_section_name:
                 user_description_lines.append(line)
 
@@ -534,7 +538,8 @@ class Review(Option, WorkspaceDirHandler):
             return None
 
 
-    def buildGrapeData(self, args):
+    @staticmethod
+    def buildMetadata(args):
         """
         Builds a string containing info about the current call to grape review.
         This includes the grape version number and certain arguments that need
@@ -558,15 +563,15 @@ class Review(Option, WorkspaceDirHandler):
             '--reviewers': 'Alice,Bob'
         }
 
-        result = self.buildGrapeData(args)
-        # result might be: 'v1.49.26\n--reviewers=Alice,Bob'
+        result = Review.buildMetadata(args)
+        # result might be: ['v1.55.38, '--reviewers=Alice,Bob']
         """
-        grapeData = version.grapeVersion()
+        metadata = [version.grapeVersion()]
 
         if '--reviewers' in args and args['--reviewers']:
-            grapeData += f'\n\n--reviewers={args["--reviewers"]}'
+            metadata.append(f'--reviewers={args["--reviewers"]}')
 
-        return grapeData
+        return metadata
 
 
     def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
@@ -1073,7 +1078,7 @@ class Review(Option, WorkspaceDirHandler):
                     'reviewers': []
                 }
 
-        descriptionData['grape_data'] = self.buildGrapeData(args)
+        descriptionData['metadata'] = Review.buildMetadata(args)
 
         if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
             descriptionData['related_reviews'].append(outerLevelURL)
