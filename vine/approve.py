@@ -472,6 +472,8 @@ class Approve(Option, WorkspaceDirHandler):
                 reverse=True,
             )
 
+            # Mark the first (latest) entry
+            mark = '>'
             for commit in sorted_commits_desc:
                 if commit.id.lower() == source_commit:
                     short_source_commit = commit.short_id.lower()
@@ -480,7 +482,8 @@ class Approve(Option, WorkspaceDirHandler):
                 local_dt = dt.astimezone()
                 formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
 
-                print(f'  {commit.short_id}    {formatted_dt}    {commit.title}')
+                print(f'{mark} {commit.short_id}    {formatted_dt}    {commit.title}')
+                mark = ' '
 
                 # Limit the number of commits printed
                 commits_printed = commits_printed + 1
