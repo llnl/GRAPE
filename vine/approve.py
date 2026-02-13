@@ -172,17 +172,15 @@ class Approve(Option, WorkspaceDirHandler):
         rules = []
         reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
         user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
-        descr = request.description()
-        if "--reviewers" in descr:
-            match = reviewer_search.search(descr)
-            if match:
-                user_matches = user_search.findall(match.group(1))
-                if user_matches:
-                    for rule in user_matches:
-                        if rule == "":
-                            rules.append(default_rule)
-                        else:
-                            rules.append(rule.strip(':'))
+        match = reviewer_search.search(request.description())
+        if match:
+            user_matches = user_search.findall(match.group(1))
+            if user_matches:
+                for rule in user_matches:
+                    if rule == "":
+                        rules.append(default_rule)
+                    else:
+                        rules.append(rule.strip(':'))
 
         return rules
 
