@@ -15,6 +15,7 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
+from vine import markdown as markdown
 from vine import multi_repo_cmd_launcher
 from vine import submodules
 from vine import utility
@@ -302,202 +303,39 @@ class Review(Option, WorkspaceDirHandler):
 
 
     @staticmethod
-    def parseDescription(description):
+    def getSavedArgs(grapeSection):
         """
-        Parse a multi section description string into logical sections.
-
-        The input `description` is expected to be a text block that may contain
-        headings identifying specific sections. Recognized section headings are:
-
-          - "GRAPE"
-          - "Related Reviews"
-          - "Review Rules"
-          - "Metadata"
-
-        Any content that appears before the first recognized section heading is
-        treated as the "User Description" section, which is used only for internal
-        bookkeeping and is not expected to appear as a heading in the text.
-
-        Section semantics:
-          - User Description:
-              Free form user provided text before any known section heading.
-
-          - GRAPE:
-              Top level section storing all GRAPE generated description. Historically,
-              this section contained metadata, but now it is meant to hold GRAPE's
-              descriptive content. However, if a line in this section starts with
-              'v' (after stripping leading whitespace), parsing switches to the
-              Metadata section and that line is treated as metadata.
-
-          - Related Reviews:
-              Lines under the "Related Reviews" heading.
-
-          - Review Rules:
-              Lines under the "Review Rules" heading.
-
-          - Metadata:
-              Lines under the "Metadata" heading, plus any lines in the GRAPE section
-              that trigger a switch to metadata (lines starting with 'v') and all
-              subsequent lines until another section heading is encountered.
+        Extract saved argument key-value pairs from the "GRAPE" section
+        of the top-level merge request description.
 
         Parameters
         ----------
-        description : str
-            Multi line string containing the top level merge request description.
+        grape_section : markdown.Section | None
+            The "GRAPE" section of the top-level merge request description
+            or None if not found. Lines of the form `--key=value` are added
+            to the result dictionary.
 
         Returns
         -------
         dict
-            A dictionary with the following keys:
-              - 'user_description': list[str]
-                  Lines belonging to the user description section.
-              - 'related_reviews': list[str]
-                  Lines belonging to the related reviews section.
-              - 'review_rules': list[str]
-                  Lines belonging to the review rules section.
-              - 'metadata': list[str]
-                  Lines belonging to the metadata section.
-
-        Notes
-        -----
-        - Section headers are compared using exact string equality with the
-          recognized section names, including capitalization and spacing.
-        - Lines returned in each list are unmodified except for the fact that
-          heading lines are not included in any section.
-        - Leading and trailing blank lines in `description` are trimmed before
-          parsing via `description.strip()`, but blank lines in the middle of
-          sections are preserved in the corresponding lists.
-        """
-        user_description_section_name = 'User Description'
-        grape_section_name = 'GRAPE'
-        related_reviews_section_name = 'Related Reviews'
-        review_rules_section_name = 'Review Rules'
-        metadata_section_name = 'Metadata'
-
-        # user_description_section_name should not actually appear in the description - it's just for internal bookkeeping.
-        section_names = [
-            grape_section_name,
-            related_reviews_section_name,
-            review_rules_section_name,
-            metadata_section_name
-        ]
-
-        user_description_lines = []
-        related_review_lines = []
-        review_rule_lines = []
-        metadata_lines = []
-
-        current_section = user_description_section_name
-
-        section_pattern = re.compile(r'#*\s+(.*)')
-
-        for line in description.strip().splitlines():
-            # Check if we are entering a new section
-            match = section_pattern.match(line.strip())
-
-            if match:
-                section_name = match.group(1)
-
-                if section_name in section_names:
-                    current_section = section_name
-                    continue
-
-            if current_section == grape_section_name:
-                # GRAPE used to store the metadata.
-                # Now it is a top level section for storing all of the GRAPE generated description
-                if line.strip().startswith('v'):
-                    current_section = metadata_section_name
-                    metadata_lines.append(line)
-            elif current_section == related_reviews_section_name:
-                # Only save non-empty lines that are not 'None'
-                line = line.strip()
-
-                if line and line != 'None':
-                    related_review_lines.append(line)
-            elif current_section == review_rules_section_name:
-                # Only save non-empty lines
-                line = line.strip()
-
-                if line:
-                    review_rule_lines.append(line)
-            elif current_section == metadata_section_name:
-                # Only save non-empty lines
-                line = line.strip()
-
-                if line:
-                    metadata_lines.append(line)
-            elif current_section == user_description_section_name:
-                user_description_lines.append(line)
-
-        return {
-            'user_description': user_description_lines,
-            'related_reviews': related_review_lines,
-            'review_rules': review_rule_lines,
-            'metadata': metadata_lines
-        }
-
-
-    @staticmethod
-    def getSavedArgs(description_data):
-        """
-        Extract saved GRAPE argument flags from description metadata.
-
-        This method is intended to be used with the output of `parseDescription(...)`.
-        It looks in the `metadata` section for lines that represent saved CLI style
-        arguments and returns them as a dictionary.
-
-        Input format
-        ------------
-        `description_data` is expected to be a dict like:
-
-            {
-                "user_description": [...],
-                "related_reviews": [...],
-                "review_rules": [...],
-                "metadata": [
-                    "v1.55.20",
-                    "--flag_name=value_string",
-                    ...
-                ]
-            }
-
-        Within the `metadata` list, this method considers only lines such as:
-
-            --flag_name=value_string
-
-        Parameters
-        ----------
-        description_data : dict | None
-            Parsed description data, typically the result of `parseDescription`.
-            If `description_data` is falsy (None, empty dict, etc.), an empty
-            dictionary is returned.
-
-        Returns
-        -------
-        dict[str, str]
-            A mapping of CLI style flag names to their string values.
+            A dictionary mapping argument keys to their corresponding values.
             Example:
-
                 {
-                    "--flag_name": "value_string",
-                    ...
+                    "--reviewers": "rule1:username1,username2 rule2:username3",
+                    "--foo": "bar"
                 }
-
-            If there are no matching metadata lines, an empty dict is returned.
         """
-        saved_args = {}
+        savedArgs = {}
 
-        if description_data:
-            metadata_lines = description_data.get('metadata', [])
-
-            for line in metadata_lines:
+        if grapeSection:
+            for line in grapeSection.lines:
                 if line.startswith("--"):
                     tokens = line.split("=")
 
                     if len(tokens) == 2:
-                        saved_args[tokens[0].strip()] = tokens[1].strip()
+                        savedArgs[tokens[0].strip()] = tokens[1].strip()
 
-        return saved_args
+        return savedArgs
 
 
     def validateReviewers(self, reviewers, reviewRules):
@@ -1117,8 +955,9 @@ class Review(Option, WorkspaceDirHandler):
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-        descriptionData = Review.parseDescription(descr)
-        savedArgs = Review.getSavedArgs(descriptionData)
+        descriptionSections = markdown.parse_markdown_sections(descr)
+        grapeSection = markdown.get_section_by_title('GRAPE')
+        savedArgs = Review.getSavedArgs(grapeSection)
 
         # Get review rules
         reviewRules = parseReviewRules()
