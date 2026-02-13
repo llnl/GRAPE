@@ -1199,7 +1199,8 @@ class Review(Option, WorkspaceDirHandler):
 
             updatedReviewLinks.sort()
 
-            updatedDescription = Review.buildDescription(updatedDescriptionSections, args, updatedReviewLinks)
+            updatedDescriptionSections = Review.buildDescriptionSections(updatedDescriptionSections, args, updatedReviewLinks)
+            updatedDescription = markdown.sections_to_markdown(updatedDescriptionSections)
 
             pre_update_description = request.description()
 
