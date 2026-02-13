@@ -1626,7 +1626,7 @@ def parseReviewRules(config=None):
 
                 for action in approveActions:
                     if action not in validApproveActions.keys():
-                        logging.warning(f"GRAPE: WARNING approve action '{action}' found in .grapeconfig is not valid!")
+                        logging.warning(f"GRAPE: WARNING approve action '{action}' found in .grapeconfig for {reviewRuleName} is not valid!")
                         warnedInvalidAction = True
 
                 if warnedInvalidAction:
