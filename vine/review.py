@@ -1547,7 +1547,7 @@ def parseReviewRules(config=None):
 
     # Allowed approve actions
     validApproveActions = { 'approve': 'mark merge/pull request approved',
-                            'approve_if_only_rule': 'mark merge/pull request approved if reviewer is not on another approve rule',
+                            'approve_if_only_rule': 'mark merge/pull request approved if the approver is only a reviewer for the current rule',
                             'tag': 'add a git tag',
                             'description': 'update the merge/pull request description' }
 

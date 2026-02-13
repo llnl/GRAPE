@@ -602,7 +602,7 @@ class Approve(Option, WorkspaceDirHandler):
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule["approveActions"]`:
           - `"approve"`: approve the merge/pull request.
-          - `"approve_if_only_rule"`: approve the merge/pull request is another applicable rule would not approve.
+          - `"approve_if_only_rule"`: approve the merge/pull request if the approver is only a reviewer for the current rule.
           - `"tag"`: create/update a tag named `{rule["name"]}_{review_request.iid()}` at the approved source commit,
             with a tag message containing `rule["label"]` and the collected inputs for that repo.
           - `"description"`: update the merge/pull request description.
