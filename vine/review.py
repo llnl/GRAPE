@@ -24,6 +24,8 @@ from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
+warnedInvalidAction = False
+
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
     """
@@ -590,6 +592,7 @@ class Review(Option, WorkspaceDirHandler):
             - project_name
             - repo_name
             - repo
+            - review_request
             - source_branch
             - target_branch
             - grape_config (GrapeConfigParserBase)
@@ -1533,6 +1536,7 @@ def parseReviewRules(config=None):
     """
     Parses the global GRAPE config file and returns a dictionary of review rules.
 
+    :param config: Grape configuration
     :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
     """
     reviewRules = {}
@@ -1540,6 +1544,12 @@ def parseReviewRules(config=None):
     # Names reserved by grape
     reservedReviewRuleNames = ['grape']
     reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+    # Allowed approve actions
+    validApproveActions = { 'approve': 'mark merge/pull request approved',
+                            'approve_if_only_rule': 'mark merge/pull request approved if reviewer is not on another approve rule',
+                            'tag': 'add a git tag',
+                            'description': 'update the merge/pull request description' }
 
     # Count the number of active review rules
     numActiveRules = 0
@@ -1613,6 +1623,18 @@ def parseReviewRules(config=None):
 
                 if config.has_option(sectionName, "approveactions"):
                     approveActions = config.get(sectionName, "approveactions").split()
+
+                global warnedInvalidAction
+
+                if not warnedInvalidAction:
+                    for action in approveActions:
+                        if action not in validApproveActions.keys():
+                            logging.warning(f"GRAPE: WARNING approve action '{action}' found in .grapeconfig is not valid!")
+                            warnedInvalidAction = True
+                    if warnedInvalidAction:
+                        logging.warning("Valid options are")
+                        for key,desc in validApproveActions.items():
+                            logging.warning(f"  {key} : {desc}")
 
                 # Get approve inputs
                 approveInputNames = []
@@ -1787,7 +1809,7 @@ def parseReviewRules(config=None):
     return reviewRules
 
 
-def parseReviewRuleMap(reviewRules):
+def parseReviewRuleMap(reviewRules, config=None):
     """
     Parses the review rule mappings from the global configuration and
     creates a mapping of old rules to new rules.
@@ -1802,6 +1824,8 @@ def parseReviewRuleMap(reviewRules):
     reviewRules : dict
         A dictionary where each key is a review rule name and each value is
         a dictionary containing the details of that review rule.
+    config : GrapeConfigParserBase
+        Grape configuration
 
     Returns:
     -------
@@ -1832,7 +1856,8 @@ def parseReviewRuleMap(reviewRules):
     reviewRuleMap = {}
 
     # Extract the rule names from the [review] section
-    config = config_parser_global.grapeConfig()
+    if not config:
+        config = config_parser_global.grapeConfig()
 
     reviewSectionName = "review"
 
@@ -1864,7 +1889,7 @@ def parseReviewRuleMap(reviewRules):
     return reviewRuleMap
 
 
-def parseDefaultReviewRuleName(reviewRules):
+def parseDefaultReviewRuleName(reviewRules, config=None):
     """
     Retrieves the default review rule name for merge/pull requests.
 
@@ -1874,12 +1899,14 @@ def parseDefaultReviewRuleName(reviewRules):
     and the program will exit with a code of 1.
 
     :param reviewRules: A dictionary containing review rules
+    :param config: Grape configuration
     :return: A string containing the default review rule name.
     """
     defaultReviewRuleName = None
 
     # Extract the rule names from the [review] section
-    config = config_parser_global.grapeConfig()
+    if not config:
+        config = config_parser_global.grapeConfig()
 
     reviewSectionName = "review"
 

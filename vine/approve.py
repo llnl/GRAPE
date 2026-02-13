@@ -146,6 +146,47 @@ class Approve(Option, WorkspaceDirHandler):
         return review.Review._get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch)
 
     @staticmethod
+    def _get_user_rules(request, user_name, default_rule):
+        """
+        Get rules for which a given user has been added as a reviewer using `grape review'.
+
+        Relies on grape review adding a line in the description in the form
+        `--reviewers=rule1:username1 rule2:username2,username3`
+          or
+        `--reviewers=username1,username2,username3`
+
+        Parameters
+        ----------
+        request: PullRequest
+            Pull/merge request to search
+        user_name : str
+            User name of the approver.
+        default_rule : str
+            Default rule for unspecified rules
+
+        Returns
+        -------
+        list
+            List of strings describing the appropriate rules
+        """
+        rules = []
+        reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
+        user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
+        descr = request.description()
+        if "--reviewers" in descr:
+            match = reviewer_search.search(descr)
+            if match:
+                user_matches = user_search.findall(match.group(1))
+                if user_matches:
+                    for rule in user_matches:
+                        if rule == "":
+                            rules.append(default_rule)
+                        else:
+                            rules.append(rule.strip(':'))
+
+        return rules
+
+    @staticmethod
     def _print_open_reviews(repo, user_name, target_branch):
         """
         Prints open merge requests targeting `target_branch` where `user_name`
@@ -166,19 +207,10 @@ class Approve(Option, WorkspaceDirHandler):
             Target branch for merge requests (any target if None)
 
         """
-        reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
-        user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
         for request in repo.pullRequests(target_branch=target_branch):
-            descr = request.description()
-            if "--reviewers" in descr:
-                match = reviewer_search.search(descr) 
-                if match:
-                    rules = []
-                    user_matches = user_search.findall(match.group(1))
-                    if user_matches:
-                        for rule in user_matches:
-                            rules.append(rule.strip(':')) 
-                        print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
+            rules = Approve._get_user_rules(request, user_name, 'DEFAULT')
+            if rules:
+                print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
 
     @staticmethod
     def _get_review_rule(top_repo_context, args):
@@ -234,7 +266,7 @@ class Approve(Option, WorkspaceDirHandler):
           2) Detects which repositories (top repo, submodules, subprojects) have open
              review requests.
           3) Prompts the user for per-repository approval and collects any rule-defined input.
-          4) Applies the configured approve actions (e.g., approve, tag, update description)
+          4) Applies the configured approve actions (e.g., approve, approve_if_only_rule, tag, update description)
              to each relevant open review request.
 
         Parameters
@@ -257,10 +289,19 @@ class Approve(Option, WorkspaceDirHandler):
         May terminate the process (via downstream calls) when validation fails or when
         no approvals are granted.
         """
+        # These are the rules for which the user would apply the approve action
+        user_approve_rules = []
+        config = top_repo_context['grape_config']
+        allReviewRules = review.parseReviewRules(config)
+        for user_rule in Approve._get_user_rules(top_repo_context['review_request'], user_name, review.parseDefaultReviewRuleName(allReviewRules, config)):
+            rule_info = allReviewRules[user_rule]
+            if rule_info['active'] and 'approve' in rule_info['approveActions']:
+                user_approve_rules.append(rule_info)
+
         Approve._validate_approver(user_name, rule)
         modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
         approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
-        Approve._apply_approve_actions(rule, approve_input)
+        Approve._apply_approve_actions(rule, approve_input, user_approve_rules)
 
     @staticmethod
     def _validate_approver(user_name, rule):
@@ -546,7 +587,7 @@ class Approve(Option, WorkspaceDirHandler):
         return False
 
     @staticmethod
-    def _apply_approve_actions(rule, modified_repos):
+    def _apply_approve_actions(rule, modified_repos, user_approve_rules):
         """
         Apply rule approval actions to each modified repository.
 
@@ -558,8 +599,10 @@ class Approve(Option, WorkspaceDirHandler):
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule["approveActions"]`:
           - `"approve"`: approve the merge/pull request.
+          - `"approve_if_only_rule"`: approve the merge/pull request is another applicable rule would not approve.
           - `"tag"`: create/update a tag named `{rule["name"]}_{review_request.iid()}` at the approved source commit,
             with a tag message containing `rule["label"]` and the collected inputs for that repo.
+          - `"description"`: update the merge/pull request description.
 
         Parameters
         ----------
@@ -574,6 +617,11 @@ class Approve(Option, WorkspaceDirHandler):
               - "review_request": open merge/pull request object
               - "approved": bool
               - "input": dict[str, str]
+        user_approve_rules : list[dict]
+            Review rule definitions for rules that the user would approve. Expected keys for each entry:
+              - "name": str
+              - "input": list[str]
+              - "repositories": list[str]
 
         Side Effects
         ------------
@@ -584,6 +632,7 @@ class Approve(Option, WorkspaceDirHandler):
         Exception
             Propagates exceptions thrown by the underlying code review client operations.
         """
+
         # Build rule section for merge/pull request description
         rule_section = ''
         rule_section_header = ''
@@ -646,6 +695,16 @@ class Approve(Option, WorkspaceDirHandler):
                 if 'approve' in rule['approveActions']:
                     logging.info('  Approving merge/pull request...')
                     review_request.approve()
+                elif 'approve_if_only_rule' in rule['approveActions']:
+                    found_approval = False
+                    for user_approve_rule in user_approve_rules:
+                        if Approve._rule_applies(repo_name, user_approve_rule):
+                            logging.info(f'  Not approving merge/pull request (rule "{user_approve_rule["name"]}" used for approval).')
+                            found_approval = True
+                            break
+                    if not found_approval:
+                        logging.info('  Approving merge/pull request for only applicable rule...')
+                        review_request.approve()
 
                 # Tag reviewed branch
                 if 'tag' in rule['approveActions']:
