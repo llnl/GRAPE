@@ -24,8 +24,6 @@ from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
-warnedInvalidAction = False
-
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
     """
@@ -1624,17 +1622,17 @@ def parseReviewRules(config=None):
                 if config.has_option(sectionName, "approveactions"):
                     approveActions = config.get(sectionName, "approveactions").split()
 
-                global warnedInvalidAction
+                warnedInvalidAction = False
 
-                if not warnedInvalidAction:
-                    for action in approveActions:
-                        if action not in validApproveActions.keys():
-                            logging.warning(f"GRAPE: WARNING approve action '{action}' found in .grapeconfig is not valid!")
-                            warnedInvalidAction = True
-                    if warnedInvalidAction:
-                        logging.warning("Valid options are")
-                        for key,desc in validApproveActions.items():
-                            logging.warning(f"  {key} : {desc}")
+                for action in approveActions:
+                    if action not in validApproveActions.keys():
+                        logging.warning(f"GRAPE: WARNING approve action '{action}' found in .grapeconfig is not valid!")
+                        warnedInvalidAction = True
+
+                if warnedInvalidAction:
+                    logging.warning("Valid options are")
+                    for key,desc in validApproveActions.items():
+                        logging.warning(f"  {key} : {desc}")
 
                 # Get approve inputs
                 approveInputNames = []
