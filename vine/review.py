@@ -310,7 +310,7 @@ class Review(Option, WorkspaceDirHandler):
 
         Parameters
         ----------
-        grape_section : markdown.Section | None
+        grapeSection : markdown.Section | None
             The "GRAPE" section of the top-level merge request description
             or None if not found. Lines of the form `--key=value` are added
             to the result dictionary.
@@ -336,6 +336,40 @@ class Review(Option, WorkspaceDirHandler):
                         savedArgs[tokens[0].strip()] = tokens[1].strip()
 
         return savedArgs
+
+
+    @staticmethod
+    def getRelatedReviews(relatedReviewsSection):
+        """
+        Extract related review links from the "Related Reviews" section
+        of the top-level merge request description.
+
+        Parameters
+        ----------
+        relatedReviewsSection : markdown.Section | None
+            The "Related Reviews" section of the top-level merge request description
+            or None if not found. Lines with a link are added to the result list.
+
+        Returns
+        -------
+        list
+            A list of links to related merge/pull requests.
+            Example:
+                [
+                    "https://github.com/llnl/GRAPE/pulls/42"
+                    "https://github.com/foo/bar/pulls/84"
+                ]
+        """
+        relatedReviews = []
+
+        if relatedReviewsSection:
+            for line in relatedReviewsSection.lines:
+                line = line.strip()
+
+                if line and not line == 'None':
+                    relatedReviews.append(line)
+
+        return relatedReviews
 
 
     def validateReviewers(self, reviewers, reviewRules):
@@ -943,6 +977,13 @@ class Review(Option, WorkspaceDirHandler):
         if existingOuterLevelRequest is not None and not title:
             title = existingOuterLevelRequest.title()
 
+        # determine draft status
+        wip = None
+        if args['--draft']:
+            wip = True
+        elif args['--ready']:
+            wip = False
+
         #determine pull request URL
         outerLevelURL = None
 
@@ -956,8 +997,6 @@ class Review(Option, WorkspaceDirHandler):
             descr = existingOuterLevelRequest.description()
 
         descriptionSections = markdown.parse_markdown_sections(descr)
-        grapeSection = markdown.get_section_by_title('GRAPE')
-        savedArgs = Review.getSavedArgs(grapeSection)
 
         # Get review rules
         reviewRules = parseReviewRules()
@@ -982,18 +1021,12 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 non_approver_list.update(non_approvers.lower().split(','))
 
-        wip = None
-        if args['--draft']:
-            wip = True
-        elif args['--ready']:
-            wip = False
+        grapeSection = markdown.get_section_by_title(descriptionSections, 'GRAPE')
+        savedArgs = Review.getSavedArgs(grapeSection)
 
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
-
-        # Update description
-        args['--reviewers'] = self.serializeReviewers(reviewers)
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
@@ -1004,11 +1037,17 @@ class Review(Option, WorkspaceDirHandler):
                     'reviewers': []
                 }
 
+        # Update description
+        args['--reviewers'] = self.serializeReviewers(reviewers)
+
         descriptionData['metadata'] = Review.buildMetadata(args)
 
-        if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
-            descriptionData['related_reviews'].append(outerLevelURL)
-            descriptionData['related_reviews'].sort()
+        relatedReviewsSection = markdown.get_section_by_title(descriptionSections, 'Related Reviews')
+        relatedReviews = Review.getRelatedReviews(relatedReviewsSection)
+
+        if outerLevelURL and outerLevelURL not in relatedReviews:
+            relatedReviews.append(outerLevelURL)
+            relatedReviews.sort()
 
         updatedDescription = Review.buildDescription(descriptionData)
 
