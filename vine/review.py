@@ -433,42 +433,6 @@ class Review(Option, WorkspaceDirHandler):
             return None
 
 
-    @staticmethod
-    def buildMetadata(args):
-        """
-        Builds a string containing info about the current call to grape review.
-        This includes the grape version number and certain arguments that need
-        to be stored in the merge/pull request description for later use.
-
-        Parameters:
-        ----------
-        args : dict
-            A dictionary containing arguments to a prior or current GRAPE call
-
-        Returns:
-        -------
-        str
-            A string representing the grape data, which includes the grape version and,
-            if applicable, other arguments in the format:
-            '--argname=argvalue'.
-
-        Example:
-        --------
-        args = {
-            '--reviewers': 'Alice,Bob'
-        }
-
-        result = Review.buildMetadata(args)
-        # result might be: ['v1.55.38, '--reviewers=Alice,Bob']
-        """
-        metadata = [version.grapeVersion()]
-
-        if '--reviewers' in args and args['--reviewers']:
-            metadata.append(f'--reviewers={args["--reviewers"]}')
-
-        return metadata
-
-
     def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
         """
         Retrieves applicable reviewers for a given repository based on defined review rules.
@@ -987,10 +951,6 @@ class Review(Option, WorkspaceDirHandler):
         # Update description
         updatedDescriptionSections = Review.buildDescriptionSections(descriptionSections, args, relatedReviews)
         updatedDescription = markdown.sections_to_markdown(updatedDescriptionSections)
-        print(f'Updated Description:\n"{updatedDescription}"')
-        exit(1)
-
-        descriptionData['metadata'] = Review.buildMetadata(args)
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
@@ -1227,7 +1187,8 @@ class Review(Option, WorkspaceDirHandler):
                 # Start with related review links scraped from the outer level
                 # merge/pull request description. Then add all the new links if
                 # they are not already in the list.
-                updatedReviewLinks = descriptionData['related_reviews']
+                updatedRelatedReviewsSection = markdown.get_section_by_title(updatedDescriptionSections, 'Related Reviews')
+                updatedReviewLinks = Review.getRelatedReviews(updatedRelatedReviewsSection)
 
                 for link in pullRequestLinks:
                     if link not in updatedReviewLinks:
@@ -1238,9 +1199,7 @@ class Review(Option, WorkspaceDirHandler):
 
             updatedReviewLinks.sort()
 
-            descriptionData['related_reviews'] = updatedReviewLinks
-
-            updatedDescription = Review.buildDescription(descriptionSections, args, updatedReviewLinks)
+            updatedDescription = Review.buildDescription(updatedDescriptionSections, args, updatedReviewLinks)
 
             pre_update_description = request.description()
 
