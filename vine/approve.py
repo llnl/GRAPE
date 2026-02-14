@@ -68,8 +68,9 @@ class Approve(Option, WorkspaceDirHandler):
         user_name = utility.getUserName(args)
         git_host = utility.authenticateToGitHost(user_name, self.workspace_dir, args)
         top_repo_context = Approve._get_top_repo_context_for_approval(git_host, user_name, args)
-        rule = Approve._get_review_rule(top_repo_context, args)
-        Approve._approve(user_name, git_host, top_repo_context, rule)
+        all_review_rules = review.parseReviewRules(top_repo_context['grape_config'])
+        rule = Approve._get_review_rule(top_repo_context, args, all_review_rules)
+        Approve._approve(user_name, git_host, top_repo_context, rule, all_review_rules)
 
     def setDefaultConfig(self, config):
         config.ensureSection(self.SECTION_PROJECT)
@@ -211,7 +212,7 @@ class Approve(Option, WorkspaceDirHandler):
                 print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
 
     @staticmethod
-    def _get_review_rule(top_repo_context, args):
+    def _get_review_rule(top_repo_context, args, all_review_rules):
         """
         Resolve and validate the active review rule to apply.
 
@@ -229,6 +230,8 @@ class Approve(Option, WorkspaceDirHandler):
         args : dict
             Parsed command-line arguments. Expected key:
             - "--rule": str (optional)
+        all_review_rules: dict
+            Dictionary of review rules returned by `review.parseReviewRules`.
 
         Returns
         -------
@@ -240,8 +243,7 @@ class Approve(Option, WorkspaceDirHandler):
         Terminates the process with exit code 1 if the selected rule name is not
         among the active rules.
         """
-        rules = review.parseReviewRules(top_repo_context['grape_config'])
-        active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
+        active_rule_names = [rule_name for rule_name in all_review_rules if all_review_rules[rule_name]['active']]
 
         rule_name = args['--rule']
 
@@ -252,10 +254,10 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
             exit(1)
 
-        return rules[rule_name]
+        return all_review_rules[rule_name]
 
     @staticmethod
-    def _approve(user_name, git_host, top_repo_context, rule):
+    def _approve(user_name, git_host, top_repo_context, rule, all_review_rules):
         """
         Perform the end-to-end approval workflow for a review rule.
 
@@ -277,6 +279,8 @@ class Approve(Option, WorkspaceDirHandler):
             Context dictionary returned by `_get_top_repo_context`.
         rule : dict
             Review rule definition returned by `_get_review_rule`.
+        all_review_rules: dict
+            Dictionary of review rules returned by `review.parseReviewRules`.
 
         Side Effects
         ------------
@@ -287,18 +291,21 @@ class Approve(Option, WorkspaceDirHandler):
         May terminate the process (via downstream calls) when validation fails or when
         no approvals are granted.
         """
-        # These are the rules for which the user would apply the approve action
-        user_approve_rules = []
-        config = top_repo_context['grape_config']
-        allReviewRules = review.parseReviewRules(config)
-        for user_rule in Approve._get_user_rules(top_repo_context['review_request'], user_name, review.parseDefaultReviewRuleName(allReviewRules, config)):
-            rule_info = allReviewRules[user_rule]
-            if rule_info['active'] and 'approve' in rule_info['approveActions']:
-                user_approve_rules.append(rule_info)
-
         Approve._validate_approver(user_name, rule)
         modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
         approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
+
+        # These are the rules for which the user would apply the approve action,
+        # only needed if approve_if_only_rule is among the current rule's actions.
+        user_approve_rules = []
+
+        if 'approve_if_only_rule' in rule['approveActions']:
+            config = top_repo_context['grape_config']
+            for user_rule in Approve._get_user_rules(top_repo_context['review_request'], user_name, review.parseDefaultReviewRuleName(all_review_rules, config)):
+                rule_info = all_review_rules[user_rule]
+                if rule_info['active'] and 'approve' in rule_info['approveActions']:
+                    user_approve_rules.append(rule_info)
+
         Approve._apply_approve_actions(rule, approve_input, user_approve_rules)
 
     @staticmethod
@@ -623,6 +630,7 @@ class Approve(Option, WorkspaceDirHandler):
               - "name": str
               - "input": list[str]
               - "repositories": list[str]
+            Can be empty if the approve_if_only_rule action is not active for the rule.
 
         Side Effects
         ------------
