@@ -1634,6 +1634,10 @@ def parseReviewRules(config=None):
                     for key,desc in validApproveActions.items():
                         logging.warning(f"  {key} : {desc}")
 
+                if 'approve' in approveActions and 'approve_if_only_rule' in approveActions:
+                    logging.warning(f'GRAPE: WARNING approve action "approve" and "approve_if_only" both found in .grapeconfig for rule "{reviewRuleName}", only one should be specified (ignoring "approve_if_only_rule" for now)!')
+                    approveActions.remove('approve_if_only_rule')
+
                 # Get approve inputs
                 approveInputNames = []
 
