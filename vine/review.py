@@ -150,7 +150,7 @@ class Review(Option, WorkspaceDirHandler):
         return descr
 
 
-    def buildDescriptionSections(descriptionSections, args, relatedReviews):
+    def buildDescriptionSections(descriptionSections, args=None, relatedReviews=None):
         """
         Build a new list of merge/pull request description sections as follows:
           1) Include all sections (including preamble) up to, but not including,

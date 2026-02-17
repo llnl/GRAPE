@@ -260,7 +260,7 @@ class Approve(Option, WorkspaceDirHandler):
         Approve._validate_approver(user_name, rule)
         modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
         approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
-        Approve._apply_approve_actions(rule, approve_input)
+        Approve._apply_approve_actions(rule, approve_input, top_repo_context)
 
     @staticmethod
     def _validate_approver(user_name, rule):
@@ -546,7 +546,7 @@ class Approve(Option, WorkspaceDirHandler):
         return False
 
     @staticmethod
-    def _apply_approve_actions(rule, modified_repos):
+    def _apply_approve_actions(rule, modified_repos, top_repo_context):
         """
         Apply rule approval actions to each modified repository.
 
@@ -585,6 +585,61 @@ class Approve(Option, WorkspaceDirHandler):
             Propagates exceptions thrown by the underlying code review client operations.
         """
         # Build rule section for merge/pull request description
+        if 'description' in rule['approveActions']:
+            top_review_request = top_repo_context['review_request']
+
+            # TODO: Get the first modified pull request (which should be the top review request if it exists)
+
+            if top_review_request:
+                description = top_review_request.description()
+                descriptionDoc = MarkdownDocument.from_text(description.strip())
+                newDescriptionDoc = Review.buildDescriptionDoc(descriptionDoc)
+
+
+
+
+                description = top_review_request.description()
+                descriptionSections = markdown.parse_markdown_sections(description)
+                grapeSection = markdown.get_section_by_title(descriptionSections, 'GRAPE')
+                savedArgs = Review.getSavedArgs(grapeSection)
+
+                relatedReviewsSection = markdown.get_section_by_title(descriptionSections, 'Related Reviews')
+                relatedReviews = Review.getRelatedReviews(relatedReviewsSection)
+                updatedDescriptionSections = Review.buildDescriptionSections(descriptionSections, savedArgs, relatedReviews)
+
+                for s in updatedDescriptionSections
+
+                if updatedDescriptionSections[-1].title != 'Review Rules':
+                    updatedDescriptionSections.append(
+                        markdown.Section(
+                            level=2,
+                            title='Review Rules',
+                            lines=['']
+                        )
+                    )
+
+                for repo_name in sorted(modified_repos.keys()):
+                    repo_context = modified_repos[repo_name]
+
+                    if repo_context['approved']:
+                        index = 0
+                        rule_section = None
+                        rule_repo_section = None
+
+                        for i in range(len(updatedDescriptionSections)):
+                        repo_lines = []
+                        rule_section += f'\n\n## {repo_name}'
+                        repo_inputs = repo_context['approve_inputs']
+
+                        for repo_input in repo_inputs:
+                            if repo_input['description']:
+                                rule_section += f'\n\n* {repo_input["label"]}: {repo_input["value"]}'
+
+
+
+
+
+
         rule_section = ''
         rule_section_header = ''
         rule_section_pattern = None

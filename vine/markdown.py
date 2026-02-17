@@ -1,159 +1,175 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Iterable
+import re
 
 
 @dataclass
 class Section:
-    level: int              # 0 for pre-heading content, otherwise number of '#' chars
-    title: Optional[str]    # None for level 0, otherwise heading text
-    lines: List[str]        # lines exclusively in this section (excluding nested subsections)
+    title: Optional[str]       # None for the synthetic root
+    level: int                 # 0 for root, 1 for #, 2 for ##, etc.
+    content: List[str] = field(default_factory=list)
+    children: List["Section"] = field(default_factory=list)
+
+    def add_child(self, child: "Section") -> None:
+        self.children.append(child)
+
+    def iter_depth_first(self) -> Iterable["Section"]:
+        """Depth first iterator over this section and all descendants."""
+        yield self
+        for child in self.children:
+            yield from child.iter_depth_first()
 
 
-def parse_markdown_sections(text: str) -> List[Section]:
+class MarkdownDocument:
     """
-    Parse a markdown document into a flat list of sections.
+    Represents a parsed Markdown document as a hierarchy of Sections.
 
-    Rules:
-    - A heading is a line that starts with one or more '#' followed by at least one space.
-    - level = number of '#' characters.
-    - Section content is all lines until the next heading of the same or lower level.
-    - Content under a deeper heading belongs to that deeper section, not the parent.
-    - Text before the first heading is a level 0 section with title=None.
+    Usage:
+        doc = MarkdownDocument.from_text(markdown_str)
+        sec = doc.find_section("GRAPE")
+        doc.replace_section_content("Related Reviews", "None")
+        new_text = doc.to_markdown()
     """
-    lines = text.splitlines()
-    n = len(lines)
 
-    sections: List[Section] = []
+    _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
 
-    # Helper to detect heading
-    def parse_heading(line: str):
-        # Line must start with at least one '#' then a space
-        if not line.startswith("#"):
-            return None
-        i = 0
-        while i < len(line) and line[i] == "#":
-            i += 1
-        if i == 0 or i == len(line) or line[i] != " ":
-            return None
-        level = i
-        title = line[i + 1 :].rstrip()
-        return level, title
-
-    # First pass: find all headings with their indices
-    headings = []
-    for idx, line in enumerate(lines):
-        parsed = parse_heading(line)
-        if parsed is not None:
-            level, title = parsed
-            headings.append((idx, level, title))
-
-    # Handle pre-heading content (level 0) if any
-    if not headings:
-        # Whole document is a single level 0 section
-        sections.append(
-            Section(
-                level=0,
-                title=None,
-                lines=lines.copy(),
-            )
-        )
-        return sections
-
-    first_heading_idx = headings[0][0]
-    if first_heading_idx > 0:
-        # Preamble section before the first heading
-        sections.append(
-            Section(
-                level=0,
-                title=None,
-                lines=lines[0:first_heading_idx],
-            )
+    def __init__(self, root: Optional[Section] = None) -> None:
+        self.root: Section = root if root is not None else Section(
+            title=None,
+            level=0,
         )
 
-    # For each heading, we need to find the range of lines that belong to this section,
-    # excluding content of subsections.
-    num_headings = len(headings)
+    # ---------- Construction ----------
 
-    for i, (idx, level, title) in enumerate(headings):
-        # Determine the tentative end of this section's entire span
-        if i + 1 < num_headings:
-            next_heading_idx = headings[i + 1][0]
-        else:
-            next_heading_idx = n  # until the end of the document
+    @classmethod
+    def from_text(cls, text: str) -> "MarkdownDocument":
+        """Parse Markdown text into a MarkdownDocument."""
+        lines = text.splitlines()
+        root = Section(title=None, level=0)
+        stack: List[Section] = [root]
+        current_section = root
 
-        # Now we must trim off content that belongs to deeper subsections:
-        #   from idx+1 until the first heading with level <= this level
-        #   but we already know next heading's index; the deeper ones are inside
-        # So we scan forward to find first heading at level <= current,
-        #   and that defines logical end of this section (including all deeper subsections).
-        logical_end = n
-        for j in range(i + 1, num_headings):
-            h_idx, h_level, _ = headings[j]
-            if h_level <= level:
-                logical_end = h_idx
-                break
+        for line in lines:
+            m = cls._HEADING_RE.match(line.strip())
 
-        # Now we want lines that are exclusively in this section:
-        # from idx+1 up to the first child heading at level = level+1 or higher,
-        # but not including lines that belong to nested headings.
-        # Simplest approach: content lines end at the first heading with level > level,
-        #   or logical_end, whichever comes first.
-        exclusive_end = logical_end
-        for j in range(i + 1, num_headings):
-            h_idx, h_level, _ = headings[j]
-            if h_level > level:
-                exclusive_end = min(exclusive_end, h_idx)
-                break
+            if m:
+                hashes, raw_title = m.groups()
+                level = len(hashes)
+                title = raw_title
 
-        body_start = idx + 1
-        body_end = exclusive_end
+                # Pop until we find a parent with lower level
+                while stack and stack[-1].level >= level:
+                    stack.pop()
 
-        section_lines = lines[body_start:body_end]
+                parent = stack[-1] if stack else root
 
-        sections.append(
-            Section(
-                level=level,
-                title=title,
-                lines=section_lines,
-            )
-        )
+                new_section = Section(title=title, level=level)
+                parent.add_child(new_section)
+                stack.append(new_section)
+                current_section = new_section
+            else:
+                current_section.content.append(line)
 
-    return sections
+        return cls(root=root)
 
+    # ---------- Introspection ----------
 
-def sections_to_markdown(sections: Iterable[Section]) -> str:
-    """
-    Reconstruct markdown from sections.
-    This assumes sections are in the original document order,
-    and that level 0 is preamble, other levels have headings.
-    """
-    out_lines: List[str] = []
-    for section in sections:
-        if section.level == 0:
-            # Preamble, no heading
-            out_lines.extend(section.lines)
-        else:
-            heading_line = "#" * section.level + " " + (section.title or "")
-            out_lines.append(heading_line)
-            out_lines.extend(section.lines)
-    return "\n".join(out_lines)
+    def iter_sections(self) -> Iterable[Section]:
+        """Depth first iteration over all sections, including root."""
+        yield from self.root.iter_depth_first()
 
+    def find_section(self, title: str, *, case_sensitive: bool = True) -> Optional[Section]:
+        """
+        Return the first section whose title matches.
 
-def get_section_by_title(
-    sections: List["Section"],
-    title: str,
-    level: Optional[int] = None,
-) -> Optional["Section"]:
-    """
-    Return the first Section whose title matches `title`.
+        If case_sensitive is False, comparison is done using lower().
+        """
+        for sec in self.iter_sections():
+            if sec.title is None:
+                continue
+            if case_sensitive:
+                if sec.title == title:
+                    return sec
+            else:
+                if sec.title.lower() == title.lower():
+                    return sec
+        return None
 
-    If `level` is provided, only sections with that level are considered.
-    If no matching section is found, return None.
-    """
-    for s in sections:
-        if s.title != title:
-            continue
-        if level is not None and s.level != level:
-            continue
-        return s
-    return None
+    def find_sections(self, title: str, *, case_sensitive: bool = True) -> List[Section]:
+        """
+        Return all sections whose title matches.
+        """
+        matches: List[Section] = []
+        for sec in self.iter_sections():
+            if sec.title is None:
+                continue
+            if case_sensitive:
+                if sec.title == title:
+                    matches.append(sec)
+            else:
+                if sec.title.lower() == title.lower():
+                    matches.append(sec)
+        return matches
+
+    # ---------- Mutation helpers ----------
+
+    def replace_section_content(
+        self,
+        title: str,
+        new_text: str,
+        *,
+        case_sensitive: bool = True,
+    ) -> bool:
+        """
+        Replace the content of the first section with the given title.
+
+        Returns True if a section was replaced, False if not found.
+        """
+        sec = self.find_section(title, case_sensitive=case_sensitive)
+        if sec is None:
+            return False
+        sec.content = new_text.splitlines()
+        return True
+
+    def set_section_content(self, section: Section, new_text: str) -> None:
+        """
+        Directly set content of a specific Section object.
+        """
+        section.content = new_text.splitlines()
+
+    # ---------- Rendering ----------
+
+    def _render_section(self, sec: Section) -> List[str]:
+        """Render a section (and its children) into a list of lines."""
+        lines: List[str] = []
+
+        # Root has no heading
+        if sec.level > 0 and sec.title is not None:
+            heading = "#" * sec.level + " " + sec.title
+            lines.append(heading)
+
+        # Body
+        lines.extend(sec.content)
+
+        # Children
+        for child in sec.children:
+            if lines and lines[-1].strip() != "":
+                lines.append("")
+            lines.extend(self._render_section(child))
+
+        return lines
+
+    def to_markdown(self) -> str:
+        """Render the whole document back into Markdown."""
+        lines: List[str] = []
+
+        # Root content first (before first heading)
+        lines.extend(self.root.content)
+
+        # Top level sections
+        for child in self.root.children:
+            if lines and lines[-1].strip() != "":
+                lines.append("")
+            lines.extend(self._render_section(child))
+
+        return "\n".join(lines).rstrip() + "\n"
