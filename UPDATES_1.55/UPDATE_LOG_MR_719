@@ -1,0 +1,23 @@
+
+
+Wed Feb 11 09:47:22 2026 Benjamin T. Liu
+MR_719
+Reviewers: Alan Dayton
+
+Prevent modification of reviewers if --reviewers not specified
+
+- prevents GitLabDuo from being removed during grape review process
+
+- if --reviewers is not specified, reviewers will not be modified
+
+- if --reviewers is \"\", reviewers will be removed
+
+# Related Reviews
+
+None
+
+# GRAPE
+
+v1.55.38
+
+--reviewers=dayton8
