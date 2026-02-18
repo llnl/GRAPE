@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Iterable
+from typing import List, Optional, Iterable, Sequence
 import re
 
 
@@ -7,7 +7,7 @@ import re
 class Section:
     title: Optional[str]       # None for the synthetic root
     level: int                 # 0 for root, 1 for #, 2 for ##, etc.
-    content: List[str] = field(default_factory=list)
+    lines: List[str] = field(default_factory=list)
     children: List["Section"] = field(default_factory=list)
 
     def add_child(self, child: "Section") -> None:
@@ -20,12 +20,12 @@ class Section:
             yield from child.iter_depth_first()
 
 
-class MarkdownDocument:
+class Document:
     """
     Represents a parsed Markdown document as a hierarchy of Sections.
 
     Usage:
-        doc = MarkdownDocument.from_text(markdown_str)
+        doc = Document.from_text(markdown_str)
         sec = doc.find_section("GRAPE")
         doc.replace_section_content("Related Reviews", "None")
         new_text = doc.to_markdown()
@@ -42,8 +42,8 @@ class MarkdownDocument:
     # ---------- Construction ----------
 
     @classmethod
-    def from_text(cls, text: str) -> "MarkdownDocument":
-        """Parse Markdown text into a MarkdownDocument."""
+    def from_text(cls, text: str) -> "Document":
+        """Parse Markdown text into a Document."""
         lines = text.splitlines()
         root = Section(title=None, level=0)
         stack: List[Section] = [root]
@@ -68,7 +68,7 @@ class MarkdownDocument:
                 stack.append(new_section)
                 current_section = new_section
             else:
-                current_section.content.append(line)
+                current_section.lines.append(line)
 
         return cls(root=root)
 
@@ -128,14 +128,14 @@ class MarkdownDocument:
         sec = self.find_section(title, case_sensitive=case_sensitive)
         if sec is None:
             return False
-        sec.content = new_text.splitlines()
+        sec.lines = new_text.splitlines()
         return True
 
     def set_section_content(self, section: Section, new_text: str) -> None:
         """
         Directly set content of a specific Section object.
         """
-        section.content = new_text.splitlines()
+        section.lines = new_text.splitlines()
 
     # ---------- Rendering ----------
 
@@ -149,7 +149,7 @@ class MarkdownDocument:
             lines.append(heading)
 
         # Body
-        lines.extend(sec.content)
+        lines.extend(sec.lines)
 
         # Children
         for child in sec.children:
@@ -159,12 +159,12 @@ class MarkdownDocument:
 
         return lines
 
-    def to_markdown(self) -> str:
-        """Render the whole document back into Markdown."""
+    def to_text(self) -> str:
+        """Render the whole document back into Markdown text."""
         lines: List[str] = []
 
         # Root content first (before first heading)
-        lines.extend(self.root.content)
+        lines.extend(self.root.lines)
 
         # Top level sections
         for child in self.root.children:
