@@ -1032,7 +1032,7 @@ def handleEnsureLocalUpToDateMRE(mre):
                 elif not pushBranch:
                     pushBranch =  utility.userInput("Would you like to push your local branch? \n"
                                                     "(select 'a' to say yes for (a)ll subprojects, 's' to (s)kip push for all subprojects)"
-                                                    "\n(y,n,a,s)", 'y')
+                                                    "\n(y,n,a,s)", 'y', ['a','s'])
 
                 if str(pushBranch).lower()[0] == 'a':
                     _pushBranch = True
