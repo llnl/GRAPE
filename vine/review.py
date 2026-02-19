@@ -786,15 +786,15 @@ class Review(Option, WorkspaceDirHandler):
         if reviewers:
             for ruleName in reviewers:
                 ruleInfo = reviewers[ruleName]
+                ruleLabel = ruleInfo['label']
 
-                if ruleInfo['label'] not in reviewRuleModels:
-                    reviewRuleModels[ruleInfo['label']] = {
+                if ruleLabel not in reviewRuleModels:
+                    reviewRuleModels[ruleLabel] = {
                         'reviewers': set(ruleInfo['reviewers']),
                         'approvals': {}
                     }
                 else:
-                    for reviewer in ruleInfo['reviewers']:
-                        reviewRuleModels[ruleInfo['label']]['reviewers'].add(reviewer)
+                    reviewRuleModels[ruleLabel]['reviewers'] = set(ruleInfo['reviewers'])
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
