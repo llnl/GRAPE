@@ -152,11 +152,6 @@ class Approve(Option, WorkspaceDirHandler):
         Prints open merge requests targeting `target_branch` where `user_name`
         has been added using `grape review`. 
 
-        Relies on grape review adding a line in the description in the form
-        `--reviewers=rule1:username1 rule2:username2,username3`
-          or
-        `--reviewers=username1,username2,username3`
-
         Parameters
         ----------
         repo : Repo
@@ -167,19 +162,20 @@ class Approve(Option, WorkspaceDirHandler):
             Target branch for merge requests (any target if None)
 
         """
-        reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
-        user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
         for request in repo.pullRequests(target_branch=target_branch):
             descr = request.description()
-            if "--reviewers" in descr:
-                match = reviewer_search.search(descr) 
-                if match:
-                    rules = []
-                    user_matches = user_search.findall(match.group(1))
-                    if user_matches:
-                        for rule in user_matches:
-                            rules.append(rule.strip(':')) 
-                        print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
+            description_model = PullRequestDescriptionModel.from_text(descr, None, None, None)
+
+            rules = []
+
+            for rule_label in description_model.reviewRules:
+                rule = description_model.reviewRules[rule_label]
+
+                if user_name in rule['reviewers']:
+                    rules.append(rule_label)
+
+            if rules:
+                print(f"  {request.fromRef()} -> {request.toRef()} [{', '.join(rules)}]")
 
     @staticmethod
     def _get_review_rule(top_repo_context, args):
