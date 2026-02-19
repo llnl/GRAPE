@@ -242,7 +242,8 @@ class Review(Option, WorkspaceDirHandler):
         }
 
 
-    def buildDescriptionSections(descriptionSections, args=None, relatedReviews=None):
+    @staticmethod
+    def buildDescription(descriptionData):
         """
         Build a new list of merge/pull request description sections as follows:
           1) Include all sections (including preamble) up to, but not including,
@@ -1288,8 +1289,8 @@ class Review(Option, WorkspaceDirHandler):
                     updatedReviewLinks.append(outerLevelURL)
 
             updatedReviewLinks.sort()
-
-            updatedDescription = Review.buildDescription(descriptionData, args, updatedReviewLinks)
+            descriptionData['related_reviews'] = updatedReviewLinks
+            updatedDescription = Review.buildDescription(descriptionData)
 
             pre_update_description = request.description()
 
