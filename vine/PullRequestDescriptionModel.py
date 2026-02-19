@@ -21,6 +21,13 @@ class PullRequestDescriptionModel:
 
     @classmethod
     def from_text(cls, description, reviewRules, reviewRuleMap, defaultReviewRuleName):
+        if not description:
+            return cls(
+                userLines=[],
+                relatedReviews=set(),
+                reviewRules={}
+            )
+
         # Parse into markdown sections
         descriptionDoc = markdown.Document.from_text(description.strip())
 
