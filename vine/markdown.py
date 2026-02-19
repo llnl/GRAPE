@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Iterable, Sequence
+from typing import List, Optional, Iterable
 import re
 
 
@@ -18,6 +18,14 @@ class Section:
         yield self
         for child in self.children:
             yield from child.iter_depth_first()
+
+    def iter_breadth_first(self) -> Iterable["Section"]:
+        """Breadth first iterator over this section and all descendants."""
+        queue: deque[Section] = deque([self])
+        while queue:
+            section = queue.popleft()
+            yield section
+            queue.extend(section.children)
 
 
 class Document:
@@ -74,102 +82,51 @@ class Document:
 
     # ---------- Introspection ----------
 
+    def find_section(self, path: str) -> Optional[Section]:
+        """
+        Resolve a '/' separated path of section titles.
+
+        Examples:
+            "GRAPE/Related Reviews"
+            "GRAPE/Review Rules/Code Review/test"
+
+        The lookup is done among children at each level using exact title match.
+        Returns None if any segment cannot be resolved.
+        """
+        # Split and strip whitespace around each segment
+        parts = [p.strip() for p in path.split("/") if p.strip()]
+
+        if not parts:
+            return self.root
+
+        # If the first part is the root title, skip it so paths can be
+        # written either as "GRAPE/..." or "Review Rules/..."
+        idx = 0
+
+        if self.root.title is not None and parts[0] == self.root.title:
+            idx = 1
+
+            if idx >= len(parts):
+                return self.root
+
+        current = self.root
+
+        while idx < len(parts):
+            name = parts[idx]
+
+            for child in current.children:
+                if child.title == name:
+                    current = child
+                    break
+            else:
+                # No child with this name
+                return None
+
+            idx += 1
+
+        return current
+
     def iter_sections(self) -> Iterable[Section]:
         """Depth first iteration over all sections, including root."""
         yield from self.root.iter_depth_first()
 
-    def find_section(self, title: str, *, case_sensitive: bool = True) -> Optional[Section]:
-        """
-        Return the first section whose title matches.
-
-        If case_sensitive is False, comparison is done using lower().
-        """
-        for sec in self.iter_sections():
-            if sec.title is None:
-                continue
-            if case_sensitive:
-                if sec.title == title:
-                    return sec
-            else:
-                if sec.title.lower() == title.lower():
-                    return sec
-        return None
-
-    def find_sections(self, title: str, *, case_sensitive: bool = True) -> List[Section]:
-        """
-        Return all sections whose title matches.
-        """
-        matches: List[Section] = []
-        for sec in self.iter_sections():
-            if sec.title is None:
-                continue
-            if case_sensitive:
-                if sec.title == title:
-                    matches.append(sec)
-            else:
-                if sec.title.lower() == title.lower():
-                    matches.append(sec)
-        return matches
-
-    # ---------- Mutation helpers ----------
-
-    def replace_section_content(
-        self,
-        title: str,
-        new_text: str,
-        *,
-        case_sensitive: bool = True,
-    ) -> bool:
-        """
-        Replace the content of the first section with the given title.
-
-        Returns True if a section was replaced, False if not found.
-        """
-        sec = self.find_section(title, case_sensitive=case_sensitive)
-        if sec is None:
-            return False
-        sec.lines = new_text.splitlines()
-        return True
-
-    def set_section_content(self, section: Section, new_text: str) -> None:
-        """
-        Directly set content of a specific Section object.
-        """
-        section.lines = new_text.splitlines()
-
-    # ---------- Rendering ----------
-
-    def _render_section(self, sec: Section) -> List[str]:
-        """Render a section (and its children) into a list of lines."""
-        lines: List[str] = []
-
-        # Root has no heading
-        if sec.level > 0 and sec.title is not None:
-            heading = "#" * sec.level + " " + sec.title
-            lines.append(heading)
-
-        # Body
-        lines.extend(sec.lines)
-
-        # Children
-        for child in sec.children:
-            if lines and lines[-1].strip() != "":
-                lines.append("")
-            lines.extend(self._render_section(child))
-
-        return lines
-
-    def to_text(self) -> str:
-        """Render the whole document back into Markdown text."""
-        lines: List[str] = []
-
-        # Root content first (before first heading)
-        lines.extend(self.root.lines)
-
-        # Top level sections
-        for child in self.root.children:
-            if lines and lines[-1].strip() != "":
-                lines.append("")
-            lines.extend(self._render_section(child))
-
-        return "\n".join(lines).rstrip() + "\n"
