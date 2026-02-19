@@ -22,7 +22,8 @@ class ApproveInput:
                  tag: bool = True,
                  description: bool = True,
                  required: bool = False,
-                 cache: bool = False):
+                 cache: bool = False,
+                 value: Optional[str] = None):
         """
         Initialize an ApproveInput.
 
@@ -49,6 +50,7 @@ class ApproveInput:
         self.description = description
         self.required = required
         self.cache = cache
+        self.value = value
 
     def to_dict(self) -> Dict[str, Any]:
         """
@@ -67,7 +69,8 @@ class ApproveInput:
             'tag': self.tag,
             'description': self.description,
             'required': self.required,
-            'cache': self.cache
+            'cache': self.cache,
+            'value': self.value
         }
 
     @classmethod
@@ -89,7 +92,8 @@ class ApproveInput:
             tag=data.get('tag', True),
             description=data.get('description', True),
             required=data.get('required', False),
-            cache=data.get('cache', False)
+            cache=data.get('cache', False),
+            value=data.get('value', None)
         )
 
 

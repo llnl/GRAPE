@@ -751,7 +751,7 @@ class Review(Option, WorkspaceDirHandler):
 
         if existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
             reviewers[defaultReviewRuleName] = {
-                'label': reviewRules[defaultReviewRuleName]['label'],
+                'label': reviewRules[defaultReviewRuleName].label,
                 'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
             }
 
@@ -1658,13 +1658,13 @@ def parseReviewRuleMap(reviewRules):
 
                 oldRule = tokens[0]
 
-                if oldRule not in reviewRules or reviewRules[oldRule]['active']:
+                if oldRule not in reviewRules or reviewRules[oldRule].active:
                     logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
                     exit(1)
 
                 newRule = tokens[1]
 
-                if newRule not in reviewRules or not reviewRules[newRule]['active']:
+                if newRule not in reviewRules or not reviewRules[newRule].active:
                     logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
                     exit(1)
 
