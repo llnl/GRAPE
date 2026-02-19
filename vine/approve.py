@@ -585,42 +585,37 @@ class Approve(Option, WorkspaceDirHandler):
             Propagates exceptions thrown by the underlying code review client operations.
         """
         # Build rule section for merge/pull request description
-        rule_section = ''
-        rule_section_header = ''
-        rule_section_pattern = None
-        rule_section_repl = None
+        description = ''
 
         if 'description' in rule['approveActions']:
-            rule_section_header = f'# {rule["label"]}'
 
-            # Pattern:
-            # - Match "# {section_name}" at line start
-            # - Capture everything until next top-level header ("# " at line start) or end of string
-            rule_section_pattern = re.compile(
-                rf'^{re.escape(rule_section_header)}\s*\n'  # Section header
-                r'(.*?)'                                    # Section content (non-greedy capture)
-                r'(?=^# [^\n]*|\Z)',                        # Stop at next top-level section header or end of string
-                flags=re.DOTALL | re.MULTILINE
-            )
+            for repo_name in modified_repos:
+                repo_context = modified_repos[repo_name]
+                review_request = repo_context['review_request']
+                description = review_request.description()
+                break
 
-            rule_section = rule_section_header
+            descriptionModel = Review.parseDescription(description)
+            reviewRuleModels = descriptionModel['review_rules']
+
+            if rule['label'] in reviewRuleModels:
+                reviewRuleModel = reviewRuleModels[rule['label']]
+                approvals = reviewRuleModel['approvals']
+            else:
+                approvals = {}
 
             for repo_name in sorted(modified_repos.keys()):
                 repo_context = modified_repos[repo_name]
 
                 if repo_context['approved']:
-                    rule_section += f'\n\n## {repo_name}'
+                    approvals[repo_name] = {}
                     repo_inputs = repo_context['approve_inputs']
 
                     for repo_input in repo_inputs:
                         if repo_input['description']:
-                            rule_section += f'\n\n* {repo_input["label"]}: {repo_input["value"]}'
+                            approvals[repo_name][repo_input['label']] = repo_input['value']
 
-            def rule_section_repl(_match):
-                # Replace section and preserve new lines before next section
-                # If there is no section after this one, the extra new lines
-                # will be stripped off anyway.
-                return f'{rule_section}\n\n'
+            description = Review.buildDescription(descriptionModel)
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
@@ -632,14 +627,7 @@ class Approve(Option, WorkspaceDirHandler):
             # Update merge request description
             if 'description' in rule['approveActions']:
                 logging.info('  Updating merge/pull request description...')
-                current_description = review_request.description().strip()
-
-                if rule_section_header in current_description:
-                    updated_description = rule_section_pattern.sub(rule_section_repl, current_description).rstrip()
-                else:
-                    updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
-
-                review_request.update(review_request.version(), description=updated_description)
+                review_request.update(review_request.version(), description=description)
 
             if repo_context['approved']:
                 # Approve reviewed branch
