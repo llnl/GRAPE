@@ -199,6 +199,9 @@ class PullRequestDescriptionModel:
 
         return description
 
+    def set_grape_version(self, version):
+        self.grapeVersion = version
+
     def clear_related_pull_requests(self):
         self.relatedReviews.clear()
 

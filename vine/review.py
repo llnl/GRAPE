@@ -15,7 +15,6 @@ from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
-from vine import markdown as markdown
 from vine import multi_repo_cmd_launcher
 from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine import submodules
