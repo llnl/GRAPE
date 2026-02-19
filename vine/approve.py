@@ -587,21 +587,27 @@ class Approve(Option, WorkspaceDirHandler):
         description = ''
 
         if 'description' in rule['approveActions']:
-
+            # Get the pull request description. All related pull requests
+            # should have the same description, so grab the first one.
             for repo_name in modified_repos:
                 repo_context = modified_repos[repo_name]
                 review_request = repo_context['review_request']
                 description = review_request.description()
                 break
 
+            # Get the data from the pull request description
             descriptionModel = PullRequestDescriptionModel.from_text(description, None, None, None)
+
+            # Get existing approvals
             reviewRuleModels = descriptionModel.reviewRules
 
-            if rule['label'] in reviewRuleModels:
-                reviewRuleModel = reviewRuleModels[rule['label']]
-                approvals = reviewRuleModel['approvals']
-            else:
-                approvals = {}
+            if rule['label'] not in reviewRuleModels:
+                reviewRuleModels[rule['label']] = {
+                    'reviewers': set(),
+                    'approvals': {}
+                }
+
+            approvals = reviewRuleModels[rule['label']]['approvals']
 
             for repo_name in sorted(modified_repos.keys()):
                 repo_context = modified_repos[repo_name]
