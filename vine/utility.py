@@ -133,8 +133,10 @@ def parseArgs(docstr, arguments, config):
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate
 # to True if the user inputs 'y' or 'yes' (case-insensitive)
 # and will evaluate to False if the user inputs 'n' or 'no'
-# (case insensitive).
-def userInput(message, default=None):
+# (case insensitive). Only these inputs, along with any
+# inputs specified in additional_inputs are allowed.
+# additional_inputs has no effect except with y/n/Y/N defaults.
+def userInput(message, default=None, additional_inputs=[]):
     print(f"\n{message}")
     if IS_NON_INTERACTIVE:
         if not default:
@@ -164,7 +166,9 @@ def userInput(message, default=None):
                 return False
             if value.lower() == "no":
                 return False
-            print("Please enter y/yes/n/no...")
+            if value in additional_inputs:
+                return value
+            print(f"Please enter {'/'.join(['y','yes','n','no'] + additional_inputs)}...")
             value = input(f"(def: {default}) ==> ").strip()
     return value
 
