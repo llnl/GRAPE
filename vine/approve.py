@@ -595,7 +595,7 @@ class Approve(Option, WorkspaceDirHandler):
                 description = review_request.description()
                 break
 
-            descriptionModel = Review.parseDescription(description)
+            descriptionModel = review.Review.parseDescription(description, None, None, None)
             reviewRuleModels = descriptionModel['review_rules']
 
             if rule['label'] in reviewRuleModels:
@@ -615,7 +615,7 @@ class Approve(Option, WorkspaceDirHandler):
                         if repo_input['description']:
                             approvals[repo_name][repo_input['label']] = repo_input['value']
 
-            description = Review.buildDescription(descriptionModel)
+            description = review.Review.buildDescription(descriptionModel)
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
