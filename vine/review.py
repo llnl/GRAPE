@@ -24,6 +24,7 @@ from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
+from vine.ReviewRule import ReviewRule, ApproveInput
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
@@ -1321,25 +1322,27 @@ def getGrapeReviewRule(active):
     global config.
 
     :param active: Whether or not the GRAPE review rule is active.
-    :return: A dictionary containing the GRAPE review rule.
+    :return: A dictionary where the key is 'grape' and the value is a ReviewRule object.
     """
-    return {'grape': {'name': 'grape',
-                      'active': active,
-                      'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-                      'minNumReviewers': 1,
-                      'authorEligible': False,
-                      'eligibleReviewers': ['.+'],
-                      'repositories': ['.+'],
-                      'approveActions': ['approve'],
-                      'approveInputs': [],
-                      'dryRun': False}}
+    return {'grape': ReviewRule(
+        name='grape',
+        active=active,
+        label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+        minNumReviewers=1,
+        authorEligible=False,
+        eligibleReviewers=['.+'],
+        repositories=['.+'],
+        approveActions=['approve'],
+        approveInputs=[],
+        dryRun=False
+    )}
 
 
 def parseReviewRules(config=None):
     """
     Parses the global GRAPE config file and returns a dictionary of review rules.
 
-    :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+    :return: A dictionary where each key is a review rule name and the value is a ReviewRule object
     """
     reviewRules = {}
 
@@ -1553,7 +1556,7 @@ def parseReviewRules(config=None):
                             logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
                             continue
 
-                    approveInputs.append(approveInput)
+                    approveInputs.append(ApproveInput.from_dict(approveInput))
 
                 # Controls whether publish checks are just reported or actually
                 # prevent a publish.
@@ -1563,18 +1566,18 @@ def parseReviewRules(config=None):
                     dryRun = config.getboolean(sectionName, "dryrun")
 
                 # Add the rule
-                reviewRules[reviewRuleName] = {
-                    "name": reviewRuleName,
-                    "active": active,
-                    "label": label,
-                    "minNumReviewers": minNumReviewers,
-                    "authorEligible": authorEligible,
-                    "eligibleReviewers": eligibleReviewers,
-                    "repositories": repositories,
-                    "approveActions": approveActions,
-                    "approveInputs": approveInputs,
-                    "dryRun": dryRun
-                }
+                reviewRules[reviewRuleName] = ReviewRule(
+                    name=reviewRuleName,
+                    active=active,
+                    label=label,
+                    minNumReviewers=minNumReviewers,
+                    authorEligible=authorEligible,
+                    eligibleReviewers=eligibleReviewers,
+                    repositories=repositories,
+                    approveActions=approveActions,
+                    approveInputs=approveInputs,
+                    dryRun=dryRun
+                )
 
     # Add the GRAPE review rule. It will be active only if the user has
     # not specified any rules.
