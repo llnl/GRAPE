@@ -858,15 +858,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
 
-                if reviewRule['active']:
-                    ruleDryRun = reviewRule['dryRun']
-                    reviewRuleRepositories = reviewRule["repositories"]
+                if reviewRule.active:
+                    ruleDryRun = reviewRule.dryRun
+                    reviewRuleRepositories = reviewRule.repositories
 
                     for reviewRuleRepository in reviewRuleRepositories:
                         if re.fullmatch(reviewRuleRepository, repoName):
-                            label = reviewRule["label"]
-                            minNumReviewers = reviewRule["minNumReviewers"]
-                            eligibleReviewers = reviewRule["eligibleReviewers"]
+                            label = reviewRule.label
+                            minNumReviewers = reviewRule.minNumReviewers
+                            eligibleReviewers = reviewRule.eligibleReviewers
 
                             # Check if reviewers are assigned to the review rule
                             if label not in descriptionModel.reviewRules:
@@ -942,10 +942,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             # - "approve" has already been covered by other checks
                             # - "tag" requires checking that a tag for the review rule exists and no changes have occurred since
                             # - "description" is not yet handled, but would involve checks similar to that for the tag message below
-                            approveActions = reviewRule['approveActions']
+                            approveActions = reviewRule.approveActions
 
                             if 'tag' in approveActions:
-                                tagName = f'{reviewRule["name"]}_{pullRequest.iid()}'
+                                tagName = f'{reviewRule.name}_{pullRequest.iid()}'
                                 tag = repo.getTag(tagName)
 
                                 # Check tag exists
@@ -1041,10 +1041,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                     break
 
-                                approveInputs = reviewRule['approveInputs']
+                                approveInputs = reviewRule.approveInputs
 
                                 for approveInput in approveInputs:
-                                    if approveInput['tag'] and approveInput['label'] not in tag.message:
+                                    if approveInput.tag and approveInput.label not in tag.message:
                                         userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
 
                                         if not ruleDryRun:
