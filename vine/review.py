@@ -947,8 +947,6 @@ class Review(Option, WorkspaceDirHandler):
             descr = existingOuterLevelRequest.description()
 
         descriptionData = Review.parseDescription(descr)
-        #print(Review.buildDescription(descriptionData))
-        #exit(1)
 
         # Get review rules
         reviewRules = parseReviewRules()
@@ -973,8 +971,20 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 non_approver_list.update(non_approvers.lower().split(','))
 
-        # TODO: Fix
-        savedArgs = Review.getSavedArgs(descriptionData)
+        savedReviewers = ''
+        reviewRuleModels = descriptionData['review_rules']
+
+        for reviewRuleLabel in reviewRuleModels:
+            reviewRuleModel = reviewRuleModels[reviewRuleLabel]
+            temp = ','.join(reviewRuleModel['reviewers'])
+
+            for reviewRuleName in reviewRules:
+                reviewRule = reviewRules[reviewRuleName]
+
+                if reviewRule['label'] == reviewRuleLabel:
+                    savedReviewers += f' {reviewRule["name"]}:{temp}'
+
+        savedArgs = {'--reviewers': savedReviewers.strip()}
 
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
