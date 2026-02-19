@@ -150,6 +150,98 @@ class Review(Option, WorkspaceDirHandler):
         return descr
 
 
+    @staticmethod
+    def parseDescription(description):
+        # Parse into markdown sections
+        descriptionDoc = markdown.Document.from_text(description.strip())
+
+        # Section titles
+        grapeTitle = 'GRAPE'
+        relatedReviewsTitle = 'Related Reviews'
+        reviewRulesTitle = 'Review Rules'
+        grapeGeneratedTitles = [grapeTitle, relatedReviewsTitle, reviewRulesTitle]
+
+        # Gather all user description lines
+        userDescriptionLines = []
+        topLevelSection = descriptionDoc.find_section('')
+        userDescriptionLines.extend(topLevelSection.lines)
+
+        for child in topLevelSection.children:
+            if child.title in grapeGeneratedTitles:
+                continue
+
+            for section in child.iter_depth_first():
+                userDescriptionLines.append(f'{"#" * section.level} {section.title}')
+                userDescriptionLines.extend(section.lines)
+
+        # Gather related reviews
+        relatedReviews = []
+        relatedReviewsSection = descriptionDoc.find_section(f'{grapeTitle}/{relatedReviewsTitle}')
+
+        if not relatedReviewsSection:
+            relatedReviewsSection = descriptionDoc.find_section(relatedReviewsTitle)
+
+        if relatedReviewsSection:
+            for line in relatedReviewsSection.lines:
+                line = line.strip()
+
+                if line and line != 'None':
+                    relatedReviews.append(line)
+
+        # Gather review rules
+        ruleReviewersPattern = re.compile(
+            r'^\s*Reviewers:\s*(?P<reviewers>.+?)\s*$'
+        )
+
+        ruleKeyValuePattern = re.compile(
+            r'^\s*\*\s*(?P<key>[^:]+?)\s*:\s*(?P<value>.*?)\s*$'
+        )
+
+        rules = {}
+        rulesSection = descriptionDoc.find_section(f'{grapeTitle}/{reviewRulesTitle}')
+
+        if not rulesSection:
+            rulesSection = descriptionDoc.find_section(reviewRulesTitle)
+
+        if rulesSection:
+            for ruleSection in rulesSection.children:
+                ruleLabel = ruleSection.title
+                ruleReviewers = set()
+
+                for line in ruleSection.lines:
+                    match = ruleReviewersPattern.match(line)
+
+                    if match:
+                        for reviewer in match.group('reviewers').split(','):
+                            ruleReviewers.add(reviewer)
+
+                ruleReviewers = sorted(ruleReviewers)
+                ruleApprovals = {}
+
+                for approvalSection in ruleSection.children:
+                    repoName = approvalSection.title
+                    approvalData = {}
+
+                    for line in approvalSection.lines:
+                        match = ruleKeyValuePattern.match(line)
+
+                        if match:
+                            approvalData[match.group('key')] = match.group('value')
+
+                    ruleApprovals[repoName] = approvalData
+
+                rules[ruleLabel] = {
+                    'reviewers': ruleReviewers,
+                    'approvals': ruleApprovals,
+                }
+
+        return {
+            'user_description': userDescriptionLines,
+            'related_reviews': relatedReviews,
+            'review_rules': rules
+        }
+
+
     def buildDescriptionSections(descriptionSections, args=None, relatedReviews=None):
         """
         Build a new list of merge/pull request description sections as follows:
@@ -895,7 +987,7 @@ class Review(Option, WorkspaceDirHandler):
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-        descriptionSections = markdown.parse_markdown_sections(descr.strip())
+        descriptionData = Review.parseDescription(descr)
 
         # Get review rules
         reviewRules = parseReviewRules()
@@ -920,8 +1012,8 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 non_approver_list.update(non_approvers.lower().split(','))
 
-        grapeSection = markdown.get_section_by_title(descriptionSections, 'GRAPE')
-        savedArgs = Review.getSavedArgs(grapeSection)
+        # TODO: Fix
+        savedArgs = Review.getSavedArgs(descriptionData)
 
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
@@ -942,16 +1034,14 @@ class Review(Option, WorkspaceDirHandler):
         args['--reviewers'] = self.serializeReviewers(reviewers)
 
         # Get and update related reviews
-        relatedReviewsSection = markdown.get_section_by_title(descriptionSections, 'Related Reviews')
-        relatedReviews = Review.getRelatedReviews(relatedReviewsSection)
+        relatedReviews = descriptionData.get('related_reviews', [])
 
         if outerLevelURL and outerLevelURL not in relatedReviews:
             relatedReviews.append(outerLevelURL)
             relatedReviews.sort()
 
         # Update description
-        updatedDescriptionSections = Review.buildDescriptionSections(descriptionSections, args, relatedReviews)
-        updatedDescription = markdown.sections_to_markdown(updatedDescriptionSections)
+        updatedDescription = Review.buildDescription(descriptionData)
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
@@ -1188,8 +1278,7 @@ class Review(Option, WorkspaceDirHandler):
                 # Start with related review links scraped from the outer level
                 # merge/pull request description. Then add all the new links if
                 # they are not already in the list.
-                updatedRelatedReviewsSection = markdown.get_section_by_title(updatedDescriptionSections, 'Related Reviews')
-                updatedReviewLinks = Review.getRelatedReviews(updatedRelatedReviewsSection)
+                updatedReviewLinks = descriptionData['related_reviews']
 
                 for link in pullRequestLinks:
                     if link not in updatedReviewLinks:
@@ -1200,8 +1289,7 @@ class Review(Option, WorkspaceDirHandler):
 
             updatedReviewLinks.sort()
 
-            updatedDescriptionSections = Review.buildDescriptionSections(updatedDescriptionSections, args, updatedReviewLinks)
-            updatedDescription = markdown.sections_to_markdown(updatedDescriptionSections)
+            updatedDescription = Review.buildDescription(descriptionData, args, updatedReviewLinks)
 
             pre_update_description = request.description()
 
