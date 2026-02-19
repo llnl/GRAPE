@@ -191,17 +191,9 @@ class Review(Option, WorkspaceDirHandler):
 
             # Check that the reviewers are allowed to approve this rule
             reviewRuleReviewers = reviewGroup['reviewers']
-            eligibleReviewers = reviewRule.eligibleReviewers
 
             for reviewRuleReviewer in reviewRuleReviewers:
-                validReviewer = False
-
-                for eligibleReviewer in eligibleReviewers:
-                    if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
-                        validReviewer = True
-                        break
-
-                if not validReviewer:
+                if not reviewRule.matches_reviewer(reviewRuleReviewer):
                     logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
                     exit(1)
 
