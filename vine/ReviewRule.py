@@ -123,16 +123,66 @@ class ReviewRule:
         :param approveInputs: List of ApproveInput configurations
         :param dryRun: Whether to run in dry-run mode
         """
-        self.name = name
-        self.active = active
-        self.label = label if label is not None else f"GRAPE: {name} review"
-        self.minNumReviewers = minNumReviewers
-        self.authorEligible = authorEligible
-        self.eligibleReviewers = eligibleReviewers if eligibleReviewers is not None else [".+"]
-        self.repositories = repositories if repositories is not None else [".+"]
-        self.approveActions = approveActions if approveActions is not None else ['approve']
-        self.approveInputs = approveInputs if approveInputs is not None else []
-        self.dryRun = dryRun
+        self._name = name
+        self._active = active
+        self._label = label if label is not None else f"GRAPE: {name} review"
+        self._minNumReviewers = minNumReviewers
+        self._authorEligible = authorEligible
+        self._eligibleReviewers = eligibleReviewers if eligibleReviewers is not None else [".+"]
+        self._repositories = repositories if repositories is not None else [".+"]
+        self._approveActions = approveActions if approveActions is not None else ['approve']
+        self._approveInputs = approveInputs if approveInputs is not None else []
+        self._dryRun = dryRun
+
+    @property
+    def name(self) -> str:
+        """Get the name of the review rule."""
+        return self._name
+
+    @property
+    def active(self) -> bool:
+        """Get whether the rule is active."""
+        return self._active
+
+    @property
+    def label(self) -> str:
+        """Get the label for the rule."""
+        return self._label
+
+    @property
+    def minNumReviewers(self) -> int:
+        """Get the minimum number of reviewers required."""
+        return self._minNumReviewers
+
+    @property
+    def authorEligible(self) -> bool:
+        """Get whether the author can review/approve."""
+        return self._authorEligible
+
+    @property
+    def eligibleReviewers(self) -> List[str]:
+        """Get the list of eligible reviewer patterns."""
+        return self._eligibleReviewers
+
+    @property
+    def repositories(self) -> List[str]:
+        """Get the list of repository patterns this rule applies to."""
+        return self._repositories
+
+    @property
+    def approveActions(self) -> List[str]:
+        """Get the list of actions to perform on approval."""
+        return self._approveActions
+
+    @property
+    def approveInputs(self) -> List[ApproveInput]:
+        """Get the list of ApproveInput configurations."""
+        return self._approveInputs
+
+    @property
+    def dryRun(self) -> bool:
+        """Get whether to run in dry-run mode."""
+        return self._dryRun
 
     def to_dict(self) -> Dict[str, Any]:
         """
