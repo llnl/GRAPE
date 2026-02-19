@@ -787,14 +787,23 @@ class Review(Option, WorkspaceDirHandler):
             for ruleName in reviewers:
                 ruleInfo = reviewers[ruleName]
                 ruleLabel = ruleInfo['label']
+                assignedReviewers = ruleInfo['reviewers']
 
-                if ruleLabel not in reviewRuleModels:
-                    reviewRuleModels[ruleLabel] = {
-                        'reviewers': set(ruleInfo['reviewers']),
-                        'approvals': {}
-                    }
+                if assignedReviewers:
+                    # Add or update reviewers for  rule
+                    if ruleLabel not in reviewRuleModels:
+                        reviewRuleModels[ruleLabel] = {
+                            'reviewers': set(assignedReviewers),
+                            'approvals': {}
+                        }
+                    else:
+                        reviewRuleModels[ruleLabel]['reviewers'] = set(assignedReviewers)
                 else:
-                    reviewRuleModels[ruleLabel]['reviewers'] = set(ruleInfo['reviewers'])
+                    # Check if review rule model needs to be removed
+                    # (i.e. no reviewers or approvals).
+                    if ruleLabel in reviewRuleModels:
+                        if not reviewRuleModels[ruleLabel]['approvals']:
+                            del reviewRuleModels[ruleLabel]
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
