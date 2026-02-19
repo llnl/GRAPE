@@ -552,7 +552,7 @@ class Approve(Option, WorkspaceDirHandler):
         Apply rule approval actions to each modified repository.
 
         When `"description"` is present in `rule["approveActions"]`, this adds
-        or overwrites approvals in the pull request description.
+        and/or overwrites approvals in the pull request description.
 
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule["approveActions"]`:
