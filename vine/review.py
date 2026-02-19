@@ -182,7 +182,7 @@ class Review(Option, WorkspaceDirHandler):
         """
         for reviewRuleName in reviewers:
             # Check the given rule name is a review rule
-            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName].active:
                 logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                 exit(1)
 
@@ -191,7 +191,7 @@ class Review(Option, WorkspaceDirHandler):
 
             # Check that the reviewers are allowed to approve this rule
             reviewRuleReviewers = reviewGroup['reviewers']
-            eligibleReviewers = reviewRule["eligibleReviewers"]
+            eligibleReviewers = reviewRule.eligibleReviewers
 
             for reviewRuleReviewer in reviewRuleReviewers:
                 validReviewer = False
@@ -207,7 +207,7 @@ class Review(Option, WorkspaceDirHandler):
 
             # Check if the minimum number of reviewers has been met
             numReviewers = len(reviewRuleReviewers)
-            minNumReviewers = reviewRule["minNumReviewers"]
+            minNumReviewers = reviewRule.minNumReviewers
 
             if numReviewers < minNumReviewers:
                 logging.warning(f'GRAPE: WARNING: {minNumReviewers} reviewer(s) required for review rule "{reviewRuleName}", but only {numReviewers} reviewer(s) given.')
@@ -333,7 +333,7 @@ class Review(Option, WorkspaceDirHandler):
 
         for reviewRuleName in allReviewers:
             reviewRule = reviewRules[reviewRuleName]
-            reviewRuleRepositories = reviewRule["repositories"]
+            reviewRuleRepositories = reviewRule.repositories
 
             for reviewRuleRepository in reviewRuleRepositories:
                 if re.fullmatch(reviewRuleRepository, repoName):
@@ -774,8 +774,8 @@ class Review(Option, WorkspaceDirHandler):
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
 
-                if reviewRule['label'] == reviewRuleLabel:
-                    savedReviewers += f' {reviewRule["name"]}:{temp}'
+                if reviewRule.label == reviewRuleLabel:
+                    savedReviewers += f' {reviewRule.name}:{temp}'
 
         savedArgs = {'--reviewers': savedReviewers.strip()}
 
@@ -810,9 +810,9 @@ class Review(Option, WorkspaceDirHandler):
         # outdated approval rules.
         if reviewers:
             for reviewRuleName in reviewRules:
-                if not reviewRules[reviewRuleName]['active']:
+                if not reviewRules[reviewRuleName].active:
                     reviewers[reviewRuleName] = {
-                        'label': reviewRules[reviewRuleName]['label'],
+                        'label': reviewRules[reviewRuleName].label,
                         'reviewers': []
                     }
 
@@ -1697,7 +1697,7 @@ def parseDefaultReviewRuleName(reviewRules):
             defaultReviewRuleName = config.get(reviewSectionName, "defaultrule")
 
             # Check that the default matches one of the active review rule names
-            if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
+            if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName].active:
                 logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
                 exit(1)
 
@@ -1706,12 +1706,12 @@ def parseDefaultReviewRuleName(reviewRules):
         numActiveReviewRules = 0
 
         for reviewRuleName in reviewRules:
-            if reviewRules[reviewRuleName]['active']:
+            if reviewRules[reviewRuleName].active:
                 numActiveReviewRules += 1
 
         if numActiveReviewRules == 1:
             for reviewRuleName in reviewRules:
-                if reviewRules[reviewRuleName]['active']:
+                if reviewRules[reviewRuleName].active:
                     defaultReviewRuleName = reviewRuleName
                     break
         else:
@@ -1754,9 +1754,9 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
         if not arg:
             # The empty string means remove all reviewers
             for reviewRuleName in reviewRules:
-                if reviewRules[reviewRuleName]['active']:
+                if reviewRules[reviewRuleName].active:
                     reviewers[reviewRuleName] = {
-                        'label': reviewRules[reviewRuleName]['label'],
+                        'label': reviewRules[reviewRuleName].label,
                         'reviewers': []
                     }
 
@@ -1785,7 +1785,7 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
                     reviewRuleName = reviewRuleMap[reviewRuleName]
 
                 # Check the given rule name is a review rule
-                if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName].active:
                     logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                     exit(1)
 
@@ -1811,7 +1811,7 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
                 reviewRuleReviewers = list(uniqueReviewRuleReviewers)
 
             reviewers[reviewRuleName] = {
-                'label': reviewRule['label'],
+                'label': reviewRule.label,
                 'reviewers': reviewRuleReviewers
             }
 
