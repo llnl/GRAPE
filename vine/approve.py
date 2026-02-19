@@ -551,10 +551,8 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Apply rule approval actions to each modified repository.
 
-        When `"description"` is present in `rule["approveActions"]`, this builds a markdown
-        section headed by `# {rule["label"]}` and containing per-repo inputs for repositories that
-        were approved by the user. That section is then inserted into (or replaces an existing
-        section within) each review request's description.
+        When `"description"` is present in `rule["approveActions"]`, this adds
+        or overwrites approvals in the pull request description.
 
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule["approveActions"]`:
@@ -609,6 +607,7 @@ class Approve(Option, WorkspaceDirHandler):
                 repo_context = modified_repos[repo_name]
 
                 if repo_context['approved']:
+                    # If already approved, overwrite with new approval
                     approvals[repo_name] = {}
                     repo_inputs = repo_context['approve_inputs']
 
