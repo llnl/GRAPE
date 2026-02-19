@@ -151,7 +151,7 @@ class Review(Option, WorkspaceDirHandler):
 
 
     @staticmethod
-    def parseDescription(description):
+    def parseDescription(description, reviewRules, reviewRuleMap, defaultReviewRuleName):
         # Parse into markdown sections
         descriptionDoc = markdown.Document.from_text(description.strip())
 
@@ -215,7 +215,7 @@ class Review(Option, WorkspaceDirHandler):
                         for reviewer in match.group('reviewers').split(','):
                             ruleReviewers.add(reviewer)
 
-                ruleReviewers = sorted(ruleReviewers)
+                ruleReviewers = ruleReviewers
                 ruleApprovals = {}
 
                 for approvalSection in ruleSection.children:
@@ -234,6 +234,54 @@ class Review(Option, WorkspaceDirHandler):
                     'reviewers': ruleReviewers,
                     'approvals': ruleApprovals,
                 }
+
+        # Review rule reviewers used to be saved in the GRAPE section
+        grapeSection = descriptionDoc.find_section(grapeTitle)
+
+        if grapeSection:
+            savedReviewersPattern = re.compile(
+                r'^\s*--reviewers=(?P<reviewers>.+?)\s*$'
+            )
+
+            for line in grapeSection.lines:
+                match = savedReviewersPattern.match(line)
+
+                if match:
+                    savedReviewers = match.group('reviewers')
+                    reviewerGroups = savedReviewers.split()
+
+                    for reviewerGroup in reviewerGroups:
+                        tokens = reviewerGroup.split(':')
+
+                        if len(tokens) == 1:
+                            ruleName = defaultReviewRuleName
+                            reviewers = tokens[0]
+                        elif len(tokens) == 2:
+                            ruleName = tokens[0]
+                            reviewers = tokens[1]
+
+                        if ruleName in reviewRuleMap:
+                            ruleName = reviewRuleMap[ruleName]
+
+                        if ruleName not in reviewRules:
+                            # TODO: error and exit
+                            pass
+
+                        ruleLabel = reviewRules[ruleName]['label']
+
+                        reviewers = set(reviewers.split(','))
+
+                        # TODO: Check if reviewers are eligible
+
+                        if ruleLabel not in rules:
+                            rules[ruleLabel] = {'reviewers': reviewers,
+                                                'approvals': {}}
+                        else:
+                            rule = rules[ruleLabel]
+                            allReviewers = rule['reviewers']
+
+                            for reviewer in reviewers:
+                                allReviewers.add(reviewer)
 
         return {
             'user_description': userDescriptionLines,
@@ -272,7 +320,7 @@ class Review(Option, WorkspaceDirHandler):
                 rule = reviewRules[ruleName]
                 description += f'\n\n### {ruleName}'
 
-                reviewers = ','.join(rule['reviewers'])
+                reviewers = ','.join(sorted(rule['reviewers']))
 
                 if reviewers:
                     description += f'\n\nReviewer(s): {reviewers}'
@@ -940,18 +988,18 @@ class Review(Option, WorkspaceDirHandler):
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
 
+        # Get review rules
+        reviewRules = parseReviewRules()
+        reviewRuleMap = parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = parseDefaultReviewRuleName(reviewRules)
+
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
 
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-        descriptionData = Review.parseDescription(descr)
-
-        # Get review rules
-        reviewRules = parseReviewRules()
-        reviewRuleMap = parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = parseDefaultReviewRuleName(reviewRules)
+        descriptionData = Review.parseDescription(descr, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
         # Determine merge/pull request reviewers
         reviewers = {}
@@ -976,7 +1024,7 @@ class Review(Option, WorkspaceDirHandler):
 
         for reviewRuleLabel in reviewRuleModels:
             reviewRuleModel = reviewRuleModels[reviewRuleLabel]
-            temp = ','.join(reviewRuleModel['reviewers'])
+            temp = ','.join(sorted(reviewRuleModel['reviewers']))
 
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
@@ -989,6 +1037,20 @@ class Review(Option, WorkspaceDirHandler):
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
+
+        # Update review rule reviewers
+        if reviewers:
+            for ruleName in reviewers:
+                ruleInfo = reviewers[ruleName]
+
+                if ruleInfo['label'] not in reviewRuleModels:
+                    reviewRuleModels[ruleInfo['label']] = {
+                        'reviewers': set(ruleInfo['reviewers']),
+                        'approvals': {}
+                    }
+                else:
+                    for reviewer in ruleInfo['reviewers']:
+                        reviewRuleModels[ruleInfo['label']]['reviewers'].add(reviewer)
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
