@@ -17,6 +17,7 @@ from vine import grapeGit as git
 from vine import grapeMenu
 from vine import markdown as markdown
 from vine import multi_repo_cmd_launcher
+from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine import submodules
 from vine import utility
 from vine import version
@@ -148,263 +149,6 @@ class Review(Option, WorkspaceDirHandler):
             descr = re.sub(r'\\\\n', r'\\n', descr)
 
         return descr
-
-
-    @staticmethod
-    def parseDescription(description, reviewRules, reviewRuleMap, defaultReviewRuleName):
-        # Parse into markdown sections
-        descriptionDoc = markdown.Document.from_text(description.strip())
-
-        # Section titles
-        grapeTitle = 'GRAPE'
-        relatedReviewsTitle = 'Related Reviews'
-        reviewRulesTitle = 'Review Rules'
-        grapeGeneratedTitles = [grapeTitle, relatedReviewsTitle, reviewRulesTitle]
-
-        # Gather all user description lines
-        userDescriptionLines = []
-        topLevelSection = descriptionDoc.find_section('')
-        userDescriptionLines.extend(topLevelSection.lines)
-
-        for child in topLevelSection.children:
-            if child.title in grapeGeneratedTitles:
-                continue
-
-            for section in child.iter_depth_first():
-                userDescriptionLines.append(f'{"#" * section.level} {section.title}')
-                userDescriptionLines.extend(section.lines)
-
-        # Gather related reviews
-        relatedReviews = []
-        relatedReviewsSection = descriptionDoc.find_section(f'{grapeTitle}/{relatedReviewsTitle}')
-
-        if not relatedReviewsSection:
-            relatedReviewsSection = descriptionDoc.find_section(relatedReviewsTitle)
-
-        if relatedReviewsSection:
-            for line in relatedReviewsSection.lines:
-                line = line.strip()
-
-                if line and line != 'None':
-                    relatedReviews.append(line)
-
-        # Gather review rules
-        ruleReviewersPattern = re.compile(
-            r'^\s*Reviewer\(s\):\s*(?P<reviewers>.+?)\s*$'
-        )
-
-        ruleKeyValuePattern = re.compile(
-            r'^\s*\*\s*(?P<key>[^:]+?)\s*:\s*(?P<value>.*?)\s*$'
-        )
-
-        rules = {}
-        rulesSection = descriptionDoc.find_section(f'{grapeTitle}/{reviewRulesTitle}')
-
-        if not rulesSection:
-            rulesSection = descriptionDoc.find_section(reviewRulesTitle)
-
-        if rulesSection:
-            for ruleSection in rulesSection.children:
-                ruleLabel = ruleSection.title
-                ruleReviewers = set()
-
-                for line in ruleSection.lines:
-                    match = ruleReviewersPattern.match(line)
-
-                    if match:
-                        for reviewer in match.group('reviewers').split(','):
-                            ruleReviewers.add(reviewer)
-
-                ruleReviewers = ruleReviewers
-                ruleApprovals = {}
-
-                for approvalSection in ruleSection.children:
-                    repoName = approvalSection.title
-                    approvalData = {}
-
-                    for line in approvalSection.lines:
-                        match = ruleKeyValuePattern.match(line)
-
-                        if match:
-                            approvalData[match.group('key')] = match.group('value')
-
-                    ruleApprovals[repoName] = approvalData
-
-                rules[ruleLabel] = {
-                    'reviewers': ruleReviewers,
-                    'approvals': ruleApprovals,
-                }
-
-        # Review rule reviewers used to be saved in the GRAPE section
-        if reviewRules and reviewRuleMap and defaultReviewRuleName:
-            grapeSection = descriptionDoc.find_section(grapeTitle)
-
-            if grapeSection:
-                savedReviewersPattern = re.compile(
-                    r'^\s*--reviewers=(?P<reviewers>.+?)\s*$'
-                )
-
-                for line in grapeSection.lines:
-                    match = savedReviewersPattern.match(line)
-
-                    if match:
-                        savedReviewers = match.group('reviewers')
-                        reviewerGroups = savedReviewers.split()
-
-                        for reviewerGroup in reviewerGroups:
-                            tokens = reviewerGroup.split(':')
-
-                            if len(tokens) == 1:
-                                ruleName = defaultReviewRuleName
-                                reviewers = tokens[0]
-                            elif len(tokens) == 2:
-                                ruleName = tokens[0]
-                                reviewers = tokens[1]
-
-                            if ruleName in reviewRuleMap:
-                                ruleName = reviewRuleMap[ruleName]
-
-                            if ruleName not in reviewRules:
-                                # TODO: error and exit
-                                pass
-
-                            ruleLabel = reviewRules[ruleName]['label']
-
-                            reviewers = set(reviewers.split(','))
-
-                            # TODO: Check if reviewers are eligible
-
-                            if ruleLabel not in rules:
-                                rules[ruleLabel] = {'reviewers': reviewers,
-                                                    'approvals': {}}
-                            else:
-                                rule = rules[ruleLabel]
-                                allReviewers = rule['reviewers']
-
-                                for reviewer in reviewers:
-                                    allReviewers.add(reviewer)
-
-        return {
-            'user_description': userDescriptionLines,
-            'related_reviews': relatedReviews,
-            'review_rules': rules
-        }
-
-
-    @staticmethod
-    def buildDescription(descriptionData):
-        # Begin with user description
-        userDescriptionLines = descriptionData['user_description']
-        description = '\n'.join(userDescriptionLines).strip()
-
-        # Add GRAPE section
-        description += '\n\n# GRAPE'
-        description += f'\n\nGenerated by GRAPE {version.grapeVersion()}.'
-
-        # Add Related Reviews section
-        description += '\n\n## Related Reviews'
-
-        relatedReviews = descriptionData['related_reviews']
-
-        if relatedReviews:
-            description += '\n\n' + '\n\n'.join(relatedReviews)
-        else:
-            description += '\n\nNone'
-
-        # Add Review Rules section
-        reviewRules = descriptionData['review_rules']
-
-        if reviewRules:
-            description += '\n\n## Review Rules'
-
-            for ruleName in reviewRules:
-                rule = reviewRules[ruleName]
-                description += f'\n\n### {ruleName}'
-
-                reviewers = ','.join(sorted(rule['reviewers']))
-
-                if reviewers:
-                    description += f'\n\nReviewer(s): {reviewers}'
-
-                approvals = rule['approvals']
-
-                for approval in approvals:
-                    description += f'\n\n#### {approval}'
-
-                    for key in approvals[approval]:
-                        description += f'\n\n* {key}: {approvals[approval][key]}'
-
-        return description
-
-
-    @staticmethod
-    def getReviewersFromDescriptionData(descriptionData):
-        """
-        Extract saved argument key-value pairs from the "GRAPE" section
-        of the top-level merge request description.
-
-        Parameters
-        ----------
-        grapeSection : markdown.Section | None
-            The "GRAPE" section of the top-level merge request description
-            or None if not found. Lines of the form `--key=value` are added
-            to the result dictionary.
-
-        Returns
-        -------
-        dict
-            A dictionary mapping argument keys to their corresponding values.
-            Example:
-                {
-                    "--reviewers": "rule1:username1,username2 rule2:username3",
-                    "--foo": "bar"
-                }
-        """
-        savedArgs = {}
-
-        if grapeSection:
-            for line in grapeSection.lines:
-                if line.startswith("--"):
-                    tokens = line.split("=")
-
-                    if len(tokens) == 2:
-                        savedArgs[tokens[0].strip()] = tokens[1].strip()
-
-        return savedArgs
-
-
-    @staticmethod
-    def getRelatedReviews(relatedReviewsSection):
-        """
-        Extract related review links from the "Related Reviews" section
-        of the top-level merge request description.
-
-        Parameters
-        ----------
-        relatedReviewsSection : markdown.Section | None
-            The "Related Reviews" section of the top-level merge request description
-            or None if not found. Lines with a link are added to the result list.
-
-        Returns
-        -------
-        list
-            A list of links to related merge/pull requests.
-            Example:
-                [
-                    "https://github.com/llnl/GRAPE/pulls/42"
-                    "https://github.com/foo/bar/pulls/84"
-                ]
-        """
-        relatedReviews = []
-
-        if relatedReviewsSection:
-            for line in relatedReviewsSection.lines:
-                line = line.strip()
-
-                if line and line != 'None':
-                    relatedReviews.append(line)
-
-        return relatedReviews
 
 
     def validateReviewers(self, reviewers, reviewRules):
@@ -1000,7 +744,7 @@ class Review(Option, WorkspaceDirHandler):
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-        descriptionData = Review.parseDescription(descr, reviewRules, reviewRuleMap, defaultReviewRuleName)
+        descriptionModel = PullRequestDescriptionModel.from_text(descr, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
         # Determine merge/pull request reviewers
         reviewers = {}
@@ -1021,7 +765,7 @@ class Review(Option, WorkspaceDirHandler):
                 non_approver_list.update(non_approvers.lower().split(','))
 
         savedReviewers = ''
-        reviewRuleModels = descriptionData['review_rules']
+        reviewRuleModels = descriptionModel.reviewRules
 
         for reviewRuleLabel in reviewRuleModels:
             reviewRuleModel = reviewRuleModels[reviewRuleLabel]
@@ -1067,15 +811,11 @@ class Review(Option, WorkspaceDirHandler):
         # merge/pull request description.
         args['--reviewers'] = self.serializeReviewers(reviewers)
 
-        # Get and update related reviews
-        relatedReviews = descriptionData.get('related_reviews', [])
-
-        if outerLevelURL and outerLevelURL not in relatedReviews:
-            relatedReviews.append(outerLevelURL)
-            relatedReviews.sort()
+        # Add top level link to related reviews
+        descriptionModel.add_related_pull_request(outerLevelURL)
 
         # Update description
-        updatedDescription = Review.buildDescription(descriptionData)
+        updatedDescription = descriptionModel.to_text()
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
@@ -1301,30 +1041,21 @@ class Review(Option, WorkspaceDirHandler):
                 # merge/pull request description. Then add all the new
                 # submodule/subproject links. Only add the outer level link
                 # if there are any submodule/subproject links.
-                updatedReviewLinks = []
+                descriptionModel.clear_related_pull_requests()
+                descriptionModel.add_related_pull_request(outerLevelURL)
 
                 for link in pullRequestLinks:
-                    updatedReviewLinks.append(link)
-
-                if updatedReviewLinks:
-                    updatedReviewLinks.append(outerLevelURL)
+                    descriptionModel.add_related_pull_request(link)
             else:
                 # Start with related review links scraped from the outer level
                 # merge/pull request description. Then add all the new links if
                 # they are not already in the list.
-                updatedReviewLinks = descriptionData['related_reviews']
+                descriptionModel.add_related_pull_request(outerLevelURL)
 
                 for link in pullRequestLinks:
-                    if link not in updatedReviewLinks:
-                        updatedReviewLinks.append(link)
+                    descriptionModel.add_related_pull_request(link)
 
-                if outerLevelURL not in updatedReviewLinks:
-                    updatedReviewLinks.append(outerLevelURL)
-
-            updatedReviewLinks.sort()
-            descriptionData['related_reviews'] = updatedReviewLinks
-            updatedDescription = Review.buildDescription(descriptionData)
-
+            updatedDescription = descriptionModel.to_text()
             pre_update_description = request.description()
 
             if updatedDescription != pre_update_description:

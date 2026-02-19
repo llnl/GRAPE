@@ -1,3 +1,10 @@
+from dataclasses import dataclass, field
+from typing import Dict, List, Set
+from vine import markdown
+from vine import version
+
+import re
+
 @dataclass
 class PullRequestDescriptionModel:
     """
@@ -10,7 +17,7 @@ class PullRequestDescriptionModel:
     """
     userLines: List[str] = field(default_factory=list)
     relatedReviews: Set[str] = field(default_factory=set)
-    reviewRules
+    reviewRules: Dict = field(default_factory=dict)
 
     @classmethod
     def from_text(cls, description, reviewRules, reviewRuleMap, defaultReviewRuleName):
@@ -37,7 +44,7 @@ class PullRequestDescriptionModel:
                 userDescriptionLines.extend(section.lines)
 
         # Gather related reviews
-        relatedReviews = []
+        relatedReviews = set()
         relatedReviewsSection = descriptionDoc.find_section(f'{grapeTitle}/{relatedReviewsTitle}')
 
         if not relatedReviewsSection:
@@ -48,7 +55,7 @@ class PullRequestDescriptionModel:
                 line = line.strip()
 
                 if line and line != 'None':
-                    relatedReviews.append(line)
+                    relatedReviews.add(line)
 
         # Gather review rules
         ruleReviewersPattern = re.compile(
@@ -150,7 +157,7 @@ class PullRequestDescriptionModel:
             userLines=userDescriptionLines,
             relatedReviews=relatedReviews,
             reviewRules=rules
-        }
+        )
 
     def to_text(self):
         # Begin with user description
@@ -191,3 +198,9 @@ class PullRequestDescriptionModel:
                         description += f'\n\n* {key}: {approvals[approval][key]}'
 
         return description
+
+    def clear_related_pull_requests(self):
+        self.relatedReviews.clear()
+
+    def add_related_pull_request(self, link):
+        self.relatedReviews.add(link)

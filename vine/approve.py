@@ -12,6 +12,7 @@ from vine import review
 from vine import submodules
 from vine import vine_subprocess
 from vine.option import Option
+from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 from vine import utility
@@ -595,8 +596,8 @@ class Approve(Option, WorkspaceDirHandler):
                 description = review_request.description()
                 break
 
-            descriptionModel = review.Review.parseDescription(description, None, None, None)
-            reviewRuleModels = descriptionModel['review_rules']
+            descriptionModel = PullRequestDescriptionModel.from_text(description, None, None, None)
+            reviewRuleModels = descriptionModel.reviewRules
 
             if rule['label'] in reviewRuleModels:
                 reviewRuleModel = reviewRuleModels[rule['label']]
@@ -615,7 +616,7 @@ class Approve(Option, WorkspaceDirHandler):
                         if repo_input['description']:
                             approvals[repo_name][repo_input['label']] = repo_input['value']
 
-            description = review.Review.buildDescription(descriptionModel)
+            description = descriptionModel.to_text()
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
