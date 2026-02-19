@@ -12,6 +12,7 @@ from vine import review
 from vine import submodules
 from vine import vine_subprocess
 from vine.option import Option
+from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 from vine import utility
@@ -151,11 +152,6 @@ class Approve(Option, WorkspaceDirHandler):
         Prints open merge requests targeting `target_branch` where `user_name`
         has been added using `grape review`. 
 
-        Relies on grape review adding a line in the description in the form
-        `--reviewers=rule1:username1 rule2:username2,username3`
-          or
-        `--reviewers=username1,username2,username3`
-
         Parameters
         ----------
         repo : Repo
@@ -166,19 +162,20 @@ class Approve(Option, WorkspaceDirHandler):
             Target branch for merge requests (any target if None)
 
         """
-        reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
-        user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
         for request in repo.pullRequests(target_branch=target_branch):
             descr = request.description()
-            if "--reviewers" in descr:
-                match = reviewer_search.search(descr) 
-                if match:
-                    rules = []
-                    user_matches = user_search.findall(match.group(1))
-                    if user_matches:
-                        for rule in user_matches:
-                            rules.append(rule.strip(':')) 
-                        print(f"  {request.fromRef()} -> {request.toRef()} [{','.join(rules)}]")
+            description_model = PullRequestDescriptionModel.from_text(descr, None, None, None)
+
+            rules = []
+
+            for rule_label in description_model.reviewRules:
+                rule = description_model.reviewRules[rule_label]
+
+                if user_name in rule['reviewers']:
+                    rules.append(rule_label)
+
+            if rules:
+                print(f"  {request.fromRef()} -> {request.toRef()} [{', '.join(rules)}]")
 
     @staticmethod
     def _get_review_rule(top_repo_context, args):
@@ -550,10 +547,8 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Apply rule approval actions to each modified repository.
 
-        When `"description"` is present in `rule["approveActions"]`, this builds a markdown
-        section headed by `# {rule["label"]}` and containing per-repo inputs for repositories that
-        were approved by the user. That section is then inserted into (or replaces an existing
-        section within) each review request's description.
+        When `"description"` is present in `rule["approveActions"]`, this adds
+        and/or overwrites approvals in the pull request description.
 
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule["approveActions"]`:
@@ -585,42 +580,44 @@ class Approve(Option, WorkspaceDirHandler):
             Propagates exceptions thrown by the underlying code review client operations.
         """
         # Build rule section for merge/pull request description
-        rule_section = ''
-        rule_section_header = ''
-        rule_section_pattern = None
-        rule_section_repl = None
+        description = ''
 
         if 'description' in rule['approveActions']:
-            rule_section_header = f'# {rule["label"]}'
+            # Get the pull request description. All related pull requests
+            # should have the same description, so grab the first one.
+            for repo_name in modified_repos:
+                repo_context = modified_repos[repo_name]
+                review_request = repo_context['review_request']
+                description = review_request.description()
+                break
 
-            # Pattern:
-            # - Match "# {section_name}" at line start
-            # - Capture everything until next top-level header ("# " at line start) or end of string
-            rule_section_pattern = re.compile(
-                rf'^{re.escape(rule_section_header)}\s*\n'  # Section header
-                r'(.*?)'                                    # Section content (non-greedy capture)
-                r'(?=^# [^\n]*|\Z)',                        # Stop at next top-level section header or end of string
-                flags=re.DOTALL | re.MULTILINE
-            )
+            # Get the data from the pull request description
+            descriptionModel = PullRequestDescriptionModel.from_text(description, None, None, None)
 
-            rule_section = rule_section_header
+            # Get existing approvals
+            reviewRuleModels = descriptionModel.reviewRules
+
+            if rule['label'] not in reviewRuleModels:
+                reviewRuleModels[rule['label']] = {
+                    'reviewers': set(),
+                    'approvals': {}
+                }
+
+            approvals = reviewRuleModels[rule['label']]['approvals']
 
             for repo_name in sorted(modified_repos.keys()):
                 repo_context = modified_repos[repo_name]
 
                 if repo_context['approved']:
-                    rule_section += f'\n\n## {repo_name}'
+                    # If already approved, overwrite with new approval
+                    approvals[repo_name] = {}
                     repo_inputs = repo_context['approve_inputs']
 
                     for repo_input in repo_inputs:
                         if repo_input['description']:
-                            rule_section += f'\n\n* {repo_input["label"]}: {repo_input["value"]}'
+                            approvals[repo_name][repo_input['label']] = repo_input['value']
 
-            def rule_section_repl(_match):
-                # Replace section and preserve new lines before next section
-                # If there is no section after this one, the extra new lines
-                # will be stripped off anyway.
-                return f'{rule_section}\n\n'
+            description = descriptionModel.to_text()
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
@@ -632,14 +629,7 @@ class Approve(Option, WorkspaceDirHandler):
             # Update merge request description
             if 'description' in rule['approveActions']:
                 logging.info('  Updating merge/pull request description...')
-                current_description = review_request.description().strip()
-
-                if rule_section_header in current_description:
-                    updated_description = rule_section_pattern.sub(rule_section_repl, current_description).rstrip()
-                else:
-                    updated_description = f'{current_description.rstrip()}\n\n{rule_section}'
-
-                review_request.update(review_request.version(), description=updated_description)
+                review_request.update(review_request.version(), description=description)
 
             if repo_context['approved']:
                 # Approve reviewed branch
