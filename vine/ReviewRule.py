@@ -185,18 +185,34 @@ class ReviewRule:
             dryRun=data.get('dryRun', False)
         )
 
-    def matches_repo(self, repo_name: str) -> bool:
+    def matches_repository(self, name: str) -> bool:
         """
         Determine whether this review rule applies to a repository.
 
-        Checks the given repo_name against each regex pattern in the
+        Checks the given respository name against each regex pattern in the
         repositories list using re.fullmatch.
 
-        :param repo_name: Repository name to test
-        :return: True if any repository pattern fully matches repo_name, otherwise False
+        :param name: Repository name to test
+        :return: True if any repository pattern fully matches name, otherwise False
         """
         for repo_pattern in self.repositories:
-            if re.fullmatch(repo_pattern, repo_name):
+            if re.fullmatch(repo_pattern, name):
+                return True
+
+        return False
+
+    def matches_reviewer(self, name: str) -> bool:
+        """
+        Determine whether a reviewer is eligible for this review rule.
+
+        Checks the given reviewer against each regex pattern in the
+        eligibleReviewers list using re.fullmatch.
+
+        :param name: Reviewer name/username to test
+        :return: True if any eligible reviewer pattern fully matches name, otherwise False
+        """
+        for reviewer_pattern in self.eligibleReviewers:
+            if re.fullmatch(reviewer_pattern, name):
                 return True
 
         return False
