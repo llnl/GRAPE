@@ -2,6 +2,7 @@
 Class representing a GRAPE review rule.
 """
 
+import re
 from typing import List, Dict, Optional, Any
 
 
@@ -183,6 +184,22 @@ class ReviewRule:
             approveInputs=approve_inputs,
             dryRun=data.get('dryRun', False)
         )
+
+    def matches_repo(self, repo_name: str) -> bool:
+        """
+        Determine whether this review rule applies to a repository.
+
+        Checks the given repo_name against each regex pattern in the
+        repositories list using re.fullmatch.
+
+        :param repo_name: Repository name to test
+        :return: True if any repository pattern fully matches repo_name, otherwise False
+        """
+        for repo_pattern in self.repositories:
+            if re.fullmatch(repo_pattern, repo_name):
+                return True
+
+        return False
 
     def __repr__(self) -> str:
         """
