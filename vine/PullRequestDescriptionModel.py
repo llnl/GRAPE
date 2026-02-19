@@ -171,7 +171,7 @@ class PullRequestDescriptionModel:
         # Add Related Reviews section
         description += '\n\n## Related Reviews'
 
-        if self.relatedReviews:
+        if len(self.relatedReviews > 1):
             description += '\n\n' + '\n\n'.join(sorted(self.relatedReviews))
         else:
             description += '\n\nNone'
