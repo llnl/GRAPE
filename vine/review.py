@@ -825,11 +825,6 @@ class Review(Option, WorkspaceDirHandler):
         # Update description
         updatedDescription = descriptionModel.to_text()
 
-        # list of description suffixes
-        projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
-        description_suffixes = []
-        project_reviewer_lists = {}
-
         # if we're in append mode, only append what was asked for:
         if args["--append"] or args["--prepend"]:
             title = args["--title"]
@@ -854,49 +849,23 @@ class Review(Option, WorkspaceDirHandler):
             return False
 
         runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
-        # assemble description suffixes from any projects with reviewer lists
-        if runInSubmodules:
-            activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
-            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
-            modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, f"origin/{target_branch}", branch, includeAdded=True)
-            for submodule in modifiedSubmodules:
-                if not submodule:
-                    continue
-                if submodule in projects_with_reviewer_lists:
-                    description_suffix = config.get(f"{submodule}-reviewers", "description_suffix")
-                    description_suffix_name = config.get(f"{submodule}-reviewers", "description_suffix_name")
-                    description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
-        if not args["--noRecurseSubprojects"]:
-           nestedProjects = config_parser_user.getAllModifiedNestedSubprojects(
-               "origin/"+target_branch, workspaceDir=self.workspace_dir, skippedRepos=args["--skipSubproject"])
-           for proj in nestedProjects:
-                if proj in projects_with_reviewer_lists:
-                    description_suffix = config.get(f"{proj}-reviewers", "description_suffix")
-                    description_suffix_name = config.get(f"{proj}-reviewers", "description_suffix_name")
-                    description_suffixes.append({"name": description_suffix_name,"body":description_suffix})
-        
-        # append the description suffixes that aren't already present in the description to the description
-        if description_suffixes:
-            for suffix in description_suffixes:
-                suffix_name = suffix["name"]
-                suffix_body = suffix["body"]
-                suffix_string = f"{MRBlockDelimiter()}{suffix_name} START{MRBlockDelimiter()}\n{suffix_body}\n{MRBlockDelimiter()}{suffix_name} STOP{MRBlockDelimiter()}"
-                if descr:
-                    if f"{suffix_name} START" not in descr or f"{suffix_name} STOP" not in descr:
-                        descr = f"{descr}\n{suffix_string}"
-                else:
-                    descr = suffix_string
 
         # assemble arguments for parallel execution of code reviews
         listOfRepoBranchArgTuples=[]
+
         ##  Submodule Repos
         if runInSubmodules:
+            activeSubmodules = git.getActiveSubmodules(execution_path=self.workspace_dir)
+            url_map = git.getAllSubmoduleURLMap(execution_path=self.workspace_dir)
             modifiedSubmodules = git.getModifiedSubmodules(self.workspace_dir, target_branch, branch, includeAdded=True)
+
             # update target branch based off of branch prefix
             submoduleBranchMappings = config.getMapping(self.SECTION_WORKSPACE, "submoduleTopicPrefixMappings")
+
             # determine branch prefix
             prefix = git.branchPrefix(branch)
             sub_target_branch = submoduleBranchMappings[prefix]
+
             for submodule in modifiedSubmodules:
                 if not submodule:
                     continue
@@ -927,12 +896,6 @@ class Review(Option, WorkspaceDirHandler):
                 if changed:
                     submoduleReviewers = self.getApplicableReviewers(submodule, reviewers, reviewRules)
 
-                    reviewer_list = {}
-                    if submodule in projects_with_reviewer_lists:
-                        reviewer_list_name = config.get(f"{submodule}-reviewers","reviewer_list_name")
-                        reviewer_list_reviewers = config.get(f"{submodule}-reviewers","reviewer_list").split()
-                        reviewer_list_min_reviewers = config.get(f"{submodule}-reviewers","min_reviewers")
-                        reviewer_list = {reviewer_list_name: (reviewer_list_reviewers, reviewer_list_min_reviewers)}
                     listOfRepoBranchArgTuples.append((submodule,branch,[{"codeReviews":codeReviews,
                                                                          "isSubmodule": True,
                                                                          "isNested": False,
@@ -943,11 +906,9 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
                                                                          "reviewers": submoduleReviewers,
-                                                                         "reviewer_list" : reviewer_list,
                                                                          "non_approver_list" : non_approver_list,
                                                                          "wip" : wip,
                                                                          "active": submodule in activeSubmodules }]))
-                    project_reviewer_lists.update(reviewer_list)
 
         ## NESTED SUBPROJECT REPOS
         if not args["--noRecurseSubprojects"]:
@@ -959,12 +920,6 @@ class Review(Option, WorkspaceDirHandler):
            for proj, prefix in zip(nestedProjects, nestedProjectPrefixes):
                subprojectReviewers = self.getApplicableReviewers(proj, reviewers, reviewRules)
 
-               reviewer_list = {}
-               if proj in projects_with_reviewer_lists:
-                   reviewer_list_name = config.get(f"{proj}-reviewers","reviewer_list_name")
-                   reviewer_list_reviewers = config.get(f"{proj}-reviewers","reviewer_list").split()
-                   reviewer_list_min_reviewers = config.get(f"{proj}-reviewers","min_reviewers")
-                   reviewer_list = {reviewer_list_name: (reviewer_list_reviewers, reviewer_list_min_reviewers)}
                prefix_path = os.path.join(self.workspace_dir, prefix)
                listOfRepoBranchArgTuples.append((prefix_path,branch,[{"codeReviews":codeReviews,
                                                                     "isSubmodule": False,
@@ -976,12 +931,9 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
                                                                     "reviewers": subprojectReviewers,
-                                                                    "reviewer_list" : reviewer_list,
                                                                     "non_approver_list" : non_approver_list,
                                                                     "wip" : wip,
                                                                     "active": proj in activeNestedSubprojects}]))
-               project_reviewer_lists.update(reviewer_list)
-
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(PostPullRequestForRepo, listOfRepoBranchArgTuples=listOfRepoBranchArgTuples, workspace_dir=self.workspace_dir)
         pullRequestLinks = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=HandlePostPullRequestForRepoMRE)
@@ -1039,7 +991,7 @@ class Review(Option, WorkspaceDirHandler):
 
             outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
-            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, project_reviewer_lists, args, self.workspace_dir, non_approver_list=non_approver_list, wip=wip, add_labels=add_labels, remove_labels=remove_labels)
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, args, self.workspace_dir, non_approver_list=non_approver_list, wip=wip, add_labels=add_labels, remove_labels=remove_labels)
 
             # Update related reviews
             outerLevelURL = request.link()
@@ -1070,7 +1022,6 @@ class Review(Option, WorkspaceDirHandler):
                 request = postPullRequest(repo, title, branch, target_branch,
                                           updatedDescription,
                                           outerReviewers,
-                                          project_reviewer_lists,
                                           args,
                                           self.workspace_dir,
                                           non_approver_list=non_approver_list, wip=wip,
@@ -1109,10 +1060,6 @@ def MRLinkText():
     return "This merge request is related to the merge request at: "
 
 
-def MRBlockDelimiter():
-    return "--------------------"
-
-
 def HandlePostPullRequestForRepoMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         raise e
@@ -1130,7 +1077,6 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     proj = kwargs["proj"]
     outerLevelURL = kwargs["outerLevelURL"]
     reviewers = kwargs["reviewers"]
-    reviewer_list  = kwargs["reviewer_list"]
     non_approver_list  = kwargs["non_approver_list"]
     wip = kwargs["wip"]
     active = kwargs["active"]
@@ -1147,7 +1093,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     else:
         codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
-    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers, reviewer_list,
+    newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers,
                                  review_args, repo, non_approver_list=non_approver_list, wip=wip)
     if newRequest:
         return newRequest.link()
@@ -1179,7 +1125,7 @@ def targetBranchMissing(errorMessage):
     return False
 
 
-def postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list, args, git_execution_path,
+def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path,
                     non_approver_list=[], wip=None, add_labels=[], remove_labels=[]):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
@@ -1215,7 +1161,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, review
                         start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
                         git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
                         git.push(f"origin {target_branch}", execution_path=git_execution_path)
-                        postPullRequest(repo, title, branch, target_branch, descr, reviewers, reviewer_list,
+                        postPullRequest(repo, title, branch, target_branch, descr, reviewers,
                                         args, git_execution_path,
                                         non_approver_list=non_approver_list, wip=wip,
                                         add_labels=add_labels, remove_labels=remove_labels)

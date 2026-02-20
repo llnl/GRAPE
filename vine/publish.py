@@ -331,8 +331,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'emailMaxFiles', '100')
         # tick on cascade behavior
         config.set(self.SECTION_FLOW, "topicCascadeTick","?:0")
-        # reviewer lists
-        config.set(self.SECTION_PUBLISH, 'projects_with_reviewer_lists', '')
 
     def description(self):
         try:
