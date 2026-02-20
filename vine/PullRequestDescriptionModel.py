@@ -112,7 +112,7 @@ class PullRequestDescriptionModel:
                 }
 
         # Review rule reviewers used to be saved in the GRAPE section
-        if reviewRules and reviewRuleMap and defaultReviewRuleName:
+        if reviewRules is not None and reviewRuleMap is not None and defaultReviewRuleName is not None:
             grapeSection = descriptionDoc.find_section(grapeTitle)
 
             if grapeSection:
@@ -144,7 +144,7 @@ class PullRequestDescriptionModel:
                                 # TODO: error and exit
                                 pass
 
-                            ruleLabel = reviewRules[ruleName]['label']
+                            ruleLabel = reviewRules[ruleName].label
 
                             reviewers = set(reviewers.split(','))
 
