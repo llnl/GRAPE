@@ -860,149 +860,126 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                 if reviewRule.active:
                     ruleDryRun = reviewRule.dryRun
-                    reviewRuleRepositories = reviewRule.repositories
 
-                    for reviewRuleRepository in reviewRuleRepositories:
-                        if re.fullmatch(reviewRuleRepository, repoName):
-                            label = reviewRule.label
-                            minNumReviewers = reviewRule.minNumReviewers
-                            eligibleReviewers = reviewRule.eligibleReviewers
+                    if reviewRule.matches_repository(repoName):
+                        label = reviewRule.label
+                        minNumReviewers = reviewRule.minNumReviewers
 
-                            # Check if reviewers are assigned to the review rule
-                            if label not in descriptionModel.reviewRules:
-                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        # Check if reviewers are assigned to the review rule
+                        if label not in descriptionModel.reviewRules:
+                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
-                                if not ruleDryRun:
-                                    verified = False
+                            if not ruleDryRun:
+                                verified = False
 
-                                break
+                            break
 
-                            # Check if at least the minimum number of required
-                            # reviewers are assigned to the review rule
-                            assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
+                        # Check if at least the minimum number of required
+                        # reviewers are assigned to the review rule
+                        assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
 
-                            if len(assignedReviewers) < minNumReviewers:
-                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        if len(assignedReviewers) < minNumReviewers:
+                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
-                                if not ruleDryRun:
-                                    verified = False
+                            if not ruleDryRun:
+                                verified = False
 
-                                break
+                            break
 
-                            # Check that the assigned reviewers are eligible
-                            # for this review rule.
-                            ineligibleReviewers = []
+                        # Check that the assigned reviewers are eligible
+                        # for this review rule.
+                        ineligibleReviewers = []
 
-                            for assignedReviewer in assignedReviewers:
-                                eligible = False
+                        for assignedReviewer in assignedReviewers:
+                            if not reviewRule.matches_reviewer(assignedReviewer):
+                                ineligibleReviewers.append(assignedReviewer)
 
-                                for eligibleReviewer in eligibleReviewers:
-                                    if re.fullmatch(eligibleReviewer, assignedReviewer):
-                                        eligible = True
+                        if ineligibleReviewers:
+                            userMessage += f'\n\t{repoName}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+
+                            if not ruleDryRun:
+                                verified = False
+
+                            break
+
+                        # Check that the assigned reviewers have approved.
+                        unfinishedReviewers = []
+
+                        for assignedReviewer in assignedReviewers:
+                            approved = False
+
+                            if assignedReviewer in non_approver_list:
+                                continue
+
+                            for reviewer in reviewers:
+                                if assignedReviewer == reviewer[0]:
+                                    if reviewer[1]:
+                                        approved = True
                                         break
 
-                                if not eligible:
-                                    ineligibleReviewers.append(assignedReviewer)
+                            if not approved:
+                                unfinishedReviewers.append(assignedReviewer)
 
-                            if ineligibleReviewers:
-                                userMessage += f'\n\t{repoName}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        if unfinishedReviewers:
+                            userMessage += f'\n\t{repoName}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
 
-                                if not ruleDryRun:
-                                    verified = False
+                            if not ruleDryRun:
+                                verified = False
 
-                                break
+                            break
 
-                            # Check that the assigned reviewers have approved.
-                            unfinishedReviewers = []
+                        # Check approve actions are completed.
+                        # - "approve" has already been covered by other checks
+                        # - "tag" requires checking that a tag for the review rule exists and no changes have occurred since
+                        # - "description" is not yet handled, but would involve checks similar to that for the tag message below
+                        approveActions = reviewRule.approveActions
 
-                            for assignedReviewer in assignedReviewers:
-                                approved = False
+                        if 'tag' in approveActions:
+                            tagName = f'{reviewRule.name}_{pullRequest.iid()}'
+                            tag = repo.getTag(tagName)
 
-                                if assignedReviewer in non_approver_list:
-                                    continue
-
-                                for reviewer in reviewers:
-                                    if assignedReviewer == reviewer[0]:
-                                        if reviewer[1]:
-                                            approved = True
-                                            break
-
-                                if not approved:
-                                    unfinishedReviewers.append(assignedReviewer)
-
-                            if unfinishedReviewers:
-                                userMessage += f'\n\t{repoName}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
+                            # Check tag exists
+                            if not tag:
+                                userMessage += f'\n\t{repoName}: "{label}" needs approve tag.'
 
                                 if not ruleDryRun:
                                     verified = False
 
                                 break
 
-                            # Check approve actions are completed.
-                            # - "approve" has already been covered by other checks
-                            # - "tag" requires checking that a tag for the review rule exists and no changes have occurred since
-                            # - "description" is not yet handled, but would involve checks similar to that for the tag message below
-                            approveActions = reviewRule.approveActions
+                            # TODO: If the GitLab tags API ever returns the tag creator,
+                            #       check that it is an eligible approver and not the
+                            #       merge/pull request author.
 
-                            if 'tag' in approveActions:
-                                tagName = f'{reviewRule.name}_{pullRequest.iid()}'
-                                tag = repo.getTag(tagName)
+                            # Check tag commit
+                            if tag.target != pullRequest.fromSHA():
+                                # If the diff of the tag with respect to develop is the same
+                                # as the diff of the source branch with respect to develop,
+                                # then no reapproval is needed. If diffs are truncated,
+                                # require reapproval.
 
-                                # Check tag exists
-                                if not tag:
-                                    userMessage += f'\n\t{repoName}: "{label}" needs approve tag.'
+                                def normalizeDiff(diff):
+                                    """Normalize a diff object for stable comparison.
 
-                                    if not ruleDryRun:
-                                        verified = False
+                                    Extracts a consistent subset of keys from a diff dict to allow set/tuple-based
+                                    comparisons across sources.
 
-                                    break
+                                    Args:
+                                        diff (dict): A diff dictionary expected to contain 'old_path', 'new_path',
+                                            and 'diff' keys.
 
-                                # TODO: If the GitLab tags API ever returns the tag creator,
-                                #       check that it is an eligible approver and not the
-                                #       merge/pull request author.
+                                    Returns:
+                                        tuple: (key, value) pairs for 'old_path', 'new_path', and 'diff', in that
+                                            order.
+                                    """
+                                    keysForComparison = ['old_path', 'new_path', 'diff']
+                                    return tuple((key, diff[key]) for key in keysForComparison)
 
-                                # Check tag commit
-                                if tag.target != pullRequest.fromSHA():
-                                    # If the diff of the tag with respect to develop is the same
-                                    # as the diff of the source branch with respect to develop,
-                                    # then no reapproval is needed. If diffs are truncated,
-                                    # require reapproval.
+                                # Get source diffs, check for truncation, and normalize for comparison
+                                sourceDiffs = pullRequest.diffs()
 
-                                    def normalizeDiff(diff):
-                                        """Normalize a diff object for stable comparison.
-
-                                        Extracts a consistent subset of keys from a diff dict to allow set/tuple-based
-                                        comparisons across sources.
-
-                                        Args:
-                                            diff (dict): A diff dictionary expected to contain 'old_path', 'new_path',
-                                                and 'diff' keys.
-
-                                        Returns:
-                                            tuple: (key, value) pairs for 'old_path', 'new_path', and 'diff', in that
-                                                order.
-                                        """
-                                        keysForComparison = ['old_path', 'new_path', 'diff']
-                                        return tuple((key, diff[key]) for key in keysForComparison)
-
-                                    # Get source diffs, check for truncation, and normalize for comparison
-                                    sourceDiffs = pullRequest.diffs()
-
-                                    for diff in sourceDiffs:
-                                        if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
-                                            userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
-
-                                            if not ruleDryRun:
-                                                verified = False
-
-                                            break
-
-                                    sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
-
-                                    # Get tag diffs, check for truncation, and normalize for comparison
-                                    tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target)
-
-                                    if tagDiffs['compare_timeout']:
+                                for diff in sourceDiffs:
+                                    if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
                                         userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
 
                                         if not ruleDryRun:
@@ -1010,30 +987,54 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                         break
 
-                                    tagDiffs = tagDiffs.get('diffs', [])
+                                sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
 
-                                    for diff in tagDiffs:
-                                        if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
-                                            userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+                                # Get tag diffs, check for truncation, and normalize for comparison
+                                tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target)
 
-                                            if not ruleDryRun:
-                                                verified = False
+                                if tagDiffs['compare_timeout']:
+                                    userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
 
-                                            break
+                                    if not ruleDryRun:
+                                        verified = False
 
-                                    tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
+                                    break
 
-                                    # Compare source and tag diffs
-                                    if tagDiffs != sourceDiffs:
-                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
+                                tagDiffs = tagDiffs.get('diffs', [])
+
+                                for diff in tagDiffs:
+                                    if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
+                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
 
                                         if not ruleDryRun:
                                             verified = False
 
                                         break
 
-                                # Check tag message
-                                if label not in tag.message:
+                                tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
+
+                                # Compare source and tag diffs
+                                if tagDiffs != sourceDiffs:
+                                    userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
+
+                                    if not ruleDryRun:
+                                        verified = False
+
+                                    break
+
+                            # Check tag message
+                            if label not in tag.message:
+                                userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+
+                                if not ruleDryRun:
+                                    verified = False
+
+                                break
+
+                            approveInputs = reviewRule.approveInputs
+
+                            for approveInput in approveInputs:
+                                if approveInput.tag and approveInput.label not in tag.message:
                                     userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
 
                                     if not ruleDryRun:
@@ -1041,18 +1042,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                     break
 
-                                approveInputs = reviewRule.approveInputs
-
-                                for approveInput in approveInputs:
-                                    if approveInput.tag and approveInput.label not in tag.message:
-                                        userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
-
-                                        if not ruleDryRun:
-                                            verified = False
-
-                                        break
-
-                                # TODO: Make sure progress can't be resumed after commits
+                            # TODO: Make sure progress can't be resumed after commits
 
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()

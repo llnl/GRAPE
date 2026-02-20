@@ -264,18 +264,12 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Validate that the given user is eligible to approve the provided review rule.
 
-        This checks the supplied `user_name` against each regex pattern in
-        `rule["eligibleReviewers"]`. If any pattern matches (via `re.fullmatch`),
-        the user is considered eligible and the method returns normally.
-
         Parameters
         ----------
         user_name : str
             User name to validate.
-        rule : dict
-            Review rule definition containing:
-            - "eligibleReviewers": list[str] of regex patterns for eligible approvers
-            - "name": str rule name (used for error messages)
+        rule : ReviewRule
+            Review rule.
 
         Exits
         -----

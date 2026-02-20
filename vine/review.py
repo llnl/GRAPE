@@ -165,10 +165,7 @@ class Review(Option, WorkspaceDirHandler):
                 - 'reviewers': A list of reviewers assigned to that rule.
 
         reviewRules : dict
-            A dictionary where each key is a review rule name and each value is another dictionary
-            containing:
-                - 'eligibleReviewers': A list of patterns (str) representing eligible reviewers for the rule.
-                - 'minNumReviewers': An integer specifying the minimum number of reviewers required for the rule.
+            A dictionary where each key is a review rule name and each value is a ReviewRule
 
         Returns:
         -------
@@ -325,12 +322,9 @@ class Review(Option, WorkspaceDirHandler):
 
         for reviewRuleName in allReviewers:
             reviewRule = reviewRules[reviewRuleName]
-            reviewRuleRepositories = reviewRule.repositories
 
-            for reviewRuleRepository in reviewRuleRepositories:
-                if re.fullmatch(reviewRuleRepository, repoName):
-                    applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
-                    break
+            if reviewRule.matches_repository(repoName):
+                applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
 
         return applicableReviewers
 
