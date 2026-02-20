@@ -1421,50 +1421,48 @@ def parseReviewRules(config=None):
                 approveInputs = []
 
                 for approveInputName in approveInputNames:
-                    approveInput = {
-                        'source': 'prompt',
-                        'prompt': approveInputName,
-                        'default': None,
-                        'label': approveInputName,
-                        'help': '',
-                        'examples': {},
-                        'substitutions': {},
-                        'tag': True,
-                        'description': True,
-                        'required': False,
-                        'cache': False,
-                    }
+                    approveInputSource = 'prompt'
+                    approveInputPrompt = approveInputName
+                    approveInputDefault = None
+                    approveInputLabel = approveInputName
+                    approveInputHelp = ''
+                    approveInputExamples = {}
+                    approveInputSubstitutions = {}
+                    approveInputTag = True
+                    approveInputDescription = True
+                    approveInputRequired = False
+                    approveInputCache = False
 
                     approveInputSectionName = f"{sectionName}-approve-inputs-{approveInputName}"
 
                     if config.has_section(approveInputSectionName):
                         if config.has_option(approveInputSectionName, "source"):
-                            approveInput["source"] = config.get(approveInputSectionName, "source")
+                            approveInputSource = config.get(approveInputSectionName, "source")
                             validSources = ["prompt", "username", "commit", "tag"]
 
-                            if approveInput["source"] not in validSources:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
+                            if approveInputSource not in validSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInputSource}" for "source". Supported values include {", ".join(validSources)}".')
                                 exit(1)
 
                         if config.has_option(approveInputSectionName, "prompt"):
-                            if approveInput['source'] != "prompt":
+                            if approveInputSource != "prompt":
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a prompt if the source is not a prompt.')
                                 exit(1)
 
-                            approveInput['prompt'] = config.get(approveInputSectionName, "prompt")
+                            approveInputPrompt = config.get(approveInputSectionName, "prompt")
 
                         if config.has_option(approveInputSectionName, "default"):
-                            if approveInput['source'] != "prompt":
+                            if approveInputSource != "prompt":
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a default value if the source is not a prompt.')
                                 exit(1)
 
-                            approveInput['default'] = config.get(approveInputSectionName, "default")
+                            approveInputDefault = config.get(approveInputSectionName, "default")
 
                         if config.has_option(approveInputSectionName, "label"):
-                            approveInput['label'] = config.get(approveInputSectionName, "label")
+                            approveInputLabel = config.get(approveInputSectionName, "label")
 
                         if config.has_option(approveInputSectionName, "help"):
-                            approveInput['help'] = config.get(approveInputSectionName, "help")
+                            approveInputHelp = config.get(approveInputSectionName, "help")
 
                         if config.has_option(approveInputSectionName, "examples"):
                             examples = config.get(approveInputSectionName, "examples")
@@ -1479,7 +1477,7 @@ def parseReviewRules(config=None):
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
                                 exit(1)
 
-                            approveInput['examples'] = examples
+                            approveInputExamples = examples
 
                         if config.has_option(approveInputSectionName, "substitutions"):
                             substitutions = config.get(approveInputSectionName, "substitutions")
@@ -1509,40 +1507,54 @@ def parseReviewRules(config=None):
                                 values.add(val_str)
 
                             substitutions = temp
-                            approveInput['substitutions'] = substitutions
+                            approveInputSubstitutions = substitutions
 
                         if config.has_option(approveInputSectionName, "tag"):
-                            approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
+                            approveInputTag = config.getboolean(approveInputSectionName, "tag")
 
-                            if approveInput['tag'] and 'tag' not in approveActions:
+                            if approveInputTag and 'tag' not in approveActions:
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "tag" option (review rule "{reviewRuleName}" does not create a tag on approval).')
                                 exit(1)
 
                         if config.has_option(approveInputSectionName, "description"):
-                            approveInput['description'] = config.getboolean(approveInputSectionName, "description")
+                            approveInputDescription = config.getboolean(approveInputSectionName, "description")
 
-                            if approveInput['description'] and 'description' not in approveActions:
+                            if approveInputDescription and 'description' not in approveActions:
                                 logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
                                 exit(1)
 
                         if config.has_option(approveInputSectionName, "required"):
-                            approveInput['required'] = config.getboolean(approveInputSectionName, "required")
+                            approveInputRequired = config.getboolean(approveInputSectionName, "required")
 
                         if config.has_option(approveInputSectionName, "cache"):
-                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
+                            approveInputCache = config.getboolean(approveInputSectionName, "cache")
 
                             cacheableSources = ["prompt", "username"]
 
-                            if approveInput['cache'] and approveInput['source'] not in cacheableSources:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInput["source"]}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
+                            if approveInputCache and approveInputSource not in cacheableSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInputSource}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
                                 exit(1)
 
                         # Check if the approve input is actually used
-                        if not approveInput['description'] and not approveInput['tag']:
+                        if not approveInputDescription and not approveInputTag:
                             logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
                             continue
 
-                    approveInputs.append(ApproveInput.from_dict(approveInput))
+                    approveInputs.append(
+                        ApproveInput(
+                            source=approveInputSource,
+                            prompt=approveInputPrompt,
+                            default=approveInputDefault,
+                            label=approveInputLabel,
+                            help=approveInputHelp,
+                            examples=approveInputExamples,
+                            substitutions=approveInputSubstitutions,
+                            tag=approveInputTag,
+                            description=approveInputDescription,
+                            required=approveInputRequired,
+                            cache=approveInputCache
+                        )
+                    )
 
                 # Controls whether publish checks are just reported or actually
                 # prevent a publish.

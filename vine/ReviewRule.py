@@ -12,8 +12,8 @@ class ApproveInput:
     """
 
     def __init__(self,
-                 prompt: str,
                  source: str = 'prompt',
+                 prompt: Optional[str] = None,
                  default: Optional[str] = None,
                  label: Optional[str] = None,
                  help: str = '',
@@ -27,8 +27,8 @@ class ApproveInput:
         """
         Initialize an ApproveInput.
 
-        :param prompt: The prompt name/text
         :param source: Source of the input ('prompt', 'username', 'commit', 'tag')
+        :param prompt: The prompt name/text
         :param default: Default value for the input
         :param label: Label for the input
         :param help: Help text for the input
@@ -51,50 +51,6 @@ class ApproveInput:
         self.required = required
         self.cache = cache
         self.value = value
-
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the ApproveInput to a dictionary.
-
-        :return: Dictionary representation of the ApproveInput
-        """
-        return {
-            'source': self.source,
-            'prompt': self.prompt,
-            'default': self.default,
-            'label': self.label,
-            'help': self.help,
-            'examples': self.examples,
-            'substitutions': self.substitutions,
-            'tag': self.tag,
-            'description': self.description,
-            'required': self.required,
-            'cache': self.cache,
-            'value': self.value
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ApproveInput':
-        """
-        Create an ApproveInput from a dictionary.
-
-        :param data: Dictionary containing ApproveInput data
-        :return: ApproveInput instance
-        """
-        return cls(
-            source=data.get('source', 'prompt'),
-            prompt=data.get('prompt', ''),
-            default=data.get('default'),
-            label=data.get('label'),
-            help=data.get('help', ''),
-            examples=data.get('examples', {}),
-            substitutions=data.get('substitutions', {}),
-            tag=data.get('tag', True),
-            description=data.get('description', True),
-            required=data.get('required', False),
-            cache=data.get('cache', False),
-            value=data.get('value', None)
-        )
 
 
 class ReviewRule:
@@ -220,11 +176,3 @@ class ReviewRule:
 
         return False
 
-    def __repr__(self) -> str:
-        """
-        Return a string representation of the ReviewRule.
-
-        :return: String representation
-        """
-        return (f"ReviewRule(name='{self.name}', active={self.active}, "
-                f"label='{self.label}', minNumReviewers={self.minNumReviewers})")
