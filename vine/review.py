@@ -1671,7 +1671,7 @@ def parseDefaultReviewRuleName(reviewRules):
     :param reviewRules: A dictionary containing review rules
     :return: A string containing the default review rule name.
     """
-    defaultReviewRuleName = None
+    defaultReviewRuleName = ''
 
     # Extract the rule names from the [review] section
     config = config_parser_global.grapeConfig()

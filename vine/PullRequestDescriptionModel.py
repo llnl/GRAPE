@@ -112,53 +112,52 @@ class PullRequestDescriptionModel:
                 }
 
         # Review rule reviewers used to be saved in the GRAPE section
-        if reviewRules is not None and reviewRuleMap is not None and defaultReviewRuleName is not None:
-            grapeSection = descriptionDoc.find_section(grapeTitle)
+        grapeSection = descriptionDoc.find_section(grapeTitle)
 
-            if grapeSection:
-                savedReviewersPattern = re.compile(
-                    r'^\s*--reviewers=(?P<reviewers>.+?)\s*$'
-                )
+        if grapeSection:
+            savedReviewersPattern = re.compile(
+                r'^\s*--reviewers=(?P<reviewers>.+?)\s*$'
+            )
 
-                for line in grapeSection.lines:
-                    match = savedReviewersPattern.match(line)
+            for line in grapeSection.lines:
+                match = savedReviewersPattern.match(line)
 
-                    if match:
-                        savedReviewers = match.group('reviewers')
-                        reviewerGroups = savedReviewers.split()
+                if match:
+                    savedReviewers = match.group('reviewers')
+                    reviewerGroups = savedReviewers.split()
 
-                        for reviewerGroup in reviewerGroups:
-                            tokens = reviewerGroup.split(':')
+                    for reviewerGroup in reviewerGroups:
+                        tokens = reviewerGroup.split(':')
 
-                            if len(tokens) == 1:
-                                ruleName = defaultReviewRuleName
-                                reviewers = tokens[0]
-                            elif len(tokens) == 2:
-                                ruleName = tokens[0]
-                                reviewers = tokens[1]
+                        if len(tokens) == 1:
+                            ruleName = defaultReviewRuleName
+                            reviewers = tokens[0]
+                        elif len(tokens) == 2:
+                            ruleName = tokens[0]
+                            reviewers = tokens[1]
 
-                            if ruleName in reviewRuleMap:
-                                ruleName = reviewRuleMap[ruleName]
+                        if ruleName in reviewRuleMap:
+                            ruleName = reviewRuleMap[ruleName]
 
-                            if ruleName not in reviewRules:
-                                # TODO: error and exit
-                                pass
+                        if ruleName not in reviewRules:
+                            # TODO: error and exit
+                            pass
 
-                            ruleLabel = reviewRules[ruleName].label
+                        ruleLabel = reviewRules[ruleName].label
 
-                            reviewers = set(reviewers.split(','))
+                        reviewers = set(reviewers.split(','))
 
-                            # TODO: Check if reviewers are eligible
+                        # TODO: Check if reviewers are eligible
 
-                            if ruleLabel not in rules:
-                                rules[ruleLabel] = {'reviewers': reviewers,
-                                                    'approvals': {}}
-                            else:
-                                rule = rules[ruleLabel]
-                                allReviewers = rule['reviewers']
+                        if ruleLabel not in rules:
+                            rules[ruleLabel] = {'reviewers': reviewers,
+                                                'approvals': {}}
+                        else:
+                            rule = rules[ruleLabel]
+                            allReviewers = rule['reviewers']
 
-                                for reviewer in reviewers:
-                                    allReviewers.add(reviewer)
+                            for reviewer in reviewers:
+                                allReviewers.add(reviewer)
 
         return cls(
             userLines=userDescriptionLines,

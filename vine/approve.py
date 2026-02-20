@@ -162,9 +162,14 @@ class Approve(Option, WorkspaceDirHandler):
             Target branch for merge requests (any target if None)
 
         """
+        # Get review rules
+        reviewRules = review.Review.parseReviewRules()
+        reviewRuleMap = review.Review.parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = review.Review.parseDefaultReviewRuleName(reviewRules)
+
         for request in repo.pullRequests(target_branch=target_branch):
             descr = request.description()
-            description_model = PullRequestDescriptionModel.from_text(descr, None, None, None)
+            description_model = PullRequestDescriptionModel.from_text(descr, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
             rules = []
 
@@ -549,8 +554,13 @@ class Approve(Option, WorkspaceDirHandler):
                 description = review_request.description()
                 break
 
+            # Get review rules
+            reviewRules = review.Review.parseReviewRules()
+            reviewRuleMap = review.Review.parseReviewRuleMap(reviewRules)
+            defaultReviewRuleName = review.Review.parseDefaultReviewRuleName(reviewRules)
+
             # Get the data from the pull request description
-            descriptionModel = PullRequestDescriptionModel.from_text(description, None, None, None)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
             # Get existing approvals
             reviewRuleModels = descriptionModel.reviewRules
