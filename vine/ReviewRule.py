@@ -188,57 +188,6 @@ class ReviewRule:
         """Get whether to run in dry-run mode."""
         return self._dryRun
 
-    def to_dict(self) -> Dict[str, Any]:
-        """
-        Convert the ReviewRule to a dictionary.
-
-        :return: Dictionary representation of the ReviewRule
-        """
-        return {
-            'name': self.name,
-            'active': self.active,
-            'label': self.label,
-            'minNumReviewers': self.minNumReviewers,
-            'authorEligible': self.authorEligible,
-            'eligibleReviewers': self.eligibleReviewers,
-            'repositories': self.repositories,
-            'approveActions': self.approveActions,
-            'approveInputs': [
-                input_obj.to_dict() if isinstance(input_obj, ApproveInput) else input_obj
-                for input_obj in self.approveInputs
-            ],
-            'dryRun': self.dryRun
-        }
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'ReviewRule':
-        """
-        Create a ReviewRule from a dictionary.
-
-        :param data: Dictionary containing ReviewRule data
-        :return: ReviewRule instance
-        """
-        # Convert approveInputs dicts to ApproveInput objects
-        approve_inputs = []
-        for input_data in data.get('approveInputs', []):
-            if isinstance(input_data, dict):
-                approve_inputs.append(ApproveInput.from_dict(input_data))
-            elif isinstance(input_data, ApproveInput):
-                approve_inputs.append(input_data)
-
-        return cls(
-            name=data['name'],
-            active=data.get('active', True),
-            label=data.get('label'),
-            minNumReviewers=data.get('minNumReviewers', 1),
-            authorEligible=data.get('authorEligible', False),
-            eligibleReviewers=data.get('eligibleReviewers'),
-            repositories=data.get('repositories'),
-            approveActions=data.get('approveActions'),
-            approveInputs=approve_inputs,
-            dryRun=data.get('dryRun', False)
-        )
-
     def matches_repository(self, name: str) -> bool:
         """
         Determine whether this review rule applies to a repository.
