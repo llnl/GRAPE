@@ -163,9 +163,9 @@ class Approve(Option, WorkspaceDirHandler):
 
         """
         # Get review rules
-        reviewRules = review.Review.parseReviewRules()
-        reviewRuleMap = review.Review.parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = review.Review.parseDefaultReviewRuleName(reviewRules)
+        reviewRules = review.parseReviewRules()
+        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
 
         for request in repo.pullRequests(target_branch=target_branch):
             descr = request.description()
@@ -597,9 +597,9 @@ class Approve(Option, WorkspaceDirHandler):
                 break
 
             # Get review rules
-            reviewRules = review.Review.parseReviewRules()
-            reviewRuleMap = review.Review.parseReviewRuleMap(reviewRules)
-            defaultReviewRuleName = review.Review.parseDefaultReviewRuleName(reviewRules)
+            reviewRules = review.parseReviewRules()
+            reviewRuleMap = review.parseReviewRuleMap(reviewRules)
+            defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
 
             # Get the data from the pull request description
             descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRules, reviewRuleMap, defaultReviewRuleName)
