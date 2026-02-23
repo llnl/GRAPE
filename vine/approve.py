@@ -213,7 +213,7 @@ class Approve(Option, WorkspaceDirHandler):
         among the active rules.
         """
         rules = review.parseReviewRules(top_repo_context['grape_config'])
-        active_rule_names = [rule_name for rule_name in rules if rules[rule_name]['active']]
+        active_rule_names = [rule_name for rule_name in rules if rules[rule_name].active]
 
         rule_name = args['--rule']
 
@@ -269,44 +269,37 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Validate that the given user is eligible to approve the provided review rule.
 
-        This checks the supplied `user_name` against each regex pattern in
-        `rule["eligibleReviewers"]`. If any pattern matches (via `re.fullmatch`),
-        the user is considered eligible and the method returns normally.
-
         Parameters
         ----------
         user_name : str
             User name to validate.
-        rule : dict
-            Review rule definition containing:
-            - "eligibleReviewers": list[str] of regex patterns for eligible approvers
-            - "name": str rule name (used for error messages)
+        rule : ReviewRule
+            Review rule.
 
         Exits
         -----
         Terminates the process with exit code 1 if the user does not match any
         eligible reviewer pattern.
         """
-        for approver_pattern in rule['eligibleReviewers']:
-            if re.fullmatch(approver_pattern, user_name):
-                return
+        if rule.matches_reviewer(user_name):
+            return
 
-        logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule["name"]}".')
+        logging.error(f'GRAPE: ERROR: User "{user_name}" cannot approve review rule "{rule.name}".')
         exit(1)
 
     @staticmethod
     def _get_user_input(rule_input):
         # Print prompt
-        print(f'\n{rule_input["prompt"]}')
+        print(f'\n{rule_input.prompt}')
 
         # Print help
-        help = rule_input['help']
+        help = rule_input.help
 
         if help:
             print(f'\n  Help:\n    {help}')
 
         # Print examples
-        examples = rule_input['examples']
+        examples = rule_input.examples
 
         if examples:
             print('\n  Examples:')
@@ -324,7 +317,7 @@ class Approve(Option, WorkspaceDirHandler):
                         print(f'    "{example}"')
 
         # Print substitutions
-        substitutions = rule_input['substitutions']
+        substitutions = rule_input.substitutions
 
         if substitutions:
             print('\n  Shortcuts/Substitutions:')
@@ -338,7 +331,7 @@ class Approve(Option, WorkspaceDirHandler):
                 print(f'    "{old}"{" " * (longest_len - len(old))} -> "{new}"')
 
         # Print default and prompt for input
-        default = rule_input['default']
+        default = rule_input.default
 
         if default:
             value = input(f'\n(def: {default}) ==> ').strip()
@@ -346,7 +339,7 @@ class Approve(Option, WorkspaceDirHandler):
             value = input('\n==> ').strip()
 
         # Loop if required and no value was entered
-        if rule_input['required']:
+        if rule_input.required:
             while not value:
                 print(f'\nPlease enter a non-empty string.')
                 value = input('\n==> ').strip()
@@ -363,18 +356,15 @@ class Approve(Option, WorkspaceDirHandler):
         Prompt the user for approvals and collect rule-defined input per modified repository.
 
         For each repository in `modified_repos`, this method initializes default approval state
-        (`approved=False`, `input={}`), checks whether the given `rule` applies to the repo via
-        `_rule_applies`, and if so prompts the user to approve the changes on the repo's source
+        (`approved=False`, `input={}`), checks whether the given `rule` applies to the repo,
+        and if so prompts the user to approve the changes on the repo's source
         branch/commit. When approval is granted, it gathers any additional input fields defined
         in `rule["input"]` and stores them in the repo context.
 
         Parameters
         ----------
-        rule : dict
-            Review rule definition. Expected keys:
-              - "name": str
-              - "input": list[str]
-              - "repositories": list[str]
+        rule : ReviewRule
+            Review rule.
         user_name : str
             User name.
         modified_repos : dict
@@ -392,7 +382,7 @@ class Approve(Option, WorkspaceDirHandler):
         Exits with status code 0 when no approvals are granted.
         """
         any_approvals = False
-        logging.info(f'Getting approval input for rule "{rule["name"]}"...')
+        logging.info(f'Getting approval input for rule "{rule.name}"...')
 
         for repo_name in modified_repos:
             # Set default approval and input state
@@ -401,7 +391,7 @@ class Approve(Option, WorkspaceDirHandler):
             repo_context['approve_inputs'] = []
 
             # Check if rule applies
-            if not Approve._rule_applies(repo_name, rule):
+            if not rule.matches_repository(repo_name):
                 continue
 
             # Get review request
@@ -409,7 +399,7 @@ class Approve(Option, WorkspaceDirHandler):
 
             # Prevent author from approving
             if review_request.author() == user_name:
-                if not rule['authorEligible']:
+                if not rule.authorEligible:
                     logging.warning(f'GRAPE: WARNING: Merge request author not allowed to approve. Skipping "{repo_name}"...')
                     continue
 
@@ -465,7 +455,7 @@ class Approve(Option, WorkspaceDirHandler):
                 logging.info(f'Skipping approval for "{repo_name}"...')
                 continue
 
-            if 'tag' in rule['approveActions']:
+            if 'tag' in rule.approveActions:
                 commit_reviewed = utility.userInput(
                     f'Enter the most recent commit reviewed to confirm approval:'
                 ).lower()
@@ -482,34 +472,34 @@ class Approve(Option, WorkspaceDirHandler):
             any_approvals = True
 
             # Ask for input
-            rule_inputs = rule['approveInputs']
+            rule_inputs = rule.approveInputs
             repo_inputs = repo_context['approve_inputs']
 
             for rule_input in rule_inputs:
                 value = None
 
-                if 'value' in rule_input:
-                    value = rule_input['value']
+                if rule_input.value is not None:
+                    value = rule_input.value
                 else:
-                    source = rule_input['source']
+                    source = rule_input.source
 
                     if source == 'commit':
                         value = source_commit
                     elif source == 'username':
                         value = user_name
                     elif source == 'tag':
-                        value = f'{rule["name"]}_{review_request.iid()}'
+                        value = f'{rule.name}_{review_request.iid()}'
                     else:
                         value = Approve._get_user_input(rule_input)
 
-                    if rule_input['cache']:
-                        rule_input['value'] = value
+                    if rule_input.cache:
+                        rule_input.value = value
 
                 repo_inputs.append({
-                    'label': rule_input['label'],
+                    'label': rule_input.label,
                     'value': value,
-                    'tag': rule_input['tag'],
-                    'description': rule_input['description']
+                    'tag': rule_input.tag,
+                    'description': rule_input.description
                 })
 
         # Check if any approvals were granted
@@ -520,54 +510,22 @@ class Approve(Option, WorkspaceDirHandler):
         return modified_repos
 
     @staticmethod
-    def _rule_applies(repo_name, rule):
-        """
-        Determine whether a review rule applies to a repository.
-
-        Checks the given `repo_name` against each regex pattern listed in
-        `rule["repositories"]` using `re.fullmatch`.
-
-        Parameters
-        ----------
-        repo_name : str
-            Repository name to test.
-        rule : dict
-            Review rule definition containing:
-            - "repositories": list[str] of regex patterns.
-
-        Returns
-        -------
-        bool
-            True if any repository pattern fully matches `repo_name`, otherwise
-            False.
-        """
-        for repo_pattern in rule["repositories"]:
-            if re.fullmatch(repo_pattern, repo_name):
-                return True
-
-        return False
-
-    @staticmethod
     def _apply_approve_actions(rule, modified_repos):
         """
         Apply rule approval actions to each modified repository.
 
-        When `"description"` is present in `rule["approveActions"]`, this adds
+        When `"description"` is present in `rule.approveActions`, this adds
         and/or overwrites approvals in the pull request description.
 
         When a repository context is marked approved (`repo_context["approved"] is True`), the
-        method also performs any of the following actions configured in `rule["approveActions"]`:
+        method also performs any of the following actions configured in `rule.approveActions`:
           - `"approve"`: approve the merge/pull request.
-          - `"tag"`: create/update a tag named `{rule["name"]}_{review_request.iid()}` at the approved source commit,
-            with a tag message containing `rule["label"]` and the collected inputs for that repo.
+          - `"tag"`: create/update a tag named `{rule.name}_{review_request.iid()}` at the approved source commit,
+            with a tag message containing `rule.label` and the collected inputs for that repo.
 
         Parameters
         ----------
-        rule : dict
-            Review rule definition. Expected keys:
-              - "name": str
-              - "label": str
-              - "approveActions": list[str]
+        rule : ReviewRule
         modified_repos : dict
             Mapping of repo_name -> repo_context. Each repo_context is expected to contain:
               - "repo": repository client
@@ -587,7 +545,7 @@ class Approve(Option, WorkspaceDirHandler):
         # Build rule section for merge/pull request description
         description = ''
 
-        if 'description' in rule['approveActions']:
+        if 'description' in rule.approveActions:
             # Get the pull request description. All related pull requests
             # should have the same description, so grab the first one.
             for repo_name in modified_repos:
@@ -607,13 +565,13 @@ class Approve(Option, WorkspaceDirHandler):
             # Get existing approvals
             reviewRuleModels = descriptionModel.reviewRules
 
-            if rule['label'] not in reviewRuleModels:
-                reviewRuleModels[rule['label']] = {
+            if rule.label not in reviewRuleModels:
+                reviewRuleModels[rule.label] = {
                     'reviewers': set(),
                     'approvals': {}
                 }
 
-            approvals = reviewRuleModels[rule['label']]['approvals']
+            approvals = reviewRuleModels[rule.label]['approvals']
 
             for repo_name in sorted(modified_repos.keys()):
                 repo_context = modified_repos[repo_name]
@@ -637,21 +595,21 @@ class Approve(Option, WorkspaceDirHandler):
             review_request = repo_context['review_request']
 
             # Update merge request description
-            if 'description' in rule['approveActions']:
+            if 'description' in rule.approveActions:
                 logging.info('  Updating merge/pull request description...')
                 review_request.update(review_request.version(), description=description)
 
             if repo_context['approved']:
                 # Approve reviewed branch
-                if 'approve' in rule['approveActions']:
+                if 'approve' in rule.approveActions:
                     logging.info('  Approving merge/pull request...')
                     review_request.approve()
 
                 # Tag reviewed branch
-                if 'tag' in rule['approveActions']:
-                    tag_name = f'{rule["name"]}_{review_request.iid()}'
+                if 'tag' in rule.approveActions:
+                    tag_name = f'{rule.name}_{review_request.iid()}'
                     tag_ref = review_request.fromSHA()
-                    tag_message = rule['label']
+                    tag_message = rule.label
 
                     repo_inputs = repo_context['approve_inputs']
                     first = True
