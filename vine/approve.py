@@ -148,45 +148,6 @@ class Approve(Option, WorkspaceDirHandler):
         return review.Review._get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch)
 
     @staticmethod
-    def _get_user_rules(request, user_name, default_rule):
-        """
-        Get rules for which a given user has been added as a reviewer using `grape review'.
-
-        Relies on grape review adding a line in the description in the form
-        `--reviewers=rule1:username1 rule2:username2,username3`
-          or
-        `--reviewers=username1,username2,username3`
-
-        Parameters
-        ----------
-        request: PullRequest
-            Pull/merge request to search
-        user_name : str
-            User name of the approver.
-        default_rule : str
-            Default rule for unspecified rules
-
-        Returns
-        -------
-        list
-            List of strings describing the appropriate rules
-        """
-        rules = []
-        reviewer_search = re.compile(r'\-\-reviewers=(.*)(?:\n|$)')
-        user_search = re.compile(rf'([^ ,:]*:)?[^ :]*{user_name}')
-        match = reviewer_search.search(request.description())
-        if match:
-            user_matches = user_search.findall(match.group(1))
-            if user_matches:
-                for rule in user_matches:
-                    if rule == "":
-                        rules.append(default_rule)
-                    else:
-                        rules.append(rule.strip(':'))
-
-        return rules
-
-    @staticmethod
     def _print_open_reviews(repo, user_name, target_branch):
         """
         Prints open merge requests targeting `target_branch` where `user_name`
@@ -277,7 +238,7 @@ class Approve(Option, WorkspaceDirHandler):
           2) Detects which repositories (top repo, submodules, subprojects) have open
              review requests.
           3) Prompts the user for per-repository approval and collects any rule-defined input.
-          4) Applies the configured approve actions (e.g., approve, approve_if_only_rule, tag, update description)
+          4) Applies the configured approve actions (e.g., approve, tag, update description)
              to each relevant open review request.
 
         Parameters
@@ -307,15 +268,28 @@ class Approve(Option, WorkspaceDirHandler):
         approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
 
         # These are the rules for which the user would apply the approve action,
-        # only needed if approve_if_only_rule is among the current rule's actions.
+        # only needed if approve is not among the current rule's actions.
         user_approve_rules = []
 
-        if 'approve_if_only_rule' in rule['approveActions']:
+        if 'approve' not in rule['approveActions']:
             config = top_repo_context['grape_config']
-            for user_rule in Approve._get_user_rules(top_repo_context['review_request'], user_name, review.parseDefaultReviewRuleName(all_review_rules, config)):
-                rule_info = all_review_rules[user_rule]
-                if rule_info['active'] and 'approve' in rule_info['approveActions']:
-                    user_approve_rules.append(rule_info)
+            description = top_repo_context['review_request'].description()
+            reviewRuleMap = review.parseReviewRuleMap(all_review_rules)
+            defaultReviewRuleName = review.parseDefaultReviewRuleName(all_review_rules, config)
+
+            # Get the data from the pull request description
+            descriptionModel = PullRequestDescriptionModel.from_text(description, all_review_rules, reviewRuleMap, defaultReviewRuleName)
+
+            # Get review rule reviewers
+            reviewRuleModels = descriptionModel.reviewRules
+            for reviewRuleLabel in reviewRuleModels:
+                reviewers = reviewRuleModels[reviewRuleLabel].get('reviewers', set())
+
+                if user_name in reviewers:
+                    for rule_label in all_review_rules:
+                        reviewRule = all_review_rules[rule_label]
+                        if reviewRule['label'] == reviewRuleLabel and reviewRule['active'] and 'approve' in reviewRule['approveActions']:
+                            user_approve_rules.append(reviewRuleName)
 
         Approve._apply_approve_actions(rule, approve_input, user_approve_rules)
 
@@ -616,7 +590,6 @@ class Approve(Option, WorkspaceDirHandler):
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule["approveActions"]`:
           - `"approve"`: approve the merge/pull request.
-          - `"approve_if_only_rule"`: approve the merge/pull request if the approver is only a reviewer for the current rule.
           - `"tag"`: create/update a tag named `{rule["name"]}_{review_request.iid()}` at the approved source commit,
             with a tag message containing `rule["label"]` and the collected inputs for that repo.
           - `"description"`: update the merge/pull request description.
@@ -639,7 +612,7 @@ class Approve(Option, WorkspaceDirHandler):
               - "name": str
               - "input": list[str]
               - "repositories": list[str]
-            Can be empty if the approve_if_only_rule action is not active for the rule.
+            Can be empty if the approve action is active for the rule.
 
         Side Effects
         ------------
@@ -713,7 +686,7 @@ class Approve(Option, WorkspaceDirHandler):
                 if 'approve' in rule['approveActions']:
                     logging.info('  Approving merge/pull request...')
                     review_request.approve()
-                elif 'approve_if_only_rule' in rule['approveActions']:
+                else:
                     found_approval = False
                     for user_approve_rule in user_approve_rules:
                         if Approve._rule_applies(repo_name, user_approve_rule):
