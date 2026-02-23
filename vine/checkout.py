@@ -80,7 +80,7 @@ def handleCheckoutMRE(mre):
                         f"like to create a new branch called {branch} " +
                         f"in {project}? \n(select 'a' to say yes for"+
                         " (a)ll, 's' to (s)kip creation for branches that"+
-                        " don't exist )\n(y,n,a,s)", 'y')
+                        " don't exist )\n(y,n,a,s)", 'y', ['a','s'])
 
                 if str(createNewBranch).lower()[0] == 'a':
                     _createNewBranch = True

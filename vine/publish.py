@@ -24,6 +24,7 @@ from vine import vine_subprocess
 from vine import version as grapeVersion
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
+from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
@@ -842,14 +843,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # the minimum number of required reviewers (this info is stored
             # by grape in the merge/pull request description).
             description = pullRequest.description()
-
-            savedArgs = {}
-            match = reviewersRegex.search(description)
-
-            if match:
-                savedArgs['--reviewers'] = match.group('reviewers')
-
-            reviewersFromDescription = review.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
             # Omit non-approvers from the unfinished reviewers reported
             non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
@@ -875,7 +869,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             eligibleReviewers = reviewRule["eligibleReviewers"]
 
                             # Check if reviewers are assigned to the review rule
-                            if reviewRuleName not in reviewersFromDescription:
+                            if label not in descriptionModel.reviewRules:
                                 userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
                                 if not ruleDryRun:
@@ -885,7 +879,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             # Check if at least the minimum number of required
                             # reviewers are assigned to the review rule
-                            assignedReviewers = reviewersFromDescription[reviewRuleName]['reviewers']
+                            assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
 
                             if len(assignedReviewers) < minNumReviewers:
                                 userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'

@@ -16,6 +16,7 @@ from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
+from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine import submodules
 from vine import utility
 from vine import version
@@ -148,191 +149,6 @@ class Review(Option, WorkspaceDirHandler):
 
         return descr
 
-    def buildDescriptionTemplate(self):
-        """
-        Constructs a template for the merge/pull request description.
-
-        The template includes placeholders for the user description,
-        related reviews, and grape data.
-
-        Returns:
-            str: A formatted string template with placeholders for:
-                - user_description: The user's merge/pull request description.
-                - related_reviews: Links to related merge/pull requests.
-                - grape_data: Additional data used by GRAPE.
-        """
-
-        return '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-
-    def buildDescriptionRegex(self):
-        """
-        Converts a regex for the merge/pull request description.
-
-        The regex includes capture groups for the user description,
-        related reviews, and grape data.
-
-        Returns:
-            str: A regex pattern that can be used to match and extract data
-            from the merge/pull request description.
-        """
-
-        return r'(?P<user_description>.*?)\s*# Related Reviews\s*(?P<related_reviews>.*?)\s*# GRAPE\s*(?P<grape_data>.*?)'
-
-    def buildDescription(self, template, data):
-        """
-        Generates a description by replacing placeholders in the template with
-        values from the provided dictionary.
-
-        Args:
-            template (str): The template string containing placeholders (in the format `{placeholder}`).
-            data (dict): A dictionary containing values to replace in the template.
-                         Expected keys: 'user_description', 'related_reviews', and 'grape_data'.
-
-        Returns:
-            str: The generated description with placeholders replaced by actual values.
-
-        Example:
-            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> data = {'user_description': 'Adds a new feature.', 'related_reviews': 'https://github.com/LLNL/GRAPE/pull/1', 'grape_data': 'v1.49.26'}
-            >>> description = self.buildDescription(template, data)
-            >>> print(description)
-            'Adds a new feature
-
-             # Related Reviews
-
-             https://github.com/LLNL/GRAPE/pull/1
-
-             # GRAPE
-
-             v1.49.26'
-        """
-
-        # Start with the description template
-        description = template
-
-        # Substitute user description
-        userDescription = data.get('user_description', '')
-        description = description.replace('{user_description}', userDescription)
-
-        # Substitute related reviews
-        relatedReviews = data.get('related_reviews', [])
-
-        if relatedReviews:
-            relatedReviews = '\n\n'.join(relatedReviews)
-        else:
-            relatedReviews = 'None'
-
-        description = description.replace('{related_reviews}', relatedReviews)
-
-        # Substitute GRAPE data
-        grapeData = data.get('grape_data', '')
-
-        if not grapeData:
-            grapeData = version.grapeVersion()
-
-        description = description.replace('{grape_data}', grapeData)
-
-        return description
-
-    def parseDescription(self, description, template):
-        """
-        Parses a merge/pull request description based on a provided template
-        and extracts relevant data.
-
-        This function uses a regex pattern generated from the provided template
-        to match and extract specific components from the description. If the
-        description does not match the template, it attempts to match an older
-        regex pattern. If neither pattern matches, it defaults to treating the
-        entire description as the user description.
-
-        Args:
-            description (str): The merge/pull request description to be parsed.
-            template (str): The template string used to generate the regex pattern for parsing.
-
-        Returns:
-            dict: A dictionary containing the parsed data with the following keys:
-                - 'user_description': The extracted user description.
-                - 'related_reviews': A list of related merge/pull request links extracted from the description (an empty list if none).
-                - 'grape_data': Additional data used by GRAPE.
-
-        Example 1:
-            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> description = 'Adds a new feature.\n\n# Related Reviews\n\nhttps://github.com/LLNL/GRAPE/pull/1\n\n# GRAPE\n\nv1.49.26'
-            >>> result = parseDescription(description, template)
-            >>> print(result)
-            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': 'v1.49.26'}
-
-        Example 2:
-            >>> template = '{user_description}\n\n# Related Reviews\n\n{related_reviews}\n\n# GRAPE\n\n{grape_data}'
-            >>> description = 'Adds a new feature.\n\nThis merge request is related to the merge request at: https://github.com/LLNL/GRAPE/pull/1'
-            >>> result = parseDescription(description, template)
-            >>> print(result)
-            {'user_description': 'Adds a new feature.', 'related_reviews': ['https://github.com/LLNL/GRAPE/pull/1'], 'grape_data': None}
-
-        Notes:
-            - The function uses `re.fullmatch` to ensure the entire description matches the regex pattern.
-            - If the description does not match the new regex, it falls back to an older regex pattern.
-            - If no matches are found, the function defaults to treating the entire description as the user description, with no related reviews or grape data.
-        """
-        data = {'user_description': '',
-                'related_reviews': [],
-                'grape_data': ''}
-
-        if not description:
-            return data
-
-        regex = self.buildDescriptionRegex()
-        match = re.fullmatch(regex, description, re.DOTALL)
-
-        if match:
-            data['user_description'] = match.group('user_description')
-            data['related_reviews'] = match.group('related_reviews').split()
-            if 'None' in data['related_reviews']:
-                data['related_reviews'].remove('None')
-            data['grape_data'] = match.group('grape_data')
-        else:
-            # check for either old description format OR new description provided by the command line
-            oldRegex = rf"(?P<user_description>.*?)\s*(?P<related_reviews>({re.escape(MRLinkText())}\S+\s*)*)"
-            match = re.fullmatch(oldRegex, description, re.DOTALL)
-
-            if match:
-                data['user_description'] = match.group('user_description')
-                data['related_reviews'] = match.group('related_reviews').replace(MRLinkText(), '').split()
-                data['grape_data'] = ''
-            else:
-                logging.warning(f'GRAPE: WARNING: Unexpected format for merge/pull request description. Please check the generated description.')
-
-                data['user_description'] = description
-                data['related_reviews'] = []
-                data['grape_data'] = ''
-
-        return data
-
-
-    def getSavedArgs(self, descriptionData):
-        """
-        Extracts saved arguments from the merge/pull request description.
-
-        :param descriptionData: Data extracted from the merge/pull request description
-        :return: A dictionary where keys are argument names and values are argument values
-        """
-        savedArgs = {}
-
-        if descriptionData:
-            grapeData = descriptionData.get('grape_data')
-
-            if grapeData:
-                grapeDataLines = grapeData.split('\n')
-
-                for line in grapeDataLines:
-                    if line.startswith("--"):
-                        tokens = line.split("=")
-
-                        if len(tokens) == 2:
-                            savedArgs[tokens[0].strip()] = tokens[1].strip()
-
-        return savedArgs
-
 
     def validateReviewers(self, reviewers, reviewRules):
         """
@@ -458,41 +274,6 @@ class Review(Option, WorkspaceDirHandler):
                 return None
         else:
             return None
-
-
-    def buildGrapeData(self, args):
-        """
-        Builds a string containing info about the current call to grape review.
-        This includes the grape version number and certain arguments that need
-        to be stored in the merge/pull request description for later use.
-
-        Parameters:
-        ----------
-        args : dict
-            A dictionary containing arguments to a prior or current GRAPE call
-
-        Returns:
-        -------
-        str
-            A string representing the grape data, which includes the grape version and,
-            if applicable, other arguments in the format:
-            '--argname=argvalue'.
-
-        Example:
-        --------
-        args = {
-            '--reviewers': 'Alice,Bob'
-        }
-
-        result = self.buildGrapeData(args)
-        # result might be: 'v1.49.26\n--reviewers=Alice,Bob'
-        """
-        grapeData = version.grapeVersion()
-
-        if '--reviewers' in args and args['--reviewers']:
-            grapeData += f'\n\n--reviewers={args["--reviewers"]}'
-
-        return grapeData
 
 
     def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
@@ -939,11 +720,23 @@ class Review(Option, WorkspaceDirHandler):
         if existingOuterLevelRequest is not None and not title:
             title = existingOuterLevelRequest.title()
 
+        # determine draft status
+        wip = None
+        if args['--draft']:
+            wip = True
+        elif args['--ready']:
+            wip = False
+
         #determine pull request URL
         outerLevelURL = None
 
         if existingOuterLevelRequest:
             outerLevelURL = existingOuterLevelRequest.link()
+
+        # Get review rules
+        reviewRules = parseReviewRules()
+        reviewRuleMap = parseReviewRuleMap(reviewRules)
+        defaultReviewRuleName = parseDefaultReviewRuleName(reviewRules)
 
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
@@ -951,14 +744,7 @@ class Review(Option, WorkspaceDirHandler):
         if not descr and existingOuterLevelRequest:
             descr = existingOuterLevelRequest.description()
 
-        descriptionTemplate = self.buildDescriptionTemplate()
-        descriptionData = self.parseDescription(descr, descriptionTemplate)
-        savedArgs = self.getSavedArgs(descriptionData)
-
-        # Get review rules
-        reviewRules = parseReviewRules()
-        reviewRuleMap = parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = parseDefaultReviewRuleName(reviewRules)
+        descriptionModel = PullRequestDescriptionModel.from_text(descr, reviewRules, reviewRuleMap, defaultReviewRuleName)
 
         # Determine merge/pull request reviewers
         reviewers = {}
@@ -978,18 +764,47 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 non_approver_list.update(non_approvers.lower().split(','))
 
-        wip = None
-        if args['--draft']:
-            wip = True
-        elif args['--ready']:
-            wip = False
+        savedReviewers = ''
+        reviewRuleModels = descriptionModel.reviewRules
+
+        for reviewRuleLabel in reviewRuleModels:
+            reviewRuleModel = reviewRuleModels[reviewRuleLabel]
+            temp = ','.join(sorted(reviewRuleModel['reviewers']))
+
+            for reviewRuleName in reviewRules:
+                reviewRule = reviewRules[reviewRuleName]
+
+                if reviewRule['label'] == reviewRuleLabel:
+                    savedReviewers += f' {reviewRule["name"]}:{temp}'
+
+        savedArgs = {'--reviewers': savedReviewers.strip()}
 
         reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName))
         reviewers.update(parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName))
         self.validateReviewers(reviewers, reviewRules)
 
-        # Update description
-        args['--reviewers'] = self.serializeReviewers(reviewers)
+        # Update review rule reviewers
+        if reviewers:
+            for ruleName in reviewers:
+                ruleInfo = reviewers[ruleName]
+                ruleLabel = ruleInfo['label']
+                assignedReviewers = ruleInfo['reviewers']
+
+                if assignedReviewers:
+                    # Add or update reviewers for  rule
+                    if ruleLabel not in reviewRuleModels:
+                        reviewRuleModels[ruleLabel] = {
+                            'reviewers': set(assignedReviewers),
+                            'approvals': {}
+                        }
+                    else:
+                        reviewRuleModels[ruleLabel]['reviewers'] = set(assignedReviewers)
+                else:
+                    # Check if review rule model needs to be removed
+                    # (i.e. no reviewers or approvals).
+                    if ruleLabel in reviewRuleModels:
+                        if not reviewRuleModels[ruleLabel]['approvals']:
+                            del reviewRuleModels[ruleLabel]
 
         # Add inactive rules with empty reviewer lists in order to delete any
         # outdated approval rules.
@@ -1001,13 +816,15 @@ class Review(Option, WorkspaceDirHandler):
                         'reviewers': []
                     }
 
-        descriptionData['grape_data'] = self.buildGrapeData(args)
+        # Store reviewers in args so that it can be added later to the
+        # merge/pull request description.
+        args['--reviewers'] = self.serializeReviewers(reviewers)
 
-        if outerLevelURL and outerLevelURL not in descriptionData['related_reviews']:
-            descriptionData['related_reviews'].append(outerLevelURL)
-            descriptionData['related_reviews'].sort()
+        # Add top level link to related reviews
+        descriptionModel.add_related_pull_request(outerLevelURL)
 
-        updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
+        # Update description
+        updatedDescription = descriptionModel.to_text()
 
         # list of description suffixes
         projects_with_reviewer_lists = config.get("publish", "projects_with_reviewer_lists")
@@ -1233,32 +1050,21 @@ class Review(Option, WorkspaceDirHandler):
                 # merge/pull request description. Then add all the new
                 # submodule/subproject links. Only add the outer level link
                 # if there are any submodule/subproject links.
-                updatedReviewLinks = []
+                descriptionModel.clear_related_pull_requests()
+                descriptionModel.add_related_pull_request(outerLevelURL)
 
                 for link in pullRequestLinks:
-                    updatedReviewLinks.append(link)
-
-                if updatedReviewLinks:
-                    updatedReviewLinks.append(outerLevelURL)
+                    descriptionModel.add_related_pull_request(link)
             else:
                 # Start with related review links scraped from the outer level
                 # merge/pull request description. Then add all the new links if
                 # they are not already in the list.
-                updatedReviewLinks = descriptionData['related_reviews']
+                descriptionModel.add_related_pull_request(outerLevelURL)
 
                 for link in pullRequestLinks:
-                    if link not in updatedReviewLinks:
-                        updatedReviewLinks.append(link)
+                    descriptionModel.add_related_pull_request(link)
 
-                if outerLevelURL not in updatedReviewLinks:
-                    updatedReviewLinks.append(outerLevelURL)
-
-            updatedReviewLinks.sort()
-
-            descriptionData['related_reviews'] = updatedReviewLinks
-
-            updatedDescription = self.buildDescription(descriptionTemplate, descriptionData)
-
+            updatedDescription = descriptionModel.to_text()
             pre_update_description = request.description()
 
             if updatedDescription != pre_update_description:
@@ -1904,7 +1710,7 @@ def parseDefaultReviewRuleName(reviewRules, config=None):
     :param config: Grape configuration
     :return: A string containing the default review rule name.
     """
-    defaultReviewRuleName = None
+    defaultReviewRuleName = ''
 
     # Extract the rule names from the [review] section
     if not config:
