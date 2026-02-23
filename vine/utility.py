@@ -5,6 +5,7 @@ import sys
 from docopt.docopt import docopt
 from vine import CodeReviewsFactory
 from vine import grapeGit as git
+from vine import config_parser_base
 from vine import config_parser_global
 from vine.option import Option
 if sys.platform == 'linux2':
@@ -39,11 +40,11 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
 
     Precedence:
       1) CLI argument: cliArgs['--user'] (if provided and non-empty)
-      2) Global grape config: [services] <service.lower()>
+      2) Home grape config: $HOME/.grapeconfig [services] <service.lower()>
       3) Interactive prompt (or default in non-interactive mode)
 
     If the user opts in, persist the username to:
-      <workspace>/.git/.grapeuserconfig under [services] <service.lower()>.
+      $HOME/.grapeconfig under [services] <service.lower()>.
 
     Args:
         cliArgs: Parsed CLI args dict (e.g., from docopt) that may include '--user'.
@@ -57,13 +58,17 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
     if cliArgs and cliArgs.get('--user'):
         return cliArgs['--user']
 
-    # Check for a saved entry in the grape user config
-    config = config_parser_global.grapeConfig()
-
+    # Check for a saved entry in the home grape config (not workspace/user config)
+    home_dir = config_parser_global.get_env_config_path()
+    home_config = config_parser_base.GrapeConfigParserBase(workspaceDir=home_dir)
     try:
-        if config.has_section(Option.SECTION_SERVICES) and config.has_option(Option.SECTION_SERVICES, service.lower()):
-            return config.get(Option.SECTION_SERVICES, service.lower())
-    except:
+        if home_config.has_section(Option.SECTION_SERVICES) and home_config.has_option(
+            Option.SECTION_SERVICES, service.lower()
+        ):
+        service_user_name = home_config.get(Option.SECTION_SERVICES, service.lower())
+        logging.info(f"user name for {service} is {service_user_name}, loaded from $HOME/.grapeconfig")
+        return service_user_name
+    except Exception:
         pass
 
     # Ask for the username
@@ -73,41 +78,31 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
     username = userInput(f"Enter {service} User Name:", defaultName)
 
     # Ask if the user wants to remember this username
-    remember = userInput(f"Remember this {service} username in .grapeuserconfig? (y/n)", "n")
+    remember = userInput(f"Remember this {service} username in $HOME/.grapeconfig? (y/n)", "n")
 
     if remember:
-        # Save the username to .grapeuserconfig
+        # Save the username to $HOME/.grapeconfig
         try:
-            from vine import config_parser_user
-            import os
-
-            # Get the workspace directory
-            workspace_dir = os.getcwd()
-
-            # Create a user config parser
-            user_config = config_parser_user.GrapeConfigParserUser(workspace_dir=workspace_dir)
-
             # Ensure the services section exists
-            if not user_config.has_section(Option.SECTION_SERVICES):
-                user_config.add_section(Option.SECTION_SERVICES)
+            if not home_config.has_section(Option.SECTION_SERVICES):
+                home_config.add_section(Option.SECTION_SERVICES)
 
             # Set the username for this service
-            user_config.set(Option.SECTION_SERVICES, service.lower(), username)
+            home_config.set(Option.SECTION_SERVICES, service.lower(), username)
 
-            # Save the config to .grapeuserconfig
-            git_dir = os.path.join(workspace_dir, '.git')
-            config_path = os.path.join(git_dir, '.grapeuserconfig')
+            # Persist only the home config (avoid writing merged workspace config)
+            config_path = os.path.join(home_dir, GRAPE_CONFIG)
+            config_parser_global.writeConfig(home_config, config_path)
 
-            # Ensure the directory exists
-            if not os.path.exists(git_dir):
-                os.makedirs(git_dir)
+            # Update the in-memory singleton for this process, if it exists
+            global_config = config_parser_global.grapeConfig()
+            if not global_config.has_section(Option.SECTION_SERVICES):
+                global_config.add_section(Option.SECTION_SERVICES)
+            global_config.set(Option.SECTION_SERVICES, service.lower(), username)
 
-            with open(config_path, 'w') as f:
-                user_config.write(f)
-
-            print(f"Username for {service} saved to {config_path}")
+            logging.info(f"Username for {service} saved to {config_path}")
         except Exception as e:
-            print(f"Failed to save username to .grapeuserconfig: {e}")
+            logging.error(f"Failed to save username to $HOME/.grapeconfig: {e}")
 
     return username
 
