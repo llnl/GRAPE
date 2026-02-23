@@ -271,7 +271,7 @@ class Approve(Option, WorkspaceDirHandler):
         # only needed if approve is not among the current rule's actions.
         user_approve_rules = []
 
-        if 'approve' not in rule['approveActions']:
+        if 'approve' not in rule.approveActions:
             config = top_repo_context['grape_config']
             description = top_repo_context['review_request'].description()
             reviewRuleMap = review.parseReviewRuleMap(all_review_rules)
@@ -288,7 +288,7 @@ class Approve(Option, WorkspaceDirHandler):
                 if user_name in reviewers:
                     for rule_label in all_review_rules:
                         reviewRule = all_review_rules[rule_label]
-                        if reviewRule['label'] == reviewRuleLabel and reviewRule['active'] and 'approve' in reviewRule['approveActions']:
+                        if reviewRule.label == reviewRuleLabel and reviewRule.active and 'approve' in reviewRule.approveActions:
                             user_approve_rules.append(reviewRuleName)
 
         Approve._apply_approve_actions(rule, approve_input, user_approve_rules)
@@ -581,7 +581,6 @@ class Approve(Option, WorkspaceDirHandler):
         Exception
             Propagates exceptions thrown by the underlying code review client operations.
         """
-
         # Build rule section for merge/pull request description
         description = ''
 
