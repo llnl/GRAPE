@@ -1329,14 +1329,23 @@ def parseReviewRules(config=None):
     """
     Parses the global GRAPE config file and returns a dictionary of review rules.
 
+<<<<<<< HEAD
     :param config: Grape configuration
+    :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+=======
     :return: A dictionary where each key is a review rule name and the value is a ReviewRule object
+>>>>>>> develop
     """
     reviewRules = {}
 
     # Names reserved by grape
     reservedReviewRuleNames = ['grape']
     reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+    # Allowed approve actions
+    validApproveActions = { 'approve': 'mark merge/pull request approved',
+                            'tag': 'add a git tag',
+                            'description': 'update the merge/pull request description' }
 
     # Count the number of active review rules
     numActiveRules = 0
@@ -1362,6 +1371,203 @@ def parseReviewRules(config=None):
                 if reviewRule.active:
                     numActiveRules += 1
 
+<<<<<<< HEAD
+                # Provide a reasonable default for the rule label
+                label = f"GRAPE: {reviewRuleName} review"
+
+                if config.has_option(sectionName, "label"):
+                    label = config.get(sectionName, "label")
+
+                if label in reservedReviewRuleLabels:
+                    logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
+                    exit(1)
+
+                # Default to one reviewer
+                minNumReviewers = 1
+
+                if config.has_option(sectionName, "minnumreviewers"):
+                    minNumReviewers = config.getint(sectionName, "minnumreviewers")
+
+                # Default to not allowing the author to review/approve
+                authorEligible = False
+
+                if config.has_option(sectionName, "authoreligible"):
+                    authorEligible = config.getboolean(sectionName, "authoreligible")
+
+                # Default to all reviewers
+                eligibleReviewers = [".+"]
+
+                if config.has_option(sectionName, "eligiblereviewers"):
+                    eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
+
+                # Default to all repositories
+                repositories = [".+"]
+
+                if config.has_option(sectionName, "repositories"):
+                    repositories = config.get(sectionName, "repositories").split()
+
+                # Get approve actions
+                approveActions = ['approve']
+
+                if config.has_option(sectionName, "approveactions"):
+                    approveActions = config.get(sectionName, "approveactions").split()
+
+                warnedInvalidAction = False
+
+                for action in approveActions:
+                    if action not in validApproveActions.keys():
+                        logging.warning(f'GRAPE: WARNING approve action "{action}" found in .grapeconfig for rule "{reviewRuleName}" is not valid!')
+                        warnedInvalidAction = True
+
+                if warnedInvalidAction:
+                    logging.warning("Valid options are")
+                    for key,desc in validApproveActions.items():
+                        logging.warning(f"  {key} : {desc}")
+
+                # Get approve inputs
+                approveInputNames = []
+
+                if config.has_option(sectionName, "approveinputs"):
+                    approveInputNames = config.get(sectionName, "approveinputs").split()
+
+                    if len(approveInputNames) != len(set(approveInputNames)):
+                        logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
+
+                approveInputs = []
+
+                for approveInputName in approveInputNames:
+                    approveInput = {
+                        'source': 'prompt',
+                        'prompt': approveInputName,
+                        'default': None,
+                        'label': approveInputName,
+                        'help': '',
+                        'examples': {},
+                        'substitutions': {},
+                        'tag': True,
+                        'description': True,
+                        'required': False,
+                        'cache': False,
+                    }
+
+                    approveInputSectionName = f"{sectionName}-approve-inputs-{approveInputName}"
+
+                    if config.has_section(approveInputSectionName):
+                        if config.has_option(approveInputSectionName, "source"):
+                            approveInput["source"] = config.get(approveInputSectionName, "source")
+                            validSources = ["prompt", "username", "commit", "tag"]
+
+                            if approveInput["source"] not in validSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "prompt"):
+                            if approveInput['source'] != "prompt":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a prompt if the source is not a prompt.')
+                                exit(1)
+
+                            approveInput['prompt'] = config.get(approveInputSectionName, "prompt")
+
+                        if config.has_option(approveInputSectionName, "default"):
+                            if approveInput['source'] != "prompt":
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a default value if the source is not a prompt.')
+                                exit(1)
+
+                            approveInput['default'] = config.get(approveInputSectionName, "default")
+
+                        if config.has_option(approveInputSectionName, "label"):
+                            approveInput['label'] = config.get(approveInputSectionName, "label")
+
+                        if config.has_option(approveInputSectionName, "help"):
+                            approveInput['help'] = config.get(approveInputSectionName, "help")
+
+                        if config.has_option(approveInputSectionName, "examples"):
+                            examples = config.get(approveInputSectionName, "examples")
+
+                            try:
+                                examples = ast.literal_eval(examples)
+                            except:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
+                                exit(1)
+
+                            if not isinstance(examples, dict):
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
+                                exit(1)
+
+                            approveInput['examples'] = examples
+
+                        if config.has_option(approveInputSectionName, "substitutions"):
+                            substitutions = config.get(approveInputSectionName, "substitutions")
+
+                            try:
+                                substitutions = ast.literal_eval(substitutions)
+                            except:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
+                                exit(1)
+
+                            if not isinstance(substitutions, dict):
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
+                                exit(1)
+
+                            temp = {}
+                            values = set()
+
+                            for key, val in substitutions.items():
+                                key_str = str(key)
+                                val_str = str(val)
+                                temp[key_str] = val_str
+
+                                for value in values:
+                                    if key_str in value:
+                                        logging.warning(f'GRAPE: WARNING: Global config section "{approveInputSectionName}" has overlapping substitutions. This may result in unexpected substitutions.')
+
+                                values.add(val_str)
+
+                            substitutions = temp
+                            approveInput['substitutions'] = substitutions
+
+                        if config.has_option(approveInputSectionName, "tag"):
+                            approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
+
+                            if approveInput['tag'] and 'tag' not in approveActions:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "tag" option (review rule "{reviewRuleName}" does not create a tag on approval).')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "description"):
+                            approveInput['description'] = config.getboolean(approveInputSectionName, "description")
+
+                            if approveInput['description'] and 'description' not in approveActions:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
+                                exit(1)
+
+                        if config.has_option(approveInputSectionName, "required"):
+                            approveInput['required'] = config.getboolean(approveInputSectionName, "required")
+
+                        if config.has_option(approveInputSectionName, "cache"):
+                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
+
+                            cacheableSources = ["prompt", "username"]
+
+                            if approveInput['cache'] and approveInput['source'] not in cacheableSources:
+                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInput["source"]}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
+                                exit(1)
+
+                        # Check if the approve input is actually used
+                        if not approveInput['description'] and not approveInput['tag']:
+                            logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
+                            continue
+
+                    approveInputs.append(approveInput)
+
+                # Controls whether publish checks are just reported or actually
+                # prevent a publish.
+                dryRun = False
+
+                if config.has_option(sectionName, "dryrun"):
+                    dryRun = config.getboolean(sectionName, "dryrun")
+
+=======
+>>>>>>> develop
                 # Add the rule
                 reviewRules[reviewRuleName] = reviewRule
 

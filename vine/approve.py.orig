@@ -215,7 +215,12 @@ class Approve(Option, WorkspaceDirHandler):
         Terminates the process with exit code 1 if the selected rule name is not
         among the active rules.
         """
-        active_rule_names = [rule_name for rule_name in all_review_rules if all_review_rules[rule_name].active]
+<<<<<<< HEAD
+        active_rule_names = [rule_name for rule_name in all_review_rules if all_review_rules[rule_name]['active']]
+=======
+        rules = review.parseReviewRules(top_repo_context['grape_config'])
+        active_rule_names = [rule_name for rule_name in rules if rules[rule_name].active]
+>>>>>>> develop
 
         rule_name = args['--rule']
 
@@ -542,7 +547,39 @@ class Approve(Option, WorkspaceDirHandler):
         return modified_repos
 
     @staticmethod
+<<<<<<< HEAD
+    def _rule_applies(repo_name, rule):
+        """
+        Determine whether a review rule applies to a repository.
+
+        Checks the given `repo_name` against each regex pattern listed in
+        `rule["repositories"]` using `re.fullmatch`.
+
+        Parameters
+        ----------
+        repo_name : str
+            Repository name to test.
+        rule : dict
+            Review rule definition containing:
+            - "repositories": list[str] of regex patterns.
+
+        Returns
+        -------
+        bool
+            True if any repository pattern fully matches `repo_name`, otherwise
+            False.
+        """
+        for repo_pattern in rule["repositories"]:
+            if re.fullmatch(repo_pattern, repo_name):
+                return True
+
+        return False
+
+    @staticmethod
     def _apply_approve_actions(rule, modified_repos, user_approve_rules):
+=======
+    def _apply_approve_actions(rule, modified_repos):
+>>>>>>> develop
         """
         Apply rule approval actions to each modified repository.
 
@@ -552,9 +589,14 @@ class Approve(Option, WorkspaceDirHandler):
         When a repository context is marked approved (`repo_context["approved"] is True`), the
         method also performs any of the following actions configured in `rule.approveActions`:
           - `"approve"`: approve the merge/pull request.
+<<<<<<< HEAD
+          - `"tag"`: create/update a tag named `{rule["name"]}_{review_request.iid()}` at the approved source commit,
+            with a tag message containing `rule["label"]` and the collected inputs for that repo.
+          - `"description"`: update the merge/pull request description.
+=======
           - `"tag"`: create/update a tag named `{rule.name}_{review_request.iid()}` at the approved source commit,
             with a tag message containing `rule.label` and the collected inputs for that repo.
-          - `"description"`: update the merge/pull request description.
+>>>>>>> develop
 
         Parameters
         ----------
