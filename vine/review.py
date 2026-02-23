@@ -1280,12 +1280,11 @@ def parseReviewers(args, reviewRuleManager):
     if arg is not None:
         if not arg:
             # The empty string means remove all reviewers
-            for reviewRuleName in reviewRules:
-                if reviewRules[reviewRuleName].active:
-                    reviewers[reviewRuleName] = {
-                        'label': reviewRules[reviewRuleName].label,
-                        'reviewers': []
-                    }
+            for reviewRuleName in reviewRuleManager.activeRuleNames:
+                reviewers[reviewRuleName] = {
+                    'label': reviewRules[reviewRuleName].label,
+                    'reviewers': []
+                }
 
             return reviewers
 

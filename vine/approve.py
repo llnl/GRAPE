@@ -164,11 +164,11 @@ class Approve(Option, WorkspaceDirHandler):
 
         """
         # Get review rules
-        reviewRuleManager = ReviewRuleManager.from_config()
+        review_rule_manager = ReviewRuleManager.from_config()
 
         for request in repo.pullRequests(target_branch=target_branch):
             descr = request.description()
-            description_model = PullRequestDescriptionModel.from_text(descr, reviewRuleManager)
+            description_model = PullRequestDescriptionModel.from_text(descr, review_rule_manager)
 
             rules = []
 
@@ -212,9 +212,8 @@ class Approve(Option, WorkspaceDirHandler):
         among the active rules.
         """
         config = top_repo_context['grape_config']
-        reviewRuleManager = ReviewRuleManager.from_config(config)
-        rules = reviewRuleManager.reviewRules
-        active_rule_names = [rule_name for rule_name in rules if rules[rule_name].active]
+        review_rule_manager = ReviewRuleManager.from_config(config)
+        active_rule_names = review_rule_manager.activeRuleNames
 
         rule_name = args['--rule']
 
@@ -557,10 +556,10 @@ class Approve(Option, WorkspaceDirHandler):
 
             # Get review rule manager
             config = top_repo_context['grape_config']
-            reviewRuleManager = ReviewRuleManager.from_config(config)
+            review_rule_manager = ReviewRuleManager.from_config(config)
 
             # Get the data from the pull request description
-            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, review_rule_manager)
 
             # Get existing approvals
             reviewRuleModels = descriptionModel.reviewRules

@@ -441,6 +441,8 @@ class ReviewRuleManager:
         self._reviewRules = reviewRules
         self._reviewRuleMap = reviewRuleMap
         self._defaultReviewRuleName = defaultReviewRuleName
+        # Pre-compute list of active rule names
+        self._activeRuleNames = [name for name, rule in reviewRules.items() if rule.active]
 
     @property
     def reviewRules(self) -> Dict[str, ReviewRule]:
@@ -456,6 +458,11 @@ class ReviewRuleManager:
     def defaultReviewRuleName(self) -> str:
         """Get the name of the default review rule."""
         return self._defaultReviewRuleName
+
+    @property
+    def activeRuleNames(self) -> List[str]:
+        """Get the list of active review rule names."""
+        return self._activeRuleNames
 
     def get_rule(self, name: str) -> Optional[ReviewRule]:
         """
