@@ -722,7 +722,7 @@ class Review(Option, WorkspaceDirHandler):
         # Get review rules
         reviewRuleManager = ReviewRuleManager.from_config()
         reviewRules = reviewRuleManager.reviewRules
-        defaultReviewRule = reviewRuleManager.get_rule('')
+        defaultReviewRule = reviewRuleManager.get_default_rule()
 
         # determine pull request description
         descr = self.parseDescriptionArgs(args)

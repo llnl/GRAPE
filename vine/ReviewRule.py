@@ -464,6 +464,14 @@ class ReviewRuleManager:
         """Get the list of active review rule names."""
         return self._activeRuleNames
 
+    def get_default_rule(self) -> Optional[ReviewRule]:
+        """
+        Get the default review rule.
+
+        :return: ReviewRule instance for the default rule, or None if not found
+        """
+        return self._reviewRules.get(self._defaultReviewRuleName)
+
     def get_rule(self, name: str) -> Optional[ReviewRule]:
         """
         Get a review rule by name.
