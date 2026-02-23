@@ -765,8 +765,8 @@ class Review(Option, WorkspaceDirHandler):
 
         savedArgs = {'--reviewers': savedReviewers.strip()}
 
-        reviewers.update(parseReviewers(savedArgs, reviewRules, reviewRuleManager.reviewRuleMap, defaultReviewRule.name))
-        reviewers.update(parseReviewers(args, reviewRules, reviewRuleManager.reviewRuleMap, defaultReviewRule.name))
+        reviewers.update(parseReviewers(savedArgs, reviewRuleManager))
+        reviewers.update(parseReviewers(args, reviewRuleManager))
         self.validateReviewers(reviewers, reviewRules)
 
         # Update review rule reviewers
@@ -1247,7 +1247,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
     return request
 
 
-def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
+def parseReviewers(args, reviewRuleManager):
     '''
     Extracts reviewer groups from the --reviewers argument.
     The argument should consist of whitespace separated groups, where
@@ -1265,13 +1265,14 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
     along with username3 will be assigned to rule2.
 
     :param args: A dictionary containing arguments to a prior or current GRAPE call
-    :param reviewRules: A dictionary containing review rules
-    :param reviewRuleMap: A dictionary mapping old rule names (str) to new rule names (str).
-    :param defaultReviewRuleName A string containing the name of the default rule
+    :param reviewRuleManager: ReviewRuleManager instance containing review rules configuration
     :return: A dictionary where each key is a review rule name and the value is a dictionary containing a label and a unique list of reviewers.
     '''
 
     reviewers = {}
+    reviewRules = reviewRuleManager.reviewRules
+    reviewRuleMap = reviewRuleManager.reviewRuleMap
+    defaultReviewRuleName = reviewRuleManager.defaultReviewRuleName
 
     # Parse reviewers from saved arguments
     arg = args.get("--reviewers")
