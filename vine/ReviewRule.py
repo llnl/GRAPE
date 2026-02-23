@@ -476,13 +476,39 @@ class ReviewRuleManager:
 
         return self._reviewRules.get(name)
 
+    @staticmethod
+    def get_default_grape_rule(active: bool) -> ReviewRule:
+        """
+        Create the default GRAPE review rule.
+
+        The GRAPE review rule is used when no user-specified rules are found in the
+        global config. It will be active only if the user has not specified any rules.
+
+        :param active: Whether or not the GRAPE review rule is active
+        :return: ReviewRule object representing the default GRAPE rule
+        """
+        # Import here to avoid circular dependency
+        from vine import Gitlab
+
+        return ReviewRule(
+            name='grape',
+            active=active,
+            label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+            minNumReviewers=1,
+            authorEligible=False,
+            eligibleReviewers=['.+'],
+            repositories=['.+'],
+            approveActions=['approve'],
+            approveInputs=[],
+            dryRun=False
+        )
+
     @classmethod
-    def from_config(cls, config=None, grapeReviewRuleFactory=None) -> 'ReviewRuleManager':
+    def from_config(cls, config=None) -> 'ReviewRuleManager':
         """
         Create a ReviewRuleManager from a config file.
 
         :param config: ConfigParser object containing the review configuration (optional)
-        :param grapeReviewRuleFactory: Function to create the GRAPE review rule (optional)
         :return: ReviewRuleManager instance created from the config
         """
         # Import here to avoid circular dependency
@@ -530,22 +556,8 @@ class ReviewRuleManager:
         else:
             grapeReviewRuleActive = False
 
-        # Use the factory function if provided, otherwise create a default GRAPE rule
-        if grapeReviewRuleFactory:
-            reviewRules.update(grapeReviewRuleFactory(grapeReviewRuleActive))
-        else:
-            reviewRules['grape'] = ReviewRule(
-                name='grape',
-                active=grapeReviewRuleActive,
-                label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-                minNumReviewers=1,
-                authorEligible=False,
-                eligibleReviewers=['.+'],
-                repositories=['.+'],
-                approveActions=['approve'],
-                approveInputs=[],
-                dryRun=False
-            )
+        # Create and add the default GRAPE review rule
+        reviewRules['grape'] = cls.get_default_grape_rule(grapeReviewRuleActive)
 
         if numActiveRules == 0:
             logging.error(f'GRAPE: ERROR: At least one review rule must be active.')

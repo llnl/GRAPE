@@ -1247,29 +1247,6 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
     return request
 
 
-def getGrapeReviewRule(active):
-    """
-    Retrieves the GRAPE review rule for merge/pull requests. The GRAPE
-    review rule is used when no user specified rules are found in the
-    global config.
-
-    :param active: Whether or not the GRAPE review rule is active.
-    :return: A dictionary where the key is 'grape' and the value is a ReviewRule object.
-    """
-    return {'grape': ReviewRule(
-        name='grape',
-        active=active,
-        label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-        minNumReviewers=1,
-        authorEligible=False,
-        eligibleReviewers=['.+'],
-        repositories=['.+'],
-        approveActions=['approve'],
-        approveInputs=[],
-        dryRun=False
-    )}
-
-
 def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
     '''
     Extracts reviewer groups from the --reviewers argument.
