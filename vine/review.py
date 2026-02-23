@@ -24,7 +24,7 @@ from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
-from vine.ReviewRule import ReviewRule, ApproveInput
+from vine.ReviewRule import ReviewRuleManager
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
