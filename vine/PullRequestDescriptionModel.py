@@ -143,7 +143,7 @@ class PullRequestDescriptionModel:
                             # TODO: error and exit
                             pass
 
-                        ruleLabel = reviewRules[ruleName]['label']
+                        ruleLabel = reviewRules[ruleName].label
 
                         reviewers = set(reviewers.split(','))
 

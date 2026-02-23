@@ -24,6 +24,7 @@ from vine import vine_logging
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
+from vine.ReviewRule import ReviewRule, ApproveInput
 
 # Prepare Feature Branch for review
 class Review(Option, WorkspaceDirHandler):
@@ -164,10 +165,7 @@ class Review(Option, WorkspaceDirHandler):
                 - 'reviewers': A list of reviewers assigned to that rule.
 
         reviewRules : dict
-            A dictionary where each key is a review rule name and each value is another dictionary
-            containing:
-                - 'eligibleReviewers': A list of patterns (str) representing eligible reviewers for the rule.
-                - 'minNumReviewers': An integer specifying the minimum number of reviewers required for the rule.
+            A dictionary where each key is a review rule name and each value is a ReviewRule
 
         Returns:
         -------
@@ -181,7 +179,7 @@ class Review(Option, WorkspaceDirHandler):
         """
         for reviewRuleName in reviewers:
             # Check the given rule name is a review rule
-            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+            if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName].active:
                 logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                 exit(1)
 
@@ -190,23 +188,15 @@ class Review(Option, WorkspaceDirHandler):
 
             # Check that the reviewers are allowed to approve this rule
             reviewRuleReviewers = reviewGroup['reviewers']
-            eligibleReviewers = reviewRule["eligibleReviewers"]
 
             for reviewRuleReviewer in reviewRuleReviewers:
-                validReviewer = False
-
-                for eligibleReviewer in eligibleReviewers:
-                    if re.fullmatch(eligibleReviewer, reviewRuleReviewer):
-                        validReviewer = True
-                        break
-
-                if not validReviewer:
+                if not reviewRule.matches_reviewer(reviewRuleReviewer):
                     logging.error(f'GRAPE: ERROR: "{reviewRuleReviewer}" is not an eligible reviewer for review rule "{reviewRuleName}".')
                     exit(1)
 
             # Check if the minimum number of reviewers has been met
             numReviewers = len(reviewRuleReviewers)
-            minNumReviewers = reviewRule["minNumReviewers"]
+            minNumReviewers = reviewRule.minNumReviewers
 
             if numReviewers < minNumReviewers:
                 logging.warning(f'GRAPE: WARNING: {minNumReviewers} reviewer(s) required for review rule "{reviewRuleName}", but only {numReviewers} reviewer(s) given.')
@@ -332,12 +322,9 @@ class Review(Option, WorkspaceDirHandler):
 
         for reviewRuleName in allReviewers:
             reviewRule = reviewRules[reviewRuleName]
-            reviewRuleRepositories = reviewRule["repositories"]
 
-            for reviewRuleRepository in reviewRuleRepositories:
-                if re.fullmatch(reviewRuleRepository, repoName):
-                    applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
-                    break
+            if reviewRule.matches_repository(repoName):
+                applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
 
         return applicableReviewers
 
@@ -750,7 +737,7 @@ class Review(Option, WorkspaceDirHandler):
 
         if existingOuterLevelRequest and existingOuterLevelRequest.reviewers():
             reviewers[defaultReviewRuleName] = {
-                'label': reviewRules[defaultReviewRuleName]['label'],
+                'label': reviewRules[defaultReviewRuleName].label,
                 'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
             }
 
@@ -773,8 +760,8 @@ class Review(Option, WorkspaceDirHandler):
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
 
-                if reviewRule['label'] == reviewRuleLabel:
-                    savedReviewers += f' {reviewRule["name"]}:{temp}'
+                if reviewRule.label == reviewRuleLabel:
+                    savedReviewers += f' {reviewRule.name}:{temp}'
 
         savedArgs = {'--reviewers': savedReviewers.strip()}
 
@@ -809,9 +796,9 @@ class Review(Option, WorkspaceDirHandler):
         # outdated approval rules.
         if reviewers:
             for reviewRuleName in reviewRules:
-                if not reviewRules[reviewRuleName]['active']:
+                if not reviewRules[reviewRuleName].active:
                     reviewers[reviewRuleName] = {
-                        'label': reviewRules[reviewRuleName]['label'],
+                        'label': reviewRules[reviewRuleName].label,
                         'reviewers': []
                     }
 
@@ -1267,25 +1254,27 @@ def getGrapeReviewRule(active):
     global config.
 
     :param active: Whether or not the GRAPE review rule is active.
-    :return: A dictionary containing the GRAPE review rule.
+    :return: A dictionary where the key is 'grape' and the value is a ReviewRule object.
     """
-    return {'grape': {'name': 'grape',
-                      'active': active,
-                      'label': Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
-                      'minNumReviewers': 1,
-                      'authorEligible': False,
-                      'eligibleReviewers': ['.+'],
-                      'repositories': ['.+'],
-                      'approveActions': ['approve'],
-                      'approveInputs': [],
-                      'dryRun': False}}
+    return {'grape': ReviewRule(
+        name='grape',
+        active=active,
+        label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+        minNumReviewers=1,
+        authorEligible=False,
+        eligibleReviewers=['.+'],
+        repositories=['.+'],
+        approveActions=['approve'],
+        approveInputs=[],
+        dryRun=False
+    )}
 
 
 def parseReviewRules(config=None):
     """
     Parses the global GRAPE config file and returns a dictionary of review rules.
 
-    :return: A dictionary where each key is a review rule name and the value is a dictionary representing the rule
+    :return: A dictionary where each key is a review rule name and the value is a ReviewRule object
     """
     reviewRules = {}
 
@@ -1311,216 +1300,14 @@ def parseReviewRules(config=None):
                     logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
                     exit(1)
 
-                sectionName = f"{reviewSectionName}-{reviewRuleName}"
+                # Use ReviewRule.from_config to parse the rule
+                reviewRule = ReviewRule.from_config(config, reviewRuleName, reservedReviewRuleLabels)
 
-                if not config.has_section(sectionName):
-                    logging.error(f'GRAPE: ERROR: Global config section "{sectionName}" is missing.')
-                    exit(1)
-
-                # Default to active
-                active = True
-
-                if config.has_option(sectionName, "active"):
-                    active = config.getboolean(sectionName, "active")
-
-                if active:
+                if reviewRule.active:
                     numActiveRules += 1
 
-                # Provide a reasonable default for the rule label
-                label = f"GRAPE: {reviewRuleName} review"
-
-                if config.has_option(sectionName, "label"):
-                    label = config.get(sectionName, "label")
-
-                if label in reservedReviewRuleLabels:
-                    logging.error(f'GRAPE: ERROR: The review rule label "{label}" is reserved by GRAPE.')
-                    exit(1)
-
-                # Default to one reviewer
-                minNumReviewers = 1
-
-                if config.has_option(sectionName, "minnumreviewers"):
-                    minNumReviewers = config.getint(sectionName, "minnumreviewers")
-
-                # Default to not allowing the author to review/approve
-                authorEligible = False
-
-                if config.has_option(sectionName, "authoreligible"):
-                    authorEligible = config.getboolean(sectionName, "authoreligible")
-
-                # Default to all reviewers
-                eligibleReviewers = [".+"]
-
-                if config.has_option(sectionName, "eligiblereviewers"):
-                    eligibleReviewers = config.get(sectionName, "eligiblereviewers").split()
-
-                # Default to all repositories
-                repositories = [".+"]
-
-                if config.has_option(sectionName, "repositories"):
-                    repositories = config.get(sectionName, "repositories").split()
-
-                # Get approve actions
-                approveActions = ['approve']
-
-                if config.has_option(sectionName, "approveactions"):
-                    approveActions = config.get(sectionName, "approveactions").split()
-
-                # Get approve inputs
-                approveInputNames = []
-
-                if config.has_option(sectionName, "approveinputs"):
-                    approveInputNames = config.get(sectionName, "approveinputs").split()
-
-                    if len(approveInputNames) != len(set(approveInputNames)):
-                        logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
-
-                approveInputs = []
-
-                for approveInputName in approveInputNames:
-                    approveInput = {
-                        'source': 'prompt',
-                        'prompt': approveInputName,
-                        'default': None,
-                        'label': approveInputName,
-                        'help': '',
-                        'examples': {},
-                        'substitutions': {},
-                        'tag': True,
-                        'description': True,
-                        'required': False,
-                        'cache': False,
-                    }
-
-                    approveInputSectionName = f"{sectionName}-approve-inputs-{approveInputName}"
-
-                    if config.has_section(approveInputSectionName):
-                        if config.has_option(approveInputSectionName, "source"):
-                            approveInput["source"] = config.get(approveInputSectionName, "source")
-                            validSources = ["prompt", "username", "commit", "tag"]
-
-                            if approveInput["source"] not in validSources:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInput["source"]}" for "source". Supported values include {", ".join(validSources)}".')
-                                exit(1)
-
-                        if config.has_option(approveInputSectionName, "prompt"):
-                            if approveInput['source'] != "prompt":
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a prompt if the source is not a prompt.')
-                                exit(1)
-
-                            approveInput['prompt'] = config.get(approveInputSectionName, "prompt")
-
-                        if config.has_option(approveInputSectionName, "default"):
-                            if approveInput['source'] != "prompt":
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a default value if the source is not a prompt.')
-                                exit(1)
-
-                            approveInput['default'] = config.get(approveInputSectionName, "default")
-
-                        if config.has_option(approveInputSectionName, "label"):
-                            approveInput['label'] = config.get(approveInputSectionName, "label")
-
-                        if config.has_option(approveInputSectionName, "help"):
-                            approveInput['help'] = config.get(approveInputSectionName, "help")
-
-                        if config.has_option(approveInputSectionName, "examples"):
-                            examples = config.get(approveInputSectionName, "examples")
-
-                            try:
-                                examples = ast.literal_eval(examples)
-                            except:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
-                                exit(1)
-
-                            if not isinstance(examples, dict):
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
-                                exit(1)
-
-                            approveInput['examples'] = examples
-
-                        if config.has_option(approveInputSectionName, "substitutions"):
-                            substitutions = config.get(approveInputSectionName, "substitutions")
-
-                            try:
-                                substitutions = ast.literal_eval(substitutions)
-                            except:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
-                                exit(1)
-
-                            if not isinstance(substitutions, dict):
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
-                                exit(1)
-
-                            temp = {}
-                            values = set()
-
-                            for key, val in substitutions.items():
-                                key_str = str(key)
-                                val_str = str(val)
-                                temp[key_str] = val_str
-
-                                for value in values:
-                                    if key_str in value:
-                                        logging.warning(f'GRAPE: WARNING: Global config section "{approveInputSectionName}" has overlapping substitutions. This may result in unexpected substitutions.')
-
-                                values.add(val_str)
-
-                            substitutions = temp
-                            approveInput['substitutions'] = substitutions
-
-                        if config.has_option(approveInputSectionName, "tag"):
-                            approveInput['tag'] = config.getboolean(approveInputSectionName, "tag")
-
-                            if approveInput['tag'] and 'tag' not in approveActions:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "tag" option (review rule "{reviewRuleName}" does not create a tag on approval).')
-                                exit(1)
-
-                        if config.has_option(approveInputSectionName, "description"):
-                            approveInput['description'] = config.getboolean(approveInputSectionName, "description")
-
-                            if approveInput['description'] and 'description' not in approveActions:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
-                                exit(1)
-
-                        if config.has_option(approveInputSectionName, "required"):
-                            approveInput['required'] = config.getboolean(approveInputSectionName, "required")
-
-                        if config.has_option(approveInputSectionName, "cache"):
-                            approveInput['cache'] = config.getboolean(approveInputSectionName, "cache")
-
-                            cacheableSources = ["prompt", "username"]
-
-                            if approveInput['cache'] and approveInput['source'] not in cacheableSources:
-                                logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInput["source"]}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
-                                exit(1)
-
-                        # Check if the approve input is actually used
-                        if not approveInput['description'] and not approveInput['tag']:
-                            logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
-                            continue
-
-                    approveInputs.append(approveInput)
-
-                # Controls whether publish checks are just reported or actually
-                # prevent a publish.
-                dryRun = False
-
-                if config.has_option(sectionName, "dryrun"):
-                    dryRun = config.getboolean(sectionName, "dryrun")
-
                 # Add the rule
-                reviewRules[reviewRuleName] = {
-                    "name": reviewRuleName,
-                    "active": active,
-                    "label": label,
-                    "minNumReviewers": minNumReviewers,
-                    "authorEligible": authorEligible,
-                    "eligibleReviewers": eligibleReviewers,
-                    "repositories": repositories,
-                    "approveActions": approveActions,
-                    "approveInputs": approveInputs,
-                    "dryRun": dryRun
-                }
+                reviewRules[reviewRuleName] = reviewRule
 
     # Add the GRAPE review rule. It will be active only if the user has
     # not specified any rules.
@@ -1601,13 +1388,13 @@ def parseReviewRuleMap(reviewRules):
 
                 oldRule = tokens[0]
 
-                if oldRule not in reviewRules or reviewRules[oldRule]['active']:
+                if oldRule not in reviewRules or reviewRules[oldRule].active:
                     logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
                     exit(1)
 
                 newRule = tokens[1]
 
-                if newRule not in reviewRules or not reviewRules[newRule]['active']:
+                if newRule not in reviewRules or not reviewRules[newRule].active:
                     logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
                     exit(1)
 
@@ -1640,7 +1427,7 @@ def parseDefaultReviewRuleName(reviewRules):
             defaultReviewRuleName = config.get(reviewSectionName, "defaultrule")
 
             # Check that the default matches one of the active review rule names
-            if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName]['active']:
+            if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName].active:
                 logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
                 exit(1)
 
@@ -1649,12 +1436,12 @@ def parseDefaultReviewRuleName(reviewRules):
         numActiveReviewRules = 0
 
         for reviewRuleName in reviewRules:
-            if reviewRules[reviewRuleName]['active']:
+            if reviewRules[reviewRuleName].active:
                 numActiveReviewRules += 1
 
         if numActiveReviewRules == 1:
             for reviewRuleName in reviewRules:
-                if reviewRules[reviewRuleName]['active']:
+                if reviewRules[reviewRuleName].active:
                     defaultReviewRuleName = reviewRuleName
                     break
         else:
@@ -1697,9 +1484,9 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
         if not arg:
             # The empty string means remove all reviewers
             for reviewRuleName in reviewRules:
-                if reviewRules[reviewRuleName]['active']:
+                if reviewRules[reviewRuleName].active:
                     reviewers[reviewRuleName] = {
-                        'label': reviewRules[reviewRuleName]['label'],
+                        'label': reviewRules[reviewRuleName].label,
                         'reviewers': []
                     }
 
@@ -1728,7 +1515,7 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
                     reviewRuleName = reviewRuleMap[reviewRuleName]
 
                 # Check the given rule name is a review rule
-                if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName]['active']:
+                if reviewRuleName not in reviewRules or not reviewRules[reviewRuleName].active:
                     logging.error(f'GRAPE: ERROR: "{reviewRuleName}" is not an active review rule.')
                     exit(1)
 
@@ -1754,7 +1541,7 @@ def parseReviewers(args, reviewRules, reviewRuleMap, defaultReviewRuleName):
                 reviewRuleReviewers = list(uniqueReviewRuleReviewers)
 
             reviewers[reviewRuleName] = {
-                'label': reviewRule['label'],
+                'label': reviewRule.label,
                 'reviewers': reviewRuleReviewers
             }
 
