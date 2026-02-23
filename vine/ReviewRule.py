@@ -298,7 +298,8 @@ class ReviewRule:
 
         :param config: ConfigParser object containing the review rule configuration
         :param reviewRuleName: Name of the review rule to parse
-        :param reservedReviewRuleLabels: List of reserved labels that cannot be used (optional)
+        :param reservedReviewRuleLabels: List of reserved labels that cannot be used (optional).
+                                        Should typically be obtained from ReviewRuleManager.get_reserved_labels().
         :return: ReviewRule instance created from the config
         """
         if reservedReviewRuleLabels is None:
@@ -503,6 +504,20 @@ class ReviewRuleManager:
             dryRun=False
         )
 
+    @staticmethod
+    def get_reserved_labels() -> List[str]:
+        """
+        Get the list of reserved review rule labels.
+
+        These labels are reserved by GRAPE and cannot be used for custom review rules.
+
+        :return: List of reserved label strings
+        """
+        # Import here to avoid circular dependency
+        from vine import Gitlab
+
+        return [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
     @classmethod
     def from_config(cls, config=None) -> 'ReviewRuleManager':
         """
@@ -511,9 +526,6 @@ class ReviewRuleManager:
         :param config: ConfigParser object containing the review configuration (optional)
         :return: ReviewRuleManager instance created from the config
         """
-        # Import here to avoid circular dependency
-        from vine import Gitlab
-
         if config is None:
             from vine import config_parser_global
             config = config_parser_global.grapeConfig()
@@ -522,7 +534,7 @@ class ReviewRuleManager:
 
         # Names reserved by grape
         reservedReviewRuleNames = ['grape']
-        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+        reservedReviewRuleLabels = cls.get_reserved_labels()
 
         # Count the number of active review rules
         numActiveRules = 0
