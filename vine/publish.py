@@ -1379,6 +1379,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            self.progress["MR_tag"] = tag
            pr_id = tag.split("MR_")[1]
            pull_request = self.repo.pullRequests(id=pr_id)[0]
+           # TODO: Determine if full description or just user portion
+           #       should be included (e.g. exclude grape portion)
            escapedCommitMsg = pull_request.description().splitlines(True)+['\n']
            if len(tags) > 1:
               escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag} (tags: {tags}, last version: {last_version}, branch: {args['--topic']}).\n")
@@ -1448,6 +1450,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Retrieving pull request description for use as commit message...")
             pullRequest = self.openPullRequest()
             if pullRequest:
+                # TODO: Determine if full description or just user portion
+                #       should be included (e.g. exclude grape portion)
                 commitMsg = pullRequest.description().splitlines(True)+['\n']
             else:
                 commitMsg = ""
@@ -1468,6 +1472,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                   haveGrapeGeneratedContent = True
                   break
 
+               # This check is for legacy descriptions
                if line.startswith(review.MRLinkText()):
                   # Skip links to other merge requests
                   haveGrapeGeneratedContent = True
