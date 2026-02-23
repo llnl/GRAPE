@@ -767,9 +767,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
 
         # Get review rules
+        reviewRuleManager = ReviewRuleManager.from_config()
         reviewRules = review.parseReviewRules()
-        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
 
         verified = True
 
@@ -841,7 +840,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # the minimum number of required reviewers (this info is stored
             # by grape in the merge/pull request description).
             description = pullRequest.description()
-            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRules, reviewRuleMap, defaultReviewRuleName)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
 
             # Omit non-approvers from the unfinished reviewers reported
             non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")

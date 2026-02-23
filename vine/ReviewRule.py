@@ -420,3 +420,193 @@ class ReviewRule:
 
         return False
 
+
+class ReviewRuleManager:
+    """
+    Manages the collection of review rules, rule mappings, and default rule selection.
+    """
+
+    def __init__(self,
+                 reviewRules: Dict[str, ReviewRule],
+                 reviewRuleMap: Dict[str, str],
+                 defaultReviewRuleName: str):
+        """
+        Initialize a ReviewRuleManager.
+
+        :param reviewRules: Dictionary mapping review rule names to ReviewRule objects
+        :param reviewRuleMap: Dictionary mapping old rule names to new rule names
+        :param defaultReviewRuleName: Name of the default review rule
+        """
+        self._reviewRules = reviewRules
+        self._reviewRuleMap = reviewRuleMap
+        self._defaultReviewRuleName = defaultReviewRuleName
+
+    @property
+    def reviewRules(self) -> Dict[str, ReviewRule]:
+        """Get the dictionary of review rules."""
+        return self._reviewRules
+
+    @property
+    def reviewRuleMap(self) -> Dict[str, str]:
+        """Get the dictionary mapping old rule names to new rule names."""
+        return self._reviewRuleMap
+
+    @property
+    def defaultReviewRuleName(self) -> str:
+        """Get the name of the default review rule."""
+        return self._defaultReviewRuleName
+
+    def get_rule(self, name: str) -> Optional[ReviewRule]:
+        """
+        Get a review rule by name.
+
+        If the rule name is an empty string, returns the default rule.
+        If the rule name is in the rule map, it will be resolved to the mapped name.
+
+        :param name: Name of the review rule to retrieve (empty string returns default rule)
+        :return: ReviewRule instance if found, None otherwise
+        """
+        # Use default rule name if name is empty
+        if not name:
+            name = self._defaultReviewRuleName
+
+        # Check if the name is mapped to a different name
+        if name in self._reviewRuleMap:
+            name = self._reviewRuleMap[name]
+
+        return self._reviewRules.get(name)
+
+    @classmethod
+    def from_config(cls, config=None, grapeReviewRuleFactory=None) -> 'ReviewRuleManager':
+        """
+        Create a ReviewRuleManager from a config file.
+
+        :param config: ConfigParser object containing the review configuration (optional)
+        :param grapeReviewRuleFactory: Function to create the GRAPE review rule (optional)
+        :return: ReviewRuleManager instance created from the config
+        """
+        # Import here to avoid circular dependency
+        from vine import Gitlab
+
+        if config is None:
+            from vine import config_parser_global
+            config = config_parser_global.grapeConfig()
+
+        reviewRules = {}
+
+        # Names reserved by grape
+        reservedReviewRuleNames = ['grape']
+        reservedReviewRuleLabels = [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+
+        # Count the number of active review rules
+        numActiveRules = 0
+
+        # Extract the rule names from the [review] section
+        reviewSectionName = "review"
+
+        if config.has_section(reviewSectionName):
+            if config.has_option(reviewSectionName, "rules"):
+                reviewRuleNames = config.get(reviewSectionName, "rules").split()
+
+                for reviewRuleName in reviewRuleNames:
+                    if reviewRuleName in reservedReviewRuleNames:
+                        logging.error(f'GRAPE: ERROR: The review rule name "{reviewRuleName}" is reserved by GRAPE.')
+                        exit(1)
+
+                    # Use ReviewRule.from_config to parse the rule
+                    reviewRule = ReviewRule.from_config(config, reviewRuleName, reservedReviewRuleLabels)
+
+                    if reviewRule.active:
+                        numActiveRules += 1
+
+                    # Add the rule
+                    reviewRules[reviewRuleName] = reviewRule
+
+        # Add the GRAPE review rule. It will be active only if the user has
+        # not specified any rules.
+        if not reviewRules:
+            grapeReviewRuleActive = True
+            numActiveRules += 1
+        else:
+            grapeReviewRuleActive = False
+
+        # Use the factory function if provided, otherwise create a default GRAPE rule
+        if grapeReviewRuleFactory:
+            reviewRules.update(grapeReviewRuleFactory(grapeReviewRuleActive))
+        else:
+            reviewRules['grape'] = ReviewRule(
+                name='grape',
+                active=grapeReviewRuleActive,
+                label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+                minNumReviewers=1,
+                authorEligible=False,
+                eligibleReviewers=['.+'],
+                repositories=['.+'],
+                approveActions=['approve'],
+                approveInputs=[],
+                dryRun=False
+            )
+
+        if numActiveRules == 0:
+            logging.error(f'GRAPE: ERROR: At least one review rule must be active.')
+            exit(1)
+
+        # Parse the review rule map
+        reviewRuleMap = {}
+
+        if config.has_section(reviewSectionName):
+            if config.has_option(reviewSectionName, 'rulemap'):
+                mappings = config.get(reviewSectionName, 'rulemap')
+
+                for mapping in mappings.split():
+                    tokens = mapping.split(':')
+
+                    if len(tokens) != 2:
+                        logging.error(f'GRAPE: ERROR: The rule map should consist of whitespace separated mappings, where each mapping is of the form "oldrule:newrule".')
+                        exit(1)
+
+                    oldRule = tokens[0]
+
+                    if oldRule not in reviewRules or reviewRules[oldRule].active:
+                        logging.error(f'GRAPE: ERROR: "{oldRule}" in "{mapping}" does not specify an inactive review rule.')
+                        exit(1)
+
+                    newRule = tokens[1]
+
+                    if newRule not in reviewRules or not reviewRules[newRule].active:
+                        logging.error(f'GRAPE: ERROR: "{newRule}" in "{mapping}" does not specify an active review rule.')
+                        exit(1)
+
+                    reviewRuleMap[oldRule] = newRule
+
+        # Parse the default review rule name
+        defaultReviewRuleName = ''
+
+        if config.has_section(reviewSectionName):
+            if config.has_option(reviewSectionName, "defaultrule"):
+                defaultReviewRuleName = config.get(reviewSectionName, "defaultrule")
+
+                # Check that the default matches one of the active review rule names
+                if defaultReviewRuleName not in reviewRules or not reviewRules[defaultReviewRuleName].active:
+                    logging.error(f'GRAPE: ERROR: The default review rule name "{defaultReviewRuleName}" does not specify an active review rule.')
+                    exit(1)
+
+        # If there is only one active review rule, use that as the default
+        if not defaultReviewRuleName:
+            numActiveReviewRules = 0
+
+            for reviewRuleName in reviewRules:
+                if reviewRules[reviewRuleName].active:
+                    numActiveReviewRules += 1
+
+            if numActiveReviewRules == 1:
+                for reviewRuleName in reviewRules:
+                    if reviewRules[reviewRuleName].active:
+                        defaultReviewRuleName = reviewRuleName
+                        break
+            else:
+                logging.error(f'GRAPE: ERROR: "defaultrule" in section "{reviewSectionName}" in the global config must be specified.')
+                exit(1)
+
+        return cls(reviewRules, reviewRuleMap, defaultReviewRuleName)
+

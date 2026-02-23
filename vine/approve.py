@@ -13,6 +13,7 @@ from vine import submodules
 from vine import vine_subprocess
 from vine.option import Option
 from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
+from vine.ReviewRule import ReviewRuleManager
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 from vine import utility
@@ -163,13 +164,11 @@ class Approve(Option, WorkspaceDirHandler):
 
         """
         # Get review rules
-        reviewRules = review.parseReviewRules()
-        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
+        reviewRuleManager = ReviewRuleManager.from_config()
 
         for request in repo.pullRequests(target_branch=target_branch):
             descr = request.description()
-            description_model = PullRequestDescriptionModel.from_text(descr, reviewRules, reviewRuleMap, defaultReviewRuleName)
+            description_model = PullRequestDescriptionModel.from_text(descr, reviewRuleManager)
 
             rules = []
 
@@ -212,7 +211,9 @@ class Approve(Option, WorkspaceDirHandler):
         Terminates the process with exit code 1 if the selected rule name is not
         among the active rules.
         """
-        rules = review.parseReviewRules(top_repo_context['grape_config'])
+        config = top_repo_context['grape_config']
+        reviewRuleManager = ReviewRuleManager.from_config(config)
+        rules = reviewRuleManager.reviewRules
         active_rule_names = [rule_name for rule_name in rules if rules[rule_name].active]
 
         rule_name = args['--rule']
@@ -224,7 +225,7 @@ class Approve(Option, WorkspaceDirHandler):
             logging.error(f'GRAPE: ERROR: Review rule "{rule_name}" is invalid. Active rules: {", ".join(active_rule_names)}.')
             exit(1)
 
-        return rules[rule_name]
+        return review_rule_manager.get_rule(rule_name)
 
     @staticmethod
     def _approve(user_name, git_host, top_repo_context, rule):
@@ -262,7 +263,7 @@ class Approve(Option, WorkspaceDirHandler):
         Approve._validate_approver(user_name, rule)
         modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
         approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
-        Approve._apply_approve_actions(rule, approve_input)
+        Approve._apply_approve_actions(rule, approve_input, top_repo_context)
 
     @staticmethod
     def _validate_approver(user_name, rule):
@@ -510,7 +511,7 @@ class Approve(Option, WorkspaceDirHandler):
         return modified_repos
 
     @staticmethod
-    def _apply_approve_actions(rule, modified_repos):
+    def _apply_approve_actions(rule, modified_repos, top_repo_context):
         """
         Apply rule approval actions to each modified repository.
 
@@ -554,13 +555,12 @@ class Approve(Option, WorkspaceDirHandler):
                 description = review_request.description()
                 break
 
-            # Get review rules
-            reviewRules = review.parseReviewRules()
-            reviewRuleMap = review.parseReviewRuleMap(reviewRules)
-            defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
+            # Get review rule manager
+            config = top_repo_context['grape_config']
+            reviewRuleManager = ReviewRuleManager.from_config(config)
 
             # Get the data from the pull request description
-            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRules, reviewRuleMap, defaultReviewRuleName)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
 
             # Get existing approvals
             reviewRuleModels = descriptionModel.reviewRules
