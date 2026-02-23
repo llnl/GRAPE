@@ -65,9 +65,9 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
         if home_config.has_section(Option.SECTION_SERVICES) and home_config.has_option(
             Option.SECTION_SERVICES, service.lower()
         ):
-        service_user_name = home_config.get(Option.SECTION_SERVICES, service.lower())
-        logging.info(f"user name for {service} is {service_user_name}, loaded from $HOME/.grapeconfig")
-        return service_user_name
+            service_user_name = home_config.get(Option.SECTION_SERVICES, service.lower())
+            logging.info(f"user name for {service} is {service_user_name}, loaded from $HOME/.grapeconfig")
+            return service_user_name
     except Exception:
         pass
 
