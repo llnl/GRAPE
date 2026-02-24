@@ -559,10 +559,10 @@ class Approve(Option, WorkspaceDirHandler):
             review_rule_manager = ReviewRuleManager.from_config(config)
 
             # Get the data from the pull request description
-            descriptionModel = PullRequestDescriptionModel.from_text(description, review_rule_manager)
+            description_model = PullRequestDescriptionModel.from_text(description, review_rule_manager)
 
             # Get existing approvals
-            reviewRuleModels = descriptionModel.reviewRules
+            reviewRuleModels = description_model.reviewRules
 
             if rule.label not in reviewRuleModels:
                 reviewRuleModels[rule.label] = {
@@ -584,7 +584,7 @@ class Approve(Option, WorkspaceDirHandler):
                         if repo_input['description']:
                             approvals[repo_name][repo_input['label']] = repo_input['value']
 
-            description = descriptionModel.to_text()
+            description = description_model.to_text()
 
         # Now apply approvals. All modified repositories are included because they may need to have their merge request description updated
         for repo_name in modified_repos:
