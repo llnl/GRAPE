@@ -26,6 +26,7 @@ from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine.resumable import Resumable
+from vine.ReviewRule import ReviewRuleManager
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
 
@@ -767,9 +768,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
 
         # Get review rules
-        reviewRules = review.parseReviewRules()
-        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
+        reviewRuleManager = ReviewRuleManager.from_config()
+        reviewRules = reviewRuleManager.reviewRules
 
         verified = True
 
@@ -841,7 +841,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # the minimum number of required reviewers (this info is stored
             # by grape in the merge/pull request description).
             description = pullRequest.description()
-            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRules, reviewRuleMap, defaultReviewRuleName)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
 
             # Omit non-approvers from the unfinished reviewers reported
             non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
