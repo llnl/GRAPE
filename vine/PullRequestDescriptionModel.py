@@ -130,18 +130,22 @@ class PullRequestDescriptionModel:
                         tokens = reviewerGroup.split(':')
 
                         if len(tokens) == 1:
-                            ruleName = ''
+                            reviewRule = reviewRuleManager.get_default_rule()
+
+                            if not reviewRule:
+                                logging.warning(f'GRAPE: Warning: No default review rule. Removing reviewer group "{reviewerGroup}"...')
+                                continue
+
                             reviewers = tokens[0]
                         elif len(tokens) == 2:
                             ruleName = tokens[0]
+                            reviewRule = reviewRuleManager.get_rule(ruleName)
+
+                            if not reviewRule:
+                                logging.warning(f'GRAPE: Warning: Unknown review rule "{ruleName}" in pull request description. Removing reviewer group "{reviewerGroup}"...')
+                                continue
+
                             reviewers = tokens[1]
-
-                        # Get and check review rule
-                        reviewRule = reviewRuleManager.get_rule(ruleName)
-
-                        if not reviewRule:
-                            logging.warning(f'GRAPE: Warning: Retrieved unknown review rule "{ruleName}" from the pull request description. Removing...')
-                            continue
 
                         ruleLabel = reviewRule.label
 
@@ -159,7 +163,7 @@ class PullRequestDescriptionModel:
                             if reviewRule.matches_reviewer(reviewer):
                                 allReviewers.add(reviewer)
                             else:
-                                logging.warning(f'GRAPE: WARNING: User "{reviewer}" is not allowed as a reviewer for the "{rule.name}" rule. Removing...')
+                                logging.warning(f'GRAPE: WARNING: User "{reviewer}" is not allowed as a reviewer for the "{reviewRule.name}" rule. Removing...')
 
         return cls(
             userLines=userDescriptionLines,

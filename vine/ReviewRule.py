@@ -476,16 +476,11 @@ class ReviewRuleManager:
         """
         Get a review rule by name.
 
-        If the rule name is an empty string, returns the default rule.
         If the rule name is in the rule map, it will be resolved to the mapped name.
 
-        :param name: Name of the review rule to retrieve (empty string returns default rule)
+        :param name: Name of the review rule to retrieve
         :return: ReviewRule instance if found, None otherwise
         """
-        # Use default rule name if name is empty
-        if not name:
-            name = self._defaultReviewRuleName
-
         # Check if the name is mapped to a different name
         if name in self._reviewRuleMap:
             name = self._reviewRuleMap[name]
