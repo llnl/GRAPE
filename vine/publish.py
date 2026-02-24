@@ -26,6 +26,7 @@ from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine.resumable import Resumable
+from vine.ReviewRule import ReviewRuleManager
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
 
@@ -768,7 +769,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         # Get review rules
         reviewRuleManager = ReviewRuleManager.from_config()
-        reviewRules = review.parseReviewRules()
+        reviewRules = reviewRuleManager.reviewRules
 
         verified = True
 
