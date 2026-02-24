@@ -289,7 +289,7 @@ class Approve(Option, WorkspaceDirHandler):
                     for rule_label in all_review_rules:
                         reviewRule = all_review_rules[rule_label]
                         if reviewRule.label == reviewRuleLabel and reviewRule.active and 'approve' in reviewRule.approveActions:
-                            user_approve_rules.append(reviewRuleName)
+                            user_approve_rules.append(reviewRule)
 
         Approve._apply_approve_actions(rule, approve_input, user_approve_rules)
 
@@ -452,31 +452,34 @@ class Approve(Option, WorkspaceDirHandler):
                 reverse=True,
             )
 
-            # Mark the first (latest) entry
-            mark = '>'
-            for commit in sorted_commits_desc:
-                if commit.id.lower() == source_commit:
-                    short_source_commit = commit.short_id.lower()
+            if sorted_commits_desc:
+                # Mark the first (latest) entry
+                mark = '>'
+                for commit in sorted_commits_desc:
+                    if commit.id.lower() == source_commit:
+                        short_source_commit = commit.short_id.lower()
 
-                dt = datetime.fromisoformat(commit.committed_date)
-                local_dt = dt.astimezone()
-                formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
+                    dt = datetime.fromisoformat(commit.committed_date)
+                    local_dt = dt.astimezone()
+                    formatted_dt = local_dt.strftime("%a %d %b %Y %I:%M %p")
 
-                print(f'{mark} {commit.short_id}    {formatted_dt}    {commit.title}')
-                mark = ' '
+                    print(f'{mark} {commit.short_id}    {formatted_dt}    {commit.title}')
+                    mark = ' '
 
-                # Limit the number of commits printed
-                commits_printed = commits_printed + 1
+                    # Limit the number of commits printed
+                    commits_printed = commits_printed + 1
 
-                if commits_printed == max_commits_printed:
-                    break
+                    if commits_printed == max_commits_printed:
+                        break
 
-            if commits_printed == max_commits_printed and len(commits) != max_commits_printed:
-                print(f'  ...')
+                if commits_printed == max_commits_printed and len(commits) != max_commits_printed:
+                    print(f'  ...')
 
-            if not short_source_commit:
-                logging.error(f'GRAPE: ERROR: Latest commit "{source_commit}" not found. Contact a GRAPE developer.')
-                exit(1)
+                if not short_source_commit:
+                    logging.error(f'GRAPE: ERROR: Latest commit "{source_commit}" not found. Contact a GRAPE developer.')
+                    exit(1)
+            else:
+                logging.warning(f'GRAPE: WARNING: Merge request in "{repo_name}" has no commits!')
 
             approval_granted = utility.userInput(
                 'I approve these changes.',
@@ -565,7 +568,7 @@ class Approve(Option, WorkspaceDirHandler):
               - "review_request": open merge/pull request object
               - "approved": bool
               - "input": dict[str, str]
-        user_approve_rules : list[dict]
+        user_approve_rules : list[ReviewRule]
             Review rule definitions for rules that the user would approve. Expected keys for each entry:
               - "name": str
               - "input": list[str]
@@ -639,22 +642,8 @@ class Approve(Option, WorkspaceDirHandler):
                 review_request.update(review_request.version(), description=description)
 
             if repo_context['approved']:
-                # Approve reviewed branch
-                if 'approve' in rule.approveActions:
-                    logging.info('  Approving merge/pull request...')
-                    review_request.approve()
-                else:
-                    found_approval = False
-                    for user_approve_rule in user_approve_rules:
-                        if Approve._rule_applies(repo_name, user_approve_rule):
-                            logging.info(f'  Not approving merge/pull request (rule "{user_approve_rule["name"]}" used for approval).')
-                            found_approval = True
-                            break
-                    if not found_approval:
-                        logging.info('  Approving merge/pull request for only applicable rule...')
-                        review_request.approve()
-
-                # Tag reviewed branch
+                # Tag reviewed branch.  This needs to occur before any approve actions as
+                # the review_request may get invalidated by the approval.
                 if 'tag' in rule.approveActions:
                     tag_name = f'{rule.name}_{review_request.iid()}'
                     tag_ref = review_request.fromSHA()
@@ -680,3 +669,18 @@ class Approve(Option, WorkspaceDirHandler):
                         logging.info(f'  Creating tag "{tag_name}"...')
 
                     repo.createTag(tag_name, tag_ref, tag_message)
+
+                # Approve reviewed branch
+                if 'approve' in rule.approveActions:
+                    logging.info('  Approving merge/pull request...')
+                    review_request.approve()
+                else:
+                    found_approval = False
+                    for user_approve_rule in user_approve_rules:
+                        if user_approve_rule.matches_repository(repo_name):
+                            logging.info(f'  Not approving merge/pull request (rule "{user_approve_rule.name}" used for approval).')
+                            found_approval = True
+                            break
+                    if not found_approval:
+                        logging.info('  Approving merge/pull request for only applicable rule...')
+                        review_request.approve()
