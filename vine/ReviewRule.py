@@ -8,7 +8,7 @@ import re
 from typing import List, Dict, Optional, Any
 
 
-class ApproveInputDefinition:
+class ApproveInputSpec:
     """
     Defines an input to be collected on approval applied to a review rule.
     Input is collected for each modified repository that is approved by the
@@ -29,7 +29,7 @@ class ApproveInputDefinition:
                  cache: bool = False,
                  value: Optional[str] = None):
         """
-        Initialize an ApproveInputDefinition.
+        Initialize an ApproveInputSpec.
 
         Parameters
         ----------
@@ -72,9 +72,9 @@ class ApproveInputDefinition:
         self.value = value
 
     @classmethod
-    def from_config(cls, config, review_rule_id: str, approve_input_id: str, approve_actions: List[str]) -> Optional['ApproveInputDefinition']:
+    def from_config(cls, config, review_rule_id: str, approve_input_id: str, approve_actions: List[str]) -> Optional['ApproveInputSpec']:
         """
-        Create an ApproveInputDefinition from a config file.
+        Create an ApproveInputSpec from a config file.
 
         Parameters
         ----------
@@ -89,8 +89,8 @@ class ApproveInputDefinition:
 
         Returns
         -------
-        ApproveInputDefinition or None
-            ApproveInputDefinition instance created from the config, or None if the config section does not exist.
+        ApproveInputSpec or None
+            ApproveInputSpec instance created from the config, or None if the config section does not exist.
         """
         source = 'prompt'
         prompt = approve_input_id
@@ -240,7 +240,7 @@ class ReviewRule:
                  eligibleReviewers: Optional[List[str]] = None,
                  repositories: Optional[List[str]] = None,
                  approveActions: Optional[List[str]] = None,
-                 approveInputs: Optional[List[ApproveInputDefinition]] = None,
+                 approveInputSpecs: Optional[List[ApproveInputSpec]] = None,
                  dryRun: bool = False):
         """
         Initialize a ReviewRule.
@@ -253,7 +253,7 @@ class ReviewRule:
         :param eligibleReviewers: List of eligible reviewer patterns
         :param repositories: List of repository patterns this rule applies to
         :param approveActions: List of actions to perform on approval
-        :param approveInputs: List of ApproveInputDefinition configurations
+        :param approveInputSpecs: List of ApproveInputSpec configurations
         :param dryRun: Whether to run in dry-run mode
         """
         self._name = name
@@ -264,7 +264,7 @@ class ReviewRule:
         self._eligibleReviewers = eligibleReviewers if eligibleReviewers is not None else [".+"]
         self._repositories = repositories if repositories is not None else [".+"]
         self._approveActions = approveActions if approveActions is not None else ['approve']
-        self._approveInputs = approveInputs if approveInputs is not None else []
+        self._approveInputSpecs = approveInputSpecs if approveInputSpecs is not None else []
         self._dryRun = dryRun
 
     @property
@@ -308,9 +308,9 @@ class ReviewRule:
         return self._approveActions
 
     @property
-    def approveInputs(self) -> List[ApproveInputDefinition]:
-        """Get the list of ApproveInputDefinition configurations."""
-        return self._approveInputs
+    def approveInputs(self) -> List[ApproveInputSpec]:
+        """Get the list of ApproveInputSpec configurations."""
+        return self._approveInputSpecs
 
     @property
     def dryRun(self) -> bool:
@@ -384,17 +384,17 @@ class ReviewRule:
             if len(approveInputNames) != len(set(approveInputNames)):
                 logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
 
-        approveInputs = []
+        approveInputSpecs = []
 
         for approveInputName in approveInputNames:
-            approveInput = ApproveInputDefinition.from_config(
+            approveInputSpec = ApproveInputSpec.from_config(
                 config,
                 reviewRuleName,
                 approveInputName,
                 approveActions
             )
-            if approveInput is not None:
-                approveInputs.append(approveInput)
+            if approveInputSpec is not None:
+                approveInputSpecs.append(approveInputSpec)
 
         # Controls whether publish checks are just reported or actually prevent a publish
         dryRun = False
@@ -410,7 +410,7 @@ class ReviewRule:
             eligibleReviewers=eligibleReviewers,
             repositories=repositories,
             approveActions=approveActions,
-            approveInputs=approveInputs,
+            approveInputSpecs=approveInputSpecs,
             dryRun=dryRun
         )
 
@@ -535,7 +535,7 @@ class ReviewRuleManager:
             eligibleReviewers=['.+'],
             repositories=['.+'],
             approveActions=['approve'],
-            approveInputs=[],
+            approveInputSpecs=[],
             dryRun=False
         )
 
