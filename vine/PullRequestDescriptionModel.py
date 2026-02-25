@@ -20,7 +20,7 @@ class PullRequestDescriptionModel:
     reviewRules: Dict = field(default_factory=dict)
 
     @classmethod
-    def from_text(cls, description, reviewRules, reviewRuleMap, defaultReviewRuleName):
+    def from_text(cls, description, reviewRuleManager):
         if not description:
             return cls(
                 userLines=[],
@@ -130,34 +130,40 @@ class PullRequestDescriptionModel:
                         tokens = reviewerGroup.split(':')
 
                         if len(tokens) == 1:
-                            ruleName = defaultReviewRuleName
+                            reviewRule = reviewRuleManager.get_default_rule()
+
+                            if not reviewRule:
+                                logging.warning(f'GRAPE: Warning: No default review rule. Removing reviewer group "{reviewerGroup}"...')
+                                continue
+
                             reviewers = tokens[0]
                         elif len(tokens) == 2:
                             ruleName = tokens[0]
+                            reviewRule = reviewRuleManager.get_rule(ruleName)
+
+                            if not reviewRule:
+                                logging.warning(f'GRAPE: Warning: Unknown review rule "{ruleName}" in pull request description. Removing reviewer group "{reviewerGroup}"...')
+                                continue
+
                             reviewers = tokens[1]
 
-                        if ruleName in reviewRuleMap:
-                            ruleName = reviewRuleMap[ruleName]
+                        ruleLabel = reviewRule.label
 
-                        if ruleName not in reviewRules:
-                            # TODO: error and exit
-                            pass
+                        # Add review rule data if needed
+                        if ruleLabel not in rules:
+                            rules[ruleLabel] = {'reviewers': set(), 'approvals': {}}
 
-                        ruleLabel = reviewRules[ruleName].label
+                        rule = rules[ruleLabel]
+                        allReviewers = rule['reviewers']
 
+                        # Check and add reviewers
                         reviewers = set(reviewers.split(','))
 
-                        # TODO: Check if reviewers are eligible
-
-                        if ruleLabel not in rules:
-                            rules[ruleLabel] = {'reviewers': reviewers,
-                                                'approvals': {}}
-                        else:
-                            rule = rules[ruleLabel]
-                            allReviewers = rule['reviewers']
-
-                            for reviewer in reviewers:
+                        for reviewer in reviewers:
+                            if reviewRule.matches_reviewer(reviewer):
                                 allReviewers.add(reviewer)
+                            else:
+                                logging.warning(f'GRAPE: WARNING: User "{reviewer}" is not allowed as a reviewer for the "{reviewRule.name}" rule. Removing...')
 
         return cls(
             userLines=userDescriptionLines,
