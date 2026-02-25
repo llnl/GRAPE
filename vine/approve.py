@@ -644,7 +644,7 @@ class Approve(Option, WorkspaceDirHandler):
                     logging.info('  Approving merge/pull request...')
                     review_request.approve()
                 else:
-                    # Determine if this user's approve would trigger the approve action
+                    # Determine if one of the other rules that the user is a reviewer for would trigger an approve action
                     found_approval = False
                     # Loop over all review rules from the description
                     for rule_label in reviewRuleModels:
@@ -655,7 +655,7 @@ class Approve(Option, WorkspaceDirHandler):
                                 configured_rule = review_rule_manager.reviewRules[configured_rule_label]
                                 # Figure out if the configured rule corresponding to the description rule is active in this repo
                                 if configured_rule.label == rule_label and configured_rule.matches_repository(repo_name) and configured_rule.active:
-                                    # Determine if this user's approval would trigger the approve action
+                                    # Determine if this user's approval would trigger an approve action
                                     if 'approve' in configured_rule.approveActions:
                                         logging.info(f'  Not approving merge/pull request (rule "{configured_rule.name}" used for approval).')
                                         found_approval = True
