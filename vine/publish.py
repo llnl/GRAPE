@@ -1032,7 +1032,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             approveInputs = reviewRule.approveInputs
 
                             for approveInput in approveInputs:
-                                if approveInput.tag and approveInput.label not in tag.message:
+                                if approveInput.include_in_tag and approveInput.label not in tag.message:
                                     userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
 
                                     if not ruleDryRun:

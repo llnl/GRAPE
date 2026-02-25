@@ -500,8 +500,8 @@ class Approve(Option, WorkspaceDirHandler):
                 repo_inputs.append({
                     'label': rule_input.label,
                     'value': value,
-                    'tag': rule_input.tag,
-                    'description': rule_input.description
+                    'include_in_tag': rule_input.include_in_tag,
+                    'include_in_description': rule_input.include_in_description
                 })
 
         # Check if any approvals were granted
@@ -583,7 +583,7 @@ class Approve(Option, WorkspaceDirHandler):
                     repo_inputs = repo_context['approve_inputs']
 
                     for repo_input in repo_inputs:
-                        if repo_input['description']:
+                        if repo_input['include_in_description']:
                             approvals[repo_name][repo_input['label']] = repo_input['value']
 
             description = description_model.to_text()
@@ -616,7 +616,7 @@ class Approve(Option, WorkspaceDirHandler):
                     first = True
 
                     for repo_input in repo_inputs:
-                        if repo_input['tag']:
+                        if repo_input['include_in_tag']:
                             if first:
                                 tag_message += '\n'
                                 first = False
