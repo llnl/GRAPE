@@ -487,10 +487,10 @@ class Approve(Option, WorkspaceDirHandler):
                         value = source_commit
                     elif source == 'username':
                         value = user_name
-                    elif source == 'date':
-                        value = datetime.now().strftime('%d %b %Y')
                     elif source == 'tag':
                         value = f'{rule.name}_{review_request.iid()}'
+                    elif source == 'date':
+                        value = datetime.now().strftime('%d %b %Y')
                     else:
                         value = Approve._get_user_input(rule_input)
 
