@@ -70,6 +70,7 @@ class Approve(Option, WorkspaceDirHandler):
         user_name = utility.getUserName(args)
         git_host = utility.authenticateToGitHost(user_name, self.workspace_dir, args)
         top_repo_context = Approve._get_top_repo_context_for_approval(git_host, user_name, args)
+        rule = Approve._get_review_rule(top_repo_context, args)
         Approve._approve(user_name, git_host, top_repo_context, rule)
 
     def setDefaultConfig(self, config):
@@ -645,24 +646,20 @@ class Approve(Option, WorkspaceDirHandler):
                     logging.info('  Approving merge/pull request...')
                     review_request.approve()
                 else:
-                    # These are the rules for which the user would apply the approve action,
-                    user_approve_rules = []
+                    # Determine if this user's approve would trigger the approve action
+                    found_approval = False
+                    # Loop over all review rules
+                    for reviewRule in reviewRuleModels:
+                        reviewers = reviewRule.get('reviewers', set())
 
-                    # Get review rule reviewers
-                    for reviewRuleLabel in reviewRuleModels:
-                       reviewers = reviewRuleModels[reviewRuleLabel].get('reviewers', set())
+                        # Consider only rules for which the user is a reviewer
+                        if user_name in reviewers:
+                            # Determine if this user's approve would trigger the approve action
+                            if reviewRule.active and 'approve' in reviewRule.approveActions:
+                                logging.info(f'  Not approving merge/pull request (rule "{reviewRule.name}" used for approval).')
+                                found_approval = True
+                                break
 
-                       if user_name in reviewers:
-                          for rule_label in reviewRuleModels:
-                             reviewRule = reviewRule[rule_label]
-                             if reviewRule.label == reviewRuleLabel and reviewRule.active and 'approve' in reviewRule.approveActions:
-                                user_approve_rules.append(reviewRule)
-                                found_approval = False
-                                for user_approve_rule in user_approve_rules:
-                                    if user_approve_rule.matches_repository(repo_name):
-                                       logging.info(f'  Not approving merge/pull request (rule "{user_approve_rule.name}" used for approval).')
-                                       found_approval = True
-                                       break
-                                    if not found_approval:
-                                       logging.info('  Approving merge/pull request for only applicable rule...')
-                                       review_request.approve()
+                    if not found_approval:
+                        logging.info('  Approving merge/pull request for only applicable rule...')
+                        review_request.approve()
