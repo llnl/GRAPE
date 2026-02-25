@@ -308,7 +308,7 @@ class ReviewRule:
         return self._approveActions
 
     @property
-    def approveInputs(self) -> List[ApproveInputSpec]:
+    def approveInputSpecs(self) -> List[ApproveInputSpec]:
         """Get the list of ApproveInputSpec configurations."""
         return self._approveInputSpecs
 
