@@ -764,7 +764,9 @@ class Review(Option, WorkspaceDirHandler):
                 if reviewRule.label == reviewRuleLabel:
                     savedReviewers += f' {reviewRule.name}:{temp}'
 
-        savedArgs = {'--reviewers': savedReviewers.strip()}
+        # The empty string means remove all reviewers, while None leaves existing reviewers alone
+        savedReviewers = savedReviewers.strip()
+        savedArgs = {'--reviewers': savedReviewers or None}
 
         reviewers.update(parseReviewers(savedArgs, reviewRuleManager))
         reviewers.update(parseReviewers(args, reviewRuleManager))

@@ -29,7 +29,7 @@ class ApproveInput:
         """
         Initialize an ApproveInput.
 
-        :param source: Source of the input ('prompt', 'username', 'commit', 'tag')
+        :param source: Source of the input ('prompt', 'username', 'commit', 'tag', 'date')
         :param prompt: The prompt name/text
         :param default: Default value for the input
         :param label: Label for the input
@@ -83,7 +83,7 @@ class ApproveInput:
         if config.has_section(approveInputSectionName):
             if config.has_option(approveInputSectionName, "source"):
                 approveInputSource = config.get(approveInputSectionName, "source")
-                validSources = ["prompt", "username", "commit", "tag"]
+                validSources = ["prompt", "username", "commit", "tag", "date"]
 
                 if approveInputSource not in validSources:
                     logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInputSource}" for "source". Supported values include {", ".join(validSources)}".')
