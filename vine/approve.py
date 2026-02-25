@@ -576,8 +576,6 @@ class Approve(Option, WorkspaceDirHandler):
         if 'description' in rule.approveActions:
 
             # Get existing approvals
-
-
             if rule.label not in reviewRuleModels:
                 reviewRuleModels[rule.label] = {
                     'reviewers': set(),
@@ -648,17 +646,22 @@ class Approve(Option, WorkspaceDirHandler):
                 else:
                     # Determine if this user's approve would trigger the approve action
                     found_approval = False
-                    # Loop over all review rules
-                    for reviewRule in reviewRuleModels:
-                        reviewers = reviewRule.get('reviewers', set())
-
+                    # Loop over all review rules from the description
+                    for rule_label in reviewRuleModels:
+                        description_rule = reviewRuleModels[rule_label]
                         # Consider only rules for which the user is a reviewer
-                        if user_name in reviewers:
-                            # Determine if this user's approve would trigger the approve action
-                            if reviewRule.active and 'approve' in reviewRule.approveActions:
-                                logging.info(f'  Not approving merge/pull request (rule "{reviewRule.name}" used for approval).')
-                                found_approval = True
+                        if user_name in description_rule['reviewers']:
+                            for configured_rule_label in review_rule_manager.reviewRules:
+                                configured_rule = review_rule_manager.reviewRules[configured_rule_label]
+                                # Figure out if the configured rule corresponding to the description rule is active in this repo
+                                if configured_rule.label == rule_label and configured_rule.matches_repository(repo_name) and configured_rule.active:
+                                    # Determine if this user's approval would trigger the approve action
+                                    if 'approve' in configured_rule.approveActions:
+                                        logging.info(f'  Not approving merge/pull request (rule "{configured_rule.name}" used for approval).')
+                                        found_approval = True
                                 break
+                        if found_approval:
+                            break
 
                     if not found_approval:
                         logging.info('  Approving merge/pull request for only applicable rule...')
