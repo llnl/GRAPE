@@ -31,17 +31,32 @@ class ApproveInputDefinition:
         """
         Initialize an ApproveInputDefinition.
 
-        :param source: Source of the input ('prompt', 'username', 'commit', 'tag', 'date')
-        :param prompt: The prompt name/text
-        :param default: Default value for the input
-        :param label: Label for the input
-        :param help: Help text for the input
-        :param examples: Dictionary of examples
-        :param substitutions: Dictionary of text substitutions
-        :param include_in_tag: Whether to use this input in tags
-        :param include_in_description: Whether to use this input in description
-        :param required: Whether this input is required
-        :param cache: Whether to cache this input
+        Parameters
+        ----------
+        source : str
+            Source of the input ('prompt', 'username', 'commit', 'tag', 'date'). Default is 'prompt'.
+        prompt : str, optional
+            The prompt name/text.
+        default : str, optional
+            Default value for the input.
+        label : str, optional
+            Label for the input. Defaults to prompt if not specified.
+        help : str
+            Help text for the input. Default is empty string.
+        examples : dict, optional
+            Dictionary of examples.
+        substitutions : dict, optional
+            Dictionary of text substitutions.
+        include_in_tag : bool
+            Whether to use this input in tags. Default is True.
+        include_in_description : bool
+            Whether to use this input in description. Default is True.
+        required : bool
+            Whether this input is required. Default is False.
+        cache : bool
+            Whether to cache this input. Default is False.
+        value : str, optional
+            The value for this input.
         """
         self.source = source
         self.prompt = prompt
@@ -61,11 +76,21 @@ class ApproveInputDefinition:
         """
         Create an ApproveInputDefinition from a config file.
 
-        :param config: ConfigParser object containing the approve input configuration
-        :param review_rule_id: Name of the review rule (used for error messages)
-        :param approve_input_id: Name of the approve input variable
-        :param approve_actions: List of approve actions for the parent rule (used for validation)
-        :return: ApproveInputDefinition instance created from the config, or None if the input is unused
+        Parameters
+        ----------
+        config : ConfigParser
+            ConfigParser object containing the approve input configuration.
+        review_rule_id : str
+            ID of the review rule.
+        approve_input_id : str
+            ID of the approve input.
+        approve_actions : list of str
+            List of approve actions for the parent rule (used for validation).
+
+        Returns
+        -------
+        ApproveInputDefinition or None
+            ApproveInputDefinition instance created from the config, or None if the config section does not exist.
         """
         source = 'prompt'
         prompt = approve_input_id
