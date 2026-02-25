@@ -8,10 +8,11 @@ import re
 from typing import List, Dict, Optional, Any
 
 
-class ApproveInput:
+class ApproveInputDefinition:
     """
-    Defines an input to collected on approval of a review rule.
-    Input is collected for each modified repository to which the review rule applies.
+    Defines an input to be collected on approval applied to a review rule.
+    Input is collected for each modified repository that is approved by the
+    user and to which the review rule applies.
     """
 
     def __init__(self,
@@ -28,7 +29,7 @@ class ApproveInput:
                  cache: bool = False,
                  value: Optional[str] = None):
         """
-        Initialize an ApproveInput.
+        Initialize an ApproveInputDefinition.
 
         :param source: Source of the input ('prompt', 'username', 'commit', 'tag', 'date')
         :param prompt: The prompt name/text
@@ -56,20 +57,20 @@ class ApproveInput:
         self.value = value
 
     @classmethod
-    def from_config(cls, config, review_rule_name: str, approve_input_name: str, approve_actions: List[str]) -> Optional['ApproveInput']:
+    def from_config(cls, config, review_rule_id: str, approve_input_id: str, approve_actions: List[str]) -> Optional['ApproveInputDefinition']:
         """
-        Create an ApproveInput from a config file.
+        Create an ApproveInputDefinition from a config file.
 
         :param config: ConfigParser object containing the approve input configuration
-        :param review_rule_name: Name of the review rule (used for error messages)
-        :param approve_input_name: Name of the approve input variable
+        :param review_rule_id: Name of the review rule (used for error messages)
+        :param approve_input_id: Name of the approve input variable
         :param approve_actions: List of approve actions for the parent rule (used for validation)
-        :return: ApproveInput instance created from the config, or None if the input is unused
+        :return: ApproveInputDefinition instance created from the config, or None if the input is unused
         """
         source = 'prompt'
-        prompt = approve_input_name
+        prompt = approve_input_id
         default_value = None
-        label = approve_input_name
+        label = approve_input_id
         help_text = ''
         examples = {}
         substitutions = {}
@@ -78,7 +79,7 @@ class ApproveInput:
         required = False
         cache = False
 
-        section_name = f"review-{review_rule_name}-approve-inputs-{approve_input_name}"
+        section_name = f"review-{review_rule_id}-approve-inputs-{approve_input_id}"
 
         if config.has_section(section_name):
             if config.has_option(section_name, "source"):
@@ -158,14 +159,14 @@ class ApproveInput:
                 include_in_tag = config.getboolean(section_name, "tag")
 
                 if include_in_tag and 'tag' not in approve_actions:
-                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" does not support "True" for the "tag" option (review rule "{review_rule_name}" does not create a tag on approval).')
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" does not support "True" for the "tag" option (review rule "{review_rule_id}" does not create a tag on approval).')
                     exit(1)
 
             if config.has_option(section_name, "description"):
                 include_in_description = config.getboolean(section_name, "description")
 
                 if include_in_description and 'description' not in approve_actions:
-                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" does not support "True" for the "description" option (review rule "{review_rule_name}" does not update the description on approval).')
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" does not support "True" for the "description" option (review rule "{review_rule_id}" does not update the description on approval).')
                     exit(1)
 
             if config.has_option(section_name, "required"):
@@ -182,7 +183,7 @@ class ApproveInput:
 
             # Check if the approve input is actually used
             if not include_in_description and not include_in_tag:
-                logging.warning(f'GRAPE: WARNING: Approve input variable "{approve_input_name}" is unused.')
+                logging.warning(f'GRAPE: WARNING: Approve input variable "{approve_input_id}" is unused.')
                 return None
 
         return cls(
@@ -214,7 +215,7 @@ class ReviewRule:
                  eligibleReviewers: Optional[List[str]] = None,
                  repositories: Optional[List[str]] = None,
                  approveActions: Optional[List[str]] = None,
-                 approveInputs: Optional[List[ApproveInput]] = None,
+                 approveInputs: Optional[List[ApproveInputDefinition]] = None,
                  dryRun: bool = False):
         """
         Initialize a ReviewRule.
@@ -227,7 +228,7 @@ class ReviewRule:
         :param eligibleReviewers: List of eligible reviewer patterns
         :param repositories: List of repository patterns this rule applies to
         :param approveActions: List of actions to perform on approval
-        :param approveInputs: List of ApproveInput configurations
+        :param approveInputs: List of ApproveInputDefinition configurations
         :param dryRun: Whether to run in dry-run mode
         """
         self._name = name
@@ -282,8 +283,8 @@ class ReviewRule:
         return self._approveActions
 
     @property
-    def approveInputs(self) -> List[ApproveInput]:
-        """Get the list of ApproveInput configurations."""
+    def approveInputs(self) -> List[ApproveInputDefinition]:
+        """Get the list of ApproveInputDefinition configurations."""
         return self._approveInputs
 
     @property
@@ -361,7 +362,7 @@ class ReviewRule:
         approveInputs = []
 
         for approveInputName in approveInputNames:
-            approveInput = ApproveInput.from_config(
+            approveInput = ApproveInputDefinition.from_config(
                 config,
                 reviewRuleName,
                 approveInputName,
