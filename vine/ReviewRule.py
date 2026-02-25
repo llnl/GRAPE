@@ -377,20 +377,20 @@ class ReviewRule:
             approveActions = config.get(sectionName, "approveactions").split()
 
         # Get approve inputs
-        approveInputNames = []
+        approveInputIDs = []
         if config.has_option(sectionName, "approveinputs"):
-            approveInputNames = config.get(sectionName, "approveinputs").split()
+            approveInputIDs = config.get(sectionName, "approveinputs").split()
 
-            if len(approveInputNames) != len(set(approveInputNames)):
+            if len(approveInputIDs) != len(set(approveInputIDs)):
                 logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
 
         approveInputSpecs = []
 
-        for approveInputName in approveInputNames:
+        for approveInputID in approveInputIDs:
             approveInputSpec = ApproveInputSpec.from_config(
                 config,
                 reviewRuleName,
-                approveInputName,
+                approveInputID,
                 approveActions
             )
             if approveInputSpec is not None:
