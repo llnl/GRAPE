@@ -331,6 +331,11 @@ class ReviewRule:
         if reservedReviewRuleLabels is None:
             reservedReviewRuleLabels = []
 
+        # Allowed approve actions
+        validApproveActions = { 'approve': 'mark merge/pull request approved',
+                                'tag': 'add a git tag',
+                                'description': 'update the merge/pull request description' }
+
         sectionName = f"review-{reviewRuleName}"
 
         if not config.has_section(sectionName):
@@ -376,6 +381,18 @@ class ReviewRule:
         if config.has_option(sectionName, "approveactions"):
             approveActions = config.get(sectionName, "approveactions").split()
 
+        warnedInvalidAction = False
+
+        for action in approveActions:
+            if action not in validApproveActions.keys():
+                logging.warning(f'GRAPE: WARNING approve action "{action}" found in .grapeconfig for rule "{reviewRuleName}" is not valid!')
+                warnedInvalidAction = True
+
+            if warnedInvalidAction:
+                logging.warning("Valid options are")
+                for key,desc in validApproveActions.items():
+                    logging.warning(f"  {key} : {desc}")
+        
         # Get approve inputs
         approveInputIDs = []
         if config.has_option(sectionName, "approveinputs"):
