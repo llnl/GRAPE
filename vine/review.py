@@ -1229,7 +1229,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
 
                     if updates:
                         # Only perform the request is something actually changed
-                        logging.info(f"Updating review request with the following changes:\n{'\n'.join(updates)}")
+                        update_string = '\n'.join(updates)
+                        logging.info(f"Updating review request with the following changes:\n{update_string}")
                         request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
                                                  non_approvers=non_approver_list, wip=wip,
                                                  add_labels=add_labels, remove_labels=remove_labels)
