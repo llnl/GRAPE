@@ -936,18 +936,18 @@ class Review(Option, WorkspaceDirHandler):
             else:
                 if not git.hasBranch(branch, execution_path=self.workspace_dir):
                     logging.info(
-                        f"Top level repository does not have a branch {branch}," +
-                        " not generating a Pull Request")
+                        f"Top level repository does not have a branch {branch}:" +
+                        " not generating a pull request")
                     return True
                 if git.branchUpToDateWith(target_branch, branch, execution_path=self.workspace_dir):
                     logging.info(
-                        f"{target_branch} up to date with {branch}," +
-                        " not generating a Pull Request in Top Level repo")
+                        f"Target branch {target_branch} up to date with {branch}:" +
+                        " not generating a pull request in top level repo")
                     return True
                 if not git.log(f"--oneline origin/{target_branch}..{branch}", execution_path=self.workspace_dir):
                     logging.info(
-                        f"{branch} is in the history of {target_branch}," +
-                        " not generating a Pull Request in Top Level repo")
+                        f"Source branch {branch} is in the history of {target_branch}:" +
+                        " not generating a pull request in top level repo")
                     return True
 
             add_labels = []
@@ -1164,7 +1164,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
             # update the pull request
             logging.info("Updating pull request...")
             try:
-                logging.info(f"reviewer list is: {reviewers}")
+                if reviewers:
+                    logging.info(f"Reviewer list is: {reviewers}")
+
                 ver = request.version()
 
                 if title is not None and (args["--prepend"] or args["--append"]):
@@ -1206,13 +1208,14 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
 
                     # Check to see if we actually have something to change
                     updates = []
-                    if title != request.title():
+                    if title is not None and title != request.title():
                         updates.append(f"title={title}")
                     if wip is not None:
                         updates.append(f"draft={wip}")
                     if descr.strip() != request.description().strip():
                         # Note that the description will change whenever the reviewers change.
-                        updates.append(f"description={descr}")
+                        descr_marker = "=" * 70
+                        updates.append(f"description=\n{descr_marker}\n{descr}\n{descr_marker}")
 
                     # Rely on request.update to determine if reviewers have actually changed.
                     if subReviewers:
@@ -1226,7 +1229,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
 
                     if updates:
                         # Only perform the request is something actually changed
-                        logging.info(f"updating request with {', '.join(updates)}")
+                        logging.info(f"Updating review request with the following changes:\n{'\n'.join(updates)}")
                         request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
                                                  non_approvers=non_approver_list, wip=wip,
                                                  add_labels=add_labels, remove_labels=remove_labels)
