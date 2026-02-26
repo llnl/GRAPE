@@ -8,9 +8,11 @@ import re
 from typing import List, Dict, Optional, Any
 
 
-class ApproveInput:
+class ApproveInputSpec:
     """
-    Represents an approve input configuration for a review rule.
+    Defines an input to be collected on approval applied to a review rule.
+    Input is collected for each modified repository that is approved by the
+    user and to which the review rule applies.
     """
 
     def __init__(self,
@@ -21,25 +23,40 @@ class ApproveInput:
                  help: str = '',
                  examples: Optional[Dict[str, str]] = None,
                  substitutions: Optional[Dict[str, str]] = None,
-                 tag: bool = True,
-                 description: bool = True,
+                 include_in_tag: bool = True,
+                 include_in_description: bool = True,
                  required: bool = False,
                  cache: bool = False,
                  value: Optional[str] = None):
         """
-        Initialize an ApproveInput.
+        Initialize an ApproveInputSpec.
 
-        :param source: Source of the input ('prompt', 'username', 'commit', 'tag', 'date')
-        :param prompt: The prompt name/text
-        :param default: Default value for the input
-        :param label: Label for the input
-        :param help: Help text for the input
-        :param examples: Dictionary of examples
-        :param substitutions: Dictionary of text substitutions
-        :param tag: Whether to use this input in tags
-        :param description: Whether to use this input in description
-        :param required: Whether this input is required
-        :param cache: Whether to cache this input
+        Parameters
+        ----------
+        source : str
+            Source of the input ('prompt', 'username', 'commit', 'tag', 'date'). Default is 'prompt'.
+        prompt : str, optional
+            The prompt name/text.
+        default : str, optional
+            Default value for the input.
+        label : str, optional
+            Label for the input. Defaults to prompt if not specified.
+        help : str
+            Help text for the input. Default is empty string.
+        examples : dict, optional
+            Dictionary of examples.
+        substitutions : dict, optional
+            Dictionary of text substitutions.
+        include_in_tag : bool
+            Whether to use this input in tags. Default is True.
+        include_in_description : bool
+            Whether to use this input in description. Default is True.
+        required : bool
+            Whether this input is required. Default is False.
+        cache : bool
+            Whether to cache this input. Default is False.
+        value : str, optional
+            The value for this input.
         """
         self.source = source
         self.prompt = prompt
@@ -48,93 +65,102 @@ class ApproveInput:
         self.help = help
         self.examples = examples if examples is not None else {}
         self.substitutions = substitutions if substitutions is not None else {}
-        self.tag = tag
-        self.description = description
+        self.include_in_tag = include_in_tag
+        self.include_in_description = include_in_description
         self.required = required
         self.cache = cache
         self.value = value
 
     @classmethod
-    def from_config(cls, config, approveInputName: str, ruleSectionName: str, approveActions: List[str], reviewRuleName: str) -> Optional['ApproveInput']:
+    def from_config(cls, config, review_rule_id: str, approve_input_id: str, approve_actions: List[str]) -> Optional['ApproveInputSpec']:
         """
-        Create an ApproveInput from a config file.
+        Create an ApproveInputSpec from a config file.
 
-        :param config: ConfigParser object containing the approve input configuration
-        :param approveInputName: Name of the approve input variable
-        :param ruleSectionName: Section name of the parent review rule (e.g., "review-rulename")
-        :param approveActions: List of approve actions for the parent rule (used for validation)
-        :param reviewRuleName: Name of the review rule (used for error messages)
-        :return: ApproveInput instance created from the config, or None if the input is unused
+        Parameters
+        ----------
+        config : ConfigParser
+            ConfigParser object containing the approve input configuration.
+        review_rule_id : str
+            ID of the review rule.
+        approve_input_id : str
+            ID of the approve input.
+        approve_actions : list of str
+            List of approve actions for the parent rule (used for validation).
+
+        Returns
+        -------
+        ApproveInputSpec or None
+            ApproveInputSpec instance created from the config, or None if the config section does not exist.
         """
-        approveInputSource = 'prompt'
-        approveInputPrompt = approveInputName
-        approveInputDefault = None
-        approveInputLabel = approveInputName
-        approveInputHelp = ''
-        approveInputExamples = {}
-        approveInputSubstitutions = {}
-        approveInputTag = True
-        approveInputDescription = True
-        approveInputRequired = False
-        approveInputCache = False
+        source = 'prompt'
+        prompt = approve_input_id
+        default_value = None
+        label = approve_input_id
+        help_text = ''
+        examples = {}
+        substitutions = {}
+        include_in_tag = True
+        include_in_description = True
+        required = False
+        cache = False
 
-        approveInputSectionName = f"{ruleSectionName}-approve-inputs-{approveInputName}"
+        section_name = f"review-{review_rule_id}-approve-inputs-{approve_input_id}"
 
-        if config.has_section(approveInputSectionName):
-            if config.has_option(approveInputSectionName, "source"):
-                approveInputSource = config.get(approveInputSectionName, "source")
+        if config.has_section(section_name):
+            if config.has_option(section_name, "source"):
+                source = config.get(section_name, "source")
                 validSources = ["prompt", "username", "commit", "tag", "date"]
 
-                if approveInputSource not in validSources:
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has invalid value "{approveInputSource}" for "source". Supported values include {", ".join(validSources)}".')
+                if source not in validSources:
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" has invalid value "{source}" for "source". Supported values include {", ".join(validSources)}".')
                     exit(1)
 
-            if config.has_option(approveInputSectionName, "prompt"):
-                if approveInputSource != "prompt":
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a prompt if the source is not a prompt.')
+            if config.has_option(section_name, "prompt"):
+                if source != "prompt":
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must not specify a prompt if the source is not a prompt.')
                     exit(1)
 
-                approveInputPrompt = config.get(approveInputSectionName, "prompt")
+                prompt = config.get(section_name, "prompt")
 
-            if config.has_option(approveInputSectionName, "default"):
-                if approveInputSource != "prompt":
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must not specify a default value if the source is not a prompt.')
+            if config.has_option(section_name, "default"):
+                if source != "prompt":
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must not specify a default value if the source is not a prompt.')
                     exit(1)
 
-                approveInputDefault = config.get(approveInputSectionName, "default")
+                default_value = config.get(section_name, "default")
 
-            if config.has_option(approveInputSectionName, "label"):
-                approveInputLabel = config.get(approveInputSectionName, "label")
+            if config.has_option(section_name, "label"):
+                label = config.get(section_name, "label")
 
-            if config.has_option(approveInputSectionName, "help"):
-                approveInputHelp = config.get(approveInputSectionName, "help")
+            if config.has_option(section_name, "help"):
+                help_text = config.get(section_name, "help")
 
-            if config.has_option(approveInputSectionName, "examples"):
-                examples = config.get(approveInputSectionName, "examples")
+            if config.has_option(section_name, "examples"):
+                examples = config.get(section_name, "examples")
 
                 try:
                     examples = ast.literal_eval(examples)
                 except:
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
                     exit(1)
 
                 if not isinstance(examples, dict):
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
                     exit(1)
 
-                approveInputExamples = examples
+                examples = examples
 
-            if config.has_option(approveInputSectionName, "substitutions"):
-                substitutions = config.get(approveInputSectionName, "substitutions")
+            if config.has_option(section_name, "substitutions"):
+                substitutions = config.get(section_name, "substitutions")
 
                 try:
                     substitutions = ast.literal_eval(substitutions)
                 except:
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
                     exit(1)
 
                 if not isinstance(substitutions, dict):
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must specify "substitutions" as a python dictionary (e.g. {{"text1": "substitution1", "text2": "substitution2", ...}}')
                     exit(1)
 
                 temp = {}
@@ -147,56 +173,56 @@ class ApproveInput:
 
                     for value in values:
                         if key_str in value:
-                            logging.warning(f'GRAPE: WARNING: Global config section "{approveInputSectionName}" has overlapping substitutions. This may result in unexpected substitutions.')
+                            logging.warning(f'GRAPE: WARNING: Global config section "{section_name}" has overlapping substitutions. This may result in unexpected substitutions.')
 
                     values.add(val_str)
 
                 substitutions = temp
-                approveInputSubstitutions = substitutions
+                substitutions = substitutions
 
-            if config.has_option(approveInputSectionName, "tag"):
-                approveInputTag = config.getboolean(approveInputSectionName, "tag")
+            if config.has_option(section_name, "tag"):
+                include_in_tag = config.getboolean(section_name, "tag")
 
-                if approveInputTag and 'tag' not in approveActions:
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "tag" option (review rule "{reviewRuleName}" does not create a tag on approval).')
+                if include_in_tag and 'tag' not in approve_actions:
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" does not support "True" for the "tag" option (review rule "{review_rule_id}" does not create a tag on approval).')
                     exit(1)
 
-            if config.has_option(approveInputSectionName, "description"):
-                approveInputDescription = config.getboolean(approveInputSectionName, "description")
+            if config.has_option(section_name, "description"):
+                include_in_description = config.getboolean(section_name, "description")
 
-                if approveInputDescription and 'description' not in approveActions:
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" does not support "True" for the "description" option (review rule "{reviewRuleName}" does not update the description on approval).')
+                if include_in_description and 'description' not in approve_actions:
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" does not support "True" for the "description" option (review rule "{review_rule_id}" does not update the description on approval).')
                     exit(1)
 
-            if config.has_option(approveInputSectionName, "required"):
-                approveInputRequired = config.getboolean(approveInputSectionName, "required")
+            if config.has_option(section_name, "required"):
+                required = config.getboolean(section_name, "required")
 
-            if config.has_option(approveInputSectionName, "cache"):
-                approveInputCache = config.getboolean(approveInputSectionName, "cache")
+            if config.has_option(section_name, "cache"):
+                cache = config.getboolean(section_name, "cache")
 
                 cacheableSources = ["prompt", "username"]
 
-                if approveInputCache and approveInputSource not in cacheableSources:
-                    logging.error(f'GRAPE: ERROR: Global config section "{approveInputSectionName}" has source "{approveInputSource}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
+                if cache and source not in cacheableSources:
+                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" has source "{source}" which cannot be cached. Sources that can be cached include {", ".join(cacheableSources)}.')
                     exit(1)
 
             # Check if the approve input is actually used
-            if not approveInputDescription and not approveInputTag:
-                logging.warning(f'GRAPE: WARNING: Approve input variable "{approveInputName}" is unused.')
+            if not include_in_description and not include_in_tag:
+                logging.warning(f'GRAPE: WARNING: Approve input variable "{approve_input_id}" is unused.')
                 return None
 
         return cls(
-            source=approveInputSource,
-            prompt=approveInputPrompt,
-            default=approveInputDefault,
-            label=approveInputLabel,
-            help=approveInputHelp,
-            examples=approveInputExamples,
-            substitutions=approveInputSubstitutions,
-            tag=approveInputTag,
-            description=approveInputDescription,
-            required=approveInputRequired,
-            cache=approveInputCache
+            source=source,
+            prompt=prompt,
+            default=default_value,
+            label=label,
+            help=help_text,
+            examples=examples,
+            substitutions=substitutions,
+            include_in_tag=include_in_tag,
+            include_in_description=include_in_description,
+            required=required,
+            cache=cache
         )
 
 
@@ -214,7 +240,7 @@ class ReviewRule:
                  eligibleReviewers: Optional[List[str]] = None,
                  repositories: Optional[List[str]] = None,
                  approveActions: Optional[List[str]] = None,
-                 approveInputs: Optional[List[ApproveInput]] = None,
+                 approveInputSpecs: Optional[List[ApproveInputSpec]] = None,
                  dryRun: bool = False):
         """
         Initialize a ReviewRule.
@@ -227,7 +253,7 @@ class ReviewRule:
         :param eligibleReviewers: List of eligible reviewer patterns
         :param repositories: List of repository patterns this rule applies to
         :param approveActions: List of actions to perform on approval
-        :param approveInputs: List of ApproveInput configurations
+        :param approveInputSpecs: List of ApproveInputSpec configurations
         :param dryRun: Whether to run in dry-run mode
         """
         self._name = name
@@ -238,7 +264,7 @@ class ReviewRule:
         self._eligibleReviewers = eligibleReviewers if eligibleReviewers is not None else [".+"]
         self._repositories = repositories if repositories is not None else [".+"]
         self._approveActions = approveActions if approveActions is not None else ['approve']
-        self._approveInputs = approveInputs if approveInputs is not None else []
+        self._approveInputSpecs = approveInputSpecs if approveInputSpecs is not None else []
         self._dryRun = dryRun
 
     @property
@@ -282,9 +308,9 @@ class ReviewRule:
         return self._approveActions
 
     @property
-    def approveInputs(self) -> List[ApproveInput]:
-        """Get the list of ApproveInput configurations."""
-        return self._approveInputs
+    def approveInputSpecs(self) -> List[ApproveInputSpec]:
+        """Get the list of ApproveInputSpec configurations."""
+        return self._approveInputSpecs
 
     @property
     def dryRun(self) -> bool:
@@ -351,25 +377,24 @@ class ReviewRule:
             approveActions = config.get(sectionName, "approveactions").split()
 
         # Get approve inputs
-        approveInputNames = []
+        approveInputIDs = []
         if config.has_option(sectionName, "approveinputs"):
-            approveInputNames = config.get(sectionName, "approveinputs").split()
+            approveInputIDs = config.get(sectionName, "approveinputs").split()
 
-            if len(approveInputNames) != len(set(approveInputNames)):
+            if len(approveInputIDs) != len(set(approveInputIDs)):
                 logging.warning(f'GRAPE: WARNING: Duplicate approve input variables.')
 
-        approveInputs = []
+        approveInputSpecs = []
 
-        for approveInputName in approveInputNames:
-            approveInput = ApproveInput.from_config(
+        for approveInputID in approveInputIDs:
+            approveInputSpec = ApproveInputSpec.from_config(
                 config,
-                approveInputName,
-                sectionName,
-                approveActions,
-                reviewRuleName
+                reviewRuleName,
+                approveInputID,
+                approveActions
             )
-            if approveInput is not None:
-                approveInputs.append(approveInput)
+            if approveInputSpec is not None:
+                approveInputSpecs.append(approveInputSpec)
 
         # Controls whether publish checks are just reported or actually prevent a publish
         dryRun = False
@@ -385,7 +410,7 @@ class ReviewRule:
             eligibleReviewers=eligibleReviewers,
             repositories=repositories,
             approveActions=approveActions,
-            approveInputs=approveInputs,
+            approveInputSpecs=approveInputSpecs,
             dryRun=dryRun
         )
 
@@ -510,7 +535,7 @@ class ReviewRuleManager:
             eligibleReviewers=['.+'],
             repositories=['.+'],
             approveActions=['approve'],
-            approveInputs=[],
+            approveInputSpecs=[],
             dryRun=False
         )
 
