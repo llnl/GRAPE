@@ -358,6 +358,7 @@ class Review(Option, WorkspaceDirHandler):
             - project_name
             - repo_name
             - repo
+            - review_request
             - source_branch
             - target_branch
             - grape_config (GrapeConfigParserBase)
