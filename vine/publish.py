@@ -1490,10 +1490,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         args["-m"] = escapedCommitMsg
 
-        logging.info("The following commit message will be used for email notification, merge commits, etc.\n"
-                         "======================================================================")
+        commitMsgMarker = "=" * 70
+        logging.info(f"The following commit message will be used for email notification, merge commits, etc.\n{commitMsgMarker}")
         logging.info(''.join(commitMsg[:10]))
-        logging.info("======================================================================")
+        logging.info(commitMsgMarker)
+
         proceed = utility.userInput("Is the above message what you want for email notifications and merge commits? "
                                     "['y','n']", 'y')
         if not proceed:

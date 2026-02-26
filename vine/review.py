@@ -1213,7 +1213,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         updates.append(f"draft={wip}")
                     if descr.strip() != request.description().strip():
                         # Note that the description will change whenever the reviewers change.
-                        descr_marker = "-" * 70
+                        descr_marker = "=" * 70
                         updates.append(f"description=\n{descr_marker}\n{descr}\n{descr_marker}")
 
                     # Rely on request.update to determine if reviewers have actually changed.
