@@ -288,18 +288,18 @@ class Approve(Option, WorkspaceDirHandler):
         exit(1)
 
     @staticmethod
-    def _get_user_input(rule_input):
+    def _get_user_input(approve_input_spec):
         # Print prompt
-        print(f'\n{rule_input.prompt}')
+        print(f'\n{approve_input_spec.prompt}')
 
         # Print help
-        help = rule_input.help
+        help = approve_input_spec.help
 
         if help:
             print(f'\n  Help:\n    {help}')
 
         # Print examples
-        examples = rule_input.examples
+        examples = approve_input_spec.examples
 
         if examples:
             print('\n  Examples:')
@@ -317,7 +317,7 @@ class Approve(Option, WorkspaceDirHandler):
                         print(f'    "{example}"')
 
         # Print substitutions
-        substitutions = rule_input.substitutions
+        substitutions = approve_input_spec.substitutions
 
         if substitutions:
             print('\n  Shortcuts/Substitutions:')
@@ -331,7 +331,7 @@ class Approve(Option, WorkspaceDirHandler):
                 print(f'    "{old}"{" " * (longest_len - len(old))} -> "{new}"')
 
         # Print default and prompt for input
-        default = rule_input.default
+        default = approve_input_spec.default
 
         if default:
             value = input(f'\n(def: {default}) ==> ').strip()
@@ -339,7 +339,7 @@ class Approve(Option, WorkspaceDirHandler):
             value = input('\n==> ').strip()
 
         # Loop if required and no value was entered
-        if rule_input.required:
+        if approve_input_spec.required:
             while not value:
                 print(f'\nPlease enter a non-empty string.')
                 value = input('\n==> ').strip()
@@ -478,16 +478,16 @@ class Approve(Option, WorkspaceDirHandler):
             any_approvals = True
 
             # Ask for input
-            rule_inputs = rule.approveInputs
+            approve_input_specs = rule.approveInputSpecs
             repo_inputs = repo_context['approve_inputs']
 
-            for rule_input in rule_inputs:
+            for approve_input_spec in approve_input_specs:
                 value = None
 
-                if rule_input.value is not None:
-                    value = rule_input.value
+                if approve_input_spec.value is not None:
+                    value = approve_input_spec.value
                 else:
-                    source = rule_input.source
+                    source = approve_input_spec.source
 
                     if source == 'commit':
                         value = source_commit
@@ -498,16 +498,16 @@ class Approve(Option, WorkspaceDirHandler):
                     elif source == 'date':
                         value = datetime.now().strftime('%d %b %Y')
                     else:
-                        value = Approve._get_user_input(rule_input)
+                        value = Approve._get_user_input(approve_input_spec)
 
-                    if rule_input.cache:
-                        rule_input.value = value
+                    if approve_input_spec.cache:
+                        approve_input_spec.value = value
 
                 repo_inputs.append({
-                    'label': rule_input.label,
+                    'label': approve_input_spec.label,
                     'value': value,
-                    'tag': rule_input.tag,
-                    'description': rule_input.description
+                    'include_in_tag': approve_input_spec.include_in_tag,
+                    'include_in_description': approve_input_spec.include_in_description
                 })
 
         # Check if any approvals were granted
@@ -595,7 +595,7 @@ class Approve(Option, WorkspaceDirHandler):
                     repo_inputs = repo_context['approve_inputs']
 
                     for repo_input in repo_inputs:
-                        if repo_input['description']:
+                        if repo_input['include_in_description']:
                             approvals[repo_name][repo_input['label']] = repo_input['value']
 
             description = description_model.to_text()
@@ -624,7 +624,7 @@ class Approve(Option, WorkspaceDirHandler):
                     first = True
 
                     for repo_input in repo_inputs:
-                        if repo_input['tag']:
+                        if repo_input['include_in_tag']:
                             if first:
                                 tag_message += '\n'
                                 first = False
