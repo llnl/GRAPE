@@ -1494,6 +1494,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         output = "The following commit message will be used for email notification, merge commits, etc.\n"
         output += f"{commitMsgMarker}\n"
         output += "".join(commitMsg[:10])
+
+        if len(commitMsg) > 10:
+            output += "<additional lines not shown>\n"
+
         output += commitMsgMarker
         logging.info(output)
 
