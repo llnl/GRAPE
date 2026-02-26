@@ -66,7 +66,7 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
             Option.SECTION_SERVICES, service.lower()
         ):
             service_user_name = home_config.get(Option.SECTION_SERVICES, service.lower())
-            logging.info(f"user name for {service} is {service_user_name}, loaded from $HOME/.grapeconfig")
+            logging.info(f'Loaded user name "{service_user_name}" for service "{service}" from $HOME/.grapeconfig.')
             return service_user_name
     except Exception:
         pass
