@@ -588,7 +588,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                   unmergedTrainBranches.append(branch)
         if args["--tagProposedVersion"]:
             numMerges = self.numberOfMergesSinceMostRecentTag(args,f"origin/{targetBranch}")
-            logging.info(f"numMerges = {numMerges}")
+            logging.info(f"numMerges = {numMerges}, unmerged branches {unmergedTrainBranches}")
             versionargs =  ["tick", "--tag", "-f", "--pushTag",
                             f"--public=origin/{targetBranch}",
                             f"--tagBase=origin/{targetBranch}",
