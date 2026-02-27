@@ -475,7 +475,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         from vine import grapeMenu
         branches = self.lookupActiveMergeTrainBranches(args)
         if not branches:
-            return False
+           return False
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
@@ -492,8 +492,9 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                # Always include the target branch
                unmergedTrainBranches.append(branch)
             else:
-               # Only include other branches in the merge train if they are not contained by the target branch
-               git.fetch(f"origin {branch}:{branch}", execution_path=self.workspace_dir)
+               # Only include other branches in the merge train if they are not contained by the target branch.
+               # Don't fetch any new tags, as we don't want the last version tag to change since we looked up the merge train branches.
+               git.fetch(f"--no-tags origin {branch}:{branch}", execution_path=self.workspace_dir)
                containingBranches = git.branch(f"-r --contains origin/{branch}", execution_path=self.workspace_dir).split()
                if f"origin/{targetBranch}" not in containingBranches:
                   unmergedTrainBranches.append(branch)
