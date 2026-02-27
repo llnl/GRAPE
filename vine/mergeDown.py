@@ -475,7 +475,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         from vine import grapeMenu
         branches = self.lookupActiveMergeTrainBranches(args)
         if not branches:
-           return False
+            return False
         logging.info(f"Merge Train Branches: {branches}")
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         # The first branch is always the target branch
