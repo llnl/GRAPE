@@ -14,14 +14,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectLabelManager`
   + :attr:`gitlab.v4.objects.Project.labels`
 
-* GitLab API: https://docs.gitlab.com/ce/api/labels.html
+* GitLab API: https://docs.gitlab.com/api/labels
 
 Examples
 --------
 
 List labels for a project::
 
-    labels = project.labels.list()
+    labels = project.labels.list(get_all=True)
 
 Create a label for a project::
 
@@ -79,14 +79,14 @@ Reference
   + :class:`gitlab.v4.objects.GroupEpicResourceLabelEventManager`
   + :attr:`gitlab.v4.objects.GroupEpic.resourcelabelevents`
 
-* GitLab API: https://docs.gitlab.com/ee/api/resource_label_events.html
+* GitLab API: https://docs.gitlab.com/api/resource_label_events
 
 Examples
 --------
 
 Get the events for a resource (issue, merge request or epic)::
 
-    events = resource.resourcelabelevents.list()
+    events = resource.resourcelabelevents.list(get_all=True)
 
 Get a specific event for a resource::
 

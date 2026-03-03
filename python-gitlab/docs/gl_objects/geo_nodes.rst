@@ -11,14 +11,14 @@ Reference
   + :class:`gitlab.v4.objects.GeoNodeManager`
   + :attr:`gitlab.Gitlab.geonodes`
 
-* GitLab API: https://docs.gitlab.com/ee/api/geo_nodes.html (EE feature)
+* GitLab API: https://docs.gitlab.com/api/geo_nodes (EE feature)
 
 Examples
 --------
 
 List the geo nodes::
 
-    nodes = gl.geonodes.list()
+    nodes = gl.geonodes.list(get_all=True)
 
 Get the status of all the nodes::
 

@@ -2,17 +2,14 @@ from typing import Any, Dict, TYPE_CHECKING
 
 from gitlab import cli
 from gitlab import exceptions as exc
-from gitlab.base import RESTManager, RESTObject
+from gitlab.base import RESTObject
 from gitlab.mixins import DeleteMixin, ListMixin, ObjectDeleteMixin
 
-__all__ = [
-    "Todo",
-    "TodoManager",
-]
+__all__ = ["Todo", "TodoManager"]
 
 
 class Todo(ObjectDeleteMixin, RESTObject):
-    @cli.register_custom_action("Todo")
+    @cli.register_custom_action(cls_names="Todo")
     @exc.on_http_error(exc.GitlabTodoError)
     def mark_as_done(self, **kwargs: Any) -> Dict[str, Any]:
         """Mark the todo as done.
@@ -35,12 +32,12 @@ class Todo(ObjectDeleteMixin, RESTObject):
         return server_data
 
 
-class TodoManager(ListMixin, DeleteMixin, RESTManager):
+class TodoManager(ListMixin[Todo], DeleteMixin[Todo]):
     _path = "/todos"
     _obj_cls = Todo
     _list_filters = ("action", "author_id", "project_id", "state", "type")
 
-    @cli.register_custom_action("TodoManager")
+    @cli.register_custom_action(cls_names="TodoManager")
     @exc.on_http_error(exc.GitlabTodoError)
     def mark_all_as_done(self, **kwargs: Any) -> None:
         """Mark all the todos as done.

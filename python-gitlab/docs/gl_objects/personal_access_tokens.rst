@@ -16,20 +16,20 @@ References
 
 * GitLab API:
 
-  + https://docs.gitlab.com/ee/api/personal_access_tokens.html
-  + https://docs.gitlab.com/ee/api/users.html#create-a-personal-access-token
+  + https://docs.gitlab.com/api/personal_access_tokens
+  + https://docs.gitlab.com/api/users#create-a-personal-access-token
 
 Examples
 --------
 
 List personal access tokens::
 
-    access_tokens = gl.personal_access_tokens.list()
+    access_tokens = gl.personal_access_tokens.list(get_all=True)
     print(access_tokens[0].name)
 
 List personal access tokens from other user_id (admin only)::
 
-    access_tokens = gl.personal_access_tokens.list(user_id=25)
+    access_tokens = gl.personal_access_tokens.list(user_id=25, get_all=True)
 
 Get a personal access token by id::
 
@@ -58,8 +58,14 @@ Rotate a personal access token and retrieve its new value::
     token.rotate()
     print(token.token)
     # or directly using a token ID
-    new_token = gl.personal_access_tokens.rotate(42)
-    print(new_token.token)
+    new_token_dict = gl.personal_access_tokens.rotate(42)
+    print(new_token_dict)
+
+Self-Rotate the personal access token you are using to authenticate the request and retrieve its new value::
+
+    token = gl.personal_access_tokens.get(42, lazy=True)
+    token.rotate(self_rotate=True)
+    print(token.token)
 
 Create a personal access token for a user (admin only)::
 

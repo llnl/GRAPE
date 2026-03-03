@@ -14,14 +14,18 @@ Reference
   + :class:`gitlab.v4.objects.DeployKeyManager`
   + :attr:`gitlab.Gitlab.deploykeys`
 
-* GitLab API: https://docs.gitlab.com/ce/api/deploy_keys.html
+* GitLab API: https://docs.gitlab.com/api/deploy_keys
 
 Examples
 --------
 
-List the deploy keys::
+Add an instance-wide deploy key (requires admin access)::
 
-    keys = gl.deploykeys.list()
+    keys = gl.deploykeys.create({'title': 'instance key', 'key': INSTANCE_KEY})
+
+List all deploy keys::
+
+    keys = gl.deploykeys.list(get_all=True)
 
 Deploy keys for projects
 ========================
@@ -37,14 +41,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectKeyManager`
   + :attr:`gitlab.v4.objects.Project.keys`
 
-* GitLab API: https://docs.gitlab.com/ce/api/deploy_keys.html
+* GitLab API: https://docs.gitlab.com/api/deploy_keys
 
 Examples
 --------
 
 List keys for a project::
 
-    keys = project.keys.list()
+    keys = project.keys.list(get_all=True)
 
 Get a single deploy key::
 
@@ -57,7 +61,7 @@ Create a deploy key for a project::
 
 Delete a deploy key for a project::
 
-    key = project.keys.list(key_id)
+    key = project.keys.list(key_id, get_all=True)
     # or
     key.delete()
 

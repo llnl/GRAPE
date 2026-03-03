@@ -22,15 +22,15 @@ class NewBranchOption(Option, WorkspaceDirHandler):
     Usage: grape-<type> [--start=<branch>] [--user=<username>] [--nopush] [--recurse | --noRecurse] [<descr>]
 
     Options:
-    --user=<username>       The user developing this branch. Asks by default.
-    --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
-    --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
-    --recurse               Create the branch in submodules/nested subprojects.
-                            [default: .grapeconfig.workspace.manageSubmodules]
-    --noRecurse             Don't create the branch in submodules/nested subprojects.
+        --user=<username>       The user developing this branch. Asks by default.
+        --start=<branch>        The start point for this branch. Default comes from .grapeconfig.flow.topicPrefixMappings.
+        --nopush                By default, grape will push the newly created branch to the server. This disables the push. 
+        --recurse               Create the branch in submodules/nested subprojects.
+                                [default: .grapeconfig.workspace.manageSubmodules]
+        --noRecurse             Don't create the branch in submodules/nested subprojects.
 
     Optional Arguments:
-    <descr>                  Single word description of work being done on this branch. Asks by default.
+        <descr>                  Single word description of work being done on this branch. Asks by default.
 
 
     """

@@ -14,7 +14,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectReleaseManager`
   + :attr:`gitlab.v4.objects.Project.releases`
 
-* Gitlab API: https://docs.gitlab.com/ee/api/releases/index.html
+* Gitlab API: https://docs.gitlab.com/api/releases/index
 
 Examples
 --------
@@ -22,7 +22,7 @@ Examples
 Get a list of releases from a project::
 
     project = gl.projects.get(project_id, lazy=True)
-    release = project.releases.list()
+    release = project.releases.list(get_all=True)
 
 Get a single release::
 
@@ -66,7 +66,7 @@ Reference
   + :class:`gitlab.v4.objects.ProjectReleaseLinkManager`
   + :attr:`gitlab.v4.objects.ProjectRelease.links`
 
-* Gitlab API: https://docs.gitlab.com/ee/api/releases/links.html
+* Gitlab API: https://docs.gitlab.com/api/releases/links
 
 Examples
 --------

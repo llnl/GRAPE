@@ -24,7 +24,9 @@ from vine import vine_subprocess
 from vine import version as grapeVersion
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
+from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
 from vine.resumable import Resumable
+from vine.ReviewRule import ReviewRuleManager
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
 
@@ -90,175 +92,175 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --markMRWithVersion --tagPrefix=<str> [--tagSuffix=<str>] [--public=<public>] --topic=<branch>
 
     Options:
-    --squash                  Squash merges the topic into the public, then performs a commit if the merge goes clean.
-    --cascade=<branch>        For squash merges, can choose to cascade back to <branch> after the merge is
-                              completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
-                              nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
-                              submodule publish policies.
-    --merge                   Perform a normal merge.
-    --mergeTrain=<bool>       Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
-                              in an active merge train.
-                              [default: .grapeconfig.publish.mergeTrain]
-    -m <msg>                  The commit message to use for a successful merge / squash merge. Ignored if used with
-                              --rebase.
-    --rebase                  Rebases the topic branch to the public, then fast forwards the public to the tip of the
-                              topic.
-    --recurse                 Perform the publish action in submodules.
-                              Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
-    --noRecurse               Do not perform the publish action in submodules.
-                              Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
-    --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
-    --topic=<branch>          The branch to publish. Defaults to the current branch.
-    --noverify                Set to skip interactive verification of publish commands.
-    --nopush                  Set to skip the push of commits generated during the publish procedure.
-    --noUpdateMD              Set to skip update of local public branches during md steps.
-    --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
-                              WARNING! This is still experimental and may have issues with grape workflows.
-                              In particular, tree:0 has performance issues with git rev-list/log command on specified
-                              files (it appears to download each commit separately).
-    --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
-                              "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
-                              "verifyCompletedReview", "markInProgress", "md2", "tickVersion", "updateLog",
-                              "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
-                              "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
-    --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
-                              perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
-    --continue                Resume a previous call to grape publish that encountered a failure at one of the publish
-                              steps.
-    --abort                   Abort a previously failed call to grape publish.
-    --buildCmds=<buildStr>    The comma-delimited list of build commands to execute.
-                              [default: .grapeconfig.publish.buildCmds]
-    --buildDir=<path>         The directory (relative to the workspace root directory) to execute the build steps in.
-                              [default: .grapeconfig.publish.buildDir]
-    --skipBuild               Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
-                              if mergeTrain is enabled, otherwise default is False.
-    --noSkipBuild             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
-                              enabled. Default behavior is to not skip builds.
-    --testCmds=<testStr>      The comma-delimited list of test commands to execute.
-                              [default: .grapeconfig.publish.testCmds]
-    --testDir=<path>          The directory (relative to the workspace root directory) to execute the test steps in.
-                              [default: .grapeconfig.publish.testDir]
-    --skipTest                Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
-                              if mergeTrain is enabled, otherwise default is False.
-    --noSkipTests             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
-                              enabled. Default behavior is to not skip tests.
-    --testCIJob=<jobStr>      The comma-delimited list of required passing CI jobs that allows short circuiting of
-                              builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
-                              to indicate that entry may be satisfied by one of multiple possible jobs.
-                              E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
-                              passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
-                              [default: .grapeconfig.publish.testCIJob]
-    --prepublishCmds=<str>    The comma-delimited list of commands to execute just before the publish step.
-                              [default: .grapeconfig.publish.prepublishCmds]
-    --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
-                              [default: .grapeconfig.publish.prepublishDir]
-    --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
-                              [default: .grapeconfig.publish.postverifyCmds]
-    --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
-                              [default: .grapeconfig.publish.postverifyDir]
-    --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
-                              [default: .grapeconfig.publish.postpublishCmds]
-    --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
-                              cmds in.
-                              [default: .grapeconfig.publish.postpublishDir]
-    --deleteTopic=<bool>      Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
-    --noUpdateLog             Set to skip the updateLog step.
-    --updateLogDir=<dir>      Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
-                              a directory named after current development version.
-                              [default: .grapeconfig.publish.updateLogDir]
-    --updateLogCmds=<cmds>    The comma-delimited list of commands to execute as part of the update log construction.
-                              [default: .grapeconfig.publish.updateLogCmds]
-    --updateLog=<file>        The log file to update with the commit message for this branch. If --updateLogDir is defined,
-                              this is the base file name for update message files.
-                              [default: .grapeconfig.publish.updateLog]
-    --skipFirstLines=<int>    The number of lines to skip in the updateLog file before inserting the commit message.
-                              [default: .grapeconfig.publish.logSkipFirstLines]
-    --entryHeader=<string>    The format for the commit message header. The string literals <date>, <user>, and <version>
-                              will be replaced by the date, the result of git config --get user.name, and the result of
-                              git describe --abbrev=0 after the tickversion step, respectively.
-                              [default: .grapeconfig.publish.logEntryHeader]
-    --tickVersion=<bool>      Tick a version number as a part of this publish action.
-                              [default: .grapeconfig.publish.tickVersion]
-    --tickOnCascade=<slot>    Tick the <slot> version number when performing a cascade.
-                              Default behavior governed by the flow.topicCascadeTick mapping.
-    -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
-                              and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>             Your Bitbucket/Gitlab username.
-    --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
-                              [default: .grapeconfig.project.codeReviewsURL]
-    --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
-                              [default: .grapeconfig.project.verifySSL]
-    --project=<project>       Your Bitbucket Project. See grape-review for more details.
-                              [default: .grapeconfig.project.name]
-    --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
-                              [default: .grapeconfig.repo.name]
-    -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
-                              Type grape review --help for valid options.
-    --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
-    --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
-    --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
-    --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
-    --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
-                              by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
-                              if no option for .grapeconfig.flow.topicDestinationMappings exists.
-    --submodulePublic=<b>     The branch to publish to in submodules. Defaults to the mapping for the current topic branch
-                              as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
-    --emailNotification=<b>   Set to true to send a notification email after you've published. The email will consist of
-                              a header <header> and a message, generally the contents of <CommitMessageFile> and/or
-                              the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
-                              and will be CC'd to the user.
-                              For the email subject, header and footer, the string literals
-                              '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
-                              <user>: the result of git config --get user.name
-                              <date>: the current timestamp.
-                              <version>: The version of the project, so long as grape is managing your versioning.
-                              <public>: The branch to publish to.
-                              <branch>: The branch to publish from.
-                              [default: .grapeconfig.publish.emailNotification]
-    --emailHeader=<header>    The email header. See above.
-                              [default: .grapeconfig.publish.emailHeader]
-    --emailFooter=<footer>    The email footer. See above.
-                              [default: .grapeconfig.publish.emailFooter]
-    --emailSubject=<sbj>      The email subject. See above.
-                              [default: .grapeconfig.publish.emailSubject]
-    --emailSendTo=<addr>      The comma-delimited list of receivers of the email.
-                              [default: .grapeconfig.publish.emailSendTo]
-    --emailServer=<server>    The smtp email server address.
-                              [default: .grapeconfig.publish.emailServer]
-    --emailMaxFiles=<int>     Maximum number of modified files (per subproject) to show in email.
-                              [default: .grapeconfig.publish.emailMaxFiles]
-    --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
-                              markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge             Perform the merge using the Bitbucket REST API.
-    --quiet                   Suppress output from custom build and test steps unless there is a failure.
-    --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
-                              REST API.
-                              [default: .grapeconfig.repo.ssh_pat_url]
-    --ssh_pat_port=<int>      Port number to issue ssh command over to generate a Personal Access Token for authentication
-                              into a Code Review service's REST API.
-                              [default: .grapeconfig.repo.ssh_pat_port]
-    --mergeUpdateLogs         If you are using a merge train workflow, this command can be used to produce a file that
-                              is a concatenation of merge request update log files, with the merge request version
-                              substituted out for appropriate version tags.
-    --mergedLog=<file>        The file to write the merged update logs to.
-    --startVersion=<ver>      Starting version to search for relevant update message files.
-    --stopVersion=<ver>       Most recent version to search for relevant update message files. Defaults to HEAD.
-    --tagPrefix=<str>         The prefix for the git version tags. [default: v]
-    --tagSuffix=<str>         The suffix for the git version tags. Default value comes from
-                              .grapeconfig.versioning.branchTagSuffixMappings.
-    --sendEmail               Just send the notification email.
-    --topLevelMergeSHA=<SHA>  Specify the SHA in the top level repo corresponding to the merge commit of the topic branch
-                              into the public branch for use in generating the commit file list for an email notification.
-    --markMRWithVersion       Update a merge request title with the given version string.
+        --squash                  Squash merges the topic into the public, then performs a commit if the merge goes clean.
+        --cascade=<branch>        For squash merges, can choose to cascade back to <branch> after the merge is
+                                  completed. Define multiple times to setup a chain of cascades. Overrides outer repo and
+                                  nestedSubproject cascades defined in .grapeconfig publish policies. Does not override
+                                  submodule publish policies.
+        --merge                   Perform a normal merge.
+        --mergeTrain=<bool>       Use the Merge Train feature supported by Gitlab - GRAPE will push an update and then ask Gitlab to enqueue the update
+                                  in an active merge train.
+                                  [default: .grapeconfig.publish.mergeTrain]
+        -m <msg>                  The commit message to use for a successful merge / squash merge. Ignored if used with
+                                  --rebase.
+        --rebase                  Rebases the topic branch to the public, then fast forwards the public to the tip of the
+                                  topic.
+        --recurse                 Perform the publish action in submodules.
+                                  Defaults to True if .grapeconfig.workspace.manageSubmodules is True.
+        --noRecurse               Do not perform the publish action in submodules.
+                                  Defaults to True if .grapeconfig.workspace.manageSubmodules is False.
+        --noRecurseSubprojects    Do not perform the publish action in nested subprojects.
+        --topic=<branch>          The branch to publish. Defaults to the current branch.
+        --noverify                Set to skip interactive verification of publish commands.
+        --nopush                  Set to skip the push of commits generated during the publish procedure.
+        --noUpdateMD              Set to skip update of local public branches during md steps.
+        --filter=<arg>            Optional clone filter argument to use if any subprojects get cloned during the MD step.
+                                  WARNING! This is still experimental and may have issues with grape workflows.
+                                  In particular, tree:0 has performance issues with git rev-list/log command on specified
+                                  files (it appears to download each commit separately).
+        --startAt=<startStep>     The publish step to start at. One of "testForCleanWorkspace1", "md1",
+                                  "ensureModifiedSubmodulesAreActive", "verifyPublishActions", "ensureReview",
+                                  "verifyCompletedReview", "postVerify", "markInProgress", "md2", "tickVersion", "updateLog",
+                                  "build", "test", "testForCleanWorkspace2", "prePublish", "publish", "postPublish",
+                                  "tagVersion", "performCascades", "markAsDone", "notify", or "deleteTopic".
+        --stopAt=<stopStep>       The publish step to stop at. Valid values are the same as for --startAt. Publish will
+                                  perform all steps from <startStep> (inclusive) to <stopStep> (exclusive).
+        --continue                Resume a previous call to grape publish that encountered a failure at one of the publish
+                                  steps.
+        --abort                   Abort a previously failed call to grape publish.
+        --buildCmds=<buildStr>    The comma-delimited list of build commands to execute.
+                                  [default: .grapeconfig.publish.buildCmds]
+        --buildDir=<path>         The directory (relative to the workspace root directory) to execute the build steps in.
+                                  [default: .grapeconfig.publish.buildDir]
+        --skipBuild               Skips Build step during grape publish. Default comes from .grapeconfig.publish.skipBuildOnTrain
+                                  if mergeTrain is enabled, otherwise default is False.
+        --noSkipBuild             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipBuildOnTrain is
+                                  enabled. Default behavior is to not skip builds.
+        --testCmds=<testStr>      The comma-delimited list of test commands to execute.
+                                  [default: .grapeconfig.publish.testCmds]
+        --testDir=<path>          The directory (relative to the workspace root directory) to execute the test steps in.
+                                  [default: .grapeconfig.publish.testDir]
+        --skipTest                Skips Test step during grape publish. Default comes from .grapeconfig.publish.skipTestOnTrain
+                                  if mergeTrain is enabled, otherwise default is False.
+        --noSkipTests             Do not skip the build step during grape publish, even if .grapeconfig.publish.skipTestOnTrain is
+                                  enabled. Default behavior is to not skip tests.
+        --testCIJob=<jobStr>      The comma-delimited list of required passing CI jobs that allows short circuiting of
+                                  builds and tests during publish. Each comma-delimited entry may itself be delimited by '|',
+                                  to indicate that entry may be satisfied by one of multiple possible jobs.
+                                  E.g. :       job1,job2a|job2b,job3  : testing is satisfied if job1 and job3 are
+                                  passing, AND either job2a or job2b is passing.  '|' has higher precedence than ','.
+                                  [default: .grapeconfig.publish.testCIJob]
+        --prepublishCmds=<str>    The comma-delimited list of commands to execute just before the publish step.
+                                  [default: .grapeconfig.publish.prepublishCmds]
+        --prepublishDir=<str>     The directory (relative to the workspace root directory) to execute the pre-publish cmds in.
+                                  [default: .grapeconfig.publish.prepublishDir]
+        --postverifyCmds=<str>     The comma-delimited list of commands to execute after verification, before CI check.
+                                  [default: .grapeconfig.publish.postverifyCmds]
+        --postverifyDir=<str>     The directory (relative to the workspace root directory) to execute the post-verify cmds in.
+                                  [default: .grapeconfig.publish.postverifyDir]
+        --postpublishCmds=<str>    The comma-delimited list of commands to execute just after the publish step.
+                                  [default: .grapeconfig.publish.postpublishCmds]
+        --postpublishDir=<str>    The directory (relative to the workspace root directory) to execute the post-publish
+                                  cmds in.
+                                  [default: .grapeconfig.publish.postpublishDir]
+        --deleteTopic=<bool>      Offer to delete the topic branch when done. [default: .grapeconfig.publish.deleteTopic]
+        --noUpdateLog             Set to skip the updateLog step.
+        --updateLogDir=<dir>      Directory to put update log messages. Can use <major_version> and/or <minor_version> to have
+                                  a directory named after current development version.
+                                  [default: .grapeconfig.publish.updateLogDir]
+        --updateLogCmds=<cmds>    The comma-delimited list of commands to execute as part of the update log construction.
+                                  [default: .grapeconfig.publish.updateLogCmds]
+        --updateLog=<file>        The log file to update with the commit message for this branch. If --updateLogDir is defined,
+                                  this is the base file name for update message files.
+                                  [default: .grapeconfig.publish.updateLog]
+        --skipFirstLines=<int>    The number of lines to skip in the updateLog file before inserting the commit message.
+                                  [default: .grapeconfig.publish.logSkipFirstLines]
+        --entryHeader=<string>    The format for the commit message header. The string literals <date>, <user>, and <version>
+                                  will be replaced by the date, the result of git config --get user.name, and the result of
+                                  git describe --abbrev=0 after the tickversion step, respectively.
+                                  [default: .grapeconfig.publish.logEntryHeader]
+        --tickVersion=<bool>      Tick a version number as a part of this publish action.
+                                  [default: .grapeconfig.publish.tickVersion]
+        --tickOnCascade=<slot>    Tick the <slot> version number when performing a cascade.
+                                  Default behavior governed by the flow.topicCascadeTick mapping.
+        -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
+                                  and defaults. -T can be used multiple times to pass multiple arguments.
+        --user=<user>             Your Bitbucket/Gitlab username.
+        --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+                                  [default: .grapeconfig.project.codeReviewsURL]
+        --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
+                                  [default: .grapeconfig.project.verifySSL]
+        --project=<project>       Your Bitbucket Project. See grape-review for more details.
+                                  [default: .grapeconfig.project.name]
+        --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+                                  [default: .grapeconfig.repo.name]
+        -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
+                                  Type grape review --help for valid options.
+        --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
+        --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
+        --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
+        --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+        --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
+                                  by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
+                                  if no option for .grapeconfig.flow.topicDestinationMappings exists.
+        --submodulePublic=<b>     The branch to publish to in submodules. Defaults to the mapping for the current topic branch
+                                  as described by .grapeconfig.workspace.submoduleTopicPrefixMappings.
+        --emailNotification=<b>   Set to true to send a notification email after you've published. The email will consist of
+                                  a header <header> and a message, generally the contents of <CommitMessageFile> and/or
+                                  the Pull Request description, followed by a footer <footer>. The email is sent to <addr>,
+                                  and will be CC'd to the user.
+                                  For the email subject, header and footer, the string literals
+                                  '<user>', '<date>', '<version>', '<public>', and '<branch>' with the following:
+                                  <user>: the result of git config --get user.name
+                                  <date>: the current timestamp.
+                                  <version>: The version of the project, so long as grape is managing your versioning.
+                                  <public>: The branch to publish to.
+                                  <branch>: The branch to publish from.
+                                  [default: .grapeconfig.publish.emailNotification]
+        --emailHeader=<header>    The email header. See above.
+                                  [default: .grapeconfig.publish.emailHeader]
+        --emailFooter=<footer>    The email footer. See above.
+                                  [default: .grapeconfig.publish.emailFooter]
+        --emailSubject=<sbj>      The email subject. See above.
+                                  [default: .grapeconfig.publish.emailSubject]
+        --emailSendTo=<addr>      The comma-delimited list of receivers of the email.
+                                  [default: .grapeconfig.publish.emailSendTo]
+        --emailServer=<server>    The smtp email server address.
+                                  [default: .grapeconfig.publish.emailServer]
+        --emailMaxFiles=<int>     Maximum number of modified files (per subproject) to show in email.
+                                  [default: .grapeconfig.publish.emailMaxFiles]
+        --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
+                                  markInProgress, md2, publish, markAsDone, deleteTopic, done]
+        --remoteMerge             Perform the merge using the Bitbucket REST API.
+        --quiet                   Suppress output from custom build and test steps unless there is a failure.
+        --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                                  REST API.
+                                  [default: .grapeconfig.repo.ssh_pat_url]
+        --ssh_pat_port=<int>      Port number to issue ssh command over to generate a Personal Access Token for authentication
+                                  into a Code Review service's REST API.
+                                  [default: .grapeconfig.repo.ssh_pat_port]
+        --mergeUpdateLogs         If you are using a merge train workflow, this command can be used to produce a file that
+                                  is a concatenation of merge request update log files, with the merge request version
+                                  substituted out for appropriate version tags.
+        --mergedLog=<file>        The file to write the merged update logs to.
+        --startVersion=<ver>      Starting version to search for relevant update message files.
+        --stopVersion=<ver>       Most recent version to search for relevant update message files. Defaults to HEAD.
+        --tagPrefix=<str>         The prefix for the git version tags. [default: v]
+        --tagSuffix=<str>         The suffix for the git version tags. Default value comes from
+                                  .grapeconfig.versioning.branchTagSuffixMappings.
+        --sendEmail               Just send the notification email.
+        --topLevelMergeSHA=<SHA>  Specify the SHA in the top level repo corresponding to the merge commit of the topic branch
+                                  into the public branch for use in generating the commit file list for an email notification.
+        --markMRWithVersion       Update a merge request title with the given version string.
 
 
     Optional Arguments:
-    <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
-                            this branch will be updated to contain this message. If you don't specify a filename, grape
-                            will give you an opportunity to use contents of the pull request description are intended for the update
-                            message. Both the commit message for the merge and an update log will contain this message.
-                            Additionally, if email notification is configured, the contents of the email will have
-                            this message.
+        <CommitMessageFile>     A file with an update message for this publish command. The pull request associated with
+                                this branch will be updated to contain this message. If you don't specify a filename, grape
+                                will give you an opportunity to use contents of the pull request description are intended for the update
+                                message. Both the commit message for the merge and an update log will contain this message.
+                                Additionally, if email notification is configured, the contents of the email will have
+                                this message.
 
 
 
@@ -330,8 +332,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'emailMaxFiles', '100')
         # tick on cascade behavior
         config.set(self.SECTION_FLOW, "topicCascadeTick","?:0")
-        # reviewer lists
-        config.set(self.SECTION_PUBLISH, 'projects_with_reviewer_lists', '')
 
     def description(self):
         try:
@@ -657,7 +657,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
     @property
     def repo(self):
         if self._repo is None:
-            self._repo = self.codeReviews.project(self.args["--project"]).repo(self.args["--repo"])
+            self._repo = self.codeReviews.repo(self.args["--project"], self.args["--repo"])
         return self._repo
 
     def pullRequests(self):
@@ -744,7 +744,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                     request = r
                     break
         if request:
-            title = re.sub("^.*\*\*IN PROGRESS\*\* *", "", request.title())
+            title = re.sub(r"^.*\*\*IN PROGRESS\*\* *", "", request.title())
             config = config_parser_global.grapeConfig()
             inprogresslabel = config.get(self.SECTION_PUBLISH, "inprogresslabel", fallback=None)
             if inprogresslabel:
@@ -768,9 +768,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return True
 
         # Get review rules
-        reviewRules = review.parseReviewRules()
-        reviewRuleMap = review.parseReviewRuleMap(reviewRules)
-        defaultReviewRuleName = review.parseDefaultReviewRuleName(reviewRules)
+        reviewRuleManager = ReviewRuleManager.from_config()
+        reviewRules = reviewRuleManager.reviewRules
 
         verified = True
 
@@ -802,7 +801,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             for submodule in submodules:
                 submoduleRepo = CodeReviewsFactory.repoFromSubmodulePath(self.codeReviews, submodule)
                 submodulePullRequest = submoduleRepo.getOpenPullRequest(topic, submodulePublicBranch)
-                pullRequests.append((submodule, submodulePullRequest))
+                pullRequests.append((submodule, submoduleRepo, submodulePullRequest))
 
         # Gather pull requests for subprojects
         if not args["--noRecurseSubprojects"] and not args["--noReviewSubprojects"]:
@@ -811,27 +810,27 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             for subproject in self.modifiedNestedProjects:
                 repo = CodeReviewsFactory.repoFromNestedSubprojectName(self.codeReviews, subproject)
                 pullRequest = repo.getOpenPullRequest(topic, public)
-                pullRequests.append((subproject, pullRequest))
+                pullRequests.append((subproject, repo, pullRequest))
 
         # Add top level pull request
         topPullRequest = self.openPullRequest()
-        pullRequests.append((self.args["--repo"], topPullRequest))
+        pullRequests.append((self.args["--repo"], self.repo, topPullRequest))
 
         # Check all reviews are completed
         userMessage = ""
         finishedReviewers = set()
 
-        reviewersRegex = re.compile("^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
+        reviewersRegex = re.compile(r"^--reviewers=(?P<reviewers>.*?)\s*$", re.MULTILINE)
 
-        for (repo, pullRequest) in pullRequests:
+        for (repoName, repo, pullRequest) in pullRequests:
             if not pullRequest:
                 # If the submodule gitlink was added in the branch, but the branch in the submodule was already up-to-date
                 # with the public, we can skip the pull request check (since no pull request can be generated).
-                working_dir = os.path.join(self.workspace_dir, repo)
-                if repo in submodules and git.SHA(submodulePublicBranch, execution_path=working_dir) == git.SHA(topic, execution_path=working_dir):
+                working_dir = os.path.join(self.workspace_dir, repoName)
+                if repoName in submodules and git.SHA(submodulePublicBranch, execution_path=working_dir) == git.SHA(topic, execution_path=working_dir):
                     pass
                 else:
-                    userMessage += f"\n\t{repo}: Needs pull request (run grape review)"
+                    userMessage += f"\n\t{repoName}: Needs pull request (run grape review)"
                     verified = False
                 continue
 
@@ -842,17 +841,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             # the minimum number of required reviewers (this info is stored
             # by grape in the merge/pull request description).
             description = pullRequest.description()
-
-            if isinstance(description, bytes):
-                description = description.decode("utf-8")
-
-            savedArgs = {}
-            match = reviewersRegex.search(description)
-
-            if match:
-                savedArgs['--reviewers'] = match.group('reviewers')
-
-            reviewersFromDescription = review.parseReviewers(savedArgs, reviewRules, reviewRuleMap, defaultReviewRuleName)
+            descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
 
             # Omit non-approvers from the unfinished reviewers reported
             non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
@@ -867,72 +856,191 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             for reviewRuleName in reviewRules:
                 reviewRule = reviewRules[reviewRuleName]
 
-                if reviewRule['active']:
-                    reviewRuleRepositories = reviewRule["repositories"]
+                if reviewRule.active:
+                    ruleDryRun = reviewRule.dryRun
 
-                    for reviewRuleRepository in reviewRuleRepositories:
-                        if re.fullmatch(reviewRuleRepository, repo):
-                            label = reviewRule["label"]
-                            minNumReviewers = reviewRule["minNumReviewers"]
-                            eligibleReviewers = reviewRule["eligibleReviewers"]
+                    if reviewRule.matches_repository(repoName):
+                        label = reviewRule.label
+                        minNumReviewers = reviewRule.minNumReviewers
 
-                            # Check if reviewers are assigned to the review rule
-                            if reviewRuleName not in reviewersFromDescription:
-                                userMessage += f'\n\t{repo}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        # Check if reviewers are assigned to the review rule
+                        if label not in descriptionModel.reviewRules:
+                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+
+                            if not ruleDryRun:
                                 verified = False
-                                break
 
-                            # Check if at least the minimum number of required
-                            # reviewers are assigned to the review rule
-                            assignedReviewers = reviewersFromDescription[reviewRuleName]['reviewers']
+                            break
 
-                            if len(assignedReviewers) < minNumReviewers:
-                                userMessage += f'\n\t{repo}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        # Check if at least the minimum number of required
+                        # reviewers are assigned to the review rule
+                        assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
+
+                        if len(assignedReviewers) < minNumReviewers:
+                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+
+                            if not ruleDryRun:
                                 verified = False
-                                break
 
-                            # Check that the assigned reviewers are eligible
-                            # for this review rule.
-                            ineligibleReviewers = []
+                            break
 
-                            for assignedReviewer in assignedReviewers:
-                                eligible = False
+                        # Check that the assigned reviewers are eligible
+                        # for this review rule.
+                        ineligibleReviewers = []
 
-                                for eligibleReviewer in eligibleReviewers:
-                                    if re.fullmatch(eligibleReviewer, assignedReviewer):
-                                        eligible = True
+                        for assignedReviewer in assignedReviewers:
+                            if not reviewRule.matches_reviewer(assignedReviewer):
+                                ineligibleReviewers.append(assignedReviewer)
+
+                        if ineligibleReviewers:
+                            userMessage += f'\n\t{repoName}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+
+                            if not ruleDryRun:
+                                verified = False
+
+                            break
+
+                        # Check that the assigned reviewers have approved.
+                        unfinishedReviewers = []
+
+                        for assignedReviewer in assignedReviewers:
+                            approved = False
+
+                            if assignedReviewer in non_approver_list:
+                                continue
+
+                            for reviewer in reviewers:
+                                if assignedReviewer == reviewer[0]:
+                                    if reviewer[1]:
+                                        approved = True
                                         break
 
-                                if not eligible:
-                                    ineligibleReviewers.append(assignedReviewer)
+                            if not approved:
+                                unfinishedReviewers.append(assignedReviewer)
 
-                            if ineligibleReviewers:
-                                userMessage += f'\n\t{repo}: "{label}" has ineligible reviewer(s): {", ".join(ineligibleReviewers)}. Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        if unfinishedReviewers:
+                            userMessage += f'\n\t{repoName}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
+
+                            if not ruleDryRun:
                                 verified = False
+
+                            break
+
+                        # Check approve actions are completed.
+                        # - "approve" has already been covered by other checks
+                        # - "tag" requires checking that a tag for the review rule exists and no changes have occurred since
+                        # - "description" is not yet handled, but would involve checks similar to that for the tag message below
+                        approveActions = reviewRule.approveActions
+
+                        if 'tag' in approveActions:
+                            tagName = f'{reviewRule.name}_{pullRequest.iid()}'
+                            tag = repo.getTag(tagName)
+
+                            # Check tag exists
+                            if not tag:
+                                userMessage += f'\n\t{repoName}: "{label}" needs approve tag.'
+
+                                if not ruleDryRun:
+                                    verified = False
+
                                 break
 
-                            # Check that the assigned reviewers have approved.
-                            unfinishedReviewers = []
+                            # TODO: If the GitLab tags API ever returns the tag creator,
+                            #       check that it is an eligible approver and not the
+                            #       merge/pull request author.
 
-                            for assignedReviewer in assignedReviewers:
-                                approved = False
+                            # Check tag commit
+                            if tag.target != pullRequest.fromSHA():
+                                # If the diff of the tag with respect to develop is the same
+                                # as the diff of the source branch with respect to develop,
+                                # then no reapproval is needed. If diffs are truncated,
+                                # require reapproval.
 
-                                if assignedReviewer in non_approver_list:
-                                    continue
+                                def normalizeDiff(diff):
+                                    """Normalize a diff object for stable comparison.
 
-                                for reviewer in reviewers:
-                                    if assignedReviewer == reviewer[0]:
-                                        if reviewer[1]:
-                                            approved = True
-                                            break
+                                    Extracts a consistent subset of keys from a diff dict to allow set/tuple-based
+                                    comparisons across sources.
 
-                                if not approved:
-                                    unfinishedReviewers.append(assignedReviewer)
+                                    Args:
+                                        diff (dict): A diff dictionary expected to contain 'old_path', 'new_path',
+                                            and 'diff' keys.
 
-                            if unfinishedReviewers:
-                                userMessage += f'\n\t{repo}: "{label}" needs review from {", ".join(unfinishedReviewers)}.'
-                                verified = False
+                                    Returns:
+                                        tuple: (key, value) pairs for 'old_path', 'new_path', and 'diff', in that
+                                            order.
+                                    """
+                                    keysForComparison = ['old_path', 'new_path', 'diff']
+                                    return tuple((key, diff[key]) for key in keysForComparison)
+
+                                # Get source diffs, check for truncation, and normalize for comparison
+                                sourceDiffs = pullRequest.diffs()
+
+                                for diff in sourceDiffs:
+                                    if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
+                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+
+                                        if not ruleDryRun:
+                                            verified = False
+
+                                        break
+
+                                sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
+
+                                # Get tag diffs, check for truncation, and normalize for comparison
+                                tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target)
+
+                                if tagDiffs['compare_timeout']:
+                                    userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+
+                                    if not ruleDryRun:
+                                        verified = False
+
+                                    break
+
+                                tagDiffs = tagDiffs.get('diffs', [])
+
+                                for diff in tagDiffs:
+                                    if diff.get('collapsed') or diff.get('too_large') or diff.get('generated_file'):
+                                        userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
+
+                                        if not ruleDryRun:
+                                            verified = False
+
+                                        break
+
+                                tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
+
+                                # Compare source and tag diffs
+                                if tagDiffs != sourceDiffs:
+                                    userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
+
+                                    if not ruleDryRun:
+                                        verified = False
+
+                                    break
+
+                            # Check tag message
+                            if label not in tag.message:
+                                userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+
+                                if not ruleDryRun:
+                                    verified = False
+
                                 break
+
+                            approveInputSpecs = reviewRule.approveInputSpecs
+
+                            for approveInputSpec in approveInputSpecs:
+                                if approveInputSpec.include_in_tag and approveInputSpec.label not in tag.message:
+                                    userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+
+                                    if not ruleDryRun:
+                                        verified = False
+
+                                    break
+
+                            # TODO: Make sure progress can't be resumed after commits
 
             # Check if the repository manager's review requirements are all met.
             approved = pullRequest.approved()
@@ -941,14 +1049,14 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 verified = False
 
                 if not reviewers:
-                    userMessage += f"\n\t{repo}: Needs reviewers (run grape review)"
+                    userMessage += f"\n\t{repoName}: Needs reviewers (run grape review)"
                 else:
                     unfinishedReviewers = " ,".join([f"{reviewer[2]}" for reviewer in reviewers if reviewer[1] is False and reviewer[0].lower() not in non_approver_list])
 
                     if unfinishedReviewers:
-                        userMessage += f"\n\t{repo}: Needs review from {unfinishedReviewers}"
+                        userMessage += f"\n\t{repoName}: Needs review from {unfinishedReviewers}"
                     else:
-                        userMessage += f"\n\t{repo}: Needs additional approvals"
+                        userMessage += f"\n\t{repoName}: Needs additional approvals"
 
                     finishedReviewers.update([reviewer[2] for reviewer in reviewers if reviewer[1] is True])
             else:
@@ -1249,11 +1357,15 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         last_version = grapeVersion.describeLastVersion("--abbrev=0", branch=f"origin/{args['--topic']}", tagPrefix=args['--tagPrefix'], execution_path=self.workspace_dir)
         branch_log = git.log(f"--oneline --decorate --no-color origin/{args['--topic']} --not {last_version}", execution_path=self.workspace_dir)
         tags = []
+        pattern = re.compile(r"tag: (MR_[^),]+)")
+
         for line in branch_log.splitlines():
-           match = re.search("tag: (MR_[^),]+)", line)
+           match = pattern.search(line)
+
            if match:
               logging.debug(match.group(1))
               tags.append(match.group(1))
+
         # This step occurs during grape publish --sendEmail, which should follow grape version tick,
         # so it cannot easily be rerun as part of the same job (as the version tick will fail on rerun).
         if len(tags) == 0:
@@ -1267,7 +1379,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
            self.progress["MR_tag"] = tag
            pr_id = tag.split("MR_")[1]
            pull_request = self.repo.pullRequests(id=pr_id)[0]
-           escapedCommitMsg = pull_request.description().decode('ascii').splitlines(True)+['\n']
+           # TODO: Determine if full description or just user portion
+           #       should be included (e.g. exclude grape portion)
+           escapedCommitMsg = pull_request.description().splitlines(True)+['\n']
            if len(tags) > 1:
               escapedCommitMsg.append(f"WARNING: Multiple MR_ tags were found on this branch, using {tag} (tags: {tags}, last version: {last_version}, branch: {args['--topic']}).\n")
            escapedCommitMsg = ''.join(escapedCommitMsg).replace("\"", "\\\"")
@@ -1336,7 +1450,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.info("Retrieving pull request description for use as commit message...")
             pullRequest = self.openPullRequest()
             if pullRequest:
-                commitMsg = pullRequest.description().decode('ascii').splitlines(True)+['\n']
+                # TODO: Determine if full description or just user portion
+                #       should be included (e.g. exclude grape portion)
+                commitMsg = pullRequest.description().splitlines(True)+['\n']
             else:
                 commitMsg = ""
 
@@ -1344,45 +1460,47 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         escapedCommitMsg = ''.join(commitMsg).replace("\"", "\\\"")
         escapedCommitMsg = escapedCommitMsg.replace("`", "'")
 
-        haveLink = False
-        haveBlock = False
-        skipBlock = False
+        haveGrapeGeneratedContent = False
         empty = True
+
         for line in escapedCommitMsg.splitlines():
             line = line.strip()
+
             if line:
+               if line == '# GRAPE' or line == '# Related Reviews':
+                  # Everything after this point is generated by GRAPE
+                  haveGrapeGeneratedContent = True
+                  break
+
+               # This check is for legacy descriptions
                if line.startswith(review.MRLinkText()):
                   # Skip links to other merge requests
-                  haveLink = True
+                  haveGrapeGeneratedContent = True
                   continue
-               elif line.startswith(review.MRBlockDelimiter()):
-                  # Skip review blocks
-                  if line.endswith(f"START{review.MRBlockDelimiter()}"):
-                     haveBlock = True
-                     skipBlock = True
-                  if line.endswith(f"STOP{review.MRBlockDelimiter()}"):
-                     skipBlock = False
-                     continue
-               if skipBlock:
-                  continue
+
                empty = False
                break
 
         if empty:
             errMsg = "The commit message must be non-empty!"
-            if haveLink:
-               errMsg += f"\n- Lines starting with '{review.MRLinkText()}' are ignored."
-            if haveBlock:
-               errMsg += "\n- Lines in reviewer blocks are ignored."
+            if haveGrapeGeneratedContent:
+               errMsg += f"\n- Lines generated by GRAPE are ignored."
             logging.error(errMsg)
             return False
 
         args["-m"] = escapedCommitMsg
 
-        logging.info("The following commit message will be used for email notification, merge commits, etc.\n"
-                         "======================================================================")
-        logging.info(''.join(commitMsg[:10]))
-        logging.info("======================================================================")
+        commitMsgMarker = "=" * 70
+        output = "The following commit message will be used for email notification, merge commits, etc.\n"
+        output += f"{commitMsgMarker}\n"
+        output += "".join(commitMsg[:10])
+
+        if len(commitMsg) > 10:
+            output += "<additional lines not shown>\n"
+
+        output += commitMsgMarker
+        logging.info(output)
+
         proceed = utility.userInput("Is the above message what you want for email notifications and merge commits? "
                                     "['y','n']", 'y')
         if not proceed:

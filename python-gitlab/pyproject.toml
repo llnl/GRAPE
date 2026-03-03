@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python-gitlab"
-description="A python wrapper for the GitLab API"
+description="The python wrapper for the GitLab REST and GraphQL APIs."
 readme = "README.rst"
 authors = [
     {name = "Gauvain Pocentek", email= "gauvain@pocentek.net"}
@@ -15,10 +15,10 @@ maintainers = [
     {name = "Nejc Habjan", email="nejc.habjan@siemens.com"},
     {name = "Roger Meier", email="r.meier@siemens.com"}
 ]
-requires-python = ">=3.8.0"
+requires-python = ">=3.10.0"
 dependencies = [
-    "requests>=2.25.0",
-    "requests-toolbelt>=0.10.1",
+    "requests>=2.32.0",
+    "requests-toolbelt>=1.0.0",
 ]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
@@ -30,11 +30,11 @@ classifiers = [
     "Operating System :: Microsoft :: Windows",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 keywords = ["api", "client", "gitlab", "python", "python-gitlab", "wrapper"]
 license = {text = "LGPL-3.0-or-later"}
@@ -43,6 +43,7 @@ dynamic = ["version"]
 [project.optional-dependencies]
 autocompletion = ["argcomplete>=1.10.0,<3"]
 yaml = ["PyYaml>=6.0.1"]
+graphql = ["gql[httpx]>=3.5.0,<5"]
 
 [project.scripts]
 gitlab = "gitlab.cli:main"
@@ -68,6 +69,9 @@ order_by_type = false
 files = "."
 exclude = "build/.*"
 strict = true
+
+[tool.black]
+skip_magic_trailing_comma = true
 
 # Overrides for currently untyped modules
 [[tool.mypy.overrides]]
@@ -97,6 +101,13 @@ version_variables = [
 ]
 commit_message = "chore: release v{version}"
 
+[tool.semantic_release.changelog]
+exclude_commit_patterns = [
+  '''chore\(deps\): .+''',  # Exclude dependency updates from the changelog
+]
+mode = "update"
+insertion_flag = "All versions below are listed in reverse chronological order."
+
 [tool.pylint.messages_control]
 max-line-length = 88
 jobs = 0  # Use auto-detected number of multiple processes to speed up Pylint.
@@ -123,6 +134,7 @@ disable = [
     "too-many-instance-attributes",
     "too-many-lines",
     "too-many-locals",
+    "too-many-positional-arguments",
     "too-many-public-methods",
     "too-many-statements",
     "unsubscriptable-object",

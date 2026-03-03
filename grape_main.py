@@ -35,34 +35,34 @@ Usage: grape [-t] [-v | --vv | -q] [-d] [--np=<numProcs>] [--gc=<configString>].
        grape [--version]
 
 Options:
--t                   Print time before each logging statement.
--v                   Run in verbose mode. This will print out most git output as git commands complete.
---vv                 Run in very verbose mode. This will print out all git output as git commands complete.
--q                   Quiet mode. Quiet's all output except for user input prompts.
--d                   Defaults proposed by GRAPE used in place of prompting user for input.
-                     This non-interactive option is for CI jobs and where users see fit.
---np=<int>           The number of processes grape should use when performing parallel operations. Values
-                     less than 1 will use max number of processors available.
-                     Default value is configurable via the concurrency-control section in the .grapeconfig:
-                       #### default configuration ###
-                       [concurrency-control]
-                       # number of tasks for non-exclusive nodes.
-                       defaultnumtasks = 8
-
-                       # number of tasks for exclusive nodes. Exclusive nodes include all windows and osx
-                       # environments and environments with environment variables given in exclusivevarlist.
-                       exclusivenodenumtasks = -1
-
-                       # space separated list of environment variables GRAPE should check for to determine if
-                       # on an exclusive node in Linux environments. If any if the variables in the list exist,
-                       # will use exclusivenodenumtasks, otherwise will use defaultnumtasks.
-                       # Note - setting this to the string 'False' will instruct GRAPE not to check for
-                       # environment variables, and you will get defaultnumtasks for default behavior in
-                       # linux environments.
-                       exclusivevarlist = SLURM_NODEID LLNL_COMPUTE_NODES
---gc=<configString>  Git configuration variables to pass to all git commands.
-                     Each <configString> should be of the form "<name>=<value>".
---version            Print the GRAPE version and exit
+    -t                   Print time before each logging statement.
+    -v                   Run in verbose mode. This will print out most git output as git commands complete.
+    --vv                 Run in very verbose mode. This will print out all git output as git commands complete.
+    -q                   Quiet mode. Quiets all output except for user input prompts.
+    -d                   Defaults proposed by GRAPE used in place of prompting user for input.
+                         This non-interactive option is for CI jobs and where users see fit.
+    --np=<int>           The number of processes grape should use when performing parallel operations. Values
+                         less than 1 will use max number of processors available.
+                         Default value is configurable via the concurrency-control section in the .grapeconfig:
+                           #### default configuration ###
+                           [concurrency-control]
+                           # number of tasks for non-exclusive nodes.
+                           defaultnumtasks = 8
+    
+                           # number of tasks for exclusive nodes. Exclusive nodes include all windows and osx
+                           # environments and environments with environment variables given in exclusivevarlist.
+                           exclusivenodenumtasks = -1
+    
+                           # space separated list of environment variables GRAPE should check for to determine if
+                           # on an exclusive node in Linux environments. If any if the variables in the list exist,
+                           # will use exclusivenodenumtasks, otherwise will use defaultnumtasks.
+                           # Note - setting this to the string "False" will instruct GRAPE not to check for
+                           # environment variables, and you will get defaultnumtasks for default behavior in
+                           # linux environments.
+                           exclusivevarlist = SLURM_NODEID LLNL_COMPUTE_NODES
+    --gc=<configString>  Git configuration variables to pass to all git commands.
+                         Each <configString> should be of the form "<name>=<value>".
+    --version            Print the GRAPE version and exit
 
 
 

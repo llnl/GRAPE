@@ -18,15 +18,15 @@ Reference
 
 * GitLab API:
 
-  + https://docs.gitlab.com/ce/api/group_badges.html
-  + https://docs.gitlab.com/ce/api/project_badges.html
+  + https://docs.gitlab.com/api/group_badges
+  + https://docs.gitlab.com/api/project_badges
 
 Examples
 --------
 
 List badges::
 
-    badges = group_or_project.badges.list()
+    badges = group_or_project.badges.list(get_all=True)
 
 Get a badge::
 

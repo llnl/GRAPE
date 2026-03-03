@@ -13,14 +13,14 @@ References
   + :class:`gitlab.v4.objects.GroupAccessTokenManager`
   + :attr:`gitlab.Gitlab.group_access_tokens`
 
-* GitLab API: https://docs.gitlab.com/ee/api/group_access_tokens.html
+* GitLab API: https://docs.gitlab.com/api/group_access_tokens
 
 Examples
 --------
 
 List group access tokens::
 
-    access_tokens = gl.groups.get(1, lazy=True).access_tokens.list()
+    access_tokens = gl.groups.get(1, lazy=True).access_tokens.list(get_all=True)
     print(access_tokens[0].name)
 
 Get a group access token by id::
@@ -46,3 +46,9 @@ Rotate a group access token and retrieve its new value::
     # or directly using a token ID
     new_token = group.access_tokens.rotate(42)
     print(new_token.token)
+
+Self-Rotate the group access token you are using to authenticate the request and retrieve its new value::
+
+    token = group.access_tokens.get(42, lazy=True)
+    token.rotate(self_rotate=True)
+    print(token.token)

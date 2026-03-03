@@ -23,14 +23,14 @@ Reference
   + :class:`gitlab.v4.objects.RunnerAllManager`
   + :attr:`gitlab.Gitlab.runners_all`
 
-* GitLab API: https://docs.gitlab.com/ce/api/runners.html
+* GitLab API: https://docs.gitlab.com/api/runners
 
 Examples
 --------
 
 Use the ``runners.list()`` and ``runners_all.list()`` methods to list runners.
 ``runners.list()`` - Get a list of specific runners available to the user
-``runners_all.list()``  - Get a list of all runners in the GitLab instance 
+``runners_all.list()``  - Get a list of all runners in the GitLab instance
 (specific and shared). Access is restricted to users with administrator access.
 
 
@@ -55,13 +55,13 @@ for this parameter are:
 ::
 
     # List owned runners
-    runners = gl.runners.list()
+    runners = gl.runners.list(get_all=True)
 
     # List owned runners with a filter
-    runners = gl.runners.list(scope='active')
+    runners = gl.runners.list(scope='active', get_all=True)
 
     # List all runners in the GitLab instance (specific and shared), using a filter
-    runners = gl.runners_all.list(scope='paused')
+    runners = gl.runners_all.list(scope='paused', get_all=True)
 
 Get a runner's detail::
 
@@ -119,14 +119,14 @@ Reference
   + :class:`gitlab.v4.objects.GroupRunnerManager`
   + :attr:`gitlab.v4.objects.Group.runners`
 
-* GitLab API: https://docs.gitlab.com/ce/api/runners.html
+* GitLab API: https://docs.gitlab.com/api/runners
 
 Examples
 --------
 
 List the runners for a project::
 
-    runners = project.runners.list()
+    runners = project.runners.list(get_all=True)
 
 Enable a specific runner for a project::
 
@@ -148,16 +148,16 @@ Reference
   + :class:`gitlab.v4.objects.RunnerJobManager`
   + :attr:`gitlab.v4.objects.Runner.jobs`
 
-* GitLab API: https://docs.gitlab.com/ce/api/runners.html
+* GitLab API: https://docs.gitlab.com/api/runners
 
 Examples
 --------
 
 List for jobs for a runner::
 
-    jobs = runner.jobs.list()
+    jobs = runner.jobs.list(get_all=True)
 
 Filter the list using the jobs status::
 
     # status can be 'running', 'success', 'failed' or 'canceled'
-    active_jobs = runner.jobs.list(status='running')
+    active_jobs = runner.jobs.list(status='running', get_all=True)

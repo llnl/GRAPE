@@ -18,14 +18,14 @@ Reference
   + :attr:`gitlab.v4.objects.ProjectMergeRequest.draft_notes`
 
 
-* GitLab API: https://docs.gitlab.com/ee/api/draft_notes.html
+* GitLab API: https://docs.gitlab.com/api/draft_notes
 
 Examples
 --------
 
 List all draft notes for a merge request::
 
-    draft_notes = merge_request.draft_notes.list()
+    draft_notes = merge_request.draft_notes.list(get_all=True)
 
 Get a draft note for a merge request by ID::
 

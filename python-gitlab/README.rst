@@ -25,9 +25,10 @@ python-gitlab
 .. image:: https://img.shields.io/github/license/python-gitlab/python-gitlab
    :target: https://github.com/python-gitlab/python-gitlab/blob/main/COPYING
 
-``python-gitlab`` is a Python package providing access to the GitLab server API.
+``python-gitlab`` is a Python package providing access to the GitLab APIs.
 
-It supports the v4 API of GitLab, and provides a CLI tool (``gitlab``).
+It includes a client for GitLab's v4 REST API, synchronous and asynchronous GraphQL API
+clients, as well as a CLI tool (``gitlab``) wrapping REST API endpoints.
 
 .. _features:
 
@@ -39,6 +40,7 @@ Features
 * write Pythonic code to manage your GitLab resources.
 * pass arbitrary parameters to the GitLab API. Simply follow GitLab's docs
   on what parameters are available.
+* use a synchronous or asynchronous client when using the GraphQL API.
 * access arbitrary endpoints as soon as they are available on GitLab, by using
   lower-level API methods.
 * use persistent requests sessions for authentication, proxy and certificate handling.
@@ -51,7 +53,7 @@ Features
 Installation
 ------------
 
-As of 4.0.0, ``python-gitlab`` is compatible with Python 3.8+.
+As of 7.0.0, ``python-gitlab`` is compatible with Python 3.10+.
 
 Use ``pip`` to install the latest stable version of ``python-gitlab``:
 
@@ -111,6 +113,23 @@ You can also mount your own config file:
 .. code-block:: console
 
    $ docker run -it --rm -v /path/to/python-gitlab.cfg:/etc/python-gitlab.cfg registry.gitlab.com/python-gitlab/python-gitlab:latest <command> ...
+
+Usage inside GitLab CI
+~~~~~~~~~~~~~~~~~~~~~~
+
+If you want to use the Docker image directly inside your GitLab CI as an ``image``, you will need to override
+the ``entrypoint``, `as noted in the official GitLab documentation <https://docs.gitlab.com/ee/ci/docker/using_docker_images.html#override-the-entrypoint-of-an-image>`__:
+
+.. code-block:: yaml
+
+   Job Name:
+      image:
+         name: registry.gitlab.com/python-gitlab/python-gitlab:latest
+         entrypoint: [""]
+      before_script:
+         gitlab --version
+      script:
+         gitlab <command>
 
 Building the image
 ~~~~~~~~~~~~~~~~~~

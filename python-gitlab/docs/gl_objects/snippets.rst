@@ -11,18 +11,27 @@ Reference
   + :class:`gitlab.v4.objects.SnipptManager`
   + :attr:`gitlab.Gitlab.snippets`
 
-* GitLab API: https://docs.gitlab.com/ce/api/snippets.html
+* GitLab API: https://docs.gitlab.com/api/snippets
 
 Examples
 ========
 
 List snippets owned by the current user::
 
-    snippets = gl.snippets.list()
+    snippets = gl.snippets.list(get_all=True)
 
 List the public snippets::
 
-    public_snippets = gl.snippets.public()
+    public_snippets = gl.snippets.list_public()
+
+List all snippets::
+
+    all_snippets = gl.snippets.list_all(get_all=True)
+
+.. warning::
+
+   Only users with the Administrator or Auditor access levels can see all snippets
+   (both personal and project). See the upstream API documentation for more details.
 
 Get a snippet::
 

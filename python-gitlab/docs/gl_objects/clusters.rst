@@ -19,15 +19,15 @@ Reference
   + :class:`gitlab.v4.objects.GroupClusterManager`
   + :attr:`gitlab.v4.objects.Group.clusters`
 
-* GitLab API: https://docs.gitlab.com/ee/api/project_clusters.html
-* GitLab API: https://docs.gitlab.com/ee/api/group_clusters.html
+* GitLab API: https://docs.gitlab.com/api/project_clusters
+* GitLab API: https://docs.gitlab.com/api/group_clusters
 
 Examples
 --------
 
 List clusters for a project::
 
-    clusters = project.clusters.list()
+    clusters = project.clusters.list(get_all=True)
 
 Create an cluster for a project::
 
@@ -58,7 +58,7 @@ Delete an cluster for a project::
 
 List clusters for a group::
 
-    clusters = group.clusters.list()
+    clusters = group.clusters.list(get_all=True)
 
 Create an cluster for a group::
 

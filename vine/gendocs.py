@@ -50,7 +50,7 @@ class Section:
 
 
 class Tutorial(Section):
-    """
+    r"""
 This file is generated with
     ./vine/gendocs.py README.md 
 
@@ -86,6 +86,7 @@ Publish an internal_release branch. After publish, the CI will have been assigne
 Delete the tag created by the CI and tag with the appropriate version.
  v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
 
+    git fetch origin master:master
     git checkout master
     git tag -d v<MAJOR>.<OLDDEV><most_recent_old_dev_update+1>
     git push origin --delete v<MAJOR>.<OLDDEV><most_recent_old_dev_update+1>
@@ -97,6 +98,7 @@ Push the new tag.
 
 Check out develop and merge in master. Create a new commit directly on develop by removing the update message from the fork:
 
+    git fetch origin develop:develop
     git checkout develop
     git merge master
     git rm -r UPDATES_<MAJOR>.<OLDDEV>
@@ -104,6 +106,7 @@ Check out develop and merge in master. Create a new commit directly on develop b
 
 Tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag and the new commit directly to develop.
 
+    git tag -a v<MAJOR>.<NEWDEV>.0 -m "Manually tagged" HEAD
     git push origin
     git push --tags origin v<MAJOR>.<NEWDEV>.0
 

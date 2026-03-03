@@ -3,27 +3,22 @@ GitLab API:
 https://docs.gitlab.com/ee/api/lint.html
 """
 
-from typing import Any, cast
+from typing import Any
 
-from gitlab.base import RESTManager, RESTObject
+from gitlab.base import RESTObject
 from gitlab.cli import register_custom_action
 from gitlab.exceptions import GitlabCiLintError
 from gitlab.mixins import CreateMixin, GetWithoutIdMixin
 from gitlab.types import RequiredOptional
 
-__all__ = [
-    "CiLint",
-    "CiLintManager",
-    "ProjectCiLint",
-    "ProjectCiLintManager",
-]
+__all__ = ["CiLint", "CiLintManager", "ProjectCiLint", "ProjectCiLintManager"]
 
 
 class CiLint(RESTObject):
     _id_attr = None
 
 
-class CiLintManager(CreateMixin, RESTManager):
+class CiLintManager(CreateMixin[CiLint]):
     _path = "/ci/lint"
     _obj_cls = CiLint
     _create_attrs = RequiredOptional(
@@ -31,8 +26,8 @@ class CiLintManager(CreateMixin, RESTManager):
     )
 
     @register_custom_action(
-        "CiLintManager",
-        ("content",),
+        cls_names="CiLintManager",
+        required=("content",),
         optional=("include_merged_yaml", "include_jobs"),
     )
     def validate(self, *args: Any, **kwargs: Any) -> None:
@@ -50,21 +45,27 @@ class ProjectCiLint(RESTObject):
     _id_attr = None
 
 
-class ProjectCiLintManager(GetWithoutIdMixin, CreateMixin, RESTManager):
+class ProjectCiLintManager(
+    GetWithoutIdMixin[ProjectCiLint], CreateMixin[ProjectCiLint]
+):
     _path = "/projects/{project_id}/ci/lint"
     _obj_cls = ProjectCiLint
     _from_parent_attrs = {"project_id": "id"}
-    _optional_get_attrs = ("dry_run", "include_jobs", "ref")
+    _optional_get_attrs = (
+        "content_ref",
+        "dry_run",
+        "dry_run_ref",
+        "include_jobs",
+        "ref",
+    )
+
     _create_attrs = RequiredOptional(
         required=("content",), optional=("dry_run", "include_jobs", "ref")
     )
 
-    def get(self, **kwargs: Any) -> ProjectCiLint:
-        return cast(ProjectCiLint, super().get(**kwargs))
-
     @register_custom_action(
-        "ProjectCiLintManager",
-        ("content",),
+        cls_names="ProjectCiLintManager",
+        required=("content",),
         optional=("dry_run", "include_jobs", "ref"),
     )
     def validate(self, *args: Any, **kwargs: Any) -> None:

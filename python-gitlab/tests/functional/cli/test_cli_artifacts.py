@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import textwrap
 import time
@@ -6,14 +7,12 @@ from zipfile import is_zipfile
 
 import pytest
 
-content = textwrap.dedent(
-    """\
+content = textwrap.dedent("""\
     test-artifact:
       script: echo "test" > artifact.txt
       artifacts:
         untracked: true
-    """
-)
+    """)
 data = {
     "file_path": ".gitlab-ci.yml",
     "branch": "main",
@@ -24,12 +23,22 @@ data = {
 
 @pytest.fixture(scope="module")
 def job_with_artifacts(gitlab_runner, project):
+    start_time = time.time()
+
     project.files.create(data)
 
     jobs = None
     while not jobs:
         time.sleep(0.5)
         jobs = project.jobs.list(scope="success")
+        if time.time() - start_time < 60:
+            continue
+        logging.error("job never succeeded")
+        for job in project.jobs.list():
+            job = project.jobs.get(job.id)
+            logging.info(f"{job.status} job: {job.pformat()}")
+            logging.info(f"job log:\n{job.trace()}\n")
+        pytest.fail("Fixture 'job_with_artifact' failed")
 
     return project.jobs.get(jobs[0].id)
 

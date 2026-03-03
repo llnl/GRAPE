@@ -21,14 +21,14 @@ Reference
   + :class:`gitlab.v4.objects.ProjectSnippetNoteAwardEmojiManager`
 
 
-* GitLab API: https://docs.gitlab.com/ce/api/award_emoji.html
+* GitLab API: https://docs.gitlab.com/api/emoji_reactions/
 
 Examples
 --------
 
 List emojis for a resource::
 
-   emojis = obj.awardemojis.list()
+   emojis = obj.awardemojis.list(get_all=True)
 
 Get a single emoji::
 

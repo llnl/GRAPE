@@ -14,13 +14,13 @@ class Commit(Option, WorkspaceDirHandler):
     Usage: grape-commit [-m <message>] [--failIfNoCommit] [-a | <filetree>...]
 
     Options:
-    -m <message>      The commit message.
-    -a                Commit modified files that have not been staged.
-    --failIfNoCommit  Exit with failure if no files were committed.
+        -m <message>      The commit message.
+        -a                Commit modified files that have not been staged.
+        --failIfNoCommit  Exit with failure if no files were committed.
 
 
     Arguments:
-    <filetree>... The relative paths of files to include in this commit.
+        <filetree>... The relative paths of files to include in this commit.
 
     """
     def __init__(self):

@@ -1,3 +1,4 @@
+import time
 import uuid
 
 import pytest
@@ -25,9 +26,9 @@ def test_create_project(gl, user):
 
     sudo_project = gl.projects.create({"name": "sudo_project"}, sudo=user.id)
 
-    created = gl.projects.list()
+    created = gl.projects.list(get_all=True)
     created_gen = gl.projects.list(iterator=True)
-    owned = gl.projects.list(owned=True)
+    owned = gl.projects.list(owned=True, get_all=True)
 
     assert admin_project in created and sudo_project in created
     assert admin_project in owned and sudo_project not in owned
@@ -45,7 +46,29 @@ def test_project_members(user, project):
     assert member.access_level == 30
 
     member.delete()
-    assert member not in project.members.list()
+
+
+def test_project_avatar_upload(gl, project, fixture_dir):
+    """Test uploading an avatar to a project."""
+    with open(fixture_dir / "avatar.png", "rb") as avatar_file:
+        project.avatar = avatar_file
+        project.save()
+
+    updated_project = gl.projects.get(project.id)
+    assert updated_project.avatar_url is not None
+
+
+def test_project_avatar_remove(gl, project, fixture_dir):
+    """Test removing an avatar from a project."""
+    with open(fixture_dir / "avatar.png", "rb") as avatar_file:
+        project.avatar = avatar_file
+        project.save()
+
+    project.avatar = ""
+    project.save()
+
+    updated_project = gl.projects.get(project.id)
+    assert updated_project.avatar_url is None
 
 
 def test_project_badges(project):
@@ -62,7 +85,6 @@ def test_project_badges(project):
     assert badge.image_url == "http://another.example.com"
 
     badge.delete()
-    assert badge not in project.badges.list()
 
 
 @pytest.mark.skip(reason="Commented out in legacy test")
@@ -78,7 +100,6 @@ def test_project_boards(project):
     last_list.save()
 
     last_list.delete()
-    assert last_list not in board.lists.list()
 
 
 def test_project_custom_attributes(gl, project):
@@ -97,7 +118,6 @@ def test_project_custom_attributes(gl, project):
     assert attr in project.customattributes.list()
 
     attr.delete()
-    assert attr not in project.customattributes.list()
 
 
 def test_project_environments(project):
@@ -115,8 +135,8 @@ def test_project_environments(project):
     assert environment.external_url == "http://new.env/whatever"
 
     environment.stop()
+
     environment.delete()
-    assert environment not in project.environments.list()
 
 
 def test_project_events(project):
@@ -156,7 +176,6 @@ def test_project_hooks(project):
     assert hook.note_events is True
 
     hook.delete()
-    assert hook not in project.hooks.list()
 
 
 def test_project_housekeeping(project):
@@ -184,7 +203,6 @@ def test_project_labels(project):
     assert label.subscribed is False
 
     label.delete()
-    assert label not in project.labels.list()
 
 
 def test_project_label_promotion(gl, group):
@@ -193,10 +211,7 @@ def test_project_label_promotion(gl, group):
 
     """
     _id = uuid.uuid4().hex
-    data = {
-        "name": f"test-project-{_id}",
-        "namespace_id": group.id,
-    }
+    data = {"name": f"test-project-{_id}", "namespace_id": group.id}
     project = gl.projects.create(data)
 
     label_name = "promoteme"
@@ -206,7 +221,6 @@ def test_project_label_promotion(gl, group):
     assert any(label.name == label_name for label in group.labels.list())
 
     group.labels.delete(label_name)
-    assert not any(label.name == label_name for label in group.labels.list())
 
 
 def test_project_milestones(project):
@@ -231,10 +245,7 @@ def test_project_milestone_promotion(gl, group):
 
     """
     _id = uuid.uuid4().hex
-    data = {
-        "name": f"test-project-{_id}",
-        "namespace_id": group.id,
-    }
+    data = {"name": f"test-project-{_id}", "namespace_id": group.id}
     project = gl.projects.create(data)
 
     milestone_title = "promoteme"
@@ -246,6 +257,18 @@ def test_project_milestone_promotion(gl, group):
     )
 
 
+def test_project_pages(project):
+    pages = project.pages.get()
+    assert pages.is_unique_domain_enabled is True
+
+    project.pages.update(new_data={"pages_unique_domain_enabled": False})
+
+    pages.refresh()
+    assert pages.is_unique_domain_enabled is False
+
+    project.pages.delete()
+
+
 def test_project_pages_domains(gl, project):
     domain = project.pagesdomains.create({"domain": "foo.domain.com"})
     assert domain in project.pagesdomains.list()
@@ -255,10 +278,9 @@ def test_project_pages_domains(gl, project):
     assert domain.domain == "foo.domain.com"
 
     domain.delete()
-    assert domain not in project.pagesdomains.list()
 
 
-def test_project_protected_branches(project, wait_for_sidekiq, gitlab_version):
+def test_project_protected_branches(project, gitlab_version):
     # Updating a protected branch is possible from Gitlab 15.6
     # https://docs.gitlab.com/ee/api/protected_branches.html#update-a-protected-branch
     can_update_prot_branch = gitlab_version.major > 15 or (
@@ -266,10 +288,7 @@ def test_project_protected_branches(project, wait_for_sidekiq, gitlab_version):
     )
 
     p_b = project.protectedbranches.create(
-        {
-            "name": "*-stable",
-            "allow_force_push": False,
-        }
+        {"name": "*-stable", "allow_force_push": False}
     )
     assert p_b.name == "*-stable"
     assert not p_b.allow_force_push
@@ -278,13 +297,14 @@ def test_project_protected_branches(project, wait_for_sidekiq, gitlab_version):
     if can_update_prot_branch:
         p_b.allow_force_push = True
         p_b.save()
-        wait_for_sidekiq(timeout=60)
+        # Pause to let GL catch up (happens on hosted too, sometimes takes a while for server to be ready to merge)
+        time.sleep(5)
 
     p_b = project.protectedbranches.get("*-stable")
     if can_update_prot_branch:
         assert p_b.allow_force_push
-    p_b.delete()
-    assert p_b not in project.protectedbranches.list()
+
+        p_b.delete()
 
 
 def test_project_remote_mirrors(project):
@@ -304,6 +324,24 @@ def test_project_remote_mirrors(project):
     mirror.delete()
 
 
+def test_project_pull_mirrors(project):
+    mirror_url = "https://gitlab.example.com/root/mirror.git"
+
+    mirror = project.pull_mirror.create({"url": mirror_url})
+    assert mirror.url == mirror_url
+
+    mirror.enabled = True
+    mirror.save()
+
+    mirror = project.pull_mirror.get()
+    assert isinstance(mirror, gitlab.v4.objects.ProjectPullMirror)
+    assert mirror.url == mirror_url
+    assert mirror.enabled is True
+
+    mirror.enabled = False
+    mirror.save()
+
+
 def test_project_services(project):
     # Use 'update' to create a service as we don't have a 'create' method and
     # to add one is somewhat complicated so it hasn't been done yet.
@@ -318,9 +356,6 @@ def test_project_services(project):
     assert service.active is True
 
     service.delete()
-
-    service = project.services.get("asana")
-    assert service.active is False
 
 
 def test_project_stars(project):
@@ -342,7 +377,6 @@ def test_project_tags(project, project_file):
     assert tag in project.tags.list()
 
     tag.delete()
-    assert tag not in project.tags.list()
 
 
 def test_project_triggers(project):
@@ -350,7 +384,6 @@ def test_project_triggers(project):
     assert trigger in project.triggers.list()
 
     trigger.delete()
-    assert trigger not in project.triggers.list()
 
 
 def test_project_wiki(project):
@@ -364,8 +397,8 @@ def test_project_wiki(project):
     # update and delete seem broken
     wiki.content = "new content"
     wiki.save()
+
     wiki.delete()
-    assert wiki not in project.wikis.list()
 
 
 def test_project_groups_list(gl, group):
@@ -375,14 +408,11 @@ def test_project_groups_list(gl, group):
     group2 = gl.groups.create(
         {"name": "group2_proj", "path": "group2_proj", "parent_id": group.id}
     )
-    data = {
-        "name": "test-project-tpsg",
-        "namespace_id": group2.id,
-    }
+    data = {"name": "test-project-tpsg", "namespace_id": group2.id}
     project = gl.projects.create(data)
 
     groups = project.groups.list()
-    group_ids = set([x.id for x in groups])
+    group_ids = {x.id for x in groups}
     assert {group.id, group2.id} == group_ids
 
 
@@ -398,3 +428,19 @@ def test_project_transfer(gl, project, group):
 
     project = gl.projects.get(project.id)
     assert project.namespace["path"] == gl.user.username
+
+
+@pytest.mark.gitlab_premium
+def test_project_external_status_check_create(gl, project):
+    status_check = project.external_status_checks.create(
+        {"name": "MR blocker", "external_url": "https://example.com/mr-blocker"}
+    )
+    assert status_check.name == "MR blocker"
+    assert status_check.external_url == "https://example.com/mr-blocker"
+
+
+@pytest.mark.gitlab_premium
+def test_project_external_status_check_list(gl, project):
+    status_checks = project.external_status_checks.list()
+
+    assert len(status_checks) == 1

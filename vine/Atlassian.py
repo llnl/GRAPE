@@ -3,9 +3,9 @@ import logging
 import os
 import sys
 import time
-import keyring
 from stashy.stashy import connect as stashy_connect
 import stashy.stashy.errors as stashy_errors
+from vine import GrapeKeyring
 from vine import utility
 
 
@@ -22,16 +22,8 @@ class Atlassian:
 
         self.workspace_dir = workspace_dir
 
-        # Ensures same keyring used across all OSes
-        MAGIC_PRIORITY_NUM = .5
-        if keyring.get_keyring().priority != MAGIC_PRIORITY_NUM:
-            key_rings = [kr for kr in keyring.backend.get_all_keyring()
-                         if kr.priority == MAGIC_PRIORITY_NUM]
-            keyring.set_keyring(key_rings.pop())
-        self.keyring = keyring.get_keyring()
-
         self._service = url
-        password = keyring.get_password(self._service, self._userName)
+        password = GrapeKeyring.get_password(self._service, self._userName)
 
         if self.auth(self._service, self._userName, password, verify=verify):
             self.url = url
@@ -56,10 +48,10 @@ class Atlassian:
                 else:
                     logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                keyring.set_password(service, self._userName,
-                                     getpass.getpass("Enter password for " +
-                                                     f"{service}: "))
-                self._stash = stashy_connect(service, self._userName, keyring.get_password(service, self._userName),
+                GrapeKeyring.set_password(service, self._userName,
+                                          getpass.getpass("Enter password for " +
+                                                          f"{service}: "))
+                self._stash = stashy_connect(service, self._userName, GrapeKeyring.get_password(service, self._userName),
                                             verify=verify)
                 numAttempts += 1
 
@@ -78,6 +70,26 @@ class Atlassian:
                 return Project(r, node)
 
         return None
+
+    def repo(self, project_name, repo_name):
+        """
+        Retrieve a Bitbucket repository and wrap it in a grape Repo object.
+
+        Parameters
+        ----------
+        project_name : str
+            The name of the Bitbucket project that owns the repository
+            (for example, "llnl").
+        repo_name : str
+            The repository name within the given project
+            (for example, "GRAPE").
+
+        Returns
+        -------
+        Repo
+            A Repo instance that wraps the underlying Bitbucket repository.
+        """
+        return self.project(project_name).repo(repo_name)
 
 class StashyNode:
     def __init__(self, node, stashynode):
@@ -145,7 +157,18 @@ class Repo(StashyNode):
         StashyNode.__init__(self, node, rpo)
         self.repo = rpo
 
-    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None):
+    def getBranchHeadCommitHash(self, name):
+        logging.error("GRAPE: ERROR: getBranchHeadCommitHash not implemented for Atlassian")
+        exit(1)
+
+    def getFile(self, path, revision):
+        logging.error("GRAPE: ERROR: getFile not implemented for Atlassian")
+        exit(1)
+
+    def pullRequests(self, direction= "OUTGOING", at=None, state="OPEN", id=None, reviewer_username=None):
+        if reviewer_username:
+            logging.error("GRAPE: ERROR: reviewer_ids for pullRequests not implemented for Atlassian")
+            exit(1)
         return [PullRequest(x, self.repo.pull_requests) for x in self.repo.pull_requests.all(direction=direction, state=state, at=at)]
 
     def getOpenPullRequest(self, source, target):
@@ -165,7 +188,7 @@ class Repo(StashyNode):
                 ret.append(r)
         return ret
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
         """reviewers"""
         if labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
@@ -184,6 +207,26 @@ class Repo(StashyNode):
         stashyRequest = self.repo.pull_requests.create(title,branch,target_branch,description=description,reviewers=flattened_reviewers)
 
         return PullRequest(stashyRequest,self.repo.pull_requests)
+
+    def getTag(self, name):
+        logging.error("GRAPE: ERROR: getTag not implemented for Atlassian")
+        exit(1)
+
+    def createTag(self, name, ref, message):
+        logging.error("GRAPE: ERROR: createTag not implemented for Atlassian")
+        exit(1)
+
+    def deleteTag(self, name):
+        logging.error("GRAPE: ERROR: deleteTag not implemented for Atlassian")
+        exit(1)
+
+    def updateTag(self, name, ref, message):
+        logging.error("GRAPE: ERROR: updateTag not implemented for Atlassian")
+        exit(1)
+
+    def getDiffs(self, fromRevision, toRevision):
+        logging.error("GRAPE: ERROR: getDiffs not implemented for Atlassian")
+        exit(1)
 
     def getSuccessfulJob(self, name, current_sha, target_sha, current_branch, target_branch):
         logging.info("GRAPE does not support CI integration with Atlassian tools.")
@@ -222,7 +265,8 @@ class PullRequest(StashyNode):
 
     def description(self):
         try:
-            return self.node["description"].encode('ascii', 'ignore')
+            # Drop non-ascii characters
+            return self.node["description"].encode('ascii', 'ignore').decode('ascii')
         except KeyError:
             return ""
 
@@ -270,6 +314,26 @@ class PullRequest(StashyNode):
     def toRef(self):
         return self.node["toRef"]["displayId"]
 
+    def fromSHA(self):
+        logging.error("GRAPE: ERROR: fromSHA not implemented for Atlassian")
+        exit(1)
+
+    def commits(self):
+        logging.error("GRAPE: ERROR: commits not implemented for Atlassian")
+        exit(1)
+
+    def approve(self):
+        logging.error("GRAPE: ERROR: approve not implemented for Atlassian")
+        exit(1)
+
+    def iid(self):
+        logging.error("GRAPE: ERROR: iid not implemented for Atlassian")
+        exit(1)
+
+    def diffs(self):
+        logging.error("GRAPE: ERROR: diffs not implemented for Atlassian")
+        exit(1)
+
     def approved(self):
         reviewers = self.reviewers()
         ret = True if len(reviewers) else False
@@ -285,7 +349,7 @@ class PullRequest(StashyNode):
         return self.node["version"]
 
     # reviewers is a list of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -313,6 +377,10 @@ class PullRequest(StashyNode):
 
         if add_labels or remove_labels:
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
+        if non_approvers:
+           logging.warning("GRAPE: WARNING: non_approvers not implemented Bitbucket Pull Requests")
+        if wip is not None:
+           logging.warning("GRAPE: WARNING: wip not implemented Bitbucket Pull Requests")
 
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
         return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=flattened_reviewers), self._stashy_pull_requests)
@@ -484,3 +552,6 @@ class TestAtlassian:
 
     def project(self, name):
         return self.stash.project(name)
+
+    def repo(self, project_name, repo_name):
+        return self.project(project_name).repo(repo_name)

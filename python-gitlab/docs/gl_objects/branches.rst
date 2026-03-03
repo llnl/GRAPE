@@ -11,14 +11,14 @@ References
   + :class:`gitlab.v4.objects.ProjectBranchManager`
   + :attr:`gitlab.v4.objects.Project.branches`
 
-* GitLab API: https://docs.gitlab.com/ce/api/branches.html
+* GitLab API: https://docs.gitlab.com/api/branches
 
 Examples
 --------
 
 Get the list of branches for a repository::
 
-    branches = project.branches.list()
+    branches = project.branches.list(get_all=True)
 
 Get a single repository branch::
 

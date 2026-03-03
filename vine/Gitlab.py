@@ -5,7 +5,6 @@ import re
 import subprocess
 import sys
 import time
-import keyring
 try:
     grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
@@ -14,6 +13,7 @@ except ModuleNotFoundError:
     # Don't error out here because this is imported even if GitLab is not used
     pass
 from vine import config_parser_global
+from vine import GrapeKeyring
 from vine import utility
 from vine.option import Option
 
@@ -38,17 +38,9 @@ class GrapeGitlabAdapter:
 
         self.workspace_dir = workspace_dir
 
-        # Ensures same keyring used across all OSes
-        MAGIC_PRIORITY_NUM = .5
-        if keyring.get_keyring().priority != MAGIC_PRIORITY_NUM:
-            key_rings = [kr for kr in keyring.backend.get_all_keyring()
-                         if kr.priority == MAGIC_PRIORITY_NUM]
-            keyring.set_keyring(key_rings.pop())
-        self.keyring = keyring.get_keyring()
-
         self._service = url
         self._curl = curl
-        password = keyring.get_password(self._service, self._userName)
+        password = GrapeKeyring.get_password(self._service, self._userName)
 
         if group is None:
             # If the group is not specified, get it from the .grapeconfig
@@ -110,8 +102,8 @@ class GrapeGitlabAdapter:
                 if numAttempts == 0:
                     logging.info("session expired...")
                     try:
-                        keyring.set_password(service, self._userName,
-                                             self.generate_personal_access_token(port, ssh_path))
+                        GrapeKeyring.set_password(service, self._userName,
+                                                  self.generate_personal_access_token(port, ssh_path))
                     except Exception as e:
                         logging.error("Generating personal access token via ssh failed.")
                         logging.error(e)
@@ -120,21 +112,21 @@ class GrapeGitlabAdapter:
                 else:
                     logging.info("incorrect username / password...")
                     self._userName = utility.getUserName(self._userName)
-                    keyring.set_password(service, self._userName,
-                                         getpass.getpass("Enter personal access token for " +
-                                                         f"{service}: "))
-                self._gitlab = gitlab.Gitlab(service,  keyring.get_password(service, self._userName), api_version=4, ssl_verify=verify)
+                    GrapeKeyring.set_password(service, self._userName,
+                                              getpass.getpass("Enter personal access token for " +
+                                                              f"{service}: "))
+                self._gitlab = gitlab.Gitlab(service,  GrapeKeyring.get_password(service, self._userName), api_version=4, ssl_verify=verify)
                 numAttempts += 1
 
         return success
 
     def graphQL_query(self, query, dryRun=False):
-        token = keyring.get_password(self._service, self._userName)
+        token = GrapeKeyring.get_password(self._service, self._userName)
         graphqlurl = f'{self._service}/api/graphql'
         # enable inbound allowlist and add top level repo to list
         data = '\'{ "query": "' + query.replace('"', '\\"') + '" } \''
         # strip newlines from query
-        data = re.sub(' +', ' ', data.replace("\n"," "))
+        data = re.sub(r' +', ' ', data.replace("\n"," "))
         command = f'{self._curl} {graphqlurl} --header "Authorization: Bearer {token}" --header "Content-Type: application/json" --request POST --data-binary ' + data
         if not dryRun:
             completed_process = subprocess.run(command, capture_output=True, shell=True)
@@ -148,14 +140,134 @@ class GrapeGitlabAdapter:
         return [g.path for g in self._gitlab.groups.list(all=True)]
 
     def project(self, name, min_access_level=None):
-        matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
-        if matching_ids:
-            group_id = matching_ids[0]
+        """
+        Resolve a GitLab group by name and wrap it in a Project.
+
+        Behavior
+        --------
+        This helper locates a group returns a `Project` wrapper around the
+        corresponding `python-gitlab` Group object. It supports two modes,
+        depending on whether a `min_access_level` is provided.
+
+        Parameters
+        ----------
+        name : str
+            The short group name (path) to look up.
+            For example, if the project path is "llnl/GRAPE", `name` should be "llnl".
+        min_access_level : int or None, optional
+            If provided, the lookup is restricted to groups where the current user
+            has at least this GitLab access level. Access levels follow GitLab's
+            `GitlabAccessLevel` constants, for example:
+                10 = Guest
+                20 = Reporter
+                30 = Developer
+                40 = Maintainer
+                50 = Owner
+
+            When:
+              * `min_access_level is None`:
+                  - A single `GET /groups/:path` request is used via
+                    `self._gitlab.groups.get(path_with_namespace)`.
+                  - This is fast, but the GitLab API does not support a
+                    `min_access_level` parameter on this endpoint, so no server-side
+                    access-level filtering is applied. You get the group if you can
+                    see it at all, or a `GitlabGetError` if you cannot.
+              * `min_access_level is not None`:
+                  - A group-scoped list call is used:
+                        GET /groups?search=...&min_access_level=...
+                    via `self._gitlab.groups.list(...)`.
+                  - The result is then filtered client-side by exact group name
+                    (case-insensitive) and the first matching group id is used.
+                  - This is slower, but the `min_access_level` filter is enforced
+                    by the GitLab API, so you will not get back groups for which
+                    the current user has lower access than requested.
+
+        Returns
+        -------
+        Project
+            A `Project` wrapper around the resolved `Group` instance.
+
+        Raises
+        ------
+        SystemExit
+            If no matching group is found, or if the user does not have sufficient
+            access to see the group. In both cases, a message is logged at INFO
+            level and the process exits with "Abort".
+
+        Notes
+        -----
+        - When using the fast path (`min_access_level is None`), subsequent operations
+          on the returned `Project` may still fail with GitLab permission errors if the
+          current user's access level is insufficient for those specific operations.
+        - The slow path relies on `self._gitlab.groups.list` supporting the
+          `min_access_level` filter, which is provided by GitLab's groups
+          list API. After selecting the group id, a second `self._gitlab.groups.get(id)` call
+          fetches the full group object.
+        """
+        if min_access_level is None:
+            # Faster, but does not support min_access_level
+            try:
+                group = self._gitlab.groups.get(name)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find group {name}: {e}")
+                raise SystemExit("Abort")
         else:
-            logging.info(f"Could not find group {name}.")
+            # Slower, but supports min_access_level
+            matching_ids = [x.id for x in self._gitlab.groups.list(all=True, search=name, min_access_level=min_access_level) if x.path.lower() == name.lower()]
+
+            if matching_ids:
+                group_id = matching_ids[0]
+            else:
+                logging.info(f"Could not find group {name}.")
+                raise SystemExit("Abort")
+
+            try:
+                group = self._gitlab.groups.get(group_id)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find group {name}: {e}")
+                raise SystemExit("Abort")
+
+        return Project(group, self._gitlab)
+
+    def repo(self, project_name, repo_name):
+        """
+        Retrieve a GitLab project and wrap it in a Repo object.
+
+        This method looks up a GitLab project using the combined
+        `project_name/repo_name` path (for example, "llnl/GRAPE"). If the
+        project cannot be found or GitLab returns an error, the method will:
+          - Log an informational message with the failure reason.
+          - Terminate the program by raising SystemExit("Abort").
+
+        Parameters
+        ----------
+        project_name : str
+            The GitLab namespace or group name that owns the project
+            (for example, "llnl").
+        repo_name : str
+            The repository name within the given project or namespace
+            (for example, "GRAPE").
+
+        Returns
+        -------
+        Repo
+            A Repo instance that wraps the underlying GitLab project.
+
+        Raises
+        ------
+        SystemExit
+            If the GitLab project cannot be retrieved (for example, it does
+            not exist or the user does not have permission).
+        """
+        path = f'{project_name}/{repo_name}'  # e.g. 'llnl/GRAPE'
+
+        try:
+            project = self._gitlab.projects.get(path)
+        except gitlab.exceptions.GitlabGetError as e:
+            logging.info(f"Could not find project {path}: {e}")
             raise SystemExit("Abort")
-        p = Project(self._gitlab.groups.get(group_id),self._gitlab)
-        return  p
+
+        return Repo(project, self._gitlab)
 
 class Project:
     def __init__(self, gitlab_group, gitlab):
@@ -169,13 +281,96 @@ class Project:
         return [r.name for r in self.group.projects.list(all=True)]
 
     def repo(self, name, min_access_level=None):
-        matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
-        if matching_ids:
-            project_id = matching_ids[0]
+        """
+        Resolve a GitLab project by name within this manager's group and wrap it in a Repo.
+
+        Behavior
+        --------
+        This helper locates a project under `self.group` and returns a `Repo` wrapper
+        around the corresponding `python-gitlab` Project object. It supports two modes,
+        depending on whether a `min_access_level` is provided.
+
+        Parameters
+        ----------
+        name : str
+            The short project name (path) to look up within the group.
+            For example, if the full path is "llnl/GRAPE", `name` should be "GRAPE".
+        min_access_level : int or None, optional
+            If provided, the lookup is restricted to projects where the current user
+            has at least this GitLab access level. Access levels follow GitLab's
+            `GitlabAccessLevel` constants, for example:
+                10 = Guest
+                20 = Reporter
+                30 = Developer
+                40 = Maintainer
+                50 = Owner
+
+            When:
+              * `min_access_level is None`:
+                  - A single `GET /projects/:path` request is used via
+                    `self.gitlab.projects.get(path_with_namespace)`.
+                  - This is fast, but the GitLab API does not support a
+                    `min_access_level` parameter on this endpoint, so no server-side
+                    access-level filtering is applied. You get the project if you can
+                    see it at all, or a `GitlabGetError` if you cannot.
+              * `min_access_level is not None`:
+                  - A group-scoped list call is used:
+                        GET /groups/:id/projects?search=...&min_access_level=...
+                    via `self.group.projects.list(...)`.
+                  - The result is then filtered client-side by exact project name
+                    (case-insensitive) and the first matching project id is used.
+                  - This is slower, but the `min_access_level` filter is enforced
+                    by the GitLab API, so you will not get back projects for which
+                    the current user has lower access than requested.
+
+        Returns
+        -------
+        Repo
+            A `Repo` wrapper around the resolved `Project` instance.
+
+        Raises
+        ------
+        SystemExit
+            If no matching project is found, or if the user does not have sufficient
+            access to see the project. In both cases, a message is logged at INFO
+            level and the process exits with "Abort".
+
+        Notes
+        -----
+        - When using the fast path (`min_access_level is None`), subsequent operations
+          on the returned `Repo` may still fail with GitLab permission errors if the
+          current user's access level is insufficient for those specific operations.
+        - The slow path relies on `self.group.projects.list` supporting the
+          `min_access_level` filter, which is provided by GitLab's group projects
+          list API. After selecting the project id, a second `projects.get(id)` call
+          fetches the full project object.
+        """
+        if min_access_level is None:
+            # Faster, but does not support min_access_level
+            path = f'{self.group.full_path}/{name}'  # e.g. 'llnl/GRAPE'
+
+            try:
+                project = self.gitlab.projects.get(path)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find project {path}: {e}")
+                raise SystemExit("Abort")
         else:
-            logging.info(f"Could not find project {name}.")
-            raise SystemExit("Abort")
-        return Repo(self.gitlab.projects.get(project_id), self.gitlab)
+            # Slower, but supports min_access_level
+            matching_ids = [x.id for x in self.group.projects.list(all=True, search=name, min_access_level=min_access_level) if x.name.lower() == name.lower()]
+
+            if matching_ids:
+                project_id = matching_ids[0]
+            else:
+                logging.info(f"Could not find project {name}.")
+                raise SystemExit("Abort")
+
+            try:
+                project = self.gitlab.projects.get(project_id)
+            except gitlab.exceptions.GitlabGetError as e:
+                logging.info(f"Could not find project {name}: {e}")
+                raise SystemExit("Abort")
+
+        return Repo(project, self.gitlab)
 
     def groupid(self, groupname):
         # groups API doesn't include exact match, so we have to iterate over the search
@@ -194,9 +389,48 @@ class Repo:
     def __init__(self, gitlab_project, gitlab ):
         self.project = gitlab_project
         self.gitlab = gitlab
-        
+
+    def getBranchHeadCommitHash(self, name):
+        """
+        Get the commit SHA (hash) at the head of a branch.
+
+        Args:
+            name (str): Branch name.
+
+        Returns:
+            str | None: The head commit SHA if the branch exists; otherwise None if
+            the branch is not found.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If an error other than 404 occurs.
+        """
+        try:
+            return self.project.branches.get(name).commit["id"]
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404:
+                return None
+            else:
+                raise
+
+    def getFile(self, path, revision):
+        """
+        Retrieve a file's contents from the repository at a specific revision.
+
+        Args:
+            path (str): Repository-relative file path.
+            revision (str): Git reference (e.g., branch name, tag, or commit SHA).
+
+        Returns:
+            str: UTF-8 decoded file contents if found
+
+        Raises:
+            gitlab.exceptions.GitlabAuthenticationError: If authentication is not correct
+            gitlab.exceptions.GitlabGetError: If the file could not be retrieved
+        """
+        return self.project.files.raw(path, revision).decode('utf-8')
+
     # state can be "all", "merged", "opened", or "closed"
-    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None):
+    def pullRequests(self, direction= "IGNORED", at=None, state="opened", target_branch=None, source_branch=None, id=None, reviewer_username=None):
         if id == None:
             # translates from bitbucket to gitlab state types
             state_dict = {"open":"opened", "opened":"opened",
@@ -205,7 +439,11 @@ class Repo:
                           "all":"all"
                           }
             state = state_dict[state.lower()]
-            return [PullRequest(x, self.gitlab) for x in self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch) ]
+            if reviewer_username:
+                mrs = self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch, reviewer_username=reviewer_username)
+            else:
+                mrs = self.project.mergerequests.list(all=True, state=state, target_branch=target_branch, source_branch=source_branch)
+            return [PullRequest(x, self.gitlab) for x in mrs]
         else:
             return [PullRequest(self.project.mergerequests.list(iids=[id])[0], self.gitlab)]
 
@@ -216,7 +454,7 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
@@ -229,18 +467,114 @@ class Repo:
             # If the diff is too big, this comparison can throw an exception.
             # In this case, just create the merge request.
             pass
+
          mr = PullRequest(self.project.mergerequests.create({"source_branch": branch,
                                             "target_branch": target_branch,
                                             "remove_source_branch": False,
-                                            "title": title}),
+                                            "title": PullRequest.get_title_for_wip_state(title, wip)}),
                           self.gitlab)
          mr.update(title,
                    description=description,
                    reviewers=reviewers,
                    non_approvers=non_approvers,
+                   wip=wip,
                    add_labels=labels)
 
          return mr
+
+    def getTag(self, name):
+        """
+        Retrieve a git tag from the repository by its name.
+
+        Args:
+            name (str): The name of the tag to retrieve.
+
+        Returns:
+            ProjectTag | None: ProjectTag object if the tag exists; otherwise None
+
+        Notes:
+            Throws exception if the tag cannot be retrieved (e.g. unauthorized).
+            Does not throw if the tag does not exist.
+        """
+        try:
+            return self.project.tags.get(name)
+        except gitlab.exceptions.GitlabGetError as e:
+            if e.response_code == 404 and e.error_message == '404 Tag Not Found':
+                return None
+            else:
+                raise
+
+    def createTag(self, name, ref, message):
+        """
+        Create a git tag in the repository.
+
+        Args:
+            name (str): The name of the tag to create.
+            ref (str): The commit SHA or branch the tag should point to.
+            message (str): The tag message.
+
+        Notes:
+            Throws exception if the tag cannot be created.
+        """
+        self.project.tags.create({'tag_name': name,
+                                  'ref': ref,
+                                  'message': message})
+
+    def deleteTag(self, name):
+        """
+        Delete a git tag from the repository by its name.
+
+        Args:
+            name (str): The name of the tag to delete.
+
+        Returns:
+            None
+
+        Notes:
+            Throws exception if the tag cannot be deleted (e.g. unauthorized).
+            Does not throw if the tag does not exist.
+        """
+        try:
+            self.project.tags.delete(name)
+        except gitlab.exceptions.GitlabDeleteError as e:
+            if e.response_code == 404 and e.error_message == '404 Tag Not Found':
+                return
+            else:
+                raise
+
+    def updateTag(self, name, ref, message):
+        """
+        Updates a git tag in the repository.
+
+        Args:
+            name (str): The name of the tag to update.
+            ref (str): The commit SHA or branch the tag should point to.
+            message (str): The tag message.
+
+        Notes:
+            There is no API for updating a tag, so it must be deleted
+            (if present) and then recreated with the new ref and message.
+            Throws exception if the existing tag cannot be deleted or
+            the new tag cannot be created.
+        """
+        self.deleteTag(name)
+        self.createTag(name, ref, message)
+
+    def getDiffs(self, fromRevision, toRevision):
+        """
+        Compare two revisions in the repository and return their diff/compare data.
+
+        Args:
+            fromRevision (str): The base git reference (e.g., branch, tag, or commit SHA).
+            toRevision (str): The head git reference (e.g., branch, tag, or commit SHA).
+
+        Returns:
+            dict: The GitLab compare API response, including commit and diff information.
+
+        Raises:
+            gitlab.exceptions.GitlabGetError: If the comparison cannot be retrieved.
+        """
+        return self.project.repository_compare(fromRevision, toRevision)
 
     # If restrict_id is positive, it is the group id to restrict the branch to;
     # if it is negative, it is the negative of the user id to restrict the branch to;
@@ -503,8 +837,53 @@ class Repo:
     def artifact(self, ref_name, artifact_path, job):
         return self.project.artifact(ref_name,artifact_path, job)
 
-    def addToMergeTrain(self, pull_request, sha):
-        return self.project.merge_trains_merge_request.add(pull_request.iid(), sha=sha)
+    def addToMergeTrain(self, merge_request, sha):
+        """
+        Add the given pull request to the GitLab merge train for this project.
+
+        This method sends a POST request to the GitLab API to enqueue the
+        specified merge request into the project's merge train.
+
+        Parameters
+        ----------
+        merge_request : Any
+            An object representing the merge request. It must provide an `iid()`
+            method that returns the internal ID of the merge request in GitLab.
+        sha : str
+            The SHA must match the HEAD of the merge request branch, otherwise
+            the merge fails.
+
+        Side Effects
+        ------------
+        Sends an HTTP POST request to the GitLab API endpoint:
+        `/projects/{project_id}/merge_trains/merge_requests/{iid}`
+
+        The request body includes:
+            {
+                "sha": "<provided sha>"
+            }
+
+        The call is expected to be made via `self.gitlab.http_post`.
+
+        Raises
+        ------
+        Any exception that `self.gitlab.http_post` may raise in case of
+        network errors, authentication failures, or non-successful responses.
+
+        Notes
+        -----
+        Adapted from https://github.com/python-gitlab/python-gitlab/pull/2552.
+        """
+        path = f"/projects/{self.project.id}/merge_trains/merge_requests/{merge_request.iid()}"
+
+        data = {
+            "sha": sha
+        }
+
+        self.gitlab.http_post(path, post_data=data)
+
+
+
 
 class Job:
     def __init__(self, gitlab_project, gitlab_job_id, gitlab):
@@ -537,10 +916,9 @@ class PullRequest:
         return self.gitlab.users.get(authorID).public_email
 
     def description(self):
-        if self.mergerequest.description != None:
-            return self.mergerequest.description.encode('ascii', 'ignore')
-        else:
-            return "".encode('ascii', 'ignore')
+        description = self.mergerequest.description or ""
+        # Drop non-ascii characters
+        return description.encode('ascii', 'ignore').decode('ascii')
 
     def date(self):
         return self.mergerequest.created_at
@@ -578,12 +956,62 @@ class PullRequest:
     def toRef(self):
         return self.mergerequest.target_branch
 
+    def fromSHA(self):
+        return self.mergerequest.sha
+
+    def commits(self):
+        """
+        Return all commits associated with this merge request.
+
+        Returns
+        -------
+        List[ProjectCommit]
+            A list of `ProjectCommit` objects for this merge request, in the order
+            returned by the GitLab API (appears to be newest to oldest).
+        """
+        return self.mergerequest.commits(get_all=True)
+
+    def approve(self):
+        """
+        Approve this merge request.
+
+        Returns:
+            The GitLab API response from the approve action.
+
+        Notes:
+            Returns None if authentication failed (including already approved).
+        """
+        try:
+            return self.mergerequest.approve()
+        except gitlab.exceptions.GitlabAuthenticationError as e:
+            try:
+                # authenticate to ensure that the user info is populated
+                self.gitlab.auth()
+                username = self.gitlab.user.username
+                approvals = self.mergerequest.approvals.get()
+                for reviewer in approvals.approved_by:
+                    if username == reviewer["user"]["username"]:
+                        logging.info(f'User {username} already approved merge request.')
+                        return None
+            except:
+                pass
+
+            logging.error(f'GRAPE: ERROR: User not authorized to approve merge request: {e}')
+            return None
+
+
     def approved(self):
         approvals = self.mergerequest.approvals.get()
         return approvals.approvals_required > 0 and approvals.approvals_left == 0
 
     def link(self):
-        return self.mergerequest.web_url
+        url = self.mergerequest.web_url
+
+        if not isinstance(url, str):
+            url = url.decode("utf-8")
+
+        return url
+
 
     def version(self):
         # gitlab does not seem to have the same concept of a version exposed to the REST API
@@ -592,10 +1020,47 @@ class PullRequest:
     def iid(self):
         return self.mergerequest.iid
 
+    def diffs(self):
+        """
+        Retrieve the list of all diffs for the current merge request.
+
+        Returns
+        -------
+        list
+            A list of dictionaries, each representing a diff and containing
+            entries such as "diff", "old_path", and "new_path". It appears
+            there is one diff dictionary per changed file.
+
+        Notes:
+            We do not use self.mergerequest.changes() because it uses a
+            deprecated endpoint. The correct endpoint is not exposed in
+            the python-gitlab library as of v7.1.0.
+        """
+        path = f"{self.mergerequest.manager.path}/{self.mergerequest.encoded_id}/diffs"
+        return self.gitlab.http_list(path, get_all=True)
+
+    @staticmethod
+    def get_title_for_wip_state(title, wip):
+        if not hasattr(PullRequest.get_title_for_wip_state, "regexp"):
+            PullRequest.get_title_for_wip_state.regexp = re.compile(r'^(wip:|draft:)\s*', re.IGNORECASE)
+
+        new_title = title
+
+        if wip is not None:
+            if wip:
+                if not PullRequest.get_title_for_wip_state.regexp.match(title):
+                    new_title = "Draft: " + title
+            else:
+                new_title = PullRequest.get_title_for_wip_state.regexp.sub('', title)
+
+        return new_title
+
     # reviewers is a dict, keyed by approval rule name, valued by lists of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, add_labels=[], remove_labels=[]):
-        if title:
-            self.mergerequest.title = title
+    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
+        if title is None:
+            title = self.mergerequest.title
+
+        self.mergerequest.title = self.get_title_for_wip_state(title, wip)
 
         if description:
             self.mergerequest.description = description
@@ -667,7 +1132,7 @@ class PullRequest:
             self.mergerequest.reviewer_ids = list(all_reviewer_ids)
 
         if self.mergerequest.description:
-            self.mergerequest.description =  re.sub("([^\n])\n([^\n])","\\1\n\n\\2",self.mergerequest.description)
+            self.mergerequest.description = re.sub(r"([^\n])\n([^\n])", r"\1\n\n\2", self.mergerequest.description)
 
         labels = set(self.mergerequest.labels)
         for label in add_labels:
@@ -678,6 +1143,7 @@ class PullRequest:
             except KeyError:
                pass
         self.mergerequest.labels = list(labels)
+
         # Disable removal of source branch on merge (if this merge request was created by hand).
         # This should only affect merging by clicking the merge button (grape manually disables the removal when
         # when merging the merge request). The merge button should be disabled by disabling CI and requiring pipelines
@@ -709,7 +1175,7 @@ class PullRequest:
                f"From: {self.fromRef()}\n" + \
                f"To: {self.toRef()}\n" + \
                f"Reviewers: {all_reviewers}\n" + \
-               f"Description: {self.description().decode('utf-8')}\n"
+               f"Description: {self.description()}\n"
 
     def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
         try:

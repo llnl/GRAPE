@@ -13,14 +13,14 @@ References
   + :class:`gitlab.v4.objects.ProjectAccessTokenManager`
   + :attr:`gitlab.Gitlab.project_access_tokens`
 
-* GitLab API: https://docs.gitlab.com/ee/api/project_access_tokens.html
+* GitLab API: https://docs.gitlab.com/api/project_access_tokens
 
 Examples
 --------
 
 List project access tokens::
 
-    access_tokens = gl.projects.get(1, lazy=True).access_tokens.list()
+    access_tokens = gl.projects.get(1, lazy=True).access_tokens.list(get_all=True)
     print(access_tokens[0].name)
 
 Get a project access token by id::
@@ -45,4 +45,10 @@ Rotate a project access token and retrieve its new value::
     print(token.token)
     # or directly using a token ID
     new_token = project.access_tokens.rotate(42)
+    print(new_token.token)
+
+Self-Rotate the project access token you are using to authenticate the request and retrieve its new value::
+
+    token = project.access_tokens.get(42, lazy=True)
+    token.rotate(self_rotate=True)
     print(new_token.token)

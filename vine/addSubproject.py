@@ -23,17 +23,17 @@ class AddSubproject(Option, WorkspaceDirHandler):
 
 
         Options:
-        --name=<name>       The name of the subproject.
-        --prefix=<prefix>   Path to place the subproject in your current workspace. (Relative to the top level
-                            directory in your workspace.)
-        --url=<url>         The URL (SSH, HTTPS, or Relative URL) of the new project's repository.
-        --branch=<branch>   The branch name of the subproject you want to add.
-        --submodule         Add this subproject as a submodule. Default behavior if
-                            .grapeconfig.workspace.subprojectType is submodule.
-        --nested            Add this subproject as a nested git project. While in the main repository, git will ignore
-                            all activity in this subproject. GRAPE commands such as checkout, status, and commit will
-                            act across all nested subprojects in much the same way as grape manages submodules.
-        --noverify          Set to prevent grape from asking for user verification before adding the subproject.
+            --name=<name>       The name of the subproject.
+            --prefix=<prefix>   Path to place the subproject in your current workspace. (Relative to the top level
+                                directory in your workspace.)
+            --url=<url>         The URL (SSH, HTTPS, or Relative URL) of the new project's repository.
+            --branch=<branch>   The branch name of the subproject you want to add.
+            --submodule         Add this subproject as a submodule. Default behavior if
+                                .grapeconfig.workspace.subprojectType is submodule.
+            --nested            Add this subproject as a nested git project. While in the main repository, git will ignore
+                                all activity in this subproject. GRAPE commands such as checkout, status, and commit will
+                                act across all nested subprojects in much the same way as grape manages submodules.
+            --noverify          Set to prevent grape from asking for user verification before adding the subproject.
 
     """
     def __init__(self):

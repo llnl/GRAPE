@@ -3,7 +3,9 @@ import logging
 import os
 import sys
 from docopt.docopt import docopt
+from vine import CodeReviewsFactory
 from vine import grapeGit as git
+from vine import config_parser_base
 from vine import config_parser_global
 from vine.option import Option
 if sys.platform == 'linux2':
@@ -32,53 +34,75 @@ def getDefaultName():
         return os.getenv("USER")
 
 
-def getUserName(defaultName=getDefaultName(), service="LC"):
-    config = config_parser_global.grapeConfig()
+def getUserName(cliArgs=None, defaultName=None, service="LC"):
+    """
+    Resolve the username for a given service.
+
+    Precedence:
+      1) CLI argument: cliArgs['--user'] (if provided and non-empty)
+      2) Home grape config: $HOME/.grapeconfig [services] <service.lower()>
+      3) Interactive prompt (or default in non-interactive mode)
+
+    If the user opts in, persist the username to:
+      $HOME/.grapeconfig under [services] <service.lower()>.
+
+    Args:
+        cliArgs: Parsed CLI args dict (e.g., from docopt) that may include '--user'.
+        defaultName: Default username to present in prompt; if None, uses getDefaultName().
+        service: Service identifier (e.g., "LC"); stored/looked up as lowercase.
+
+    Returns:
+        The resolved username (str).
+    """
+    # Use the CLI argument if provided
+    if cliArgs and cliArgs.get('--user'):
+        return cliArgs['--user']
+
+    # Check for a saved entry in the home grape config (not workspace/user config)
+    home_dir = config_parser_global.get_env_config_path()
+    home_config = config_parser_base.GrapeConfigParserBase(workspaceDir=home_dir)
     try:
-        if config.has_section(Option.SECTION_SERVICES) and config.has_option(Option.SECTION_SERVICES, service.lower()):
-            configuredName = config.get(Option.SECTION_SERVICES, service.lower())
-            return configuredName
-    except:
+        if home_config.has_section(Option.SECTION_SERVICES) and home_config.has_option(
+            Option.SECTION_SERVICES, service.lower()
+        ):
+            service_user_name = home_config.get(Option.SECTION_SERVICES, service.lower())
+            logging.info(f'Loaded user name "{service_user_name}" for service "{service}" from $HOME/.grapeconfig.')
+            return service_user_name
+    except Exception:
         pass
+
     # Ask for the username
+    if defaultName is None:
+        defaultName = getDefaultName()
+
     username = userInput(f"Enter {service} User Name:", defaultName)
 
     # Ask if the user wants to remember this username
-    remember = userInput(f"Remember this {service} username in .grapeuserconfig? (y/n)", "n")
+    remember = userInput(f"Remember this {service} username in $HOME/.grapeconfig? (y/n)", "n")
 
     if remember:
-        # Save the username to .grapeuserconfig
+        # Save the username to $HOME/.grapeconfig
         try:
-            from vine import config_parser_user
-            import os
-
-            # Get the workspace directory
-            workspace_dir = os.getcwd()
-
-            # Create a user config parser
-            user_config = config_parser_user.GrapeConfigParserUser(workspace_dir=workspace_dir)
-
             # Ensure the services section exists
-            if not user_config.has_section(Option.SECTION_SERVICES):
-                user_config.add_section(Option.SECTION_SERVICES)
+            if not home_config.has_section(Option.SECTION_SERVICES):
+                home_config.add_section(Option.SECTION_SERVICES)
 
             # Set the username for this service
-            user_config.set(Option.SECTION_SERVICES, service.lower(), username)
+            home_config.set(Option.SECTION_SERVICES, service.lower(), username)
 
-            # Save the config to .grapeuserconfig
-            git_dir = os.path.join(workspace_dir, '.git')
-            config_path = os.path.join(git_dir, '.grapeuserconfig')
+            # Persist only the home config (avoid writing merged workspace config)
+            config_path = os.path.join(home_dir, GRAPE_CONFIG)
+            config_parser_global.writeConfig(home_config, config_path)
 
-            # Ensure the directory exists
-            if not os.path.exists(git_dir):
-                os.makedirs(git_dir)
+            # Update the in-memory singleton for this process, if it exists
+            global_config = config_parser_global.grapeConfig()
+            if not global_config.has_section(Option.SECTION_SERVICES):
+                global_config.add_section(Option.SECTION_SERVICES)
+            global_config.set(Option.SECTION_SERVICES, service.lower(), username)
 
-            with open(config_path, 'w') as f:
-                user_config.write(f)
-
-            print(f"Username for {service} saved to {config_path}")
+            logging.info(f"Username for {service} saved to {config_path}")
         except Exception as e:
-            print(f"Failed to save username to .grapeuserconfig: {e}")
+            logging.error(f"Failed to save username to $HOME/.grapeconfig: {e}")
 
     return username
 
@@ -102,10 +126,12 @@ def parseArgs(docstr, arguments, config):
 # ask the user for something and return what they put in
 # NOTE THE SPECIAL TREATMENT for y/n/Y/N defaults:
 # if default is 'y', 'n', 'Y', or 'N', this will evaluate
-# to True if the user inputs anything that starts with a 'y' or 'Y',
-# and will evaluate to False if the user inputs anything that starts
-# with a 'N' or 'n'.
-def userInput(message, default=None):
+# to True if the user inputs 'y' or 'yes' (case-insensitive)
+# and will evaluate to False if the user inputs 'n' or 'no'
+# (case insensitive). Only these inputs, along with any
+# inputs specified in additional_inputs are allowed.
+# additional_inputs has no effect except with y/n/Y/N defaults.
+def userInput(message, default=None, additional_inputs=[]):
     print(f"\n{message}")
     if IS_NON_INTERACTIVE:
         if not default:
@@ -126,10 +152,19 @@ def userInput(message, default=None):
     if value == "":
         value = default
     if default.lower() == "y" or default.lower() == "n":
-        if value.lower()[0] == "y":
-            return True
-        if value.lower()[0] == "n":
-            return False
+        while True:
+            if value.lower() == "y":
+                return True
+            if value.lower() == "yes":
+                return True
+            if value.lower() == "n":
+                return False
+            if value.lower() == "no":
+                return False
+            if value in additional_inputs:
+                return value
+            print(f"Please enter {'/'.join(['y','yes','n','no'] + additional_inputs)}...")
+            value = input(f"(def: {default}) ==> ").strip()
     return value
 
 
@@ -180,3 +215,61 @@ def win_path_to_linux_path(path):
     path = path.replace(' ', f'{os.path.sep} ')
     path = path.replace('(x86)', f'{os.path.sep}(x86{os.path.sep})')
     return path
+
+
+def authenticateToGitHost(user_name, workspace_dir, args):
+        """
+        Authenticate to the git hosting service and create a client instance.
+
+        This method builds the connection parameters from the provided
+        command line arguments, logs the target URL, and delegates client
+        creation to `CodeReviewsFactory.makeCodeReviews`.
+
+        Parameters
+        ----------
+        user_name : str
+            The user name to authenticate as.
+        workspace_dir : str
+            The workspace directory.
+        args : dict
+            Dictionary of command line arguments, expected to contain:
+
+            - `"--codeReviewsURL"` : str
+            Base URL of the code review or Git host.
+            - `"--verifySSL"` : str
+            String flag indicating whether SSL certificates should be
+            verified, for example `"true"` or `"false"`.
+            - `"--ssh_pat_port"` : str or int
+            Port number used for SSH or PAT based communication.
+            - `"--ssh_pat_url"` : str
+            SSH or PAT endpoint or URL segment used for authentication.
+
+        Returns
+        -------
+        CodeReviews
+            An instance returned by `CodeReviewsFactory.makeCodeReviews`
+            configured for the given user, workspace directory, and git hosting service.
+
+        Side Effects
+        ------------
+        Logs an informational message indicating the URL that is being used
+        to authenticate.
+
+        Notes
+        -----
+        The `"--verifySSL"` argument is treated as case insensitive; only
+        the string `"true"` (ignoring case) results in certificate
+        verification being enabled.
+        """
+        url = args['--codeReviewsURL']
+        verify = True if args['--verifySSL'].lower() == 'true' else False
+        logging.info(f'Logging onto {url}...')
+
+        return CodeReviewsFactory.makeCodeReviews(
+            user_name,
+            url=url,
+            verify=verify,
+            port=int(args['--ssh_pat_port']),
+            ssh_path=args['--ssh_pat_url'],
+            workspace_dir=workspace_dir
+        )
