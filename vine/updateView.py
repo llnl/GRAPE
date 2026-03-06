@@ -330,8 +330,10 @@ class UpdateView(Option, WorkspaceDirHandler):
               if git.hasBranch(branch, execution_path=subpath):
                  if checkChanged:
                      if not git.branchUpToDateWith(public, branch, execution_path=os.path.join(workspace_dir,subprojectPrefix)):
+                         logging.info(f"      {branch} changed locally versus {public} locally in {subprojectPrefix}")
                          return True
                  else:
+                     logging.debug(f"      {branch} found locally in {subprojectPrefix}")
                      return True
 
         # Otherwise, look up from the remote
@@ -398,16 +400,21 @@ class UpdateView(Option, WorkspaceDirHandler):
                         break
                   else:
                      logging.warning(f"WARNING: invalid gitlink entry for {subprojectPrefix} at {outerSHA} : {gitLinkInfo}")
-           else:
-                # If there are no change in the subproject, check to see if it is a newly added submodule
-                try:
-                    gitlinkDiff = git.diff(f"--name-status origin/{toppublic} {subprojectPrefix}", execution_path=workspace_dir)
-                    if gitlinkDiff.startswith("A"):
-                        changed = True
-                except grape_errors.GrapeGitError:
-                    pass
+           elif not changed:
+               # If there are no change in the subproject, check to see if it is a newly added submodule
+               try:
+                  gitlinkDiff = git.diff(f"--name-status origin/{toppublic} {subprojectPrefix}", execution_path=workspace_dir)
+                  if gitlinkDiff.startswith("A"):
+                     logging.info(f"      {branch} adds submodule {subprojectPrefix}")
+                     changed = True
+               except grape_errors.GrapeGitError:
+                  pass
+           if changed:
+               logging.info(f"      {branch} changed versus {public} in remote for {subprojectPrefix}")
            return changed
         else:
+           if branchSHA:
+              logging.debug(f"      {branch} found in remotes for {subprojectPrefix}")
            return branchSHA != None
 
     @staticmethod
@@ -538,10 +545,11 @@ class UpdateView(Option, WorkspaceDirHandler):
             # get submodules to update
             if hasSubmodules:
                 if args["--branchFilter"]:
-                    logging.info(f"Filtering using branch {args['--branchFilter']}...")
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], x, url_map[x], self.workspace_dir, self.activeSubmodules)
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
+                    if not args["--noSubmodules"]:
+                        logging.info(f"   Filtering submodules for changes in {branchChanged} versus {public} [tag: {tagPrefix}]{' (checking submodule history)' if checkSubmoduleHistory else ''}...")
                     subpublic = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")[public]
                     branchFilter = lambda x : self.branchFilter(branchChanged, x, url_map[x], self.workspace_dir, self.activeSubmodules, checkChanged=True, public=subpublic, checkSubmoduleHistory=checkSubmoduleHistory)
                 else:
@@ -568,6 +576,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                     branchFilter = lambda x : self.branchFilter(args['--branchFilter'], config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, self.activeNestedSubprojectPrefixes)
                 elif args["--branchChanged"]:
                     (branchChanged, public, tagPrefix, checkSubmoduleHistory) = self.getBranchChangedArgs(args)
+                    if not args["--noNestedSubprojects"]:
+                        logging.info(f"   Filtering nested subprojects for changes in {branchChanged} versus {public} [tag: {tagPrefix}]...")
                     branchFilter = lambda x : self.branchFilter(branchChanged, config.get(f"nested-{x}", "prefix"), config.get(f"nested-{x}", "url"), self.workspace_dir, self.activeNestedSubprojectPrefixes, checkChanged = True, public=public, tagPrefix=tagPrefix)
                 else:
                     branchFilter = lambda x : True
@@ -661,7 +671,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                     git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
 
                 if deinitStr:
-                    logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
+                    if initStr:
+                        logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
+                    else:
+                        logging.info(f"Deiniting all submodules...")
                     done = False
                     while not done:
                         try:
@@ -798,7 +811,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         self.rmNestedSubproject(subproject, args)
 
                 # activate nested subprojects in parallel
-                logging.info(f"Updating active subprojects...")
+                logging.info(f"Updating active subprojects... ({' '.join(updatedActiveList)})")
                 activate_project_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(activateSubproject,
                                                                                              listOfRepoBranchArgTuples=toActivate_args,
                                                                                              workspace_dir=self.workspace_dir)
