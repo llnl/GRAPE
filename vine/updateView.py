@@ -661,7 +661,10 @@ class UpdateView(Option, WorkspaceDirHandler):
                     git.submodule(f"init {initStr.strip()}", execution_path=self.workspace_dir)
 
                 if deinitStr:
-                    logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
+                    if initStr:
+                        logging.info(f"Deiniting submodules that were not requested... ({deinitStr})")
+                    else:
+                        logging.info(f"Deiniting all submodules...")
                     done = False
                     while not done:
                         try:
@@ -798,7 +801,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         self.rmNestedSubproject(subproject, args)
 
                 # activate nested subprojects in parallel
-                logging.info(f"Updating active subprojects...")
+                logging.info(f"Updating active subprojects... ({' '.join(updatedActiveList)})")
                 activate_project_launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(activateSubproject,
                                                                                              listOfRepoBranchArgTuples=toActivate_args,
                                                                                              workspace_dir=self.workspace_dir)
