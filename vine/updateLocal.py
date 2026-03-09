@@ -108,17 +108,18 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     mergeRequired = False
     for b in branches:
         if git.join_list_as_git_path(['origin', b]) in allRemoteBranches:
+            forcePrefix = ""
             if not args["--noForce"]:
-                fetchArgs += "+"
+                forcePrefix = "+"
             if not args["--updateRemoteOnly"]:
                 if b == currentBranch:
                    mergeRequired = True
-                   fetchArgs += f"{b} "
+                   fetchArgs += f"{forcePrefix}{b} "
                 else:
-                   fetchArgs += f"{b}:{b} "
-                fetchArgs += f"refs/heads/{b}:refs/remotes/origin/{b} "
+                   fetchArgs += f"{forcePrefix}{b}:{b} "
+                fetchArgs += f"{forcePrefix}refs/heads/{b}:refs/remotes/origin/{b} "
             else:
-                fetchArgs += f"{b} "
+                fetchArgs += f"{forcePrefix}{b} "
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
         git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=(not args["--ignoreCommError"]))
