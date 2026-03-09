@@ -32,7 +32,7 @@ Create internal_release branch.  For this internal_release branch, you should me
    
 Publish an internal_release branch. After publish, the CI will have been assigned an incorrect version.
 
-Delete the tag created by the CI and tag with the appropriate version.
+Delete the incorrect tag created by the CI on master and tag with the appropriate version.
  v\<MAJOR\>.\<NEWPROD\>.0 instead of v\<MAJOR\>.\<OLDDEV\>.\<most_recent_old_dev_update+1\> (e.g. v1.42.0 instead of v1.41.19)
 
     git fetch origin master:master
@@ -58,6 +58,13 @@ Tag that commit as v\<MAJOR\>.\<NEWDEV\>.0 (e.g. v1.43.0), push both the new tag
     git tag -a v<MAJOR>.<NEWDEV>.0 -m "Manually tagged" HEAD
     git push origin
     git push --tags origin v<MAJOR>.<NEWDEV>.0
+
+Delete the incorrect tag created by the CI on develop.
+ v\<MAJOR\>.\<NEWPROD\>.1 is incorrect, v\<MAJOR\>.\<NEWDEV\>.0 is correct
+ (e.g. develop will be tagged with both v1.42.1 and v1.43.0, the 1.42 tag is incorrect)
+
+    git tag -d v<MAJOR>.<NEWPROD>.1
+    git push origin --delete v<MAJOR>.<NEWPROD>.1
 
 ## Introducing the `.grapeconfig` file
 
