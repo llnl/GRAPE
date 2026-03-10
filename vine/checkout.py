@@ -410,7 +410,7 @@ class Checkout(Option, WorkspaceDirHandler):
             if sub in initiallyActiveSubmodules:
                 git.submodule(f"init {sub}", execution_path=self.workspace_dir)
 
-        # clean out and removed submodules
+        # clean out removed submodules
         for sub in removedModules:
             cleaned = cleanSubmodule(sub, args, workspace_dir=self.workspace_dir)
 
@@ -423,11 +423,27 @@ class Checkout(Option, WorkspaceDirHandler):
                 configString=git.show(f"{previousSHA}:.grapeconfig", execution_path=self.workspace_dir))
             branchConfig = config_parser_base.GrapeConfigParserBase(
                 configString=git.show(f"{branch}:.grapeconfig", execution_path=self.workspace_dir))
-            previousNestedProjects = set(previousConfig.getAllNestedSubprojects())
-            branchNestedProjects = set(branchConfig.getAllNestedSubprojects())
+            previousNestedProjects = {}
+            branchNestedProjects = {}
+            for proj in previousConfig.getAllNestedSubprojects():
+                url = previousConfig.get(f"nested-{proj}", "url")
+                previousNestedProjects[proj] = url
+            for proj in branchConfig.getAllNestedSubprojects():
+                url = branchConfig.get(f"nested-{proj}", "url")
+                branchNestedProjects[proj] = url
+
             # use set subtraction to figure out the removed and added projects
-            removedProjects = previousNestedProjects - branchNestedProjects
-            addedProjects = branchNestedProjects - previousNestedProjects
+            previousSet = set(previousNestedProjects)
+            branchSet = set(branchNestedProjects)
+            removedProjects = previousSet - branchSet
+            addedProjects = branchSet - previousSet
+            commonProjects = branchSet | previousSet
+
+            for proj in commonProjects:
+                if previousNestedProjects[proj] != branchNestedProjects[proj]:
+                    removedProjects.add(proj)
+                    addedProjects.add(proj)
+
             nestedProjectListDidChange = bool(removedProjects or addedProjects)
 
             if removedProjects:
@@ -435,16 +451,20 @@ class Checkout(Option, WorkspaceDirHandler):
                     projPrefix = previousConfig.get(f"nested-{proj}", "prefix")
 
                     # OK if directory does not exist as it may be removed soon.
-                    working_directory = os.path.join(self.workspace_dir, proj)
+                    working_directory = os.path.join(self.workspace_dir, projPrefix)
                     if not os.path.exists(working_directory):
                         continue
 
                     if git.isWorkingDirectoryClean(execution_path=working_directory):
                         removeBehaviorSet = args["--noUpdateView"] or args["--updateView"]
+                        if proj in commonProjects:
+                            logging.info(f"{projPrefix} URL changing from {previousProjects[proj]} to {branchProjects[proj]}.")
+                            action = "replace"
+                        else:
+                            action = "remove"
                         if not removeBehaviorSet:
                             remove = utility.userInput(
-                                "Would you like to remove the nested " +
-                                f"subproject {projPrefix}? \nAll work " +
+                                f"Would you like to {action} the nested subproject {projPrefix}? \nAll work " +
                                 "that has not been pushed will be lost. ", 'n')
                         elif args["--noUpdateView"]:
                             remove = False
@@ -452,18 +472,21 @@ class Checkout(Option, WorkspaceDirHandler):
                             remove = True
                         if remove:
                             remove = utility.userInput(
-                                "Are you sure you want to remove " +
-                                f"{projPrefix}? When you switch back to" +
-                                " the previous branch, you will have to\n" +
-                                f"reclone {projPrefix}.", 'n')
+                                f"Are you sure you want to {action} {projPrefix}?", 'n')
                         if remove:
                             shutil.rmtree(os.path.join(self.workspace_dir, projPrefix))
                     else:
-                        if not args["-q"]:
+                        if proj in commonProjects:
                             logging.info(
                                 f"Unstaged / committed changes in {projPrefix},"
-                                " not removing. \nNote this project is NOT " +
-                                f"active in {branch}. ")
+                                " not removing. \nQuitting grape checkout!")
+                            return False
+                        else:
+                            if not args["-q"]:
+                                logging.info(
+                                    f"Unstaged / committed changes in {projPrefix},"
+                                    " not removing. \nNote this project is NOT " +
+                                    f"active in {branch}. ")
 
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
