@@ -435,7 +435,7 @@ class Checkout(Option, WorkspaceDirHandler):
                     projPrefix = previousConfig.get(f"nested-{proj}", "prefix")
 
                     # OK if directory does not exist as it may be removed soon.
-                    working_directory = os.path.join(self.workspace_dir, proj)
+                    working_directory = os.path.join(self.workspace_dir, projPrefix)
                     if not os.path.exists(working_directory):
                         continue
 
