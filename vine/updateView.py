@@ -415,8 +415,9 @@ class UpdateView(Option, WorkspaceDirHandler):
         os.chmod(path, stat.S_IWRITE)
         func(path)
 
-    def rmNestedSubproject(self, subproject, args):
-        subprojectdir = os.path.join(self.workspace_dir, subproject)
+    @staticmethod
+    def rmNestedSubproject(subproject, workspace_dir, args):
+        subprojectdir = os.path.join(workspace_dir, subproject)
         proceed = args["-F"] or \
                   utility.userInput(f"About to delete all contents in {subproject}. " +
                                     "Any uncommitted changes, committed changes that have " +
@@ -426,9 +427,10 @@ class UpdateView(Option, WorkspaceDirHandler):
             if args["-v"]:
                 logging.info(f"removing {subproject}...")
             try:
-                shutil.rmtree(subprojectdir, onerror=self.force_rm)
+                shutil.rmtree(subprojectdir, onerror=UpdateView.force_rm)
             except OSError as e:
                 logging.warning(f"WARNING: Failed to remove {subproject}!\n{e}")
+                return False
             return True
         return False
 
@@ -774,7 +776,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
-                                if self.rmNestedSubproject(subproject, args):
+                                if self.rmNestedSubproject(subproject, self.workspace_dir, args):
                                     toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet, "verbose":verbose}))
                                     section = f"nested-{subprojectName}"
                                     userConfig.ensureSection(section)
@@ -795,7 +797,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                     if not nowActive and previouslyActive:
                         #remove the subproject
                         subprojectdir = os.path.join(self.workspace_dir, subproject)
-                        self.rmNestedSubproject(subproject, args)
+                        self.rmNestedSubproject(subproject, self.workspace_dir, args)
 
                 # activate nested subprojects in parallel
                 logging.info(f"Updating active subprojects...")
