@@ -307,7 +307,7 @@ class Checkout(Option, WorkspaceDirHandler):
         -v                  Print output from individual directories.
         -q                  Quiet warnings from individual directories that don't cause failure.
         -b                  Create the branch off of the current HEAD in each project.
-        -F                  Force removal of nested subprojects that are removed or replaced (with a different URL) as a result of the checkout.
+        -F                  Force removal of nested subprojects removed or replaced (with a different URL) as by the checkout.
         --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                             either by pushing or pulling the remote tracking branch.
                             [default: .grapeconfig.post-checkout.syncWithOrigin]
