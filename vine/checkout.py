@@ -422,9 +422,9 @@ class Checkout(Option, WorkspaceDirHandler):
 
         # check to see if nested project list changed
         nestedProjectListDidChange = False
-        addedProjects = []
-        removedProjects = []
-        replacedProjects = []
+        addedProjects = set()
+        removedProjects = set()
+        replacedProjects = set()
 
         if ".grapeconfig" in git.diff(f"--name-only {startingSHA} {branch}", execution_path=self.workspace_dir):
             previousConfig = config_parser_base.GrapeConfigParserBase(
