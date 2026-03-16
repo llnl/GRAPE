@@ -447,7 +447,9 @@ class Checkout(Option, WorkspaceDirHandler):
             addedProjects = branchSet - previousSet
 
             for proj in branchSet.intersection(previousSet):
-                if previousNestedProjects[proj] != branchNestedProjects[proj]:
+                # Replaced projects have different URLs but the same name and prefix.
+                # We will not consider the case where both URLs and prefixes have been changed.
+                if previousNestedProjects[proj] != branchNestedProjects[proj] and previousConfig.get(f"nested-{proj}", "prefix") == branchConfig.get(f"nested-{proj}", "prefix"):
                     replacedProjects.add(proj)
 
             nestedProjectListDidChange = bool(removedProjects or addedProjects or replacedProjects)
@@ -471,7 +473,7 @@ class Checkout(Option, WorkspaceDirHandler):
                             logging.info(f"Removing Nested Subproject {projPrefix}")
                             userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
                             rmArgs = { "-F":True, "-v":False }
-                            if not UpdateView.deactivateNestedSubproject(proj, previousConfig, userConfig, self.workspace_dir, rmArgs):
+                            if not UpdateView.deactivateNestedSubproject(proj, userConfig, self.workspace_dir, rmArgs):
                                 logging.info(f"Failed to remove {projPrefix}!")
                                 okToReplace = False 
                     else:

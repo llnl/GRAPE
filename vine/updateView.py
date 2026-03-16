@@ -416,8 +416,9 @@ class UpdateView(Option, WorkspaceDirHandler):
         func(path)
 
     @staticmethod
-    def deactivateNestedSubproject(subprojectName, configBase, userConfig, workspace_dir, args):
-        projPrefix = configBase.get(f"nested-{subprojectName}", "prefix")
+    def deactivateNestedSubproject(subprojectName, userConfig, workspace_dir, args):
+        config = config_parser_global.grapeConfig()
+        projPrefix = config.get(f"nested-{subprojectName}", "prefix")
         subprojectdir = os.path.join(workspace_dir, projPrefix)
         proceed = args["-F"] or \
                   utility.userInput(f"About to delete all contents in {projPrefix}. " +
@@ -781,7 +782,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
-                                if self.deactivateNestedSubproject(subprojectName, config, userConfig, self.workspace_dir, args):
+                                if self.deactivateNestedSubproject(subprojectName, userConfig, self.workspace_dir, args):
                                     toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet, "verbose":verbose}))
                                 else:
                                     delayedMessages.append(f"Remote protocol for nested subproject {subproject} was not changed!")
@@ -797,7 +798,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         pass
                     if not nowActive and previouslyActive:
                         #remove the subproject
-                        self.deactivateNestedSubproject(subprojectName, config, userConfig, self.workspace_dir, args)
+                        self.deactivateNestedSubproject(subprojectName, userConfig, self.workspace_dir, args)
 
                 # activate nested subprojects in parallel
                 logging.info(f"Updating active subprojects...")
