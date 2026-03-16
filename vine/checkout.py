@@ -424,6 +424,8 @@ class Checkout(Option, WorkspaceDirHandler):
         nestedProjectListDidChange = False
         addedProjects = []
         removedProjects = []
+        changedProjects = []
+
         if ".grapeconfig" in git.diff(f"--name-only {startingSHA} {branch}", execution_path=self.workspace_dir):
             previousConfig = config_parser_base.GrapeConfigParserBase(
                 configString=git.show(f"{startingSHA}:.grapeconfig", execution_path=self.workspace_dir))
@@ -443,12 +445,10 @@ class Checkout(Option, WorkspaceDirHandler):
             branchSet = set(branchNestedProjects)
             removedProjects = previousSet - branchSet
             addedProjects = branchSet - previousSet
-            commonProjects = branchSet.intersection(previousSet)
 
-            for proj in commonProjects:
+            for proj in branchSet.intersection(previousSet):
                 if previousNestedProjects[proj] != branchNestedProjects[proj]:
-                    removedProjects.add(proj)
-                    addedProjects.add(proj)
+                    changedProjects.add(proj)
 
             # If the nested subproject changed URLs and we fail to replace the nested subproject, the workspace will be
             # left in an inconsistent state (with the outer repo on the new branch, but the nested subproject on the starting branch).
@@ -462,7 +462,45 @@ class Checkout(Option, WorkspaceDirHandler):
                                                                                                           "verbose":args["-v"]})],
                                                                              workspace_dir=self.workspace_dir)
 
-            nestedProjectListDidChange = bool(removedProjects or addedProjects)
+            nestedProjectListDidChange = bool(removedProjects or addedProjects or changedProjects)
+
+            if changedProjects:
+                for proj in changedProjects:
+                    projPrefix = previousConfig.get(f"nested-{proj}", "prefix")
+
+                    if git.isWorkingDirectoryClean(execution_path=working_directory):
+                        logging.info(f"{projPrefix} URL changing from {previousNestedProjects[proj]} to {branchNestedProjects[proj]}.")
+                        replace = args["-F"] or utility.userInput(f"You will need to replace the nested subproject {projPrefix}\nAll work that has not been pushed will be lost. Proceed?", 'n')
+                        if not replace:
+                            logging.info(f"{projPrefix} must be replaced before proceeding!\nResetting outer level to {startingBranch} and exiting...")
+                            resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
+                            return False
+                        if replace:
+                            logging.info(f"Removing Nested Subproject {projPrefix}")
+                            rmArgs = { "-F":True, "-v":False }
+                            if not UpdateView.rmNestedSubproject(projPrefix, self.workspace_dir, rmArgs):
+                                logging.info(f"Can't remove {projPrefix}.\nResetting outer level to {startingBranch} and exiting...")
+                                resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
+                                return False
+
+                            userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
+
+                            # Deactivate subproject in userconfig to ensure it will be cloned in the activation set.
+                            # This also ensure that the configuration will be consistent in case the activation fails.
+                            section = f"nested-{proj}"
+                            userConfig.ensureSection(section)
+                            userConfig.set(section, "active", "False")
+                            config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
+
+                            logging.info(f"Activating Nested Subproject {projPrefix} on {branch}")
+                            if not AddSubproject.activateNestedSubproject(proj, userConfig, branch, args["--filter"], self.workspace_dir):
+                                logging.info(f"Can't activate {proj}.\nExiting...")
+                                return False
+                    else:
+                        if proj in commonProjects:
+                            logging.info(f"Unstaged / committed changes in {projPrefix}, not removing. Resetting outer level to {startingBranch} and exiting...\n")
+                            resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
+                            return False
 
             if removedProjects:
                 for proj in removedProjects:
@@ -474,57 +512,23 @@ class Checkout(Option, WorkspaceDirHandler):
                         continue
 
                     if git.isWorkingDirectoryClean(execution_path=working_directory):
-                        if proj in commonProjects:
-                            logging.info(f"{projPrefix} URL changing from {previousNestedProjects[proj]} to {branchNestedProjects[proj]}.")
-                            replace = args["-F"] or utility.userInput(f"You will need to replace the nested subproject {projPrefix}\nAll work that has not been pushed will be lost. Proceed?", 'n')
-                            if not replace:
-                                logging.info(f"{projPrefix} must be replaced before proceeding!\nResetting outer level to {startingBranch} and exiting...")
-                                resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
-                                return False
-                            if replace:
-                                logging.info(f"Removing Nested Subproject {projPrefix}")
-                                rmArgs = { "-F":True, "-v":False }
-                                if not UpdateView.rmNestedSubproject(projPrefix, self.workspace_dir, rmArgs):
-                                    logging.info(f"Can't remove {projPrefix}.\nResetting outer level to {startingBranch} and exiting...")
-                                    resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
-                                    return False
-
-                                userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
-
-                                # Deactivate subproject in userconfig to ensure it will be cloned in the activation set.
-                                # This also ensure that the configuration will be consistent in case the activation fails.
-                                section = f"nested-{proj}"
-                                userConfig.ensureSection(section)
-                                userConfig.set(section, "active", "False")
-                                config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
-
-                                logging.info(f"Activating Nested Subproject {projPrefix} on {branch}")
-                                if not AddSubproject.activateNestedSubproject(proj, userConfig, branch, args["--filter"], self.workspace_dir):
-                                    logging.info(f"Can't activate {proj}.\nExiting...")
-                                    return False
-                        else:
-                            removeBehaviorSet = args["--noUpdateView"] or args["--updateView"]
-                            if not removeBehaviorSet:
-                                remove = args["-F"] or utility.userInput(f"Would you like to remove the nested subproject {projPrefix}? \nAll work that has not been pushed will be lost. ", 'n')
-                            elif args["--noUpdateView"]:
-                                remove = False
-                            elif args["--updateView"]:
-                                remove = True
-                            if remove:
-                                remove = args["-F"] or utility.userInput(f"Are you sure you want to remove {projPrefix}?", 'n')
-                            if remove:
-                                shutil.rmtree(os.path.join(self.workspace_dir, projPrefix))
+                        removeBehaviorSet = args["--noUpdateView"] or args["--updateView"]
+                        if not removeBehaviorSet:
+                            remove = args["-F"] or utility.userInput(f"Would you like to remove the nested subproject {projPrefix}? \nAll work that has not been pushed will be lost. ", 'n')
+                        elif args["--noUpdateView"]:
+                            remove = False
+                        elif args["--updateView"]:
+                            remove = True
+                        if remove:
+                            remove = args["-F"] or utility.userInput(f"Are you sure you want to remove {projPrefix}?", 'n')
+                        if remove:
+                            shutil.rmtree(os.path.join(self.workspace_dir, projPrefix))
                     else:
-                        if proj in commonProjects:
-                            logging.info(f"Unstaged / committed changes in {projPrefix}, not removing. Resetting outer level to {startingBranch} and exiting...\n")
-                            resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
-                            return False
-                        else:
-                            if not args["-q"]:
-                                logging.info(
-                                    f"Unstaged / committed changes in {projPrefix},"
-                                    " not removing. \nNote this project is NOT " +
-                                    f"active in {branch}. ")
+                        if not args["-q"]:
+                            logging.info(
+                                f"Unstaged / committed changes in {projPrefix},"
+                                " not removing. \nNote this project is NOT " +
+                                f"active in {branch}. ")
 
         if not submodulesDidChange and not nestedProjectListDidChange:
             uvArgs.append("--checkSubprojects")
@@ -536,6 +540,7 @@ class Checkout(Option, WorkspaceDirHandler):
                                                "%s" % ("Added Submodules: %s\n"% ','.join(addedModules) if addedModules else "") +
                                                "%s" % ("Removed Projects: %s\n" % ','.join(removedProjects) if removedProjects else "") +
                                                "%s" % ("Removed Submodules: %s\n" % ','.join(removedModules) if removedModules else "") +
+                                               "%s" % ("Changed Projects: %s\n" % ','.join(changedProjects) if changedProjects else "") +
                                                "Would you like to update your workspace view? [y/n]", 'n')
             elif args["--noUpdateView"]:
                 updateView = False
