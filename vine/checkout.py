@@ -473,13 +473,14 @@ class Checkout(Option, WorkspaceDirHandler):
                             if not UpdateView.rmNestedSubproject(projPrefix, self.workspace_dir, rmArgs):
                                 logging.info(f"Failed to remove {projPrefix}!")
                                 okToReplace = False 
-                            # Deactivate subproject in userconfig to ensure it will be cloned in the activation step.
-                            # This also ensure that the configuration will be consistent in case the activation fails.
-                            section = f"nested-{proj}"
-                            userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
-                            userConfig.ensureSection(section)
-                            userConfig.set(section, "active", "False")
-                            config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
+                            else:
+                                # Deactivate subproject in userconfig to ensure it will be cloned in the activation step.
+                                # This also ensure that the configuration will be consistent in case the activation fails.
+                                section = f"nested-{proj}"
+                                userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
+                                userConfig.ensureSection(section)
+                                userConfig.set(section, "active", "False")
+                                config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
                     else:
                         logging.info(f"Unstaged / committed changes in {projPrefix}, not removing.")
                         okToReplace = False 
