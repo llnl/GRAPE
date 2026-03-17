@@ -416,21 +416,28 @@ class UpdateView(Option, WorkspaceDirHandler):
         func(path)
 
     @staticmethod
-    def rmNestedSubproject(subproject, workspace_dir, args):
-        subprojectdir = os.path.join(workspace_dir, subproject)
+    def deactivateNestedSubproject(subprojectName, userConfig, workspace_dir, args, config=None):
+        if not config:
+            config = config_parser_global.grapeConfig()
+        projPrefix = config.get(f"nested-{subprojectName}", "prefix")
+        subprojectdir = os.path.join(workspace_dir, projPrefix)
         proceed = args["-F"] or \
-                  utility.userInput(f"About to delete all contents in {subproject}. " +
+                  utility.userInput(f"About to delete all contents in {projPrefix}. " +
                                     "Any uncommitted changes, committed changes that have " +
                                     "not been pushed, or ignored files will be lost.  Proceed?" +
                                     " (use -F to force removal without this prompt)", 'n')
         if proceed:
             if args["-v"]:
-                logging.info(f"removing {subproject}...")
+                logging.info(f"removing {projPrefix}...")
             try:
                 shutil.rmtree(subprojectdir, onerror=UpdateView.force_rm)
             except OSError as e:
-                logging.warning(f"WARNING: Failed to remove {subproject}!\n{e}")
+                logging.warning(f"WARNING: Failed to remove {projPrefix}!\n{e}")
                 return False
+            section = f"nested-{subprojectName}"
+            userConfig.ensureSection(section)
+            userConfig.set(section, "active", "False")
+            config_parser_global.writeConfig(userConfig, os.path.join(workspace_dir, ".git", ".grapeuserconfig"))
             return True
         return False
 
@@ -776,12 +783,8 @@ class UpdateView(Option, WorkspaceDirHandler):
                             if subRemoteProtocol != remoteProtocol:
                                 if args["-v"]:
                                     logging.info(f"Remote protocol for nested subproject {subproject} is {subRemoteProtocol}, deleting and recloning with {remoteProtocol}...")
-                                if self.rmNestedSubproject(subproject, self.workspace_dir, args):
+                                if self.deactivateNestedSubproject(subprojectName, userConfig, self.workspace_dir, args):
                                     toActivate_args.append((subprojectName, branch, {"userConfig" : userConfig, "subprojectName":subprojectName, "filterArg":filterArg, "quiet":quiet, "verbose":verbose}))
-                                    section = f"nested-{subprojectName}"
-                                    userConfig.ensureSection(section)
-                                    userConfig.set(section, "active", "False")
-                                    config_parser_global.writeConfig(userConfig, os.path.join(self.workspace_dir, ".git", ".grapeuserconfig"))
                                 else:
                                     delayedMessages.append(f"Remote protocol for nested subproject {subproject} was not changed!")
 
@@ -796,8 +799,7 @@ class UpdateView(Option, WorkspaceDirHandler):
                         pass
                     if not nowActive and previouslyActive:
                         #remove the subproject
-                        subprojectdir = os.path.join(self.workspace_dir, subproject)
-                        self.rmNestedSubproject(subproject, self.workspace_dir, args)
+                        self.deactivateNestedSubproject(subprojectName, userConfig, self.workspace_dir, args)
 
                 # activate nested subprojects in parallel
                 logging.info(f"Updating active subprojects...")
