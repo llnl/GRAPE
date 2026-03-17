@@ -416,8 +416,9 @@ class UpdateView(Option, WorkspaceDirHandler):
         func(path)
 
     @staticmethod
-    def deactivateNestedSubproject(subprojectName, userConfig, workspace_dir, args):
-        config = config_parser_global.grapeConfig()
+    def deactivateNestedSubproject(subprojectName, userConfig, workspace_dir, args, config=None):
+        if not config:
+            config = config_parser_global.grapeConfig()
         projPrefix = config.get(f"nested-{subprojectName}", "prefix")
         subprojectdir = os.path.join(workspace_dir, projPrefix)
         proceed = args["-F"] or \
