@@ -86,8 +86,8 @@ class UpdateLocal(Option, WorkspaceDirHandler):
         pass
 
 def fetchLocalHandler(mre):
-    for e in mre.exceptions():
-        logging.error(repr(e.gitOutput))
+    for  e,r in zip(mre.exceptions(), mre.repos()):
+        logging.error(repr(e.gitOutput), r)
     raise mre
 
 def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
