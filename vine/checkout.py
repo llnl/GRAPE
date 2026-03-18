@@ -6,9 +6,12 @@ import stat
 import time
 from vine import config_parser_base
 from vine import config_parser_global
+from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
+from vine.addSubproject import AddSubproject
+from vine.updateView import UpdateView
 from vine.option import Option
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine import utility
@@ -298,12 +301,13 @@ class Checkout(Option, WorkspaceDirHandler):
     """
     grape checkout
 
-    Usage: grape-checkout [-v] [-q] [-b] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
+    Usage: grape-checkout [-v] [-q] [-b] [-F] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
         -v                  Print output from individual directories.
         -q                  Quiet warnings from individual directories that don't cause failure.
         -b                  Create the branch off of the current HEAD in each project.
+        -F                  Force removal of nested subprojects removed or replaced (with a different URL) as by the checkout.
         --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                             either by pushing or pulling the remote tracking branch.
                             [default: .grapeconfig.post-checkout.syncWithOrigin]
@@ -341,7 +345,8 @@ class Checkout(Option, WorkspaceDirHandler):
            logging.error("<branch> cannot be specified as HEAD")
            return False
 
-        currentSHA = str(git.shortSHA(branchName="HEAD", execution_path=self.workspace_dir))
+        startingSHA = str(git.shortSHA(branchName="HEAD", execution_path=self.workspace_dir))
+        startingBranch = git.currentBranch(execution_path=self.workspace_dir)
 
         addedModules = []
         removedModules = []
@@ -373,7 +378,7 @@ class Checkout(Option, WorkspaceDirHandler):
 
             if config_parser_global.grapeConfig().getboolean(self.SECTION_WORKSPACE, "manageSubmodules"):
                 parseGitModulesDiffOutput(
-                    currentSHA, branch, addedModules, removedModules,
+                    startingSHA, branch, addedModules, removedModules,
                     changedURLModules, workspace_dir=self.workspace_dir)
 
             if addedModules or removedModules or changedURLModules:
@@ -403,32 +408,98 @@ class Checkout(Option, WorkspaceDirHandler):
         if not retvals or not retvals[0]:
             return False
 
-        previousSHA = currentSHA
+        # Ensure any global grape config is re-read from the new branch
+        config_parser_global.read(workspace_dir=self.workspace_dir)
 
         # reinit any submodules with changed urls
         for sub in changedURLModules:
             if sub in initiallyActiveSubmodules:
                 git.submodule(f"init {sub}", execution_path=self.workspace_dir)
 
-        # clean out and removed submodules
+        # clean out removed submodules
         for sub in removedModules:
             cleaned = cleanSubmodule(sub, args, workspace_dir=self.workspace_dir)
 
         # check to see if nested project list changed
         nestedProjectListDidChange = False
-        addedProjects = []
-        removedProjects = []
-        if ".grapeconfig" in git.diff(f"--name-only {previousSHA} {branch}", execution_path=self.workspace_dir):
+        addedProjects = set()
+        removedProjects = set()
+        replacedProjects = set()
+
+        if ".grapeconfig" in git.diff(f"--name-only {startingSHA} {branch}", execution_path=self.workspace_dir):
             previousConfig = config_parser_base.GrapeConfigParserBase(
-                configString=git.show(f"{previousSHA}:.grapeconfig", execution_path=self.workspace_dir))
+                configString=git.show(f"{startingSHA}:.grapeconfig", execution_path=self.workspace_dir))
             branchConfig = config_parser_base.GrapeConfigParserBase(
                 configString=git.show(f"{branch}:.grapeconfig", execution_path=self.workspace_dir))
-            previousNestedProjects = set(previousConfig.getAllNestedSubprojects())
-            branchNestedProjects = set(branchConfig.getAllNestedSubprojects())
+            previousNestedProjects = {}
+            branchNestedProjects = {}
+            for proj in previousConfig.getAllNestedSubprojects():
+                url = previousConfig.get(f"nested-{proj}", "url")
+                previousNestedProjects[proj] = url
+            for proj in branchConfig.getAllNestedSubprojects():
+                url = branchConfig.get(f"nested-{proj}", "url")
+                branchNestedProjects[proj] = url
+
             # use set subtraction to figure out the removed and added projects
-            removedProjects = previousNestedProjects - branchNestedProjects
-            addedProjects = branchNestedProjects - previousNestedProjects
-            nestedProjectListDidChange = bool(removedProjects or addedProjects)
+            previousSet = set(previousNestedProjects)
+            branchSet = set(branchNestedProjects)
+            removedProjects = previousSet - branchSet
+            addedProjects = branchSet - previousSet
+
+            for proj in branchSet.intersection(previousSet):
+                if previousNestedProjects[proj] != branchNestedProjects[proj]:
+                    replacedProjects.add(proj)
+
+            nestedProjectListDidChange = bool(removedProjects or addedProjects or replacedProjects)
+
+            if replacedProjects:
+                okToReplace = True
+                # First remove the projects that will be replaced
+                for proj in replacedProjects:
+                    projPrefix = previousConfig.get(f"nested-{proj}", "prefix")
+                    logging.info(f"{projPrefix} URL changing from {previousNestedProjects[proj]} to {branchNestedProjects[proj]}.")
+                    working_directory = os.path.join(self.workspace_dir, projPrefix)
+                    if not os.path.exists(working_directory):
+                        logging.info(f"{projPrefix} does not exist!")
+                        okToReplace = False 
+                    if git.isWorkingDirectoryClean(execution_path=working_directory):
+                        replace = args["-F"] or utility.userInput(f"You will need to replace the nested subproject {projPrefix}\nAll work that has not been pushed will be lost. Proceed?", 'n')
+                        if not replace:
+                            logging.info(f"{projPrefix} must be replaced before proceeding!")
+                            okToReplace = False 
+                        else:
+                            logging.info(f"Removing Nested Subproject {projPrefix}")
+                            userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
+                            rmArgs = { "-F":True, "-v":False }
+                            if not UpdateView.deactivateNestedSubproject(proj, userConfig, self.workspace_dir, rmArgs, config=previousConfig):
+                                logging.info(f"Failed to remove {projPrefix}!")
+                                okToReplace = False 
+                    else:
+                        logging.info(f"Unstaged / committed changes in {projPrefix}, not removing.")
+                        okToReplace = False 
+
+                if not okToReplace:
+                    # If the nested subproject changed URLs and we fail to replace the nested subproject, the workspace will be
+                    # left in an inconsistent state (with the outer repo on the new branch, but the nested subproject on the starting branch).
+                    resetLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(handledCheckout,
+                                                                                     listOfRepoBranchArgTuples=[(self.workspace_dir, startingBranch,
+                                                                                                                 {"checkout":'',
+                                                                                                                  "sync":False,
+                                                                                                                  "quiet":args["-q"],
+                                                                                                                  "verbose":args["-v"]})],
+                                                                                     workspace_dir=self.workspace_dir)
+                    logging.info(f"Cannot replace one or more nested subprojects!\nResetting outer level to {startingBranch} and exiting...")
+                    resetLauncher.launchFromWorkspaceDir(handleMRE=handleCheckoutMRE)
+                    return False
+
+                # Reactivate the projects with their new URLs
+                for proj in replacedProjects:
+                    projPrefix = previousConfig.get(f"nested-{proj}", "prefix")
+                    logging.info(f"Activating Nested Subproject {projPrefix} on {branch}")
+                    userConfig = config_parser_user.GrapeConfigParserUser(workspace_dir=self.workspace_dir)
+                    if not AddSubproject.activateNestedSubproject(proj, userConfig, branch, args["--filter"], self.workspace_dir):
+                        logging.info(f"Failed to activate {proj}.\nExiting...")
+                        return False
 
             if removedProjects:
                 for proj in removedProjects:
@@ -442,20 +513,13 @@ class Checkout(Option, WorkspaceDirHandler):
                     if git.isWorkingDirectoryClean(execution_path=working_directory):
                         removeBehaviorSet = args["--noUpdateView"] or args["--updateView"]
                         if not removeBehaviorSet:
-                            remove = utility.userInput(
-                                "Would you like to remove the nested " +
-                                f"subproject {projPrefix}? \nAll work " +
-                                "that has not been pushed will be lost. ", 'n')
+                            remove = args["-F"] or utility.userInput(f"Would you like to remove the nested subproject {projPrefix}? \nAll work that has not been pushed will be lost. ", 'n')
                         elif args["--noUpdateView"]:
                             remove = False
                         elif args["--updateView"]:
                             remove = True
                         if remove:
-                            remove = utility.userInput(
-                                "Are you sure you want to remove " +
-                                f"{projPrefix}? When you switch back to" +
-                                " the previous branch, you will have to\n" +
-                                f"reclone {projPrefix}.", 'n')
+                            remove = args["-F"] or utility.userInput(f"Are you sure you want to remove {projPrefix}?", 'n')
                         if remove:
                             shutil.rmtree(os.path.join(self.workspace_dir, projPrefix))
                     else:
@@ -475,6 +539,7 @@ class Checkout(Option, WorkspaceDirHandler):
                                                "%s" % ("Added Submodules: %s\n"% ','.join(addedModules) if addedModules else "") +
                                                "%s" % ("Removed Projects: %s\n" % ','.join(removedProjects) if removedProjects else "") +
                                                "%s" % ("Removed Submodules: %s\n" % ','.join(removedModules) if removedModules else "") +
+                                               "%s" % ("Replaced Projects: %s\n" % ','.join(replacedProjects) if replacedProjects else "") +
                                                "Would you like to update your workspace view? [y/n]", 'n')
             elif args["--noUpdateView"]:
                 updateView = False
@@ -498,9 +563,8 @@ class Checkout(Option, WorkspaceDirHandler):
         # are at the right commit before possibly creating new branches at the current HEAD.
         git.submodule("update", execution_path=self.workspace_dir)
         logging.info(f"Calling grape uv {' '.join(uvArgs)} to ensure" +
-                     " branches are consistent across all active " +
+                     " branches are consistent across all active" +
                      " subprojects and submodules.")
-        config_parser_global.read(workspace_dir=self.workspace_dir)
         menu = grapeMenu.menu(workspace_dir=self.workspace_dir)
         menu.applyMenuChoice('uv', uvArgs)
 
