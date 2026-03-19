@@ -17,7 +17,6 @@ from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
-from vine import submodules
 from vine import utility
 from vine import version
 from vine import vine_logging
@@ -474,8 +473,8 @@ class Review(Option, WorkspaceDirHandler):
         """
         Add modified submodules (with open review requests) to the modified repos map.
 
-        This inspects the top repository's `.gitmodules` file on the source branch,
-        parses submodule definitions, derives the corresponding target branch for
+        This uses the workspace's existing submodule discovery helpers to resolve
+        submodule paths/URLs, derives the corresponding target branch for
         submodules using the workspace mapping `submoduleTopicPrefixMappings` from
         the repository's `.grapeconfig`, and then checks each submodule repository
         for an open merge/pull request from source -> target.
@@ -502,21 +501,13 @@ class Review(Option, WorkspaceDirHandler):
 
         Notes
         -----
-        This method returns early when `.gitmodules` is missing or contains no
-        submodule definitions.
+        This method returns early when the workspace has no known submodules.
         """
         # TODO: Investigate approach using top level merge request diffs if available
-        top_repo = top_repo_context['repo']
         top_source_branch = top_repo_context['source_branch']
+        submodule_path_to_url_map = git.getAllSubmoduleURLMap(execution_path=git_host.workspace_dir)
 
-        gitmodules = top_repo.getFile(".gitmodules", top_source_branch)
-
-        if not gitmodules:
-            return
-
-        submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
-
-        if not submodules_metadata:
+        if not submodule_path_to_url_map:
             return
 
         submodule_source_branch = top_source_branch
@@ -533,8 +524,6 @@ class Review(Option, WorkspaceDirHandler):
         top_review_request = top_repo_context['review_request']
 
         if top_review_request:
-            submodule_path_to_url_map = {submodule['path']: submodule['url'] for submodule in submodules_metadata.values()}
-
             top_diffs = top_review_request.diffs()
 
             for diff in top_diffs:
@@ -550,10 +539,8 @@ class Review(Option, WorkspaceDirHandler):
                         modified_repos[modified_repo_context['repo_name']] = modified_repo_context
 
         else:
-            for submodule_name in submodules_metadata:
-                submodule_metadata = submodules_metadata[submodule_name]
+            for url in submodule_path_to_url_map.values():
                 # TODO: Check url matches the top level git service
-                url = submodule_metadata['url']
 
                 modified_repo_context = Review._get_modified_repo_context(
                     git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
