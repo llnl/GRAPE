@@ -112,8 +112,8 @@ class ApproveInputSpec:
                 validSources = ["prompt", "username", "commit", "tag", "date", "datetime", "branch"]
 
                 if source not in validSources:
-                    logging.error(f'GRAPE: ERROR: Global config section "{section_name}" has invalid value "{source}" for "source". Supported values include {", ".join(validSources)}".')
-                    exit(1)
+                    logging.warning(f'GRAPE: WARNING: Global config section "{section_name}" has invalid value "{source}" for "source".\nSupported values include {", ".join(validSources)}".\nIgnoring {section_name}.')
+                    return None
 
             if config.has_option(section_name, "prompt"):
                 if source != "prompt":
