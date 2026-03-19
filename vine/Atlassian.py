@@ -334,6 +334,9 @@ class PullRequest(StashyNode):
         logging.error("GRAPE: ERROR: diffs not implemented for Atlassian")
         exit(1)
 
+    def unresolved_threads(self, ignored_commenters=None):
+        return None
+
     def approved(self):
         reviewers = self.reviewers()
         ret = True if len(reviewers) else False
@@ -479,6 +482,9 @@ class TestPullRequest(TestStashResponse):
         else:
             return ""
 
+    def unresolved_threads(self, ignored_commenters=None):
+        return None
+
 class TestPullRequests(TestStashResponse):
 
     def __init__(self, parent):
@@ -506,6 +512,29 @@ class TestRepo(TestStashResponse):
 
     def pullRequests(self, direction="OUTGOING", at=None, state="OPEN"):
         return self.pull_requests.all(direction,at,state)
+
+    def getFile(self, path, revision):
+        if path == '.grapeconfig':
+            return (
+                '[flow]\n'
+                'publicBranches = master\n'
+                'topicPrefixMappings = ?:master\n'
+                '\n'
+                '[workspace]\n'
+                'manageSubmodules = False\n'
+                'submoduleTopicPrefixMappings = ?:master\n'
+            )
+
+        logging.error(f"TESTBITBUCKET: file {path} does not exist")
+        response = TestStashResponse(errors=[{'message': f'File {path} not found'}])
+        response.status_code = 404
+        raise stashy_errors.NotFoundException(response)
+
+    def getOpenPullRequest(self, source, target):
+        for request in self.pull_requests.all():
+            if request.fromRef() == source and request.toRef() == target:
+                return request
+        return None
 
     def createPullRequest(self, title,branch,target_branch, description=None,reviewers=None):
 
