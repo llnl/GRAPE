@@ -1041,7 +1041,13 @@ class PullRequest:
 
     def unresolved_threads(self, ignored_commenters=None):
         """
-        Return non-system notes from unresolved merge request discussions.
+        Return printable notes from unresolved merge request discussions.
+
+        Parameters
+        ----------
+        ignored_commenters : Iterable[str] | None, optional
+            Comment author names/usernames to exclude from the returned notes.
+            Matching is case-insensitive. System notes are always excluded.
 
         Returns
         -------

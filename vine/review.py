@@ -668,10 +668,45 @@ class Review(Option, WorkspaceDirHandler):
 
     @staticmethod
     def _get_repo_context_key(repo_context):
+        """
+        Build a stable display key for a repository context.
+
+        Parameters
+        ----------
+        repo_context : dict
+            Repository context containing at least ``project_name`` and
+            ``repo_name``.
+
+        Returns
+        -------
+        str
+            Repository identifier in ``project/repo`` form.
+        """
         return f"{repo_context['project_name']}/{repo_context['repo_name']}"
 
     @staticmethod
     def _get_report_repo_contexts(git_host, top_repo_context, args):
+        """
+        Collect repository contexts relevant to unresolved-comment reporting.
+
+        This mirrors the repo discovery used by review/approve, but only for the
+        read-only reporting path. The returned mapping is keyed by
+        ``project/repo`` so repositories with the same short name do not collide.
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review client.
+        top_repo_context : dict
+            Top-level repository context from ``_get_top_repo_context``.
+        args : dict
+            Parsed command-line arguments for ``grape review``.
+
+        Returns
+        -------
+        dict
+            Mapping of ``project/repo`` to repository context dictionaries.
+        """
         repo_contexts = {}
 
         if not args["--subprojectsOnly"] and top_repo_context['review_request']:
@@ -1097,6 +1132,18 @@ def MRLinkText():
 
 
 def _appendFormattedUnresolvedThreadComments(lines, unresolved_threads, *, indent=''):
+    """
+    Append formatted unresolved-thread content to an existing line buffer.
+
+    Parameters
+    ----------
+    lines : list[str]
+        Output buffer to append to.
+    unresolved_threads : list[dict]
+        Thread data as returned by ``PullRequest.unresolved_threads``.
+    indent : str, optional
+        Prefix added to each rendered line.
+    """
     for i, thread in enumerate(unresolved_threads, start=1):
         location = thread.get('path') or 'General discussion'
         line = thread.get('line')
@@ -1118,6 +1165,19 @@ def _appendFormattedUnresolvedThreadComments(lines, unresolved_threads, *, inden
 
 
 def formatUnresolvedThreadComments(unresolved_threads):
+    """
+    Render unresolved thread comments for a single merge request.
+
+    Parameters
+    ----------
+    unresolved_threads : list[dict]
+        Thread data as returned by ``PullRequest.unresolved_threads``.
+
+    Returns
+    -------
+    str
+        Human-readable markdown-like text for terminal logging.
+    """
     if not unresolved_threads:
         return "No unresolved merge request thread comments found."
 
@@ -1127,6 +1187,20 @@ def formatUnresolvedThreadComments(unresolved_threads):
 
 
 def formatUnresolvedThreadCommentsByRepo(repo_threads):
+    """
+    Render unresolved thread comments grouped by repository.
+
+    Parameters
+    ----------
+    repo_threads : dict
+        Mapping of ``project/repo`` to dictionaries containing ``review_request``
+        and ``threads`` entries.
+
+    Returns
+    -------
+    str
+        Human-readable markdown-like text for terminal logging.
+    """
     if not repo_threads:
         return "No unresolved merge request thread comments found."
 
@@ -1146,6 +1220,24 @@ def formatUnresolvedThreadCommentsByRepo(repo_threads):
 
 
 def getIgnoredCommenters(args):
+    """
+    Compute the set of commenters to ignore for unresolved-comment reporting.
+
+    Behavior
+    --------
+    If one or more ``--ignoreCommenter`` values are provided, that explicit set
+    is used as-is. Otherwise ``gitlabduo`` is ignored by default.
+
+    Parameters
+    ----------
+    args : dict
+        Parsed command-line arguments for ``grape review``.
+
+    Returns
+    -------
+    set[str]
+        Lower-cased commenter names/usernames to ignore.
+    """
     specified_commenters = {
         commenter.lower() for commenter in (args.get('--ignoreCommenter') or []) if commenter
     }
@@ -1157,6 +1249,24 @@ def getIgnoredCommenters(args):
 
 
 def printUnresolvedCommentsByRepo(git_host, top_repo_context, args):
+    """
+    Execute the read-only unresolved-comment reporting flow.
+
+    Parameters
+    ----------
+    git_host : CodeReviews
+        Authenticated code review client.
+    top_repo_context : dict
+        Top-level repository context from ``_get_top_repo_context``.
+    args : dict
+        Parsed command-line arguments for ``grape review``.
+
+    Returns
+    -------
+    bool
+        ``True`` after reporting completes, including the case where no
+        printable unresolved comments are found.
+    """
     repo_contexts = Review._get_report_repo_contexts(git_host, top_repo_context, args)
     repo_threads = {}
     found_unsupported_request = False
