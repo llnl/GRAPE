@@ -34,7 +34,7 @@ class ApproveInputSpec:
         Parameters
         ----------
         source : str
-            Source of the input ('prompt', 'username', 'commit', 'tag', 'date'). Default is 'prompt'.
+            Source of the input ('prompt', 'username', 'commit', 'tag', 'date', 'datetime', 'branch'). Default is 'prompt'.
         prompt : str, optional
             The prompt name/text.
         default : str, optional
@@ -109,7 +109,7 @@ class ApproveInputSpec:
         if config.has_section(section_name):
             if config.has_option(section_name, "source"):
                 source = config.get(section_name, "source")
-                validSources = ["prompt", "username", "commit", "tag", "date"]
+                validSources = ["prompt", "username", "commit", "tag", "date", "datetime", "branch"]
 
                 if source not in validSources:
                     logging.error(f'GRAPE: ERROR: Global config section "{section_name}" has invalid value "{source}" for "source". Supported values include {", ".join(validSources)}".')
