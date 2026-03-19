@@ -226,7 +226,14 @@ class TestReview(testGrape.TestGrape):
             '--ignoreCommenter': ['Alice', 'bob']
         })
 
-        self.assertEqual({'gitlabduo', 'alice', 'bob'}, ignored_commenters)
+        self.assertEqual({'alice', 'bob'}, ignored_commenters)
+
+    def testGetIgnoredCommentersUsesGitlabDuoByDefault(self):
+        ignored_commenters = review.getIgnoredCommenters({
+            '--ignoreCommenter': []
+        })
+
+        self.assertEqual({'gitlabduo'}, ignored_commenters)
 
     def testPrintUnresolvedCommentsByRepo(self):
         class FakeRequest:

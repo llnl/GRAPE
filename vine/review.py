@@ -69,7 +69,7 @@ class Review(Option, WorkspaceDirHandler):
         --draft                     Mark pull request as draft.
         --ready                     Mark pull request as ready (not draft).
         --printUnresolvedComments   Read-only mode. Skip pushing and merge request updates, and print unresolved merge request thread comments grouped by repo. Supported for GitLab merge requests only.
-        --ignoreCommenter=<user>    Ignore comments from the given user when printing unresolved merge request threads. May be specified multiple times. GitLabDuo is ignored by default.
+        --ignoreCommenter=<user>    Ignore comments from the given user when printing unresolved merge request threads. May be specified multiple times. GitLabDuo is ignored by default only when this option is not provided.
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
@@ -1146,13 +1146,14 @@ def formatUnresolvedThreadCommentsByRepo(repo_threads):
 
 
 def getIgnoredCommenters(args):
-    ignored_commenters = {'gitlabduo'}
+    specified_commenters = {
+        commenter.lower() for commenter in (args.get('--ignoreCommenter') or []) if commenter
+    }
 
-    for commenter in args.get('--ignoreCommenter') or []:
-        if commenter:
-            ignored_commenters.add(commenter.lower())
+    if specified_commenters:
+        return specified_commenters
 
-    return ignored_commenters
+    return {'gitlabduo'}
 
 
 def printUnresolvedCommentsByRepo(git_host, top_repo_context, args):
