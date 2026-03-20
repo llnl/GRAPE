@@ -176,7 +176,18 @@ class Approve(Option, WorkspaceDirHandler):
                 rule = description_model.reviewRules[rule_label]
 
                 if user_name in rule['reviewers']:
-                    rules.append(rule_label)
+                    rule_desc = rule_label
+                    # Show any repo approvals that are encoded in the description.
+                    # Only approvals that insert the reviewer in the description
+                    # (source = username, description = True) will be noted.
+                    approvals = []
+                    for repo,data in rule['approvals'].items():
+                        if user_name in data.values():
+                            approvals.append(repo)
+                    if approvals:
+                        approvals.sort()
+                        rule_desc += f" (approved: {','.join(approvals)})"
+                    rules.append(rule_desc)
 
             if rules:
                 print(f"  {request.fromRef()} -> {request.toRef()} [{', '.join(rules)}]")
