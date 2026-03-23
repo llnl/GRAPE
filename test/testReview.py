@@ -4,6 +4,41 @@ from test import testGrape
 from unittest import mock
 from vine import Gitlab
 from vine import review
+from vine import utility
+
+
+class FakeDiscussion:
+    def __init__(self, data):
+        self._data = data
+
+    def asdict(self):
+        return self._data
+
+
+class FakeDiscussions:
+    def __init__(self, discussions):
+        self._discussions = discussions
+
+    def list(self, get_all=False):
+        return self._discussions
+
+
+class FakeMergeRequest:
+    def __init__(self, discussions, web_url='https://gitlab.example/mr/1'):
+        self.discussions = FakeDiscussions(discussions)
+        self.web_url = web_url
+
+
+class FakeRequest:
+    def __init__(self, url='https://gitlab.example/mr/1', threads=None):
+        self._url = url
+        self._threads = [] if threads is None else threads
+
+    def unresolved_threads(self, ignored_commenters=None):
+        return self._threads
+
+    def link(self):
+        return self._url
 
 
 class TestReview(testGrape.TestGrape):
@@ -43,10 +78,6 @@ class TestReview(testGrape.TestGrape):
         self.assertIn('Will update shortly.', output)
 
     def testFormatUnresolvedThreadCommentsByRepo(self):
-        class FakeRequest:
-            def link(self):
-                return 'https://gitlab.example/mr/1'
-
         output = review.formatUnresolvedThreadCommentsByRepo({
             'grp/repo1': {
                 'review_request': FakeRequest(),
@@ -68,24 +99,6 @@ class TestReview(testGrape.TestGrape):
         self.assertIn('[1] src/example.py:42', output)
 
     def testGitlabPullRequestUnresolvedThreads(self):
-        class FakeDiscussion:
-            def __init__(self, data):
-                self._data = data
-
-            def asdict(self):
-                return self._data
-
-        class FakeDiscussions:
-            def __init__(self, discussions):
-                self._discussions = discussions
-
-            def list(self, get_all=False):
-                return self._discussions
-
-        class FakeMergeRequest:
-            def __init__(self, discussions):
-                self.discussions = FakeDiscussions(discussions)
-
         unresolved_discussion = FakeDiscussion({
             'id': 'thread-1',
             'resolved': False,
@@ -136,24 +149,6 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual('Bob Reviewer', unresolved_threads[0]['notes'][1]['author'])
 
     def testGitlabPullRequestUnresolvedThreadsWhenDiscussionResolvedButNoteUnresolved(self):
-        class FakeDiscussion:
-            def __init__(self, data):
-                self._data = data
-
-            def asdict(self):
-                return self._data
-
-        class FakeDiscussions:
-            def __init__(self, discussions):
-                self._discussions = discussions
-
-            def list(self, get_all=False):
-                return self._discussions
-
-        class FakeMergeRequest:
-            def __init__(self, discussions):
-                self.discussions = FakeDiscussions(discussions)
-
         discussion = FakeDiscussion({
             'id': 'thread-1',
             'resolved': True,
@@ -177,24 +172,6 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual('thread-1', unresolved_threads[0]['id'])
 
     def testGitlabPullRequestUnresolvedThreadsIgnoresFilteredCommenters(self):
-        class FakeDiscussion:
-            def __init__(self, data):
-                self._data = data
-
-            def asdict(self):
-                return self._data
-
-        class FakeDiscussions:
-            def __init__(self, discussions):
-                self._discussions = discussions
-
-            def list(self, get_all=False):
-                return self._discussions
-
-        class FakeMergeRequest:
-            def __init__(self, discussions):
-                self.discussions = FakeDiscussions(discussions)
-
         discussion = FakeDiscussion({
             'id': 'thread-1',
             'resolved': False,
@@ -221,6 +198,17 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual(1, len(unresolved_threads[0]['notes']))
         self.assertEqual('alice', unresolved_threads[0]['notes'][0]['author'])
 
+    def testGetUserNameAcceptsLegacyDefaultNameArgument(self):
+        fake_home = os.path.join(self.repo, 'fake-home')
+        os.makedirs(fake_home)
+
+        with mock.patch('vine.utility.config_parser_global.get_env_config_path', return_value=fake_home):
+            with mock.patch('vine.utility.userInput', side_effect=['probinso', False]) as user_input:
+                user_name = utility.getUserName('probinso')
+
+        self.assertEqual('probinso', user_name)
+        user_input.assert_any_call('Enter LC User Name:', 'probinso')
+
     def testGetIgnoredCommenters(self):
         ignored_commenters = review.getIgnoredCommenters({
             '--ignoreCommenter': ['Alice', 'bob']
@@ -236,17 +224,6 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual({'gitlabduo'}, ignored_commenters)
 
     def testPrintUnresolvedCommentsByRepo(self):
-        class FakeRequest:
-            def __init__(self, url, threads):
-                self._url = url
-                self._threads = threads
-
-            def unresolved_threads(self, ignored_commenters=None):
-                return self._threads
-
-            def link(self):
-                return self._url
-
         repo_contexts = {
             'grp/repo1': {
                 'review_request': FakeRequest('https://gitlab.example/mr/1', [

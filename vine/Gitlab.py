@@ -269,6 +269,13 @@ class GrapeGitlabAdapter:
 
         return Repo(project, self._gitlab)
 
+
+def _truncate_preview(text, limit=100):
+    text = ' '.join((text or '').split())
+    if len(text) > limit:
+        return text[:limit - 3] + '...'
+    return text
+
 class Project:
     def __init__(self, gitlab_group, gitlab):
         self.group = gitlab_group
@@ -1063,51 +1070,41 @@ class PullRequest:
         }
         unresolved_threads = []
         discussions = list(self.mergerequest.discussions.list(get_all=True))
-        merge_request_label = getattr(self.mergerequest, 'web_url', '<unknown merge request>')
+        merge_request_label = self.link()
 
         logging.debug(
             f'Inspecting {len(discussions)} merge request discussion(s) for {merge_request_label}'
         )
 
-        for i, discussion in enumerate(discussions, start=1):
+        for discussion in discussions:
+            # `discussion.asdict()` exposes the `notes`, `resolved`, and
+            # `resolvable` fields returned by GitLab's discussions API:
+            # https://docs.gitlab.com/api/discussions/#list-project-merge-request-discussion-items
             discussion_data = discussion.asdict()
             discussion_id = discussion_data.get('id')
             discussion_resolved = discussion_data.get('resolved', True)
             resolvable = discussion_data.get('resolvable')
             discussion_notes = discussion_data.get('notes', [])
-            snippets = []
             discussion_has_unresolved_note = False
 
-            for note in discussion_notes[:2]:
-                body = ' '.join((note.get('body') or '').split())
-
-                if len(body) > 100:
-                    body = body[:97] + '...'
-
-                snippets.append(body or '<empty>')
-
             logging.debug(
-                f'  Discussion {i}: resolved={discussion_resolved}, '
-                f'resolvable={resolvable}, notes={len(discussion_notes)}, '
-                f'snippets={snippets}'
+                f'  Discussion {discussion_id}: resolved={discussion_resolved}, '
+                f'resolvable={resolvable}, notes={len(discussion_notes)}'
             )
 
             path = None
             line = None
             notes = []
 
-            for j, note in enumerate(discussion_notes, start=1):
+            for note in discussion_notes:
                 body = (note.get('body') or '').strip()
                 is_system = note.get('system')
                 note_resolved = note.get('resolved')
                 note_resolvable = note.get('resolvable')
-                body_preview = ' '.join(body.split())
-
-                if len(body_preview) > 100:
-                    body_preview = body_preview[:97] + '...'
+                body_preview = _truncate_preview(body)
 
                 logging.debug(
-                    f'    Note {j}: system={is_system}, '
+                    f'    Note in discussion {discussion_id}: system={is_system}, '
                     f'body_empty={not body}, '
                     f'resolved={note_resolved}, '
                     f'resolvable={note_resolvable}, '
@@ -1135,7 +1132,9 @@ class PullRequest:
                 author_name = author.get('username') or author.get('name') or 'unknown'
 
                 if author_name.lower() in ignored_commenters:
-                    logging.debug(f'    Note {j}: filtered out for ignored commenter {author_name}')
+                    logging.debug(
+                        f'    Note in discussion {discussion_id}: filtered out for ignored commenter {author_name}'
+                    )
                     continue
 
                 notes.append({
@@ -1148,7 +1147,7 @@ class PullRequest:
 
             if discussion_resolved and discussion_has_unresolved_note:
                 logging.debug(
-                    f'  Discussion {i} is marked resolved at the discussion level, '
+                    f'  Discussion {discussion_id} is marked resolved at the discussion level, '
                     f'but has at least one unresolved resolvable note. Treating it as unresolved.'
                 )
 

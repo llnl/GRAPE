@@ -299,7 +299,7 @@ class PullRequest(StashyNode):
         return ret
 
     def labels(self):
-        # Not implemented
+        logging.warning("GRAPE: WARNING: labels are not implemented for Atlassian pull requests")
         return []
 
     def state(self):
@@ -335,6 +335,9 @@ class PullRequest(StashyNode):
         exit(1)
 
     def unresolved_threads(self, ignored_commenters=None):
+        logging.warning(
+            "GRAPE: WARNING: unresolved merge request thread inspection is not implemented for Atlassian pull requests"
+        )
         return None
 
     def approved(self):
