@@ -1,4 +1,0 @@
-interface:
-  display_name: "Grape Review Follow-up"
-  short_description: "Fetch and address unresolved MR comments"
-  default_prompt: "Use $grape-review-followup to fetch unresolved grape review comments, fix trivial issues, and propose responses for the rest."
