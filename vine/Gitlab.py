@@ -1218,10 +1218,10 @@ class PullRequest:
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
                         if matching_reviewers:
-                           gitlab_reviewer = matching_reviewers[0]
+                            gitlab_reviewer = matching_reviewers[0]
                         else:
-                           logging.info(f"Could not find reviewer {r}.")
-                           raise SystemExit("Abort")
+                            logging.info(f"Could not find reviewer {r}.")
+                            raise SystemExit("Abort")
                         if non_approvers and r in non_approvers:
                             logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
                             num_required -= 1

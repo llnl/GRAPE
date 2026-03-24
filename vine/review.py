@@ -379,14 +379,11 @@ class Review(Option, WorkspaceDirHandler):
         try:
             grapeconfig = repo.getFile('.grapeconfig', source_branch)
         except Exception as e:
-            response_code = getattr(e, 'response_code', None)
-            error_message = getattr(e, 'error_message', None)
-
-            if response_code == 404:
-                if error_message == '404 Commit Not Found':
+            if e.response_code == 404:
+                if e.error_message == '404 Commit Not Found':
                     logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
                     exit(1)
-                elif error_message == '404 File Not Found':
+                elif e.error_message == '404 File Not Found':
                     logging.error(f'GRAPE: ERROR: File ".grapeconfig" does not exist on source branch "{source_branch}" in "{project_name}/{repo_name}"')
                     exit(1)
 
@@ -540,8 +537,6 @@ class Review(Option, WorkspaceDirHandler):
 
         else:
             for url in submodule_path_to_url_map.values():
-                # TODO: Check url matches the top level git service
-
                 modified_repo_context = Review._get_modified_repo_context(
                     git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
                 )
