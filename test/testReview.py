@@ -8,6 +8,8 @@ from vine import utility
 
 
 class FakeDiscussion:
+    """Minimal GitLab discussion stub for unresolved-thread unit tests."""
+
     def __init__(self, data):
         self._data = data
 
@@ -16,6 +18,8 @@ class FakeDiscussion:
 
 
 class FakeDiscussions:
+    """Container stub matching the merge-request discussions API."""
+
     def __init__(self, discussions):
         self._discussions = discussions
 
@@ -24,12 +28,16 @@ class FakeDiscussions:
 
 
 class FakeMergeRequest:
+    """Merge-request stub that exposes discussions and a web URL."""
+
     def __init__(self, discussions, web_url='https://gitlab.example/mr/1'):
         self.discussions = FakeDiscussions(discussions)
         self.web_url = web_url
 
 
 class FakeRequest:
+    """Review-request stub used by the report-formatting helpers."""
+
     def __init__(self, url='https://gitlab.example/mr/1', threads=None):
         self._url = url
         self._threads = [] if threads is None else threads
@@ -52,6 +60,8 @@ class TestReview(testGrape.TestGrape):
         self.assertTrue(ret)
 
     def testReviewWithPrintUnresolvedCommentsOption(self):
+        """The CLI should accept the reporting-only flag in test mode."""
+
         args = ["review", "--test", "--user=user", "--proj=proj1", "--repo=repo1", "--printUnresolvedComments"]
         try:
             ret = self.menu.applyMenuChoice("review", args)
@@ -60,6 +70,8 @@ class TestReview(testGrape.TestGrape):
         self.assertTrue(ret)
 
     def testFormatUnresolvedThreadComments(self):
+        """Rendered thread output should include file context and note bodies."""
+
         output = review.formatUnresolvedThreadComments([
             {
                 'path': 'src/example.py',
@@ -78,6 +90,8 @@ class TestReview(testGrape.TestGrape):
         self.assertIn('Will update shortly.', output)
 
     def testFormatUnresolvedThreadCommentsByRepo(self):
+        """Repo summaries should include the MR link and numbered threads."""
+
         output = review.formatUnresolvedThreadCommentsByRepo({
             'grp/repo1': {
                 'review_request': FakeRequest(),
@@ -99,6 +113,8 @@ class TestReview(testGrape.TestGrape):
         self.assertIn('[1] src/example.py:42', output)
 
     def testGitlabPullRequestUnresolvedThreads(self):
+        """Resolved threads and system notes should be filtered from the report."""
+
         unresolved_discussion = FakeDiscussion({
             'id': 'thread-1',
             'resolved': False,
@@ -149,6 +165,8 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual('Bob Reviewer', unresolved_threads[0]['notes'][1]['author'])
 
     def testGitlabPullRequestUnresolvedThreadsWhenDiscussionResolvedButNoteUnresolved(self):
+        """A still-open resolvable note keeps the discussion in the output."""
+
         discussion = FakeDiscussion({
             'id': 'thread-1',
             'resolved': True,
@@ -172,6 +190,8 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual('thread-1', unresolved_threads[0]['id'])
 
     def testGitlabPullRequestUnresolvedThreadsIgnoresFilteredCommenters(self):
+        """Ignored commenters should be dropped without hiding human feedback."""
+
         discussion = FakeDiscussion({
             'id': 'thread-1',
             'resolved': False,
@@ -199,6 +219,8 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual('alice', unresolved_threads[0]['notes'][0]['author'])
 
     def testGetUserNameAcceptsLegacyDefaultNameArgument(self):
+        """Legacy callers can still pass a default user name positionally."""
+
         fake_home = os.path.join(self.repo, 'fake-home')
         os.makedirs(fake_home)
 
@@ -210,6 +232,8 @@ class TestReview(testGrape.TestGrape):
         user_input.assert_any_call('Enter LC User Name:', 'probinso')
 
     def testGetIgnoredCommenters(self):
+        """Configured ignored commenters should be normalized to lowercase."""
+
         ignored_commenters = review.getIgnoredCommenters({
             '--ignoreCommenter': ['Alice', 'bob']
         })
@@ -217,6 +241,8 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual({'alice', 'bob'}, ignored_commenters)
 
     def testGetIgnoredCommentersUsesGitlabDuoByDefault(self):
+        """GitLab Duo is ignored by default when no override is provided."""
+
         ignored_commenters = review.getIgnoredCommenters({
             '--ignoreCommenter': []
         })
@@ -224,6 +250,8 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual({'gitlabduo'}, ignored_commenters)
 
     def testPrintUnresolvedCommentsByRepo(self):
+        """Only repos with unresolved threads should appear in the report."""
+
         repo_contexts = {
             'grp/repo1': {
                 'review_request': FakeRequest('https://gitlab.example/mr/1', [
@@ -255,6 +283,8 @@ class TestReview(testGrape.TestGrape):
         self.assertNotIn('\ngrp/repo2\n  Merge request:', output)
 
     def testPrintUnresolvedCommentsPathSkipsPushAndUpdate(self):
+        """The reporting-only path must not push branches or update the MR."""
+
         fake_request = mock.Mock()
         fake_request.unresolved_threads.return_value = []
         fake_request.link.return_value = 'https://gitlab.example/mr/1'
