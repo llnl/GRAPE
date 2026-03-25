@@ -176,7 +176,18 @@ class Approve(Option, WorkspaceDirHandler):
                 rule = description_model.reviewRules[rule_label]
 
                 if user_name in rule['reviewers']:
-                    rules.append(rule_label)
+                    rule_desc = rule_label
+                    # Show any repo approvals that are encoded in the description.
+                    # Only approvals that insert the reviewer in the description
+                    # (source = username, description = True) will be noted.
+                    approvals = []
+                    for repo,data in rule['approvals'].items():
+                        if user_name in data.values():
+                            approvals.append(repo)
+                    if approvals:
+                        approvals.sort()
+                        rule_desc += f" (approved: {','.join(approvals)})"
+                    rules.append(rule_desc)
 
             if rules:
                 print(f"  {request.fromRef()} -> {request.toRef()} [{', '.join(rules)}]")
@@ -247,6 +258,8 @@ class Approve(Option, WorkspaceDirHandler):
             Authenticated code review / git hosting client.
         top_repo_context : dict
             Context dictionary returned by `_get_top_repo_context`.
+            include:
+            - "source_branch": source branch to approve
         rule : dict
             Review rule definition returned by `_get_review_rule`.
 
@@ -261,7 +274,7 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Approve._validate_approver(user_name, rule)
         modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
-        approve_input = Approve._get_approve_input(rule, user_name, modified_repos)
+        approve_input = Approve._get_approve_input(rule, user_name, top_repo_context['source_branch'], modified_repos)
         Approve._apply_approve_actions(rule, approve_input, user_name, top_repo_context)
 
     @staticmethod
@@ -351,7 +364,7 @@ class Approve(Option, WorkspaceDirHandler):
         return value
 
     @staticmethod
-    def _get_approve_input(rule, user_name, modified_repos):
+    def _get_approve_input(rule, user_name, source_branch, modified_repos):
         """
         Prompt the user for approvals and collect rule-defined input per modified repository.
 
@@ -367,6 +380,8 @@ class Approve(Option, WorkspaceDirHandler):
             Review rule.
         user_name : str
             User name.
+        source_branch: str
+            Source branch to approve.
         modified_repos : dict
             Mapping of repo_name -> repo_context. Each repo_context is mutated in-place to add:
               - "approved": bool
@@ -497,6 +512,10 @@ class Approve(Option, WorkspaceDirHandler):
                         value = f'{rule.name}_{review_request.iid()}'
                     elif source == 'date':
                         value = datetime.now().strftime('%d %b %Y')
+                    elif source == 'datetime':
+                        value = datetime.now().strftime('%d %b %Y %-I:%M %p')
+                    elif source == 'branch':
+                        value = source_branch
                     else:
                         value = Approve._get_user_input(approve_input_spec)
 
