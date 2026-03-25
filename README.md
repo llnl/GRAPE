@@ -1084,6 +1084,8 @@ Arguments:
 grape review
 Usage: grape-review [--update | --add]
                     [--draft | --ready]
+                    [--printUnresolvedComments]
+                    [--ignoreCommenter=<user>...]
                     [--title=<title>]
                     [--descr=<file> | -m <description>]
                     [--user=<userName> ]
@@ -1118,6 +1120,8 @@ Options:
                                 is set, an error will be generated.
     --draft                     Mark pull request as draft.
     --ready                     Mark pull request as ready (not draft).
+    --printUnresolvedComments   Read-only mode. Skip pushing and merge request updates, and print unresolved merge request thread comments grouped by repo. Supported for GitLab merge requests only.
+    --ignoreCommenter=<user>    Ignore comments from the given user when printing unresolved merge request threads. May be specified multiple times. GitLabDuo is ignored by default only when this option is not provided. Use --ignoreCommenter="none" to include all comments, including GitlabDuo's.
     --title=<title>             The pull request`s title.
     --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
     -m <description>            The pull request description.

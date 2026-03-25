@@ -269,6 +269,13 @@ class GrapeGitlabAdapter:
 
         return Repo(project, self._gitlab)
 
+
+def _truncate_preview(text, limit=100):
+    text = ' '.join((text or '').split())
+    if len(text) > limit:
+        return text[:limit - 3] + '...'
+    return text
+
 class Project:
     def __init__(self, gitlab_group, gitlab):
         self.group = gitlab_group
@@ -1039,6 +1046,124 @@ class PullRequest:
         path = f"{self.mergerequest.manager.path}/{self.mergerequest.encoded_id}/diffs"
         return self.gitlab.http_list(path, get_all=True)
 
+    def unresolved_threads(self, ignored_commenters=None):
+        """
+        Return printable notes from unresolved merge request discussions.
+
+        Parameters
+        ----------
+        ignored_commenters : Iterable[str] | None, optional
+            Comment author names/usernames to exclude from the returned notes.
+            Matching is case-insensitive. System notes are always excluded.
+
+        Returns
+        -------
+        list[dict]
+            Each item contains:
+              - id: discussion id
+              - path: file path for diff discussions, or None
+              - line: line number for diff discussions, or None
+              - notes: list of note dictionaries with author, created_at, and body
+        """
+        ignored_commenters = {
+            commenter.lower() for commenter in (ignored_commenters or set()) if commenter
+        }
+        unresolved_threads = []
+        discussions = list(self.mergerequest.discussions.list(get_all=True))
+        merge_request_label = self.link()
+
+        logging.debug(
+            f'Inspecting {len(discussions)} merge request discussion(s) for {merge_request_label}'
+        )
+
+        for discussion in discussions:
+            # `discussion.asdict()` exposes the `notes`, `resolved`, and
+            # `resolvable` fields returned by GitLab's discussions API:
+            # https://docs.gitlab.com/api/discussions/#list-project-merge-request-discussion-items
+            discussion_data = discussion.asdict()
+            discussion_id = discussion_data.get('id')
+            discussion_resolved = discussion_data.get('resolved', True)
+            resolvable = discussion_data.get('resolvable')
+            discussion_notes = discussion_data.get('notes', [])
+            discussion_has_unresolved_note = False
+
+            logging.debug(
+                f'  Discussion {discussion_id}: resolved={discussion_resolved}, '
+                f'resolvable={resolvable}, notes={len(discussion_notes)}'
+            )
+
+            path = None
+            line = None
+            notes = []
+
+            for note in discussion_notes:
+                body = (note.get('body') or '').strip()
+                is_system = note.get('system')
+                note_resolved = note.get('resolved')
+                note_resolvable = note.get('resolvable')
+                body_preview = _truncate_preview(body)
+
+                logging.debug(
+                    f'    Note in discussion {discussion_id}: system={is_system}, '
+                    f'body_empty={not body}, '
+                    f'resolved={note_resolved}, '
+                    f'resolvable={note_resolvable}, '
+                    f'preview={body_preview or "<empty>"}'
+                )
+
+                if not is_system and note_resolvable and note_resolved is False:
+                    discussion_has_unresolved_note = True
+
+                if note.get('system'):
+                    continue
+
+                position = note.get('position') or {}
+
+                if path is None:
+                    path = position.get('new_path') or position.get('old_path')
+
+                if line is None:
+                    line = position.get('new_line') or position.get('old_line')
+
+                if not body:
+                    continue
+
+                author = note.get('author') or {}
+                author_name = author.get('username') or author.get('name') or 'unknown'
+
+                if author_name.lower() in ignored_commenters:
+                    logging.debug(
+                        f'    Note in discussion {discussion_id}: filtered out for ignored commenter {author_name}'
+                    )
+                    continue
+
+                notes.append({
+                    'author': author_name,
+                    'created_at': note.get('created_at'),
+                    'body': body
+                })
+
+            discussion_is_unresolved = (not discussion_resolved) or discussion_has_unresolved_note
+
+            if discussion_resolved and discussion_has_unresolved_note:
+                logging.debug(
+                    f'  Discussion {discussion_id} is marked resolved at the discussion level, '
+                    f'but has at least one unresolved resolvable note. Treating it as unresolved.'
+                )
+
+            if discussion_is_unresolved and notes:
+                unresolved_threads.append({
+                    'id': discussion_data.get('id'),
+                    'path': path,
+                    'line': line,
+                    'notes': notes
+                })
+
+        logging.debug(
+            f'Collected {len(unresolved_threads)} unresolved discussion thread(s) with printable comments for {merge_request_label}'
+        )
+        return unresolved_threads
+
     @staticmethod
     def get_title_for_wip_state(title, wip):
         if not hasattr(PullRequest.get_title_for_wip_state, "regexp"):
@@ -1093,10 +1218,10 @@ class PullRequest:
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
                         if matching_reviewers:
-                           gitlab_reviewer = matching_reviewers[0]
+                            gitlab_reviewer = matching_reviewers[0]
                         else:
-                           logging.info(f"Could not find reviewer {r}.")
-                           raise SystemExit("Abort")
+                            logging.info(f"Could not find reviewer {r}.")
+                            raise SystemExit("Abort")
                         if non_approvers and r in non_approvers:
                             logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
                             num_required -= 1

@@ -17,7 +17,6 @@ from vine import grapeGit as git
 from vine import grapeMenu
 from vine import multi_repo_cmd_launcher
 from vine.PullRequestDescriptionModel import PullRequestDescriptionModel
-from vine import submodules
 from vine import utility
 from vine import version
 from vine import vine_logging
@@ -32,6 +31,8 @@ class Review(Option, WorkspaceDirHandler):
     grape review
     Usage: grape-review [--update | --add]
                         [--draft | --ready]
+                        [--printUnresolvedComments]
+                        [--ignoreCommenter=<user>...]
                         [--title=<title>]
                         [--descr=<file> | -m <description>]
                         [--user=<userName> ]
@@ -66,6 +67,8 @@ class Review(Option, WorkspaceDirHandler):
                                     is set, an error will be generated.
         --draft                     Mark pull request as draft.
         --ready                     Mark pull request as ready (not draft).
+        --printUnresolvedComments   Read-only mode. Skip pushing and merge request updates, and print unresolved merge request thread comments grouped by repo. Supported for GitLab merge requests only.
+        --ignoreCommenter=<user>    Ignore comments from the given user when printing unresolved merge request threads. May be specified multiple times. GitLabDuo is ignored by default only when this option is not provided. Use --ignoreCommenter="none" to include all comments, including GitlabDuo's.
         --title=<title>             The pull request`s title.
         --descr=<file>              A file containing the detailed description of work done on <topicBranch>.
         -m <description>            The pull request description.
@@ -467,8 +470,8 @@ class Review(Option, WorkspaceDirHandler):
         """
         Add modified submodules (with open review requests) to the modified repos map.
 
-        This inspects the top repository's `.gitmodules` file on the source branch,
-        parses submodule definitions, derives the corresponding target branch for
+        This uses the workspace's existing submodule discovery helpers to resolve
+        submodule paths/URLs, derives the corresponding target branch for
         submodules using the workspace mapping `submoduleTopicPrefixMappings` from
         the repository's `.grapeconfig`, and then checks each submodule repository
         for an open merge/pull request from source -> target.
@@ -495,21 +498,13 @@ class Review(Option, WorkspaceDirHandler):
 
         Notes
         -----
-        This method returns early when `.gitmodules` is missing or contains no
-        submodule definitions.
+        This method returns early when the workspace has no known submodules.
         """
         # TODO: Investigate approach using top level merge request diffs if available
-        top_repo = top_repo_context['repo']
         top_source_branch = top_repo_context['source_branch']
+        submodule_path_to_url_map = git.getAllSubmoduleURLMap(execution_path=git_host.workspace_dir)
 
-        gitmodules = top_repo.getFile(".gitmodules", top_source_branch)
-
-        if not gitmodules:
-            return
-
-        submodules_metadata = submodules.parse_gitmodules(gitmodules.splitlines())
-
-        if not submodules_metadata:
+        if not submodule_path_to_url_map:
             return
 
         submodule_source_branch = top_source_branch
@@ -526,8 +521,6 @@ class Review(Option, WorkspaceDirHandler):
         top_review_request = top_repo_context['review_request']
 
         if top_review_request:
-            submodule_path_to_url_map = {submodule['path']: submodule['url'] for submodule in submodules_metadata.values()}
-
             top_diffs = top_review_request.diffs()
 
             for diff in top_diffs:
@@ -543,11 +536,7 @@ class Review(Option, WorkspaceDirHandler):
                         modified_repos[modified_repo_context['repo_name']] = modified_repo_context
 
         else:
-            for submodule_name in submodules_metadata:
-                submodule_metadata = submodules_metadata[submodule_name]
-                # TODO: Check url matches the top level git service
-                url = submodule_metadata['url']
-
+            for url in submodule_path_to_url_map.values():
                 modified_repo_context = Review._get_modified_repo_context(
                     git_host, top_project_name, submodule_source_branch, submodule_target_branch, url
                 )
@@ -659,6 +648,70 @@ class Review(Option, WorkspaceDirHandler):
             'review_request': review_request
         }
 
+    @staticmethod
+    def _get_repo_context_key(repo_context):
+        """
+        Build a stable display key for a repository context.
+
+        Parameters
+        ----------
+        repo_context : dict
+            Repository context containing at least ``project_name`` and
+            ``repo_name``.
+
+        Returns
+        -------
+        str
+            Repository identifier in ``project/repo`` form.
+        """
+        return f"{repo_context['project_name']}/{repo_context['repo_name']}"
+
+    @staticmethod
+    def _get_report_repo_contexts(git_host, top_repo_context, args):
+        """
+        Collect repository contexts relevant to unresolved-comment reporting.
+
+        This mirrors the repo discovery used by review/approve, but only for the
+        read-only reporting path. The returned mapping is keyed by
+        ``project/repo`` so repositories with the same short name do not collide.
+
+        Parameters
+        ----------
+        git_host : CodeReviews
+            Authenticated code review client.
+        top_repo_context : dict
+            Top-level repository context from ``_get_top_repo_context``.
+        args : dict
+            Parsed command-line arguments for ``grape review``.
+
+        Returns
+        -------
+        dict
+            Mapping of ``project/repo`` to repository context dictionaries.
+        """
+        repo_contexts = {}
+
+        if not args["--subprojectsOnly"] and top_repo_context['review_request']:
+            repo_contexts[Review._get_repo_context_key(top_repo_context)] = top_repo_context
+
+        if not args["--noRecurse"] and (
+            args["--recurse"] or top_repo_context['grape_config'].getboolean(Review.SECTION_WORKSPACE, "manageSubmodules")
+        ):
+            submodule_repo_contexts = {}
+            Review._add_modified_submodules(git_host, top_repo_context, submodule_repo_contexts)
+
+            for repo_context in submodule_repo_contexts.values():
+                repo_contexts[Review._get_repo_context_key(repo_context)] = repo_context
+
+        if not args["--noRecurseSubprojects"]:
+            subproject_repo_contexts = {}
+            Review._add_modified_subprojects(git_host, top_repo_context, subproject_repo_contexts)
+
+            for repo_context in subproject_repo_contexts.values():
+                repo_contexts[Review._get_repo_context_key(repo_context)] = repo_context
+
+        return repo_contexts
+
     @log_wrapper
     def execute(self, args):
         """
@@ -689,18 +742,24 @@ class Review(Option, WorkspaceDirHandler):
         if not branch:
             branch = git.currentBranch(execution_path=self.workspace_dir)
 
-        #ensure branch is pushed
-        if "--noLocal" not in args or not args["--noLocal"]:
-            logging.info(f"Pushing {branch} to {codeReviews.url}...")
-            git.push(f"origin {branch}", execution_path=self.workspace_dir)
-        
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
-        # load pull request if it already exists
-        wsRepo =  codeReviews.repo(project_name, repo_name)
-        existingOuterLevelRequest = getReposPullRequest(wsRepo, branch, target_branch, args)
+
+        top_repo_context = self._get_top_repo_context(
+            codeReviews, name, project_name, repo_name, branch, target_branch
+        )
+        target_branch = top_repo_context['target_branch']
+        existingOuterLevelRequest = top_repo_context['review_request']
+
+        if args["--printUnresolvedComments"]:
+            return printUnresolvedCommentsByRepo(codeReviews, top_repo_context, args)
+
+        #ensure branch is pushed
+        if "--noLocal" not in args or not args["--noLocal"]:
+            logging.info(f"Pushing {branch} to {codeReviews.url}...")
+            git.push(f"origin {branch}", execution_path=self.workspace_dir)
 
         # determine pull request title
         title = args["--title"]
@@ -819,24 +878,28 @@ class Review(Option, WorkspaceDirHandler):
         if args["--append"] or args["--prepend"]:
             title = args["--title"]
 
-        logging.info(f"Updating remote tracking branches for {target_branch}...")
-
-        # Fetch the remote tracking branch for the target branch
-        git.fetch(f"origin {target_branch}", execution_path=self.workspace_dir)
-        # Skip fetching of remote tracking branch in submodules if no gitlink changes were fetched
-        if "--noLocal" in args and args["--noLocal"]:
-           submodulesModifiedInOrigin = False
+        if args["--test"]:
+            logging.info("Skipping remote tracking branch update in test mode.")
+            submodulesModifiedInOrigin = False
         else:
-           submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
-                     
-        upArgs = ['up', f'--public={target_branch}', '--updateRemoteOnly']
-        if not submodulesModifiedInOrigin:
-           upArgs.extend(['--noRecurse', '--recurseSubprojects'])
+            logging.info(f"Updating remote tracking branches for {target_branch}...")
 
-        upToDate = grapeMenu.menu().applyMenuChoice('up', upArgs)
-        if not upToDate:
-            logging.info("Failed to update local branches.")
-            return False
+            # Fetch the remote tracking branch for the target branch
+            git.fetch(f"origin {target_branch}", execution_path=self.workspace_dir)
+            # Skip fetching of remote tracking branch in submodules if no gitlink changes were fetched
+            if "--noLocal" in args and args["--noLocal"]:
+               submodulesModifiedInOrigin = False
+            else:
+               submodulesModifiedInOrigin = git.getModifiedSubmodules(self.workspace_dir, "origin/"+target_branch, target_branch)
+
+            upArgs = ['up', f'--public={target_branch}', '--updateRemoteOnly']
+            if not submodulesModifiedInOrigin:
+               upArgs.extend(['--noRecurse', '--recurseSubprojects'])
+
+            upToDate = grapeMenu.menu().applyMenuChoice('up', upArgs)
+            if not upToDate:
+                logging.info("Failed to update local branches.")
+                return False
 
         runInSubmodules = not args["--noRecurse"] and (args["--recurse"] or config.getboolean(self.SECTION_WORKSPACE, "manageSubmodules"))
 
@@ -1048,6 +1111,190 @@ class Review(Option, WorkspaceDirHandler):
 
 def MRLinkText():
     return "This merge request is related to the merge request at: "
+
+
+def _appendFormattedUnresolvedThreadComments(lines, unresolved_threads, *, indent=''):
+    """
+    Append formatted unresolved-thread content to an existing line buffer.
+
+    Parameters
+    ----------
+    lines : list[str]
+        Output buffer to append to.
+    unresolved_threads : list[dict]
+        Thread data as returned by ``PullRequest.unresolved_threads``.
+    indent : str, optional
+        Prefix added to each rendered line.
+    """
+    for i, thread in enumerate(unresolved_threads, start=1):
+        location = thread.get('path') or 'General discussion'
+        line = thread.get('line')
+
+        if line is not None:
+            location = f"{location}:{line}"
+
+        lines.append(f"{indent}[{i}] {location}")
+
+        for note in thread.get('notes', []):
+            author = note.get('author') or 'unknown'
+            created_at = note.get('created_at')
+            header = author if not created_at else f"{author} ({created_at})"
+
+            lines.append(f"{indent}  {header}")
+
+            for body_line in note.get('body', '').splitlines():
+                lines.append(f"{indent}    {body_line}")
+
+
+def formatUnresolvedThreadComments(unresolved_threads):
+    """
+    Render unresolved thread comments for a single merge request.
+
+    Parameters
+    ----------
+    unresolved_threads : list[dict]
+        Thread data as returned by ``PullRequest.unresolved_threads``.
+
+    Returns
+    -------
+    str
+        Human-readable markdown-like text for terminal logging.
+    """
+    if not unresolved_threads:
+        return "No unresolved merge request thread comments found."
+
+    lines = ["Unresolved merge request thread comments:"]
+    _appendFormattedUnresolvedThreadComments(lines, unresolved_threads)
+    return '\n'.join(lines)
+
+
+def formatUnresolvedThreadCommentsByRepo(repo_threads):
+    """
+    Render unresolved thread comments grouped by repository.
+
+    Parameters
+    ----------
+    repo_threads : dict
+        Mapping of ``project/repo`` to dictionaries containing ``review_request``
+        and ``threads`` entries.
+
+    Returns
+    -------
+    str
+        Human-readable markdown-like text for terminal logging.
+    """
+    if not repo_threads:
+        return "No unresolved merge request thread comments found."
+
+    lines = ["Unresolved merge request thread comments by repo:"]
+
+    for repo_key in sorted(repo_threads):
+        repo_thread_info = repo_threads[repo_key]
+        review_request = repo_thread_info['review_request']
+
+        lines.append("")
+        lines.append(repo_key)
+        lines.append(f"  Merge request: {review_request.link()}")
+
+        _appendFormattedUnresolvedThreadComments(lines, repo_thread_info['threads'], indent='  ')
+
+    return '\n'.join(lines)
+
+
+def getIgnoredCommenters(args):
+    """
+    Compute the set of commenters to ignore for unresolved-comment reporting.
+
+    Behavior
+    --------
+    If one or more ``--ignoreCommenter`` values are provided, that explicit set
+    is used as-is. Otherwise ``gitlabduo`` is ignored by default.
+
+    Parameters
+    ----------
+    args : dict
+        Parsed command-line arguments for ``grape review``.
+
+    Returns
+    -------
+    set[str]
+        Lower-cased commenter names/usernames to ignore.
+    """
+    specified_commenters = {
+        commenter.lower() for commenter in (args.get('--ignoreCommenter') or []) if commenter
+    }
+
+    if specified_commenters:
+        return specified_commenters
+
+    return {'gitlabduo'}
+
+
+def printUnresolvedCommentsByRepo(git_host, top_repo_context, args):
+    """
+    Execute the read-only unresolved-comment reporting flow.
+
+    Parameters
+    ----------
+    git_host : CodeReviews
+        Authenticated code review client.
+    top_repo_context : dict
+        Top-level repository context from ``_get_top_repo_context``.
+    args : dict
+        Parsed command-line arguments for ``grape review``.
+
+    Returns
+    -------
+    bool
+        ``True`` after reporting completes, including the case where no
+        printable unresolved comments are found.
+    """
+    repo_contexts = Review._get_report_repo_contexts(git_host, top_repo_context, args)
+    repo_threads = {}
+    found_unsupported_request = False
+    ignored_commenters = getIgnoredCommenters(args)
+
+    logging.info(
+        f'Checking {len(repo_contexts)} repo(s) for unresolved merge request thread comments...'
+    )
+    logging.info(
+        f'Ignoring comments from: {", ".join(sorted(ignored_commenters))}'
+    )
+
+    for repo_key in sorted(repo_contexts):
+        review_request = repo_contexts[repo_key]['review_request']
+        logging.info(f'Checking repo {repo_key}: {review_request.link()}')
+        unresolved_threads = review_request.unresolved_threads(
+            ignored_commenters=ignored_commenters
+        )
+
+        if unresolved_threads is None:
+            logging.info(f'  Repo {repo_key} does not support unresolved thread inspection.')
+            found_unsupported_request = True
+            continue
+
+        if unresolved_threads:
+            logging.info(
+                f'  Repo {repo_key} has {len(unresolved_threads)} unresolved thread(s) with printable comments.'
+            )
+            repo_threads[repo_key] = {
+                'review_request': review_request,
+                'threads': unresolved_threads
+            }
+        else:
+            logging.info(
+                f'  Repo {repo_key} has no unresolved thread comments after filtering.'
+            )
+
+    if found_unsupported_request and not repo_threads:
+        logging.warning("GRAPE: WARNING: --printUnresolvedComments is only supported for GitLab merge requests.")
+        return True
+
+    if not repo_threads:
+        logging.info('No repos produced unresolved thread comments.')
+
+    logging.info(formatUnresolvedThreadCommentsByRepo(repo_threads))
+    return True
 
 
 def HandlePostPullRequestForRepoMRE(mre):

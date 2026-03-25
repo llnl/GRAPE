@@ -54,6 +54,13 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
     Returns:
         The resolved username (str).
     """
+    # Older callers pass a username string positionally. Treat that as the
+    # prompt default instead of assuming a parsed CLI args mapping.
+    if isinstance(cliArgs, str):
+        if defaultName is None:
+            defaultName = cliArgs
+        cliArgs = None
+
     # Use the CLI argument if provided
     if cliArgs and cliArgs.get('--user'):
         return cliArgs['--user']
