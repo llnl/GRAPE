@@ -150,15 +150,18 @@ class TestCheckout(testGrape.TestGrape):
 
     @patch("vine.checkout.git.submodule")
     @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
     @patch("vine.checkout.git.isWorkingDirectoryClean")
     def testMoveSubmoduleRewritesGitMetadata(self, mock_is_clean,
-                                             mock_config, mock_submodule):
+                                             mock_gitdir, mock_config,
+                                             mock_submodule):
         mock_is_clean.return_value = True
 
         workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
         old_sub = os.path.join(workspace, "old", "sub")
         new_sub = os.path.join(workspace, "new", "sub")
         module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        mock_gitdir.return_value = module_dir
         os.makedirs(module_dir)
         os.makedirs(old_sub)
 

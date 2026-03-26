@@ -203,6 +203,8 @@ def branchAlreadyExists(branch, workspace_dir):
     return retVal
 
 def _submodulePathInfoForRevision(revision, *, workspace_dir):
+    # We need both the stable submodule name and the path/url mapping to
+    # distinguish true add/remove events from path-only moves.
     gitmodulesContents = git.show(f"{revision}:.gitmodules",
                                   execution_path=workspace_dir)
     parsedSubmodules = submodule_parser.parse_gitmodules(
@@ -245,6 +247,8 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                 changedURLModules.append(path)
 
         if movedModules is not None:
+            # Prefer Git's rename detection when available so an actual file
+            # move of the gitlink shows up as a move instead of add/remove.
             renameOutput = git.diff(f"--name-status -M {currentSHA} {branch} --",
                                     execution_path=workspace_dir)
             for line in renameOutput.splitlines():
@@ -262,6 +266,8 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                 removedPaths.discard(oldPath)
                 addedPaths.discard(newPath)
 
+            # Fall back to matching the logical submodule name in .gitmodules.
+            # This catches path-only moves even if Git does not emit an R entry.
             for name in sorted(set(previousParsed).intersection(branchParsed)):
                 previousInfo = previousParsed[name]
                 branchInfo = branchParsed[name]
@@ -348,6 +354,8 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     oldWorkingDir = os.path.join(workspace_dir, oldSub)
     newWorkingDir = os.path.join(workspace_dir, newSub)
 
+    # Checkout may already have materialized the new path. In that case there
+    # is nothing left for the local move step to do.
     if not os.path.exists(oldWorkingDir):
         return True
     if os.path.exists(newWorkingDir):
@@ -356,21 +364,16 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
         logging.info(f"Unstaged / committed changes in {oldSub}, not moving.")
         return False
 
-    gitfilePath = os.path.join(oldWorkingDir, ".git")
-    try:
-        with open(gitfilePath) as gitfile:
-            gitdirLine = gitfile.readline().strip()
-    except OSError:
+    gitdir = git.gitDir(execution_path=oldWorkingDir)
+    if not gitdir:
         return False
 
-    if not gitdirLine.startswith("gitdir:"):
-        return False
-
-    gitdir = os.path.normpath(os.path.join(oldWorkingDir,
-                                           gitdirLine.split(":", 1)[1].strip()))
     os.makedirs(os.path.dirname(newWorkingDir), exist_ok=True)
     os.rename(oldWorkingDir, newWorkingDir)
 
+    # The submodule backend repo usually stays in .git/modules/<old-path>, so
+    # update the frontend gitfile and backend core.worktree to point at the
+    # new working tree location.
     newGitdir = os.path.relpath(gitdir, newWorkingDir).replace(os.sep, '/')
     with open(os.path.join(newWorkingDir, ".git"), "w") as gitfile:
         gitfile.write(f"gitdir: {newGitdir}\n")
@@ -381,6 +384,7 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
         git.config(f"--file {shlex.quote(moduleConfigPath)} core.worktree",
                    newWorktree, execution_path=workspace_dir)
 
+    # Refresh local submodule config for the new path after the filesystem move.
     git.submodule(f"init -- {newSub}", execution_path=workspace_dir)
     git.submodule(f"sync -- {newSub}", execution_path=workspace_dir)
     return True
@@ -437,6 +441,8 @@ def parallelCleanSubmodules(submodules, args, veryclean=False,
                 workspace_dir=workspace_dir):
             autoCleanSubmodules.append(sub)
         else:
+            # Keep prompting / dirty-worktree cases on the serial path so the
+            # existing interactive behavior remains unchanged.
             serialCleanSubmodules.append(sub)
 
     failedSubmodules = []
@@ -589,6 +595,8 @@ class Checkout(Option, WorkspaceDirHandler):
         for oldSub, newSub in movedModules.items():
             logging.info(f"Moving submodule {oldSub} to {newSub}.")
             if not moveSubmodule(oldSub, newSub, workspace_dir=self.workspace_dir):
+                # If the local move cannot be completed safely, fall back to the
+                # existing remove/recreate path instead of aborting checkout.
                 logging.info(f"Failed to move submodule {oldSub} to {newSub}; falling back to remove and re-add.")
                 removedModules.append(oldSub)
                 addedModules.append(newSub)
