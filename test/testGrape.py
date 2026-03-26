@@ -65,7 +65,7 @@ class TestGrape(unittest.TestCase):
         grapeMenu._resetMenu()
         self.menu = None
 
-        self._debug = False
+        self._debug = os.environ.get("GRAPE_TEST_DEBUG") == "1"
         self.logger = vine_logging.GrapeLogger()
 
     def setUpConfig(self):

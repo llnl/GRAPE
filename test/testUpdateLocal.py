@@ -30,4 +30,10 @@ def createUpTester():
     names = [cls.__name__ for cls in scenarioClasses]
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
     gridTesting.gridifyTestClass(scenarios, GrapeUpTester, names)
-    return GrapeUpTester
+    GrapeUpTester.__test__ = False
+    pytest_tester = type("TestGrapeUp", (GrapeUpTester,), {})
+    pytest_tester.__test__ = True
+    return pytest_tester
+
+
+TestGrapeUp = createUpTester()

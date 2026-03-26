@@ -43,4 +43,10 @@ def createStatusTester():
     names = [cls.__name__ for cls in scenarioClasses]
     scenarios = [cls(n) for (cls,n) in zip(scenarioClasses, names)]
     gridTesting.gridifyTestClass(scenarios, GrapeStatusTester, names)
-    return GrapeStatusTester
+    GrapeStatusTester.__test__ = False
+    pytest_tester = type("TestStatus", (GrapeStatusTester,), {})
+    pytest_tester.__test__ = True
+    return pytest_tester
+
+
+TestStatus = createStatusTester()

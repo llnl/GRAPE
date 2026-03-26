@@ -6,27 +6,9 @@ import subprocess
 import sys
 import time
 
+from vine import test_suites
 
-DEFAULT_SUITES = [
-    "Branches",
-    "Bundle",
-    "Clone",
-    "Config",
-    "DeleteBranch",
-    "GrapeGit",
-    "MergeDown",
-    "ResolveConflicts",
-    "Review",
-    "Stash",
-    "Unbundle",
-    "Version",
-    "Publish",
-    "CO",
-    "NestedSubproject",
-    "Status",
-    "GrapeUp",
-]
-
+DEFAULT_SUITES = test_suites.all_suite_names()
 HEAVY_SUITES = [
     "Status",
     "MergeDown",

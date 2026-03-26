@@ -17,6 +17,7 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | Date | Phase | Full Suite (s) | Heavy Suites Summary | Delta vs Baseline | Delta vs Previous | Commit |
 | --- | --- | ---: | --- | ---: | ---: | --- |
 | 2026-03-26 | Baseline | 44.75 | Status 12.00, MergeDown 7.32, NestedSubproject 6.91, Clone 5.71, Publish 5.12, GrapeUp 4.35, CO 3.03 | 0.00 | 0.00 | `8e30d114` |
+| 2026-03-26 | Phase 2 | 48.51 | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `pending phase 2 commit` |
 
 ## Baseline Measurements
 
@@ -96,3 +97,36 @@ What changed:
 Measured impact:
 - No test-runner speed change was expected in this phase.
 - Baseline measurement for the original runner is now documented and reproducible.
+
+### Phase 2
+Status: complete
+
+What changed:
+- Added `pytest.ini` so the root `test/` directory is the default collection target.
+- Added [`vine/test_suites.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/test_suites.py) as the suite alias manifest for `grape test`.
+- Switched [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) from the custom `unittest` aggregator to `pytest.main(...)` while preserving:
+  - `./grape test`
+  - `./grape test listSuites`
+  - `./grape test <Suite>`
+  - `./grape test <Suite>.<test>`
+- Added pytest-visible aliases for `Status` and `GrapeUp` in:
+  - [`test/testStatus.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testStatus.py)
+  - [`test/testUpdateLocal.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testUpdateLocal.py)
+- Added debug-mode environment plumbing in [`test/testGrape.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testGrape.py).
+
+Measured impact:
+- Full suite after the final Phase 2 fix: `48.51s` with return code `1`.
+- Net change vs baseline: `+3.76s`.
+- Heavy suites after Phase 2:
+  - `Status`: `11.89s`
+  - `MergeDown`: `7.72s`
+  - `NestedSubproject`: `7.89s`
+  - `Clone`: `6.72s`
+  - `Publish`: `5.54s`
+  - `GrapeUp`: `4.36s`
+  - `CO`: `3.70s`
+
+Notes:
+- The first pytest-backed attempt regressed to `63.47s` because `Status` and `GrapeUp` were being collected twice.
+- That regression was fixed by exposing pytest-only subclasses instead of renaming the generator classes in place.
+- Phase 2 intentionally prioritizes compatibility over speed; Phase 3 and later phases are expected to recover and beat the baseline.
