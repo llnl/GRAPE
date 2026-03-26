@@ -390,6 +390,18 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     return True
 
 
+def applyMovedSubmodules(movedModules, *, workspace_dir):
+    successfulMoves = {}
+    failedMoves = {}
+    for oldSub, newSub in movedModules.items():
+        logging.info(f"Moving submodule {oldSub} to {newSub}.")
+        if moveSubmodule(oldSub, newSub, workspace_dir=workspace_dir):
+            successfulMoves[oldSub] = newSub
+        else:
+            failedMoves[oldSub] = newSub
+    return successfulMoves, failedMoves
+
+
 def shouldParallelizeSubmoduleCleanup(sub, args, veryclean=False,
                                       activeSubmodules=None, *, workspace_dir):
     if activeSubmodules is None:
@@ -592,14 +604,14 @@ class Checkout(Option, WorkspaceDirHandler):
             if sub in initiallyActiveSubmodules:
                 git.submodule(f"init {sub}", execution_path=self.workspace_dir)
 
-        for oldSub, newSub in movedModules.items():
-            logging.info(f"Moving submodule {oldSub} to {newSub}.")
-            if not moveSubmodule(oldSub, newSub, workspace_dir=self.workspace_dir):
-                # If the local move cannot be completed safely, fall back to the
-                # existing remove/recreate path instead of aborting checkout.
-                logging.info(f"Failed to move submodule {oldSub} to {newSub}; falling back to remove and re-add.")
-                removedModules.append(oldSub)
-                addedModules.append(newSub)
+        movedModules, failedMoves = applyMovedSubmodules(
+            movedModules, workspace_dir=self.workspace_dir)
+        for oldSub, newSub in failedMoves.items():
+            # If the local move cannot be completed safely, fall back to the
+            # existing remove/recreate path instead of aborting checkout.
+            logging.info(f"Failed to move submodule {oldSub} to {newSub}; falling back to remove and re-add.")
+            removedModules.append(oldSub)
+            addedModules.append(newSub)
 
         # clean out removed submodules
         failedSubs, serialSubs = parallelCleanSubmodules(

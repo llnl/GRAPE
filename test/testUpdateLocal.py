@@ -1,8 +1,10 @@
 import os
 import sys
+from unittest.mock import patch
 from test import gridTesting
 from test import testGrape
 from test import testProjectScenarios
+from vine import updateLocal
 
 
 class GrapeUpTester(testGrape.TestGrape):
@@ -23,6 +25,45 @@ class GrapeUpTester(testGrape.TestGrape):
 
         #if testProjectScenario.debugging() or debugging:
         #    self.switchToHiddenOutput()
+
+
+class TestUpdateLocalHelpers(testGrape.TestGrape):
+
+    @patch("vine.updateLocal.checkout.applyMovedSubmodules")
+    @patch("vine.updateLocal.checkout.parseGitModulesDiffOutput")
+    def testApplyMovedSubmodulesAfterUpdateSucceeds(self, mock_parse,
+                                                    mock_apply):
+        def fill_moved_modules(current_sha, branch, added, removed, changed,
+                               moved, *, workspace_dir):
+            moved["old/sub"] = "new/sub"
+
+        mock_parse.side_effect = fill_moved_modules
+        mock_apply.return_value = ({"old/sub": "new/sub"}, {})
+
+        ret = updateLocal.applyMovedSubmodulesAfterUpdate(
+            "abc123", workspace_dir=self.repo)
+
+        self.assertTrue(ret)
+        mock_parse.assert_called_once()
+        mock_apply.assert_called_once_with({"old/sub": "new/sub"},
+                                           workspace_dir=self.repo)
+
+    @patch("vine.updateLocal.checkout.applyMovedSubmodules")
+    @patch("vine.updateLocal.checkout.parseGitModulesDiffOutput")
+    def testApplyMovedSubmodulesAfterUpdateFails(self, mock_parse,
+                                                 mock_apply):
+        def fill_moved_modules(current_sha, branch, added, removed, changed,
+                               moved, *, workspace_dir):
+            moved["old/sub"] = "new/sub"
+
+        mock_parse.side_effect = fill_moved_modules
+        mock_apply.return_value = ({}, {"old/sub": "new/sub"})
+
+        ret = updateLocal.applyMovedSubmodulesAfterUpdate(
+            "abc123", workspace_dir=self.repo)
+
+        self.assertFalse(ret)
+        mock_parse.assert_called_once()
 
 def createUpTester():
     # create a tester for all grapeProject scenarios in the testProjectScenarios module.
