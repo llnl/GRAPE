@@ -146,12 +146,6 @@ class Test(Option):
         work_selectors = test_suites.order_selectors(
             selectors or test_suites.all_suite_names()
         )
-        parallel_selectors = [
-            selector for selector in work_selectors if not test_suites.is_serial_selector(selector)
-        ]
-        serial_selectors = [
-            selector for selector in work_selectors if test_suites.is_serial_selector(selector)
-        ]
         workers = self._parse_workers(
             args["--workers"],
             selectors=work_selectors,
@@ -166,19 +160,25 @@ class Test(Option):
         live_drawn = False
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = {
-                executor.submit(
-                    self._run_subprocess_pytest,
-                    selector,
+            pending = list(work_selectors)
+            futures = {}
+            serial_running = False
+            while pending or futures:
+                pending, serial_running = self._launch_ready_work(
+                    executor,
+                    pending,
+                    futures,
+                    workers,
+                    serial_running,
                     args,
                     env,
                     progress_state,
-                ): selector
-                for selector in parallel_selectors
-            }
-            results.extend(
-                self._collect_parallel_results(
+                )
+                if not futures:
+                    continue
+                batch_results, serial_running, live_drawn = self._collect_parallel_results(
                     futures,
+                    serial_running,
                     work_selectors,
                     progress_state,
                     run_started,
@@ -186,29 +186,7 @@ class Test(Option):
                     live_chart_width,
                     live_drawn,
                 )
-            )
-            live_drawn = live_output and bool(work_selectors)
-
-            for selector in serial_selectors:
-                future = executor.submit(
-                    self._run_subprocess_pytest,
-                    selector,
-                    args,
-                    env,
-                    progress_state,
-                )
-                results.extend(
-                    self._collect_parallel_results(
-                        {future: selector},
-                        work_selectors,
-                        progress_state,
-                        run_started,
-                        live_output,
-                        live_chart_width,
-                        live_drawn,
-                    )
-                )
-                live_drawn = live_output and bool(work_selectors)
+                results.extend(batch_results)
 
         failed = False
         ordered = {selector: index for index, selector in enumerate(work_selectors)}
@@ -242,6 +220,49 @@ class Test(Option):
                 print(completed.stdout, end="" if completed.stdout.endswith("\n") else "\n")
             failed = failed or completed.returncode != 0
         return 1 if failed else 0
+
+    def _launch_ready_work(
+        self,
+        executor,
+        pending,
+        futures,
+        workers,
+        serial_running,
+        args,
+        env,
+        progress_state,
+    ):
+        """Launch any suites that fit within the current scheduler constraints.
+
+        `serial=True` now means "do not run more than one of these at once"
+        instead of "delay this suite until the entire parallel lane is done."
+        That allows the repository's launch-order file to bring a long serial
+        suite such as `Publish` to the front and still overlap it with normal
+        suites.
+        """
+        remaining = []
+        launched_serial = False
+        available_slots = max(0, workers - len(futures))
+        for selector in pending:
+            if available_slots <= 0:
+                remaining.append(selector)
+                continue
+            is_serial = test_suites.is_serial_selector(selector)
+            if is_serial and (serial_running or launched_serial):
+                remaining.append(selector)
+                continue
+            future = executor.submit(
+                self._run_subprocess_pytest,
+                selector,
+                args,
+                env,
+                progress_state,
+            )
+            futures[future] = selector
+            available_slots -= 1
+            if is_serial:
+                launched_serial = True
+        return remaining, serial_running or launched_serial
 
     def _run_subprocess_pytest(self, selector, args, env, progress_state=None):
         """Run one GRAPE suite selector in its own pytest subprocess.
@@ -305,6 +326,7 @@ class Test(Option):
     def _collect_parallel_results(
         self,
         futures,
+        serial_running,
         ordered_selectors,
         progress_state,
         run_started,
@@ -313,28 +335,29 @@ class Test(Option):
         live_drawn,
     ):
         results = []
-        while futures:
-            done, _ = wait(
-                list(futures.keys()),
-                timeout=0.1 if live_output else None,
-                return_when=FIRST_COMPLETED,
+        done, _ = wait(
+            list(futures.keys()),
+            timeout=0.1 if live_output else None,
+            return_when=FIRST_COMPLETED,
+        )
+        if live_output:
+            chart_timings = self._progress_chart_timings(
+                ordered_selectors,
+                progress_state,
+                run_started,
             )
-            if live_output:
-                chart_timings = self._progress_chart_timings(
-                    ordered_selectors,
-                    progress_state,
-                    run_started,
-                )
-                self._draw_live_progress(
-                    chart_timings,
-                    chart_width,
-                    already_drawn=live_drawn,
-                )
-                live_drawn = True
-            for future in done:
-                results.append(future.result())
-                del futures[future]
-        return results
+            self._draw_live_progress(
+                chart_timings,
+                chart_width,
+                already_drawn=live_drawn,
+            )
+            live_drawn = True
+        for future in done:
+            selector = futures.pop(future)
+            results.append(future.result())
+            if test_suites.is_serial_selector(selector):
+                serial_running = False
+        return results, serial_running, live_drawn
 
     def _progress_chart_timings(self, ordered_selectors, progress_state, run_started):
         """Build renderer input for the current live display snapshot."""

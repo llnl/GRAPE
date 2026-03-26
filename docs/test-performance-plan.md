@@ -24,6 +24,7 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 6 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | CI shards: fast_core 4.96, git_workflow 8.28, workspace_topology 15.47, publish 4.88 | CI critical path 15.47 | unchanged local timings | `5bed0280` |
 | 2026-03-26 | Phase 7 | 38.42 | 30.64 | 31.49 | 31.86 | 31.99 | 31.94 | Default `./grape test` now 30.68s; `--changed` selects mapped suites; docs-only/CI-only diffs map to no suites | -14.11 at W4 | -0.12 at W4 | `e02e390d` |
 | 2026-03-26 | Phase 8 | 39.01 | 31.20 | 32.56 | 32.53 | 32.02 | 32.10 | Live broad-run schedule chart; fixed-width timing column; suite order file starts with Publish, Status, MergeDown, NestedSubproject, Clone | -13.55 at W4 | +0.56 at W4 | `a39b094c` |
+| 2026-03-26 | Phase 9 | 38.44 | 27.29 | 29.44 | 29.59 | 30.05 | 30.60 | Serial suites can overlap the normal lane; `Publish` now starts immediately and overlaps `Status`, `MergeDown`, and `Clone` | -17.46 at W4 | -3.91 at W4 | `pending phase 9 commit` |
 
 ## Baseline Measurements
 
@@ -86,6 +87,7 @@ Notes:
 6. Shard Linux CI so merge-request wall clock is driven by the longest shard rather than one full-suite job.
 7. Add changed-test targeting and faster local defaults.
 8. Add broad-run schedule observability and a hand-tuned suite launch order file.
+9. Let serial-marked suites overlap normal suites while still limiting serial execution to one at a time.
 
 ## Phase Log
 
@@ -349,3 +351,35 @@ Notes:
 - This phase is about visibility and scheduling control, not raw execution speed.
 - The measured wall times moved slightly in the slower direction, but stayed close to the prior worker matrix and left the practical recommendation unchanged: low worker counts still dominate this machine.
 - The initial launch-order file front-loads the five currently longest suites so overlap can be tuned by editing one repo file rather than changing code.
+
+### Phase 9
+Status: complete
+
+What changed:
+- Updated [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) so serial-marked suites are no longer forced to wait until every non-serial suite is finished.
+- The broad-run scheduler now interprets `serial=True` as:
+  - at most one serial-marked suite may run at once
+  - serial suites may still overlap normal suites
+- Added focused scheduler coverage in [`test/testTimingChart.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testTimingChart.py) to lock in:
+  - a leading serial suite can launch together with normal suites
+  - a second serial suite stays pending until the first serial suite finishes
+
+Measured impact:
+- Serial full suite after Phase 9: `38.44s` with `--workers=1`, return code `1`.
+- Default broad full suite after Phase 9: `28.03s`, return code `1`.
+- Worker matrix after Phase 9:
+  - `--workers=4`: `27.29s`
+  - `--workers=8`: `29.44s`
+  - `--workers=16`: `29.59s`
+  - `--workers=32`: `30.05s`
+  - `--workers=64`: `30.60s`
+- Net change vs baseline:
+  - serial: `-6.31s`
+  - parallel `--workers=4`: `-17.46s`
+- Net change vs Phase 8:
+  - serial: `-0.57s`
+  - parallel `--workers=4`: `-3.91s`
+
+Notes:
+- This is the first phase where the suite-order file can materially affect a serial-marked suite's launch time.
+- On this machine, moving `Publish` to the front and allowing overlap recovered almost four seconds at `--workers=4`.

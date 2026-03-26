@@ -3,6 +3,7 @@ import tempfile
 import unittest
 
 from tools.render_timing_chart import render_lines
+from vine import grapeTest
 from vine import test_suites
 
 
@@ -60,3 +61,46 @@ class TestSuiteOrdering(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "NotASuite"):
                 test_suites.order_selectors(["Branches", "Clone"], order_path=order_path)
+
+
+class TestSchedulerRules(unittest.TestCase):
+
+    def test_serial_suite_can_launch_with_normal_suites(self):
+        scheduler = grapeTest.Test()
+        futures = {}
+        pending, serial_running = scheduler._launch_ready_work(
+            executor=_RecordingExecutor(),
+            pending=["Publish", "Status", "MergeDown"],
+            futures=futures,
+            workers=3,
+            serial_running=False,
+            args={"--debug": False, "--durations": "0"},
+            env={},
+            progress_state=None,
+        )
+        self.assertEqual(pending, [])
+        self.assertTrue(serial_running)
+        self.assertEqual(len(futures), 3)
+
+    def test_second_serial_suite_stays_pending(self):
+        scheduler = grapeTest.Test()
+        futures = {}
+        pending, serial_running = scheduler._launch_ready_work(
+            executor=_RecordingExecutor(),
+            pending=["Publish", "Clone", "Publish"],
+            futures=futures,
+            workers=3,
+            serial_running=False,
+            args={"--debug": False, "--durations": "0"},
+            env={},
+            progress_state=None,
+        )
+        self.assertEqual(pending, ["Publish"])
+        self.assertTrue(serial_running)
+        self.assertEqual(len(futures), 2)
+
+
+class _RecordingExecutor:
+
+    def submit(self, fn, *args):
+        return object()
