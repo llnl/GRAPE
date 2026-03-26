@@ -1,9 +1,13 @@
 import os
 import sys
+import pytest
 from test import testGrape
 from test import testNestedSubproject
 from vine import grape_errors
 from vine import grapeGit as git
+
+
+pytestmark = pytest.mark.slow
 
 
 class TestMD(testGrape.TestGrape):

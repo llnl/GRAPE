@@ -17,7 +17,8 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | Date | Phase | Full Suite (s) | Heavy Suites Summary | Delta vs Baseline | Delta vs Previous | Commit |
 | --- | --- | ---: | --- | ---: | ---: | --- |
 | 2026-03-26 | Baseline | 44.75 | Status 12.00, MergeDown 7.32, NestedSubproject 6.91, Clone 5.71, Publish 5.12, GrapeUp 4.35, CO 3.03 | 0.00 | 0.00 | `8e30d114` |
-| 2026-03-26 | Phase 2 | 48.51 | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `pending phase 2 commit` |
+| 2026-03-26 | Phase 2 | 48.51 | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `fd996b72` |
+| 2026-03-26 | Phase 3 | 64.77 serial, 42.63 with `--workers=4` | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `pending phase 3 commit` |
 
 ## Baseline Measurements
 
@@ -130,3 +131,36 @@ Notes:
 - The first pytest-backed attempt regressed to `63.47s` because `Status` and `GrapeUp` were being collected twice.
 - That regression was fixed by exposing pytest-only subclasses instead of renaming the generator classes in place.
 - Phase 2 intentionally prioritizes compatibility over speed; Phase 3 and later phases are expected to recover and beat the baseline.
+
+### Phase 3
+Status: complete
+
+What changed:
+- Added [`test/testWorkspaceScenarios.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testWorkspaceScenarios.py) so `Status` and `GrapeUp` are collected as pytest-native parametrized suites instead of dynamic class mutation.
+- Added [`test/conftest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/conftest.py) to configure root-suite test markers and git test flags in pytest.
+- Added markers across the heavy suites:
+  - `slow`
+  - `scenario`
+  - `publish`
+  - `serial`
+- Extended [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) with `--workers=<n>` and a subprocess-based parallel suite runner.
+- Updated [`tools/measure_grape_tests.py`](/usr/WS1/probinso/git/grape_workspaces/grape/tools/measure_grape_tests.py) so measurements can include `--workers`.
+- Updated [`vine/test_suites.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/test_suites.py) so `Publish` stays in the serial lane and the `Status`/`GrapeUp` aliases point at the pytest-native scenario file.
+
+Measured impact:
+- Default serial full suite after Phase 3: `64.77s`, return code `1`.
+- Opt-in parallel full suite after Phase 3: `42.63s` with `./grape test --workers=4`, return code `1`.
+- Net change vs baseline in parallel mode: `-2.12s`.
+- Heavy suites remain individually slower because `--workers` parallelizes across suite selectors, not within a single suite:
+  - `Status`: `12.98s`
+  - `MergeDown`: `8.31s`
+  - `NestedSubproject`: `8.14s`
+  - `Clone`: `6.74s`
+  - `Publish`: `5.54s`
+  - `GrapeUp`: `4.63s`
+  - `CO`: `3.80s`
+
+Notes:
+- This phase achieves the first measured end-to-end win only when parallel mode is used.
+- The serial regression is expected because the pytest-native scenario layer still rebuilds expensive workspace state per test case.
+- Phase 4 and Phase 5 should target that repeated setup cost directly so the default path can recover, not just the parallel path.

@@ -2,18 +2,21 @@
 
 ## Current State
 - Goal: make root-suite testing faster for both local development and Linux CI.
-- Current phase: 3
+- Current phase: 4
 - Latest baseline commit before speed changes: `8e30d114`
 - Original full-suite timing: `44.75s`
 - Original known failures: `Publish` suite
-- Latest accepted post-phase timing: full suite `48.51s`, return code `1`
+- Latest accepted post-phase timing:
+  - serial full suite `64.77s`, return code `1`
+  - parallel full suite `42.63s` with `--workers=4`, return code `1`
 
 ## Current Runner Architecture
 - Public entrypoint: `vine/grapeTest.py`
 - Current implementation routes `grape test` through `pytest.main(...)`
 - Suite alias metadata lives in `vine/test_suites.py`
-- `Status` and `GrapeUp` are dynamically generated through `gridTesting.gridifyTestClass`
-- `Status` and `GrapeUp` are currently made pytest-visible through thin subclasses in their modules
+- `Status` and `GrapeUp` now run through pytest-native parametrized tests in `test/testWorkspaceScenarios.py`
+- `grape test --workers=<n>` parallelizes across suite selectors by launching subprocess pytest runs
+- `Publish` is marked serial and stays out of the parallel lane
 - Common test setup cost lives in `test/testGrape.py`
 - Heavy scenario replay logic lives in `test/gridTesting.py` and `test/testProjectScenarios.py`
 
@@ -29,20 +32,23 @@
   - `CO`: `3.03s`
 
 ## Latest Accepted Numbers
-- Full suite: `48.51s`, return code `1`
+- Full suite serial: `64.77s`, return code `1`
+- Full suite with `--workers=4`: `42.63s`, return code `1`
 - Heavy suites:
-  - `Status`: `11.89s`
-  - `MergeDown`: `7.72s`
-  - `NestedSubproject`: `7.89s`
-  - `Clone`: `6.72s`
+  - `Status`: `12.98s`
+  - `MergeDown`: `8.31s`
+  - `NestedSubproject`: `8.14s`
+  - `Clone`: `6.74s`
   - `Publish`: `5.54s`, return code `1`
-  - `GrapeUp`: `4.36s`
-  - `CO`: `3.70s`
+  - `GrapeUp`: `4.63s`
+  - `CO`: `3.80s`
 
 ## Reproduction Commands
 - Full suite: `./grape test`
+- Full suite parallel: `./grape test --workers=4`
 - All suite timings: `python3 tools/measure_grape_tests.py --mode all`
 - Heavy suite timings only: `python3 tools/measure_grape_tests.py --mode heavy`
+- Full suite timing with workers: `python3 tools/measure_grape_tests.py --mode full --workers 4`
 - List current suite aliases: `./grape test listSuites`
 
 ## Constraints And Decisions
@@ -55,7 +61,8 @@
   - a git commit with subject prefixed `PHASE <number>:`
 - Avoid assuming `pytest-xdist`; use process-parallel strategies that work with stock `pytest`.
 - Phase 2 already landed the public runner migration, so future work should improve speed without breaking alias compatibility.
+- Phase 3 landed `--workers`, but the default serial path is still too slow to leave as-is.
 
 ## Next Recommended Step
-- Replace the dynamically generated `Status` and `GrapeUp` unittest collection with pytest parametrization.
-- Add marker-based grouping so later phases can split serial and parallel-safe work cleanly.
+- Cache the repeated repository bootstrap in `test/testGrape.py` so every test stops paying the same bare-repo plus initial-commit setup cost.
+- After that, target scenario snapshotting in `test/gridTesting.py` and `test/testProjectScenarios.py` to recover the serial regression.

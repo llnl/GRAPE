@@ -5,9 +5,13 @@ import shutil
 import sys
 import tempfile
 from unittest.mock import patch
+import pytest
 from test import testGrape
 from vine import clone
 from vine import grapeGit as git
+
+
+pytestmark = pytest.mark.slow
 
 
 class TestClone(testGrape.TestGrape):

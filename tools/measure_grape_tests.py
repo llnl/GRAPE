@@ -68,6 +68,12 @@ def main(argv=None):
         default=".",
         help="Repository root to measure from.",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Pass --workers to grape test.",
+    )
     args = parser.parse_args(argv)
 
     cwd = os.path.abspath(args.cwd)
@@ -84,6 +90,8 @@ def main(argv=None):
 
     results = []
     for target, cmd in targets:
+        if args.workers != 1:
+            cmd = cmd[:2] + [f"--workers={args.workers}"] + cmd[2:]
         result = run_command(cmd, cwd)
         result["target"] = target
         results.append(result)

@@ -3,12 +3,16 @@ import os
 import sys
 import tempfile
 from unittest.mock import patch
+import pytest
 from test import testGrape
 from vine import config_parser_base
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import grapeMenu
 from vine.option import Option
+
+
+pytestmark = pytest.mark.slow
 
 
 class TestNestedSubproject(testGrape.TestGrape):

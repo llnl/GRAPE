@@ -7,6 +7,7 @@ class TestSuite:
     path: str
     class_name: str
     visible: bool = True
+    serial: bool = False
 
 
 SUITES = {
@@ -22,11 +23,11 @@ SUITES = {
     "Stash": TestSuite("Stash", "test/testStash.py", "TestStash"),
     "Unbundle": TestSuite("Unbundle", "test/testUnbundle.py", "TestUnbundle"),
     "Version": TestSuite("Version", "test/testVersion.py", "TestVersion"),
-    "Publish": TestSuite("Publish", "test/testPublish.py", "TestPublish"),
+    "Publish": TestSuite("Publish", "test/testPublish.py", "TestPublish", serial=True),
     "CO": TestSuite("CO", "test/testCO.py", "TestCheckout"),
     "NestedSubproject": TestSuite("NestedSubproject", "test/testNestedSubproject.py", "TestNestedSubproject"),
-    "Status": TestSuite("Status", "test/testStatus.py", "TestStatus", visible=False),
-    "GrapeUp": TestSuite("GrapeUp", "test/testUpdateLocal.py", "TestGrapeUp", visible=False),
+    "Status": TestSuite("Status", "test/testWorkspaceScenarios.py", "TestStatusScenarios", visible=False),
+    "GrapeUp": TestSuite("GrapeUp", "test/testWorkspaceScenarios.py", "TestGrapeUpScenarios", visible=False),
 }
 
 
@@ -62,3 +63,13 @@ def resolve_selector(selector):
 
 def resolve_selectors(selectors):
     return [resolve_selector(selector) for selector in selectors]
+
+
+def selector_suite_name(selector):
+    if "." in selector:
+        selector = selector.split(".", 1)[0]
+    return selector
+
+
+def is_serial_selector(selector):
+    return SUITES[selector_suite_name(selector)].serial

@@ -3,12 +3,16 @@ import shutil
 import sys
 from itertools import repeat
 from unittest.mock import patch
+import pytest
 from test import testGrape
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import version
 from vine.option import Option
+
+
+pytestmark = [pytest.mark.publish, pytest.mark.serial, pytest.mark.slow]
 
 
 class TestPublish(testGrape.TestGrape):
