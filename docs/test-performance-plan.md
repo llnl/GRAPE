@@ -18,7 +18,8 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | --- | --- | ---: | --- | ---: | ---: | --- |
 | 2026-03-26 | Baseline | 44.75 | Status 12.00, MergeDown 7.32, NestedSubproject 6.91, Clone 5.71, Publish 5.12, GrapeUp 4.35, CO 3.03 | 0.00 | 0.00 | `8e30d114` |
 | 2026-03-26 | Phase 2 | 48.51 | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `fd996b72` |
-| 2026-03-26 | Phase 3 | 64.77 serial, 42.63 with `--workers=4` | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `pending phase 3 commit` |
+| 2026-03-26 | Phase 3 | 64.77 serial, 42.63 with `--workers=4` | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `6daa0f32` |
+| 2026-03-26 | Phase 4 | 40.84 serial, 31.55 with `--workers=4` | Status 10.47, MergeDown 7.36, NestedSubproject 7.35, Clone 6.07, Publish 4.86, GrapeUp 3.71, CO 3.73 | -13.20 in parallel mode | -11.08 in parallel mode | `pending phase 4 commit` |
 
 ## Baseline Measurements
 
@@ -164,3 +165,37 @@ Notes:
 - This phase achieves the first measured end-to-end win only when parallel mode is used.
 - The serial regression is expected because the pytest-native scenario layer still rebuilds expensive workspace state per test case.
 - Phase 4 and Phase 5 should target that repeated setup cost directly so the default path can recover, not just the parallel path.
+
+### Phase 4
+Status: complete
+
+What changed:
+- Replaced the per-test bootstrap sequence in [`test/testGrape.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testGrape.py) with a process-local seeded template.
+- The seeded template now contains:
+  - a bare origin
+  - a working repo clone
+  - the initial committed file
+  - `master` and `develop` already pushed
+- Each test now copies the prepared origin and working repo into its own temp workspace and retargets `origin` locally instead of re-running repository creation from scratch.
+
+Measured impact:
+- Serial full suite after Phase 4: `40.84s`, return code `1`.
+- Parallel full suite after Phase 4: `31.55s` with `./grape test --workers=4`, return code `1`.
+- Net change vs baseline:
+  - serial: `-3.91s`
+  - parallel: `-13.20s`
+- Net change vs Phase 3:
+  - serial: `-23.93s`
+  - parallel: `-11.08s`
+- Heavy suites after Phase 4:
+  - `Status`: `10.47s`
+  - `MergeDown`: `7.36s`
+  - `NestedSubproject`: `7.35s`
+  - `Clone`: `6.07s`
+  - `Publish`: `4.86s`
+  - `GrapeUp`: `3.71s`
+  - `CO`: `3.73s`
+
+Notes:
+- An initial concurrent measurement attempt produced invalid numbers and was discarded.
+- Accepted Phase 4 timings were rerun sequentially with the measurement script to avoid resource contention.

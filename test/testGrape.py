@@ -33,6 +33,7 @@ from vine.option import Option
 str1 = "str1 \n a \n b\n c\n"
 str2 = "str2 \n a \n c\n c\n"
 str3 = "str3 \n a \n d\n c\n"
+_BOOTSTRAP_TEMPLATE = None
 
 
 def writeFile1(path):
@@ -48,6 +49,52 @@ def writeFile2(path):
 def writeFile3(path):
     with open(path, 'w') as f:
         f.write(str3)
+
+
+def _ensure_bootstrap_template():
+    global _BOOTSTRAP_TEMPLATE
+    if _BOOTSTRAP_TEMPLATE is not None:
+        return _BOOTSTRAP_TEMPLATE
+
+    template_root = os.path.realpath(tempfile.mkdtemp(prefix="grape-test-bootstrap-"))
+    template_origin = os.path.join(template_root, "testRepo-origin")
+    template_repo = os.path.join(template_root, "testRepo")
+
+    os.mkdir(template_origin)
+    git.gitcmd("init --bare", "Setup Failed", execution_path=template_origin)
+    git.clone(
+        source_repo=template_origin,
+        clone_repo=template_repo,
+        execution_path=template_root,
+    )
+
+    fname = os.path.join(template_repo, "testRepoFile")
+    writeFile1(fname)
+    git.add(fname, execution_path=template_repo)
+    git.commit("-m \"initial commit\"", execution_path=template_repo)
+    git.gitcmd("push origin master", "push to master failed", execution_path=template_repo)
+    git.branch("develop", execution_path=template_repo)
+    git.push("origin develop", execution_path=template_repo)
+
+    _BOOTSTRAP_TEMPLATE = {
+        "root": template_root,
+        "origin": template_origin,
+        "repo": template_repo,
+    }
+    return _BOOTSTRAP_TEMPLATE
+
+
+def _populate_bootstrap_repo(destination_repo):
+    template = _ensure_bootstrap_template()
+    destination_origin = destination_repo + "-origin"
+
+    shutil.copytree(template["origin"], destination_origin)
+    shutil.copytree(template["repo"], destination_repo)
+    git.gitcmd(
+        f"remote set-url origin {destination_origin}",
+        "reset origin failed",
+        execution_path=destination_repo,
+    )
 
 
 class TestGrape(unittest.TestCase):
@@ -99,27 +146,9 @@ class TestGrape(unittest.TestCase):
         # messages from the modules that we test
         self.setUpLogging()
 
-        # create a test repository to operate in.
-        bare_repo = self.repo + '-origin'
-        os.mkdir(bare_repo)
-
-        git.gitcmd("init --bare", "Setup Failed",
-                   execution_path=bare_repo)
-
-        working_dir = os.path.dirname(f"{self.repo}-origin")
-        git.clone(source_repo=bare_repo, clone_repo=self.repo,
-                  execution_path=self.defaultWorkingDirectory)
+        _populate_bootstrap_repo(self.repo)
         self.menu = grapeMenu.menu(workspace_dir=self.repo)
-        fname = os.path.join(self.repo, "testRepoFile")
-        writeFile1(fname)
-        self.file1 = fname
-        git.add(fname, execution_path=self.repo)
-        git.commit("-m \"initial commit\"", execution_path=self.repo)
-        git.gitcmd(f"push origin master", "push to master failed",
-                   execution_path=self.repo)
-        # create a develop branch in addition to master by default
-        git.branch("develop", execution_path=self.repo)
-        git.push("origin develop", execution_path=self.repo)
+        self.file1 = os.path.join(self.repo, "testRepoFile")
 
     def tearDown(self):
         def onError(func, path, exc_info):
