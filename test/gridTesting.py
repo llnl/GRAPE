@@ -27,6 +27,7 @@ class ResettableProject:
         grapeMenu._resetMenu()
         self.menu = grapeMenu.menu(workspace_dir=self.projectPrefix)
         self.apply_menu_choice = self.menu.applyMenuChoice
+        self._snapshot_root = None
 
         #cmdList is a list of 2-tuples containing (function, param) pairs
         #param itself can be a tuple, a single parameter, or a single lambda function that provides arguments
@@ -52,7 +53,30 @@ class ResettableProject:
         self.tearDown()
         if (not projectPrefix is None):
             self.projectPrefix = projectPrefix
+        self._restore_snapshot()
 
+    def _restore_snapshot(self):
+        source_root = self._ensure_snapshot_root()
+        for entry in os.listdir(source_root):
+            src = os.path.join(source_root, entry)
+            dst = os.path.join(self.projectPrefix, entry)
+            shutil.copytree(src, dst)
+            self._rewrite_paths(dst, source_root, self.projectPrefix)
+
+    def _ensure_snapshot_root(self):
+        if self._snapshot_root is not None:
+            return self._snapshot_root
+
+        original_prefix = self.projectPrefix
+        self._snapshot_root = os.path.realpath(
+            tempfile.mkdtemp(prefix=f"grape-scenario-{self.projectDir}-")
+        )
+        self.projectPrefix = self._snapshot_root
+        self._run_cmd_list()
+        self.projectPrefix = original_prefix
+        return self._snapshot_root
+
+    def _run_cmd_list(self):
         #Run the commands using python's 1st order representations of the functions and tuples
         for (cmd, param) in self.cmdList:
             try:
@@ -91,6 +115,33 @@ class ResettableProject:
             except grape_errors.GrapeGitError as e:
                 logging.error(f"{e.gitCommand} {e.gitOutput}")
                 raise e
+
+    def _rewrite_paths(self, root, old_root, new_root):
+        def needs_rewrite(path, filename, current_root):
+            if filename in {'.grapeconfig', '.gitmodules'}:
+                return True
+            if filename != 'config':
+                return False
+            if os.path.basename(current_root) == '.git':
+                return True
+            return f"{os.sep}.git{os.sep}" in path
+
+        for current_root, _, files in os.walk(root):
+            for filename in files:
+                path = os.path.join(current_root, filename)
+                if not needs_rewrite(path, filename, current_root):
+                    continue
+                try:
+                    with open(path, 'r', encoding='utf-8') as handle:
+                        contents = handle.read()
+                except (UnicodeDecodeError, OSError):
+                    continue
+
+                if old_root not in contents:
+                    continue
+
+                with open(path, 'w', encoding='utf-8') as handle:
+                    handle.write(contents.replace(old_root, new_root))
 
     def get_execution_path(self, params):
         if not params or not isinstance(params, tuple):

@@ -14,12 +14,13 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 - Measurement helper: `python3 tools/measure_grape_tests.py`
 
 ## Rolling Summary
-| Date | Phase | Full Suite (s) | Heavy Suites Summary | Delta vs Baseline | Delta vs Previous | Commit |
-| --- | --- | ---: | --- | ---: | ---: | --- |
-| 2026-03-26 | Baseline | 44.75 | Status 12.00, MergeDown 7.32, NestedSubproject 6.91, Clone 5.71, Publish 5.12, GrapeUp 4.35, CO 3.03 | 0.00 | 0.00 | `8e30d114` |
-| 2026-03-26 | Phase 2 | 48.51 | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `fd996b72` |
-| 2026-03-26 | Phase 3 | 64.77 serial, 42.63 with `--workers=4` | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `6daa0f32` |
-| 2026-03-26 | Phase 4 | 40.84 serial, 31.55 with `--workers=4` | Status 10.47, MergeDown 7.36, NestedSubproject 7.35, Clone 6.07, Publish 4.86, GrapeUp 3.71, CO 3.73 | -13.20 in parallel mode | -11.08 in parallel mode | `pending phase 4 commit` |
+| Date | Phase | Serial | W4 | W8 | W16 | W32 | W64 | Heavy Suites Summary | Delta vs Baseline | Delta vs Previous | Commit |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | ---: | ---: | --- |
+| 2026-03-26 | Baseline | 44.75 | n/a | n/a | n/a | n/a | n/a | Status 12.00, MergeDown 7.32, NestedSubproject 6.91, Clone 5.71, Publish 5.12, GrapeUp 4.35, CO 3.03 | 0.00 | 0.00 | `8e30d114` |
+| 2026-03-26 | Phase 2 | 48.51 | n/a | n/a | n/a | n/a | n/a | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `fd996b72` |
+| 2026-03-26 | Phase 3 | 64.77 | 42.63 | n/a | n/a | n/a | n/a | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `6daa0f32` |
+| 2026-03-26 | Phase 4 | 40.84 | 31.55 | n/a | n/a | n/a | n/a | Status 10.47, MergeDown 7.36, NestedSubproject 7.35, Clone 6.07, Publish 4.86, GrapeUp 3.71, CO 3.73 | -13.20 in parallel mode | -11.08 in parallel mode | `1619f924` |
+| 2026-03-26 | Phase 5 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | Status 9.54, MergeDown 7.72, NestedSubproject 7.76, Clone 6.60, Publish 5.52, GrapeUp 3.95, CO 3.85 | -13.99 at W4 | -0.79 at W4 | `pending phase 5 commit` |
 
 ## Baseline Measurements
 
@@ -199,3 +200,42 @@ Measured impact:
 Notes:
 - An initial concurrent measurement attempt produced invalid numbers and was discarded.
 - Accepted Phase 4 timings were rerun sequentially with the measurement script to avoid resource contention.
+
+### Phase 5
+Status: complete
+
+What changed:
+- Updated [`test/gridTesting.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/gridTesting.py) so each scenario instance creates a snapshot root once and later restores that prepared tree instead of replaying its entire command list on every reset.
+- Limited path rewriting during snapshot restore to the files that actually carry absolute paths:
+  - `.grapeconfig`
+  - `.gitmodules`
+  - git `config` files inside `.git`
+- Updated [`test/testWorkspaceScenarios.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testWorkspaceScenarios.py) so the parametrized tests share one scenario-object pool, allowing the snapshot cache to be reused across `Status` and `GrapeUp` cases.
+
+Measured impact:
+- Serial full suite after Phase 5: `38.29s`, return code `1`.
+- Worker matrix after Phase 5:
+  - `--workers=4`: `30.76s`
+  - `--workers=8`: `31.74s`
+  - `--workers=16`: `31.84s`
+  - `--workers=32`: `31.78s`
+  - `--workers=64`: `32.96s`
+- Best current full-suite point: `30.76s` at `--workers=4`.
+- Net change vs baseline:
+  - serial: `-6.46s`
+  - best parallel: `-13.99s`
+- Net change vs Phase 4:
+  - serial: `-2.55s`
+  - best parallel: `-0.79s`
+- Heavy suites after Phase 5:
+  - `Status`: `9.54s`
+  - `MergeDown`: `7.72s`
+  - `NestedSubproject`: `7.76s`
+  - `Clone`: `6.60s`
+  - `Publish`: `5.52s`
+  - `GrapeUp`: `3.95s`
+  - `CO`: `3.85s`
+
+Notes:
+- Early Phase 5 measurements were invalid because they were taken while multiple timing jobs were running concurrently; only the sequential reruns are recorded above.
+- The first snapshot implementation also underperformed because scenario objects were not being reused across parametrized tests. That was fixed before the accepted timings were recorded.
