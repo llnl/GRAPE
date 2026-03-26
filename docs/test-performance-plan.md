@@ -21,7 +21,8 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 3 | 64.77 | 42.63 | n/a | n/a | n/a | n/a | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `6daa0f32` |
 | 2026-03-26 | Phase 4 | 40.84 | 31.55 | n/a | n/a | n/a | n/a | Status 10.47, MergeDown 7.36, NestedSubproject 7.35, Clone 6.07, Publish 4.86, GrapeUp 3.71, CO 3.73 | -13.20 in parallel mode | -11.08 in parallel mode | `1619f924` |
 | 2026-03-26 | Phase 5 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | Status 9.54, MergeDown 7.72, NestedSubproject 7.76, Clone 6.60, Publish 5.52, GrapeUp 3.95, CO 3.85 | -13.99 at W4 | -0.79 at W4 | `df98b191` |
-| 2026-03-26 | Phase 6 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | CI shards: fast_core 4.96, git_workflow 8.28, workspace_topology 15.47, publish 4.88 | CI critical path 15.47 | unchanged local timings | `pending phase 6 commit` |
+| 2026-03-26 | Phase 6 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | CI shards: fast_core 4.96, git_workflow 8.28, workspace_topology 15.47, publish 4.88 | CI critical path 15.47 | unchanged local timings | `5bed0280` |
+| 2026-03-26 | Phase 7 | 38.42 | 30.64 | 31.49 | 31.86 | 31.99 | 31.94 | Default `./grape test` now 30.68s; `--changed` selects mapped suites; docs-only/CI-only diffs map to no suites | -14.11 at W4 | -0.12 at W4 | `pending phase 7 commit` |
 
 ## Baseline Measurements
 
@@ -266,3 +267,46 @@ Measured impact:
 Notes:
 - YAML for both [.gitlab-ci.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab-ci.yml) and [.gitlab/test_LC.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab/test_LC.yml) was validated locally with `yaml.safe_load(...)`.
 - The `workspace_topology` shard is the current pacing item for Linux CI.
+
+### Phase 7
+Status: complete
+
+What changed:
+- Extended [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) with:
+  - `--changed`
+  - `--base=<ref>`
+  - default worker selection logic for broad runs
+- Extended [`vine/test_suites.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/test_suites.py) with suite-to-path watch lists and shared-path handling for broad runner changes.
+- Updated [`tools/measure_grape_tests.py`](/usr/WS1/probinso/git/grape_workspaces/grape/tools/measure_grape_tests.py) so `--workers=1` can be measured explicitly now that the CLI default is no longer serial.
+
+Behavior changes:
+- Broad runs now default to `4` workers when `--workers` is omitted.
+- Single explicit suite selectors stay serial by default.
+- `--debug` still forces serial execution.
+- `--changed` uses the union of:
+  - `git diff <base>...HEAD`
+  - staged changes
+  - unstaged changes
+- Explicit suite selectors take precedence over `--changed`.
+- Docs-only and CI-only diffs map to no suites and exit successfully with a message.
+
+Measured impact:
+- Serial full suite after Phase 7: `38.42s` with `--workers=1`, return code `1`.
+- Default full suite after Phase 7: `30.68s`, return code `1`.
+- Worker matrix after Phase 7:
+  - `--workers=4`: `30.64s`
+  - `--workers=8`: `31.49s`
+  - `--workers=16`: `31.86s`
+  - `--workers=32`: `31.99s`
+  - `--workers=64`: `31.94s`
+- Best current full-suite point: `30.64s` at `--workers=4`.
+- Net change vs baseline:
+  - serial: `-6.33s`
+  - best parallel/default broad run: `-14.11s`
+- Net change vs Phase 6:
+  - serial: `+0.13s`
+  - best parallel: `-0.12s`
+
+Notes:
+- `./grape test` now effectively lands on the best measured broad-run worker count on this machine.
+- Verified `test_suites.select_suites_for_changed_paths(['docs/test-performance-plan.md', '.gitlab-ci.yml']) == []`.

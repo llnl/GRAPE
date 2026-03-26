@@ -71,7 +71,7 @@ def main(argv=None):
     parser.add_argument(
         "--workers",
         type=int,
-        default=1,
+        default=None,
         help="Pass --workers to grape test.",
     )
     args = parser.parse_args(argv)
@@ -90,7 +90,7 @@ def main(argv=None):
 
     results = []
     for target, cmd in targets:
-        if args.workers != 1:
+        if args.workers is not None:
             cmd = cmd[:2] + [f"--workers={args.workers}"] + cmd[2:]
         result = run_command(cmd, cwd)
         result["target"] = target

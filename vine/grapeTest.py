@@ -13,7 +13,7 @@ class Test(Option):
     """
     grape test
     Runs grape's unit tests.
-    Usage: grape-test [--debug] [--durations=<n>] [--workers=<n>] [<suite>]...
+    Usage: grape-test [--debug] [--durations=<n>] [--workers=<n>] [--changed] [--base=<ref>] [<suite>]...
 
 
     Arguments:
@@ -25,6 +25,8 @@ class Test(Option):
     --debug          Disable output capture and preserve debug logging behavior.
     --durations=<n>  Show the slowest n tests in pytest output. [default: 0]
     --workers=<n>    Run multiple suite selectors in parallel subprocesses. [default: 1]
+    --changed        Run suites mapped from files changed since --base.
+    --base=<ref>     Base ref for --changed selection. [default: origin/master]
 
     """
     def __init__(self):
@@ -42,8 +44,18 @@ class Test(Option):
             print(dict.fromkeys(test_suites.visible_suite_names()).keys())
             return True
 
+        if args["--changed"] and not selectors:
+            selectors = self._selectors_from_changed_files(args["--base"])
+            if not selectors:
+                print("No changed suites matched the current diff.")
+                return True
+
         try:
-            workers = self._parse_workers(args["--workers"])
+            workers = self._parse_workers(
+                args["--workers"],
+                selectors=selectors,
+                debug=args["--debug"],
+            )
         except ValueError:
             print("*** --workers must be an integer >= 1")
             return True
@@ -104,7 +116,11 @@ class Test(Option):
         serial_selectors = [
             selector for selector in work_selectors if test_suites.is_serial_selector(selector)
         ]
-        workers = self._parse_workers(args["--workers"])
+        workers = self._parse_workers(
+            args["--workers"],
+            selectors=work_selectors,
+            debug=args["--debug"],
+        )
         env = os.environ.copy()
         results = []
 
@@ -142,10 +158,41 @@ class Test(Option):
         )
         return selector, completed
 
-    def _parse_workers(self, value):
+    def _parse_workers(self, value, *, selectors, debug):
         if value in (None, ""):
-            return 1
+            if debug:
+                return 1
+            if selectors and len(selectors) <= 1:
+                return 1
+            return 4
         return max(1, int(value))
+
+    def _selectors_from_changed_files(self, base_ref):
+        changed_paths = self._changed_paths(base_ref)
+        return test_suites.select_suites_for_changed_paths(changed_paths)
+
+    def _changed_paths(self, base_ref):
+        commands = [
+            ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+            ["git", "diff", "--name-only", "--cached"],
+            ["git", "diff", "--name-only"],
+        ]
+        changed = []
+        seen = set()
+        for cmd in commands:
+            completed = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            if completed.returncode != 0:
+                continue
+            for line in completed.stdout.splitlines():
+                if line and line not in seen:
+                    seen.add(line)
+                    changed.append(line)
+        return changed
 
     def setDefaultConfig(self, config):
         pass

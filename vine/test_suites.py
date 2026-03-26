@@ -8,27 +8,40 @@ class TestSuite:
     class_name: str
     visible: bool = True
     serial: bool = False
+    watch_paths: tuple[str, ...] = ()
 
 
 SUITES = {
-    "Branches": TestSuite("Branches", "test/testBranches.py", "TestBranches"),
-    "Bundle": TestSuite("Bundle", "test/testBundle.py", "TestBundle"),
-    "Clone": TestSuite("Clone", "test/testClone.py", "TestClone"),
-    "Config": TestSuite("Config", "test/testConfig.py", "TestConfig"),
-    "DeleteBranch": TestSuite("DeleteBranch", "test/testDeleteBranch.py", "TestDeleteBranch"),
-    "GrapeGit": TestSuite("GrapeGit", "test/testGrapeGit.py", "TestGrapeGit"),
-    "MergeDown": TestSuite("MergeDown", "test/testMergeDown.py", "TestMD"),
-    "ResolveConflicts": TestSuite("ResolveConflicts", "test/testResolveConflicts.py", "TestResolveConflicts"),
-    "Review": TestSuite("Review", "test/testReview.py", "TestReview"),
-    "Stash": TestSuite("Stash", "test/testStash.py", "TestStash"),
-    "Unbundle": TestSuite("Unbundle", "test/testUnbundle.py", "TestUnbundle"),
-    "Version": TestSuite("Version", "test/testVersion.py", "TestVersion"),
-    "Publish": TestSuite("Publish", "test/testPublish.py", "TestPublish", serial=True),
-    "CO": TestSuite("CO", "test/testCO.py", "TestCheckout"),
-    "NestedSubproject": TestSuite("NestedSubproject", "test/testNestedSubproject.py", "TestNestedSubproject"),
-    "Status": TestSuite("Status", "test/testWorkspaceScenarios.py", "TestStatusScenarios", visible=False),
-    "GrapeUp": TestSuite("GrapeUp", "test/testWorkspaceScenarios.py", "TestGrapeUpScenarios", visible=False),
+    "Branches": TestSuite("Branches", "test/testBranches.py", "TestBranches", watch_paths=("test/testBranches.py", "vine/branches.py")),
+    "Bundle": TestSuite("Bundle", "test/testBundle.py", "TestBundle", watch_paths=("test/testBundle.py", "vine/bundle.py")),
+    "Clone": TestSuite("Clone", "test/testClone.py", "TestClone", watch_paths=("test/testClone.py", "vine/clone.py")),
+    "Config": TestSuite("Config", "test/testConfig.py", "TestConfig", watch_paths=("test/testConfig.py", "vine/config.py", "vine/writeConfig.py")),
+    "DeleteBranch": TestSuite("DeleteBranch", "test/testDeleteBranch.py", "TestDeleteBranch", watch_paths=("test/testDeleteBranch.py", "vine/deleteBranch.py")),
+    "GrapeGit": TestSuite("GrapeGit", "test/testGrapeGit.py", "TestGrapeGit", watch_paths=("test/testGrapeGit.py", "vine/grapeGit.py")),
+    "MergeDown": TestSuite("MergeDown", "test/testMergeDown.py", "TestMD", watch_paths=("test/testMergeDown.py", "vine/mergeDown.py", "vine/merge.py")),
+    "ResolveConflicts": TestSuite("ResolveConflicts", "test/testResolveConflicts.py", "TestResolveConflicts", watch_paths=("test/testResolveConflicts.py", "vine/resolveConflicts.py")),
+    "Review": TestSuite("Review", "test/testReview.py", "TestReview", watch_paths=("test/testReview.py", "vine/review.py", "vine/Gitlab.py")),
+    "Stash": TestSuite("Stash", "test/testStash.py", "TestStash", watch_paths=("test/testStash.py", "vine/stash.py")),
+    "Unbundle": TestSuite("Unbundle", "test/testUnbundle.py", "TestUnbundle", watch_paths=("test/testUnbundle.py", "vine/bundle.py")),
+    "Version": TestSuite("Version", "test/testVersion.py", "TestVersion", watch_paths=("test/testVersion.py", "vine/version.py")),
+    "Publish": TestSuite("Publish", "test/testPublish.py", "TestPublish", serial=True, watch_paths=("test/testPublish.py", "vine/publish.py")),
+    "CO": TestSuite("CO", "test/testCO.py", "TestCheckout", watch_paths=("test/testCO.py", "vine/checkout.py")),
+    "NestedSubproject": TestSuite("NestedSubproject", "test/testNestedSubproject.py", "TestNestedSubproject", watch_paths=("test/testNestedSubproject.py", "vine/addSubproject.py", "vine/updateView.py")),
+    "Status": TestSuite("Status", "test/testWorkspaceScenarios.py", "TestStatusScenarios", visible=False, watch_paths=("test/testWorkspaceScenarios.py", "test/testStatus.py", "test/testProjectScenarios.py", "test/gridTesting.py", "vine/status.py")),
+    "GrapeUp": TestSuite("GrapeUp", "test/testWorkspaceScenarios.py", "TestGrapeUpScenarios", visible=False, watch_paths=("test/testWorkspaceScenarios.py", "test/testUpdateLocal.py", "test/testProjectScenarios.py", "test/gridTesting.py", "vine/updateLocal.py")),
 }
+
+COMMON_WATCH_PATHS = (
+    "test/testGrape.py",
+    "test/conftest.py",
+    "pytest.ini",
+    "vine/grapeMenu.py",
+    "vine/config_parser_global.py",
+    "vine/utility.py",
+    "vine/option.py",
+    "vine/grapeTest.py",
+    "vine/test_suites.py",
+)
 
 
 def visible_suite_names():
@@ -73,3 +86,19 @@ def selector_suite_name(selector):
 
 def is_serial_selector(selector):
     return SUITES[selector_suite_name(selector)].serial
+
+
+def select_suites_for_changed_paths(paths):
+    changed = set()
+    for path in paths:
+        normalized = path.strip()
+        if not normalized:
+            continue
+        if any(normalized == common or normalized.startswith(f"{common}/") for common in COMMON_WATCH_PATHS):
+            return all_suite_names()
+        for alias, suite in SUITES.items():
+            for watch_path in suite.watch_paths:
+                if normalized == watch_path or normalized.startswith(f"{watch_path}/"):
+                    changed.add(alias)
+                    break
+    return [alias for alias in all_suite_names() if alias in changed]
