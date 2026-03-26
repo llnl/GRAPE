@@ -207,6 +207,8 @@ def _submodulePathInfoForRevision(revision, *, workspace_dir):
     # distinguish true add/remove events from path-only moves.
     gitmodulesContents = git.show(f"{revision}:.gitmodules",
                                   execution_path=workspace_dir)
+    if not gitmodulesContents:
+        return {}, {}
     parsedSubmodules = submodule_parser.parse_gitmodules(
         gitmodulesContents.splitlines())
     pathInfo = {}

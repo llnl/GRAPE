@@ -148,6 +148,25 @@ class TestCheckout(testGrape.TestGrape):
         self.assertEqual(changed, [])
         self.assertEqual(moved, {"old/sub": "new/sub"})
 
+    @patch("vine.checkout.git.show")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputHandlesMissingGitmodules(self, mock_diff,
+                                                              mock_show):
+        mock_diff.return_value = ".gitmodules"
+        mock_show.side_effect = ["", None]
+
+        added = []
+        removed = []
+        changed = []
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "master", added, removed, changed,
+            workspace_dir=self.repo)
+
+        self.assertEqual(added, [])
+        self.assertEqual(removed, [])
+        self.assertEqual(changed, [])
+
     @patch("vine.checkout.git.submodule")
     @patch("vine.checkout.git.config")
     @patch("vine.checkout.git.gitDir")
