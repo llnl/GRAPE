@@ -8,12 +8,14 @@ selection, and default worker counts.
 
 from vine.option import Option
 from vine import test_suites
+from vine import utility
 from vine.vine_logging import log_wrapper
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -93,10 +95,14 @@ class Test(Option):
             else:
                 os.environ.pop("GRAPE_TEST_DEBUG", None)
 
-            if workers > 1:
-                good = self._run_parallel(selectors, args) == 0
-            else:
-                good = pytest.main(self._build_pytest_args(args, resolved)) == 0
+            try:
+                if workers > 1:
+                    good = self._run_parallel(selectors, args) == 0
+                else:
+                    good = pytest.main(self._build_pytest_args(args, resolved)) == 0
+            except ValueError as exc:
+                print(f"*** {exc}")
+                return True
         finally:
             if previous_debug is not None:
                 os.environ["GRAPE_TEST_DEBUG"] = previous_debug
@@ -137,7 +143,9 @@ class Test(Option):
         - how output is summarized
         - environments that do not have pytest-xdist installed
         """
-        work_selectors = selectors or test_suites.all_suite_names()
+        work_selectors = test_suites.order_selectors(
+            selectors or test_suites.all_suite_names()
+        )
         parallel_selectors = [
             selector for selector in work_selectors if not test_suites.is_serial_selector(selector)
         ]
@@ -152,17 +160,55 @@ class Test(Option):
         run_started = time.perf_counter()
         env = os.environ.copy()
         results = []
+        progress_state = self._build_progress_state(work_selectors)
+        live_output = self._should_render_live_progress(work_selectors)
+        live_chart_width = self._chart_width_from_selectors(work_selectors)
+        live_drawn = False
 
         with ThreadPoolExecutor(max_workers=workers) as executor:
-            futures = [
-                executor.submit(self._run_subprocess_pytest, selector, args, env)
+            futures = {
+                executor.submit(
+                    self._run_subprocess_pytest,
+                    selector,
+                    args,
+                    env,
+                    progress_state,
+                ): selector
                 for selector in parallel_selectors
-            ]
-            for future in futures:
-                results.append(future.result())
+            }
+            results.extend(
+                self._collect_parallel_results(
+                    futures,
+                    work_selectors,
+                    progress_state,
+                    run_started,
+                    live_output,
+                    live_chart_width,
+                    live_drawn,
+                )
+            )
+            live_drawn = live_output and bool(work_selectors)
 
-        for selector in serial_selectors:
-            results.append(self._run_subprocess_pytest(selector, args, env))
+            for selector in serial_selectors:
+                future = executor.submit(
+                    self._run_subprocess_pytest,
+                    selector,
+                    args,
+                    env,
+                    progress_state,
+                )
+                results.extend(
+                    self._collect_parallel_results(
+                        {future: selector},
+                        work_selectors,
+                        progress_state,
+                        run_started,
+                        live_output,
+                        live_chart_width,
+                        live_drawn,
+                    )
+                )
+                live_drawn = live_output and bool(work_selectors)
 
         failed = False
         ordered = {selector: index for index, selector in enumerate(work_selectors)}
@@ -177,8 +223,16 @@ class Test(Option):
             }
             for selector, completed, started_at, ended_at in sorted_results
         ]
-        for line in render_lines(chart_timings, chart_width, "."):
-            print(f"[grape test] {line}")
+        if not live_output:
+            for line in render_lines(chart_timings, chart_width, "."):
+                print(f"[grape test] {line}")
+        elif chart_timings:
+            self._draw_live_progress(
+                chart_timings,
+                live_chart_width,
+                already_drawn=live_drawn,
+                final=True,
+            )
 
         for selector, completed, _, _ in sorted_results:
             should_print_stdout = completed.returncode != 0 or (
@@ -189,13 +243,20 @@ class Test(Option):
             failed = failed or completed.returncode != 0
         return 1 if failed else 0
 
-    def _run_subprocess_pytest(self, selector, args, env):
-        """Run one GRAPE suite selector in its own pytest subprocess."""
+    def _run_subprocess_pytest(self, selector, args, env, progress_state=None):
+        """Run one GRAPE suite selector in its own pytest subprocess.
+
+        Each subprocess keeps pytest collection, fixtures, and module globals
+        isolated from the other suites. That makes the broad-run `--workers`
+        mode predictable for readers who have not used pytest plugins such as
+        xdist before: GRAPE is managing a pool of normal pytest processes.
+        """
         cmd = [sys.executable, "-m", "pytest"]
         cmd.extend(self._build_pytest_args(args, [test_suites.resolve_selector(selector)]))
         if not args["--debug"] and (not args["--durations"] or args["--durations"] == "0"):
             cmd.append("-q")
         started = time.perf_counter()
+        self._mark_suite_running(progress_state, selector, started)
         completed = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -204,7 +265,158 @@ class Test(Option):
             env=env,
         )
         ended = time.perf_counter()
+        self._mark_suite_completed(progress_state, selector, completed.returncode, ended)
         return selector, completed, started, ended
+
+    def _build_progress_state(self, selectors):
+        """Create mutable per-suite state for the live broad-run display."""
+        lock = threading.Lock()
+        suites = {
+            selector: {
+                "start": None,
+                "end": None,
+                "returncode": None,
+            }
+            for selector in selectors
+        }
+        return {"lock": lock, "suites": suites}
+
+    def _mark_suite_running(self, progress_state, selector, started):
+        if not progress_state:
+            return
+        with progress_state["lock"]:
+            progress_state["suites"][selector]["start"] = started
+
+    def _mark_suite_completed(self, progress_state, selector, returncode, ended):
+        if not progress_state:
+            return
+        with progress_state["lock"]:
+            progress_state["suites"][selector]["end"] = ended
+            progress_state["suites"][selector]["returncode"] = returncode
+
+    def _should_render_live_progress(self, selectors):
+        """Only use cursor-based redraws for interactive broad runs."""
+        return (
+            len(selectors) > 1
+            and sys.stdout.isatty()
+            and not utility.IS_NON_INTERACTIVE
+        )
+
+    def _collect_parallel_results(
+        self,
+        futures,
+        ordered_selectors,
+        progress_state,
+        run_started,
+        live_output,
+        chart_width,
+        live_drawn,
+    ):
+        results = []
+        while futures:
+            done, _ = wait(
+                list(futures.keys()),
+                timeout=0.1 if live_output else None,
+                return_when=FIRST_COMPLETED,
+            )
+            if live_output:
+                chart_timings = self._progress_chart_timings(
+                    ordered_selectors,
+                    progress_state,
+                    run_started,
+                )
+                self._draw_live_progress(
+                    chart_timings,
+                    chart_width,
+                    already_drawn=live_drawn,
+                )
+                live_drawn = True
+            for future in done:
+                results.append(future.result())
+                del futures[future]
+        return results
+
+    def _progress_chart_timings(self, ordered_selectors, progress_state, run_started):
+        """Build renderer input for the current live display snapshot."""
+        now = time.perf_counter()
+        timings = []
+        with progress_state["lock"]:
+            snapshot = {
+                selector: dict(values)
+                for selector, values in progress_state["suites"].items()
+            }
+        for selector in ordered_selectors:
+            suite_state = snapshot[selector]
+            started = suite_state["start"]
+            ended = suite_state["end"]
+            if started is None:
+                timings.append(
+                    {
+                        "name": selector,
+                        "status": "( )",
+                        "start": 0.0,
+                        "end": 0.0,
+                        "duration_text": "0.00 seconds",
+                    }
+                )
+                continue
+
+            relative_start = max(0.0, started - run_started)
+            if ended is None:
+                relative_end = max(relative_start, now - run_started)
+                status = "(...)"
+            else:
+                relative_end = max(relative_start, ended - run_started)
+                status = f"({suite_state['returncode']})"
+            timings.append(
+                {
+                    "name": selector,
+                    "status": status,
+                    "start": relative_start,
+                    "end": relative_end,
+                    "duration_text": f"{relative_end - relative_start:.2f} seconds",
+                }
+            )
+        return timings
+
+    def _draw_live_progress(self, chart_timings, chart_width, already_drawn=False, final=False):
+        if not chart_timings:
+            return
+        span_end = max(30.0, max(item["end"] for item in chart_timings))
+        lines = [
+            f"[grape test] {line}"
+            for line in render_lines(
+                chart_timings,
+                chart_width,
+                ".",
+                global_start=0.0,
+                global_end=span_end,
+            )
+        ]
+        if already_drawn:
+            sys.stdout.write(f"\x1b[{len(lines)}F")
+        for line in lines:
+            sys.stdout.write("\x1b[2K")
+            sys.stdout.write(line)
+            sys.stdout.write("\n")
+        if final:
+            sys.stdout.flush()
+            return
+        sys.stdout.flush()
+
+    def _chart_width_from_selectors(self, selectors):
+        """Estimate chart width before subprocesses finish.
+
+        The live display needs a width before final timings exist, so it sizes
+        the numeric column pessimistically and lets the standalone renderer
+        right-justify the duration text within that reserved space.
+        """
+        if not selectors:
+            return 40
+        terminal_width = shutil.get_terminal_size((120, 20)).columns
+        longest_label = max(len(selector) for selector in selectors)
+        reserved = len("[grape test] ") + longest_label + len(" (...) 0000.00 seconds []")
+        return max(20, min(80, terminal_width - reserved))
 
     def _parse_workers(self, value, *, selectors, debug):
         """Choose a worker count when the user does not specify one.
@@ -255,12 +467,9 @@ class Test(Option):
         """Choose a readable schedule-bar width for broad-run summaries."""
         if not results:
             return 40
-        terminal_width = shutil.get_terminal_size((120, 20)).columns
-        longest_label = max(len(selector) for selector, _, _, _ in results)
-        # Budget for "[grape test] ", the padded label, status text, spacing,
-        # and the bracket characters around the chart.
-        reserved = len("[grape test] ") + longest_label + len(" (0) 000.00 seconds []")
-        return max(20, min(80, terminal_width - reserved))
+        return self._chart_width_from_selectors(
+            [selector for selector, _, _, _ in results]
+        )
 
     def setDefaultConfig(self, config):
         pass

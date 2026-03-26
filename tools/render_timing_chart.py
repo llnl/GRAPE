@@ -92,18 +92,46 @@ def render_bar(start, end, global_start, global_end, width, fill):
     return "[" + "".join(bar) + "]"
 
 
-def render_lines(timings, width, fill):
-    """Render one schedule line per timing entry."""
+def _status_text(item):
+    """Return the fixed-width status token shown beside the suite name."""
+    if "status" in item:
+        return str(item["status"])
+    return f"({item['returncode']})"
+
+
+def _duration_text(item):
+    """Return the duration column text.
+
+    Most callers let the renderer build the standard `<seconds> seconds`
+    string. Live progress views can pass `duration_text` explicitly when they
+    want placeholder text while a suite is still pending.
+    """
+    if "duration_text" in item:
+        return str(item["duration_text"])
+    seconds = item.get("seconds", item["end"] - item["start"])
+    return f"{seconds:.2f} seconds"
+
+
+def render_lines(timings, width, fill, *, global_start=None, global_end=None):
+    """Render one schedule line per timing entry.
+
+    `global_start` and `global_end` normally come from the earliest start and
+    latest end in the provided timing collection. Callers can override them to
+    keep a live display on a stable time axis while work is still running.
+    """
     if not timings:
         return []
 
-    global_start = min(item["start"] for item in timings)
-    global_end = max(item["end"] for item in timings)
+    if global_start is None:
+        global_start = min(item["start"] for item in timings)
+    if global_end is None:
+        global_end = max(item["end"] for item in timings)
     label_width = max(len(item["name"]) for item in timings)
+    status_width = max(len(_status_text(item)) for item in timings)
+    duration_width = max(len(_duration_text(item)) for item in timings)
 
     lines = []
     for item in timings:
-        seconds = item.get("seconds", item["end"] - item["start"])
         bar = render_bar(
             item["start"],
             item["end"],
@@ -114,7 +142,8 @@ def render_lines(timings, width, fill):
         )
         lines.append(
             f"{item['name'].ljust(label_width)} "
-            f"({item['returncode']}) {seconds:.2f} seconds {bar}"
+            f"{_status_text(item).rjust(status_width)} "
+            f"{_duration_text(item).rjust(duration_width)} {bar}"
         )
     return lines
 

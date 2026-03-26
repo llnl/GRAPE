@@ -1,0 +1,11 @@
+# Suite aliases listed here launch first during broad `grape test --workers`
+# runs. Leave a suite out to keep it in the default order after the named
+# entries.
+#
+# This initial ordering front-loads the five longest suites from the current
+# measurements so the broad-run schedule has better overlap.
+Publish
+Status
+MergeDown
+NestedSubproject
+Clone

@@ -22,7 +22,8 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 4 | 40.84 | 31.55 | n/a | n/a | n/a | n/a | Status 10.47, MergeDown 7.36, NestedSubproject 7.35, Clone 6.07, Publish 4.86, GrapeUp 3.71, CO 3.73 | -13.20 in parallel mode | -11.08 in parallel mode | `1619f924` |
 | 2026-03-26 | Phase 5 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | Status 9.54, MergeDown 7.72, NestedSubproject 7.76, Clone 6.60, Publish 5.52, GrapeUp 3.95, CO 3.85 | -13.99 at W4 | -0.79 at W4 | `df98b191` |
 | 2026-03-26 | Phase 6 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | CI shards: fast_core 4.96, git_workflow 8.28, workspace_topology 15.47, publish 4.88 | CI critical path 15.47 | unchanged local timings | `5bed0280` |
-| 2026-03-26 | Phase 7 | 38.42 | 30.64 | 31.49 | 31.86 | 31.99 | 31.94 | Default `./grape test` now 30.68s; `--changed` selects mapped suites; docs-only/CI-only diffs map to no suites | -14.11 at W4 | -0.12 at W4 | `pending phase 7 commit` |
+| 2026-03-26 | Phase 7 | 38.42 | 30.64 | 31.49 | 31.86 | 31.99 | 31.94 | Default `./grape test` now 30.68s; `--changed` selects mapped suites; docs-only/CI-only diffs map to no suites | -14.11 at W4 | -0.12 at W4 | `e02e390d` |
+| 2026-03-26 | Phase 8 | 39.01 | 31.20 | 32.56 | 32.53 | 32.02 | 32.10 | Live broad-run schedule chart; fixed-width timing column; suite order file starts with Publish, Status, MergeDown, NestedSubproject, Clone | -13.55 at W4 | +0.56 at W4 | `pending phase 8 commit` |
 
 ## Baseline Measurements
 
@@ -84,6 +85,7 @@ Notes:
 5. Snapshot heavy scenario state instead of replaying every setup command per test.
 6. Shard Linux CI so merge-request wall clock is driven by the longest shard rather than one full-suite job.
 7. Add changed-test targeting and faster local defaults.
+8. Add broad-run schedule observability and a hand-tuned suite launch order file.
 
 ## Phase Log
 
@@ -310,3 +312,40 @@ Measured impact:
 Notes:
 - `./grape test` now effectively lands on the best measured broad-run worker count on this machine.
 - Verified `test_suites.select_suites_for_changed_paths(['docs/test-performance-plan.md', '.gitlab-ci.yml']) == []`.
+
+### Phase 8
+Status: complete
+
+What changed:
+- Added [`tools/render_timing_chart.py`](/usr/WS1/probinso/git/grape_workspaces/grape/tools/render_timing_chart.py) as a standalone ASCII timing-chart renderer that accepts JSON timing windows plus a target bar width.
+- Updated [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) so broad multi-worker runs now:
+  - print fixed-width per-suite elapsed times
+  - keep an interactive `./grape test` chart live in place with terminal cursor redraws
+  - start live normalization at `30s` and expand the chart span automatically once the run exceeds that window
+- Added [`test/suite_order.txt`](/usr/WS1/probinso/git/grape_workspaces/grape/test/suite_order.txt) so suite launch priority can be tuned in-repo without code changes.
+- Updated [`vine/test_suites.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/test_suites.py) to load and validate that order file, then launch any unnamed suites afterward in their normal relative order.
+- Added focused coverage in [`test/testTimingChart.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testTimingChart.py) for:
+  - duration-column alignment
+  - fixed-span chart rendering
+  - suite-order parsing and validation
+
+Measured impact:
+- Serial full suite after Phase 8: `39.01s` with `--workers=1`, return code `1`.
+- Default broad full suite after Phase 8: `30.70s`, return code `1`.
+- Worker matrix after Phase 8:
+  - `--workers=4`: `31.20s`
+  - `--workers=8`: `32.56s`
+  - `--workers=16`: `32.53s`
+  - `--workers=32`: `32.02s`
+  - `--workers=64`: `32.10s`
+- Net change vs baseline:
+  - serial: `-5.74s`
+  - parallel `--workers=4`: `-13.55s`
+- Net change vs Phase 7:
+  - serial: `+0.59s`
+  - parallel `--workers=4`: `+0.56s`
+
+Notes:
+- This phase is about visibility and scheduling control, not raw execution speed.
+- The measured wall times moved slightly in the slower direction, but stayed close to the prior worker matrix and left the practical recommendation unchanged: low worker counts still dominate this machine.
+- The initial launch-order file front-loads the five currently longest suites so overlap can be tuned by editing one repo file rather than changing code.

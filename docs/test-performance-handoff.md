@@ -2,28 +2,32 @@
 
 ## Current State
 - Goal: make root-suite testing faster for both local development and Linux CI.
-- Current phase: complete
+- Current phase: Phase 8 complete
 - Latest baseline commit before speed changes: `8e30d114`
 - Original full-suite timing: `44.75s`
 - Original known failures: `Publish` suite
 - Latest accepted post-phase timing:
-  - serial full suite `38.42s` with `--workers=1`, return code `1`
-  - default broad-run full suite `30.68s`, return code `1`
-  - best explicit worker run `30.64s` with `--workers=4`, return code `1`
+  - serial full suite `39.01s` with `--workers=1`, return code `1`
+  - default broad-run full suite `30.70s`, return code `1`
+  - best explicit worker run in the latest matrix `31.20s` with `--workers=4`, return code `1`
   - worker matrix:
-    - `--workers=4`: `30.64s`
-    - `--workers=8`: `31.49s`
-    - `--workers=16`: `31.86s`
-    - `--workers=32`: `31.99s`
-    - `--workers=64`: `31.94s`
+    - `--workers=4`: `31.20s`
+    - `--workers=8`: `32.56s`
+    - `--workers=16`: `32.53s`
+    - `--workers=32`: `32.02s`
+    - `--workers=64`: `32.10s`
 
 ## Current Runner Architecture
 - Public entrypoint: `vine/grapeTest.py`
 - Current implementation routes `grape test` through `pytest.main(...)`
 - Suite alias metadata lives in `vine/test_suites.py`
+- Broad-run launch priority is defined in `test/suite_order.txt`
+- ASCII schedule rendering lives in `tools/render_timing_chart.py`
 - `Status` and `GrapeUp` now run through pytest-native parametrized tests in `test/testWorkspaceScenarios.py`
 - `grape test --workers=<n>` parallelizes across suite selectors by launching subprocess pytest runs
 - Plain `./grape test` defaults to 4 workers for broad runs
+- Plain interactive `./grape test` keeps the broad-run chart live in place in the terminal
+- `grape -d test` keeps the static one-shot summary so CI logs stay readable
 - `grape test --changed [--base=<ref>]` maps changed files to suite aliases using `vine/test_suites.py`
 - `Publish` is marked serial and stays out of the parallel lane
 - Common test setup in `test/testGrape.py` now copies a seeded process-local bootstrap template instead of rebuilding the initial repo from scratch
@@ -41,13 +45,13 @@
   - `CO`: `3.03s`
 
 ## Latest Accepted Numbers
-- Full suite serial: `38.42s`, return code `1`
-- Full suite default broad run: `30.68s`, return code `1`
-- Full suite with `--workers=4`: `30.64s`, return code `1`
-- Full suite with `--workers=8`: `31.49s`, return code `1`
-- Full suite with `--workers=16`: `31.84s`, return code `1`
-- Full suite with `--workers=32`: `31.99s`, return code `1`
-- Full suite with `--workers=64`: `31.94s`, return code `1`
+- Full suite serial: `39.01s`, return code `1`
+- Full suite default broad run: `30.70s`, return code `1`
+- Full suite with `--workers=4`: `31.20s`, return code `1`
+- Full suite with `--workers=8`: `32.56s`, return code `1`
+- Full suite with `--workers=16`: `32.53s`, return code `1`
+- Full suite with `--workers=32`: `32.02s`, return code `1`
+- Full suite with `--workers=64`: `32.10s`, return code `1`
 - Heavy suites:
   - `Status`: `9.54s`
   - `MergeDown`: `7.72s`
@@ -64,11 +68,13 @@
 
 ## Reproduction Commands
 - Full suite: `./grape test`
+- Non-interactive broad run: `./grape -d test`
 - Full suite parallel: `./grape test --workers=4`
 - Full suite parallel: `./grape test --workers=8`
 - Full suite parallel: `./grape test --workers=16`
 - Full suite parallel: `./grape test --workers=32`
 - Full suite parallel: `./grape test --workers=64`
+- Standalone chart rendering: `python3 tools/render_timing_chart.py --width 60 < timings.json`
 - All suite timings: `python3 tools/measure_grape_tests.py --mode all`
 - Heavy suite timings only: `python3 tools/measure_grape_tests.py --mode heavy`
 - Full suite timing with workers: `python3 tools/measure_grape_tests.py --mode full --workers 4`
@@ -93,7 +99,9 @@
 - Phase 5 keeps the worker matrix in the progress log; the current best point is `--workers=4`, and higher worker counts do not help on this machine.
 - Phase 6 shards Linux CI around the measured suite groups; `workspace_topology` is now the expected critical-path shard.
 - Phase 7 makes the broad-run default match the best measured worker count and adds changed-suite targeting.
+- Phase 8 adds live broad-run schedule visibility plus a repo-owned suite-order file for hand-tuned overlap.
 
 ## Next Recommended Step
 - If more speed is needed, investigate why `MergeDown`, `NestedSubproject`, and `Clone` remain the dominant suites after the shared setup and scenario caching work.
 - Keep the worker matrix (`4/8/16/32/64`) in the progress doc for later runner changes.
+- If schedule overlap needs tuning, edit `test/suite_order.txt` first before changing worker counts or runner code.

@@ -9,6 +9,7 @@ path-to-suite mapping used by `grape test --changed`.
 """
 
 from dataclasses import dataclass
+import os
 
 
 @dataclass(frozen=True)
@@ -54,6 +55,9 @@ COMMON_WATCH_PATHS = (
     "vine/test_suites.py",
 )
 
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SUITE_ORDER_FILE = os.path.join(REPO_ROOT, "test", "suite_order.txt")
+
 
 def visible_suite_names():
     return [name for name, suite in SUITES.items() if suite.visible]
@@ -61,6 +65,50 @@ def visible_suite_names():
 
 def all_suite_names():
     return list(SUITES.keys())
+
+
+def configured_suite_order(order_path=None):
+    """Load the optional broad-run suite launch order from the repository.
+
+    The file contains one suite alias per line. Blank lines and `#` comments
+    are ignored. Unlisted suites keep their default relative order and run
+    after the named suites.
+    """
+    if order_path is None:
+        order_path = SUITE_ORDER_FILE
+    if not os.path.exists(order_path):
+        return []
+
+    ordered = []
+    seen = set()
+    with open(order_path, encoding="utf-8") as handle:
+        for line_number, raw_line in enumerate(handle, start=1):
+            line = raw_line.split("#", 1)[0].strip()
+            if not line or line in seen:
+                continue
+            if line not in SUITES:
+                raise ValueError(
+                    f"Invalid suite alias '{line}' in {order_path}:{line_number}"
+                )
+            ordered.append(line)
+            seen.add(line)
+    return ordered
+
+
+def order_selectors(selectors, order_path=None):
+    """Return selectors reordered by the repository's launch-priority file."""
+    priority = {
+        alias: index
+        for index, alias in enumerate(configured_suite_order(order_path=order_path))
+    }
+    indexed = list(enumerate(selectors))
+    indexed.sort(
+        key=lambda item: (
+            priority.get(selector_suite_name(item[1]), len(priority)),
+            item[0],
+        )
+    )
+    return [selector for _, selector in indexed]
 
 
 def suite_node(alias):
