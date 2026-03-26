@@ -1,3 +1,10 @@
+# Utilities for the scenario-based workspace tests.
+#
+# The original version of this module replayed a full list of git and GRAPE
+# setup commands for every test case. The current version still exposes the
+# same `ResettableProject` abstraction, but it now snapshots the prepared
+# workspace once and restores copies of that snapshot for later resets.
+
 import logging
 import os
 import shutil
@@ -14,6 +21,13 @@ from vine import vine_logging
 #Another way to make this work would be to take a user generated reset function
 #in the constructor and just apply that.
 class ResettableProject:
+    """A workspace scenario that can be reset to a known prepared state.
+
+    The scenario is defined as a command list. On the first reset we execute
+    the commands and save the resulting filesystem tree as a snapshot. Later
+    resets restore that snapshot instead of replaying every command.
+    """
+
     def __init__(self, projectDir):
 
         self.projectPrefix = os.path.realpath(tempfile.mkdtemp())
@@ -50,12 +64,18 @@ class ResettableProject:
         self.cmdList.extend(newCmds)
 
     def reset(self, projectPrefix=None):
+        """Restore the scenario into `projectPrefix`.
+
+        Tests call this before each scenario-based assertion so every test gets
+        an isolated copy of the prepared workspace.
+        """
         self.tearDown()
         if (not projectPrefix is None):
             self.projectPrefix = projectPrefix
         self._restore_snapshot()
 
     def _restore_snapshot(self):
+        """Copy the cached scenario snapshot into the active temp directory."""
         source_root = self._ensure_snapshot_root()
         for entry in os.listdir(source_root):
             src = os.path.join(source_root, entry)
@@ -64,6 +84,7 @@ class ResettableProject:
             self._rewrite_paths(dst, source_root, self.projectPrefix)
 
     def _ensure_snapshot_root(self):
+        """Build the scenario snapshot once and reuse it on later resets."""
         if self._snapshot_root is not None:
             return self._snapshot_root
 
@@ -77,6 +98,7 @@ class ResettableProject:
         return self._snapshot_root
 
     def _run_cmd_list(self):
+        """Execute the scenario's original setup command list."""
         #Run the commands using python's 1st order representations of the functions and tuples
         for (cmd, param) in self.cmdList:
             try:
@@ -117,6 +139,7 @@ class ResettableProject:
                 raise e
 
     def _rewrite_paths(self, root, old_root, new_root):
+        """Rewrite the few config files that embed absolute workspace paths."""
         def needs_rewrite(path, filename, current_root):
             if filename in {'.grapeconfig', '.gitmodules'}:
                 return True

@@ -1,8 +1,19 @@
+"""Mapping layer between GRAPE suite names and pytest collection nodes.
+
+Pytest identifies tests by file / class / function node ids such as:
+`test/testReview.py::TestReview::testReview`
+
+GRAPE historically exposed shorter suite aliases such as `Review` or
+`Review.testReview`. This module preserves those aliases and also holds the
+path-to-suite mapping used by `grape test --changed`.
+"""
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class TestSuite:
+    """Metadata for one user-visible GRAPE test suite."""
     alias: str
     path: str
     class_name: str
@@ -53,11 +64,13 @@ def all_suite_names():
 
 
 def suite_node(alias):
+    """Return the pytest node prefix for a GRAPE suite alias."""
     suite = SUITES[alias]
     return f"{suite.path}::{suite.class_name}"
 
 
 def resolve_selector(selector):
+    """Convert `Review` or `Review.testReview` into a pytest node id."""
     if "." in selector:
         alias, test_name = selector.split(".", 1)
     else:
@@ -89,6 +102,12 @@ def is_serial_selector(selector):
 
 
 def select_suites_for_changed_paths(paths):
+    """Map changed files to the smallest useful GRAPE suite set.
+
+    If a shared runner file changes, we conservatively fall back to the full
+    suite because the impact is broad. Otherwise we select only suites whose
+    watch lists match the changed paths.
+    """
     changed = set()
     for path in paths:
         normalized = path.strip()
