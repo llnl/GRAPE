@@ -11,10 +11,13 @@ from vine import test_suites
 from vine.vine_logging import log_wrapper
 from concurrent.futures import ThreadPoolExecutor
 import os
+import shutil
 import subprocess
 import sys
+import time
 
 import pytest
+from tools.render_timing_chart import render_lines
 
 
 class Test(Option):
@@ -146,6 +149,7 @@ class Test(Option):
             selectors=work_selectors,
             debug=args["--debug"],
         )
+        run_started = time.perf_counter()
         env = os.environ.copy()
         results = []
 
@@ -162,8 +166,21 @@ class Test(Option):
 
         failed = False
         ordered = {selector: index for index, selector in enumerate(work_selectors)}
-        for selector, completed in sorted(results, key=lambda item: ordered[item[0]]):
-            print(f"[grape test] {selector} ({completed.returncode})")
+        sorted_results = sorted(results, key=lambda item: ordered[item[0]])
+        chart_width = self._chart_width(sorted_results)
+        chart_timings = [
+            {
+                "name": selector,
+                "returncode": completed.returncode,
+                "start": started_at - run_started,
+                "end": ended_at - run_started,
+            }
+            for selector, completed, started_at, ended_at in sorted_results
+        ]
+        for line in render_lines(chart_timings, chart_width, "."):
+            print(f"[grape test] {line}")
+
+        for selector, completed, _, _ in sorted_results:
             should_print_stdout = completed.returncode != 0 or (
                 args["--durations"] and args["--durations"] != "0"
             )
@@ -178,6 +195,7 @@ class Test(Option):
         cmd.extend(self._build_pytest_args(args, [test_suites.resolve_selector(selector)]))
         if not args["--debug"] and (not args["--durations"] or args["--durations"] == "0"):
             cmd.append("-q")
+        started = time.perf_counter()
         completed = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
@@ -185,7 +203,8 @@ class Test(Option):
             text=True,
             env=env,
         )
-        return selector, completed
+        ended = time.perf_counter()
+        return selector, completed, started, ended
 
     def _parse_workers(self, value, *, selectors, debug):
         """Choose a worker count when the user does not specify one.
@@ -231,6 +250,17 @@ class Test(Option):
                     seen.add(line)
                     changed.append(line)
         return changed
+
+    def _chart_width(self, results):
+        """Choose a readable schedule-bar width for broad-run summaries."""
+        if not results:
+            return 40
+        terminal_width = shutil.get_terminal_size((120, 20)).columns
+        longest_label = max(len(selector) for selector, _, _, _ in results)
+        # Budget for "[grape test] ", the padded label, status text, spacing,
+        # and the bracket characters around the chart.
+        reserved = len("[grape test] ") + longest_label + len(" (0) 000.00 seconds []")
+        return max(20, min(80, terminal_width - reserved))
 
     def setDefaultConfig(self, config):
         pass
