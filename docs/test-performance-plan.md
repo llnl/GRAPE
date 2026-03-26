@@ -20,7 +20,8 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 2 | 48.51 | n/a | n/a | n/a | n/a | n/a | Status 11.89, MergeDown 7.72, NestedSubproject 7.89, Clone 6.72, Publish 5.54, GrapeUp 4.36, CO 3.70 | +3.76 | +3.76 | `fd996b72` |
 | 2026-03-26 | Phase 3 | 64.77 | 42.63 | n/a | n/a | n/a | n/a | Status 12.98, MergeDown 8.31, NestedSubproject 8.14, Clone 6.74, Publish 5.54, GrapeUp 4.63, CO 3.80 | -2.12 in parallel mode | -5.88 in parallel mode | `6daa0f32` |
 | 2026-03-26 | Phase 4 | 40.84 | 31.55 | n/a | n/a | n/a | n/a | Status 10.47, MergeDown 7.36, NestedSubproject 7.35, Clone 6.07, Publish 4.86, GrapeUp 3.71, CO 3.73 | -13.20 in parallel mode | -11.08 in parallel mode | `1619f924` |
-| 2026-03-26 | Phase 5 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | Status 9.54, MergeDown 7.72, NestedSubproject 7.76, Clone 6.60, Publish 5.52, GrapeUp 3.95, CO 3.85 | -13.99 at W4 | -0.79 at W4 | `pending phase 5 commit` |
+| 2026-03-26 | Phase 5 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | Status 9.54, MergeDown 7.72, NestedSubproject 7.76, Clone 6.60, Publish 5.52, GrapeUp 3.95, CO 3.85 | -13.99 at W4 | -0.79 at W4 | `df98b191` |
+| 2026-03-26 | Phase 6 | 38.29 | 30.76 | 31.74 | 31.84 | 31.78 | 32.96 | CI shards: fast_core 4.96, git_workflow 8.28, workspace_topology 15.47, publish 4.88 | CI critical path 15.47 | unchanged local timings | `pending phase 6 commit` |
 
 ## Baseline Measurements
 
@@ -239,3 +240,29 @@ Measured impact:
 Notes:
 - Early Phase 5 measurements were invalid because they were taken while multiple timing jobs were running concurrently; only the sequential reruns are recorded above.
 - The first snapshot implementation also underperformed because scenario objects were not being reused across parametrized tests. That was fixed before the accepted timings were recorded.
+
+### Phase 6
+Status: complete
+
+What changed:
+- Replaced the single Linux test template in [.gitlab/test_LC.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab/test_LC.yml) with four shard templates:
+  - `fast_core`
+  - `git_workflow`
+  - `workspace_topology`
+  - `publish`
+- Replaced the single MR and merge-train Linux jobs in [.gitlab-ci.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab-ci.yml) with four shard jobs for merge-request pipelines and four shard jobs for merge-train pipelines.
+- The non-publish shards use `./grape test --workers=4 ...`, which is the current best local worker count on this machine.
+- The `Publish` shard remains isolated and serial so its known failures do not distort the other shard timings.
+
+Measured impact:
+- Local full-suite timings are unchanged from Phase 5 because this phase changes CI topology, not the test runner.
+- Local shard timings used as the CI critical-path estimate:
+  - `fast_core`: `4.96s`
+  - `git_workflow`: `8.28s`
+  - `workspace_topology`: `15.47s`
+  - `publish`: `4.88s`, return code `1`
+- Estimated Linux CI critical path: `15.47s` plus runner queue/startup overhead.
+
+Notes:
+- YAML for both [.gitlab-ci.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab-ci.yml) and [.gitlab/test_LC.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab/test_LC.yml) was validated locally with `yaml.safe_load(...)`.
+- The `workspace_topology` shard is the current pacing item for Linux CI.

@@ -1,7 +1,22 @@
-.test_linux:
+.test_linux_fast_core:
   script:
     - cd $CI_PROJECT_DIR
-    - ./grape test
+    - ./grape test --workers=4 Branches Bundle Config DeleteBranch ResolveConflicts Review Stash Version
+
+.test_linux_git_workflow:
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./grape test --workers=4 Clone GrapeGit CO Unbundle
+
+.test_linux_workspace_topology:
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./grape test --workers=4 MergeDown NestedSubproject Status GrapeUp
+
+.test_linux_publish:
+  script:
+    - cd $CI_PROJECT_DIR
+    - ./grape test Publish
 
 .tick_version:
   script:
@@ -17,4 +32,3 @@
 .auto_pass:
   script:
     - exit 0
-

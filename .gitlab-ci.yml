@@ -25,7 +25,7 @@ stages:
     - $CI_PROJECT_DIR/grape -d checkout $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME
     - $CI_PROJECT_DIR/grape -d publish
 
-merge_train_ticket:
+merge_train_ticket_fast_core:
   stage: test
   timeout: 30 minutes 
   variables:
@@ -34,7 +34,43 @@ merge_train_ticket:
   extends:
     - .run_on_merge_request_except_on_changes_to_update_logs
     - .run_toss4_shell
-    - .test_linux
+    - .test_linux_fast_core
+  interruptible: true
+
+merge_train_ticket_git_workflow:
+  stage: test
+  timeout: 30 minutes 
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_merge_request_except_on_changes_to_update_logs
+    - .run_toss4_shell
+    - .test_linux_git_workflow
+  interruptible: true
+
+merge_train_ticket_workspace_topology:
+  stage: test
+  timeout: 30 minutes 
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_merge_request_except_on_changes_to_update_logs
+    - .run_toss4_shell
+    - .test_linux_workspace_topology
+  interruptible: true
+
+merge_train_ticket_publish:
+  stage: test
+  timeout: 30 minutes 
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_merge_request_except_on_changes_to_update_logs
+    - .run_toss4_shell
+    - .test_linux_publish
   interruptible: true
 
 all_aboard_the_merge_train:
@@ -49,7 +85,7 @@ all_aboard_the_merge_train:
   interruptible: true
 
 
-merge_train:
+merge_train_fast_core:
   stage: test
   timeout: 30 minutes
   variables:
@@ -58,7 +94,43 @@ merge_train:
   extends:
     - .run_on_merge_train_changes_to_update_logs
     - .run_toss4_shell
-    - .test_linux
+    - .test_linux_fast_core
+  interruptible: true
+
+merge_train_git_workflow:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_merge_train_changes_to_update_logs
+    - .run_toss4_shell
+    - .test_linux_git_workflow
+  interruptible: true
+
+merge_train_workspace_topology:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_merge_train_changes_to_update_logs
+    - .run_toss4_shell
+    - .test_linux_workspace_topology
+  interruptible: true
+
+merge_train_publish:
+  stage: test
+  timeout: 30 minutes
+  variables:
+    GIT_STRATEGY: clone
+    GIT_DEPTH: "2"
+  extends:
+    - .run_on_merge_train_changes_to_update_logs
+    - .run_toss4_shell
+    - .test_linux_publish
   interruptible: true
 
 tag_pushes_to_develop_or_master:

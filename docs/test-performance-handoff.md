@@ -2,7 +2,7 @@
 
 ## Current State
 - Goal: make root-suite testing faster for both local development and Linux CI.
-- Current phase: 6
+- Current phase: 7
 - Latest baseline commit before speed changes: `8e30d114`
 - Original full-suite timing: `44.75s`
 - Original known failures: `Publish` suite
@@ -52,6 +52,11 @@
   - `Publish`: `5.52s`, return code `1`
   - `GrapeUp`: `3.95s`
   - `CO`: `3.85s`
+- Local CI-shard timing proxy:
+  - `fast_core`: `4.96s`
+  - `git_workflow`: `8.28s`
+  - `workspace_topology`: `15.47s`
+  - `publish`: `4.88s`, return code `1`
 
 ## Reproduction Commands
 - Full suite: `./grape test`
@@ -82,7 +87,8 @@
 - Phase 3 landed `--workers`, but the default serial path is still too slow to leave as-is.
 - Phase 4 recovered the default serial path below the original baseline by caching the shared bootstrap repo.
 - Phase 5 keeps the worker matrix in the progress log; the current best point is `--workers=4`, and higher worker counts do not help on this machine.
+- Phase 6 shards Linux CI around the measured suite groups; `workspace_topology` is now the expected critical-path shard.
 
 ## Next Recommended Step
-- Split Linux CI into shard jobs and measure the resulting critical path.
+- Add changed-test selection to `grape test` so local runs can avoid the full suite when edits are narrow.
 - Keep the worker matrix (`4/8/16/32/64`) in the progress doc for every later checkpoint.
