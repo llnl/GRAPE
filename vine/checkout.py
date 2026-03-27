@@ -5,6 +5,7 @@ import shlex
 import shutil
 import stat
 import time
+from collections import defaultdict
 from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
@@ -283,6 +284,31 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                 removedPaths.discard(oldPath)
                 addedPaths.discard(newPath)
 
+            # Some repos use the path itself as the .gitmodules section name,
+            # so a move also changes the logical name. Pair unique add/remove
+            # candidates by URL to catch those path+name renames.
+            removedByUrl = defaultdict(list)
+            addedByUrl = defaultdict(list)
+            for oldPath in removedPaths:
+                url = previousByPath.get(oldPath, {}).get("url")
+                if url:
+                    removedByUrl[url].append(oldPath)
+            for newPath in addedPaths:
+                url = branchByPath.get(newPath, {}).get("url")
+                if url:
+                    addedByUrl[url].append(newPath)
+
+            for url in sorted(set(removedByUrl).intersection(addedByUrl)):
+                oldMatches = removedByUrl[url]
+                newMatches = addedByUrl[url]
+                if len(oldMatches) != 1 or len(newMatches) != 1:
+                    continue
+                oldPath = oldMatches[0]
+                newPath = newMatches[0]
+                movedModules.setdefault(oldPath, newPath)
+                removedPaths.discard(oldPath)
+                addedPaths.discard(newPath)
+
         addedModules.extend(sorted(addedPaths))
         removedModules.extend(sorted(removedPaths))
 
@@ -361,7 +387,13 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     if not os.path.exists(oldWorkingDir):
         return True
     if os.path.exists(newWorkingDir):
-        return True
+        if os.path.isdir(newWorkingDir) and len(os.listdir(newWorkingDir)) == 0:
+            os.rmdir(newWorkingDir)
+        else:
+            logging.info(
+                f"Destination for moved submodule already exists at {newSub},"
+                " not moving.")
+            return False
     if not git.isWorkingDirectoryClean(execution_path=oldWorkingDir):
         logging.info(f"Unstaged / committed changes in {oldSub}, not moving.")
         return False
@@ -369,6 +401,21 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     gitdir = git.gitDir(execution_path=oldWorkingDir)
     if not gitdir:
         return False
+    gitdir = os.path.normpath(gitdir)
+    newGitdirPath = os.path.join(workspace_dir, ".git", "modules", newSub)
+
+    if gitdir != newGitdirPath:
+        if os.path.exists(newGitdirPath):
+            if os.path.isdir(newGitdirPath) and len(os.listdir(newGitdirPath)) == 0:
+                os.rmdir(newGitdirPath)
+            else:
+                logging.info(
+                    f"Destination gitdir for moved submodule already exists at {newSub},"
+                    " not moving.")
+                return False
+        os.makedirs(os.path.dirname(newGitdirPath), exist_ok=True)
+        os.rename(gitdir, newGitdirPath)
+        gitdir = newGitdirPath
 
     os.makedirs(os.path.dirname(newWorkingDir), exist_ok=True)
     os.rename(oldWorkingDir, newWorkingDir)
