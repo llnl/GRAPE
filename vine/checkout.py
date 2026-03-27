@@ -406,13 +406,21 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
 
     if gitdir != newGitdirPath:
         if os.path.exists(newGitdirPath):
-            if os.path.isdir(newGitdirPath) and len(os.listdir(newGitdirPath)) == 0:
-                os.rmdir(newGitdirPath)
-            else:
+            # A prior failed move/retry may already have created the new
+            # backend path. If the new worktree does not exist yet, prefer the
+            # old backend repo and replace the stale destination backend.
+            if os.path.exists(newWorkingDir):
                 logging.info(
                     f"Destination gitdir for moved submodule already exists at {newSub},"
                     " not moving.")
                 return False
+            try:
+                shutil.rmtree(newGitdirPath)
+            except OSError:
+                for root, dirs, files in os.walk(newGitdirPath):
+                    for name in files:
+                        os.chmod(os.path.join(root, name), stat.S_IWRITE)
+                shutil.rmtree(newGitdirPath)
         os.makedirs(os.path.dirname(newGitdirPath), exist_ok=True)
         os.rename(gitdir, newGitdirPath)
         gitdir = newGitdirPath

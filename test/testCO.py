@@ -276,3 +276,46 @@ class TestCheckout(testGrape.TestGrape):
                                        execution_path=workspace)
         mock_submodule.assert_any_call("sync -- new/sub",
                                        execution_path=workspace)
+
+    @patch("vine.checkout.git.submodule")
+    @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
+    @patch("vine.checkout.git.isWorkingDirectoryClean")
+    def testMoveSubmoduleReplacesStaleDestinationGitdir(self, mock_is_clean,
+                                                        mock_gitdir,
+                                                        mock_config,
+                                                        mock_submodule):
+        mock_is_clean.return_value = True
+
+        workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
+        old_sub = os.path.join(workspace, "old", "sub")
+        new_sub = os.path.join(workspace, "new", "sub")
+        old_module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        new_module_dir = os.path.join(workspace, ".git", "modules", "new", "sub")
+        mock_gitdir.return_value = old_module_dir
+        os.makedirs(old_module_dir)
+        os.makedirs(new_module_dir)
+        os.makedirs(old_sub)
+
+        with open(os.path.join(old_sub, ".git"), "w") as gitfile:
+            gitfile.write("gitdir: ../../.git/modules/old/sub\n")
+        with open(os.path.join(old_module_dir, "config"), "w") as config_file:
+            config_file.write("[core]\n")
+        with open(os.path.join(old_sub, "tracked.txt"), "w") as subfile:
+            subfile.write("contents\n")
+        with open(os.path.join(new_module_dir, "stale"), "w") as stale_file:
+            stale_file.write("stale\n")
+
+        moved = checkout.moveSubmodule("old/sub", "new/sub",
+                                       workspace_dir=workspace)
+
+        self.assertTrue(moved)
+        self.assertFalse(os.path.exists(old_sub))
+        self.assertFalse(os.path.exists(old_module_dir))
+        self.assertTrue(os.path.exists(os.path.join(new_sub, "tracked.txt")))
+        self.assertFalse(os.path.exists(os.path.join(new_module_dir, "stale")))
+        mock_config.assert_called_once()
+        mock_submodule.assert_any_call("init -- new/sub",
+                                       execution_path=workspace)
+        mock_submodule.assert_any_call("sync -- new/sub",
+                                       execution_path=workspace)
