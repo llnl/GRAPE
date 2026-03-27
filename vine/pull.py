@@ -52,6 +52,10 @@ class Pull(Resumable, Option, WorkspaceDirHandler):
         mrArgs["--squash"] = False
 
         if not hasRemote:
+            git.fetch("origin", execution_path=self.workspace_dir)
+            hasRemote = remoteBranch in git.remoteBranches(
+                execution_path=self.workspace_dir)
+        if not hasRemote:
             logging.info(
                 f"No remote reference to {currentBranch} in origin. "
                 "You may want to push this branch.")
