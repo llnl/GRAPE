@@ -228,7 +228,12 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
     except grape_errors.GrapeGitError as e:
         if f"bad revision '{branch}'" in e.gitOutput:
             logging.info(f"Fetching {branch} in {workspace_dir}")
-            git.fetch("origin", f"{branch}:{branch}", execution_path=workspace_dir)
+            if branch.startswith("origin/"):
+                git.fetch("origin", branch[len("origin/"):],
+                          execution_path=workspace_dir)
+            else:
+                git.fetch("origin", f"{branch}:{branch}",
+                          execution_path=workspace_dir)
             submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
         else:
             raise e

@@ -194,6 +194,29 @@ class TestCheckout(testGrape.TestGrape):
         self.assertEqual(removed, [])
         self.assertEqual(changed, [])
 
+    @patch("vine.checkout.git.fetch")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputFetchesRemoteQualifiedBranch(self,
+                                                                  mock_diff,
+                                                                  mock_fetch):
+        mock_diff.side_effect = [
+            grape_errors.GrapeGitError(
+                "bad revision", 128, "fatal: bad revision 'origin/newBranch'",
+                "git diff"),
+            "",
+        ]
+
+        added = []
+        removed = []
+        changed = []
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "origin/newBranch", added, removed, changed,
+            workspace_dir=self.repo)
+
+        mock_fetch.assert_called_once_with("origin", "newBranch",
+                                           execution_path=self.repo)
+
     @patch("vine.checkout.git.submodule")
     @patch("vine.checkout.git.config")
     @patch("vine.checkout.git.gitDir")
