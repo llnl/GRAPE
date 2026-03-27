@@ -19,6 +19,7 @@ class TestSuite:
     path: str
     class_name: str
     visible: bool = True
+    include_in_all: bool = True
     serial: bool = False
     watch_paths: tuple[str, ...] = ()
 
@@ -36,7 +37,20 @@ SUITES = {
     "Stash": TestSuite("Stash", "test/testStash.py", "TestStash", watch_paths=("test/testStash.py", "vine/stash.py")),
     "Unbundle": TestSuite("Unbundle", "test/testUnbundle.py", "TestUnbundle", watch_paths=("test/testUnbundle.py", "vine/bundle.py")),
     "Version": TestSuite("Version", "test/testVersion.py", "TestVersion", watch_paths=("test/testVersion.py", "vine/version.py")),
-    "Publish": TestSuite("Publish", "test/testPublish.py", "TestPublish", serial=True, watch_paths=("test/testPublish.py", "vine/publish.py")),
+    "Publish": TestSuite("Publish", "test/publish", "", include_in_all=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishFFDefault": TestSuite("PublishFFDefault", "test/publish/test_fast_forward.py", "TestPublishFFDefault", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishFFMerge": TestSuite("PublishFFMerge", "test/publish/test_fast_forward.py", "TestPublishFFMerge", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishFFSquash": TestSuite("PublishFFSquash", "test/publish/test_fast_forward.py", "TestPublishFFSquash", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishFFCascade": TestSuite("PublishFFCascade", "test/publish/test_fast_forward.py", "TestPublishFFCascade", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishFFRebase": TestSuite("PublishFFRebase", "test/publish/test_fast_forward.py", "TestPublishFFRebase", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishTopicConfig": TestSuite("PublishTopicConfig", "test/publish/test_options.py", "TestPublishTopicConfig", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishCustomBuild": TestSuite("PublishCustomBuild", "test/publish/test_options.py", "TestPublishCustomBuild", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishCustomTest": TestSuite("PublishCustomTest", "test/publish/test_options.py", "TestPublishCustomTest", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishVersionTick": TestSuite("PublishVersionTick", "test/publish/test_options.py", "TestPublishVersionTick", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishStartStop": TestSuite("PublishStartStop", "test/publish/test_options.py", "TestPublishStartStop", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishNestedSubprojects": TestSuite("PublishNestedSubprojects", "test/publish/test_workspace.py", "TestPublishNestedSubprojects", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishFromNestedSubproject": TestSuite("PublishFromNestedSubproject", "test/publish/test_workspace.py", "TestPublishFromNestedSubproject", visible=False, watch_paths=("test/publish", "vine/publish.py")),
+    "PublishNewSubmodule": TestSuite("PublishNewSubmodule", "test/publish/test_workspace.py", "TestPublishNewSubmodule", visible=False, watch_paths=("test/publish", "vine/publish.py")),
     "CO": TestSuite("CO", "test/testCO.py", "TestCheckout", watch_paths=("test/testCO.py", "vine/checkout.py")),
     "NestedSubproject": TestSuite("NestedSubproject", "test/testNestedSubproject.py", "TestNestedSubproject", watch_paths=("test/testNestedSubproject.py", "vine/addSubproject.py", "vine/updateView.py")),
     "Status": TestSuite("Status", "test/testWorkspaceScenarios.py", "TestStatusScenarios", visible=False, watch_paths=("test/testWorkspaceScenarios.py", "test/testStatus.py", "test/testProjectScenarios.py", "test/gridTesting.py", "vine/status.py")),
@@ -64,7 +78,7 @@ def visible_suite_names():
 
 
 def all_suite_names():
-    return list(SUITES.keys())
+    return [name for name, suite in SUITES.items() if suite.include_in_all]
 
 
 def configured_suite_order(order_path=None):
@@ -114,7 +128,9 @@ def order_selectors(selectors, order_path=None):
 def suite_node(alias):
     """Return the pytest node prefix for a GRAPE suite alias."""
     suite = SUITES[alias]
-    return f"{suite.path}::{suite.class_name}"
+    if suite.class_name:
+        return f"{suite.path}::{suite.class_name}"
+    return suite.path
 
 
 def resolve_selector(selector):

@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from tools.render_timing_chart import render_lines
 from vine import grapeTest
@@ -37,6 +38,11 @@ class TestTimingChart(unittest.TestCase):
 
 class TestSuiteOrdering(unittest.TestCase):
 
+    def test_publish_aggregate_is_not_in_broad_default(self):
+        self.assertNotIn("Publish", test_suites.all_suite_names())
+        self.assertIn("Publish", test_suites.visible_suite_names())
+        self.assertIn("PublishFFDefault", test_suites.all_suite_names())
+
     def test_named_suites_launch_first(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             order_path = os.path.join(tmpdir, "suite_order.txt")
@@ -68,16 +74,17 @@ class TestSchedulerRules(unittest.TestCase):
     def test_serial_suite_can_launch_with_normal_suites(self):
         scheduler = grapeTest.Test()
         futures = {}
-        pending, serial_running = scheduler._launch_ready_work(
-            executor=_RecordingExecutor(),
-            pending=["Publish", "Status", "MergeDown"],
-            futures=futures,
-            workers=3,
-            serial_running=False,
-            args={"--debug": False, "--durations": "0"},
-            env={},
-            progress_state=None,
-        )
+        with patch("vine.test_suites.is_serial_selector", side_effect=lambda selector: selector == "serial"):
+            pending, serial_running = scheduler._launch_ready_work(
+                executor=_RecordingExecutor(),
+                pending=["serial", "Status", "MergeDown"],
+                futures=futures,
+                workers=3,
+                serial_running=False,
+                args={"--debug": False, "--durations": "0"},
+                env={},
+                progress_state=None,
+            )
         self.assertEqual(pending, [])
         self.assertTrue(serial_running)
         self.assertEqual(len(futures), 3)
@@ -85,19 +92,20 @@ class TestSchedulerRules(unittest.TestCase):
     def test_second_serial_suite_stays_pending(self):
         scheduler = grapeTest.Test()
         futures = {}
-        pending, serial_running = scheduler._launch_ready_work(
-            executor=_RecordingExecutor(),
-            pending=["Publish", "Clone", "Publish"],
-            futures=futures,
-            workers=3,
-            serial_running=False,
-            args={"--debug": False, "--durations": "0"},
-            env={},
-            progress_state=None,
-        )
-        self.assertEqual(pending, ["Publish"])
-        self.assertTrue(serial_running)
-        self.assertEqual(len(futures), 2)
+        with patch("vine.test_suites.is_serial_selector", side_effect=lambda selector: selector == "serial"):
+            pending, serial_running = scheduler._launch_ready_work(
+                executor=_RecordingExecutor(),
+                pending=["serial", "Clone", "serial"],
+                futures=futures,
+                workers=3,
+                serial_running=False,
+                args={"--debug": False, "--durations": "0"},
+                env={},
+                progress_state=None,
+            )
+            self.assertEqual(pending, ["serial"])
+            self.assertTrue(serial_running)
+            self.assertEqual(len(futures), 2)
 
 
 class _RecordingExecutor:

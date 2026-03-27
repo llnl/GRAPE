@@ -2,10 +2,10 @@
 # runs. Leave a suite out to keep it in the default order after the named
 # entries.
 #
-# This initial ordering front-loads the five longest suites from the current
-# measurements so the broad-run schedule has better overlap.
-Publish
+# This ordering front-loads the five longest suites from the current default
+# broad-run measurement set so the scheduler overlaps the heaviest work first.
 Status
-MergeDown
 NestedSubproject
+MergeDown
 Clone
+CO
