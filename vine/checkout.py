@@ -307,6 +307,11 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                 oldMatches = removedByUrl[url]
                 newMatches = addedByUrl[url]
                 if len(oldMatches) != 1 or len(newMatches) != 1:
+                    logging.warning(
+                        "Ambiguous submodule move detection for URL "
+                        f"{url}. Removed paths: {sorted(oldMatches)}. "
+                        f"Added paths: {sorted(newMatches)}. Skipping "
+                        "inferred move.")
                     continue
                 oldPath = oldMatches[0]
                 newPath = newMatches[0]

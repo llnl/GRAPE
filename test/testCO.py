@@ -194,6 +194,37 @@ class TestCheckout(testGrape.TestGrape):
         self.assertEqual(removed, [])
         self.assertEqual(changed, [])
 
+    @patch("vine.checkout.logging.warning")
+    @patch("vine.checkout.git.show")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputWarnsOnAmbiguousUrlMoveMatch(
+            self, mock_diff, mock_show, mock_warning):
+        mock_diff.side_effect = [
+            ".gitmodules",
+            "",
+        ]
+        mock_show.side_effect = [
+            '[submodule "old/sub1"]\n\tpath = old/sub1\n\turl = ssh://repo/lib.git\n'
+            '[submodule "old/sub2"]\n\tpath = old/sub2\n\turl = ssh://repo/lib.git\n',
+            '[submodule "new/sub"]\n\tpath = new/sub\n\turl = ssh://repo/lib.git\n',
+        ]
+
+        added = []
+        removed = []
+        changed = []
+        moved = {}
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "branch", added, removed, changed, moved,
+            workspace_dir=self.repo)
+
+        self.assertEqual(moved, {})
+        self.assertEqual(added, ["new/sub"])
+        self.assertEqual(removed, ["old/sub1", "old/sub2"])
+        mock_warning.assert_called_once()
+        self.assertIn("Ambiguous submodule move detection for URL",
+                      mock_warning.call_args[0][0])
+
     @patch("vine.checkout.git.fetch")
     @patch("vine.checkout.git.diff")
     def testParseGitModulesDiffOutputFetchesRemoteQualifiedBranch(self,
