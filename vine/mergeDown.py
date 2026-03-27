@@ -23,6 +23,10 @@ def remapMovedSubmodulePaths(paths, movedModules):
     return list(dict.fromkeys(movedModules.get(path, path) for path in paths))
 
 
+def mergeSubmoduleCandidates(submodules, movedActiveSubmodules):
+    return list(dict.fromkeys(submodules + movedActiveSubmodules))
+
+
 def reconcileMovedSubmodules(movedModules, *pathLists, workspace_dir):
     # Keep the merge flow working with the paths that are active after the
     # outer-level merge updates .gitmodules.
@@ -273,6 +277,9 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         if reconciledSubmodulePaths is None:
             return False
         movedActiveSubmodules, submodules = reconciledSubmodulePaths
+        submodules = mergeSubmoduleCandidates(submodules, movedActiveSubmodules)
+        recurse = recurseSubmoduleChanges and len(submodules) > 0
+        args["--recurse"] = recurse
 
         # get active submodules post-merge
         try:

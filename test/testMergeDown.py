@@ -242,6 +242,14 @@ class TestMD(testGrape.TestGrape):
 
         self.assertEqual(moved, ["new/sub", "unchanged/sub"])
 
+    def testMergeSubmoduleCandidatesIncludesMovedActiveSubmodules(self):
+        merged = mergeDown.mergeSubmoduleCandidates(
+            ["new/location/sub1", "new/location/sub2"],
+            ["new/location/sub2", "new/location/sub3"])
+
+        self.assertEqual(merged, ["new/location/sub1", "new/location/sub2",
+                                  "new/location/sub3"])
+
     def testConflictingSubmoduleMerge_MD(self):
         try:
             self.setUpConflictingSubmoduleMerge()
