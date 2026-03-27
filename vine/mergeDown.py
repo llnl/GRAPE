@@ -19,6 +19,18 @@ from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
+def reconcileMovedSubmodules(movedModules, activeSubmodules, *, workspace_dir):
+    # Keep the merge flow working with the paths that are active after the
+    # outer-level merge updates .gitmodules.
+    movedModules, failedMoves = checkout.applyMovedSubmodules(
+        movedModules, workspace_dir=workspace_dir)
+    if failedMoves:
+        for oldSub, newSub in failedMoves.items():
+            logging.warning(f"Failed to move submodule {oldSub} to {newSub} during merge.")
+        return None
+    return [movedModules.get(sub, sub) for sub in activeSubmodules]
+
+
 # pull and merge down from an up-to-date public branch
 class MergeDown(Resumable, Option, WorkspaceDirHandler):
     """
@@ -226,10 +238,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         addedModules = []
         removedModules = []
         changedURLModules = []
+        movedModules = {}
         if recurse:
             checkout.parseGitModulesDiffOutput(
                 git.currentBranch(execution_path=self.workspace_dir), branch, addedModules,
-                removedModules, changedURLModules,
+                removedModules, changedURLModules, movedModules,
                 workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
@@ -245,6 +258,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         # do an outer merge if we haven't done it yet
         conflictedFiles = self.outerLevelMerge(args, branch)
 
+        movedActiveSubmodules = reconcileMovedSubmodules(
+            movedModules, activeSubmodulesCheck0, workspace_dir=self.workspace_dir)
+        if movedActiveSubmodules is None:
+            return False
+
         # get active submodules post-merge
         try:
             reinitActiveSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
@@ -258,7 +276,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 raise e 
 
         # add in active submodules pre-merge
-        reinitActiveSubmodulesCheck.extend(activeSubmodulesCheck0)
+        reinitActiveSubmodulesCheck.extend(movedActiveSubmodules)
 
         reinitModules = changedURLModules + addedModules
         # reinit and create the current branch in any submodules with changed URLs
