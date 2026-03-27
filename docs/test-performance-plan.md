@@ -25,7 +25,7 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 7 | 38.42 | 30.64 | 31.49 | 31.86 | 31.99 | 31.94 | Default `./grape test` now 30.68s; `--changed` selects mapped suites; docs-only/CI-only diffs map to no suites | -14.11 at W4 | -0.12 at W4 | `e02e390d` |
 | 2026-03-26 | Phase 8 | 39.01 | 31.20 | 32.56 | 32.53 | 32.02 | 32.10 | Live broad-run schedule chart; fixed-width timing column; suite order file starts with Publish, Status, MergeDown, NestedSubproject, Clone | -13.55 at W4 | +0.56 at W4 | `a39b094c` |
 | 2026-03-26 | Phase 9 | 38.44 | 27.29 | 29.44 | 29.59 | 30.05 | 30.60 | Serial suites can overlap the normal lane; `Publish` now starts immediately and overlaps `Status`, `MergeDown`, and `Clone` | -17.46 at W4 | -3.91 at W4 | `2616ddf8` |
-| 2026-03-26 | Phase 10 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Publish` into broad-run shards; broad default workers now match suite count; `rzwhippet3` measured `./grape test --workers 29` at about `11.72s` with all suites passing | -33.03 at W29 | -15.57 at W29 vs Phase 9 default | `pending phase 10 commit` |
+| 2026-03-26 | Phase 10 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Publish` into broad-run shards; broad default workers now match suite count; `rzwhippet3` measured `./grape test --workers 29` at about `11.72s` with all suites passing | -33.03 at W29 | -15.57 at W29 vs Phase 9 default | `1c0f4aa9` |
 
 ## Baseline Measurements
 
