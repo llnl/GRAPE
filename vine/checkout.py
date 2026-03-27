@@ -396,8 +396,8 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
             os.rmdir(newWorkingDir)
         else:
             logging.info(
-                f"Destination for moved submodule already exists at {newSub},"
-                " not moving.")
+                f"Destination for moved submodule already exists at "
+                f"{newSub}. Not moving.")
             return False
     if not git.isWorkingDirectoryClean(execution_path=oldWorkingDir):
         logging.info(f"Unstaged / committed changes in {oldSub}, not moving.")
@@ -416,8 +416,8 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
             # old backend repo and replace the stale destination backend.
             if os.path.exists(newWorkingDir):
                 logging.info(
-                    f"Destination gitdir for moved submodule already exists at {newSub},"
-                    " not moving.")
+                    f"Destination gitdir for moved submodule already exists "
+                    f"at {newSub}. Not moving.")
                 return False
             try:
                 shutil.rmtree(newGitdirPath)
