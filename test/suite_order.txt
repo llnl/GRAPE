@@ -5,7 +5,7 @@
 # This ordering front-loads the five longest suites from the current default
 # broad-run measurement set so the scheduler overlaps the heaviest work first.
 Status
-NestedSubproject
 MergeDown
+NestedSubproject
 Clone
-CO
+GrapeUp

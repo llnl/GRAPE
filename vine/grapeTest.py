@@ -405,7 +405,7 @@ class Test(Option):
     def _draw_live_progress(self, chart_timings, chart_width, already_drawn=False, final=False):
         if not chart_timings:
             return
-        span_end = max(30.0, max(item["end"] for item in chart_timings))
+        span_end = max(15.0, max(item["end"] for item in chart_timings))
         lines = [
             f"[grape test] {line}"
             for line in render_lines(
@@ -444,9 +444,10 @@ class Test(Option):
     def _parse_workers(self, value, *, selectors, debug):
         """Choose a worker count when the user does not specify one.
 
-        Broad runs default to 4 workers because that is the best measured point
-        in this repository so far. Narrow runs stay serial by default so simple
-        one-suite invocations preserve readable pytest output and avoid
+        Broad runs default to one worker slot per selected suite. That makes it
+        easy to saturate high-core developer nodes and lets the suite-order file
+        decide the initial overlap shape. Narrow runs stay serial by default so
+        simple one-suite invocations preserve readable pytest output and avoid
         subprocess overhead.
         """
         if value in (None, ""):
@@ -454,7 +455,7 @@ class Test(Option):
                 return 1
             if selectors and len(selectors) <= 1:
                 return 1
-            return 4
+            return len(selectors) if selectors else 1
         return max(1, int(value))
 
     def _selectors_from_changed_files(self, base_ref):

@@ -71,6 +71,20 @@ class TestSuiteOrdering(unittest.TestCase):
 
 class TestSchedulerRules(unittest.TestCase):
 
+    def test_default_workers_match_selected_suite_count(self):
+        scheduler = grapeTest.Test()
+        self.assertEqual(
+            scheduler._parse_workers(None, selectors=["A", "B", "C"], debug=False),
+            3,
+        )
+
+    def test_single_suite_default_stays_serial(self):
+        scheduler = grapeTest.Test()
+        self.assertEqual(
+            scheduler._parse_workers(None, selectors=["A"], debug=False),
+            1,
+        )
+
     def test_serial_suite_can_launch_with_normal_suites(self):
         scheduler = grapeTest.Test()
         futures = {}

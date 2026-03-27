@@ -2,20 +2,21 @@
 
 ## Current State
 - Goal: make root-suite testing faster for both local development and Linux CI.
-- Current phase: Phase 9 complete
+- Current phase: Phase 10 complete
 - Latest baseline commit before speed changes: `8e30d114`
 - Original full-suite timing: `44.75s`
 - Original known failures: `Publish` suite
 - Latest accepted post-phase timing:
-  - serial full suite `38.44s` with `--workers=1`, return code `1`
-  - default broad-run full suite `28.03s`, return code `1`
-  - best explicit worker run in the latest matrix `27.29s` with `--workers=4`, return code `1`
+  - accepted external broad-run timing on `rzwhippet3`: about `11.72s` with `--workers=29`, all listed suites returned `0`
+  - the split publish layout now yields `29` default broad-run selectors, so no-flag broad runs will also default to `29` workers on that suite set
+  - local sandbox timing remained materially slower and should not be used as the accepted comparison point for this phase
   - worker matrix:
-    - `--workers=4`: `27.29s`
-    - `--workers=8`: `29.44s`
-    - `--workers=16`: `29.59s`
-    - `--workers=32`: `30.05s`
-    - `--workers=64`: `30.60s`
+    - `--workers=4`: `27.29s` on the pre-split Phase 9 layout
+    - `--workers=8`: `29.44s` on the pre-split Phase 9 layout
+    - `--workers=16`: `29.59s` on the pre-split Phase 9 layout
+    - `--workers=32`: `30.05s` on the pre-split Phase 9 layout
+    - `--workers=64`: `30.60s` on the pre-split Phase 9 layout
+    - `--workers=29`: `11.72s` on `rzwhippet3` with the split publish layout
 
 ## Current Runner Architecture
 - Public entrypoint: `vine/grapeTest.py`
@@ -24,13 +25,13 @@
 - Broad-run launch priority is defined in `test/suite_order.txt`
 - ASCII schedule rendering lives in `tools/render_timing_chart.py`
 - `Status` and `GrapeUp` now run through pytest-native parametrized tests in `test/testWorkspaceScenarios.py`
+- Publish coverage is now split across the `test/publish/` package for broad-run scheduling, while `Publish` remains as an aggregate user-facing alias
 - `grape test --workers=<n>` parallelizes across suite selectors by launching subprocess pytest runs
-- Serial-marked suites are now limited to one-at-a-time, but they may overlap the normal worker lane
-- Plain `./grape test` defaults to 4 workers for broad runs
+- Plain `./grape test` now defaults to one worker per selected suite for broad runs
 - Plain interactive `./grape test` keeps the broad-run chart live in place in the terminal
+- The live broad-run chart starts from a `15s` time window and renormalizes upward as needed
 - `grape -d test` keeps the static one-shot summary so CI logs stay readable
 - `grape test --changed [--base=<ref>]` maps changed files to suite aliases using `vine/test_suites.py`
-- `Publish` is marked serial and stays out of the parallel lane
 - Common test setup in `test/testGrape.py` now copies a seeded process-local bootstrap template instead of rebuilding the initial repo from scratch
 - Heavy scenario restore now snapshots prepared state in `test/gridTesting.py` and reuses that state across the pytest scenario matrix in `test/testWorkspaceScenarios.py`
 
@@ -46,13 +47,13 @@
   - `CO`: `3.03s`
 
 ## Latest Accepted Numbers
-- Full suite serial: `38.44s`, return code `1`
-- Full suite default broad run: `28.03s`, return code `1`
-- Full suite with `--workers=4`: `27.29s`, return code `1`
-- Full suite with `--workers=8`: `29.44s`, return code `1`
-- Full suite with `--workers=16`: `29.59s`, return code `1`
-- Full suite with `--workers=32`: `30.05s`, return code `1`
-- Full suite with `--workers=64`: `30.60s`, return code `1`
+- Accepted broad run on `rzwhippet3`: about `11.72s` with `--workers=29`, all listed suites returned `0`
+- Reference Phase 9 local matrix:
+  - `--workers=4`: `27.29s`, return code `1`
+  - `--workers=8`: `29.44s`, return code `1`
+  - `--workers=16`: `29.59s`, return code `1`
+  - `--workers=32`: `30.05s`, return code `1`
+  - `--workers=64`: `30.60s`, return code `1`
 - Heavy suites:
   - `Status`: `9.54s`
   - `MergeDown`: `7.72s`
@@ -70,6 +71,7 @@
 ## Reproduction Commands
 - Full suite: `./grape test`
 - Non-interactive broad run: `./grape -d test`
+- Full suite broad run matching the current default suite count: `./grape test --workers=29`
 - Full suite parallel: `./grape test --workers=4`
 - Full suite parallel: `./grape test --workers=8`
 - Full suite parallel: `./grape test --workers=16`
@@ -102,8 +104,10 @@
 - Phase 7 makes the broad-run default match the best measured worker count and adds changed-suite targeting.
 - Phase 8 adds live broad-run schedule visibility plus a repo-owned suite-order file for hand-tuned overlap.
 - Phase 9 relaxes the serial-lane scheduling rule so `Publish` can overlap the normal worker lane instead of waiting until the end.
+- Phase 10 splits publish into shardable broad-run suites and switches the broad default worker count to the number of selected suites.
 
 ## Next Recommended Step
 - If more speed is needed, investigate why `MergeDown`, `NestedSubproject`, and `Clone` remain the dominant suites after the shared setup and scenario caching work.
 - Keep the worker matrix (`4/8/16/32/64`) in the progress doc for later runner changes.
 - If schedule overlap needs tuning, edit `test/suite_order.txt` first before changing worker counts or runner code.
+- If the host topology matters, keep recording host-specific measurements separately; the `rzwhippet3` result suggests this runner benefits from a much wider process fan-out than the sandbox host used during development.

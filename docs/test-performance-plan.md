@@ -25,6 +25,7 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 7 | 38.42 | 30.64 | 31.49 | 31.86 | 31.99 | 31.94 | Default `./grape test` now 30.68s; `--changed` selects mapped suites; docs-only/CI-only diffs map to no suites | -14.11 at W4 | -0.12 at W4 | `e02e390d` |
 | 2026-03-26 | Phase 8 | 39.01 | 31.20 | 32.56 | 32.53 | 32.02 | 32.10 | Live broad-run schedule chart; fixed-width timing column; suite order file starts with Publish, Status, MergeDown, NestedSubproject, Clone | -13.55 at W4 | +0.56 at W4 | `a39b094c` |
 | 2026-03-26 | Phase 9 | 38.44 | 27.29 | 29.44 | 29.59 | 30.05 | 30.60 | Serial suites can overlap the normal lane; `Publish` now starts immediately and overlaps `Status`, `MergeDown`, and `Clone` | -17.46 at W4 | -3.91 at W4 | `2616ddf8` |
+| 2026-03-26 | Phase 10 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Publish` into broad-run shards; broad default workers now match suite count; `rzwhippet3` measured `./grape test --workers 29` at about `11.72s` with all suites passing | -33.03 at W29 | -15.57 at W29 vs Phase 9 default | `pending phase 10 commit` |
 
 ## Baseline Measurements
 
@@ -88,6 +89,7 @@ Notes:
 7. Add changed-test targeting and faster local defaults.
 8. Add broad-run schedule observability and a hand-tuned suite launch order file.
 9. Let serial-marked suites overlap normal suites while still limiting serial execution to one at a time.
+10. Split `Publish` into shardable broad-run suites and retune the broad-run default for large-core hosts.
 
 ## Phase Log
 
@@ -383,3 +385,41 @@ Measured impact:
 Notes:
 - This is the first phase where the suite-order file can materially affect a serial-marked suite's launch time.
 - On this machine, moving `Publish` to the front and allowing overlap recovered almost four seconds at `--workers=4`.
+
+### Phase 10
+Status: complete
+
+What changed:
+- Split the old monolithic publish coverage into a new package under [`test/publish`](/usr/WS1/probinso/git/grape_workspaces/grape/test/publish) with one class per publish scenario group.
+- Kept the user-facing aggregate alias `Publish`, but changed the broad default suite list in [`vine/test_suites.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/test_suites.py) so broad runs schedule the shardable publish selectors instead of one aggregate publish block.
+- Updated [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) so:
+  - broad runs default to one worker per selected suite
+  - the live timing chart starts with a `15s` normalization window instead of `30s`
+- Updated [`test/suite_order.txt`](/usr/WS1/probinso/git/grape_workspaces/grape/test/suite_order.txt) to front-load the current five longest default suites:
+  - `Status`
+  - `MergeDown`
+  - `NestedSubproject`
+  - `Clone`
+  - `GrapeUp`
+- Extended [`test/testTimingChart.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testTimingChart.py) so it now covers:
+  - aggregate `Publish` remaining user-visible but staying out of the broad default suite list
+  - default worker count matching the number of selected suites
+  - single-suite defaults staying serial
+
+Measured impact:
+- User-provided broad-run measurement on `rzwhippet3`:
+  - command: `./grape test --workers 29`
+  - observed wall time: about `11.72s`
+  - all listed suites returned `0`
+- Notable per-suite values from that run:
+  - `Status`: `11.72s`
+  - `MergeDown`: `9.61s`
+  - `NestedSubproject`: `9.51s`
+  - `Clone`: `8.32s`
+  - `GrapeUp`: `5.75s`
+  - `CO`: `5.51s`
+  - heaviest publish shards: `PublishNestedSubprojects 4.12s`, `PublishFromNestedSubproject 4.12s`, `PublishNewSubmodule 4.16s`
+
+Notes:
+- The sandbox host used during development did not reproduce this speedup cleanly, so the accepted timing for this phase is the user-reported `rzwhippet3` measurement above.
+- With the split publish layout there are currently `29` default broad-run selectors, so the new no-flag worker default now maps to `29` on this suite set.
