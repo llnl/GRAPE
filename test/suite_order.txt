@@ -2,10 +2,11 @@
 # runs. Leave a suite out to keep it in the default order after the named
 # entries.
 #
-# This ordering front-loads the five longest suites from the current default
-# broad-run measurement set so the scheduler overlaps the heaviest work first.
-Status
-MergeDown
-NestedSubproject
-Clone
-GrapeUp
+# This first-pass ordering front-loads the five heaviest shard candidates from
+# the current split layout so the scheduler overlaps the most expensive setup
+# work first. Anything omitted here keeps its default relative order.
+StatusSubmodule
+StatusTwoClients
+MergeDownSubmoduleConflict
+NestedSubprojectWorkspaceSync
+CloneNested

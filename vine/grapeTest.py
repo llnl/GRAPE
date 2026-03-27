@@ -26,7 +26,7 @@ class Test(Option):
     """
     grape test
     Runs grape's unit tests.
-    Usage: grape-test [--debug] [--durations=<n>] [--workers=<n>] [--changed] [--base=<ref>] [<suite>]...
+    Usage: grape-test [--debug] [--durations=<n>] [--workers=<n>] [--quiet] [--changed] [--base=<ref>] [<suite>]...
 
 
     Arguments:
@@ -43,6 +43,8 @@ class Test(Option):
                      This is GRAPE-level parallelism: each selected suite is
                      handed to a separate pytest process rather than using a
                      pytest plugin such as xdist. [default: 1]
+    --quiet          Skip live timing-chart redraws and print the chart only
+                     once at the end, like `grape -d test`.
     --changed        Run suites mapped from files changed since --base.
                      This is intended for local developer loops where a full
                      suite run would be unnecessarily broad.
@@ -71,10 +73,12 @@ class Test(Option):
                 print("No changed suites matched the current diff.")
                 return True
 
+        requested_selectors = selectors or test_suites.all_suite_names()
+
         try:
             workers = self._parse_workers(
                 args["--workers"],
-                selectors=selectors,
+                selectors=requested_selectors,
                 debug=args["--debug"],
             )
         except ValueError:
@@ -154,8 +158,8 @@ class Test(Option):
         run_started = time.perf_counter()
         env = os.environ.copy()
         results = []
-        progress_state = self._build_progress_state(work_selectors)
-        live_output = self._should_render_live_progress(work_selectors)
+        live_output = self._should_render_live_progress(args, work_selectors)
+        progress_state = self._build_progress_state(work_selectors) if live_output else None
         live_chart_width = self._chart_width_from_selectors(work_selectors)
         live_drawn = False
 
@@ -202,7 +206,7 @@ class Test(Option):
             for selector, completed, started_at, ended_at in sorted_results
         ]
         if not live_output:
-            for line in render_lines(chart_timings, chart_width, "."):
+            for line in self._render_progress_lines(chart_timings, chart_width, final=True):
                 print(f"[grape test] {line}")
         elif chart_timings:
             self._draw_live_progress(
@@ -315,10 +319,11 @@ class Test(Option):
             progress_state["suites"][selector]["end"] = ended
             progress_state["suites"][selector]["returncode"] = returncode
 
-    def _should_render_live_progress(self, selectors):
+    def _should_render_live_progress(self, args, selectors):
         """Only use cursor-based redraws for interactive broad runs."""
         return (
             len(selectors) > 1
+            and not args["--quiet"]
             and sys.stdout.isatty()
             and not utility.IS_NON_INTERACTIVE
         )
@@ -403,19 +408,10 @@ class Test(Option):
         return timings
 
     def _draw_live_progress(self, chart_timings, chart_width, already_drawn=False, final=False):
-        if not chart_timings:
+        lines = self._render_progress_lines(chart_timings, chart_width, final=final)
+        if not lines:
             return
-        span_end = max(15.0, max(item["end"] for item in chart_timings))
-        lines = [
-            f"[grape test] {line}"
-            for line in render_lines(
-                chart_timings,
-                chart_width,
-                ".",
-                global_start=0.0,
-                global_end=span_end,
-            )
-        ]
+        lines = [f"[grape test] {line}" for line in lines]
         if already_drawn:
             sys.stdout.write(f"\x1b[{len(lines)}F")
         for line in lines:
@@ -493,6 +489,21 @@ class Test(Option):
             return 40
         return self._chart_width_from_selectors(
             [selector for selector, _, _, _ in results]
+        )
+
+    def _render_progress_lines(self, chart_timings, chart_width, *, final):
+        """Render an elapsed header followed by the per-suite schedule lines."""
+        if not chart_timings:
+            return []
+        elapsed = max(item["end"] for item in chart_timings)
+        span_end = max(15.0, elapsed)
+        header = f"{'Total' if final else 'Elapsed'}: {elapsed:.2f} seconds"
+        return [header] + render_lines(
+            chart_timings,
+            chart_width,
+            ".",
+            global_start=0.0,
+            global_end=span_end,
         )
 
     def setDefaultConfig(self, config):

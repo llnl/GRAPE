@@ -35,6 +35,30 @@ class TestTimingChart(unittest.TestCase):
         self.assertIn("[...         ]", lines[0])
         self.assertIn("[            ]", lines[1])
 
+    def test_progress_lines_include_elapsed_header(self):
+        scheduler = grapeTest.Test()
+        lines = scheduler._render_progress_lines(
+            [
+                {"name": "suite1", "returncode": 0, "start": 0.0, "end": 6.0},
+                {"name": "suite2", "returncode": 0, "start": 2.0, "end": 8.5},
+            ],
+            12,
+            final=False,
+        )
+        self.assertEqual(lines[0], "Elapsed: 8.50 seconds")
+        self.assertIn("suite1", lines[1])
+
+    def test_final_progress_lines_include_total_header(self):
+        scheduler = grapeTest.Test()
+        lines = scheduler._render_progress_lines(
+            [
+                {"name": "suite1", "returncode": 0, "start": 0.0, "end": 6.0},
+            ],
+            12,
+            final=True,
+        )
+        self.assertEqual(lines[0], "Total: 6.00 seconds")
+
 
 class TestSuiteOrdering(unittest.TestCase):
 
@@ -42,6 +66,28 @@ class TestSuiteOrdering(unittest.TestCase):
         self.assertNotIn("Publish", test_suites.all_suite_names())
         self.assertIn("Publish", test_suites.visible_suite_names())
         self.assertIn("PublishFFDefault", test_suites.all_suite_names())
+
+    def test_split_aggregate_aliases_stay_out_of_broad_default(self):
+        self.assertNotIn("Clone", test_suites.all_suite_names())
+        self.assertNotIn("MergeDown", test_suites.all_suite_names())
+        self.assertNotIn("NestedSubproject", test_suites.all_suite_names())
+        self.assertNotIn("Status", test_suites.all_suite_names())
+        self.assertNotIn("GrapeUp", test_suites.all_suite_names())
+        self.assertIn("CloneNested", test_suites.all_suite_names())
+        self.assertIn("MergeDownSubmoduleConflict", test_suites.all_suite_names())
+        self.assertIn("NestedSubprojectWorkspaceSync", test_suites.all_suite_names())
+        self.assertIn("StatusSubmodule", test_suites.all_suite_names())
+        self.assertIn("GrapeUpSubmodule", test_suites.all_suite_names())
+
+    def test_aggregate_aliases_still_resolve_to_explicit_classes(self):
+        self.assertEqual(
+            test_suites.resolve_selector("Clone.testClone"),
+            "test/clone/aggregate.py::TestClone::testClone",
+        )
+        self.assertEqual(
+            test_suites.resolve_selector("Status.testGrapeStatus"),
+            "test/workspace_scenarios/status/aggregate.py::TestStatusScenarios::testGrapeStatus",
+        )
 
     def test_named_suites_launch_first(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -85,6 +131,32 @@ class TestSchedulerRules(unittest.TestCase):
             1,
         )
 
+    def test_execute_defaults_full_run_to_shard_count(self):
+        scheduler = grapeTest.Test()
+        args = {
+            "<suite>": [],
+            "--base": "origin/master",
+            "--changed": False,
+            "--debug": False,
+            "--durations": "0",
+            "--quiet": False,
+            "--workers": None,
+        }
+        with patch.object(scheduler, "_run_parallel", return_value=0) as run_parallel:
+            with patch("vine.grapeTest.pytest.main") as pytest_main:
+                scheduler.execute(args)
+        run_parallel.assert_called_once_with([], args)
+        pytest_main.assert_not_called()
+
+    def test_quiet_disables_live_progress(self):
+        scheduler = grapeTest.Test()
+        self.assertFalse(
+            scheduler._should_render_live_progress(
+                {"--quiet": True},
+                ["StatusRepo", "CloneSmoke"],
+            )
+        )
+
     def test_serial_suite_can_launch_with_normal_suites(self):
         scheduler = grapeTest.Test()
         futures = {}
@@ -95,7 +167,7 @@ class TestSchedulerRules(unittest.TestCase):
                 futures=futures,
                 workers=3,
                 serial_running=False,
-                args={"--debug": False, "--durations": "0"},
+                args={"--debug": False, "--durations": "0", "--quiet": False},
                 env={},
                 progress_state=None,
             )
@@ -113,7 +185,7 @@ class TestSchedulerRules(unittest.TestCase):
                 futures=futures,
                 workers=3,
                 serial_running=False,
-                args={"--debug": False, "--durations": "0"},
+                args={"--debug": False, "--durations": "0", "--quiet": False},
                 env={},
                 progress_state=None,
             )
