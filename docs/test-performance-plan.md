@@ -27,6 +27,7 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 9 | 38.44 | 27.29 | 29.44 | 29.59 | 30.05 | 30.60 | Serial suites can overlap the normal lane; `Publish` now starts immediately and overlaps `Status`, `MergeDown`, and `Clone` | -17.46 at W4 | -3.91 at W4 | `2616ddf8` |
 | 2026-03-26 | Phase 10 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Publish` into broad-run shards; broad default workers now match suite count; `rzwhippet3` measured `./grape test --workers 29` at about `11.72s` with all suites passing | -33.03 at W29 | -15.57 at W29 vs Phase 9 default | `1c0f4aa9` |
 | 2026-03-26 | Phase 11 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Status`, `GrapeUp`, `MergeDown`, `NestedSubproject`, and `Clone` into broad-run shards; `./grape test` now defaults to `42` workers on the full suite; `./grape test --quiet` on `rzwhippet3` completed in `9.88s` with all suites passing | -34.87 at default W42 | -1.84 at default W42 vs Phase 10 | `phase closeout` |
+| 2026-03-26 | Phase 12 | n/a | n/a | n/a | n/a | n/a | n/a | Reverted Linux CI from four GRAPE test jobs back to one `./grape test --quiet` job per pipeline because job startup overhead dominated the shard win | CI topology simplified | CI de-sharded | `TBD` |
 
 ## Baseline Measurements
 
@@ -92,6 +93,7 @@ Notes:
 9. Let serial-marked suites overlap normal suites while still limiting serial execution to one at a time.
 10. Split `Publish` into shardable broad-run suites and retune the broad-run default for large-core hosts.
 11. Split the remaining heavy suites into broad-run shards and finish the quiet/final-summary runner behavior.
+12. Collapse Linux CI back to one GRAPE test job because shard startup overhead outweighs the runtime savings.
 
 ## Phase Log
 
@@ -480,3 +482,19 @@ Notes:
 - With the final sharded layout there are now `42` default broad-run selectors, so plain `./grape test` maps to `42` workers on the full suite.
 - `--quiet` is intended for low-overhead broad runs and produces the same final one-shot summary style as `grape -d test`.
 - Treat this phase as the end of the current runner-overhaul effort; future work can focus on correctness or targeted profiling rather than more structural runner changes.
+
+### Phase 12
+Status: complete
+
+What changed:
+- Replaced the four Linux test templates in [.gitlab/test_LC.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab/test_LC.yml) with one shared `.test_linux` template that runs:
+  - `./grape test --quiet`
+- Replaced the four merge-request Linux jobs and the four merge-train Linux jobs in [.gitlab-ci.yml](/usr/WS1/probinso/git/grape_workspaces/grape/.gitlab-ci.yml) with one Linux test job for merge requests and one Linux test job for merge trains.
+- Kept the final-summary output style in CI so logs stay readable without the live redraw path.
+
+Measured impact:
+- No new local runtime measurement was taken for this phase because the motivation is GitLab job startup overhead, not runner execution speed inside a single job.
+
+Notes:
+- This deliberately gives back CI job-level parallelism in exchange for lower pipeline orchestration cost and simpler pipeline graphs.
+- Local `grape test` behavior is unchanged; this phase only simplifies CI topology.

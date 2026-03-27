@@ -2,7 +2,7 @@
 
 ## Current State
 - Goal: make root-suite testing faster for both local development and Linux CI.
-- Current phase: Phase 11 complete
+- Current phase: Phase 12 complete
 - Latest baseline commit before speed changes: `8e30d114`
 - Original full-suite timing: `44.75s`
 - Original known failures: `Publish` suite
@@ -74,6 +74,7 @@
   - `git_workflow`: `8.28s`
   - `workspace_topology`: `15.47s`
   - `publish`: `4.88s`, return code `1`
+  - these numbers are now historical only; CI has been collapsed back to one Linux GRAPE test job because job startup overhead outweighed the shard benefit
 
 ## Reproduction Commands
 - Full suite: `./grape test`
@@ -114,6 +115,7 @@
 - Phase 9 relaxes the serial-lane scheduling rule so `Publish` can overlap the normal worker lane instead of waiting until the end.
 - Phase 10 splits publish into shardable broad-run suites and switches the broad default worker count to the number of selected suites.
 - Phase 11 finishes the runner overhaul by sharding the remaining heavy suites, making no-flag broad runs size themselves from the full shard set, and adding `--quiet` as the final-summary path.
+- Phase 12 de-shards Linux CI back to one GRAPE test job per pipeline type because GitLab job startup overhead dominated the runtime win from multiple jobs.
 
 ## Next Recommended Step
 - The current overhaul is complete.
