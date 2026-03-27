@@ -26,6 +26,7 @@ Scope is limited to the repository's root `test/` suite. Vendored suites under `
 | 2026-03-26 | Phase 8 | 39.01 | 31.20 | 32.56 | 32.53 | 32.02 | 32.10 | Live broad-run schedule chart; fixed-width timing column; suite order file starts with Publish, Status, MergeDown, NestedSubproject, Clone | -13.55 at W4 | +0.56 at W4 | `a39b094c` |
 | 2026-03-26 | Phase 9 | 38.44 | 27.29 | 29.44 | 29.59 | 30.05 | 30.60 | Serial suites can overlap the normal lane; `Publish` now starts immediately and overlaps `Status`, `MergeDown`, and `Clone` | -17.46 at W4 | -3.91 at W4 | `2616ddf8` |
 | 2026-03-26 | Phase 10 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Publish` into broad-run shards; broad default workers now match suite count; `rzwhippet3` measured `./grape test --workers 29` at about `11.72s` with all suites passing | -33.03 at W29 | -15.57 at W29 vs Phase 9 default | `1c0f4aa9` |
+| 2026-03-26 | Phase 11 | n/a | n/a | n/a | n/a | n/a | n/a | Split `Status`, `GrapeUp`, `MergeDown`, `NestedSubproject`, and `Clone` into broad-run shards; `./grape test` now defaults to `42` workers on the full suite; `./grape test --quiet` on `rzwhippet3` completed in `9.88s` with all suites passing | -34.87 at default W42 | -1.84 at default W42 vs Phase 10 | `phase closeout` |
 
 ## Baseline Measurements
 
@@ -90,6 +91,7 @@ Notes:
 8. Add broad-run schedule observability and a hand-tuned suite launch order file.
 9. Let serial-marked suites overlap normal suites while still limiting serial execution to one at a time.
 10. Split `Publish` into shardable broad-run suites and retune the broad-run default for large-core hosts.
+11. Split the remaining heavy suites into broad-run shards and finish the quiet/final-summary runner behavior.
 
 ## Phase Log
 
@@ -423,3 +425,58 @@ Measured impact:
 Notes:
 - The sandbox host used during development did not reproduce this speedup cleanly, so the accepted timing for this phase is the user-reported `rzwhippet3` measurement above.
 - With the split publish layout there are currently `29` default broad-run selectors, so the new no-flag worker default now maps to `29` on this suite set.
+
+### Phase 11
+Status: complete
+
+What changed:
+- Split the remaining heavy suites into scheduler-visible shard packages while preserving the old aggregate aliases for direct `grape test <Suite>` usage:
+  - [`test/workspace_scenarios`](/usr/WS1/probinso/git/grape_workspaces/grape/test/workspace_scenarios) for `Status` and `GrapeUp`
+  - [`test/merge_down`](/usr/WS1/probinso/git/grape_workspaces/grape/test/merge_down) for `MergeDown`
+  - [`test/nested_subproject`](/usr/WS1/probinso/git/grape_workspaces/grape/test/nested_subproject) for `NestedSubproject`
+  - [`test/clone`](/usr/WS1/probinso/git/grape_workspaces/grape/test/clone) for `Clone`
+- Updated [`vine/test_suites.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/test_suites.py) so:
+  - the aggregate aliases stay user-visible
+  - broad runs schedule the hidden shard aliases instead of the aggregates
+  - `./grape test` with no explicit `--workers` sizes itself from the full requested shard set
+- Updated [`test/suite_order.txt`](/usr/WS1/probinso/git/grape_workspaces/grape/test/suite_order.txt) to front-load the heaviest current shards:
+  - `StatusSubmodule`
+  - `StatusTwoClients`
+  - `MergeDownSubmoduleConflict`
+  - `NestedSubprojectWorkspaceSync`
+  - `CloneNested`
+- Updated [`vine/grapeTest.py`](/usr/WS1/probinso/git/grape_workspaces/grape/vine/grapeTest.py) so broad-run output now includes:
+  - a total elapsed line above the timing chart
+  - `--quiet`, which suppresses live redraws and prints the same one-shot final summary style used by `grape -d test`
+- Extended [`test/testTimingChart.py`](/usr/WS1/probinso/git/grape_workspaces/grape/test/testTimingChart.py) so it now covers:
+  - aggregate heavy-suite aliases staying out of the broad default suite list
+  - aggregate alias resolution for direct `Suite.testName` selectors
+  - no-argument `./grape test` dispatching to the parallel broad-run path
+  - elapsed/total progress headers and `--quiet` disabling live redraws
+
+Measured impact:
+- User-provided accepted broad-run measurement on `rzwhippet3`:
+  - command: `./grape test --quiet`
+  - observed wall time: `9.88s`
+  - all listed suites returned `0`
+- Longest shards from that run:
+  - `NestedSubprojectWorkspaceSync`: `9.88s`
+  - `StatusSubmodule`: `9.71s`
+  - `CO`: `6.77s`
+  - `CloneNested`: `6.16s`
+  - `MergeDownSubmoduleConflict`: `5.52s`
+  - `CloneSmoke`: `5.39s`
+  - `PublishNestedSubprojects`: `5.25s`
+  - `PublishFromNestedSubproject`: `5.26s`
+  - `PublishNewSubmodule`: `5.26s`
+  - `GrapeUpSubmodule`: `5.26s`
+- Historical local worker matrix retained for reference:
+  - `--workers=8`: `29.44s` on the pre-split Phase 9 layout
+  - `--workers=16`: `29.59s` on the pre-split Phase 9 layout
+  - `--workers=32`: `30.05s` on the pre-split Phase 9 layout
+  - `--workers=64`: `30.60s` on the pre-split Phase 9 layout
+
+Notes:
+- With the final sharded layout there are now `42` default broad-run selectors, so plain `./grape test` maps to `42` workers on the full suite.
+- `--quiet` is intended for low-overhead broad runs and produces the same final one-shot summary style as `grape -d test`.
+- Treat this phase as the end of the current runner-overhaul effort; future work can focus on correctness or targeted profiling rather than more structural runner changes.
