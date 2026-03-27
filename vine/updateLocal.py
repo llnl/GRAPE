@@ -1,5 +1,6 @@
 import logging
 import os
+from vine import checkout
 from vine import config_parser_global
 from vine import grape_errors
 from vine import grapeGit as git
@@ -7,6 +8,20 @@ from vine import multi_repo_cmd_launcher
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.option import Option
 from vine.vine_logging import log_wrapper
+
+
+def applyMovedSubmodulesAfterUpdate(startingSHA, *, workspace_dir):
+    movedModules = {}
+    checkout.parseGitModulesDiffOutput(
+        startingSHA, "HEAD", [], [], [], movedModules,
+        workspace_dir=workspace_dir)
+    _, failedMoves = checkout.applyMovedSubmodules(
+        movedModules, workspace_dir=workspace_dir)
+    if failedMoves:
+        for oldSub, newSub in failedMoves.items():
+            logging.error(f"GRAPE: Failed to move submodule {oldSub} to {newSub} during grape up.")
+        return False
+    return True
 
 
 # update the repo from the remote
@@ -100,6 +115,9 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
         return False
 
     currentBranch = git.currentBranch(execution_path=execution_path)
+    startingSHA = None
+    if execution_path == workspace_dir and not args["--updateRemoteOnly"]:
+        startingSHA = git.SHA(execution_path=execution_path)
 
     allRemoteBranches = git.remoteBranches(execution_path=execution_path)
     fetchArgs = "--recurse-submodules=no origin "
@@ -143,5 +161,11 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
             raise e
+
+        if execution_path == workspace_dir and config_parser_global.grapeConfig().getboolean(
+                Option.SECTION_WORKSPACE, "manageSubmodules"):
+            if not applyMovedSubmodulesAfterUpdate(
+                    startingSHA, workspace_dir=workspace_dir):
+                return False
 
     return True

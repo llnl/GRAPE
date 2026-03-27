@@ -444,10 +444,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
     @log_wrapper
     def execute(self, args):
-        try:
-            git.config("--get user.name", execution_path=self.workspace_dir)
-            git.config("--get user.email", execution_path=self.workspace_dir)
-        except grape_errors.GrapeGitError as e:
+        if not self._gitIdentityAvailable():
             logging.info("Both user.name and user.email must be specified in your .gitconfig for grape publish!\nUse\n  git config --global user.name <Your Name>\n  git config --global user.email <your_email>@<your_domain>\n")
             return False
             
@@ -571,6 +568,48 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                 return False
 
         return True
+
+    def _resolveGitIdentityValue(self, git_key, *, config_section=None,
+                                 config_option=None, log_format=None):
+        try:
+            value = git.config(f"--get {git_key}",
+                               execution_path=self.workspace_dir)
+        except grape_errors.GrapeGitError:
+            value = ""
+        value = value.strip() if value else ""
+        if value:
+            return value
+
+        config = config_parser_global.grapeConfig()
+        if (config_section and config_option and config.has_section(config_section)
+                and config.has_option(config_section, config_option)):
+            value = config.get(config_section, config_option).strip()
+            if value:
+                return value
+
+        if log_format:
+            try:
+                value = git.log(f"--format=format:{log_format} -1",
+                                execution_path=self.workspace_dir).strip()
+            except grape_errors.GrapeGitError:
+                value = ""
+            if value:
+                return value
+
+        return ""
+
+    def _gitUserName(self):
+        return self._resolveGitIdentityValue(
+            "user.name", config_section="user", config_option="name",
+            log_format="%an")
+
+    def _gitUserEmail(self):
+        return self._resolveGitIdentityValue(
+            "user.email", config_section="user", config_option="email",
+            log_format="%ae")
+
+    def _gitIdentityAvailable(self):
+        return bool(self._gitUserName() and self._gitUserEmail())
 
     def bailOut(self, step, args):
         logging.info(
@@ -1532,8 +1571,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if logFile:
             header = args["--entryHeader"]
             header = header.replace("<date>", time.asctime())
-            header = header.replace("<user>", git.config(
-                "--get user.name", execution_path=self.workspace_dir))
+            header = header.replace("<user>", self._gitUserName())
             header = header.replace("<author>", self.progress["author"])
             header = header.replace("<author_username>", self.progress["author_username"])
             header = header.replace("<version>", self.progress["version"])
@@ -1712,7 +1750,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             date = time.asctime()
             emailHeader = args["--emailHeader"]
             emailHeader = emailHeader.replace(
-                "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+                "<user>", self._gitUserName())
             emailHeader = emailHeader.replace("<author>", self.progress["author"])
             emailHeader = emailHeader.replace("<author_username>", self.progress["author_username"])
             emailHeader = emailHeader.replace("<date>", date)
@@ -1732,7 +1770,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             mf.write('\n')
             emailFooter = args["--emailFooter"]
             emailFooter = emailFooter.replace(
-                "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+                "<user>", self._gitUserName())
             emailFooter = emailFooter.replace("<author>", self.progress["author"])
             emailFooter = emailFooter.replace("<author_username>", self.progress["author_username"])
             emailFooter = emailFooter.replace("<date>", date)
@@ -1757,8 +1795,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         msg = MIMEText(message)
 
         # Use their email address from their git user profile.
-        myemail = git.config("--get user.email",
-                             execution_path=self.workspace_dir)
+        myemail = self._gitUserEmail()
         # If the author email is available, send as the author
         author_email = self.progress["author_email"]
         if author_email:
@@ -1766,7 +1803,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         mailsubj = args["--emailSubject"]
         mailsubj = mailsubj.replace(
-            "<user>", git.config("--get user.name", execution_path=self.workspace_dir))
+            "<user>", self._gitUserName())
         mailsubj = mailsubj.replace("<author>", self.progress["author"])
         mailsubj = mailsubj.replace("<author_username>", self.progress["author_username"])
         mailsubj = mailsubj.replace("<public>", args["--public"])

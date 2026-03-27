@@ -1,7 +1,9 @@
 import os
 import sys
+from unittest.mock import patch
 from test import testGrape
 from test import testNestedSubproject
+from vine import mergeDown
 from vine import grape_errors
 from vine import grapeGit as git
 
@@ -209,6 +211,25 @@ class TestMD(testGrape.TestGrape):
                       f"{e.gitOutput}")
         except SystemExit:
             self.fail(f"Uncaught System Exit\n{self.get_output()}")
+
+    @patch("vine.mergeDown.checkout.applyMovedSubmodules")
+    def testReconcileMovedSubmodulesMapsActivePaths(self, mock_apply_moved):
+        mock_apply_moved.return_value = ({"old/sub": "new/sub"}, {})
+
+        moved = mergeDown.reconcileMovedSubmodules(
+            {"old/sub": "new/sub"}, ["old/sub", "unchanged/sub"],
+            workspace_dir=self.repo)
+
+        self.assertEqual(moved, ["new/sub", "unchanged/sub"])
+
+    @patch("vine.mergeDown.checkout.applyMovedSubmodules")
+    def testReconcileMovedSubmodulesReturnsNoneOnFailure(self, mock_apply_moved):
+        mock_apply_moved.return_value = ({}, {"old/sub": "new/sub"})
+
+        moved = mergeDown.reconcileMovedSubmodules(
+            {"old/sub": "new/sub"}, ["old/sub"], workspace_dir=self.repo)
+
+        self.assertIsNone(moved)
 
     def testConflictingSubmoduleMerge_MD(self):
         try:

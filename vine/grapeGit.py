@@ -610,8 +610,11 @@ def show(argStr, *, execution_path):
                       f"show failed with argstr {argStr}",
                       execution_path=execution_path)
     except grape_errors.GrapeGitError as e:
-        if "path" in e.gitOutput.lower() and "does not exist in" in e.gitOutput.lower():
+        git_output = e.gitOutput.lower()
+        if ("path" in git_output and "does not exist in" in git_output) or \
+                ("path" in git_output and "exists on disk, but not in" in git_output):
             return ""
+        raise e
 
 def showRemote(*, execution_path):
     try:
