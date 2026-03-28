@@ -33,6 +33,9 @@ class Pull(Resumable, Option, WorkspaceDirHandler):
 
         mrArgs = {}
         currentBranch = git.currentBranch(execution_path=self.workspace_dir)
+        remoteBranch = git.join_list_as_git_path(['origin', currentBranch])
+        hasRemote = remoteBranch in git.remoteBranches(
+            execution_path=self.workspace_dir)
         mrArgs["<branch>"] = currentBranch
         # the <<cmd>> stuff is for consistent --continue output
         if "<<cmd>>" not in args:
@@ -47,6 +50,16 @@ class Pull(Resumable, Option, WorkspaceDirHandler):
         mrArgs["--continue"] = args["--continue"]
         mrArgs["--noRecurse"] = False
         mrArgs["--squash"] = False
+
+        if not hasRemote:
+            git.fetch("origin", execution_path=self.workspace_dir)
+            hasRemote = remoteBranch in git.remoteBranches(
+                execution_path=self.workspace_dir)
+        if not hasRemote:
+            logging.info(
+                f"No remote reference to {currentBranch} in origin. "
+                "You may want to push this branch.")
+            return True
 
         if args["--noRecurse"]:
             git.pull(f"origin {currentBranch}", execution_path=self.workspace_dir)
