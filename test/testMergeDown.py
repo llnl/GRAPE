@@ -216,20 +216,39 @@ class TestMD(testGrape.TestGrape):
     def testReconcileMovedSubmodulesMapsActivePaths(self, mock_apply_moved):
         mock_apply_moved.return_value = ({"old/sub": "new/sub"}, {})
 
-        moved = mergeDown.reconcileMovedSubmodules(
-            {"old/sub": "new/sub"}, ["old/sub", "unchanged/sub"],
+        moved_active, moved_submodules = mergeDown.reconcileMovedSubmodules(
+            {"old/sub": "new/sub"},
+            ["old/sub", "unchanged/sub"],
+            ["old/sub", "other/sub"],
             workspace_dir=self.repo)
 
-        self.assertEqual(moved, ["new/sub", "unchanged/sub"])
+        self.assertEqual(moved_active, ["new/sub", "unchanged/sub"])
+        self.assertEqual(moved_submodules, ["new/sub", "other/sub"])
 
     @patch("vine.mergeDown.checkout.applyMovedSubmodules")
     def testReconcileMovedSubmodulesReturnsNoneOnFailure(self, mock_apply_moved):
         mock_apply_moved.return_value = ({}, {"old/sub": "new/sub"})
 
         moved = mergeDown.reconcileMovedSubmodules(
-            {"old/sub": "new/sub"}, ["old/sub"], workspace_dir=self.repo)
+            {"old/sub": "new/sub"}, ["old/sub"], ["old/sub"],
+            workspace_dir=self.repo)
 
         self.assertIsNone(moved)
+
+    def testRemapMovedSubmodulePathsDeduplicatesMovedEntries(self):
+        moved = mergeDown.remapMovedSubmodulePaths(
+            ["old/sub", "new/sub", "unchanged/sub"],
+            {"old/sub": "new/sub"})
+
+        self.assertEqual(moved, ["new/sub", "unchanged/sub"])
+
+    def testMergeSubmoduleCandidatesIncludesMovedActiveSubmodules(self):
+        merged = mergeDown.mergeSubmoduleCandidates(
+            ["new/location/sub1", "new/location/sub2"],
+            ["new/location/sub2", "new/location/sub3"])
+
+        self.assertEqual(merged, ["new/location/sub1", "new/location/sub2",
+                                  "new/location/sub3"])
 
     def testConflictingSubmoduleMerge_MD(self):
         try:

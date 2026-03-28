@@ -5,6 +5,7 @@ import shlex
 import shutil
 import stat
 import time
+from collections import defaultdict
 from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
@@ -227,7 +228,12 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
     except grape_errors.GrapeGitError as e:
         if f"bad revision '{branch}'" in e.gitOutput:
             logging.info(f"Fetching {branch} in {workspace_dir}")
-            git.fetch("origin", f"{branch}:{branch}", execution_path=workspace_dir)
+            if branch.startswith("origin/"):
+                git.fetch("origin", branch[len("origin/"):],
+                          execution_path=workspace_dir)
+            else:
+                git.fetch("origin", f"{branch}:{branch}",
+                          execution_path=workspace_dir)
             submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
         else:
             raise e
@@ -279,6 +285,36 @@ def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
                     continue
                 if previousInfo.get("url") != branchInfo.get("url"):
                     continue
+                movedModules.setdefault(oldPath, newPath)
+                removedPaths.discard(oldPath)
+                addedPaths.discard(newPath)
+
+            # Some repos use the path itself as the .gitmodules section name,
+            # so a move also changes the logical name. Pair unique add/remove
+            # candidates by URL to catch those path+name renames.
+            removedByUrl = defaultdict(list)
+            addedByUrl = defaultdict(list)
+            for oldPath in removedPaths:
+                url = previousByPath.get(oldPath, {}).get("url")
+                if url:
+                    removedByUrl[url].append(oldPath)
+            for newPath in addedPaths:
+                url = branchByPath.get(newPath, {}).get("url")
+                if url:
+                    addedByUrl[url].append(newPath)
+
+            for url in sorted(set(removedByUrl).intersection(addedByUrl)):
+                oldMatches = removedByUrl[url]
+                newMatches = addedByUrl[url]
+                if len(oldMatches) != 1 or len(newMatches) != 1:
+                    logging.warning(
+                        "Ambiguous submodule move detection for URL "
+                        f"{url}. Removed paths: {sorted(oldMatches)}. "
+                        f"Added paths: {sorted(newMatches)}. Skipping "
+                        "inferred move.")
+                    continue
+                oldPath = oldMatches[0]
+                newPath = newMatches[0]
                 movedModules.setdefault(oldPath, newPath)
                 removedPaths.discard(oldPath)
                 addedPaths.discard(newPath)
@@ -361,7 +397,13 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     if not os.path.exists(oldWorkingDir):
         return True
     if os.path.exists(newWorkingDir):
-        return True
+        if os.path.isdir(newWorkingDir) and len(os.listdir(newWorkingDir)) == 0:
+            os.rmdir(newWorkingDir)
+        else:
+            logging.info(
+                f"Destination for moved submodule already exists at "
+                f"{newSub}. Not moving.")
+            return False
     if not git.isWorkingDirectoryClean(execution_path=oldWorkingDir):
         logging.info(f"Unstaged / committed changes in {oldSub}, not moving.")
         return False
@@ -369,6 +411,29 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     gitdir = git.gitDir(execution_path=oldWorkingDir)
     if not gitdir:
         return False
+    gitdir = os.path.normpath(gitdir)
+    newGitdirPath = os.path.join(workspace_dir, ".git", "modules", newSub)
+
+    if gitdir != newGitdirPath:
+        if os.path.exists(newGitdirPath):
+            # A prior failed move/retry may already have created the new
+            # backend path. If the new worktree does not exist yet, prefer the
+            # old backend repo and replace the stale destination backend.
+            if os.path.exists(newWorkingDir):
+                logging.info(
+                    f"Destination gitdir for moved submodule already exists "
+                    f"at {newSub}. Not moving.")
+                return False
+            try:
+                shutil.rmtree(newGitdirPath)
+            except OSError:
+                for root, dirs, files in os.walk(newGitdirPath):
+                    for name in files:
+                        os.chmod(os.path.join(root, name), stat.S_IWRITE)
+                shutil.rmtree(newGitdirPath)
+        os.makedirs(os.path.dirname(newGitdirPath), exist_ok=True)
+        os.rename(gitdir, newGitdirPath)
+        gitdir = newGitdirPath
 
     os.makedirs(os.path.dirname(newWorkingDir), exist_ok=True)
     os.rename(oldWorkingDir, newWorkingDir)
