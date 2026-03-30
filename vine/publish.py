@@ -995,6 +995,13 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 # then no reapproval is needed. If diffs are truncated,
                                 # require reapproval.
 
+                                # The diff header will look something like
+                                #   @@ -oldStart,oldCount +newStart,newCount @@
+                                # The oldStart and newStart can differ between the tagged version and the source branch,
+                                # even if the diff is the same, so we will replace the entire header when we do the diff.
+                                # The oldCount/newCount will be accounted for in the body of the diff.
+                                oldstart_re = re.compile(r'(?m)(^@@\s+-)\d+((?:,\d+)?\s+\+\d+(?:,\d+)?\s+@@)')
+
                                 def normalizeDiff(diff):
                                     """Normalize a diff object for stable comparison.
 
@@ -1009,8 +1016,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                         tuple: (key, value) pairs for 'old_path', 'new_path', and 'diff', in that
                                             order.
                                     """
-                                    keysForComparison = ['old_path', 'new_path', 'diff']
-                                    return tuple((key, diff[key]) for key in keysForComparison)
+                                    normalized_diff = []
+                                    for key in ['old_path', 'new_path', 'diff']:
+                                        diff_entry = oldstart_re.sub(r'@@ patch_header_replaced @@', diff[key])
+                                        normalized_diff.append((key, diff_entry))
+                                    return tuple(normalized_diff)
 
                                 # Get source diffs, check for truncation, and normalize for comparison
                                 sourceDiffs = pullRequest.diffs()
@@ -1031,7 +1041,6 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                                 if tagDiffs['compare_timeout']:
                                     userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
-
                                     if not ruleDryRun:
                                         verified = False
 
@@ -1051,17 +1060,17 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
 
                                 # Compare source and tag diffs
-                                if sorted(tagDiffs) != sorted(sourceDiffs):
+                                if tagDiffs != sourceDiffs:
                                     userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
-                                    if not ruleDryRun:
 
+                                    if not ruleDryRun:
                                         verified = False
 
                                     break
 
                             # Check tag message
                             if label not in tag.message:
-                                userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+                                userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message} does not include {label}'
 
                                 if not ruleDryRun:
                                     verified = False
@@ -1071,8 +1080,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             approveInputSpecs = reviewRule.approveInputSpecs
 
                             for approveInputSpec in approveInputSpecs:
-                                if approveInputSpec.include_in_tag and approveInputSpec.label not in tag.message:
-                                    userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message}'
+                                if approveInputSpec.include_in_tag and approveInputSpec.required and approveInputSpec.label not in tag.message:
+                                    userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message} does not include required specification {approveInputSpec.label}'
 
                                     if not ruleDryRun:
                                         verified = False
