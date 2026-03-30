@@ -1051,10 +1051,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 tagDiffs = {normalizeDiff(diff) for diff in tagDiffs}
 
                                 # Compare source and tag diffs
-                                if tagDiffs != sourceDiffs:
+                                if sorted(tagDiffs) != sorted(sourceDiffs):
                                     userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}".'
-
                                     if not ruleDryRun:
+
                                         verified = False
 
                                     break
