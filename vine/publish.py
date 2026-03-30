@@ -1070,7 +1070,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             # Check tag message
                             if label not in tag.message:
-                                userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message} does not include {label}'
+                                userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{label} is not included in\n\t\t{tag.message}'
 
                                 if not ruleDryRun:
                                     verified = False
@@ -1081,7 +1081,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
                             for approveInputSpec in approveInputSpecs:
                                 if approveInputSpec.include_in_tag and approveInputSpec.required and approveInputSpec.label not in tag.message:
-                                    userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\t{tag.message} does not include required specification {approveInputSpec.label}'
+                                    userMessage += f'\n\t{repoName}: "{label}" has tag "{tagName}" with invalid message. Reapproval may fix the message.\n\t\tRequired specifcation {approveInputSpec.label} is not included in\n\t\t{tag.message}'
 
                                     if not ruleDryRun:
                                         verified = False
