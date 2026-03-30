@@ -998,7 +998,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 # The diff header will look something like
                                 #   @@ -oldStart,oldCount +newStart,newCount @@
                                 # The oldStart and newStart can differ between the tagged version and the source branch,
-                                # even if the diff is the same, so we will replace the entire header when we do the diff.
+                                # even if the diff is the same, so we will remove the entire header when we do the diff.
                                 # The oldCount/newCount will be accounted for in the body of the diff.
                                 patch_header_re = re.compile(r'(?m)(^@@\s+-)\d+((?:,\d+)?\s+\+\d+(?:,\d+)?\s+@@)')
 
@@ -1018,7 +1018,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                     """
                                     normalized_diff = []
                                     for key in ['old_path', 'new_path', 'diff']:
-                                        diff_entry = patch_header_re.sub(r'@@ patch_header_replaced @@', diff[key])
+                                        diff_entry = patch_header_re.sub('', diff[key])
                                         normalized_diff.append((key, diff_entry))
                                     return tuple(normalized_diff)
 
