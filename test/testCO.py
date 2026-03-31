@@ -1,8 +1,10 @@
 __author__ = 'robinson96'
 import os
+import tempfile
 from unittest.mock import patch
 import pytest
 from test import testGrape
+from vine import checkout
 from vine import grape_errors
 from vine import grapeGit as git
 
@@ -88,3 +90,348 @@ class TestCheckout(testGrape.TestGrape):
             self.assertFile1ExistsInSubmodule()
         except grape_errors.GrapeGitError as e:
             self.fail('\n'.join(self.get_output()) + e.gitCommand + '\n' + e.gitOutput)
+
+    @patch("vine.checkout.shouldParallelizeSubmoduleCleanup")
+    @patch("vine.checkout.multi_repo_cmd_launcher.MultiRepoCommandLauncher")
+    def testParallelCleanSubmodulesUsesLauncher(self, mock_launcher_cls,
+                                                mock_should_parallelize):
+        args = {"--updateView": True, "--noUpdateView": False}
+        active_submodules = ["sub1"]
+        submodules = ["sub1", "sub2", "sub3"]
+
+        mock_should_parallelize.side_effect = [True, False, True]
+        mock_launcher = mock_launcher_cls.return_value
+        mock_launcher.launchFromWorkspaceDir.return_value = [True, False]
+
+        failed, serial = checkout.parallelCleanSubmodules(
+            submodules, args, True, active_submodules,
+            workspace_dir=self.repo)
+
+        mock_launcher_cls.assert_called_once_with(
+            checkout.launcherCleanSubmodule,
+            listOfRepoBranchArgTuples=[
+                ("sub1", "",
+                 {"checkoutArgs": args,
+                  "veryclean": True,
+                  "activeSubmodules": active_submodules}),
+                ("sub3", "",
+                 {"checkoutArgs": args,
+                  "veryclean": True,
+                  "activeSubmodules": active_submodules}),
+            ],
+            workspace_dir=self.repo)
+        mock_launcher.launchFromWorkspaceDir.assert_called_once_with(
+            noPause=True)
+        self.assertEqual(failed, ["sub3"])
+        self.assertEqual(serial, ["sub2"])
+
+    @patch("vine.checkout.moveSubmodule")
+    @patch("vine.checkout.git.getAllSubmodules")
+    def testApplyMovedSubmodulesOnlyMovesPathsPresentInMergedWorkspace(
+            self, mock_get_all_submodules, mock_move_submodule):
+        mock_get_all_submodules.return_value = ["old/keep", "new/sub"]
+        mock_move_submodule.return_value = True
+
+        moved, failed = checkout.applyMovedSubmodules(
+            {"old/sub": "new/sub", "old/keep": "new/keep"},
+            workspace_dir=self.repo)
+
+        self.assertEqual(moved, {"old/sub": "new/sub"})
+        self.assertEqual(failed, {})
+        mock_move_submodule.assert_called_once_with(
+            "old/sub", "new/sub", workspace_dir=self.repo)
+
+    @patch("vine.checkout.git.show")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputDetectsMovedSubmodule(self, mock_diff,
+                                                           mock_show):
+        mock_diff.side_effect = [
+            ".gitmodules",
+            "R100\told/sub\tnew/sub",
+        ]
+        mock_show.side_effect = [
+            '[submodule "lib"]\n\tpath = old/sub\n\turl = ssh://repo/lib.git\n',
+            '[submodule "lib"]\n\tpath = new/sub\n\turl = ssh://repo/lib.git\n',
+        ]
+
+        added = []
+        removed = []
+        changed = []
+        moved = {}
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "branch", added, removed, changed, moved,
+            workspace_dir=self.repo)
+
+        self.assertEqual(added, [])
+        self.assertEqual(removed, [])
+        self.assertEqual(changed, [])
+        self.assertEqual(moved, {"old/sub": "new/sub"})
+
+    @patch("vine.checkout.git.show")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputDetectsMovedSubmoduleWhenNameChanges(
+            self, mock_diff, mock_show):
+        mock_diff.side_effect = [
+            ".gitmodules",
+            "",
+        ]
+        mock_show.side_effect = [
+            '[submodule "imports/lib"]\n\tpath = old/sub\n\turl = ssh://repo/lib.git\n',
+            '[submodule "tpl/lib"]\n\tpath = new/sub\n\turl = ssh://repo/lib.git\n',
+        ]
+
+        added = []
+        removed = []
+        changed = []
+        moved = {}
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "branch", added, removed, changed, moved,
+            workspace_dir=self.repo)
+
+        self.assertEqual(added, [])
+        self.assertEqual(removed, [])
+        self.assertEqual(changed, [])
+        self.assertEqual(moved, {"old/sub": "new/sub"})
+
+    @patch("vine.checkout.git.show")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputHandlesMissingGitmodules(self, mock_diff,
+                                                              mock_show):
+        mock_diff.return_value = ".gitmodules"
+        mock_show.side_effect = ["", None]
+
+        added = []
+        removed = []
+        changed = []
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "master", added, removed, changed,
+            workspace_dir=self.repo)
+
+        self.assertEqual(added, [])
+        self.assertEqual(removed, [])
+        self.assertEqual(changed, [])
+
+    @patch("vine.checkout.logging.warning")
+    @patch("vine.checkout.git.show")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputWarnsOnAmbiguousUrlMoveMatch(
+            self, mock_diff, mock_show, mock_warning):
+        mock_diff.side_effect = [
+            ".gitmodules",
+            "",
+        ]
+        mock_show.side_effect = [
+            '[submodule "old/sub1"]\n\tpath = old/sub1\n\turl = ssh://repo/lib.git\n'
+            '[submodule "old/sub2"]\n\tpath = old/sub2\n\turl = ssh://repo/lib.git\n',
+            '[submodule "new/sub"]\n\tpath = new/sub\n\turl = ssh://repo/lib.git\n',
+        ]
+
+        added = []
+        removed = []
+        changed = []
+        moved = {}
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "branch", added, removed, changed, moved,
+            workspace_dir=self.repo)
+
+        self.assertEqual(moved, {})
+        self.assertEqual(added, ["new/sub"])
+        self.assertEqual(removed, ["old/sub1", "old/sub2"])
+        mock_warning.assert_called_once()
+        self.assertIn("Ambiguous submodule move detection for URL",
+                      mock_warning.call_args[0][0])
+
+    @patch("vine.checkout.git.fetch")
+    @patch("vine.checkout.git.diff")
+    def testParseGitModulesDiffOutputFetchesRemoteQualifiedBranch(self,
+                                                                  mock_diff,
+                                                                  mock_fetch):
+        mock_diff.side_effect = [
+            grape_errors.GrapeGitError(
+                "bad revision", 128, "fatal: bad revision 'origin/newBranch'",
+                "git diff"),
+            "",
+        ]
+
+        added = []
+        removed = []
+        changed = []
+
+        checkout.parseGitModulesDiffOutput(
+            "HEAD", "origin/newBranch", added, removed, changed,
+            workspace_dir=self.repo)
+
+        mock_fetch.assert_called_once_with("origin", "newBranch",
+                                           execution_path=self.repo)
+
+    @patch("vine.checkout.git.getAllSubmodules")
+    @patch("vine.checkout.git.submodule")
+    @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
+    @patch("vine.checkout.git.isWorkingDirectoryClean")
+    def testMoveSubmoduleRewritesGitMetadata(self, mock_is_clean,
+                                             mock_gitdir, mock_config,
+                                             mock_submodule,
+                                             mock_get_all_submodules):
+        mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["new/sub"]
+
+        workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
+        old_sub = os.path.join(workspace, "old", "sub")
+        new_sub = os.path.join(workspace, "new", "sub")
+        old_module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        new_module_dir = os.path.join(workspace, ".git", "modules", "new", "sub")
+        mock_gitdir.return_value = old_module_dir
+        os.makedirs(old_module_dir)
+        os.makedirs(old_sub)
+
+        old_gitfile = os.path.join(old_sub, ".git")
+        with open(old_gitfile, "w") as gitfile:
+            gitfile.write("gitdir: ../../.git/modules/old/sub\n")
+        with open(os.path.join(old_module_dir, "config"), "w") as config_file:
+            config_file.write("[core]\n")
+
+        moved = checkout.moveSubmodule("old/sub", "new/sub",
+                                       workspace_dir=workspace)
+
+        self.assertTrue(moved)
+        self.assertFalse(os.path.exists(old_sub))
+        self.assertTrue(os.path.exists(new_sub))
+        self.assertFalse(os.path.exists(old_module_dir))
+        self.assertTrue(os.path.exists(new_module_dir))
+        with open(os.path.join(new_sub, ".git")) as gitfile:
+            self.assertEqual(gitfile.read(),
+                             "gitdir: ../../.git/modules/new/sub\n")
+        mock_config.assert_called_once_with(
+            f"--file {os.path.join(workspace, '.git', 'modules', 'new', 'sub', 'config')} core.worktree",
+            "../../../../new/sub", execution_path=workspace)
+        mock_submodule.assert_any_call("init -- new/sub",
+                                       execution_path=workspace)
+        mock_submodule.assert_any_call("sync -- new/sub",
+                                       execution_path=workspace)
+
+    @patch("vine.checkout.git.getAllSubmodules")
+    @patch("vine.checkout.git.submodule")
+    @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
+    @patch("vine.checkout.git.isWorkingDirectoryClean")
+    def testMoveSubmoduleReplacesEmptyDestination(self, mock_is_clean,
+                                                  mock_gitdir, mock_config,
+                                                  mock_submodule,
+                                                  mock_get_all_submodules):
+        mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["new/sub"]
+
+        workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
+        old_sub = os.path.join(workspace, "old", "sub")
+        new_sub = os.path.join(workspace, "new", "sub")
+        old_module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        new_module_dir = os.path.join(workspace, ".git", "modules", "new", "sub")
+        mock_gitdir.return_value = old_module_dir
+        os.makedirs(old_module_dir)
+        os.makedirs(old_sub)
+        os.makedirs(new_sub)
+
+        with open(os.path.join(old_sub, ".git"), "w") as gitfile:
+            gitfile.write("gitdir: ../../.git/modules/old/sub\n")
+        with open(os.path.join(old_module_dir, "config"), "w") as config_file:
+            config_file.write("[core]\n")
+        with open(os.path.join(old_sub, "tracked.txt"), "w") as subfile:
+            subfile.write("contents\n")
+
+        moved = checkout.moveSubmodule("old/sub", "new/sub",
+                                       workspace_dir=workspace)
+
+        self.assertTrue(moved)
+        self.assertFalse(os.path.exists(old_sub))
+        self.assertTrue(os.path.exists(os.path.join(new_sub, "tracked.txt")))
+        self.assertFalse(os.path.exists(old_module_dir))
+        self.assertTrue(os.path.exists(new_module_dir))
+        mock_config.assert_called_once()
+        mock_submodule.assert_any_call("init -- new/sub",
+                                       execution_path=workspace)
+        mock_submodule.assert_any_call("sync -- new/sub",
+                                       execution_path=workspace)
+
+    @patch("vine.checkout.git.getAllSubmodules")
+    @patch("vine.checkout.git.submodule")
+    @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
+    @patch("vine.checkout.git.isWorkingDirectoryClean")
+    def testMoveSubmoduleReplacesStaleDestinationGitdir(self, mock_is_clean,
+                                                        mock_gitdir,
+                                                        mock_config,
+                                                        mock_submodule,
+                                                        mock_get_all_submodules):
+        mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["new/sub"]
+
+        workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
+        old_sub = os.path.join(workspace, "old", "sub")
+        new_sub = os.path.join(workspace, "new", "sub")
+        old_module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        new_module_dir = os.path.join(workspace, ".git", "modules", "new", "sub")
+        mock_gitdir.return_value = old_module_dir
+        os.makedirs(old_module_dir)
+        os.makedirs(new_module_dir)
+        os.makedirs(old_sub)
+
+        with open(os.path.join(old_sub, ".git"), "w") as gitfile:
+            gitfile.write("gitdir: ../../.git/modules/old/sub\n")
+        with open(os.path.join(old_module_dir, "config"), "w") as config_file:
+            config_file.write("[core]\n")
+        with open(os.path.join(old_sub, "tracked.txt"), "w") as subfile:
+            subfile.write("contents\n")
+        with open(os.path.join(new_module_dir, "stale"), "w") as stale_file:
+            stale_file.write("stale\n")
+
+        moved = checkout.moveSubmodule("old/sub", "new/sub",
+                                       workspace_dir=workspace)
+
+        self.assertTrue(moved)
+        self.assertFalse(os.path.exists(old_sub))
+        self.assertFalse(os.path.exists(old_module_dir))
+        self.assertTrue(os.path.exists(os.path.join(new_sub, "tracked.txt")))
+        self.assertFalse(os.path.exists(os.path.join(new_module_dir, "stale")))
+        mock_config.assert_called_once()
+        mock_submodule.assert_any_call("init -- new/sub",
+                                       execution_path=workspace)
+        mock_submodule.assert_any_call("sync -- new/sub",
+                                       execution_path=workspace)
+
+    @patch("vine.checkout.git.getAllSubmodules")
+    @patch("vine.checkout.git.submodule")
+    @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
+    @patch("vine.checkout.git.isWorkingDirectoryClean")
+    def testMoveSubmoduleSkipsInitSyncWhenMergedWorkspaceDoesNotContainPath(
+            self, mock_is_clean, mock_gitdir, mock_config, mock_submodule,
+            mock_get_all_submodules):
+        mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["old/sub"]
+
+        workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
+        old_sub = os.path.join(workspace, "old", "sub")
+        new_sub = os.path.join(workspace, "new", "sub")
+        old_module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        new_module_dir = os.path.join(workspace, ".git", "modules", "new", "sub")
+        mock_gitdir.return_value = old_module_dir
+        os.makedirs(old_module_dir)
+        os.makedirs(old_sub)
+
+        with open(os.path.join(old_sub, ".git"), "w") as gitfile:
+            gitfile.write("gitdir: ../../.git/modules/old/sub\n")
+        with open(os.path.join(old_module_dir, "config"), "w") as config_file:
+            config_file.write("[core]\n")
+
+        moved = checkout.moveSubmodule("old/sub", "new/sub",
+                                       workspace_dir=workspace)
+
+        self.assertTrue(moved)
+        self.assertTrue(os.path.exists(new_sub))
+        self.assertTrue(os.path.exists(new_module_dir))
+        mock_submodule.assert_not_called()

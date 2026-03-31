@@ -19,6 +19,27 @@ from vine.resumable import Resumable
 from vine.vine_logging import log_wrapper
 
 
+def remapMovedSubmodulePaths(paths, movedModules):
+    return list(dict.fromkeys(movedModules.get(path, path) for path in paths))
+
+
+def mergeSubmoduleCandidates(submodules, movedActiveSubmodules):
+    return list(dict.fromkeys(submodules + movedActiveSubmodules))
+
+
+def reconcileMovedSubmodules(movedModules, *pathLists, workspace_dir):
+    # Keep the merge flow working with the paths that are active after the
+    # outer-level merge updates .gitmodules.
+    movedModules, failedMoves = checkout.applyMovedSubmodules(
+        movedModules, workspace_dir=workspace_dir)
+    if failedMoves:
+        for oldSub, newSub in failedMoves.items():
+            logging.warning(f"Failed to move submodule {oldSub} to {newSub} during merge.")
+        return None
+    return [remapMovedSubmodulePaths(paths, movedModules)
+            for paths in pathLists]
+
+
 # pull and merge down from an up-to-date public branch
 class MergeDown(Resumable, Option, WorkspaceDirHandler):
     """
@@ -185,8 +206,12 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
 
 
         config = config_parser_global.grapeConfig()
-        recurse = config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules") or args["--recurse"]
-        recurse = recurse and (not args["--noRecurse"]) and len(submodules) > 0
+        recurseSubmoduleChanges = (
+            config.getboolean(Option.SECTION_WORKSPACE, "manageSubmodules")
+            or args["--recurse"])
+        recurseSubmoduleChanges = recurseSubmoduleChanges and (
+            not args["--noRecurse"])
+        recurse = recurseSubmoduleChanges and len(submodules) > 0
         args["--recurse"] = recurse
 
         if "conflictedFiles" in self.progress:
@@ -226,10 +251,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         addedModules = []
         removedModules = []
         changedURLModules = []
-        if recurse:
+        movedModules = {}
+        if recurseSubmoduleChanges:
             checkout.parseGitModulesDiffOutput(
                 git.currentBranch(execution_path=self.workspace_dir), branch, addedModules,
-                removedModules, changedURLModules,
+                removedModules, changedURLModules, movedModules,
                 workspace_dir=self.workspace_dir)
             # deinit and clean out any submodules that changed urls
             for sub in changedURLModules:
@@ -245,6 +271,16 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         # do an outer merge if we haven't done it yet
         conflictedFiles = self.outerLevelMerge(args, branch)
 
+        reconciledSubmodulePaths = reconcileMovedSubmodules(
+            movedModules, activeSubmodulesCheck0, submodules,
+            workspace_dir=self.workspace_dir)
+        if reconciledSubmodulePaths is None:
+            return False
+        movedActiveSubmodules, submodules = reconciledSubmodulePaths
+        submodules = mergeSubmoduleCandidates(submodules, movedActiveSubmodules)
+        recurse = recurseSubmoduleChanges and len(submodules) > 0
+        args["--recurse"] = recurse
+
         # get active submodules post-merge
         try:
             reinitActiveSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
@@ -258,7 +294,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 raise e 
 
         # add in active submodules pre-merge
-        reinitActiveSubmodulesCheck.extend(activeSubmodulesCheck0)
+        reinitActiveSubmodulesCheck.extend(movedActiveSubmodules)
 
         reinitModules = changedURLModules + addedModules
         # reinit and create the current branch in any submodules with changed URLs

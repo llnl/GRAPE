@@ -1,9 +1,11 @@
 import logging
 import os
 import re
+import shlex
 import shutil
 import stat
 import time
+from collections import defaultdict
 from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
@@ -13,6 +15,7 @@ from vine import multi_repo_cmd_launcher
 from vine.addSubproject import AddSubproject
 from vine.updateView import UpdateView
 from vine.option import Option
+from vine import submodules as submodule_parser
 from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine import utility
 from vine.vine_logging import log_wrapper
@@ -200,36 +203,124 @@ def branchAlreadyExists(branch, workspace_dir):
                 retVal = 2
     return retVal
 
+def _submodulePathInfoForRevision(revision, *, workspace_dir):
+    # We need both the stable submodule name and the path/url mapping to
+    # distinguish true add/remove events from path-only moves.
+    gitmodulesContents = git.show(f"{revision}:.gitmodules",
+                                  execution_path=workspace_dir)
+    if not gitmodulesContents:
+        return {}, {}
+    parsedSubmodules = submodule_parser.parse_gitmodules(
+        gitmodulesContents.splitlines())
+    pathInfo = {}
+    for name, info in parsedSubmodules.items():
+        path = info.get("path")
+        if path:
+            pathInfo[path] = {"name": name, **info}
+    return parsedSubmodules, pathInfo
+
+
 def parseGitModulesDiffOutput(currentSHA, branch, addedModules, removedModules,
-                              changedURLModules, *, workspace_dir):
+                              changedURLModules, movedModules=None,
+                              *, workspace_dir):
     try:
         submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
     except grape_errors.GrapeGitError as e:
         if f"bad revision '{branch}'" in e.gitOutput:
             logging.info(f"Fetching {branch} in {workspace_dir}")
-            git.fetch("origin", f"{branch}:{branch}", execution_path=workspace_dir)
+            if branch.startswith("origin/"):
+                git.fetch("origin", branch[len("origin/"):],
+                          execution_path=workspace_dir)
+            else:
+                git.fetch("origin", f"{branch}:{branch}",
+                          execution_path=workspace_dir)
             submoduleListWillChange = ".gitmodules" in git.diff(f"--name-only {currentSHA} {branch} --", execution_path=workspace_dir)
         else:
             raise e
     if submoduleListWillChange:
-        output = git.diff(f"{currentSHA} {branch} --no-ext-diff -- .gitmodules", execution_path=workspace_dir)
-        currentSubmodule = False
-        pattern = re.compile(r"-\s+url\s*=")
+        previousParsed, previousByPath = _submodulePathInfoForRevision(
+            currentSHA, workspace_dir=workspace_dir)
+        branchParsed, branchByPath = _submodulePathInfoForRevision(
+            branch, workspace_dir=workspace_dir)
 
-        for line in output.split('\n'):
-            if "[submodule" in line:
-                currentSubmodule = line.split('"')[1]
-            # This relies on the diff context being sufficient to catch the submodule line.
-            # Only 2 lines of backwards context should be required, so this should be ok.
-            if pattern.match(line):
-                if currentSubmodule:
-                    changedURLModules.append(currentSubmodule)
-            if "+[submodule" in line:
-                addedModules.append(line.split('"')[1])
-                currentSubmodule = False
-            if "-[submodule" in line:
-                removedModules.append(line.split('"')[1])
-                currentSubmodule = False
+        previousPaths = set(previousByPath)
+        branchPaths = set(branchByPath)
+        addedPaths = branchPaths - previousPaths
+        removedPaths = previousPaths - branchPaths
+
+        for path in sorted(previousPaths.intersection(branchPaths)):
+            previousUrl = previousByPath[path].get("url")
+            branchUrl = branchByPath[path].get("url")
+            if previousUrl != branchUrl:
+                changedURLModules.append(path)
+
+        if movedModules is not None:
+            # Prefer Git's rename detection when available so an actual file
+            # move of the gitlink shows up as a move instead of add/remove.
+            renameOutput = git.diff(f"--name-status -M {currentSHA} {branch} --",
+                                    execution_path=workspace_dir)
+            for line in renameOutput.splitlines():
+                fields = line.split('\t')
+                if len(fields) != 3 or not fields[0].startswith('R'):
+                    continue
+                oldPath, newPath = fields[1], fields[2]
+                if oldPath not in removedPaths or newPath not in addedPaths:
+                    continue
+                previousInfo = previousByPath.get(oldPath, {})
+                branchInfo = branchByPath.get(newPath, {})
+                if previousInfo.get("url") != branchInfo.get("url"):
+                    continue
+                movedModules[oldPath] = newPath
+                removedPaths.discard(oldPath)
+                addedPaths.discard(newPath)
+
+            # Fall back to matching the logical submodule name in .gitmodules.
+            # This catches path-only moves even if Git does not emit an R entry.
+            for name in sorted(set(previousParsed).intersection(branchParsed)):
+                previousInfo = previousParsed[name]
+                branchInfo = branchParsed[name]
+                oldPath = previousInfo.get("path")
+                newPath = branchInfo.get("path")
+                if not oldPath or not newPath or oldPath == newPath:
+                    continue
+                if previousInfo.get("url") != branchInfo.get("url"):
+                    continue
+                movedModules.setdefault(oldPath, newPath)
+                removedPaths.discard(oldPath)
+                addedPaths.discard(newPath)
+
+            # Some repos use the path itself as the .gitmodules section name,
+            # so a move also changes the logical name. Pair unique add/remove
+            # candidates by URL to catch those path+name renames.
+            removedByUrl = defaultdict(list)
+            addedByUrl = defaultdict(list)
+            for oldPath in removedPaths:
+                url = previousByPath.get(oldPath, {}).get("url")
+                if url:
+                    removedByUrl[url].append(oldPath)
+            for newPath in addedPaths:
+                url = branchByPath.get(newPath, {}).get("url")
+                if url:
+                    addedByUrl[url].append(newPath)
+
+            for url in sorted(set(removedByUrl).intersection(addedByUrl)):
+                oldMatches = removedByUrl[url]
+                newMatches = addedByUrl[url]
+                if len(oldMatches) != 1 or len(newMatches) != 1:
+                    logging.warning(
+                        "Ambiguous submodule move detection for URL "
+                        f"{url}. Removed paths: {sorted(oldMatches)}. "
+                        f"Added paths: {sorted(newMatches)}. Skipping "
+                        "inferred move.")
+                    continue
+                oldPath = oldMatches[0]
+                newPath = newMatches[0]
+                movedModules.setdefault(oldPath, newPath)
+                removedPaths.discard(oldPath)
+                addedPaths.discard(newPath)
+
+        addedModules.extend(sorted(addedPaths))
+        removedModules.extend(sorted(removedPaths))
 
     return addedModules, removedModules, changedURLModules
 
@@ -296,6 +387,216 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
                      " not removing.")
     return cleaned
 
+def _mergedWorkspaceHasSubmodule(path, *, workspace_dir):
+    # Query the post-merge/post-checkout .gitmodules view. The move detector is
+    # intentionally conservative: we only apply the local filesystem move when
+    # the merged workspace actually expects the destination path to exist.
+    return path in git.getAllSubmodules(execution_path=workspace_dir)
+
+
+def _refreshMovedSubmoduleConfig(sub, *, workspace_dir):
+    if not _mergedWorkspaceHasSubmodule(sub, workspace_dir=workspace_dir):
+        logging.info(
+            f"Merged workspace does not contain submodule {sub}. "
+            "Skipping submodule init/sync for the local move.")
+        return
+    try:
+        git.submodule(f"init -- {sub}", execution_path=workspace_dir)
+        git.submodule(f"sync -- {sub}", execution_path=workspace_dir)
+    except grape_errors.GrapeGitError as e:
+        if ("pathspec" in e.gitOutput.lower() or
+                "no submodule mapping found in .gitmodules" in
+                e.gitOutput.lower()):
+            logging.info(
+                f"Unable to refresh submodule metadata for {sub} after the "
+                "local move. Skipping init/sync.")
+            return
+        raise
+
+
+def _movesPresentInWorkspace(movedModules, *, workspace_dir):
+    # Filter inferred moves against the branch/merge result that is now checked
+    # out in the workspace.
+    #
+    # Example:
+    #   topic branch:      tpl/foo
+    #   older branch:      exports/foo
+    #
+    # If we merge the older branch and the result still contains
+    # tpl/foo in .gitmodules, then this is not a local move to apply
+    # anymore. Treating tpl/foo -> exports/foo as a completed local
+    # move would break later bookkeeping and can trigger git submodule commands
+    # for a path that the merged workspace does not actually contain.
+    currentSubmodules = set(git.getAllSubmodules(execution_path=workspace_dir))
+    filteredMoves = {}
+    for oldSub, newSub in movedModules.items():
+        if newSub in currentSubmodules and oldSub not in currentSubmodules:
+            filteredMoves[oldSub] = newSub
+        elif oldSub in currentSubmodules and newSub not in currentSubmodules:
+            logging.debug(
+                f"Merged workspace still contains submodule {oldSub}. "
+                f"Skipping local move to {newSub}.")
+        else:
+            logging.debug(
+                f"Merged workspace does not contain a unique destination for "
+                f"submodule move {oldSub} -> {newSub}. Skipping local move.")
+    return filteredMoves
+
+
+def moveSubmodule(oldSub, newSub, *, workspace_dir):
+    oldWorkingDir = os.path.join(workspace_dir, oldSub)
+    newWorkingDir = os.path.join(workspace_dir, newSub)
+
+    # Checkout may already have materialized the new path. In that case there
+    # is nothing left for the local move step to do.
+    if not os.path.exists(oldWorkingDir):
+        return True
+    if os.path.exists(newWorkingDir):
+        if os.path.isdir(newWorkingDir) and len(os.listdir(newWorkingDir)) == 0:
+            os.rmdir(newWorkingDir)
+        else:
+            logging.info(
+                f"Destination for moved submodule already exists at "
+                f"{newSub}. Not moving.")
+            return False
+    if not git.isWorkingDirectoryClean(execution_path=oldWorkingDir):
+        logging.info(f"Unstaged / committed changes in {oldSub}, not moving.")
+        return False
+
+    gitdir = git.gitDir(execution_path=oldWorkingDir)
+    if not gitdir:
+        return False
+    gitdir = os.path.normpath(gitdir)
+    newGitdirPath = os.path.join(workspace_dir, ".git", "modules", newSub)
+
+    if gitdir != newGitdirPath:
+        if os.path.exists(newGitdirPath):
+            # A prior failed move/retry may already have created the new
+            # backend path. If the new worktree does not exist yet, prefer the
+            # old backend repo and replace the stale destination backend.
+            if os.path.exists(newWorkingDir):
+                logging.info(
+                    f"Destination gitdir for moved submodule already exists "
+                    f"at {newSub}. Not moving.")
+                return False
+            try:
+                shutil.rmtree(newGitdirPath)
+            except OSError:
+                for root, dirs, files in os.walk(newGitdirPath):
+                    for name in files:
+                        os.chmod(os.path.join(root, name), stat.S_IWRITE)
+                shutil.rmtree(newGitdirPath)
+        os.makedirs(os.path.dirname(newGitdirPath), exist_ok=True)
+        os.rename(gitdir, newGitdirPath)
+        gitdir = newGitdirPath
+
+    os.makedirs(os.path.dirname(newWorkingDir), exist_ok=True)
+    os.rename(oldWorkingDir, newWorkingDir)
+
+    # The submodule backend repo usually stays in .git/modules/<old-path>, so
+    # update the frontend gitfile and backend core.worktree to point at the
+    # new working tree location.
+    newGitdir = os.path.relpath(gitdir, newWorkingDir).replace(os.sep, '/')
+    with open(os.path.join(newWorkingDir, ".git"), "w") as gitfile:
+        gitfile.write(f"gitdir: {newGitdir}\n")
+
+    moduleConfigPath = os.path.join(gitdir, "config")
+    if os.path.exists(moduleConfigPath):
+        newWorktree = os.path.relpath(newWorkingDir, gitdir).replace(os.sep, '/')
+        git.config(f"--file {shlex.quote(moduleConfigPath)} core.worktree",
+                   newWorktree, execution_path=workspace_dir)
+
+    # Refresh local submodule config for the new path after the filesystem move.
+    _refreshMovedSubmoduleConfig(newSub, workspace_dir=workspace_dir)
+    return True
+
+
+def applyMovedSubmodules(movedModules, *, workspace_dir):
+    successfulMoves = {}
+    failedMoves = {}
+    for oldSub, newSub in _movesPresentInWorkspace(
+            movedModules, workspace_dir=workspace_dir).items():
+        logging.info(f"Moving submodule {oldSub} to {newSub}.")
+        if moveSubmodule(oldSub, newSub, workspace_dir=workspace_dir):
+            successfulMoves[oldSub] = newSub
+        else:
+            failedMoves[oldSub] = newSub
+    return successfulMoves, failedMoves
+
+
+def shouldParallelizeSubmoduleCleanup(sub, args, veryclean=False,
+                                      activeSubmodules=None, *, workspace_dir):
+    if activeSubmodules is None:
+        activeSubmodules = []
+
+    working_dir = os.path.join(workspace_dir, sub)
+    dirExists = os.path.exists(working_dir)
+    dirIsEmpty = not dirExists or len(os.listdir(working_dir)) == 0
+    changedActive = sub in activeSubmodules
+
+    if veryclean:
+        if not changedActive:
+            return True
+        if dirIsEmpty:
+            return True
+        if not git.isWorkingDirectoryClean(execution_path=working_dir):
+            return False
+        unpushed = git.log("--branches --not --remotes --oneline --decorate",
+                           execution_path=working_dir)
+        return not bool(unpushed)
+
+    if not dirExists or dirIsEmpty:
+        return args["--updateView"]
+
+    if not git.isWorkingDirectoryClean(execution_path=working_dir):
+        return False
+
+    return args["--updateView"]
+
+
+def launcherCleanSubmodule(repo='', branch='', args=None, *, workspace_dir):
+    # 'branch' included for continuity with multi_repo_cmd_launcher.
+    sub = os.path.relpath(repo, workspace_dir)
+    return cleanSubmodule(sub, args["checkoutArgs"], args["veryclean"],
+                          args["activeSubmodules"], workspace_dir=workspace_dir)
+
+
+def parallelCleanSubmodules(submodules, args, veryclean=False,
+                            activeSubmodules=None, *, workspace_dir):
+    if activeSubmodules is None:
+        activeSubmodules = []
+
+    autoCleanSubmodules = []
+    serialCleanSubmodules = []
+
+    for sub in submodules:
+        if shouldParallelizeSubmoduleCleanup(
+                sub, args, veryclean, activeSubmodules,
+                workspace_dir=workspace_dir):
+            autoCleanSubmodules.append(sub)
+        else:
+            # Keep prompting / dirty-worktree cases on the serial path so the
+            # existing interactive behavior remains unchanged.
+            serialCleanSubmodules.append(sub)
+
+    failedSubmodules = []
+    if autoCleanSubmodules:
+        launchTuples = [(sub, '',
+                         {"checkoutArgs": args,
+                          "veryclean": veryclean,
+                          "activeSubmodules": activeSubmodules})
+                        for sub in autoCleanSubmodules]
+        launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+            launcherCleanSubmodule,
+            listOfRepoBranchArgTuples=launchTuples,
+            workspace_dir=workspace_dir)
+        retvals = launcher.launchFromWorkspaceDir(noPause=True)
+        failedSubmodules.extend(
+            sub for sub, cleaned in zip(autoCleanSubmodules, retvals)
+            if not cleaned)
+
+    return failedSubmodules, serialCleanSubmodules
+
 
 class Checkout(Option, WorkspaceDirHandler):
     """
@@ -351,6 +652,7 @@ class Checkout(Option, WorkspaceDirHandler):
         addedModules = []
         removedModules = []
         changedURLModules = []
+        movedModules = {}
         uvArgs = []
         checkoutargs = ''
         submodulesDidChange = False
@@ -379,9 +681,10 @@ class Checkout(Option, WorkspaceDirHandler):
             if config_parser_global.grapeConfig().getboolean(self.SECTION_WORKSPACE, "manageSubmodules"):
                 parseGitModulesDiffOutput(
                     startingSHA, branch, addedModules, removedModules,
-                    changedURLModules, workspace_dir=self.workspace_dir)
+                    changedURLModules, movedModules,
+                    workspace_dir=self.workspace_dir)
 
-            if addedModules or removedModules or changedURLModules:
+            if addedModules or removedModules or changedURLModules or movedModules:
                 submodulesDidChange = True
 
             # deinit and clean out any submodules that changed urls
@@ -392,6 +695,13 @@ class Checkout(Option, WorkspaceDirHandler):
                     logging.info(
                         f"url for {sub} changed, attempting to remove " +
                         f"references for {maybe_active} submodule.")
+            failedSubs, serialSubs = parallelCleanSubmodules(
+                changedURLModules, args, True, initiallyActiveSubmodules,
+                workspace_dir=self.workspace_dir)
+            for sub in failedSubs:
+                logging.info(f"Failed to remove old submodule for {sub}.")
+                return False
+            for sub in serialSubs:
                 cleaned = cleanSubmodule(sub, args, True, initiallyActiveSubmodules, workspace_dir=self.workspace_dir)
                 if not cleaned:
                     logging.info(f"Failed to remove old submodule for {sub}.")
@@ -416,9 +726,20 @@ class Checkout(Option, WorkspaceDirHandler):
             if sub in initiallyActiveSubmodules:
                 git.submodule(f"init {sub}", execution_path=self.workspace_dir)
 
+        movedModules, failedMoves = applyMovedSubmodules(
+            movedModules, workspace_dir=self.workspace_dir)
+        for oldSub, newSub in failedMoves.items():
+            # If the local move cannot be completed safely, fall back to the
+            # existing remove/recreate path instead of aborting checkout.
+            logging.info(f"Failed to move submodule {oldSub} to {newSub}; falling back to remove and re-add.")
+            removedModules.append(oldSub)
+            addedModules.append(newSub)
+
         # clean out removed submodules
-        for sub in removedModules:
-            cleaned = cleanSubmodule(sub, args, workspace_dir=self.workspace_dir)
+        failedSubs, serialSubs = parallelCleanSubmodules(
+            removedModules, args, workspace_dir=self.workspace_dir)
+        for sub in serialSubs:
+            cleanSubmodule(sub, args, workspace_dir=self.workspace_dir)
 
         # check to see if nested project list changed
         nestedProjectListDidChange = False
@@ -539,6 +860,7 @@ class Checkout(Option, WorkspaceDirHandler):
                                                "%s" % ("Added Submodules: %s\n"% ','.join(addedModules) if addedModules else "") +
                                                "%s" % ("Removed Projects: %s\n" % ','.join(removedProjects) if removedProjects else "") +
                                                "%s" % ("Removed Submodules: %s\n" % ','.join(removedModules) if removedModules else "") +
+                                               "%s" % ("Moved Submodules: %s\n" % ','.join([f"{old}->{new}" for old, new in movedModules.items()]) if movedModules else "") +
                                                "%s" % ("Replaced Projects: %s\n" % ','.join(replacedProjects) if replacedProjects else "") +
                                                "Would you like to update your workspace view? [y/n]", 'n')
             elif args["--noUpdateView"]:
