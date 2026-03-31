@@ -423,7 +423,7 @@ def _movesPresentInWorkspace(movedModules, *, workspace_dir):
     #   older branch:      exports/foo
     #
     # If we merge the older branch and the result still contains
-    # exports/foo in .gitmodules, then this is not a local move to apply
+    # tpl/foo in .gitmodules, then this is not a local move to apply
     # anymore. Treating tpl/foo -> exports/foo as a completed local
     # move would break later bookkeeping and can trigger git submodule commands
     # for a path that the merged workspace does not actually contain.
@@ -433,11 +433,11 @@ def _movesPresentInWorkspace(movedModules, *, workspace_dir):
         if newSub in currentSubmodules and oldSub not in currentSubmodules:
             filteredMoves[oldSub] = newSub
         elif oldSub in currentSubmodules and newSub not in currentSubmodules:
-            logging.info(
+            logging.debug(
                 f"Merged workspace still contains submodule {oldSub}. "
                 f"Skipping local move to {newSub}.")
         else:
-            logging.info(
+            logging.debug(
                 f"Merged workspace does not contain a unique destination for "
                 f"submodule move {oldSub} -> {newSub}. Skipping local move.")
     return filteredMoves
