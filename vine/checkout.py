@@ -387,6 +387,61 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
                      " not removing.")
     return cleaned
 
+def _mergedWorkspaceHasSubmodule(path, *, workspace_dir):
+    # Query the post-merge/post-checkout .gitmodules view. The move detector is
+    # intentionally conservative: we only apply the local filesystem move when
+    # the merged workspace actually expects the destination path to exist.
+    return path in git.getAllSubmodules(execution_path=workspace_dir)
+
+
+def _refreshMovedSubmoduleConfig(sub, *, workspace_dir):
+    if not _mergedWorkspaceHasSubmodule(sub, workspace_dir=workspace_dir):
+        logging.info(
+            f"Merged workspace does not contain submodule {sub}. "
+            "Skipping submodule init/sync for the local move.")
+        return
+    try:
+        git.submodule(f"init -- {sub}", execution_path=workspace_dir)
+        git.submodule(f"sync -- {sub}", execution_path=workspace_dir)
+    except grape_errors.GrapeGitError as e:
+        if ("pathspec" in e.gitOutput.lower() or
+                "no submodule mapping found in .gitmodules" in
+                e.gitOutput.lower()):
+            logging.info(
+                f"Unable to refresh submodule metadata for {sub} after the "
+                "local move. Skipping init/sync.")
+            return
+        raise
+
+
+def _movesPresentInWorkspace(movedModules, *, workspace_dir):
+    # Filter inferred moves against the branch/merge result that is now checked
+    # out in the workspace.
+    #
+    # Example:
+    #   topic branch:      tpl/foo
+    #   older branch:      exports/foo
+    #
+    # If we merge the older branch and the result still contains
+    # tpl/foo in .gitmodules, then this is not a local move to apply
+    # anymore. Treating tpl/foo -> exports/foo as a completed local
+    # move would break later bookkeeping and can trigger git submodule commands
+    # for a path that the merged workspace does not actually contain.
+    currentSubmodules = set(git.getAllSubmodules(execution_path=workspace_dir))
+    filteredMoves = {}
+    for oldSub, newSub in movedModules.items():
+        if newSub in currentSubmodules and oldSub not in currentSubmodules:
+            filteredMoves[oldSub] = newSub
+        elif oldSub in currentSubmodules and newSub not in currentSubmodules:
+            logging.debug(
+                f"Merged workspace still contains submodule {oldSub}. "
+                f"Skipping local move to {newSub}.")
+        else:
+            logging.debug(
+                f"Merged workspace does not contain a unique destination for "
+                f"submodule move {oldSub} -> {newSub}. Skipping local move.")
+    return filteredMoves
+
 
 def moveSubmodule(oldSub, newSub, *, workspace_dir):
     oldWorkingDir = os.path.join(workspace_dir, oldSub)
@@ -452,15 +507,15 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
                    newWorktree, execution_path=workspace_dir)
 
     # Refresh local submodule config for the new path after the filesystem move.
-    git.submodule(f"init -- {newSub}", execution_path=workspace_dir)
-    git.submodule(f"sync -- {newSub}", execution_path=workspace_dir)
+    _refreshMovedSubmoduleConfig(newSub, workspace_dir=workspace_dir)
     return True
 
 
 def applyMovedSubmodules(movedModules, *, workspace_dir):
     successfulMoves = {}
     failedMoves = {}
-    for oldSub, newSub in movedModules.items():
+    for oldSub, newSub in _movesPresentInWorkspace(
+            movedModules, workspace_dir=workspace_dir).items():
         logging.info(f"Moving submodule {oldSub} to {newSub}.")
         if moveSubmodule(oldSub, newSub, workspace_dir=workspace_dir):
             successfulMoves[oldSub] = newSub
