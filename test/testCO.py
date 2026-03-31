@@ -121,6 +121,22 @@ class TestCheckout(testGrape.TestGrape):
         self.assertEqual(failed, ["sub3"])
         self.assertEqual(serial, ["sub2"])
 
+    @patch("vine.checkout.moveSubmodule")
+    @patch("vine.checkout.git.getAllSubmodules")
+    def testApplyMovedSubmodulesOnlyMovesPathsPresentInMergedWorkspace(
+            self, mock_get_all_submodules, mock_move_submodule):
+        mock_get_all_submodules.return_value = ["old/keep", "new/sub"]
+        mock_move_submodule.return_value = True
+
+        moved, failed = checkout.applyMovedSubmodules(
+            {"old/sub": "new/sub", "old/keep": "new/keep"},
+            workspace_dir=self.repo)
+
+        self.assertEqual(moved, {"old/sub": "new/sub"})
+        self.assertEqual(failed, {})
+        mock_move_submodule.assert_called_once_with(
+            "old/sub", "new/sub", workspace_dir=self.repo)
+
     @patch("vine.checkout.git.show")
     @patch("vine.checkout.git.diff")
     def testParseGitModulesDiffOutputDetectsMovedSubmodule(self, mock_diff,
@@ -248,14 +264,17 @@ class TestCheckout(testGrape.TestGrape):
         mock_fetch.assert_called_once_with("origin", "newBranch",
                                            execution_path=self.repo)
 
+    @patch("vine.checkout.git.getAllSubmodules")
     @patch("vine.checkout.git.submodule")
     @patch("vine.checkout.git.config")
     @patch("vine.checkout.git.gitDir")
     @patch("vine.checkout.git.isWorkingDirectoryClean")
     def testMoveSubmoduleRewritesGitMetadata(self, mock_is_clean,
                                              mock_gitdir, mock_config,
-                                             mock_submodule):
+                                             mock_submodule,
+                                             mock_get_all_submodules):
         mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["new/sub"]
 
         workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
         old_sub = os.path.join(workspace, "old", "sub")
@@ -291,14 +310,17 @@ class TestCheckout(testGrape.TestGrape):
         mock_submodule.assert_any_call("sync -- new/sub",
                                        execution_path=workspace)
 
+    @patch("vine.checkout.git.getAllSubmodules")
     @patch("vine.checkout.git.submodule")
     @patch("vine.checkout.git.config")
     @patch("vine.checkout.git.gitDir")
     @patch("vine.checkout.git.isWorkingDirectoryClean")
     def testMoveSubmoduleReplacesEmptyDestination(self, mock_is_clean,
                                                   mock_gitdir, mock_config,
-                                                  mock_submodule):
+                                                  mock_submodule,
+                                                  mock_get_all_submodules):
         mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["new/sub"]
 
         workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
         old_sub = os.path.join(workspace, "old", "sub")
@@ -331,6 +353,7 @@ class TestCheckout(testGrape.TestGrape):
         mock_submodule.assert_any_call("sync -- new/sub",
                                        execution_path=workspace)
 
+    @patch("vine.checkout.git.getAllSubmodules")
     @patch("vine.checkout.git.submodule")
     @patch("vine.checkout.git.config")
     @patch("vine.checkout.git.gitDir")
@@ -338,8 +361,10 @@ class TestCheckout(testGrape.TestGrape):
     def testMoveSubmoduleReplacesStaleDestinationGitdir(self, mock_is_clean,
                                                         mock_gitdir,
                                                         mock_config,
-                                                        mock_submodule):
+                                                        mock_submodule,
+                                                        mock_get_all_submodules):
         mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["new/sub"]
 
         workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
         old_sub = os.path.join(workspace, "old", "sub")
@@ -373,3 +398,36 @@ class TestCheckout(testGrape.TestGrape):
                                        execution_path=workspace)
         mock_submodule.assert_any_call("sync -- new/sub",
                                        execution_path=workspace)
+
+    @patch("vine.checkout.git.getAllSubmodules")
+    @patch("vine.checkout.git.submodule")
+    @patch("vine.checkout.git.config")
+    @patch("vine.checkout.git.gitDir")
+    @patch("vine.checkout.git.isWorkingDirectoryClean")
+    def testMoveSubmoduleSkipsInitSyncWhenMergedWorkspaceDoesNotContainPath(
+            self, mock_is_clean, mock_gitdir, mock_config, mock_submodule,
+            mock_get_all_submodules):
+        mock_is_clean.return_value = True
+        mock_get_all_submodules.return_value = ["old/sub"]
+
+        workspace = tempfile.mkdtemp(dir=self.defaultWorkingDirectory)
+        old_sub = os.path.join(workspace, "old", "sub")
+        new_sub = os.path.join(workspace, "new", "sub")
+        old_module_dir = os.path.join(workspace, ".git", "modules", "old", "sub")
+        new_module_dir = os.path.join(workspace, ".git", "modules", "new", "sub")
+        mock_gitdir.return_value = old_module_dir
+        os.makedirs(old_module_dir)
+        os.makedirs(old_sub)
+
+        with open(os.path.join(old_sub, ".git"), "w") as gitfile:
+            gitfile.write("gitdir: ../../.git/modules/old/sub\n")
+        with open(os.path.join(old_module_dir, "config"), "w") as config_file:
+            config_file.write("[core]\n")
+
+        moved = checkout.moveSubmodule("old/sub", "new/sub",
+                                       workspace_dir=workspace)
+
+        self.assertTrue(moved)
+        self.assertTrue(os.path.exists(new_sub))
+        self.assertTrue(os.path.exists(new_module_dir))
+        mock_submodule.assert_not_called()
