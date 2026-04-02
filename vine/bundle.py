@@ -332,21 +332,24 @@ class Unbundle(Option, WorkspaceDirHandler):
         recurse = not args["--noRecurse"]
         launchArgs = {}
         launchArgs["--branchMappings"] = args["--branchMappings"]
-        repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            unbundlecmd, skipSubmodules=True, runInSubmodules=False,
-            runInSubprojects=recurse, globalArgs=launchArgs,
-            workspace_dir=self.workspace_dir)
-        repoLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
+        try:
+            repoLauncher =  multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                unbundlecmd, skipSubmodules=True, runInSubmodules=False,
+                runInSubprojects=recurse, globalArgs=launchArgs,
+                workspace_dir=self.workspace_dir)
+            repoLauncher.launchFromWorkspaceDir()
 
-        launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
+            launchArgs["--branchMappings"] = args["--submoduleBranchMappings"]
 
-        submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
-            unbundlecmd, runInSubmodules=recurse, runInSubprojects=False,
-            skipSubmodules=not recurse, runInOuter=False,
-            globalArgs=launchArgs,
-            workspace_dir=self.workspace_dir)
-        submoduleCommandLauncher.launchFromWorkspaceDir(
-            handleMRE=bundlecmdMRE, noPause=True)
+            submoduleCommandLauncher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
+                unbundlecmd, runInSubmodules=recurse, runInSubprojects=False,
+                skipSubmodules=not recurse, runInOuter=False,
+                globalArgs=launchArgs,
+                workspace_dir=self.workspace_dir)
+            submoduleCommandLauncher.launchFromWorkspaceDir(noPause=True)
+        except grape_errors.MultiRepoException as mre:
+            bundlecmdMRE(mre)
+            return False
 
         return True
 
