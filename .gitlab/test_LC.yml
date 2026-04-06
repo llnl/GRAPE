@@ -1,7 +1,7 @@
 .test_linux:
   script:
     - cd $CI_PROJECT_DIR
-    - ./grape test
+    - ./grape test --quiet
 
 .tick_version:
   script:
@@ -17,4 +17,3 @@
 .auto_pass:
   script:
     - exit 0
-

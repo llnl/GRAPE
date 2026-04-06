@@ -1,0 +1,12 @@
+# Suite aliases listed here launch first during broad `grape test --workers`
+# runs. Leave a suite out to keep it in the default order after the named
+# entries.
+#
+# This first-pass ordering front-loads the five heaviest shard candidates from
+# the current split layout so the scheduler overlaps the most expensive setup
+# work first. Anything omitted here keeps its default relative order.
+StatusSubmodule
+StatusTwoClients
+MergeDownSubmoduleConflict
+NestedSubprojectWorkspaceSync
+CloneNested

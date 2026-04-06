@@ -1179,13 +1179,29 @@ Options:
 
 grape test
 Runs grape's unit tests.
-Usage: grape-test [--debug] [<suite>]...
+Usage: grape-test [--debug] [--durations=<n>] [--workers=<n>] [--quiet] [--changed] [--base=<ref>] [<suite>]...
 
 
 Arguments:
 <suite>  The name of the suite to test. The default is all.
          Enter listSuites as the suite name to list available suites.
          <suite> = <suite name>.<test> will run a particular test in a suite.
+
+Options:
+--debug          Disable output capture and preserve debug logging behavior.
+--durations=<n>  Show the slowest n tests in pytest output. Pytest prints
+                 a summary of the slowest individual tests at the end of
+                 the run. [default: 0]
+--workers=<n>    Run multiple suite selectors in parallel subprocesses.
+                 This is GRAPE-level parallelism: each selected suite is
+                 handed to a separate pytest process rather than using a
+                 pytest plugin such as xdist. [default: 1]
+--quiet          Skip live timing-chart redraws and print the chart only
+                 once at the end, like `grape -d test`.
+--changed        Run suites mapped from files changed since --base.
+                 This is intended for local developer loops where a full
+                 suite run would be unnecessarily broad.
+--base=<ref>     Base ref for --changed selection. [default: origin/master]
 
 
 ## up

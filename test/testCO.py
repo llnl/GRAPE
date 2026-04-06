@@ -2,10 +2,14 @@ __author__ = 'robinson96'
 import os
 import tempfile
 from unittest.mock import patch
+import pytest
 from test import testGrape
 from vine import checkout
 from vine import grape_errors
 from vine import grapeGit as git
+
+
+pytestmark = pytest.mark.slow
 
 
 class TestCheckout(testGrape.TestGrape):
