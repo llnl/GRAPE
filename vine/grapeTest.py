@@ -18,7 +18,10 @@ import sys
 import threading
 import time
 
-import pytest
+try:
+    import pytest
+except ModuleNotFoundError:
+    pytest = None
 from tools.render_timing_chart import render_lines
 
 
@@ -100,11 +103,12 @@ class Test(Option):
                 os.environ.pop("GRAPE_TEST_DEBUG", None)
 
             try:
+                self._require_pytest()
                 if workers > 1:
                     good = self._run_parallel(selectors, args) == 0
                 else:
                     good = pytest.main(self._build_pytest_args(args, resolved)) == 0
-            except ValueError as exc:
+            except (RuntimeError, ValueError) as exc:
                 print(f"*** {exc}")
                 return True
         finally:
@@ -121,6 +125,12 @@ class Test(Option):
             print("*"*80)
             exit(1)
         return True
+
+    def _require_pytest(self):
+        if pytest is None:
+            raise RuntimeError(
+                "grape test requires pytest, but pytest is not installed in this Python environment."
+            )
 
     def _build_pytest_args(self, args, resolved_selectors):
         """Translate GRAPE options into the subset of pytest arguments we use."""
