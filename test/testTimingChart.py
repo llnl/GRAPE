@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import patch
 
 from tools.render_timing_chart import render_lines
+from vine import grapeMenu
 from vine import grapeTest
 from vine import test_suites
 
@@ -147,6 +148,45 @@ class TestSchedulerRules(unittest.TestCase):
                 scheduler.execute(args)
         run_parallel.assert_called_once_with([], args)
         pytest_main.assert_not_called()
+
+    def test_missing_pytest_reports_clear_error_for_grape_test(self):
+        scheduler = grapeTest.Test()
+        args = {
+            "<suite>": [],
+            "--base": "origin/master",
+            "--changed": False,
+            "--debug": False,
+            "--durations": "0",
+            "--quiet": False,
+            "--workers": "1",
+        }
+        with patch.object(grapeTest, "pytest", None):
+            with patch("builtins.print") as mock_print:
+                self.assertTrue(scheduler.execute(args))
+        mock_print.assert_any_call(
+            "*** grape test requires pytest, but pytest is not installed in this Python environment."
+        )
+
+    def test_list_suites_and_menu_setup_do_not_require_pytest(self):
+        scheduler = grapeTest.Test()
+        args = {
+            "<suite>": ["listSuites"],
+            "--base": "origin/master",
+            "--changed": False,
+            "--debug": False,
+            "--durations": "0",
+            "--quiet": False,
+            "--workers": None,
+        }
+        with patch.object(grapeTest, "pytest", None):
+            with patch("builtins.print") as mock_print:
+                self.assertTrue(scheduler.execute(args))
+            grapeMenu._resetMenu()
+            menu = grapeMenu.menu(workspace_dir=os.getcwd())
+            self.assertTrue(menu.hasOption("publish"))
+            self.assertTrue(menu.hasOption("test"))
+            grapeMenu._resetMenu()
+        mock_print.assert_called_once()
 
     def test_quiet_disables_live_progress(self):
         scheduler = grapeTest.Test()
