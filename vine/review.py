@@ -332,7 +332,7 @@ class Review(Option, WorkspaceDirHandler):
         return applicableReviewers
 
     @staticmethod
-    def _get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch):
+    def _get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch, do_exit = True):
         """
         Build and validate the top-level repository context needed for reviews/approvals.
 
@@ -353,6 +353,8 @@ class Review(Option, WorkspaceDirHandler):
             Name of source branch
         target : str
             Name of target branch (if None, defaults via .grapeconfig mapping)
+        do_exit : bool
+            Whether to exit immediately via exit(1) on a 404 error
 
         Returns
         -------
@@ -379,7 +381,7 @@ class Review(Option, WorkspaceDirHandler):
         try:
             grapeconfig = repo.getFile('.grapeconfig', source_branch)
         except Exception as e:
-            if e.response_code == 404:
+            if e.response_code == 404 and do_exit:
                 if e.error_message == '404 Commit Not Found':
                     logging.error(f'GRAPE: ERROR: Source branch "{source_branch}" does not exist in "{project_name}/{repo_name}"')
                     exit(1)
@@ -747,14 +749,26 @@ class Review(Option, WorkspaceDirHandler):
         if not target_branch:
             target_branch = config.getPublicBranchFor(branch)
 
-        top_repo_context = self._get_top_repo_context(
-            codeReviews, name, project_name, repo_name, branch, target_branch
-        )
-        target_branch = top_repo_context['target_branch']
-        existingOuterLevelRequest = top_repo_context['review_request']
+        try:
+            top_repo_context = self._get_top_repo_context(
+                codeReviews, name, project_name, repo_name, branch, target_branch, do_exit = False
+            )
+            existingOuterLevelRequest = top_repo_context['review_request']
+        except Exception as e:
+            if e.response_code == 404:
+                # We get here if the branch has not been pushed to the server.
+                # In that case, there will be no top level repo context or request.
+                top_repo_context = None
+                existingOuterLevelRequest = None
+            else:
+                raise
 
         if args["--printUnresolvedComments"]:
-            return printUnresolvedCommentsByRepo(codeReviews, top_repo_context, args)
+            if not top_repo_context:
+                logging.warning(f"GRAPE: WARNING: {branch} has not been pushed to server, cannot --printUnresolvedComments.")
+                return False
+            else:
+                return printUnresolvedCommentsByRepo(codeReviews, top_repo_context, args)
 
         #ensure branch is pushed
         if "--noLocal" not in args or not args["--noLocal"]:
@@ -1288,7 +1302,7 @@ def printUnresolvedCommentsByRepo(git_host, top_repo_context, args):
 
     if found_unsupported_request and not repo_threads:
         logging.warning("GRAPE: WARNING: --printUnresolvedComments is only supported for GitLab merge requests.")
-        return True
+        return False
 
     if not repo_threads:
         logging.info('No repos produced unresolved thread comments.')
