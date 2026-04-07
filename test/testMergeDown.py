@@ -418,6 +418,9 @@ class TestMD(testGrape.TestGrape):
         except SystemExit as e:
             self.fail(f"grape md raised exception {e}")
         self.assertFalse(ret, "grape md did not return False for conflicting merge.")
+        self.assertIn("GRAPE: Merge conflict encountered in nested subproject:",
+                      self.get_output(),
+                      "grape md did not report the nested subproject conflict")
         # git status in outer repo should be clean
         status = git.status("--porcelain", execution_path=self.repo)
         self.assertFalse(status, "status is not empty in outer repo after conflict in subproject")

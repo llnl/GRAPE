@@ -625,6 +625,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         info_or_true = launcher.launchFromWorkspaceDir(noPause=True, handleMRE=handleMergeSubprojectMRE)
         isSubmodule = [x[2][1] for x in listOfRepoBranchArgTuples]
         all_good = True
+        conflictedNestedSubprojects = []
         for info, repo, isSubmodule in zip(info_or_true, repos, isSubmodule):
             if info is True:
                 # stage the updated submodule
@@ -638,10 +639,20 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                    self.progress[f"Subproject: {repo}"] = "finished"
                 else:
                    all_good = False
+                   if not isSubmodule and "issued conflicts" in info:
+                       conflictedNestedSubprojects.append(repo)
         if not all_good:
             if not ignoreInProgress:
                self.progress["stopPoint"] = "subproject merge"
-               self.dumpProgress(args)
+               if conflictedNestedSubprojects:
+                   repoList = ", ".join(conflictedNestedSubprojects)
+                   noun = "subproject" if len(conflictedNestedSubprojects) == 1 else "subprojects"
+                   self.dumpProgress(
+                       args,
+                       f"GRAPE: Merge conflict encountered in nested {noun}: {repoList}. "
+                       f"Resolve the conflicts there, then continue with grape {args['<<cmd>>']} --continue.")
+               else:
+                   self.dumpProgress(args)
             return False
         return True
 
