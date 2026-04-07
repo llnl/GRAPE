@@ -355,6 +355,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         # clear out the progress now that we're done so that when we are called a second time during a publish
         # we don't just skip the md
         self.progress = {}
+        logging.info("Merges completed successfully.")
         return True
 
     def lookupActiveMergeTrainBranches(self, args):
@@ -631,7 +632,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 # stage the updated submodule
                 if isSubmodule:
                     git.add(repo, execution_path=self.workspace_dir)
-                logging.info(f"{repo} merged successfully")
+                logging.debug(f"{repo} merged successfully")
                 self.progress[f"Subproject: {repo}"] = "finished"
             else:
                 logging.info(info)
@@ -783,7 +784,8 @@ def mergeIntoCurrent(branchName, args, projectName, warnOnConflict=True, *, exec
 
     if strategy == 'am':
         args["--am"] = True
-        logging.info("Merging using git's default strategy...")
+        if projectName == "outer level project":
+            logging.info("Merging using git's default strategy...")
         choice = merge(branchName, "", args, warnOnConflict, execution_path=execution_path)
     elif strategy in ['as', 'at', 'ay']:
         if strategy == 'as':
@@ -794,11 +796,16 @@ def mergeIntoCurrent(branchName, args, projectName, warnOnConflict=True, *, exec
             # see
             # http://stackoverflow.com/questions/5074452/git-how-to-force-merge-conflict-and-manual-merge-on-selected-file
             # for details.
-            logging.info("Merging forcing conflicts whenever both branches edited the same file...")
+            if projectName == "outer level project":
+                logging.info("Merging forcing conflicts whenever both branches edited the same file...")
         elif strategy == 'at':
             args["--at"] = True
+            if projectName == "outer level project":
+                logging.info(f"Merging, resolving conflicts cleanly with changes in {branchName}...")
         elif strategy == 'ay':
             args["--ay"] = True
+            if projectName == "outer level project":
+                logging.info("Merging, resolving conflicts cleanly with current branch's changes...")
         base = git.gitDir(execution_path=execution_path)
         if base == "":
             return False
@@ -826,12 +833,14 @@ def mergeIntoCurrent(branchName, args, projectName, warnOnConflict=True, *, exec
             os.remove(attributes)
     elif strategy == 'aT':
         args["--aT"] = True
-        logging.info("Merging using recursive strategy, resolving " +
-                     f"conflicts cleanly with changes in {branchName}...")
+        if projectName == "outer level project":
+            logging.info("Merging using recursive strategy, resolving " +
+                         f"conflicts cleanly with changes in {branchName}...")
         choice = merge(branchName, "-Xtheirs", args, warnOnConflict, execution_path=execution_path)
     elif strategy == 'aY':
         args["--aY"] = True
-        logging.info("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
+        if projectName == "outer level project":
+            logging.info("Merging using recursive strategy, resolving conflicts cleanly with current branch's changes...")
         choice = merge(branchName, "-Xours", args, warnOnConflict, execution_path=execution_path)
 
     return choice
@@ -852,8 +861,8 @@ def mergeSubproject(branch, repo, args, *, workspace_dir):
     mergeArgs["--public"] = subPublic
 
     submodule_or_subproject = "submodule" if isSubmodule else "subproject"
-    logging.info(f"Merging {subPublic} into {git.currentBranch(execution_path=repo)} " +
-                 f"for {submodule_or_subproject} {repo}")
+    logging.debug(f"Merging {subPublic} into {git.currentBranch(execution_path=repo)} " +
+                  f"for {submodule_or_subproject} {repo}")
     git.fetch("origin", execution_path=repo)
     # update our local reference to the remote branch so long as it's fast-forwardable or we don't have it yet..)
     hasRemote = git.hasBranch(f"origin/{subPublic}", execution_path=repo)
