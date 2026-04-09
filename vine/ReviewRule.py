@@ -148,8 +148,6 @@ class ApproveInputSpec:
                     logging.error(f'GRAPE: ERROR: Global config section "{section_name}" must specify "examples" as a python dictionary (e.g. {{key1: description1, key2: description2, ...}}')
                     exit(1)
 
-                examples = examples
-
             if config.has_option(section_name, "substitutions"):
                 substitutions = config.get(section_name, "substitutions")
 
@@ -164,21 +162,13 @@ class ApproveInputSpec:
                     exit(1)
 
                 temp = {}
-                values = set()
 
                 for key, val in substitutions.items():
                     key_str = str(key)
                     val_str = str(val)
                     temp[key_str] = val_str
 
-                    for value in values:
-                        if key_str in value:
-                            logging.warning(f'GRAPE: WARNING: Global config section "{section_name}" has overlapping substitutions. This may result in unexpected substitutions.')
-
-                    values.add(val_str)
-
                 substitutions = temp
-                substitutions = substitutions
 
             if config.has_option(section_name, "tag"):
                 include_in_tag = config.getboolean(section_name, "tag")

@@ -333,7 +333,7 @@ class Approve(Option, WorkspaceDirHandler):
         substitutions = approve_input_spec.substitutions
 
         if substitutions:
-            print('\n  Shortcuts/Substitutions:')
+            print('\n  Shortcuts/Substitutions (applied in order):')
 
             longest_len = 0
 
