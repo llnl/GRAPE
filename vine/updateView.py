@@ -47,7 +47,7 @@ class UpdateView(Option, WorkspaceDirHandler):
         -v                           Print output from individual directories.
         -q                           Quiet warnings from individual directories that don't cause failure.
         -f                           Force removal of submodules currently in your view that are taken out of the view
-                                     as a result to this call to uv. Nested subprojects changes still prompt the user.
+                                     as a result to this call to uv. Nested subproject changes still prompt the user.
         -F                           Force removal of submodules and nested subprojects currently in your view that are taken
                                      out of the view as a result to this call to uv.
         --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does

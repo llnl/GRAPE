@@ -867,7 +867,7 @@ class Checkout(Option, WorkspaceDirHandler):
         -q                  Quiet warnings from individual directories that don't cause failure.
         -b                  Create the branch off of the current HEAD in each project.
         -f                  Force removal of submodules that are removed or replaced (with a different URL) by the checkout.
-                            Nested subprojects changes still prompt the user.
+                            Nested subproject changes still prompt the user.
         -F                  Force removal of submodules or nested subprojects that are removed or replaced (with a different URL) 
                             by the checkout.
         --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,

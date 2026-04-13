@@ -91,8 +91,6 @@ class NewBranchOption(Option, WorkspaceDirHandler):
 
         currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         activeSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
-        nestedReplacementPlan = {}
-        targetNestedConfig = None
 
         addedModules = []
         removedModules = []
