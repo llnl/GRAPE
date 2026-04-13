@@ -586,14 +586,16 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
     dirIsEmpty = not dirExists or len(os.listdir(working_dir)) == 0
     workingDirClean = dirIsEmpty or git.isWorkingDirectoryClean(execution_path=working_dir)
     changedActive = sub in activeSubmodules
-    if workingDirClean or (veryclean and not changedActive):
+    force = args["-F"] or args["-f"]
+
+    if force or workingDirClean or (veryclean and not changedActive):
         # veryclean will always try to clean, fail if the clean fails
         # and remove the back-end repo.
         if veryclean:
             unpushed = False
             if not dirIsEmpty and changedActive:
                 unpushed = git.log("--branches --not --remotes --oneline --decorate", execution_path=working_dir)
-            if unpushed:
+            if unpushed and not force:
                 logging.info("You have unpushed changed in " +
                              f"{sub}:\n{unpushed}")
                 clean = utility.userInput(
@@ -603,7 +605,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
                 clean = True
         else:
             cleanBehaviorSet = args["--noUpdateView"] or args["--updateView"]
-            if not cleanBehaviorSet:
+            if not cleanBehaviorSet and not force:
                 clean = utility.userInput("Would you like to remove " +
                                           f"the submodule {sub} ?", 'n')
             elif args["--noUpdateView"]:
@@ -611,7 +613,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
             elif args["--updateView"]:
                 clean = True
         if clean:
-            logging.info(f"Removing clean submodule {sub}.")
+            logging.info(f"Removing {'clean ' if not force else ''}submodule {sub}.")
             if not veryclean or changedActive:
                 try:
                     shutil.rmtree(os.path.join(workspace_dir, sub))
@@ -698,7 +700,7 @@ def _movesPresentInWorkspace(movedModules, *, workspace_dir):
     return filteredMoves
 
 
-def moveSubmodule(oldSub, newSub, *, workspace_dir):
+def moveSubmodule(oldSub, newSub, *, workspace_dir, force=False):
     oldWorkingDir = os.path.join(workspace_dir, oldSub)
     newWorkingDir = os.path.join(workspace_dir, newSub)
 
@@ -714,7 +716,7 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
                 f"Destination for moved submodule already exists at "
                 f"{newSub}. Not moving.")
             return False
-    if not git.isWorkingDirectoryClean(execution_path=oldWorkingDir):
+    if not force and not git.isWorkingDirectoryClean(execution_path=oldWorkingDir):
         logging.info(f"Unstaged / committed changes in {oldSub}, not moving.")
         return False
 
@@ -766,13 +768,13 @@ def moveSubmodule(oldSub, newSub, *, workspace_dir):
     return True
 
 
-def applyMovedSubmodules(movedModules, *, workspace_dir):
+def applyMovedSubmodules(movedModules, *, workspace_dir, force=False):
     successfulMoves = {}
     failedMoves = {}
     for oldSub, newSub in _movesPresentInWorkspace(
             movedModules, workspace_dir=workspace_dir).items():
         logging.info(f"Moving submodule {oldSub} to {newSub}.")
-        if moveSubmodule(oldSub, newSub, workspace_dir=workspace_dir):
+        if moveSubmodule(oldSub, newSub, workspace_dir=workspace_dir, force=force):
             successfulMoves[oldSub] = newSub
         else:
             failedMoves[oldSub] = newSub
@@ -784,6 +786,7 @@ def shouldParallelizeSubmoduleCleanup(sub, args, veryclean=False,
     if activeSubmodules is None:
         activeSubmodules = []
 
+    force = args["-F"] or args["-f"]
     working_dir = os.path.join(workspace_dir, sub)
     dirExists = os.path.exists(working_dir)
     dirIsEmpty = not dirExists or len(os.listdir(working_dir)) == 0
@@ -794,7 +797,7 @@ def shouldParallelizeSubmoduleCleanup(sub, args, veryclean=False,
             return True
         if dirIsEmpty:
             return True
-        if not git.isWorkingDirectoryClean(execution_path=working_dir):
+        if not force and not git.isWorkingDirectoryClean(execution_path=working_dir):
             return False
         unpushed = git.log("--branches --not --remotes --oneline --decorate",
                            execution_path=working_dir)
@@ -803,7 +806,7 @@ def shouldParallelizeSubmoduleCleanup(sub, args, veryclean=False,
     if not dirExists or dirIsEmpty:
         return args["--updateView"]
 
-    if not git.isWorkingDirectoryClean(execution_path=working_dir):
+    if not force and not git.isWorkingDirectoryClean(execution_path=working_dir):
         return False
 
     return args["--updateView"]
@@ -857,13 +860,16 @@ class Checkout(Option, WorkspaceDirHandler):
     """
     grape checkout
 
-    Usage: grape-checkout [-v] [-q] [-b] [-F] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
+    Usage: grape-checkout [-v] [-q] [-b] [-f] [-F] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
     Options:
         -v                  Print output from individual directories.
         -q                  Quiet warnings from individual directories that don't cause failure.
         -b                  Create the branch off of the current HEAD in each project.
-        -F                  Force removal of nested subprojects removed or replaced (with a different URL) as by the checkout.
+        -f                  Force removal of submodules that are removed or replaced (with a different URL) by the checkout.
+                            Nested subprojects changes still prompt the user.
+        -F                  Force removal of submodules or nested subprojects that are removed or replaced (with a different URL) 
+                            by the checkout.
         --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                             either by pushing or pulling the remote tracking branch.
                             [default: .grapeconfig.post-checkout.syncWithOrigin]
@@ -1006,7 +1012,7 @@ class Checkout(Option, WorkspaceDirHandler):
                 git.submodule(f"init {sub}", execution_path=self.workspace_dir)
 
         movedModules, failedMoves = applyMovedSubmodules(
-            movedModules, workspace_dir=self.workspace_dir)
+            movedModules, workspace_dir=self.workspace_dir, force=(args["-F"] or args["-f"]))
         for oldSub, newSub in failedMoves.items():
             # If the local move cannot be completed safely, fall back to the
             # existing remove/recreate path instead of aborting checkout.
@@ -1029,7 +1035,7 @@ class Checkout(Option, WorkspaceDirHandler):
                 if not os.path.exists(working_directory):
                     continue
 
-                if git.isWorkingDirectoryClean(execution_path=working_directory):
+                if git.isWorkingDirectoryClean(execution_path=working_directory) or args["-F"]:
                     removeBehaviorSet = args["--noUpdateView"] or args["--updateView"]
                     if not removeBehaviorSet:
                         remove = args["-F"] or utility.userInput(f"Would you like to remove the nested subproject {projPrefix}? \nAll work that has not been pushed will be lost. ", 'n')
