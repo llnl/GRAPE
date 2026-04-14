@@ -239,15 +239,8 @@ def _nestedSubprojectInfoForRevision(revision, *, workspace_dir):
     The mapping is keyed by nested subproject name and currently carries the
     fields we need for change detection: `prefix` and `url`.
     """
-    try:
-        configContents = git.show(f"{revision}:.grapeconfig",
-                                  execution_path=workspace_dir)
-    except grape_errors.GrapeGitError as e:
-        lowered = e.gitOutput.lower()
-        if (".grapeconfig" in lowered and "does not exist" in lowered) or \
-                (".grapeconfig" in lowered and "exists on disk, but not in" in lowered):
-            return _nestedSubprojectInfoForConfigString("")
-        raise
+    configContents = git.show(f"{revision}:.grapeconfig",
+                              execution_path=workspace_dir)
 
     return _nestedSubprojectInfoForConfigString(configContents)
 
@@ -278,8 +271,8 @@ def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
         else:
             raise
 
-    emptyConfig = config_parser_base.GrapeConfigParserBase(configString="")
     if not nestedProjectListWillChange:
+        emptyConfig = config_parser_base.GrapeConfigParserBase(configString="")
         return emptyConfig, emptyConfig, set(), set(), set()
 
     previousConfig, previousNestedProjects = _nestedSubprojectInfoForRevision(
@@ -315,16 +308,17 @@ def activateNestedSubprojectForConfig(subprojectName, targetConfig,
                                       userconfig, branch, filterArg,
                                       *, workspace_dir):
     """Activate a nested subproject using an explicit target config."""
-    prefix = targetConfig.get(f"nested-{subprojectName}", "prefix")
-    url = targetConfig.get(f"nested-{subprojectName}", "url")
+    section = f"nested-{subprojectName}"
+    prefix = targetConfig.get(f"{section}", "prefix")
+    url = targetConfig.get(f"{section}", "url")
     fstr = f"--filter={filterArg}" if filterArg else ""
     fullurl = git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)
-    section = f"nested-{subprojectName}"
     userconfig.ensureSection(section)
-    currentlyActive = userconfig.getboolean(section, "active")
+    currentlyActive = _nestedSubprojectIsActive(subprojectName, userconfig)
     if not currentlyActive:
         destDir = os.path.join(workspace_dir, prefix)
         if not (os.path.isdir(destDir) and os.listdir(destDir)):
+            # We can clone the nested subproject only if destDir does not exist or is empty
             try:
                 git.clone(argstr=f"-b {branch} {fstr}", source_repo=fullurl,
                           clone_repo=prefix, execution_path=workspace_dir,
@@ -362,10 +356,11 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
     replacementPlan = {}
 
     for proj in sorted(replacedProjects):
-        oldPrefix = previousConfig.get(f"nested-{proj}", "prefix")
-        newPrefix = targetConfig.get(f"nested-{proj}", "prefix")
-        oldUrl = previousConfig.get(f"nested-{proj}", "url")
-        newUrl = targetConfig.get(f"nested-{proj}", "url")
+        nestedProj = f"nested-{proj}"
+        oldPrefix = previousConfig.get(nestedProj, "prefix")
+        newPrefix = targetConfig.get(nestedProj, "prefix")
+        oldUrl = previousConfig.get(nestedProj, "url")
+        newUrl = targetConfig.get(nestedProj, "url")
         working_directory = os.path.join(workspace_dir, oldPrefix)
         dirExists = os.path.exists(working_directory)
         wasActive = _nestedSubprojectIsActive(proj, userConfig)
@@ -382,12 +377,6 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
             }
             continue
 
-        if dirExists and not worktreeClean:
-            if force:
-                logging.info(
-                    f"Nested subproject {oldPrefix} has local changes. "
-                    "Refusing to replace it with -F.")
-                return None
         # Non-forced operation still allows the user to approve replacing a
         # dirty nested subproject before any workspace mutation happens.
         if not force:
@@ -404,6 +393,7 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                     f"Nested subproject {oldPrefix} has local changes.\nIts "
                     f"URL is changing from {oldUrl} to {newUrl}, so GRAPE "
                     "must remove the current checkout to continue. "
+                    "Local changes will be lost."
                     "Proceed? [y/n]"
                 )
             else:
