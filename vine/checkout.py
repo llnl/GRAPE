@@ -576,7 +576,7 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
     dirIsEmpty = not dirExists or len(os.listdir(working_dir)) == 0
     workingDirClean = dirIsEmpty or git.isWorkingDirectoryClean(execution_path=working_dir)
     changedActive = sub in activeSubmodules
-    force = args["-F"] or args["-f"]
+    force = veryclean or args["-F"] or args["-f"]
 
     if force or workingDirClean or (veryclean and not changedActive):
         # veryclean will always try to clean, fail if the clean fails
