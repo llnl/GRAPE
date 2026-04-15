@@ -52,7 +52,7 @@ def filterReplacedNestedSubprojectsForMerge(currentRevision, targetRevision,
     if not replacedProjects:
         return set()
 
-    _, currentNested = checkout._nestedSubprojectInfoForRevision(
+    _, currentNested = checkout.nestedSubprojectInfoForRevision(
         currentRevision, workspace_dir=workspace_dir)
     try:
         mergedTree = git.gitcmd(
@@ -69,7 +69,7 @@ def filterReplacedNestedSubprojectsForMerge(currentRevision, targetRevision,
                 mergedConfigContents = ""
             else:
                 raise
-        _, mergedNested = checkout._nestedSubprojectInfoForConfigString(
+        _, mergedNested = checkout.nestedSubprojectInfoForConfigString(
             mergedConfigContents)
         return {
             proj for proj in replacedProjects
@@ -80,10 +80,8 @@ def filterReplacedNestedSubprojectsForMerge(currentRevision, targetRevision,
         # Fall back to merge-base heuristics if merge preview is unavailable.
         mergeBase = git.mergeBase(f"{currentRevision} {targetRevision}",
                                   execution_path=workspace_dir).strip()
-        _, targetNested = checkout._nestedSubprojectInfoForRevision(
-            targetRevision, workspace_dir=workspace_dir)
-        _, baseNested = checkout._nestedSubprojectInfoForRevision(
-            mergeBase, workspace_dir=workspace_dir)
+        _, targetNested = checkout.nestedSubprojectInfoForRevision(targetRevision, workspace_dir=workspace_dir)
+        _, baseNested = checkout.nestedSubprojectInfoForRevision(mergeBase, workspace_dir=workspace_dir)
 
         effectiveReplacements = set()
         for proj in replacedProjects:

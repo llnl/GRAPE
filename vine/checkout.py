@@ -220,15 +220,8 @@ def _submodulePathInfoForRevision(revision, *, workspace_dir):
     return parsedSubmodules, pathInfo
 
 
-def _nestedSubprojectInfoForRevision(revision, *, workspace_dir):
-    """Return parsed `.grapeconfig` state for nested subprojects at `revision`.
-
-    The mapping is keyed by nested subproject name and currently carries the
-    fields we need for change detection: `prefix` and `url`.
-    """
-    configContents = git.show(f"{revision}:.grapeconfig",
-                              execution_path=workspace_dir)
-
+def nestedSubprojectInfoForConfigString(configContents):
+    """Parse nested subproject metadata from raw `.grapeconfig` contents."""
     config = config_parser_base.GrapeConfigParserBase(
         configString=configContents if configContents else "")
     nestedProjects = {}
@@ -238,6 +231,18 @@ def _nestedSubprojectInfoForRevision(revision, *, workspace_dir):
             "url": config.get(f"nested-{proj}", "url"),
         }
     return config, nestedProjects
+
+
+def nestedSubprojectInfoForRevision(revision, *, workspace_dir):
+    """Return parsed `.grapeconfig` state for nested subprojects at `revision`.
+
+    The mapping is keyed by nested subproject name and currently carries the
+    fields we need for change detection: `prefix` and `url`.
+    """
+    configContents = git.show(f"{revision}:.grapeconfig",
+                              execution_path=workspace_dir)
+
+    return nestedSubprojectInfoForConfigString(configContents)
 
 
 def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
@@ -270,9 +275,9 @@ def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
         emptyConfig = config_parser_base.GrapeConfigParserBase(configString="")
         return emptyConfig, emptyConfig, set(), set(), set()
 
-    previousConfig, previousNestedProjects = _nestedSubprojectInfoForRevision(
+    previousConfig, previousNestedProjects = nestedSubprojectInfoForRevision(
         currentRevision, workspace_dir=workspace_dir)
-    targetConfig, targetNestedProjects = _nestedSubprojectInfoForRevision(
+    targetConfig, targetNestedProjects = nestedSubprojectInfoForRevision(
         targetRevision, workspace_dir=workspace_dir)
 
     previousSet = set(previousNestedProjects)
