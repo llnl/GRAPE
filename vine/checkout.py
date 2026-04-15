@@ -220,19 +220,6 @@ def _submodulePathInfoForRevision(revision, *, workspace_dir):
     return parsedSubmodules, pathInfo
 
 
-def _nestedSubprojectInfoForConfigString(configContents):
-    """Parse nested subproject metadata from raw `.grapeconfig` contents."""
-    config = config_parser_base.GrapeConfigParserBase(
-        configString=configContents if configContents else "")
-    nestedProjects = {}
-    for proj in config.getAllNestedSubprojects():
-        nestedProjects[proj] = {
-            "prefix": config.get(f"nested-{proj}", "prefix"),
-            "url": config.get(f"nested-{proj}", "url"),
-        }
-    return config, nestedProjects
-
-
 def _nestedSubprojectInfoForRevision(revision, *, workspace_dir):
     """Return parsed `.grapeconfig` state for nested subprojects at `revision`.
 
@@ -242,7 +229,15 @@ def _nestedSubprojectInfoForRevision(revision, *, workspace_dir):
     configContents = git.show(f"{revision}:.grapeconfig",
                               execution_path=workspace_dir)
 
-    return _nestedSubprojectInfoForConfigString(configContents)
+    config = config_parser_base.GrapeConfigParserBase(
+        configString=configContents if configContents else "")
+    nestedProjects = {}
+    for proj in config.getAllNestedSubprojects():
+        nestedProjects[proj] = {
+            "prefix": config.get(f"nested-{proj}", "prefix"),
+            "url": config.get(f"nested-{proj}", "url"),
+        }
+    return config, nestedProjects
 
 
 def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
@@ -293,55 +288,6 @@ def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
             removedProjects, replacedProjects)
 
 
-def _nestedSubprojectIsActive(subprojectName, userConfig):
-    """Return whether the nested subproject is active in `.grapeuserconfig`."""
-    section = f"nested-{subprojectName}"
-    userConfig.ensureSection(section)
-    try:
-        return userConfig.getboolean(section, "active")
-    except Exception:
-        userConfig.set(section, "active", "False")
-        return False
-
-
-def activateNestedSubprojectForConfig(subprojectName, targetConfig,
-                                      userconfig, branch, filterArg,
-                                      *, workspace_dir):
-    """Activate a nested subproject using an explicit target config."""
-    section = f"nested-{subprojectName}"
-    prefix = targetConfig.get(f"{section}", "prefix")
-    url = targetConfig.get(f"{section}", "url")
-    fstr = f"--filter={filterArg}" if filterArg else ""
-    fullurl = git.parseSubprojectRemoteURL(url, execution_path=workspace_dir)
-    userconfig.ensureSection(section)
-    currentlyActive = _nestedSubprojectIsActive(subprojectName, userconfig)
-    if not currentlyActive:
-        destDir = os.path.join(workspace_dir, prefix)
-        if not (os.path.isdir(destDir) and os.listdir(destDir)):
-            # We can clone the nested subproject only if destDir does not exist or is empty
-            try:
-                git.clone(argstr=f"-b {branch} {fstr}", source_repo=fullurl,
-                          clone_repo=prefix, execution_path=workspace_dir,
-                          print_warnings=False)
-            except grape_errors.GrapeGitError as e:
-                if f"Remote branch {branch} not found" in e.gitOutput:
-                    git.clone(argstr=f"{fstr}", source_repo=fullurl,
-                              clone_repo=prefix, execution_path=workspace_dir)
-                else:
-                    logging.error(e.gitOutput)
-                    raise e
-        elif '.git' in os.listdir(destDir):
-            pass
-        else:
-            logging.warning("WARNING: inactive nested subproject " +
-                            f"{prefix} has files but is not a git repo")
-            return False
-    userconfig.set(section, "active", "True")
-    config_parser_global.writeConfig(
-        userconfig, os.path.join(workspace_dir, ".git", ".grapeuserconfig"))
-    return True
-
-
 def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                                        replacedProjects, *, workspace_dir,
                                        force=False):
@@ -363,7 +309,7 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
         newUrl = targetConfig.get(nestedProj, "url")
         working_directory = os.path.join(workspace_dir, oldPrefix)
         dirExists = os.path.exists(working_directory)
-        wasActive = _nestedSubprojectIsActive(proj, userConfig)
+        wasActive = userConfig.getboolean(nestedProj, "active")
         worktreeClean = (not dirExists or
                          git.isWorkingDirectoryClean(
                              execution_path=working_directory))
@@ -452,7 +398,7 @@ def applyReplacedNestedSubprojects(previousConfig, replacedProjects,
         if plan["reactivate"]:
             logging.info(f"Activating Nested Subproject {projPrefix} on {branch}")
             if targetConfig is not None:
-                activated = activateNestedSubprojectForConfig(
+                activated = AddSubproject.activateNestedSubprojectForConfig(
                     proj, targetConfig, userConfig, branch, filterArg,
                     workspace_dir=workspace_dir)
             else:
