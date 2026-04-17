@@ -40,6 +40,76 @@ def reconcileMovedSubmodules(movedModules, *pathLists, workspace_dir):
             for paths in pathLists]
 
 
+def filterReplacedNestedSubprojectsForMerge(currentRevision, targetRevision,
+                                            replacedProjects,
+                                            *, workspace_dir):
+    """Keep only URL replacements that survive the merged `.grapeconfig`.
+
+    This is analogous to moved submodules being filtered against the merged
+    workspace: we preview the outer-level merge result and only keep nested
+    replacements whose URL would actually differ after that merge.
+    """
+    if not replacedProjects:
+        return set()
+
+    _, currentNested = checkout.nestedSubprojectInfoForRevision(
+        currentRevision, workspace_dir=workspace_dir)
+    try:
+        mergedTree = git.gitcmd(
+            f"merge-tree --write-tree {currentRevision} {targetRevision}",
+            "merge-tree failed",
+            execution_path=workspace_dir).strip()
+        try:
+            mergedConfigContents = git.show(f"{mergedTree}:.grapeconfig",
+                                            execution_path=workspace_dir)
+        except grape_errors.GrapeGitError as e:
+            lowered = e.gitOutput.lower()
+            if (".grapeconfig" in lowered and "does not exist" in lowered) or \
+                    (".grapeconfig" in lowered and "exists on disk, but not in" in lowered):
+                mergedConfigContents = ""
+            else:
+                raise
+        _, mergedNested = checkout.nestedSubprojectInfoForConfigString(
+            mergedConfigContents)
+        return {
+            proj for proj in replacedProjects
+            if proj in currentNested and proj in mergedNested and
+            currentNested[proj]["url"] != mergedNested[proj]["url"]
+        }
+    except grape_errors.GrapeGitError:
+        # Fall back to merge-base heuristics if merge preview is unavailable.
+        mergeBase = git.mergeBase(f"{currentRevision} {targetRevision}",
+                                  execution_path=workspace_dir).strip()
+        _, targetNested = checkout.nestedSubprojectInfoForRevision(targetRevision, workspace_dir=workspace_dir)
+        _, baseNested = checkout.nestedSubprojectInfoForRevision(mergeBase, workspace_dir=workspace_dir)
+
+        effectiveReplacements = set()
+        for proj in replacedProjects:
+            currentInfo = currentNested.get(proj)
+            targetInfo = targetNested.get(proj)
+            baseInfo = baseNested.get(proj)
+            if not currentInfo or not targetInfo:
+                continue
+
+            currentUrl = currentInfo["url"]
+            targetUrl = targetInfo["url"]
+            baseUrl = baseInfo["url"] if baseInfo else None
+
+            if currentUrl == targetUrl:
+                continue
+            if currentUrl == baseUrl and targetUrl != baseUrl:
+                effectiveReplacements.add(proj)
+                continue
+            if targetUrl == baseUrl and currentUrl != baseUrl:
+                continue
+            logging.info(
+                f"Nested subproject {proj} has divergent URL history during "
+                "merge preflight. Deferring replacement decision until after "
+                "the outer merge result is known.")
+
+        return effectiveReplacements
+
+
 # pull and merge down from an up-to-date public branch
 class MergeDown(Resumable, Option, WorkspaceDirHandler):
     """
@@ -171,6 +241,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
             if not branch:
                 logging.error("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
+        if "startingSHA" not in self.progress:
+            self.progress["startingSHA"] = git.SHA(execution_path=self.workspace_dir)
+        startingSHA = self.progress["startingSHA"]
+        if "nestedReplacementsDone" not in self.progress:
+            self.progress["nestedReplacementsDone"] = False
 
         if "--nestedSubprojectsOnly" in args and args["--nestedSubprojectsOnly"]:
             logging.info(f"Calling grape up --public={branch} --noTopLevel --noRecurse --recurseSubprojects to ensure local reference to branch exists.")
@@ -232,6 +307,22 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
             if ret is False:
                 logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
                 return False
+
+        if ("nestedReplacementPlan" not in self.progress and
+                not self.progress.get("outerLevelDone", False)):
+            previousConfig, branchConfig, _, _, replacedProjects = (
+                checkout.parseGrapeConfigNestedProjectDiffOutput(
+                    startingSHA, branch, workspace_dir=self.workspace_dir))
+            replacedProjects = filterReplacedNestedSubprojectsForMerge(
+                startingSHA, branch, replacedProjects,
+                workspace_dir=self.workspace_dir)
+            if replacedProjects:
+                replacementPlan = checkout.preflightReplacedNestedSubprojects(
+                    previousConfig, branchConfig, replacedProjects,
+                    workspace_dir=self.workspace_dir)
+                if replacementPlan is None:
+                    return False
+                self.progress["nestedReplacementPlan"] = replacementPlan
 
         if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
             # make sure public branches are to date in outer level repo.
@@ -323,6 +414,23 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
         if conflictedFiles is False:
             logging.warning("Initial merge failed. Resolve issue and try again. ")
             return False
+
+        if not self.progress["nestedReplacementsDone"]:
+            config_parser_global.read(workspace_dir=self.workspace_dir)
+            previousConfig, _, _, _, replacedProjects = (
+                checkout.parseGrapeConfigNestedProjectDiffOutput(
+                    startingSHA, "HEAD", workspace_dir=self.workspace_dir))
+            if replacedProjects:
+                replacementPlan = self.progress.get("nestedReplacementPlan", {})
+                currentBranch = git.currentBranch(execution_path=self.workspace_dir)
+                if not checkout.applyReplacedNestedSubprojects(
+                        previousConfig, replacedProjects, replacementPlan,
+                        currentBranch, args["--filter"],
+                        workspace_dir=self.workspace_dir):
+                    return False
+            self.progress["nestedReplacementsDone"] = True
+            nested = config_parser_user.getAllActiveNestedSubprojectPrefixes(
+                workspaceDir=self.workspace_dir)
 
         if not self.performSubprojectMerges(args, branch, nested, recurse, submodules):
             return False

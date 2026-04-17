@@ -210,7 +210,7 @@ class TestPublish(testGrape.TestGrape):
         self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(
-            self, execution_path=self.repo)
+            self, execution_path=self.repo, branch="testPublish")
         self.assertEqual(
             git.currentBranch(execution_path=self.subproject),
             self.branch)
@@ -230,7 +230,7 @@ class TestPublish(testGrape.TestGrape):
         self.menu.set_workspace_dir(self.repo)
         self.menu.applyMenuChoice("version", ["init", "v1.0.0", "--file=VERSION.txt", "--tag"])
         testNestedSubproject.TestNestedSubproject.assertCanAddNewSubproject(
-            self, execution_path=self.repo)
+            self, execution_path=self.repo, branch="testPublish")
 
         self.menu.set_workspace_dir(self.subproject)
         self.assertGrapePublishWorked()

@@ -566,13 +566,16 @@ Usage: grape-stash
 
 grape checkout
 
-Usage: grape-checkout [-v] [-q] [-b] [-F] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
+Usage: grape-checkout [-v] [-q] [-b] [-f] [-F] [--sync=<bool>] [--emailSubject=<sbj>] [--updateView] [--noUpdateView] [--filter=<arg>] <branch>
 
 Options:
     -v                  Print output from individual directories.
     -q                  Quiet warnings from individual directories that don't cause failure.
     -b                  Create the branch off of the current HEAD in each project.
-    -F                  Force removal of nested subprojects removed or replaced (with a different URL) as by the checkout.
+    -f                  Force removal of submodules that are removed or replaced (with a different URL) by the checkout.
+                        Nested subproject changes still prompt the user.
+    -F                  Force removal of submodules or nested subprojects that are removed or replaced (with a different URL) 
+                        by the checkout.
     --sync=<bool>       Take extra steps to ensure the branch you check out is up to date with origin,
                         either by pushing or pulling the remote tracking branch.
                         [default: .grapeconfig.post-checkout.syncWithOrigin]
@@ -1254,7 +1257,7 @@ Arguments:
 ## uv
 
 grape uv  - Updates your active submodules and ensures you are on a consistent branch throughout your project.
-Usage: grape-uv [-v] [-q] [-f] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
+Usage: grape-uv [-v] [-q] [-f ] [-F] [--checkSubprojects] [-b] [--gui [--fontSize=<font_size>]] [--skipTopLevel]
                 [--skipSubmodules | --allSubmodules | --noSubmodules]
                 [--skipNestedSubprojects | --allNestedSubprojects | --noNestedSubprojects]
                 [--sync=<bool>] [--syncPublic | --forceSyncPublic] [--skipSubmoduleSwitch] [--skipBranchCreation] [--skipBranchPush] [--branchName=<branchName>]
@@ -1269,9 +1272,9 @@ Options:
     -v                           Print output from individual directories.
     -q                           Quiet warnings from individual directories that don't cause failure.
     -f                           Force removal of submodules currently in your view that are taken out of the view
-                                 as a result to this call to uv.
-    -F                           Force removal of nested subprojects currently in your view that are taken out of the
-                                 view as a result to this call to uv.
+                                 as a result to this call to uv. Nested subproject changes still prompt the user.
+    -F                           Force removal of submodules and nested subprojects currently in your view that are taken
+                                 out of the view as a result to this call to uv.
     --checkSubprojects           Checks for branch model consistency across your submodules and subprojects, but does
                                  not go through the 'which submodules do you want' script.
     --checkRemoteSubmodules      Checks for branch model consistency across your submodules only, looking only at the
