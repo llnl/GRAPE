@@ -139,7 +139,7 @@ class TestCheckout(testGrape.TestGrape):
         self.assertEqual(moved, {"old/sub": "new/sub"})
         self.assertEqual(failed, {})
         mock_move_submodule.assert_called_once_with(
-            "old/sub", "new/sub", workspace_dir=self.repo)
+            "old/sub", "new/sub", workspace_dir=self.repo, force=False)
 
     @patch("vine.checkout.git.show")
     @patch("vine.checkout.git.diff")
