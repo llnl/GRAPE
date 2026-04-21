@@ -210,14 +210,14 @@ class TestGrape(unittest.TestCase):
 
     # Sets up a new nested subproject
     @staticmethod
-    def assertCanAddNewSubproject(testGrapeObject, *, execution_path):
+    def assertCanAddNewSubproject(testGrapeObject, *, execution_path, branch="master"):
         git.clone(argstr='--mirror', source_repo=testGrapeObject.repo,
                   clone_repo=testGrapeObject.repos[1],
                   execution_path=testGrapeObject.repo)
         subproject_path = os.path.join('subs', 'subproject1')
         testGrapeObject.menu.applyMenuChoice(
             "addSubproject", ["--name=subproject1",
-                              f"--prefix={subproject_path}", "--branch=master",
+                              f"--prefix={subproject_path}", f"--branch={branch}",
                               f"--url={testGrapeObject.repos[1]}",
                               "--nested", "--noverify"])
         subproject1path = os.path.join(testGrapeObject.repo, subproject_path)
