@@ -902,26 +902,27 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         label = reviewRule.label
                         minNumReviewers = reviewRule.minNumReviewers
 
-                        # Check if reviewers are assigned to the review rule
-                        if label not in descriptionModel.reviewRules:
-                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                        if minNumReviewers > 0:
+                            # Check if reviewers are assigned to the review rule
+                            if label not in descriptionModel.reviewRules:
+                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
-                            if not ruleDryRun:
-                                verified = False
+                                if not ruleDryRun:
+                                    verified = False
 
-                            break
+                                break
 
-                        # Check if at least the minimum number of required
-                        # reviewers are assigned to the review rule
-                        assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
+                            # Check if at least the minimum number of required
+                            # reviewers are assigned to the review rule
+                            assignedReviewers = list(sorted(descriptionModel.reviewRules[label]['reviewers']))
 
-                        if len(assignedReviewers) < minNumReviewers:
-                            userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
+                            if len(assignedReviewers) < minNumReviewers:
+                                userMessage += f'\n\t{repoName}: "{label}" needs {minNumReviewers} reviewer(s). Run "grape review --reviewers={reviewRuleName}:<comma-separated usernames>".'
 
-                            if not ruleDryRun:
-                                verified = False
+                                if not ruleDryRun:
+                                    verified = False
 
-                            break
+                                break
 
                         # Check that the assigned reviewers are eligible
                         # for this review rule.
