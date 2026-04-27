@@ -89,6 +89,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                 logging.info(f"Use `grape checkout {branchName}' instead.")
             return False
 
+        currentBranch = git.currentBranch(execution_path=self.workspace_dir)
         activeSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         addedModules = []
@@ -112,11 +113,26 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                     logging.info(f"Failed to remove old submodule for {sub}.")
                     return False
 
+            previousNestedConfig, targetNestedConfig, _, _, replacedProjects = (
+                checkout.parseGrapeConfigNestedProjectDiffOutput(
+                    currentBranch, start, workspace_dir=self.workspace_dir))
+            if replacedProjects:
+                nestedReplacementPlan = checkout.preflightReplacedNestedSubprojects(
+                    previousNestedConfig, targetNestedConfig, replacedProjects,
+                    workspace_dir=self.workspace_dir)
+                if nestedReplacementPlan is None:
+                    return False
+                if not checkout.applyReplacedNestedSubprojects(
+                        previousNestedConfig, replacedProjects,
+                        nestedReplacementPlan, start, False,
+                        targetNestedConfig,
+                        workspace_dir=self.workspace_dir):
+                    return False
+
         # Determine whether the public branch for the current branch is the
         # same as the public branch for the new branch.
         checkoutBeforeCreate = True
         try:
-            currentBranch = git.currentBranch(execution_path=self.workspace_dir)
             if currentBranch in config.get(Option.SECTION_FLOW, 'publicBranches'):
                currentPublic = currentBranch
             else:
