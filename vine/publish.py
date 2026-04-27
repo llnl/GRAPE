@@ -989,7 +989,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             #       merge/pull request author.
 
                             # Check tag commit
-                            if tag.commit.id != pullRequest.fromSHA():
+                            if tag.commit["id"] != pullRequest.fromSHA():
                                 # If the diff of the tag with respect to develop is the same
                                 # as the diff of the source branch with respect to develop,
                                 # then no reapproval is needed. If diffs are truncated,
