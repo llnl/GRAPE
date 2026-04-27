@@ -990,7 +990,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                             #       merge/pull request author.
 
                             # Check tag commit
-                            if tag.target != pullRequest.fromSHA():
+                            if tag.commit["id"] != pullRequest.fromSHA():
                                 # If the diff of the tag with respect to develop is the same
                                 # as the diff of the source branch with respect to develop,
                                 # then no reapproval is needed. If diffs are truncated,
@@ -1038,7 +1038,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                 sourceDiffs = {normalizeDiff(diff) for diff in sourceDiffs}
 
                                 # Get tag diffs, check for truncation, and normalize for comparison
-                                tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.target)
+                                tagDiffs = repo.getDiffs(pullRequest.toRef(), tag.commit["id"])
 
                                 if tagDiffs['compare_timeout']:
                                     userMessage += f'\n\t{repoName}: "{label}" needs reapproval because there are changes to "{pullRequest.fromRef()}" since tag "{tagName}" and diffs are truncated so they cannot be compared.'
