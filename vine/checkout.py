@@ -553,6 +553,8 @@ def cleanSubmodule(sub, args, veryclean = False, activeSubmodules = [], *, works
                 clean = False
             elif args["--updateView"]:
                 clean = True
+            else:
+                clean = False
         if clean:
             logging.info(f"Removing {'clean ' if not force else ''}submodule {sub}.")
             if not veryclean or changedActive:
