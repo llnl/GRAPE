@@ -274,7 +274,14 @@ class Approve(Option, WorkspaceDirHandler):
         """
         Approve._validate_approver(user_name, rule)
         modified_repos = review.Review._get_modified_repos(git_host, top_repo_context)
-        approve_input = Approve._get_approve_input(rule, user_name, top_repo_context['source_branch'], modified_repos)
+        review_rule_manager = ReviewRuleManager.from_config(top_repo_context['grape_config'])
+        approve_input = Approve._get_approve_input(
+            rule,
+            user_name,
+            top_repo_context['source_branch'],
+            modified_repos,
+            review_rule_manager
+        )
         Approve._apply_approve_actions(rule, approve_input, user_name, top_repo_context)
 
     @staticmethod
@@ -301,7 +308,7 @@ class Approve(Option, WorkspaceDirHandler):
         exit(1)
 
     @staticmethod
-    def _get_user_input(approve_input_spec):
+    def _get_user_input(approve_input_spec, existing_value=None):
         # Print prompt
         print(f'\n{approve_input_spec.prompt}')
 
@@ -343,6 +350,9 @@ class Approve(Option, WorkspaceDirHandler):
             for old, new in substitutions.items():
                 print(f'    "{old}"{" " * (longest_len - len(old))} -> "{new}"')
 
+        if existing_value:
+            print(f'\n  Value from previous approval:\n    {existing_value}')
+
         # Print default and prompt for input
         default = approve_input_spec.default
 
@@ -364,7 +374,24 @@ class Approve(Option, WorkspaceDirHandler):
         return value
 
     @staticmethod
-    def _get_approve_input(rule, user_name, source_branch, modified_repos):
+    def _get_existing_approve_input_values(review_request, rule, repo_name, review_rule_manager):
+        description = review_request.description()
+
+        if not description:
+            return {}
+
+        description_model = PullRequestDescriptionModel.from_text(description, review_rule_manager)
+        review_rule = description_model.reviewRules.get(rule.label, {})
+        approvals = review_rule.get('approvals', {})
+        repo_approvals = approvals.get(repo_name, {})
+
+        if isinstance(repo_approvals, dict):
+            return repo_approvals
+
+        return {}
+
+    @staticmethod
+    def _get_approve_input(rule, user_name, source_branch, modified_repos, review_rule_manager):
         """
         Prompt the user for approvals and collect rule-defined input per modified repository.
 
@@ -495,6 +522,12 @@ class Approve(Option, WorkspaceDirHandler):
             # Ask for input
             approve_input_specs = rule.approveInputSpecs
             repo_inputs = repo_context['approve_inputs']
+            existing_repo_inputs = Approve._get_existing_approve_input_values(
+                review_request,
+                rule,
+                repo_name,
+                review_rule_manager
+            )
 
             for approve_input_spec in approve_input_specs:
                 value = None
@@ -517,7 +550,10 @@ class Approve(Option, WorkspaceDirHandler):
                     elif source == 'branch':
                         value = source_branch
                     else:
-                        value = Approve._get_user_input(approve_input_spec)
+                        value = Approve._get_user_input(
+                            approve_input_spec,
+                            existing_value=existing_repo_inputs.get(approve_input_spec.label)
+                        )
 
                     if approve_input_spec.cache:
                         approve_input_spec.value = value
