@@ -18,3 +18,4 @@ build/
 vine/VERSION
 GRAPE_NESTED_SHA.json
 slirp.out
+.codex
