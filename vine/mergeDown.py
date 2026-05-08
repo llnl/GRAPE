@@ -348,11 +348,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 git.currentBranch(execution_path=self.workspace_dir), branch, addedModules,
                 removedModules, changedURLModules, movedModules,
                 workspace_dir=self.workspace_dir)
-            # deinit and clean out any submodules that changed urls
-            for sub in changedURLModules:
+            # deinit and clean out any submodules that changed urls or was removed
+            for sub in changedURLModules + removedModules:
                 is_active = "active" if sub in activeSubmodulesCheck0 else "inactive"
                 logging.info(
-                    f"url for {sub} changed, attempting to remove " +
+                    f"url for {sub} {'changed' if sub in changedURLModules else 'removed'}, attempting to remove " +
                     f"references for {is_active} submodule before merge.")
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck0, workspace_dir=self.workspace_dir)
                 if not cleaned:
