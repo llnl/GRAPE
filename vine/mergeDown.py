@@ -27,6 +27,32 @@ def mergeSubmoduleCandidates(submodules, movedActiveSubmodules):
     return list(dict.fromkeys(submodules + movedActiveSubmodules))
 
 
+def filterSubmodulesRemovedByMerge(currentRevision, targetRevision,
+                                   removedModules, *, workspace_dir):
+    """Keep only submodules the target side actually removed.
+
+    `parseGitModulesDiffOutput(current, target, ...)` reports submodules that
+    are present in `current` and absent from `target`. During merge-down that
+    also includes submodules newly added on the current branch. Those are not
+    removed by the incoming merge, so they must not be cleaned before merging.
+    """
+    if not removedModules:
+        return []
+
+    try:
+        mergeBase = git.mergeBase(f"{currentRevision} {targetRevision}",
+                                  execution_path=workspace_dir).strip()
+        _, baseSubmodules = checkout._submodulePathInfoForRevision(
+            mergeBase, workspace_dir=workspace_dir)
+    except grape_errors.GrapeGitError:
+        logging.warning(
+            "Unable to determine merge-base submodules before merge. "
+            "Preserving existing submodule cleanup behavior.")
+        return removedModules
+
+    return [sub for sub in removedModules if sub in baseSubmodules]
+
+
 def reconcileMovedSubmodules(movedModules, *pathLists, workspace_dir):
     # Keep the merge flow working with the paths that are active after the
     # outer-level merge updates .gitmodules.
@@ -348,11 +374,14 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 git.currentBranch(execution_path=self.workspace_dir), branch, addedModules,
                 removedModules, changedURLModules, movedModules,
                 workspace_dir=self.workspace_dir)
-            # deinit and clean out any submodules that changed urls
-            for sub in changedURLModules:
+            removedModules = filterSubmodulesRemovedByMerge(
+                startingSHA, branch, removedModules,
+                workspace_dir=self.workspace_dir)
+            # deinit and clean out any submodules that changed urls or was removed
+            for sub in changedURLModules + removedModules:
                 is_active = "active" if sub in activeSubmodulesCheck0 else "inactive"
                 logging.info(
-                    f"url for {sub} changed, attempting to remove " +
+                    f"url for {sub} {'changed' if sub in changedURLModules else 'removed'}, attempting to remove " +
                     f"references for {is_active} submodule before merge.")
                 cleaned = checkout.cleanSubmodule(sub, args, True, activeSubmodulesCheck0, workspace_dir=self.workspace_dir)
                 if not cleaned:
