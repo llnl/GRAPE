@@ -27,7 +27,8 @@ def setDefaultConfig(cfg):
 
 
 # default level of concurrency (user can control using the --np option to the top level executable)
-NUM_TASKS = -1
+# this will use the grapeconfig specified concurrency, if available, otherwise use all available resources
+NUM_TASKS = 0
 
 # using async Semaphore to limit concurrency of the gather
 # https://stackoverflow.com/questions/48483348/how-to-limit-concurrency-with-python-asyncio/61478547#61478547
@@ -296,9 +297,11 @@ class MultiRepoCommandLauncher(WorkspaceDirHandler):
     @staticmethod
     def get_concurrency():
         # this is set via the command line, which overrides configuration behavior
-        if NUM_TASKS > -1:
+        if NUM_TASKS != 0:
             n = NUM_TASKS
         else:
+            # default to all resources unless grapeconfig specifies otherwise
+            n = -1
             config = config_parser_global.grapeConfig()
 
             is_exclusive_node = False
