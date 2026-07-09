@@ -28,6 +28,27 @@ def addGitConfigFlag(flag):
     global GRAPE_GIT_CONFIG_FLAGS
     GRAPE_GIT_CONFIG_FLAGS.append(flag)
 
+
+def _index_lock_path_from_creation_error(output):
+    """Extracts the index.lock path from git's lock creation failure.
+
+    Args:
+        output: Combined stdout and stderr from a failed git command.
+
+    Returns:
+        The path inside git's "Unable to create '<path>': File exists"
+        message when that path ends in index.lock. Returns None when the
+        output is not the specific lock creation failure.
+    """
+    match = re.search(
+        r"unable to create\s+['\"]([^'\"]*index\.lock)['\"]:\s*file exists",
+        output,
+        re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return None
+
+
 # Note that if capture_output is None, the return code and
 # any errors are ignored.
 def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout=True):
@@ -54,6 +75,12 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     stderr_output = completed_process.stderr.decode()
     process_output = '\n'.join([stdout_output, stderr_output]).strip()
     if completed_process.returncode != 0:
+        index_lock_path = _index_lock_path_from_creation_error(process_output)
+        if index_lock_path:
+            raise grape_errors.GrapeGitIndexLockError(
+                f"Error: {errmsg}", completed_process.returncode,
+                process_output, _cmd, cwd=execution_path,
+                indexLockPath=index_lock_path)
         raise grape_errors.GrapeGitError(
             f"Error: {errmsg}", completed_process.returncode, process_output,
             _cmd, cwd=execution_path)

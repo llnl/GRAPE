@@ -844,12 +844,31 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
 
 def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
     squashArg = "--squash" if args["--squash"] else ""
-    try:
-        git.merge(f"{squashArg} {branch} {strategy}",
-                  execution_path=execution_path)
-        return True
-    except grape_errors.GrapeGitError as error:
-        logging.error(error.gitOutput)
+    attempted_index_lock_recovery = False
+    caught_error = None
+    while True:
+        try:
+            git.merge(f"{squashArg} {branch} {strategy}",
+                      execution_path=execution_path)
+            return True
+        except grape_errors.GrapeGitIndexLockError as error:
+            logging.error(error.gitOutput)
+            if not attempted_index_lock_recovery:
+                attempted_index_lock_recovery = True
+                # Only retry once after the user explicitly removes the lock.
+                if handleIndexLockError(error):
+                    logging.info("Retrying merge after removing index.lock.")
+                    continue
+            logging.error(f"Merge command {error.gitCommand} failed." +
+                          " Quitting.")
+            return False
+        except grape_errors.GrapeGitError as error:
+            logging.error(error.gitOutput)
+            caught_error = error
+            break
+
+    error = caught_error
+    if error:
         if error.has_conflict():
             if args['--at'] or args['--ay']:
                 if args['--at']:
@@ -884,6 +903,42 @@ def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
             logging.error(f"Merge command {error.gitCommand} failed." +
                           " Quitting.")
             return False
+
+
+def handleIndexLockError(error):
+    """Prompts the user before removing a git index lock file.
+
+    Args:
+        error: GrapeGitIndexLockError containing the lock path reported by git.
+
+    Returns:
+        True when the lock file was removed. False when the user declines,
+        the path is unavailable, or the path does not point to a file.
+    """
+    lock_path = error.indexLockPath
+    if not lock_path:
+        logging.warning("Git reported an index.lock, but GRAPE could not determine its path.")
+        return False
+
+    logging.warning(
+        "Git reported an index.lock. This can happen when another git "
+        "process is still running or when a previous git command exited "
+        "without cleaning up.")
+    remove_lock = utility.userInput(
+        f"Remove {lock_path}? WARNING: only do this if you are sure no other "
+        "git process is running for this repository. (y/n)",
+        "n")
+    if not remove_lock:
+        logging.info(f"Leaving {lock_path} in place.")
+        return False
+
+    if not os.path.isfile(lock_path):
+        logging.warning(f"{lock_path} does not exist or is not a file.")
+        return False
+
+    os.remove(lock_path)
+    logging.info(f"Removed {lock_path}.")
+    return True
 
 @log_wrapper
 def continueLocalMerge(args, *, execution_path):
@@ -987,6 +1042,10 @@ def handleMergeSubprojectMRE(mre):
     for e, repo, branch in zip(mre.exceptions(), mre.repos(), mre.branches()):
         try:
             raise e
+        except grape_errors.GrapeGitIndexLockError as e2:
+            handleIndexLockError(e2)
+            logging.error(f" mergeSubproject  of {branch} {repo}")
+            logging.error(f"{e2.gitOutput}")
         except grape_errors.GrapeGitError as e2:
             logging.error(f" mergeSubproject  of {branch} {repo}")
             logging.error(f"{e2.gitOutput}")

@@ -45,6 +45,36 @@ class GrapeGitError(Exception):
         return "conflict" in self.gitOutput.lower()
 
 
+class GrapeGitIndexLockError(GrapeGitError):
+    """Raised when git cannot create an index.lock file.
+
+    Attributes:
+        indexLockPath: Path to the lock file reported by git.
+        index_lock_path: Alias for indexLockPath for snake_case callers.
+    """
+
+    def __init__(self, errmsg='', returnCode=-1, gitOutput='',
+                 gitCommand='', cwd=os.getcwd(), indexLockPath=''):
+        """Initializes a git index lock error.
+
+        Args:
+            errmsg: Human-readable error summary.
+            returnCode: Exit code from the git command.
+            gitOutput: Captured stdout and stderr from the git command.
+            gitCommand: Full git command that failed.
+            cwd: Working directory where the git command ran.
+            indexLockPath: Path to the lock file reported by git.
+
+        Note:
+            Arguments must be kept as keywords to allow pickling.
+        """
+        super(GrapeGitIndexLockError, self).__init__(
+            errmsg=errmsg, returnCode=returnCode, gitOutput=gitOutput,
+            gitCommand=gitCommand, cwd=cwd)
+        self.indexLockPath = indexLockPath
+        self.index_lock_path = indexLockPath
+
+
 # there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
 # this is a wrapper to allow exception capture in runCommandOnRepoBranch.
 class MultiRepoException(Exception):
