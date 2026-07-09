@@ -97,6 +97,47 @@ def test_handle_index_lock_error_removes_lock_when_user_accepts():
         assert not os.path.exists(lock_path)
 
 
+def test_handle_index_lock_error_ignores_missing_lock_during_remove():
+    """Verifies that a disappearing index.lock does not crash recovery."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        lock_path = os.path.join(temp_dir, "index.lock")
+        error = grape_errors.GrapeGitIndexLockError(
+            gitOutput=f"Unable to create '{lock_path}': File exists.",
+            cwd=temp_dir,
+            indexLockPath=lock_path,
+        )
+
+        with patch("vine.mergeDown.utility.userInput", return_value=True), \
+                patch("vine.mergeDown.os.path.isfile", return_value=True), \
+                patch("vine.mergeDown.os.remove",
+                      side_effect=FileNotFoundError):
+            removed = mergeDown.handleIndexLockError(error)
+
+        assert removed is False
+
+
+def test_handle_index_lock_error_warns_on_permission_error():
+    """Verifies that permission failures are reported without crashing."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        lock_path = os.path.join(temp_dir, "index.lock")
+        error = grape_errors.GrapeGitIndexLockError(
+            gitOutput=f"Unable to create '{lock_path}': File exists.",
+            cwd=temp_dir,
+            indexLockPath=lock_path,
+        )
+
+        with patch("vine.mergeDown.utility.userInput", return_value=True), \
+                patch("vine.mergeDown.os.path.isfile", return_value=True), \
+                patch("vine.mergeDown.os.remove",
+                      side_effect=PermissionError), \
+                patch("vine.mergeDown.logging.warning") as warning:
+            removed = mergeDown.handleIndexLockError(error)
+
+        assert removed is False
+        warning.assert_any_call(
+            f"Could not remove {lock_path}: permission denied.")
+
+
 def test_merge_retries_after_removing_index_lock():
     """Verifies that merge-down retries once after handling an index.lock error."""
     error = grape_errors.GrapeGitIndexLockError(

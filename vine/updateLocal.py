@@ -141,6 +141,11 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
     try:
         logging.debug(f"running \n\tgit fetch {fetchArgs}\n in {execution_path}")
         git.fetch(fetchArgs, execution_path=execution_path, raiseOnCommError=(not args["--ignoreCommError"]))
+    except grape_errors.GrapeGitIndexLockError as e:
+        logging.error(
+            f"GRAPE: Could not fetch in {execution_path}; git index is "
+            f"locked at {e.indexLockPath}.")
+        raise e
     except grape_errors.GrapeGitError as e:
         # let non-fast-forward fetches slide
         if "rejected" in e.gitOutput.lower() and "non-fast-forward" in e.gitOutput.lower():
@@ -158,6 +163,11 @@ def fetchLocal(repo='unknown', branch=[], args={}, *, workspace_dir):
         try:
             logging.debug( f"Merging origin/{currentBranch} into {currentBranch} in {execution_path}")
             git.merge(f"origin/{currentBranch}", execution_path=execution_path)
+        except grape_errors.GrapeGitIndexLockError as e:
+            logging.error(
+                f"GRAPE: Could not merge origin/{currentBranch} into "
+                f"{currentBranch}; git index is locked at {e.indexLockPath}.")
+            raise e
         except grape_errors.GrapeGitError as e:
             logging.error(f"GRAPE: Could not merge origin/{currentBranch} into {currentBranch} after fetch.")
             raise e

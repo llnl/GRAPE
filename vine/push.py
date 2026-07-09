@@ -95,6 +95,11 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
             else:
                 logging.info(f"Skipping push for {repo} on {branch}: divergent")
             return False
+    except grape_errors.GrapeGitIndexLockError as e:
+        logging.error(
+            f"Cannot determine push necessity in {repo}; git index is "
+            f"locked at {e.indexLockPath}.")
+        raise e
     except grape_errors.GrapeGitError as e:
         logging.error("Failed to determine push necessity; attempting push anyway.")
         logging.debug(e.gitOutput)
@@ -105,6 +110,13 @@ def handlePushMRE(mre):
     for e1 in mre.exceptions():
         try:
             raise e1
+        except grape_errors.GrapeGitIndexLockError as e:
+            logging.error("Failed to push branch because git index is locked.")
+            logging.error(e.gitCommand)
+            logging.error(e.cwd)
+            logging.error(f"index.lock: {e.indexLockPath}")
+            logging.error(e.gitOutput)
+            return False
         except grape_errors.GrapeGitError as e:
             logging.error("Failed to push branch.")
             logging.error(e.gitCommand)

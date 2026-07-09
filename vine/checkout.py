@@ -31,6 +31,10 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
         # attempt to fetch the requested branch
         try:
             git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
+        except grape_errors.GrapeGitIndexLockError as e:
+            logging.warning(
+                f"Skipping sync fetch for {branch} in {repo} because git "
+                f"reported an index.lock at {e.indexLockPath}.")
         except:
             # the branch may not exist, but ignore the exception
             # and allow the checkout to throw the exception.
@@ -39,18 +43,20 @@ def handledCheckout(repo='', branch='master', args=[], *, workspace_dir):
         if verbose:
             logging.info(f"checking out {branch} in {repo}")
         git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
+    except grape_errors.GrapeGitIndexLockError as e:
+        if not quiet:
+            logging.info(
+                f"waiting for 3 seconds in {branch} in {repo} due to "
+                f"index.lock detection at {e.indexLockPath}")
+        time.sleep(3)
+        if not quiet:
+            logging.info(f"retrying checkout out of {branch} in {repo}")
+        git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
     except grape_errors.GrapeGitError as e:
         if "already exists" in e.gitOutput and "-b" in checkoutargs:
             if not quiet:
                 logging.info(f"Reattempting checkout of previously existing branch {branch} without using a '-b' in {repo}")
             git.checkout(f"{checkoutargs.replace('-b','')} {branch}", execution_path=repo)
-        if "index.lock" in e.gitOutput:
-            if not quiet:
-                logging.info(f"waiting for 3 seconds in {branch} in {repo} due to index.lock detection")
-            time.sleep(3)
-            if not quiet:
-                logging.info(f"retrying checkout out of {branch} in {repo}")
-            git.checkout(f"{checkoutargs} {branch}", execution_path=repo)
         else:
             logging.debug(f"checkout failed in {repo}.")
             raise e

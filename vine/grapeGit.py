@@ -29,7 +29,7 @@ def addGitConfigFlag(flag):
     GRAPE_GIT_CONFIG_FLAGS.append(flag)
 
 
-def _index_lock_path_from_creation_error(output):
+def indexLockPathFromCreationError(output):
     """Extracts the index.lock path from git's lock creation failure.
 
     Args:
@@ -75,7 +75,7 @@ def gitcmd(cmd, errmsg, *, execution_path, capture_output=True, debug_log_stdout
     stderr_output = completed_process.stderr.decode()
     process_output = '\n'.join([stdout_output, stderr_output]).strip()
     if completed_process.returncode != 0:
-        index_lock_path = _index_lock_path_from_creation_error(process_output)
+        index_lock_path = indexLockPathFromCreationError(process_output)
         if index_lock_path:
             raise grape_errors.GrapeGitIndexLockError(
                 f"Error: {errmsg}", completed_process.returncode,

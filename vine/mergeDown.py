@@ -936,7 +936,13 @@ def handleIndexLockError(error):
         logging.warning(f"{lock_path} does not exist or is not a file.")
         return False
 
-    os.remove(lock_path)
+    try:
+        os.remove(lock_path)
+    except PermissionError:
+        logging.warning(f"Could not remove {lock_path}: permission denied.")
+        return False
+    except OSError:
+        return False
     logging.info(f"Removed {lock_path}.")
     return True
 
