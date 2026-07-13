@@ -167,6 +167,10 @@ class _Menu(WorkspaceDirHandler):
                         option_args, workspace_dir=chosen_option.workspace_dir)
             return chosen_option.execute(option_args)
 
+        except grape_errors.GrapeGitIndexLockError as e:
+            e.LogError(f"grape-{chosen_option._key}")
+            exit(e.code)
+
         except grape_errors.GrapeGitError as e:
             logging.error(traceback.print_exc())
             if e.authError:

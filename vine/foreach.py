@@ -1,6 +1,7 @@
 import logging
 import os
 from vine import grape_errors
+from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
 from vine import vine_logging
 from vine import vine_subprocess
@@ -77,9 +78,25 @@ def handleForeachMRE(mre):
     for e1, repo, args in zip(mre.exceptions(), mre.repos(), mre.args()):
         try:
             raise e1
-        except grape_errors.GrapeGitError as e:
+        except grape_errors.GrapeGitIndexLockError as e:
             if not args["-q"]:
-                logging.warning(f"GRAPE: Foreach failed in {e.cwd}.")
+                logging.warning(
+                    f"GRAPE: Foreach failed in {e.cwd} because git index "
+                    f"is locked at {e.indexLockPath}.")
+                logging.warning(f"GRAPE: Command `{e.gitCommand}' with the following output:")
+                logging.warning(e.gitOutput)
+                logging.warning(f"GRAPE: exited with error code {e.code}.")
+            elif args["-v"]:
+                logging.info(f"[{os.path.relpath(repo, mre.workspace_dir)}]\n{e.gitOutput}")
+        except grape_errors.GrapeGitError as e:
+            index_lock_path = git.indexLockPathFromCreationError(e.gitOutput)
+            if not args["-q"]:
+                if index_lock_path:
+                    logging.warning(
+                        f"GRAPE: Foreach failed in {e.cwd} because git "
+                        f"index is locked at {index_lock_path}.")
+                else:
+                    logging.warning(f"GRAPE: Foreach failed in {e.cwd}.")
                 logging.warning(f"GRAPE: Command `{e.gitCommand}' with the following output:")
                 logging.warning(e.gitOutput)
                 logging.warning(f"GRAPE: exited with error code {e.code}.")
