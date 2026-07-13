@@ -74,6 +74,15 @@ class GrapeGitIndexLockError(GrapeGitError):
         self.indexLockPath = indexLockPath
         self.index_lock_path = indexLockPath
 
+    def LogError(self, action):
+        """Logs a standard git index lock error message."""
+        lock_path = self.indexLockPath if self.indexLockPath else "unknown"
+        logging.error(
+            f"Index Lock during {action}: git index is locked at {lock_path}.")
+        logging.error(f"Git command: {self.gitCommand}")
+        logging.error(f"Working directory: {self.cwd}")
+        logging.error(self.gitOutput)
+
 
 # there is a bug in pickle that causes it to only use a default initializer for GrapeGitError objects,
 # this is a wrapper to allow exception capture in runCommandOnRepoBranch.

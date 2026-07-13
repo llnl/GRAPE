@@ -852,15 +852,13 @@ def merge(branch, strategy, args, warnOnConflict=True, *, execution_path):
                       execution_path=execution_path)
             return True
         except grape_errors.GrapeGitIndexLockError as error:
-            logging.error(error.gitOutput)
+            error.LogError(f"merge {branch} in {execution_path}")
             if not attempted_index_lock_recovery:
                 attempted_index_lock_recovery = True
                 # Only retry once after the user explicitly removes the lock.
                 if handleIndexLockError(error):
                     logging.info("Retrying merge after removing index.lock.")
                     continue
-            logging.error(f"Merge command {error.gitCommand} failed." +
-                          " Quitting.")
             return False
         except grape_errors.GrapeGitError as error:
             logging.error(error.gitOutput)
@@ -1050,8 +1048,7 @@ def handleMergeSubprojectMRE(mre):
             raise e
         except grape_errors.GrapeGitIndexLockError as e2:
             handleIndexLockError(e2)
-            logging.error(f" mergeSubproject  of {branch} {repo}")
-            logging.error(f"{e2.gitOutput}")
+            e2.LogError(f"mergeSubproject of {branch} {repo}")
         except grape_errors.GrapeGitError as e2:
             logging.error(f" mergeSubproject  of {branch} {repo}")
             logging.error(f"{e2.gitOutput}")

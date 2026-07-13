@@ -168,12 +168,7 @@ class _Menu(WorkspaceDirHandler):
             return chosen_option.execute(option_args)
 
         except grape_errors.GrapeGitIndexLockError as e:
-            logging.error(traceback.print_exc())
-            logging.error(
-                f"GRAPE: Git index is locked at {e.indexLockPath} while "
-                f"running grape-{chosen_option._key} with '{e.gitCommand}' "
-                f"in '{e.cwd}'.")
-            logging.error(e.gitOutput)
+            e.LogError(f"grape-{chosen_option._key}")
             exit(e.code)
 
         except grape_errors.GrapeGitError as e:

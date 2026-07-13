@@ -949,18 +949,14 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
     try:
         git.fetch("origin", f"{branch}:{branch}", execution_path=repo)
     except grape_errors.GrapeGitIndexLockError as e:
-        logging.error(
-            f"Fetch to update {branch} in {repo} failed because git index "
-            f"is locked at {e.indexLockPath}.")
+        e.LogError(f"fetch to update {branch} in {repo}")
         raise e
     except grape_errors.GrapeGitError as e:
         if "refusing to fetch into" in e.gitOutput.lower():
             try:
                 git.pull(f"origin {branch}", execution_path=repo)
             except grape_errors.GrapeGitIndexLockError as e:
-                logging.error(
-                    f"Pull to update {branch} in {repo} failed because "
-                    f"git index is locked at {e.indexLockPath}.")
+                e.LogError(f"pull to update {branch} in {repo}")
                 raise e
             except grape_errors.GrapeGitError as e:
                 logging.error(e.gitOutput)
@@ -985,9 +981,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
         try:
            git.fetch("origin", f"{forceArg} {public}:{public}", execution_path=repo)
         except grape_errors.GrapeGitIndexLockError as e:
-           logging.error(
-               f"Fetch to update {public} in {repo} failed because git "
-               f"index is locked at {e.indexLockPath}.")
+           e.LogError(f"fetch to update {public} in {repo}")
            raise e
         except grape_errors.GrapeGitError as e:
            if "refusing to fetch into" in e.gitOutput.lower():
@@ -995,9 +989,7 @@ def ensureLocalUpToDateWithRemote(repo='', branch='master', args=[], *, workspac
                try:
                    git.pull(f"origin {public}", execution_path=repo)
                except grape_errors.GrapeGitIndexLockError as e:
-                   logging.error(
-                       f"Pull to update {public} in {repo} failed because "
-                       f"git index is locked at {e.indexLockPath}.")
+                   e.LogError(f"pull to update {public} in {repo}")
                    raise e
                except grape_errors.GrapeGitError as e:
                    logging.error(e.gitOutput)
@@ -1040,10 +1032,7 @@ def handleCleanupPushMRE(mre):
         try:
             raise e
         except grape_errors.GrapeGitIndexLockError as e2:
-            logging.error(
-                f"Could not push {branch} in {repo}; git index is locked "
-                f"at {e2.indexLockPath}.")
-            logging.error(f"{e2.gitOutput}")
+            e2.LogError(f"push {branch} in {repo}")
         except grape_errors.GrapeGitError as e2:
             logging.error(f"Local and remote versions of {branch} may have diverged in {repo}")
             logging.error(f"{e2.gitOutput}")
@@ -1060,10 +1049,7 @@ def handleEnsureLocalUpToDateMRE(mre):
         try:
             raise e1
         except grape_errors.GrapeGitIndexLockError as e:
-            logging.error(
-                f"Could not update {branch} in {repo}; git index is "
-                f"locked at {e.indexLockPath}.")
-            logging.error(e.gitOutput)
+            e.LogError(f"update {branch} in {repo}")
             raise e
         except grape_errors.GrapeGitError as e:
             if ("[rejected]" in e.gitOutput.lower() and "(non-fast-forward)" in e.gitOutput.lower()) or e.could_not_find_remote_ref():

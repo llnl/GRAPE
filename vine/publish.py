@@ -1992,9 +1992,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                           execution_path=self.workspace_dir)
                 status[mergeID] = "MERGED"
             except grape_errors.GrapeGitIndexLockError as e:
-                logging.error(
-                    f"Could not cascade merge from {public} to {branch} in "
-                    f"{repo}; git index is locked at {e.indexLockPath}.")
+                e.LogError(f"cascade merge from {public} to {branch} in {repo}")
                 return False
             except grape_errors.GrapeGitError as e:
                 if e.has_conflict():
@@ -2094,9 +2092,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             try:
                 git.push("-u origin HEAD", throwOnFail=True, execution_path=repo)
             except grape_errors.GrapeGitIndexLockError as e:
-                logging.error(
-                    f"Unable to push result of publish to origin in {repo}; "
-                    f"git index is locked at {e.indexLockPath}.")
+                e.LogError(f"publish push to origin in {repo}")
                 raise e
             except grape_errors.GrapeGitError as e:
                 if e.commError:
