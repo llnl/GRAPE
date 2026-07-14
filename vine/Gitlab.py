@@ -423,6 +423,14 @@ class Repo:
                 return parsed
         return None
 
+    @classmethod
+    def _pipeline_reference_datetime(cls, pipeline):
+        for attr in ("updated_at", "finished_at", "created_at"):
+            parsed = cls._parse_gitlab_datetime(getattr(pipeline, attr, None))
+            if parsed is not None:
+                return parsed
+        return None
+
     @staticmethod
     def _artifact_matches_filter(artifact_name, artifact_filter):
         return (
@@ -447,65 +455,102 @@ class Repo:
             return None
         return destination
 
-    def find_failed_jobs(self, started_after, started_before, job_name=None):
-        jobs = self.project.jobs.list(
+    def _find_pipelines_for_job_search(self, started_after, started_before):
+        query_parameters = {}
+        if started_after:
+            query_parameters["updated_after"] = started_after.isoformat()
+        if started_before:
+            query_parameters["updated_before"] = started_before.isoformat()
+
+        pipelines = self.project.pipelines.list(
             get_all=True,
             per_page=100,
-            scope="failed",
-            order_by="id",
+            order_by="updated_at",
             sort="desc",
+            query_parameters=query_parameters,
         )
         logging.debug(
-            "GitLab returned %d failed job(s) before filtering for project %s.",
-            len(jobs),
+            "GitLab returned %d pipeline(s) before job filtering for project %s.",
+            len(pipelines),
             getattr(self.project, "path_with_namespace", getattr(self.project, "name", "<unknown>")),
         )
         logging.debug(
-            "Requested project jobs with scope=failed, order_by=id, sort=desc, per_page=100."
+            "Requested project pipelines with updated_after=%s, updated_before=%s, order_by=updated_at, "
+            "sort=desc, per_page=100.",
+            query_parameters.get("updated_after"),
+            query_parameters.get("updated_before"),
         )
-        matching_jobs = []
-        for job in jobs:
-            if job_name and job.name != job_name:
-                logging.debug(
-                    "Skipping failed job %s (%s): name does not match requested job name %s.",
-                    job.id,
-                    job.name,
-                    job_name,
-                )
-                continue
+        return pipelines
 
-            job_time = self._job_reference_datetime(job)
-            if started_after and (job_time is None or job_time < started_after):
-                logging.debug(
-                    "Skipping failed job %s (%s): reference time %s is before start bound %s.",
-                    job.id,
-                    job.name,
-                    job_time.isoformat() if job_time else None,
-                    started_after.isoformat(),
-                )
-                continue
-            if started_before and (job_time is None or job_time > started_before):
-                logging.debug(
-                    "Skipping failed job %s (%s): reference time %s is after end bound %s.",
-                    job.id,
-                    job.name,
-                    job_time.isoformat() if job_time else None,
-                    started_before.isoformat(),
-                )
-                continue
+    def find_failed_jobs(self, started_after, started_before, job_name=None):
+        pipelines = self._find_pipelines_for_job_search(started_after, started_before)
+        matching_jobs = []
+        for pipeline in pipelines:
+            pipeline_time = self._pipeline_reference_datetime(pipeline)
             logging.debug(
-                "Matched failed job %s (%s) with reference time %s.",
-                job.id,
-                job.name,
-                job_time.isoformat() if job_time else None,
+                "Inspecting pipeline %s with reference time %s for failed jobs.",
+                pipeline.id,
+                pipeline_time.isoformat() if pipeline_time else None,
             )
-            matching_jobs.append(job)
+
+            failed_jobs = pipeline.jobs.list(
+                get_all=True,
+                per_page=100,
+                scope="failed",
+            )
+            logging.debug(
+                "Pipeline %s returned %d failed job(s) before filtering.",
+                pipeline.id,
+                len(failed_jobs),
+            )
+
+            for job in failed_jobs:
+                if job_name and job.name != job_name:
+                    logging.debug(
+                        "Skipping failed job %s (%s): name does not match requested job name %s.",
+                        job.id,
+                        job.name,
+                        job_name,
+                    )
+                    continue
+
+                job_time = self._job_reference_datetime(job)
+                if started_after and (job_time is None or job_time < started_after):
+                    logging.debug(
+                        "Skipping failed job %s (%s): reference time %s is before start bound %s.",
+                        job.id,
+                        job.name,
+                        job_time.isoformat() if job_time else None,
+                        started_after.isoformat(),
+                    )
+                    continue
+                if started_before and (job_time is None or job_time > started_before):
+                    logging.debug(
+                        "Skipping failed job %s (%s): reference time %s is after end bound %s.",
+                        job.id,
+                        job.name,
+                        job_time.isoformat() if job_time else None,
+                        started_before.isoformat(),
+                    )
+                    continue
+                logging.debug(
+                    "Matched failed job %s (%s) with reference time %s from pipeline %s.",
+                    job.id,
+                    job.name,
+                    job_time.isoformat() if job_time else None,
+                    pipeline.id,
+                )
+                matching_jobs.append(job)
 
         matching_jobs.sort(
             key=lambda job: self._job_reference_datetime(job) or datetime.min.replace(tzinfo=timezone.utc),
             reverse=True,
         )
-        logging.info("Found %d failed job(s) matching the requested filters.", len(matching_jobs))
+        logging.info(
+            "Found %d failed job(s) matching the requested filters across %d pipeline(s).",
+            len(matching_jobs),
+            len(pipelines),
+        )
         return matching_jobs
 
     def _download_matching_files_from_job(self, job, artifact_filter, output_dir):

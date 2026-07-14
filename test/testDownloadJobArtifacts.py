@@ -1,4 +1,5 @@
 import io
+import logging
 import os
 import tempfile
 import unittest
@@ -29,17 +30,48 @@ class FakeJobsManager:
         self._jobs = {job.id: job for job in jobs}
         self.list_calls = []
 
-    def list(self, all=True, scope=None):
-        self.list_calls.append({"all": all, "scope": scope})
+    def list(self, **kwargs):
+        self.list_calls.append(kwargs)
         return list(self._jobs.values())
 
     def get(self, job_id):
         return self._jobs[int(job_id)]
 
 
-class FakeProject:
+class FakePipelineJobsManager:
     def __init__(self, jobs):
+        self._jobs = list(jobs)
+        self.list_calls = []
+
+    def list(self, **kwargs):
+        self.list_calls.append(kwargs)
+        return list(self._jobs)
+
+
+class FakePipeline:
+    def __init__(self, pipeline_id, jobs, updated_at=None, finished_at=None, created_at=None):
+        self.id = pipeline_id
+        self.updated_at = updated_at
+        self.finished_at = finished_at
+        self.created_at = created_at
+        self.jobs = FakePipelineJobsManager(jobs)
+
+
+class FakePipelinesManager:
+    def __init__(self, pipelines):
+        self._pipelines = list(pipelines)
+        self.list_calls = []
+
+    def list(self, **kwargs):
+        self.list_calls.append(kwargs)
+        return list(self._pipelines)
+
+
+class FakeProject:
+    def __init__(self, jobs, pipelines=None):
         self.jobs = FakeJobsManager(jobs)
+        self.pipelines = FakePipelinesManager(pipelines or [])
+        self.path_with_namespace = "grp/repo"
 
 
 class FakeRepo:
@@ -76,7 +108,12 @@ class TestGitlabArtifactDownloads(unittest.TestCase):
             FakeJob(2, "lint", finished_at="2026-07-14T08:00:00Z"),
             FakeJob(3, "lint", finished_at="2026-07-15T08:00:00Z"),
         ]
-        repo = Gitlab.Repo(FakeProject(jobs), gitlab=None)
+        pipelines = [
+            FakePipeline(101, [jobs[0]], updated_at="2026-07-13T18:30:00Z"),
+            FakePipeline(102, [jobs[1], jobs[2]], updated_at="2026-07-14T09:00:00Z"),
+        ]
+        project = FakeProject(jobs, pipelines=pipelines)
+        repo = Gitlab.Repo(project, gitlab=None)
 
         matching = repo.find_failed_jobs(
             datetime(2026, 7, 14, 0, 0, tzinfo=timezone.utc),
@@ -85,7 +122,20 @@ class TestGitlabArtifactDownloads(unittest.TestCase):
         )
 
         self.assertEqual([2], [job.id for job in matching])
-        self.assertEqual("failed", repo.project.jobs.list_calls[0]["scope"])
+        self.assertTrue(project.pipelines.list_calls[0]["get_all"])
+        self.assertEqual(100, project.pipelines.list_calls[0]["per_page"])
+        self.assertEqual("updated_at", project.pipelines.list_calls[0]["order_by"])
+        self.assertEqual("desc", project.pipelines.list_calls[0]["sort"])
+        self.assertEqual(
+            {
+                "updated_after": "2026-07-14T00:00:00+00:00",
+                "updated_before": "2026-07-14T23:59:00+00:00",
+            },
+            project.pipelines.list_calls[0]["query_parameters"],
+        )
+        self.assertEqual("failed", pipelines[0].jobs.list_calls[0]["scope"])
+        self.assertTrue(pipelines[0].jobs.list_calls[0]["get_all"])
+        self.assertEqual(100, pipelines[0].jobs.list_calls[0]["per_page"])
 
     def test_download_job_artifacts_extracts_only_matching_files(self):
         job = FakeJob(
@@ -116,12 +166,63 @@ class TestGitlabArtifactDownloads(unittest.TestCase):
                 os.path.exists(os.path.join(tmpdir, "job_42_integration_test", "logs", "output.log"))
             )
 
+    def test_find_failed_jobs_logs_summary(self):
+        jobs = [FakeJob(1, "unit", finished_at="2026-07-13T18:00:00Z")]
+        pipelines = [FakePipeline(101, jobs, updated_at="2026-07-13T18:30:00Z")]
+        repo = Gitlab.Repo(FakeProject(jobs, pipelines=pipelines), gitlab=None)
+
+        with self.assertLogs(level=logging.INFO) as logs:
+            matching = repo.find_failed_jobs(
+                datetime(2026, 7, 13, 0, 0, tzinfo=timezone.utc),
+                datetime(2026, 7, 14, 0, 0, tzinfo=timezone.utc),
+            )
+
+        self.assertEqual([1], [job.id for job in matching])
+        self.assertIn("Found 1 failed job(s) matching the requested filters across 1 pipeline(s).", logs.output[-1])
+
+    def test_download_job_artifacts_logs_debug_when_filter_matches_nothing(self):
+        job = FakeJob(
+            42,
+            "integration test",
+            finished_at="2026-07-14T08:00:00Z",
+            artifact_bytes=build_artifact_zip({"logs/output.log": "hello"}),
+        )
+        repo = Gitlab.Repo(FakeProject([job]), gitlab=None)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with self.assertLogs(level=logging.DEBUG) as logs:
+                downloads = repo.download_job_artifacts(
+                    artifact_filter="*outname*",
+                    output_dir=tmpdir,
+                    job_id="42",
+                )
+
+        self.assertEqual([], downloads)
+        joined_logs = "\n".join(logs.output)
+        self.assertIn("Inspecting 1 candidate job(s) for artifact matches.", joined_logs)
+        self.assertIn("artifact archive contains 1 file(s)", joined_logs)
+        self.assertIn("matched filter *outname*", joined_logs)
+
 
 class TestDownloadJobArtifactsCommand(unittest.TestCase):
     def test_parse_cli_datetime_expands_date_only_end_of_day(self):
         parsed = parse_cli_datetime("2026-07-14", end_of_day=True)
 
         self.assertEqual(datetime(2026, 7, 14, 23, 59, 59, 999999, tzinfo=timezone.utc), parsed)
+
+    def test_parse_cli_datetime_supports_now(self):
+        reference_now = datetime(2026, 7, 14, 12, 30, tzinfo=timezone.utc)
+
+        parsed = parse_cli_datetime("now", reference_now=reference_now)
+
+        self.assertEqual(reference_now, parsed)
+
+    def test_parse_cli_datetime_supports_relative_days_ago(self):
+        reference_now = datetime(2026, 7, 14, 12, 30, tzinfo=timezone.utc)
+
+        parsed = parse_cli_datetime("2 days ago", reference_now=reference_now)
+
+        self.assertEqual(datetime(2026, 7, 12, 12, 30, tzinfo=timezone.utc), parsed)
 
     def test_execute_requires_time_range_when_job_id_not_provided(self):
         command = DownloadJobArtifacts()
@@ -179,3 +280,33 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
         self.assertEqual("*.log", fake_repo.calls[0]["artifact_filter"])
         self.assertIsNone(fake_repo.calls[0]["started_after"])
         self.assertIsNone(fake_repo.calls[0]["started_before"])
+
+    def test_execute_logs_failed_job_search_summary(self):
+        command = DownloadJobArtifacts()
+        command._workspace_dir = os.getcwd()
+        fake_repo = FakeRepo()
+        fake_host = FakeGitHost(fake_repo)
+
+        with mock.patch("vine.downloadJobArtifacts.utility.getUserName", return_value="alice"), \
+             mock.patch("vine.downloadJobArtifacts.utility.authenticateToGitHost", return_value=fake_host), \
+             self.assertLogs(level=logging.INFO) as logs:
+            ret = command.execute(
+                {
+                    "--job-id": None,
+                    "--job-name": None,
+                    "--start": "1 day ago",
+                    "--end": "now",
+                    "--artifact-filter": "*outname*",
+                    "--output-dir": ".",
+                    "--user": "alice",
+                    "--codeReviewsURL": "https://gitlab.example/gitlab",
+                    "--verifySSL": "True",
+                    "--project": "grp",
+                    "--repo": "repo",
+                    "--ssh_pat_url": "git@example",
+                    "--ssh_pat_port": "22",
+                }
+            )
+
+        self.assertTrue(ret)
+        self.assertIn("Searching failed jobs in grp/repo", "\n".join(logs.output))
