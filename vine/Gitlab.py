@@ -1,10 +1,16 @@
 import getpass
+import fnmatch
+import io
 import logging
 import os
+import posixpath
 import re
+import shutil
 import subprocess
 import sys
 import time
+import zipfile
+from datetime import datetime, timezone
 try:
     grape_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     sys.path.insert(0, os.path.join(grape_dir, 'python-gitlab'))
@@ -396,6 +402,139 @@ class Repo:
     def __init__(self, gitlab_project, gitlab ):
         self.project = gitlab_project
         self.gitlab = gitlab
+
+    @staticmethod
+    def _parse_gitlab_datetime(value):
+        if not value:
+            return None
+        normalized = value.strip()
+        if normalized.endswith("Z"):
+            normalized = normalized[:-1] + "+00:00"
+        parsed = datetime.fromisoformat(normalized)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    @classmethod
+    def _job_reference_datetime(cls, job):
+        for attr in ("finished_at", "started_at", "created_at"):
+            parsed = cls._parse_gitlab_datetime(getattr(job, attr, None))
+            if parsed is not None:
+                return parsed
+        return None
+
+    @staticmethod
+    def _artifact_matches_filter(artifact_name, artifact_filter):
+        return (
+            fnmatch.fnmatchcase(artifact_name, artifact_filter)
+            or fnmatch.fnmatchcase(posixpath.basename(artifact_name), artifact_filter)
+        )
+
+    @staticmethod
+    def _safe_job_dir_name(job):
+        safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", getattr(job, "name", "") or "job").strip("._")
+        safe_name = safe_name if safe_name else "job"
+        return f"job_{job.id}_{safe_name}"
+
+    @staticmethod
+    def _safe_artifact_destination(job_output_dir, artifact_name):
+        normalized = os.path.normpath(artifact_name.lstrip("/"))
+        if normalized.startswith("..") or os.path.isabs(normalized):
+            return None
+
+        destination = os.path.abspath(os.path.join(job_output_dir, normalized))
+        if os.path.commonpath([job_output_dir, destination]) != job_output_dir:
+            return None
+        return destination
+
+    def find_failed_jobs(self, started_after, started_before, job_name=None):
+        jobs = self.project.jobs.list(all=True, scope="failed")
+        matching_jobs = []
+        for job in jobs:
+            if job_name and job.name != job_name:
+                continue
+
+            job_time = self._job_reference_datetime(job)
+            if started_after and (job_time is None or job_time < started_after):
+                continue
+            if started_before and (job_time is None or job_time > started_before):
+                continue
+            matching_jobs.append(job)
+
+        matching_jobs.sort(
+            key=lambda job: self._job_reference_datetime(job) or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        return matching_jobs
+
+    def _download_matching_files_from_job(self, job, artifact_filter, output_dir):
+        job = self.project.jobs.get(int(job.id))
+
+        try:
+            artifact_bytes = job.artifacts()
+        except gitlab.exceptions.GitlabGetError as exc:
+            logging.info(f"Unable to download artifacts for job {job.id} ({job.name}): {exc}")
+            return []
+
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(artifact_bytes))
+        except zipfile.BadZipFile:
+            logging.info(f"Artifacts for job {job.id} ({job.name}) are not a ZIP archive.")
+            return []
+
+        with archive:
+            matching_members = [
+                member for member in archive.infolist()
+                if not member.is_dir() and self._artifact_matches_filter(member.filename, artifact_filter)
+            ]
+
+            if not matching_members:
+                logging.info(f"No artifacts matching {artifact_filter} found in job {job.id} ({job.name}).")
+                return []
+
+            job_output_dir = os.path.abspath(os.path.join(output_dir, self._safe_job_dir_name(job)))
+            downloaded = []
+            for member in matching_members:
+                destination = self._safe_artifact_destination(job_output_dir, member.filename)
+                if destination is None:
+                    logging.warning(
+                        f"Skipping artifact with unsafe path {member.filename} from job {job.id} ({job.name})."
+                    )
+                    continue
+
+                utility.ensure_dir(destination)
+                with archive.open(member) as source, open(destination, "wb") as target:
+                    shutil.copyfileobj(source, target)
+
+                download_info = {
+                    "job_id": job.id,
+                    "job_name": job.name,
+                    "artifact_path": member.filename,
+                    "download_path": destination,
+                    "job_url": getattr(job, "web_url", None),
+                }
+                downloaded.append(download_info)
+                logging.info(f"Downloaded {member.filename} from job {job.id} to {destination}")
+
+        return downloaded
+
+    def download_job_artifacts(self, artifact_filter, output_dir, job_id=None, started_after=None, started_before=None, job_name=None):
+        try:
+            if job_id:
+                jobs = [self.project.jobs.get(int(job_id))]
+            else:
+                jobs = self.find_failed_jobs(started_after, started_before, job_name=job_name)
+        except ValueError:
+            logging.info(f"Invalid job id: {job_id}")
+            return []
+        except gitlab.exceptions.GitlabGetError as exc:
+            logging.info(f"Unable to find job {job_id}: {exc}")
+            return []
+
+        downloaded = []
+        for job in jobs:
+            downloaded.extend(self._download_matching_files_from_job(job, artifact_filter, output_dir))
+        return downloaded
 
     def getBranchHeadCommitHash(self, name):
         """
@@ -1345,4 +1484,3 @@ def testMe():
 
 if __name__ == "__main__":
     testMe()
-
