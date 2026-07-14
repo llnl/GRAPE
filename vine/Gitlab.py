@@ -448,27 +448,69 @@ class Repo:
         return destination
 
     def find_failed_jobs(self, started_after, started_before, job_name=None):
-        jobs = self.project.jobs.list(all=True, scope="failed")
+        jobs = self.project.jobs.list(
+            get_all=True,
+            per_page=100,
+            scope="failed",
+            order_by="id",
+            sort="desc",
+        )
+        logging.debug(
+            "GitLab returned %d failed job(s) before filtering for project %s.",
+            len(jobs),
+            getattr(self.project, "path_with_namespace", getattr(self.project, "name", "<unknown>")),
+        )
+        logging.debug(
+            "Requested project jobs with scope=failed, order_by=id, sort=desc, per_page=100."
+        )
         matching_jobs = []
         for job in jobs:
             if job_name and job.name != job_name:
+                logging.debug(
+                    "Skipping failed job %s (%s): name does not match requested job name %s.",
+                    job.id,
+                    job.name,
+                    job_name,
+                )
                 continue
 
             job_time = self._job_reference_datetime(job)
             if started_after and (job_time is None or job_time < started_after):
+                logging.debug(
+                    "Skipping failed job %s (%s): reference time %s is before start bound %s.",
+                    job.id,
+                    job.name,
+                    job_time.isoformat() if job_time else None,
+                    started_after.isoformat(),
+                )
                 continue
             if started_before and (job_time is None or job_time > started_before):
+                logging.debug(
+                    "Skipping failed job %s (%s): reference time %s is after end bound %s.",
+                    job.id,
+                    job.name,
+                    job_time.isoformat() if job_time else None,
+                    started_before.isoformat(),
+                )
                 continue
+            logging.debug(
+                "Matched failed job %s (%s) with reference time %s.",
+                job.id,
+                job.name,
+                job_time.isoformat() if job_time else None,
+            )
             matching_jobs.append(job)
 
         matching_jobs.sort(
             key=lambda job: self._job_reference_datetime(job) or datetime.min.replace(tzinfo=timezone.utc),
             reverse=True,
         )
+        logging.info("Found %d failed job(s) matching the requested filters.", len(matching_jobs))
         return matching_jobs
 
     def _download_matching_files_from_job(self, job, artifact_filter, output_dir):
         job = self.project.jobs.get(int(job.id))
+        logging.debug("Inspecting artifact archive for job %s (%s).", job.id, job.name)
 
         try:
             artifact_bytes = job.artifacts()
@@ -483,16 +525,41 @@ class Repo:
             return []
 
         with archive:
+            archive_members = [member for member in archive.infolist() if not member.is_dir()]
+            logging.debug(
+                "Job %s (%s) artifact archive contains %d file(s).",
+                job.id,
+                job.name,
+                len(archive_members),
+            )
+            if archive_members:
+                logging.debug(
+                    "First artifact paths for job %s: %s",
+                    job.id,
+                    ", ".join(member.filename for member in archive_members[:10]),
+                )
             matching_members = [
-                member for member in archive.infolist()
-                if not member.is_dir() and self._artifact_matches_filter(member.filename, artifact_filter)
+                member for member in archive_members
+                if self._artifact_matches_filter(member.filename, artifact_filter)
             ]
 
             if not matching_members:
-                logging.info(f"No artifacts matching {artifact_filter} found in job {job.id} ({job.name}).")
+                logging.debug(
+                    "No artifact files in job %s (%s) matched filter %s.",
+                    job.id,
+                    job.name,
+                    artifact_filter,
+                )
                 return []
 
             job_output_dir = os.path.abspath(os.path.join(output_dir, self._safe_job_dir_name(job)))
+            logging.debug(
+                "Job %s (%s) has %d artifact file(s) matching filter %s.",
+                job.id,
+                job.name,
+                len(matching_members),
+                artifact_filter,
+            )
             downloaded = []
             for member in matching_members:
                 destination = self._safe_artifact_destination(job_output_dir, member.filename)
@@ -522,6 +589,7 @@ class Repo:
         try:
             if job_id:
                 jobs = [self.project.jobs.get(int(job_id))]
+                logging.info("Found explicit job %s to inspect for matching artifacts.", job_id)
             else:
                 jobs = self.find_failed_jobs(started_after, started_before, job_name=job_name)
         except ValueError:
@@ -531,9 +599,15 @@ class Repo:
             logging.info(f"Unable to find job {job_id}: {exc}")
             return []
 
+        logging.info("Inspecting %d candidate job(s) for artifact matches.", len(jobs))
         downloaded = []
         for job in jobs:
             downloaded.extend(self._download_matching_files_from_job(job, artifact_filter, output_dir))
+        logging.debug(
+            "Matched %d artifact file(s) across %d candidate job(s).",
+            len(downloaded),
+            len(jobs),
+        )
         return downloaded
 
     def getBranchHeadCommitHash(self, name):

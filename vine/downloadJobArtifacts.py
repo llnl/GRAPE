@@ -1,6 +1,7 @@
 import logging
 import os
-from datetime import date, datetime, time, timezone
+import re
+from datetime import date, datetime, time, timedelta, timezone
 
 from vine import utility
 from vine.option import Option
@@ -8,11 +9,44 @@ from vine.workspace_dir_handler import WorkspaceDirHandler
 from vine.vine_logging import log_wrapper
 
 
-def parse_cli_datetime(value, *, end_of_day=False):
+def parse_cli_datetime(value, *, end_of_day=False, reference_now=None):
     if not value:
         return None
 
+    reference_now = reference_now or datetime.now(timezone.utc)
     normalized = value.strip()
+    lowered = normalized.lower()
+
+    if lowered == "now":
+        return reference_now
+
+    if lowered in ("today", "yesterday"):
+        offset_days = 1 if lowered == "yesterday" else 0
+        parsed_date = (reference_now - timedelta(days=offset_days)).date()
+        parsed_time = time.max if end_of_day else time.min
+        return datetime.combine(parsed_date, parsed_time, tzinfo=timezone.utc)
+
+    relative_match = re.fullmatch(
+        r"(?P<amount>\d+)\s+(?P<unit>second|seconds|minute|minutes|hour|hours|day|days|week|weeks)\s+ago",
+        lowered,
+    )
+    if relative_match:
+        amount = int(relative_match.group("amount"))
+        unit = relative_match.group("unit")
+        unit_map = {
+            "second": "seconds",
+            "seconds": "seconds",
+            "minute": "minutes",
+            "minutes": "minutes",
+            "hour": "hours",
+            "hours": "hours",
+            "day": "days",
+            "days": "days",
+            "week": "weeks",
+            "weeks": "weeks",
+        }
+        return reference_now - timedelta(**{unit_map[unit]: amount})
+
     if normalized.endswith("Z"):
         normalized = normalized[:-1] + "+00:00"
 
@@ -49,8 +83,10 @@ class DownloadJobArtifacts(Option, WorkspaceDirHandler):
     Options:
         --job-id=<id>              Download artifacts from the specified job identifier instead of searching failed jobs.
         --job-name=<name>          Restrict failed-job searches to jobs with the given name.
-        --start=<datetime>         Inclusive start of the search range for failed jobs. Accepts ISO-8601 date or datetime.
-        --end=<datetime>           Inclusive end of the search range for failed jobs. Accepts ISO-8601 date or datetime.
+        --start=<datetime>         Inclusive start of the search range for failed jobs. Accepts values like "2 days ago",
+                                   "yesterday", "today", "now", or ISO-8601 date/datetime.
+        --end=<datetime>           Inclusive end of the search range for failed jobs. Accepts values like "now", "today",
+                                   or ISO-8601 date/datetime.
         --artifact-filter=<pattern>
                                    Required shell-style glob used to match artifact file names or archive paths.
         --output-dir=<dir>         Directory to extract matching files into.
@@ -124,6 +160,18 @@ class DownloadJobArtifacts(Option, WorkspaceDirHandler):
 
         if args["--job-id"] and (args["--start"] or args["--end"]):
             logging.info("Ignoring --start/--end because --job-id was specified.")
+
+        if args["--job-id"]:
+            logging.info(
+                f"Inspecting artifacts for job {args['--job-id']} in {args['--project']}/{args['--repo']} "
+                f"with filter {args['--artifact-filter']}."
+            )
+        else:
+            logging.info(
+                f"Searching failed jobs in {args['--project']}/{args['--repo']} from "
+                f"{started_after.isoformat()} to {started_before.isoformat()} with filter "
+                f"{args['--artifact-filter']}."
+            )
 
         user_name = utility.getUserName(args)
         git_host = utility.authenticateToGitHost(user_name, self.workspace_dir, args)
