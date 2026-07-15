@@ -27,14 +27,14 @@ class Diff(Option, WorkspaceDirHandler):
         --stat                   Print diffstat output instead of patches.
         --name-only              Print only changed file names.
         --name-status            Print changed file names with status letters.
-        --mergeDiff              Diff changes on <ref2> from the common ancestor (<ref1>...<ref2>) (default).
-        --rawDiff                Diff the exact branch tips (<ref1> <ref2>).
+        --mergeDiff              With two refs, diff changes on <ref2> from the common ancestor (<ref1>...<ref2>).
+        --rawDiff                With two refs, diff the exact branch tips (<ref1> <ref2>) (default).
         --noFetch                Do not fetch missing origin refs before diffing.
         --noTopLevel             Do not diff the outer level project.
         --noSubmodules           Do not diff active submodules.
         --noNestedSubprojects    Do not diff active nested subprojects.
-        <ref1>                   Base branch or reference. With one ref, defaults target to the current workspace branch.
-        <ref2>                   Target branch or reference. With no refs, defaults to the current branch and its public branch.
+        <ref1>                   Reference to compare against the worktree, or the left side of a two-ref diff.
+        <ref2>                   Right side of a two-ref diff.
 
     """
     def __init__(self):
@@ -65,13 +65,11 @@ class Diff(Option, WorkspaceDirHandler):
             logging.error("Choose at most one of --patch, --stat, --name-only, or --name-status.")
             return False
 
-        base_ref, target_ref = _determine_workspace_refs(args, self.workspace_dir)
+        diff_request = _determine_diff_request(args)
         launch_tuples = _build_launch_tuples(
             workspace_dir=self.workspace_dir,
-            base_ref=base_ref,
-            target_ref=target_ref,
+            diff_request=diff_request,
             output_mode=output_mode,
-            do_merge_diff=not args["--rawDiff"],
             no_fetch=args["--noFetch"],
             include_outer=not args["--noTopLevel"],
             include_submodules=not args["--noSubmodules"],
@@ -120,7 +118,7 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
 
     Args:
         repo (str): Absolute path to the repository to diff.
-        branch (str): Base ref for the diff in this repository.
+        branch (str): Left-side ref for the diff in this repository when applicable.
         args (dict | None): Per-repository diff configuration supplied by the launcher.
         workspace_dir (str): Absolute path to the workspace root.
 
@@ -133,6 +131,7 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
     display_path = args["display_path"]
     repo_type = args["repo_type"]
     target_ref = args["target_ref"]
+    diff_type = args["diff_type"]
     output_mode = args["output_mode"]
     do_merge_diff = args["do_merge_diff"]
     no_fetch = args["no_fetch"]
@@ -140,15 +139,17 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
     try:
         resolved_base = _resolve_repo_ref(branch, repo_type, no_fetch, repo)
         resolved_target = _resolve_repo_ref(target_ref, repo_type, no_fetch, repo)
-        diff_spec = _render_diff_spec(resolved_base, resolved_target, do_merge_diff)
+        diff_spec, display_spec = _render_diff_spec(
+            resolved_base, resolved_target, diff_type, do_merge_diff
+        )
         diff_args = _render_git_diff_args(output_mode, diff_spec, display_path)
         output = git.diff(diff_args, execution_path=repo)
-        return {"display_path": display_path, "spec": diff_spec, "output": output}
+        return {"display_path": display_path, "spec": display_spec, "output": output}
     except (FileNotFoundError, grape_errors.GrapeGitError) as exc:
         return {
             "display_path": display_path,
-            "spec": _render_diff_spec(branch, target_ref, do_merge_diff),
-            "warning": _format_diff_warning(display_path, branch, target_ref, exc),
+            "spec": _render_diff_spec(branch, target_ref, diff_type, do_merge_diff)[1],
+            "warning": _format_diff_warning(display_path, branch, target_ref, diff_type, exc),
             "output": "",
         }
 
@@ -178,39 +179,49 @@ def _select_output_mode(args):
     return "patch"
 
 
-def _determine_workspace_refs(args, workspace_dir):
-    """Resolve default workspace refs from the provided command-line arguments.
+def _determine_diff_request(args):
+    """Resolve the requested diff shape from the provided command-line arguments.
 
     Args:
         args (dict): Parsed command-line arguments from docopt.
-        workspace_dir (str): Absolute path to the workspace root.
 
     Returns:
-        tuple[str, str]: The base and target refs to diff.
+        dict: The requested diff form and any supplied refs.
     """
-    config = config_parser_global.grapeConfig()
-    current_branch = git.currentBranch(execution_path=workspace_dir)
     ref1 = args["<ref1>"]
     ref2 = args["<ref2>"]
 
     if ref1 and ref2:
-        return ref1, ref2
+        return {
+            "diff_type": "two_ref",
+            "base_ref": ref1,
+            "target_ref": ref2,
+            "do_merge_diff": args["--mergeDiff"],
+        }
     if ref1:
-        return ref1, current_branch
-    return config.getPublicBranchFor(current_branch), current_branch
+        return {
+            "diff_type": "worktree_ref",
+            "base_ref": ref1,
+            "target_ref": None,
+            "do_merge_diff": False,
+        }
+    return {
+        "diff_type": "worktree",
+        "base_ref": None,
+        "target_ref": None,
+        "do_merge_diff": False,
+    }
 
 
-def _build_launch_tuples(*, workspace_dir, base_ref, target_ref, output_mode,
-                         do_merge_diff, no_fetch, include_outer,
+def _build_launch_tuples(*, workspace_dir, diff_request, output_mode,
+                         no_fetch, include_outer,
                          include_submodules, include_nested):
     """Build per-repository work items for the multi-repo launcher.
 
     Args:
         workspace_dir (str): Absolute path to the workspace root.
-        base_ref (str): Base ref in workspace terms.
-        target_ref (str): Target ref in workspace terms.
+        diff_request (dict): Requested diff form and workspace-level refs.
         output_mode (str): Selected diff rendering mode.
-        do_merge_diff (bool): Whether to use merge-base (`...`) semantics.
         no_fetch (bool): Whether origin refs should avoid fetches.
         include_outer (bool): Whether to include the outer repository.
         include_submodules (bool): Whether to include active submodules.
@@ -219,6 +230,10 @@ def _build_launch_tuples(*, workspace_dir, base_ref, target_ref, output_mode,
     Returns:
         list[tuple[str, str, dict]]: Launcher tuples of repo path, base ref, and per-repo args.
     """
+    base_ref = diff_request["base_ref"]
+    target_ref = diff_request["target_ref"]
+    diff_type = diff_request["diff_type"]
+    do_merge_diff = diff_request["do_merge_diff"]
     launch_tuples = []
     if include_outer:
         launch_tuples.append((
@@ -227,6 +242,7 @@ def _build_launch_tuples(*, workspace_dir, base_ref, target_ref, output_mode,
             {
                 "display_path": "workspace",
                 "repo_type": "outer",
+                "diff_type": diff_type,
                 "target_ref": target_ref,
                 "output_mode": output_mode,
                 "do_merge_diff": do_merge_diff,
@@ -242,6 +258,7 @@ def _build_launch_tuples(*, workspace_dir, base_ref, target_ref, output_mode,
                 {
                     "display_path": nested,
                     "repo_type": "nested",
+                    "diff_type": diff_type,
                     "target_ref": target_ref,
                     "output_mode": output_mode,
                     "do_merge_diff": do_merge_diff,
@@ -257,6 +274,7 @@ def _build_launch_tuples(*, workspace_dir, base_ref, target_ref, output_mode,
                 {
                     "display_path": submodule,
                     "repo_type": "submodule",
+                    "diff_type": diff_type,
                     "target_ref": target_ref,
                     "output_mode": output_mode,
                     "do_merge_diff": do_merge_diff,
@@ -270,7 +288,7 @@ def _resolve_repo_ref(ref, repo_type, no_fetch, repo):
     """Resolve a workspace ref into a repository-local ref.
 
     Args:
-        ref (str): Ref named at the workspace level.
+        ref (str | None): Ref named at the workspace level.
         repo_type (str): Repository classification such as `outer` or `submodule`.
         no_fetch (bool): Whether to avoid fetching missing origin refs.
         repo (str): Absolute path to the repository being diffed.
@@ -278,6 +296,9 @@ def _resolve_repo_ref(ref, repo_type, no_fetch, repo):
     Returns:
         str: The repository-local ref to pass to `git diff`.
     """
+    if ref is None:
+        return None
+
     mapped_ref = _map_ref_for_repo(ref, repo_type)
     if mapped_ref.startswith("--"):
         return mapped_ref
@@ -303,13 +324,13 @@ def _map_ref_for_repo(ref, repo_type):
     """Translate a workspace ref for repository-specific branch naming.
 
     Args:
-        ref (str): Ref named in workspace terms.
+        ref (str | None): Ref named in workspace terms.
         repo_type (str): Repository classification such as `outer` or `submodule`.
 
     Returns:
         str: The translated ref for the target repository.
     """
-    if repo_type != "submodule":
+    if ref is None or repo_type != "submodule":
         return ref
 
     config = config_parser_global.grapeConfig()
@@ -329,20 +350,25 @@ def _map_ref_for_repo(ref, repo_type):
     return ref
 
 
-def _render_diff_spec(base_ref, target_ref, do_merge_diff):
+def _render_diff_spec(base_ref, target_ref, diff_type, do_merge_diff):
     """Format the git diff refspec for the selected diff mode.
 
     Args:
-        base_ref (str): Base ref in repository-local terms.
-        target_ref (str): Target ref in repository-local terms.
+        base_ref (str | None): Base ref in repository-local terms.
+        target_ref (str | None): Target ref in repository-local terms.
+        diff_type (str): Requested diff form.
         do_merge_diff (bool): Whether to use merge-base (`...`) semantics.
 
     Returns:
-        str: A git-compatible diff refspec.
+        tuple[str, str]: A git-compatible diff refspec and a display label.
     """
+    if diff_type == "worktree":
+        return "", "<worktree>"
+    if diff_type == "worktree_ref":
+        return base_ref, base_ref
     if do_merge_diff:
-        return f"{base_ref}...{target_ref}"
-    return f"{base_ref} {target_ref}"
+        return f"{base_ref}...{target_ref}", f"{base_ref}...{target_ref}"
+    return f"{base_ref} {target_ref}", f"{base_ref} {target_ref}"
 
 
 def _render_git_diff_args(output_mode, diff_spec, display_path):
@@ -386,13 +412,14 @@ def _format_diff_section(display_path, spec, output):
     return f"[{display_path}] {spec}\n{output.rstrip()}\n"
 
 
-def _format_diff_warning(display_path, base_ref, target_ref, exc):
+def _format_diff_warning(display_path, base_ref, target_ref, diff_type, exc):
     """Create a concise user-facing warning for a failed repository diff.
 
     Args:
         display_path (str): Human-readable repository label.
-        base_ref (str): Base ref requested for the diff.
-        target_ref (str): Target ref requested for the diff.
+        base_ref (str | None): Base ref requested for the diff.
+        target_ref (str | None): Target ref requested for the diff.
+        diff_type (str): Requested diff form.
         exc (Exception): The underlying failure raised while preparing the diff.
 
     Returns:
@@ -403,6 +430,10 @@ def _format_diff_warning(display_path, base_ref, target_ref, exc):
 
     git_output = exc.gitOutput.strip() if getattr(exc, "gitOutput", None) else str(exc)
     if "unknown revision or path not in the working tree" in git_output.lower() or "bad revision" in git_output.lower():
+        if diff_type == "worktree":
+            return f"Skipping [{display_path}]: could not compute worktree diff."
+        if diff_type == "worktree_ref":
+            return f"Skipping [{display_path}]: could not resolve ref `{base_ref}`."
         return f"Skipping [{display_path}]: could not resolve refs for `{base_ref}` vs `{target_ref}`."
     return f"Skipping [{display_path}]: {git_output}"
 

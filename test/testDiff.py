@@ -25,7 +25,7 @@ class TestDiff(testGrape.TestGrape):
         return config
 
     def testDiffAggregatesMappedSubmoduleBranches(self):
-        """Verify aggregate diffs honor submodule public-branch mappings."""
+        """Verify one-ref diffs honor submodule public-branch mappings."""
         self.configure_diff_workspace()
 
         git.branch("foo_master master", execution_path=self.repo)
@@ -68,14 +68,46 @@ class TestDiff(testGrape.TestGrape):
         self.assertTrue(self.menu.applyMenuChoice("diff", ["develop"]))
 
         output = self.get_output()
-        self.assertIn("[workspace] develop...feature/test/demo", output)
+        self.assertIn("[workspace] develop", output)
         self.assertIn("outer feature change", output)
         self.assertIn("[submodule1]", output)
-        self.assertIn("foo_dev...feature/test/demo", output)
+        self.assertIn("foo_dev", output)
         self.assertIn("submodule feature change", output)
 
-    def testDiffRawNameOnlyBetweenTwoBranches(self):
-        """Verify raw two-ref diffs can emit a name-only aggregate view."""
+    def testDiffDefaultsToWorktreeVsIndex(self):
+        """Verify no-ref diffs only show worktree changes by default."""
+        self.configure_diff_workspace()
+
+        tracked_path = os.path.join(self.repo, "tracked.txt")
+        staged_only_path = os.path.join(self.repo, "staged_only.txt")
+
+        with open(tracked_path, "w", encoding="utf-8") as handle:
+            handle.write("base\n")
+        git.add("tracked.txt", execution_path=self.repo)
+        git.commit('-m "add tracked file"', execution_path=self.repo)
+
+        with open(tracked_path, "a", encoding="utf-8") as handle:
+            handle.write("staged\n")
+        git.add("tracked.txt", execution_path=self.repo)
+
+        with open(tracked_path, "a", encoding="utf-8") as handle:
+            handle.write("unstaged\n")
+
+        with open(staged_only_path, "w", encoding="utf-8") as handle:
+            handle.write("staged\n")
+        git.add("staged_only.txt", execution_path=self.repo)
+
+        self.assertTrue(self.menu.applyMenuChoice("diff"))
+
+        output = self.get_output()
+        rendered_diff = output[output.index("[workspace] <worktree>"):]
+        self.assertIn("[workspace] <worktree>", output)
+        self.assertIn("tracked.txt", rendered_diff)
+        self.assertIn("+unstaged", rendered_diff)
+        self.assertNotIn("staged_only.txt", rendered_diff)
+
+    def testDiffNameOnlyBetweenTwoBranchesDefaultsToRawDiff(self):
+        """Verify two-ref diffs default to raw name-only comparisons."""
         self.configure_diff_workspace()
 
         git.checkout("-B develop master", execution_path=self.repo)
@@ -95,7 +127,7 @@ class TestDiff(testGrape.TestGrape):
         self.assertTrue(
             self.menu.applyMenuChoice(
                 "diff",
-                ["--rawDiff", "--name-only", "feature/test/one", "feature/test/two"],
+                ["--name-only", "feature/test/one", "feature/test/two"],
             )
         )
 
@@ -121,5 +153,5 @@ class TestDiff(testGrape.TestGrape):
         mock_page.assert_called_once()
         rendered_output, pager_workspace = mock_page.call_args.args
         self.assertEqual(pager_workspace, self.repo)
-        self.assertIn("[workspace] develop...feature/test/paged", rendered_output)
+        self.assertIn("[workspace] develop", rendered_output)
         self.assertIn("paged change", rendered_output)
