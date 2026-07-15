@@ -10,6 +10,7 @@ from vine import checkout
 from vine import clone
 from vine import commit
 from vine import config
+from vine import diff
 from vine import config_parser_global
 from vine import deleteBranch
 from vine import downloadJobArtifacts
@@ -93,6 +94,7 @@ class _Menu(WorkspaceDirHandler):
             bundle.Unbundle(), branches.Branches(), status.Status(), stash.Stash(),
             checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
             publish.Publish(), clone.Clone(), config.Config(),
+            diff.Diff(),
             writeConfig.WriteConfig(), foreach.ForEach(), merge.Merge(),
             mergeDown.MergeDown(), mergeRemote.MergeRemote(),
             deleteBranch.DeleteBranch(), resolveConflicts.ResolveConflicts(),
