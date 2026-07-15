@@ -484,6 +484,7 @@ class Repo:
 
     def find_failed_jobs(self, started_after, started_before, job_name=None):
         pipelines = self._find_pipelines_for_job_search(started_after, started_before)
+        job_name_regex = re.compile(job_name) if job_name else None
         matching_jobs = []
         for pipeline in pipelines:
             pipeline_time = self._pipeline_reference_datetime(pipeline)
@@ -505,9 +506,9 @@ class Repo:
             )
 
             for job in failed_jobs:
-                if job_name and job.name != job_name:
+                if job_name_regex and not job_name_regex.search(job.name):
                     logging.debug(
-                        "Skipping failed job %s (%s): name does not match requested job name %s.",
+                        "Skipping failed job %s (%s): name does not match requested job-name regex %s.",
                         job.id,
                         job.name,
                         job_name,
@@ -553,7 +554,7 @@ class Repo:
         )
         return matching_jobs
 
-    def _download_matching_files_from_job(self, job, artifact_filter, output_dir):
+    def _collect_matching_files_from_job(self, job, artifact_filter, output_dir, *, list_only=False):
         job = self.project.jobs.get(int(job.id))
         logging.debug("Inspecting artifact archive for job %s (%s).", job.id, job.name)
 
@@ -607,6 +608,24 @@ class Repo:
             )
             downloaded = []
             for member in matching_members:
+                download_info = {
+                    "job_id": job.id,
+                    "job_name": job.name,
+                    "artifact_path": member.filename,
+                    "download_path": None,
+                    "job_url": getattr(job, "web_url", None),
+                }
+
+                if list_only:
+                    downloaded.append(download_info)
+                    logging.debug(
+                        "List-only mode: job %s (%s) would download %s.",
+                        job.id,
+                        job.name,
+                        member.filename,
+                    )
+                    continue
+
                 destination = self._safe_artifact_destination(job_output_dir, member.filename)
                 if destination is None:
                     logging.warning(
@@ -618,19 +637,13 @@ class Repo:
                 with archive.open(member) as source, open(destination, "wb") as target:
                     shutil.copyfileobj(source, target)
 
-                download_info = {
-                    "job_id": job.id,
-                    "job_name": job.name,
-                    "artifact_path": member.filename,
-                    "download_path": destination,
-                    "job_url": getattr(job, "web_url", None),
-                }
+                download_info["download_path"] = destination
                 downloaded.append(download_info)
                 logging.info(f"Downloaded {member.filename} from job {job.id} to {destination}")
 
         return downloaded
 
-    def download_job_artifacts(self, artifact_filter, output_dir, job_id=None, started_after=None, started_before=None, job_name=None):
+    def download_job_artifacts(self, artifact_filter, output_dir, job_id=None, started_after=None, started_before=None, job_name=None, list_only=False):
         try:
             if job_id:
                 jobs = [self.project.jobs.get(int(job_id))]
@@ -647,7 +660,14 @@ class Repo:
         logging.info("Inspecting %d candidate job(s) for artifact matches.", len(jobs))
         downloaded = []
         for job in jobs:
-            downloaded.extend(self._download_matching_files_from_job(job, artifact_filter, output_dir))
+            downloaded.extend(
+                self._collect_matching_files_from_job(
+                    job,
+                    artifact_filter,
+                    output_dir,
+                    list_only=list_only,
+                )
+            )
         logging.debug(
             "Matched %d artifact file(s) across %d candidate job(s).",
             len(downloaded),

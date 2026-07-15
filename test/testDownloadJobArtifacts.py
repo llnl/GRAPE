@@ -80,7 +80,7 @@ class FakeRepo:
 
     def download_job_artifacts(self, **kwargs):
         self.calls.append(kwargs)
-        return [{"download_path": "/tmp/output/file.log"}]
+        return [{"job_id": 123, "job_name": "asan", "artifact_path": "file.log", "download_path": "/tmp/output/file.log"}]
 
 
 class FakeGitHost:
@@ -102,11 +102,11 @@ def build_artifact_zip(members):
 
 
 class TestGitlabArtifactDownloads(unittest.TestCase):
-    def test_find_failed_jobs_filters_by_time_range_and_name(self):
+    def test_find_failed_jobs_filters_by_time_range_and_regex(self):
         jobs = [
             FakeJob(1, "unit", finished_at="2026-07-13T18:00:00Z"),
-            FakeJob(2, "lint", finished_at="2026-07-14T08:00:00Z"),
-            FakeJob(3, "lint", finished_at="2026-07-15T08:00:00Z"),
+            FakeJob(2, "asan-linux", finished_at="2026-07-14T08:00:00Z"),
+            FakeJob(3, "tsan-linux", finished_at="2026-07-15T08:00:00Z"),
         ]
         pipelines = [
             FakePipeline(101, [jobs[0]], updated_at="2026-07-13T18:30:00Z"),
@@ -118,7 +118,7 @@ class TestGitlabArtifactDownloads(unittest.TestCase):
         matching = repo.find_failed_jobs(
             datetime(2026, 7, 14, 0, 0, tzinfo=timezone.utc),
             datetime(2026, 7, 14, 23, 59, tzinfo=timezone.utc),
-            job_name="lint",
+            job_name="asan|ubsan",
         )
 
         self.assertEqual([2], [job.id for job in matching])
@@ -203,6 +203,28 @@ class TestGitlabArtifactDownloads(unittest.TestCase):
         self.assertIn("artifact archive contains 1 file(s)", joined_logs)
         self.assertIn("matched filter *outname*", joined_logs)
 
+    def test_download_job_artifacts_list_only_does_not_write_files(self):
+        job = FakeJob(
+            42,
+            "asan",
+            finished_at="2026-07-14T08:00:00Z",
+            artifact_bytes=build_artifact_zip({"logs/asan.outname.txt": "hello"}),
+        )
+        repo = Gitlab.Repo(FakeProject([job]), gitlab=None)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            matches = repo.download_job_artifacts(
+                artifact_filter="*outname*",
+                output_dir=tmpdir,
+                job_id="42",
+                list_only=True,
+            )
+
+            self.assertEqual(1, len(matches))
+            self.assertEqual("logs/asan.outname.txt", matches[0]["artifact_path"])
+            self.assertIsNone(matches[0]["download_path"])
+            self.assertFalse(os.path.exists(os.path.join(tmpdir, "job_42_asan")))
+
 
 class TestDownloadJobArtifactsCommand(unittest.TestCase):
     def test_parse_cli_datetime_expands_date_only_end_of_day(self):
@@ -224,6 +246,32 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
 
         self.assertEqual(datetime(2026, 7, 12, 12, 30, tzinfo=timezone.utc), parsed)
 
+    def test_resolve_time_range_defaults_end_to_now(self):
+        start = datetime(2026, 7, 13, 12, 30, tzinfo=timezone.utc)
+        now = datetime(2026, 7, 14, 12, 30, tzinfo=timezone.utc)
+
+        with mock.patch(
+            "vine.downloadJobArtifacts.parse_cli_datetime",
+            side_effect=[start, now],
+        ) as parse_mock:
+            resolved_start, resolved_end = DownloadJobArtifacts._resolve_time_range(
+                {
+                    "--job-id": None,
+                    "--start": "1 day ago",
+                    "--end": None,
+                }
+            )
+
+        self.assertEqual(start, resolved_start)
+        self.assertEqual(now, resolved_end)
+        self.assertEqual(
+            [
+                mock.call("1 day ago", end_of_day=False),
+                mock.call("now", end_of_day=True),
+            ],
+            parse_mock.call_args_list,
+        )
+
     def test_execute_requires_time_range_when_job_id_not_provided(self):
         command = DownloadJobArtifacts()
         command._workspace_dir = os.getcwd()
@@ -235,6 +283,31 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
                 "--start": None,
                 "--end": None,
                 "--artifact-filter": "*.xml",
+                "--output-dir": ".",
+                "--user": "alice",
+                "--codeReviewsURL": "https://gitlab.example/gitlab",
+                "--verifySSL": "True",
+                "--project": "grp",
+                "--repo": "repo",
+                "--ssh_pat_url": "git@example",
+                "--ssh_pat_port": "22",
+            }
+        )
+
+        self.assertFalse(ret)
+
+    def test_execute_rejects_invalid_job_name_regex(self):
+        command = DownloadJobArtifacts()
+        command._workspace_dir = os.getcwd()
+
+        ret = command.execute(
+            {
+                "--job-id": None,
+                "--job-name": "[invalid",
+                "--start": "1 day ago",
+                "--end": None,
+                "--artifact-filter": "*.xml",
+                "--list-only": False,
                 "--output-dir": ".",
                 "--user": "alice",
                 "--codeReviewsURL": "https://gitlab.example/gitlab",
@@ -263,6 +336,7 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
                     "--start": None,
                     "--end": None,
                     "--artifact-filter": "*.log",
+                    "--list-only": False,
                     "--output-dir": ".",
                     "--user": "alice",
                     "--codeReviewsURL": "https://gitlab.example/gitlab",
@@ -278,6 +352,7 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
         self.assertEqual([("grp", "repo")], fake_host.repo_calls)
         self.assertEqual("123", fake_repo.calls[0]["job_id"])
         self.assertEqual("*.log", fake_repo.calls[0]["artifact_filter"])
+        self.assertFalse(fake_repo.calls[0]["list_only"])
         self.assertIsNone(fake_repo.calls[0]["started_after"])
         self.assertIsNone(fake_repo.calls[0]["started_before"])
 
@@ -297,6 +372,7 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
                     "--start": "1 day ago",
                     "--end": "now",
                     "--artifact-filter": "*outname*",
+                    "--list-only": False,
                     "--output-dir": ".",
                     "--user": "alice",
                     "--codeReviewsURL": "https://gitlab.example/gitlab",
@@ -310,3 +386,37 @@ class TestDownloadJobArtifactsCommand(unittest.TestCase):
 
         self.assertTrue(ret)
         self.assertIn("Searching failed jobs in grp/repo", "\n".join(logs.output))
+
+    def test_execute_logs_list_only_matches(self):
+        command = DownloadJobArtifacts()
+        command._workspace_dir = os.getcwd()
+        fake_repo = FakeRepo()
+        fake_host = FakeGitHost(fake_repo)
+
+        with mock.patch("vine.downloadJobArtifacts.utility.getUserName", return_value="alice"), \
+             mock.patch("vine.downloadJobArtifacts.utility.authenticateToGitHost", return_value=fake_host), \
+             self.assertLogs(level=logging.INFO) as logs:
+            ret = command.execute(
+                {
+                    "--job-id": "123",
+                    "--job-name": None,
+                    "--start": None,
+                    "--end": None,
+                    "--artifact-filter": "*outname*",
+                    "--list-only": True,
+                    "--output-dir": ".",
+                    "--user": "alice",
+                    "--codeReviewsURL": "https://gitlab.example/gitlab",
+                    "--verifySSL": "True",
+                    "--project": "grp",
+                    "--repo": "repo",
+                    "--ssh_pat_url": "git@example",
+                    "--ssh_pat_port": "22",
+                }
+            )
+
+        self.assertTrue(ret)
+        self.assertTrue(fake_repo.calls[0]["list_only"])
+        joined_logs = "\n".join(logs.output)
+        self.assertIn("Job 123 (asan) matches file.log", joined_logs)
+        self.assertIn("no files were downloaded", joined_logs)
