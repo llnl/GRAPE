@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 
 from test import testGrape
 from vine import config_parser_global
@@ -9,6 +10,11 @@ from vine.option import Option
 class TestDiff(testGrape.TestGrape):
 
     def configure_diff_workspace(self):
+        """Configure a workspace layout suitable for `grape diff` tests.
+
+        Returns:
+            ConfigParser: The mutable GRAPE config used by the test workspace.
+        """
         self.setUpConfig()
         config = config_parser_global.grapeConfig()
         config.set(Option.SECTION_FLOW, "publicBranches", "master develop")
@@ -19,6 +25,7 @@ class TestDiff(testGrape.TestGrape):
         return config
 
     def testDiffAggregatesMappedSubmoduleBranches(self):
+        """Verify aggregate diffs honor submodule public-branch mappings."""
         self.configure_diff_workspace()
 
         git.branch("foo_master master", execution_path=self.repo)
@@ -68,6 +75,7 @@ class TestDiff(testGrape.TestGrape):
         self.assertIn("submodule feature change", output)
 
     def testDiffRawNameOnlyBetweenTwoBranches(self):
+        """Verify raw two-ref diffs can emit a name-only aggregate view."""
         self.configure_diff_workspace()
 
         git.checkout("-B develop master", execution_path=self.repo)
@@ -95,3 +103,23 @@ class TestDiff(testGrape.TestGrape):
         self.assertIn("[workspace] feature/test/one feature/test/two", output)
         self.assertIn("branch1.txt", output)
         self.assertIn("branch2.txt", output)
+
+    def testDiffUsesPagerWhenAvailable(self):
+        """Verify interactive diff output is routed through the pager helper."""
+        self.configure_diff_workspace()
+
+        git.checkout("-B develop master", execution_path=self.repo)
+        git.checkout("-b feature/test/paged develop", execution_path=self.repo)
+        with open(self.file1, "a", encoding="utf-8") as handle:
+            handle.write("paged change\n")
+        git.add("testRepoFile", execution_path=self.repo)
+        git.commit('-m "paged change"', execution_path=self.repo)
+
+        with patch("vine.diff._page_output_if_tty", return_value=True) as mock_page:
+            self.assertTrue(self.menu.applyMenuChoice("diff", ["develop"]))
+
+        mock_page.assert_called_once()
+        rendered_output, pager_workspace = mock_page.call_args.args
+        self.assertEqual(pager_workspace, self.repo)
+        self.assertIn("[workspace] develop...feature/test/paged", rendered_output)
+        self.assertIn("paged change", rendered_output)
