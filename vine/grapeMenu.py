@@ -12,6 +12,7 @@ from vine import commit
 from vine import config
 from vine import config_parser_global
 from vine import deleteBranch
+from vine import downloadJobArtifacts
 from vine import foreach
 from vine import gitlabAdmin
 from vine import grape_errors
@@ -98,6 +99,7 @@ class _Menu(WorkspaceDirHandler):
             review.Review(), test.Test(), updateLocal.UpdateLocal(),
             hooks.InstallHooks(), hooks.RunHook(), updateView.UpdateView(),
             version.Version(), walkthrough.Walkthrough(),
+            downloadJobArtifacts.DownloadJobArtifacts(),
             gitlabAdmin.GitlabAdmin(), quit.Quit()
             ]
 
