@@ -1501,6 +1501,54 @@ Options:
                                 Defaults to the public branch for <b1>.
 
 
+## download_job_artifacts
+
+grape download_job_artifacts
+Download matching files from GitLab CI job artifacts.
+Usage: grape-download_job_artifacts [--job-id=<id>]
+                                    [--job-name=<name>]
+                                    [--start=<datetime>]
+                                    [--end=<datetime>]
+                                    --artifact-filter=<pattern>
+                                    [--list-only]
+                                    [--output-dir=<dir>]
+                                    [--user=<userName>]
+                                    [--codeReviewsURL=<url>]
+                                    [--verifySSL=<bool>]
+                                    [--project=<prj>]
+                                    [--repo=<repo>]
+                                    [--ssh_pat_url=<url>]
+                                    [--ssh_pat_port=<int>]
+
+Options:
+    --job-id=<id>              Download artifacts from the specified job identifier instead of searching failed jobs.
+    --job-name=<pattern>       Restrict failed-job searches to jobs with names matching the given regular
+                               expression.
+    --start=<datetime>         Inclusive start of the search range for failed jobs. Accepts values like "2 days ago",
+                               "yesterday", "today", "now", or ISO-8601 date/datetime.
+    --end=<datetime>           Inclusive end of the search range for failed jobs. Accepts values like "now", "today",
+                               or ISO-8601 date/datetime.
+    --artifact-filter=<pattern>
+                               Required shell-style glob used to match artifact file names or archive paths.
+    --list-only                Inspect matching artifact entries without extracting files to disk.
+    --output-dir=<dir>         Directory to extract matching files into.
+                               [default: .]
+    --user=<userName>          Your GitLab user name.
+    --codeReviewsURL=<url>     The code review platform url, e.g. https://your.host.org/gitlab.
+                               [default: .grapeconfig.project.codeReviewsURL]
+    --verifySSL=<bool>         Set to False to ignore SSL certificate verification issues.
+                               [default: .grapeconfig.project.verifySSL]
+    --project=<prj>            The top level project (Bitbucket) or group (GitLab) name.
+                               [default: .grapeconfig.project.name]
+    --repo=<repo>              The top level repository name.
+                               [default: .grapeconfig.repo.name]
+    --ssh_pat_url=<url>        SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
+                               REST API.
+                               [default: .grapeconfig.repo.ssh_pat_url]
+    --ssh_pat_port=<int>       Port number to issue ssh command over to generate a Personal Access Token for authentication
+                               into a Code Review service's REST API.
+                               [default: .grapeconfig.repo.ssh_pat_port]
+
 ## gitlab-admin
 
 grape gitlab-admin 
@@ -1710,5 +1758,6 @@ Options:
 
 Optional Arguments:
     <descr>                  Single word description of work being done on this branch. Asks by default.
+
 
 
