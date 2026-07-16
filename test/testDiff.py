@@ -3,9 +3,9 @@ from unittest.mock import patch
 
 from test import testGrape
 from vine import config_parser_global
-from vine import diff
 from vine import grape_errors
 from vine import grapeGit as git
+from vine import utility
 from vine.option import Option
 
 
@@ -373,19 +373,19 @@ class TestDiff(testGrape.TestGrape):
         self.assertIn("Skipping [workspace]: could not resolve ref `missing-ref`.", output)
         self.assertNotIn("No differences found.", output)
 
-    @patch("vine.diff.git.fetch")
-    @patch("vine.diff.git.shortSHA")
+    @patch("vine.utility.git.fetch")
+    @patch("vine.utility.git.shortSHA")
     def testResolveRepoRefSkipsFetchForLocallyAvailableOriginRef(self, mock_short_sha, mock_fetch):
         """Verify explicit origin refs do not fetch when the ref already exists locally."""
         mock_short_sha.return_value = "abc123"
 
-        resolved_ref = diff._resolve_repo_ref("origin/develop", "outer", False, self.repo)
+        resolved_ref = utility.resolve_repo_ref("origin/develop", "outer", False, self.repo)
 
         self.assertEqual("origin/develop", resolved_ref)
         mock_fetch.assert_not_called()
 
-    @patch("vine.diff.git.fetch")
-    @patch("vine.diff.git.shortSHA")
+    @patch("vine.utility.git.fetch")
+    @patch("vine.utility.git.shortSHA")
     def testResolveRepoRefSkipsFetchWhenMappedOriginRefAlreadyExists(self, mock_short_sha, mock_fetch):
         """Verify refs rewritten to origin/* do not fetch when the rewritten ref is local."""
         missing_local_ref = grape_errors.GrapeGitError(
@@ -395,7 +395,7 @@ class TestDiff(testGrape.TestGrape):
         )
         mock_short_sha.side_effect = [missing_local_ref, "abc123"]
 
-        resolved_ref = diff._resolve_repo_ref("develop", "outer", False, self.repo)
+        resolved_ref = utility.resolve_repo_ref("develop", "outer", False, self.repo)
 
         self.assertEqual("origin/develop", resolved_ref)
         mock_fetch.assert_not_called()

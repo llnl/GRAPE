@@ -3,11 +3,11 @@ import os
 import shlex
 import subprocess
 import sys
-from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
+from vine import utility
 from vine.option import Option
 from vine.vine_logging import log_wrapper
 from vine.workspace_dir_handler import WorkspaceDirHandler
@@ -199,8 +199,8 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
     pathspecs = args["pathspecs"]
 
     try:
-        resolved_base = _resolve_repo_ref(branch, repo_type, no_fetch, repo)
-        resolved_target = _resolve_repo_ref(target_ref, repo_type, no_fetch, repo)
+        resolved_base = utility.resolve_repo_ref(branch, repo_type, no_fetch, repo)
+        resolved_target = utility.resolve_repo_ref(target_ref, repo_type, no_fetch, repo)
         diff_spec, display_spec = _render_diff_spec(
             resolved_base, resolved_target, diff_type, do_merge_diff
         )
@@ -323,7 +323,7 @@ def _resolve_requested_paths(args, *, workspace_dir, current_dir):
     for raw_path in raw_paths:
         candidate_path = raw_path if os.path.isabs(raw_path) else os.path.join(current_root, raw_path)
         absolute_path = os.path.realpath(candidate_path)
-        if not _is_same_path_or_child(absolute_path, workspace_root):
+        if not utility.is_same_path_or_child(absolute_path, workspace_root):
             logging.warning("Ignoring path outside workspace: `%s`", raw_path)
             continue
         requested_paths.append(absolute_path)
@@ -386,7 +386,7 @@ def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, path_f
     ]
     launch_tuples = []
     for (repo_rel, repo_args), repo_path in zip(repo_entries, repo_paths):
-        pathspecs = _select_repo_pathspecs(requested_paths, repo_path, repo_paths)
+        pathspecs = utility.select_repo_pathspecs(requested_paths, repo_path, repo_paths)
         if requested_paths and not pathspecs:
             continue
         launch_tuples.append((
@@ -404,130 +404,6 @@ def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, path_f
             },
         ))
     return launch_tuples
-
-
-def _select_repo_pathspecs(requested_paths, repo_path, repo_paths):
-    """Translate workspace paths into pathspecs for one repository.
-
-    Args:
-        requested_paths (list[str]): Absolute paths requested after the `--` separator.
-        repo_path (str): Absolute path to the repository being diffed.
-        repo_paths (list[str]): Absolute paths to all repositories participating in the diff.
-
-    Returns:
-        list[str]: Git pathspecs relative to `repo_path`.
-    """
-    if not requested_paths:
-        return []
-
-    child_repo_paths = [
-        candidate for candidate in repo_paths
-        if candidate != repo_path and _is_same_path_or_child(candidate, repo_path)
-    ]
-    pathspecs = []
-    seen = set()
-    for requested_path in requested_paths:
-        if _is_same_path_or_child(requested_path, repo_path):
-            relative_path = os.path.relpath(requested_path, repo_path)
-            pathspec = "." if relative_path == "." else relative_path.replace(os.sep, "/")
-        elif _is_same_path_or_child(repo_path, requested_path):
-            pathspec = "."
-        else:
-            continue
-        if any(
-            requested_path != child_repo_path and _is_same_path_or_child(requested_path, child_repo_path)
-            for child_repo_path in child_repo_paths
-        ):
-            continue
-
-        if pathspec not in seen:
-            pathspecs.append(pathspec)
-            seen.add(pathspec)
-    return pathspecs
-
-
-def _is_same_path_or_child(candidate_path, parent_path):
-    """Check whether one normalized path is equal to or contained by another.
-
-    Args:
-        candidate_path (str): Path being checked.
-        parent_path (str): Expected ancestor path.
-
-    Returns:
-        bool: True when `candidate_path` is equal to or under `parent_path`.
-    """
-    try:
-        return os.path.commonpath([candidate_path, parent_path]) == parent_path
-    except ValueError:
-        return False
-
-
-def _resolve_repo_ref(ref, repo_type, no_fetch, repo):
-    """Resolve a workspace ref into a repository-local ref.
-
-    Args:
-        ref (str | None): Ref named at the workspace level.
-        repo_type (str): Repository classification such as `outer` or `submodule`.
-        no_fetch (bool): Whether to avoid fetching missing origin refs.
-        repo (str): Absolute path to the repository being diffed.
-
-    Returns:
-        str: The repository-local ref to pass to `git diff`.
-    """
-    if ref is None:
-        return None
-
-    mapped_ref = _map_ref_for_repo(ref, repo_type)
-    if mapped_ref.startswith("--"):
-        return mapped_ref
-
-    resolved_ref = mapped_ref
-    try:
-        git.shortSHA(resolved_ref, execution_path=repo)
-    except grape_errors.GrapeGitError:
-        if not resolved_ref.startswith("origin/"):
-            resolved_ref = git.join_list_as_git_path(["origin", resolved_ref])
-        try:
-            git.shortSHA(resolved_ref, execution_path=repo)
-        except grape_errors.GrapeGitError:
-            if not no_fetch and resolved_ref.startswith("origin/"):
-                try:
-                    git.fetch("origin", resolved_ref.partition("/")[2], execution_path=repo)
-                except grape_errors.GrapeGitError:
-                    # Let the later diff attempt surface a concise warning if the ref still cannot be used.
-                    pass
-
-    return resolved_ref
-
-
-def _map_ref_for_repo(ref, repo_type):
-    """Translate a workspace ref for repository-specific branch naming.
-
-    Args:
-        ref (str | None): Ref named in workspace terms.
-        repo_type (str): Repository classification such as `outer` or `submodule`.
-
-    Returns:
-        str: The translated ref for the target repository.
-    """
-    if ref is None or repo_type != "submodule":
-        return ref
-
-    config = config_parser_global.grapeConfig()
-    submodule_public_map = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
-
-    prefix = ""
-    branch_name = ref
-    if ref.startswith("origin/"):
-        prefix = "origin/"
-        branch_name = ref.partition("/")[2]
-
-    public_branches = config.getPublicBranchList()
-    if branch_name in public_branches:
-        branch_name = submodule_public_map[branch_name]
-        return prefix + branch_name
-
-    return ref
 
 
 def _render_diff_spec(base_ref, target_ref, diff_type, do_merge_diff):
