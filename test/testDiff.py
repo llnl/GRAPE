@@ -106,6 +106,57 @@ class TestDiff(testGrape.TestGrape):
         self.assertIn("+unstaged", rendered_diff)
         self.assertNotIn("staged_only.txt", rendered_diff)
 
+    def testDiffCachedDefaultsToIndexVsHead(self):
+        """Verify `--cached` shows staged changes without unstaged worktree edits."""
+        self.configure_diff_workspace()
+
+        tracked_path = os.path.join(self.repo, "tracked.txt")
+        staged_only_path = os.path.join(self.repo, "staged_only.txt")
+
+        with open(tracked_path, "w", encoding="utf-8") as handle:
+            handle.write("base\n")
+        git.add("tracked.txt", execution_path=self.repo)
+        git.commit('-m "add tracked file"', execution_path=self.repo)
+
+        with open(tracked_path, "a", encoding="utf-8") as handle:
+            handle.write("staged\n")
+        git.add("tracked.txt", execution_path=self.repo)
+
+        with open(tracked_path, "a", encoding="utf-8") as handle:
+            handle.write("unstaged\n")
+
+        with open(staged_only_path, "w", encoding="utf-8") as handle:
+            handle.write("staged only\n")
+        git.add("staged_only.txt", execution_path=self.repo)
+
+        self.assertTrue(self.menu.applyMenuChoice("diff", ["--cached"]))
+
+        output = self.get_output()
+        rendered_diff = output[output.index("[workspace] --cached"):]
+        self.assertIn("[workspace] --cached", output)
+        self.assertIn("tracked.txt", rendered_diff)
+        self.assertIn("staged_only.txt", rendered_diff)
+        self.assertIn("+staged", rendered_diff)
+        self.assertNotIn("+unstaged", rendered_diff)
+
+    def testDiffCachedWithRefComparesIndexAgainstRef(self):
+        """Verify `--cached <ref>` compares staged changes against the requested ref."""
+        self.configure_diff_workspace()
+
+        git.checkout("-B develop master", execution_path=self.repo)
+        git.checkout("-b feature/test/cached develop", execution_path=self.repo)
+
+        with open(self.file1, "a", encoding="utf-8") as handle:
+            handle.write("cached branch change\n")
+        git.add("testRepoFile", execution_path=self.repo)
+
+        self.assertTrue(self.menu.applyMenuChoice("diff", ["--cached", "develop"]))
+
+        output = self.get_output()
+        rendered_diff = output[output.index("[workspace] --cached develop"):]
+        self.assertIn("[workspace] --cached develop", output)
+        self.assertIn("cached branch change", rendered_diff)
+
     def testDiffNameOnlyBetweenTwoBranchesDefaultsToRawDiff(self):
         """Verify two-ref diffs default to raw name-only comparisons."""
         self.configure_diff_workspace()

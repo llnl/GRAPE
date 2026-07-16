@@ -47,12 +47,32 @@ class Diff(Option, WorkspaceDirHandler):
                       [--noFetch]
                       [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
                       <ref1> <ref2> -- <path>...
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      --cached
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      --cached
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      <ref1>
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      --cached
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      -- <path>...
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      --cached
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      <ref1> -- <path>...
 
     Options:
         --patch                  Print the patch output. This is the default.
         --stat                   Print diffstat output instead of patches.
         --name-only              Print only changed file names.
         --name-status            Print changed file names with status letters.
+        --cached                 Compare staged changes instead of worktree changes. Supports zero or one ref.
         --mergeDiff              With two refs, diff changes on <ref2> from the common ancestor (<ref1>...<ref2>).
         --rawDiff                With two refs, diff the exact branch tips (<ref1> <ref2>) (default).
         --noFetch                Do not fetch missing origin refs before diffing.
@@ -230,6 +250,7 @@ def _determine_diff_request(args):
         dict: The requested diff form and any supplied refs.
     """
     ref1, ref2, _ = _normalize_positional_args(args)
+    is_cached = args["--cached"]
 
     if ref1 and ref2:
         return {
@@ -240,13 +261,13 @@ def _determine_diff_request(args):
         }
     if ref1:
         return {
-            "diff_type": "worktree_ref",
+            "diff_type": "cached_ref" if is_cached else "worktree_ref",
             "base_ref": ref1,
             "target_ref": None,
             "do_merge_diff": False,
         }
     return {
-        "diff_type": "worktree",
+        "diff_type": "cached" if is_cached else "worktree",
         "base_ref": None,
         "target_ref": None,
         "do_merge_diff": False,
@@ -509,8 +530,12 @@ def _render_diff_spec(base_ref, target_ref, diff_type, do_merge_diff):
     """
     if diff_type == "worktree":
         return "", "<worktree>"
+    if diff_type == "cached":
+        return "--cached", "--cached"
     if diff_type == "worktree_ref":
         return base_ref, base_ref
+    if diff_type == "cached_ref":
+        return f"--cached {base_ref}", f"--cached {base_ref}"
     if do_merge_diff:
         return f"{base_ref}...{target_ref}", f"{base_ref}...{target_ref}"
     return f"{base_ref} {target_ref}", f"{base_ref} {target_ref}"
