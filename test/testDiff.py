@@ -136,6 +136,136 @@ class TestDiff(testGrape.TestGrape):
         self.assertIn("branch1.txt", output)
         self.assertIn("branch2.txt", output)
 
+    def testDiffNarrowsToRequestedWorkspacePath(self):
+        """Verify `-- <path>` limits diffs to the requested workspace-relative path."""
+        self.configure_diff_workspace()
+
+        git.checkout("-B develop master", execution_path=self.repo)
+        git.checkout("-b feature/test/path develop", execution_path=self.repo)
+
+        with open(self.file1, "a", encoding="utf-8") as handle:
+            handle.write("tracked path change\n")
+        extra_path = os.path.join(self.repo, "other.txt")
+        with open(extra_path, "w", encoding="utf-8") as handle:
+            handle.write("other change\n")
+        git.add("testRepoFile other.txt", execution_path=self.repo)
+        git.commit('-m "path filtered change"', execution_path=self.repo)
+
+        previous_cwd = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            self.assertTrue(self.menu.applyMenuChoice("diff", ["develop", "--", "testRepoFile"]))
+        finally:
+            os.chdir(previous_cwd)
+
+        output = self.get_output()
+        rendered_diff = output[output.index("[workspace] develop -- testRepoFile"):]
+        self.assertIn("[workspace] develop -- testRepoFile", output)
+        self.assertIn("testRepoFile", rendered_diff)
+        self.assertNotIn("other.txt", rendered_diff)
+
+    def testDiffResolvesPathspecsRelativeToSubmoduleCwd(self):
+        """Verify file scope from a submodule CWD maps to submodule-local pathspecs."""
+        self.configure_diff_workspace()
+
+        git.branch("foo_master master", execution_path=self.repo)
+        git.branch("foo_dev develop", execution_path=self.repo)
+        git.push("origin foo_master foo_dev", execution_path=self.repo)
+
+        self.menu.applyMenuChoice(
+            "addSubproject",
+            [
+                "--name=submodule1",
+                "--prefix=submodule1",
+                f"--url={self.repo}-origin",
+                "--branch=foo_master",
+                "--submodule",
+                "--noverify",
+            ],
+        )
+        git.commit('-m "add submodule"', execution_path=self.repo)
+        git.push("origin master", execution_path=self.repo)
+        git.checkout("-B develop master", execution_path=self.repo)
+        git.push("--force origin develop", execution_path=self.repo)
+
+        git.checkout("-b feature/test/demo develop", execution_path=self.repo)
+        with open(self.file1, "a", encoding="utf-8") as handle:
+            handle.write("outer feature change\n")
+        git.add("testRepoFile", execution_path=self.repo)
+        git.commit('-m "outer feature change"', execution_path=self.repo)
+
+        submodule_path = os.path.join(self.repo, "submodule1")
+        submodule_file = os.path.join(submodule_path, "testRepoFile")
+        git.checkout("-b feature/test/demo origin/foo_dev", execution_path=submodule_path)
+        with open(submodule_file, "a", encoding="utf-8") as handle:
+            handle.write("submodule feature change\n")
+        git.add("testRepoFile", execution_path=submodule_path)
+        git.commit('-m "submodule feature change"', execution_path=submodule_path)
+
+        git.add("submodule1", execution_path=self.repo)
+        git.commit('-m "update gitlink"', execution_path=self.repo)
+
+        previous_cwd = os.getcwd()
+        os.chdir(submodule_path)
+        try:
+            self.assertTrue(self.menu.applyMenuChoice("diff", ["develop", "--", "testRepoFile"]))
+        finally:
+            os.chdir(previous_cwd)
+
+        output = self.get_output()
+        self.assertIn("[submodule1] origin/foo_dev -- testRepoFile", output)
+        self.assertIn("submodule feature change", output)
+        self.assertNotIn("[workspace] develop -- submodule1/testRepoFile", output)
+
+    def testDiffAncestorPathIncludesSubmoduleGitlinkAndRepoDiff(self):
+        """Verify ancestor directory scopes include both gitlink and submodule diffs."""
+        self.configure_diff_workspace()
+
+        git.branch("foo_master master", execution_path=self.repo)
+        git.branch("foo_dev develop", execution_path=self.repo)
+        git.push("origin foo_master foo_dev", execution_path=self.repo)
+
+        self.menu.applyMenuChoice(
+            "addSubproject",
+            [
+                "--name=care",
+                "--prefix=tpl/care",
+                f"--url={self.repo}-origin",
+                "--branch=foo_master",
+                "--submodule",
+                "--noverify",
+            ],
+        )
+        git.commit('-m "add nested submodule"', execution_path=self.repo)
+        git.push("origin master", execution_path=self.repo)
+        git.checkout("-B develop master", execution_path=self.repo)
+        git.push("--force origin develop", execution_path=self.repo)
+
+        git.checkout("-b feature/test/ancestor develop", execution_path=self.repo)
+        submodule_path = os.path.join(self.repo, "tpl", "care")
+        submodule_file = os.path.join(submodule_path, "testRepoFile")
+        git.checkout("-b feature/test/ancestor origin/foo_dev", execution_path=submodule_path)
+        with open(submodule_file, "a", encoding="utf-8") as handle:
+            handle.write("ancestor scoped submodule change\n")
+        git.add("testRepoFile", execution_path=submodule_path)
+        git.commit('-m "submodule change under ancestor path"', execution_path=submodule_path)
+
+        git.add("tpl/care", execution_path=self.repo)
+        git.commit('-m "update nested submodule gitlink"', execution_path=self.repo)
+
+        previous_cwd = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            self.assertTrue(self.menu.applyMenuChoice("diff", ["develop", "--", "tpl"]))
+        finally:
+            os.chdir(previous_cwd)
+
+        output = self.get_output()
+        self.assertIn("[workspace] develop -- tpl", output)
+        self.assertIn("tpl/care", output)
+        self.assertIn("[tpl/care] origin/foo_dev -- .", output)
+        self.assertIn("ancestor scoped submodule change", output)
+
     def testDiffUsesPagerWhenAvailable(self):
         """Verify interactive diff output is routed through the pager helper."""
         self.configure_diff_workspace()

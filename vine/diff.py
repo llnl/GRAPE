@@ -1,4 +1,6 @@
 import logging
+import os
+import shlex
 import subprocess
 import sys
 from vine import config_parser_global
@@ -20,7 +22,31 @@ class Diff(Option, WorkspaceDirHandler):
                       [--mergeDiff | --rawDiff]
                       [--noFetch]
                       [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
-                      [<ref1>] [<ref2>]
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      [--mergeDiff | --rawDiff]
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      <ref1>
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      [--mergeDiff | --rawDiff]
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      <ref1> <ref2>
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      [--mergeDiff | --rawDiff]
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      -- <path>...
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      [--mergeDiff | --rawDiff]
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      <ref1> -- <path>...
+           grape-diff [--patch | --stat | --name-only | --name-status]
+                      [--mergeDiff | --rawDiff]
+                      [--noFetch]
+                      [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                      <ref1> <ref2> -- <path>...
 
     Options:
         --patch                  Print the patch output. This is the default.
@@ -35,6 +61,7 @@ class Diff(Option, WorkspaceDirHandler):
         --noNestedSubprojects    Do not diff active nested subprojects.
         <ref1>                   Reference to compare against the worktree, or the left side of a two-ref diff.
         <ref2>                   Right side of a two-ref diff.
+        <path>                   Path to diff, resolved relative to the current working directory after `--`.
 
     """
     def __init__(self):
@@ -66,9 +93,15 @@ class Diff(Option, WorkspaceDirHandler):
             return False
 
         diff_request = _determine_diff_request(args)
+        requested_paths = _resolve_requested_paths(
+            args,
+            workspace_dir=self.workspace_dir,
+            current_dir=os.getcwd(),
+        )
         launch_tuples = _build_launch_tuples(
             workspace_dir=self.workspace_dir,
             diff_request=diff_request,
+            requested_paths=requested_paths,
             output_mode=output_mode,
             no_fetch=args["--noFetch"],
             include_outer=not args["--noTopLevel"],
@@ -135,6 +168,7 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
     output_mode = args["output_mode"]
     do_merge_diff = args["do_merge_diff"]
     no_fetch = args["no_fetch"]
+    pathspecs = args["pathspecs"]
 
     try:
         resolved_base = _resolve_repo_ref(branch, repo_type, no_fetch, repo)
@@ -142,13 +176,20 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
         diff_spec, display_spec = _render_diff_spec(
             resolved_base, resolved_target, diff_type, do_merge_diff
         )
-        diff_args = _render_git_diff_args(output_mode, diff_spec, display_path)
+        diff_args = _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs)
         output = git.diff(diff_args, execution_path=repo)
-        return {"display_path": display_path, "spec": display_spec, "output": output}
+        return {
+            "display_path": display_path,
+            "spec": _render_display_spec(display_spec, pathspecs),
+            "output": output,
+        }
     except (FileNotFoundError, grape_errors.GrapeGitError) as exc:
         return {
             "display_path": display_path,
-            "spec": _render_diff_spec(branch, target_ref, diff_type, do_merge_diff)[1],
+            "spec": _render_display_spec(
+                _render_diff_spec(branch, target_ref, diff_type, do_merge_diff)[1],
+                pathspecs,
+            ),
             "warning": _format_diff_warning(display_path, branch, target_ref, diff_type, exc),
             "output": "",
         }
@@ -188,8 +229,7 @@ def _determine_diff_request(args):
     Returns:
         dict: The requested diff form and any supplied refs.
     """
-    ref1 = args["<ref1>"]
-    ref2 = args["<ref2>"]
+    ref1, ref2, _ = _normalize_positional_args(args)
 
     if ref1 and ref2:
         return {
@@ -213,7 +253,55 @@ def _determine_diff_request(args):
     }
 
 
-def _build_launch_tuples(*, workspace_dir, diff_request, output_mode,
+def _normalize_positional_args(args):
+    """Normalize docopt positional output into refs plus path arguments.
+
+    Args:
+        args (dict): Parsed command-line arguments from docopt.
+
+    Returns:
+        tuple[str | None, str | None, list[str]]: Normalized ref1, ref2, and raw path arguments.
+    """
+    ref1 = args["<ref1>"]
+    ref2 = args["<ref2>"]
+    raw_paths = list(args.get("<path>") or [])
+
+    if ref1 == "--":
+        if ref2:
+            raw_paths.insert(0, ref2)
+        return None, None, raw_paths
+    if ref2 == "--":
+        return ref1, None, raw_paths
+    return ref1, ref2, raw_paths
+
+
+def _resolve_requested_paths(args, *, workspace_dir, current_dir):
+    """Resolve CLI path arguments into workspace-local absolute paths.
+
+    Args:
+        args (dict): Parsed command-line arguments from docopt.
+        workspace_dir (str): Absolute path to the workspace root.
+        current_dir (str): Absolute path to the user's current working directory.
+
+    Returns:
+        list[str]: Absolute normalized paths that fall within the workspace.
+    """
+    requested_paths = []
+    workspace_root = os.path.realpath(workspace_dir)
+    current_root = os.path.realpath(current_dir)
+
+    _, _, raw_paths = _normalize_positional_args(args)
+    for raw_path in raw_paths:
+        candidate_path = raw_path if os.path.isabs(raw_path) else os.path.join(current_root, raw_path)
+        absolute_path = os.path.realpath(candidate_path)
+        if not _is_same_path_or_child(absolute_path, workspace_root):
+            logging.warning("Ignoring path outside workspace: `%s`", raw_path)
+            continue
+        requested_paths.append(absolute_path)
+    return requested_paths
+
+
+def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, output_mode,
                          no_fetch, include_outer,
                          include_submodules, include_nested):
     """Build per-repository work items for the multi-repo launcher.
@@ -221,6 +309,7 @@ def _build_launch_tuples(*, workspace_dir, diff_request, output_mode,
     Args:
         workspace_dir (str): Absolute path to the workspace root.
         diff_request (dict): Requested diff form and workspace-level refs.
+        requested_paths (list[str]): Absolute paths requested after the `--` separator.
         output_mode (str): Selected diff rendering mode.
         no_fetch (bool): Whether origin refs should avoid fetches.
         include_outer (bool): Whether to include the outer repository.
@@ -234,54 +323,110 @@ def _build_launch_tuples(*, workspace_dir, diff_request, output_mode,
     target_ref = diff_request["target_ref"]
     diff_type = diff_request["diff_type"]
     do_merge_diff = diff_request["do_merge_diff"]
-    launch_tuples = []
+    repo_entries = []
     if include_outer:
+        repo_entries.append(("",
+                             {
+                                 "display_path": "workspace",
+                                 "repo_type": "outer",
+                             }))
+
+    if include_nested:
+        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=workspace_dir):
+            repo_entries.append((nested,
+                                 {
+                                     "display_path": nested,
+                                     "repo_type": "nested",
+                                 }))
+
+    if include_submodules:
+        for submodule in git.getActiveSubmodules(execution_path=workspace_dir):
+            repo_entries.append((submodule,
+                                 {
+                                     "display_path": submodule,
+                                     "repo_type": "submodule",
+                                 }))
+
+    repo_paths = [
+        os.path.realpath(os.path.join(workspace_dir, repo_rel)) if repo_rel else os.path.realpath(workspace_dir)
+        for repo_rel, _ in repo_entries
+    ]
+    launch_tuples = []
+    for (repo_rel, repo_args), repo_path in zip(repo_entries, repo_paths):
+        pathspecs = _select_repo_pathspecs(requested_paths, repo_path, repo_paths)
+        if requested_paths and not pathspecs:
+            continue
         launch_tuples.append((
-            "",
+            repo_rel,
             base_ref,
             {
-                "display_path": "workspace",
-                "repo_type": "outer",
+                "display_path": repo_args["display_path"],
+                "repo_type": repo_args["repo_type"],
                 "diff_type": diff_type,
                 "target_ref": target_ref,
                 "output_mode": output_mode,
                 "do_merge_diff": do_merge_diff,
                 "no_fetch": no_fetch,
+                "pathspecs": pathspecs,
             },
         ))
-
-    if include_nested:
-        for nested in config_parser_user.getAllActiveNestedSubprojectPrefixes(workspaceDir=workspace_dir):
-            launch_tuples.append((
-                nested,
-                base_ref,
-                {
-                    "display_path": nested,
-                    "repo_type": "nested",
-                    "diff_type": diff_type,
-                    "target_ref": target_ref,
-                    "output_mode": output_mode,
-                    "do_merge_diff": do_merge_diff,
-                    "no_fetch": no_fetch,
-                },
-            ))
-
-    if include_submodules:
-        for submodule in git.getActiveSubmodules(execution_path=workspace_dir):
-            launch_tuples.append((
-                submodule,
-                base_ref,
-                {
-                    "display_path": submodule,
-                    "repo_type": "submodule",
-                    "diff_type": diff_type,
-                    "target_ref": target_ref,
-                    "output_mode": output_mode,
-                    "do_merge_diff": do_merge_diff,
-                    "no_fetch": no_fetch,
-                },
-            ))
     return launch_tuples
+
+
+def _select_repo_pathspecs(requested_paths, repo_path, repo_paths):
+    """Translate workspace paths into pathspecs for one repository.
+
+    Args:
+        requested_paths (list[str]): Absolute paths requested after the `--` separator.
+        repo_path (str): Absolute path to the repository being diffed.
+        repo_paths (list[str]): Absolute paths to all repositories participating in the diff.
+
+    Returns:
+        list[str]: Git pathspecs relative to `repo_path`.
+    """
+    if not requested_paths:
+        return []
+
+    child_repo_paths = [
+        candidate for candidate in repo_paths
+        if candidate != repo_path and _is_same_path_or_child(candidate, repo_path)
+    ]
+    pathspecs = []
+    seen = set()
+    for requested_path in requested_paths:
+        if _is_same_path_or_child(requested_path, repo_path):
+            relative_path = os.path.relpath(requested_path, repo_path)
+            pathspec = "." if relative_path == "." else relative_path.replace(os.sep, "/")
+        elif _is_same_path_or_child(repo_path, requested_path):
+            pathspec = "."
+        else:
+            continue
+        if any(
+            requested_path != child_repo_path and _is_same_path_or_child(requested_path, child_repo_path)
+            for child_repo_path in child_repo_paths
+        ):
+            continue
+
+        if pathspec not in seen:
+            pathspecs.append(pathspec)
+            seen.add(pathspec)
+    return pathspecs
+
+
+def _is_same_path_or_child(candidate_path, parent_path):
+    """Check whether one normalized path is equal to or contained by another.
+
+    Args:
+        candidate_path (str): Path being checked.
+        parent_path (str): Expected ancestor path.
+
+    Returns:
+        bool: True when `candidate_path` is equal to or under `parent_path`.
+    """
+    try:
+        return os.path.commonpath([candidate_path, parent_path]) == parent_path
+    except ValueError:
+        return False
 
 
 def _resolve_repo_ref(ref, repo_type, no_fetch, repo):
@@ -371,13 +516,14 @@ def _render_diff_spec(base_ref, target_ref, diff_type, do_merge_diff):
     return f"{base_ref} {target_ref}", f"{base_ref} {target_ref}"
 
 
-def _render_git_diff_args(output_mode, diff_spec, display_path):
+def _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs):
     """Construct the argument string passed to `git diff`.
 
     Args:
         output_mode (str): Selected diff rendering mode.
         diff_spec (str): Git diff refspec to compare.
         display_path (str): Repo label used when formatting patch prefixes.
+        pathspecs (list[str]): Repository-local pathspecs appended after `--`.
 
     Returns:
         str: Argument string for `git diff`.
@@ -395,7 +541,27 @@ def _render_git_diff_args(output_mode, diff_spec, display_path):
     else:
         prefix_args = ""
 
-    return f"{mode_args} {prefix_args}{diff_spec}".strip()
+    rendered_args = f"{mode_args} {prefix_args}{diff_spec}".strip()
+    if pathspecs:
+        rendered_paths = " ".join(shlex.quote(pathspec) for pathspec in pathspecs)
+        rendered_args = f"{rendered_args} -- {rendered_paths}".strip()
+    return rendered_args
+
+
+def _render_display_spec(diff_spec, pathspecs):
+    """Render the user-facing diff label for one repository section.
+
+    Args:
+        diff_spec (str): Displayable refspec for the diff.
+        pathspecs (list[str]): Repository-local pathspecs appended after `--`.
+
+    Returns:
+        str: User-facing diff label.
+    """
+    if not pathspecs:
+        return diff_spec
+    rendered_paths = " ".join(shlex.quote(pathspec) for pathspec in pathspecs)
+    return f"{diff_spec} -- {rendered_paths}"
 
 
 def _format_diff_section(display_path, spec, output):
