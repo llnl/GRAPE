@@ -4,6 +4,7 @@ import os
 import sys
 from docopt.docopt import docopt
 from vine import CodeReviewsFactory
+from vine import grape_errors
 from vine import grapeGit as git
 from vine import config_parser_base
 from vine import config_parser_global
@@ -225,58 +226,182 @@ def win_path_to_linux_path(path):
 
 
 def authenticateToGitHost(user_name, workspace_dir, args):
-        """
-        Authenticate to the git hosting service and create a client instance.
+    """
+    Authenticate to the git hosting service and create a client instance.
 
-        This method builds the connection parameters from the provided
-        command line arguments, logs the target URL, and delegates client
-        creation to `CodeReviewsFactory.makeCodeReviews`.
+    This method builds the connection parameters from the provided
+    command line arguments, logs the target URL, and delegates client
+    creation to `CodeReviewsFactory.makeCodeReviews`.
 
-        Parameters
-        ----------
-        user_name : str
-            The user name to authenticate as.
-        workspace_dir : str
-            The workspace directory.
-        args : dict
-            Dictionary of command line arguments, expected to contain:
+    Parameters
+    ----------
+    user_name : str
+        The user name to authenticate as.
+    workspace_dir : str
+        The workspace directory.
+    args : dict
+        Dictionary of command line arguments, expected to contain:
 
-            - `"--codeReviewsURL"` : str
-            Base URL of the code review or Git host.
-            - `"--verifySSL"` : str
-            String flag indicating whether SSL certificates should be
-            verified, for example `"true"` or `"false"`.
-            - `"--ssh_pat_port"` : str or int
-            Port number used for SSH or PAT based communication.
-            - `"--ssh_pat_url"` : str
-            SSH or PAT endpoint or URL segment used for authentication.
+        - `"--codeReviewsURL"` : str
+        Base URL of the code review or Git host.
+        - `"--verifySSL"` : str
+        String flag indicating whether SSL certificates should be
+        verified, for example `"true"` or `"false"`.
+        - `"--ssh_pat_port"` : str or int
+        Port number used for SSH or PAT based communication.
+        - `"--ssh_pat_url"` : str
+        SSH or PAT endpoint or URL segment used for authentication.
 
-        Returns
-        -------
-        CodeReviews
-            An instance returned by `CodeReviewsFactory.makeCodeReviews`
-            configured for the given user, workspace directory, and git hosting service.
+    Returns
+    -------
+    CodeReviews
+        An instance returned by `CodeReviewsFactory.makeCodeReviews`
+        configured for the given user, workspace directory, and git hosting service.
 
-        Side Effects
-        ------------
-        Logs an informational message indicating the URL that is being used
-        to authenticate.
+    Side Effects
+    ------------
+    Logs an informational message indicating the URL that is being used
+    to authenticate.
 
-        Notes
-        -----
-        The `"--verifySSL"` argument is treated as case insensitive; only
-        the string `"true"` (ignoring case) results in certificate
-        verification being enabled.
-        """
-        url = args['--codeReviewsURL']
-        verify = True if args['--verifySSL'].lower() == 'true' else False
-        logging.info(f'Logging onto {url}...')
+    Notes
+    -----
+    The `"--verifySSL"` argument is treated as case insensitive; only
+    the string `"true"` (ignoring case) results in certificate
+    verification being enabled.
+    """
+    url = args['--codeReviewsURL']
+    verify = True if args['--verifySSL'].lower() == 'true' else False
+    logging.info(f'Logging onto {url}...')
 
-        return CodeReviewsFactory.makeCodeReviews(
-            user_name,
-            url=url,
-            verify=verify,
-            port=int(args['--ssh_pat_port']),
-            ssh_path=args['--ssh_pat_url'],
-            workspace_dir=workspace_dir
-        )
+    return CodeReviewsFactory.makeCodeReviews(
+        user_name,
+        url=url,
+        verify=verify,
+        port=int(args['--ssh_pat_port']),
+        ssh_path=args['--ssh_pat_url'],
+        workspace_dir=workspace_dir
+    )
+
+
+def is_same_path_or_child(candidate_path, parent_path):
+    """Check whether one normalized path is equal to or contained by another.
+
+    Args:
+        candidate_path (str): Path being checked.
+        parent_path (str): Expected ancestor path.
+
+    Returns:
+        bool: True when `candidate_path` is equal to or under `parent_path`.
+    """
+    try:
+        return os.path.commonpath([candidate_path, parent_path]) == parent_path
+    except ValueError:
+        return False
+
+
+def select_repo_pathspecs(requested_paths, repo_path, repo_paths):
+    """Translate workspace paths into pathspecs for one repository.
+
+    Args:
+        requested_paths (list[str]): Absolute paths requested after the `--` separator.
+        repo_path (str): Absolute path to the repository being diffed.
+        repo_paths (list[str]): Absolute paths to all repositories participating in the diff.
+
+    Returns:
+        list[str]: Git pathspecs relative to `repo_path`.
+    """
+    if not requested_paths:
+        return []
+
+    child_repo_paths = [
+        candidate for candidate in repo_paths
+        if candidate != repo_path and is_same_path_or_child(candidate, repo_path)
+    ]
+    pathspecs = []
+    seen = set()
+    for requested_path in requested_paths:
+        if is_same_path_or_child(requested_path, repo_path):
+            relative_path = os.path.relpath(requested_path, repo_path)
+            pathspec = "." if relative_path == "." else relative_path.replace(os.sep, "/")
+        elif is_same_path_or_child(repo_path, requested_path):
+            pathspec = "."
+        else:
+            continue
+        if any(
+            requested_path != child_repo_path and is_same_path_or_child(requested_path, child_repo_path)
+            for child_repo_path in child_repo_paths
+        ):
+            continue
+
+        if pathspec not in seen:
+            pathspecs.append(pathspec)
+            seen.add(pathspec)
+    return pathspecs
+
+
+def map_ref_for_repo(ref, repo_type):
+    """Translate a workspace ref for repository-specific branch naming.
+
+    Args:
+        ref (str | None): Ref named in workspace terms.
+        repo_type (str): Repository classification such as `outer` or `submodule`.
+
+    Returns:
+        str: The translated ref for the target repository.
+    """
+    if ref is None or repo_type != "submodule":
+        return ref
+
+    config = config_parser_global.grapeConfig()
+    submodule_public_map = config.getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
+
+    prefix = ""
+    branch_name = ref
+    if ref.startswith("origin/"):
+        prefix = "origin/"
+        branch_name = ref.partition("/")[2]
+
+    public_branches = config.getPublicBranchList()
+    if branch_name in public_branches:
+        branch_name = submodule_public_map[branch_name]
+        return prefix + branch_name
+
+    return ref
+
+
+def resolve_repo_ref(ref, repo_type, no_fetch, repo):
+    """Resolve a workspace ref into a repository-local ref.
+
+    Args:
+        ref (str | None): Ref named at the workspace level.
+        repo_type (str): Repository classification such as `outer` or `submodule`.
+        no_fetch (bool): Whether to avoid fetching missing origin refs.
+        repo (str): Absolute path to the repository being diffed.
+
+    Returns:
+        str: The repository-local ref to pass to `git diff`.
+    """
+    if ref is None:
+        return None
+
+    mapped_ref = map_ref_for_repo(ref, repo_type)
+    if mapped_ref.startswith("--"):
+        return mapped_ref
+
+    resolved_ref = mapped_ref
+    try:
+        git.shortSHA(resolved_ref, execution_path=repo)
+    except grape_errors.GrapeGitError:
+        if not resolved_ref.startswith("origin/"):
+            resolved_ref = git.join_list_as_git_path(["origin", resolved_ref])
+        try:
+            git.shortSHA(resolved_ref, execution_path=repo)
+        except grape_errors.GrapeGitError:
+            if not no_fetch and resolved_ref.startswith("origin/"):
+                try:
+                    git.fetch("origin", resolved_ref.partition("/")[2], execution_path=repo)
+                except grape_errors.GrapeGitError:
+                    # Let the later diff attempt surface a concise warning if the ref still cannot be used.
+                    pass
+
+    return resolved_ref
