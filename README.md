@@ -906,6 +906,77 @@ Options:
     --git-p4        will configure your repo for use with git-p4 (deprecated)
 
 
+## diff
+
+grape diff
+Print diffs across the outer workspace repo, active submodules, and active nested subprojects.
+
+Usage: grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1>
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> <ref2>
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  [--mergeDiff | --rawDiff]
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> <ref2> -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1>
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  -- <path>...
+       grape-diff [--patch | --stat | --name-only | --name-status]
+                  --cached
+                  [--noFetch]
+                  [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                  <ref1> -- <path>...
+
+Options:
+    --patch                  Print the patch output. This is the default.
+    --stat                   Print diffstat output instead of patches.
+    --name-only              Print only changed file names.
+    --name-status            Print changed file names with status letters.
+    --cached                 Compare staged changes instead of worktree changes. Supports zero or one ref.
+    --mergeDiff              With two refs, diff changes on <ref2> from the common ancestor (<ref1>...<ref2>).
+    --rawDiff                With two refs, diff the exact branch tips (<ref1> <ref2>) (default).
+    --noFetch                Do not fetch missing origin refs before diffing.
+    --noTopLevel             Do not diff the outer level project.
+    --noSubmodules           Do not diff active submodules.
+    --noNestedSubprojects    Do not diff active nested subprojects.
+    <ref1>                   Reference to compare against the worktree, or the left side of a two-ref diff.
+    <ref2>                   Right side of a two-ref diff.
+    <path>                   Path to diff, resolved relative to the current working directory after `--`.
+
+
 ## writeConfig
 
 grape writeConfig: Writes the current configuration to a file, using any configuration set
