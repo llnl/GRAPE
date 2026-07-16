@@ -113,6 +113,8 @@ class Diff(Option, WorkspaceDirHandler):
             return False
 
         diff_request = _determine_diff_request(args)
+        _, _, raw_paths = _normalize_positional_args(args)
+        path_filter_requested = bool(raw_paths)
         requested_paths = _resolve_requested_paths(
             args,
             workspace_dir=self.workspace_dir,
@@ -122,12 +124,16 @@ class Diff(Option, WorkspaceDirHandler):
             workspace_dir=self.workspace_dir,
             diff_request=diff_request,
             requested_paths=requested_paths,
+            path_filter_requested=path_filter_requested,
             output_mode=output_mode,
             no_fetch=args["--noFetch"],
             include_outer=not args["--noTopLevel"],
             include_submodules=not args["--noSubmodules"],
             include_nested=not args["--noNestedSubprojects"],
         )
+        if path_filter_requested and not launch_tuples:
+            logging.info("No repositories matched the requested path filter.")
+            return True
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(
             diff_repo,
@@ -137,12 +143,14 @@ class Diff(Option, WorkspaceDirHandler):
         results = launcher.launchFromWorkspaceDir(noPause=True)
 
         emitted_output = False
+        had_successful_diff = False
         rendered_sections = []
         for result in results:
             warning = result.get("warning")
             if warning:
                 logging.warning(warning)
                 continue
+            had_successful_diff = True
             output = result.get("output", "")
             if not output.strip():
                 continue
@@ -151,7 +159,7 @@ class Diff(Option, WorkspaceDirHandler):
                 _format_diff_section(result["display_path"], result["spec"], output)
             )
 
-        if not emitted_output:
+        if not emitted_output and (had_successful_diff or not results):
             logging.info("No differences found.")
         elif not _page_output_if_tty("".join(rendered_sections), self.workspace_dir):
             logging.info("".join(rendered_sections))
@@ -322,7 +330,8 @@ def _resolve_requested_paths(args, *, workspace_dir, current_dir):
     return requested_paths
 
 
-def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, output_mode,
+def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, path_filter_requested,
+                         output_mode,
                          no_fetch, include_outer,
                          include_submodules, include_nested):
     """Build per-repository work items for the multi-repo launcher.
@@ -331,6 +340,7 @@ def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, output
         workspace_dir (str): Absolute path to the workspace root.
         diff_request (dict): Requested diff form and workspace-level refs.
         requested_paths (list[str]): Absolute paths requested after the `--` separator.
+        path_filter_requested (bool): Whether the CLI included a `-- <path>` filter.
         output_mode (str): Selected diff rendering mode.
         no_fetch (bool): Whether origin refs should avoid fetches.
         include_outer (bool): Whether to include the outer repository.
@@ -344,6 +354,8 @@ def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, output
     target_ref = diff_request["target_ref"]
     diff_type = diff_request["diff_type"]
     do_merge_diff = diff_request["do_merge_diff"]
+    if path_filter_requested and not requested_paths:
+        return []
     repo_entries = []
     if include_outer:
         repo_entries.append(("",
@@ -475,13 +487,15 @@ def _resolve_repo_ref(ref, repo_type, no_fetch, repo):
     except grape_errors.GrapeGitError:
         if not resolved_ref.startswith("origin/"):
             resolved_ref = git.join_list_as_git_path(["origin", resolved_ref])
-
-    if not no_fetch and resolved_ref.startswith("origin/"):
         try:
-            git.fetch("origin", resolved_ref.partition("/")[2], execution_path=repo)
+            git.shortSHA(resolved_ref, execution_path=repo)
         except grape_errors.GrapeGitError:
-            # Let the later diff attempt surface a concise warning if the ref still cannot be used.
-            pass
+            if not no_fetch and resolved_ref.startswith("origin/"):
+                try:
+                    git.fetch("origin", resolved_ref.partition("/")[2], execution_path=repo)
+                except grape_errors.GrapeGitError:
+                    # Let the later diff attempt surface a concise warning if the ref still cannot be used.
+                    pass
 
     return resolved_ref
 

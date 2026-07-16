@@ -3,6 +3,8 @@ from unittest.mock import patch
 
 from test import testGrape
 from vine import config_parser_global
+from vine import diff
+from vine import grape_errors
 from vine import grapeGit as git
 from vine.option import Option
 
@@ -215,6 +217,30 @@ class TestDiff(testGrape.TestGrape):
         self.assertIn("testRepoFile", rendered_diff)
         self.assertNotIn("other.txt", rendered_diff)
 
+    def testDiffDoesNotExpandFullyRejectedPathFilters(self):
+        """Verify paths outside the workspace do not fall back to a full diff."""
+        self.configure_diff_workspace()
+
+        git.checkout("-B develop master", execution_path=self.repo)
+        git.checkout("-b feature/test/outside-path develop", execution_path=self.repo)
+
+        with open(self.file1, "a", encoding="utf-8") as handle:
+            handle.write("outside path change\n")
+        git.add("testRepoFile", execution_path=self.repo)
+        git.commit('-m "outside path change"', execution_path=self.repo)
+
+        previous_cwd = os.getcwd()
+        os.chdir(self.repo)
+        try:
+            self.assertTrue(self.menu.applyMenuChoice("diff", ["develop", "--", "../outside"]))
+        finally:
+            os.chdir(previous_cwd)
+
+        output = self.get_output()
+        self.assertIn("Ignoring path outside workspace: `../outside`", output)
+        self.assertIn("No repositories matched the requested path filter.", output)
+        self.assertNotIn("[workspace] develop", output)
+
     def testDiffResolvesPathspecsRelativeToSubmoduleCwd(self):
         """Verify file scope from a submodule CWD maps to submodule-local pathspecs."""
         self.configure_diff_workspace()
@@ -336,3 +362,40 @@ class TestDiff(testGrape.TestGrape):
         self.assertEqual(pager_workspace, self.repo)
         self.assertIn("[workspace] develop", rendered_output)
         self.assertIn("paged change", rendered_output)
+
+    def testDiffDoesNotClaimNoDifferencesWhenAllReposFail(self):
+        """Verify warning-only diff runs do not log a false no-differences message."""
+        self.configure_diff_workspace()
+
+        self.assertTrue(self.menu.applyMenuChoice("diff", ["--noFetch", "missing-ref"]))
+
+        output = self.get_output()
+        self.assertIn("Skipping [workspace]: could not resolve ref `missing-ref`.", output)
+        self.assertNotIn("No differences found.", output)
+
+    @patch("vine.diff.git.fetch")
+    @patch("vine.diff.git.shortSHA")
+    def testResolveRepoRefSkipsFetchForLocallyAvailableOriginRef(self, mock_short_sha, mock_fetch):
+        """Verify explicit origin refs do not fetch when the ref already exists locally."""
+        mock_short_sha.return_value = "abc123"
+
+        resolved_ref = diff._resolve_repo_ref("origin/develop", "outer", False, self.repo)
+
+        self.assertEqual("origin/develop", resolved_ref)
+        mock_fetch.assert_not_called()
+
+    @patch("vine.diff.git.fetch")
+    @patch("vine.diff.git.shortSHA")
+    def testResolveRepoRefSkipsFetchWhenMappedOriginRefAlreadyExists(self, mock_short_sha, mock_fetch):
+        """Verify refs rewritten to origin/* do not fetch when the rewritten ref is local."""
+        missing_local_ref = grape_errors.GrapeGitError(
+            "git rev-parse develop",
+            "missing ref",
+            "fatal: Needed a single revision",
+        )
+        mock_short_sha.side_effect = [missing_local_ref, "abc123"]
+
+        resolved_ref = diff._resolve_repo_ref("develop", "outer", False, self.repo)
+
+        self.assertEqual("origin/develop", resolved_ref)
+        mock_fetch.assert_not_called()
