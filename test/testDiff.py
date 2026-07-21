@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 from test import testGrape
 from vine import config_parser_global
+from vine import diff as diff_command
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import utility
@@ -362,6 +363,74 @@ class TestDiff(testGrape.TestGrape):
         self.assertEqual(pager_workspace, self.repo)
         self.assertIn("[workspace] develop", rendered_output)
         self.assertIn("paged change", rendered_output)
+
+    @patch("vine.diff.git.diff", return_value="colored diff output")
+    @patch("vine.diff._should_preserve_git_diff_color", return_value=True)
+    def testDiffRepoPreservesGitColorWhenEnabled(self, mock_color, mock_diff):
+        """Verify interactive color settings are preserved in rendered git diff args."""
+        result = diff_command.diff_repo(
+            repo=self.repo,
+            branch=None,
+            args={
+                "display_path": "workspace",
+                "repo_type": "outer",
+                "target_ref": None,
+                "diff_type": "worktree",
+                "output_mode": "patch",
+                "do_merge_diff": False,
+                "no_fetch": True,
+                "pathspecs": [],
+            },
+            workspace_dir=self.repo,
+        )
+
+        mock_color.assert_called_once_with(self.repo)
+        diff_args = mock_diff.call_args.args[0]
+        self.assertIn("--color=always", diff_args)
+        self.assertEqual(result["output"], "colored diff output")
+
+    @patch("vine.diff.git.diff", return_value="plain diff output")
+    @patch("vine.diff._should_preserve_git_diff_color", return_value=False)
+    def testDiffRepoLeavesColorUnsetWhenDisabled(self, mock_color, mock_diff):
+        """Verify non-interactive or disabled color settings do not force ANSI output."""
+        diff_command.diff_repo(
+            repo=self.repo,
+            branch=None,
+            args={
+                "display_path": "workspace",
+                "repo_type": "outer",
+                "target_ref": None,
+                "diff_type": "worktree",
+                "output_mode": "patch",
+                "do_merge_diff": False,
+                "no_fetch": True,
+                "pathspecs": [],
+            },
+            workspace_dir=self.repo,
+        )
+
+        mock_color.assert_called_once_with(self.repo)
+        diff_args = mock_diff.call_args.args[0]
+        self.assertNotIn("--color=always", diff_args)
+
+    @patch("vine.diff.subprocess.run")
+    @patch("vine.diff._resolve_git_pager", return_value="less")
+    def testDiffPagerSetsGitLikeLessDefaults(self, mock_pager, mock_run):
+        """Verify pager subprocess inherits Git's default less flags for colorized output."""
+        mock_run.return_value.returncode = 0
+
+        class _Stdout:
+            @staticmethod
+            def isatty():
+                return True
+
+        with patch("vine.diff.sys.stdout", _Stdout()), patch.dict("os.environ", {}, clear=True):
+            self.assertTrue(diff_command._page_output_if_tty("diff text", self.repo))
+
+        mock_pager.assert_called_once_with(self.repo)
+        pager_env = mock_run.call_args.kwargs["env"]
+        self.assertEqual(pager_env["LESS"], "FRX")
+        self.assertEqual(pager_env["LV"], "-c")
 
     def testDiffDoesNotClaimNoDifferencesWhenAllReposFail(self):
         """Verify warning-only diff runs do not log a false no-differences message."""

@@ -204,7 +204,13 @@ def diff_repo(repo="", branch="", args=None, *, workspace_dir):
         diff_spec, display_spec = _render_diff_spec(
             resolved_base, resolved_target, diff_type, do_merge_diff
         )
-        diff_args = _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs)
+        diff_args = _render_git_diff_args(
+            output_mode,
+            diff_spec,
+            display_path,
+            pathspecs,
+            preserve_color=_should_preserve_git_diff_color(repo),
+        )
         output = git.diff(diff_args, execution_path=repo)
         return {
             "display_path": display_path,
@@ -431,7 +437,7 @@ def _render_diff_spec(base_ref, target_ref, diff_type, do_merge_diff):
     return f"{base_ref} {target_ref}", f"{base_ref} {target_ref}"
 
 
-def _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs):
+def _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs, preserve_color=False):
     """Construct the argument string passed to `git diff`.
 
     Args:
@@ -439,6 +445,7 @@ def _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs):
         diff_spec (str): Git diff refspec to compare.
         display_path (str): Repo label used when formatting patch prefixes.
         pathspecs (list[str]): Repository-local pathspecs appended after `--`.
+        preserve_color (bool): Whether to preserve Git's interactive color output.
 
     Returns:
         str: Argument string for `git diff`.
@@ -456,7 +463,8 @@ def _render_git_diff_args(output_mode, diff_spec, display_path, pathspecs):
     else:
         prefix_args = ""
 
-    rendered_args = f"{mode_args} {prefix_args}{diff_spec}".strip()
+    color_args = "--color=always" if preserve_color else ""
+    rendered_args = f"{color_args} {mode_args} {prefix_args}{diff_spec}".strip()
     if pathspecs:
         rendered_paths = " ".join(shlex.quote(pathspec) for pathspec in pathspecs)
         rendered_args = f"{rendered_args} -- {rendered_paths}".strip()
@@ -538,16 +546,36 @@ def _page_output_if_tty(output, workspace_dir):
         return False
 
     try:
+        pager_env = os.environ.copy()
+        pager_env.setdefault("LESS", "FRX")
+        pager_env.setdefault("LV", "-c")
         completed_process = subprocess.run(
             pager,
             input=output.encode(),
             cwd=workspace_dir,
+            env=pager_env,
             shell=True,
             check=False,
         )
     except OSError:
         return False
     return completed_process.returncode == 0
+
+
+def _should_preserve_git_diff_color(repo):
+    """Return whether `git diff` would emit color for an interactive terminal."""
+    stdout = sys.stdout
+    if not hasattr(stdout, "isatty") or not stdout.isatty():
+        return False
+
+    try:
+        return git.gitcmd(
+            "config --get-colorbool color.diff true",
+            "could not determine git diff color setting",
+            execution_path=repo,
+        ).strip().lower() == "true"
+    except grape_errors.GrapeGitError:
+        return False
 
 
 def _resolve_git_pager(workspace_dir):
