@@ -1,6 +1,8 @@
 import os
 import shutil
 import sys
+from subprocess import CompletedProcess
+from unittest.mock import patch
 from test.testGrape import *
 from vine import grape_errors
 from vine import grapeGit as git
@@ -176,6 +178,25 @@ class TestGrapeGit(TestGrape):
             self.assertTrue(commitStr in log, "commit message not in log after push")
         except grape_errors.GrapeGitError as error:
             self.handleGitError(error)
+
+    def testPushLogsRemoteMessages(self):
+        process = CompletedProcess(
+            args="git push --porcelain origin master",
+            returncode=0,
+            stdout=b"To /tmp/testRepo-origin\n",
+            stderr=b"remote: Create a merge request for master:\nremote:   https://example.invalid/mr/1\n",
+        )
+        with patch("vine.grapeGit.vine_subprocess.executeSubProcess",
+                   return_value=process):
+            push_output = git.push("origin master", execution_path=self.repo)
+
+        logs = self.get_output()
+        self.assertTrue("remote: Create a merge request for master:" in logs,
+                        "expected first remote message to be logged")
+        self.assertTrue("remote:   https://example.invalid/mr/1" in logs,
+                        "expected second remote message to be logged")
+        self.assertTrue("To /tmp/testRepo-origin" in push_output,
+                        "expected push output to be returned unchanged")
 
     def testBranch(self):
         try:
