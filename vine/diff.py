@@ -321,19 +321,12 @@ def _resolve_requested_paths(args, *, workspace_dir, current_dir):
     Returns:
         list[str]: Absolute normalized paths that fall within the workspace.
     """
-    requested_paths = []
-    workspace_root = os.path.realpath(workspace_dir)
-    current_root = os.path.realpath(current_dir)
-
     _, _, raw_paths = _normalize_positional_args(args)
-    for raw_path in raw_paths:
-        candidate_path = raw_path if os.path.isabs(raw_path) else os.path.join(current_root, raw_path)
-        absolute_path = os.path.realpath(candidate_path)
-        if not utility.is_same_path_or_child(absolute_path, workspace_root):
-            logging.warning("Ignoring path outside workspace: `%s`", raw_path)
-            continue
-        requested_paths.append(absolute_path)
-    return requested_paths
+    return utility.resolve_workspace_paths(
+        raw_paths,
+        workspace_dir=workspace_dir,
+        current_dir=current_dir,
+    )
 
 
 def _build_launch_tuples(*, workspace_dir, diff_request, requested_paths, path_filter_requested,

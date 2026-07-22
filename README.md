@@ -637,7 +637,7 @@ Options:
 
 
 Arguments:
-    <filetree>... The relative paths of files to include in this commit.
+    <filetree>... Files or directories to include, resolved relative to the current working directory.
 
 
 ## publish

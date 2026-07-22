@@ -339,6 +339,31 @@ def select_repo_pathspecs(requested_paths, repo_path, repo_paths):
     return pathspecs
 
 
+def resolve_workspace_paths(raw_paths, *, workspace_dir, current_dir):
+    """Resolve CLI path arguments into normalized workspace-local absolute paths.
+
+    Args:
+        raw_paths (list[str]): Raw path arguments provided by the user.
+        workspace_dir (str): Absolute path to the workspace root.
+        current_dir (str): Absolute path to the caller's current working directory.
+
+    Returns:
+        list[str]: Absolute normalized paths that fall within the workspace.
+    """
+    requested_paths = []
+    workspace_root = os.path.realpath(workspace_dir)
+    current_root = os.path.realpath(current_dir)
+
+    for raw_path in raw_paths:
+        candidate_path = raw_path if os.path.isabs(raw_path) else os.path.join(current_root, raw_path)
+        absolute_path = os.path.realpath(candidate_path)
+        if not is_same_path_or_child(absolute_path, workspace_root):
+            logging.warning("Ignoring path outside workspace: `%s`", raw_path)
+            continue
+        requested_paths.append(absolute_path)
+    return requested_paths
+
+
 def map_ref_for_repo(ref, repo_type):
     """Translate a workspace ref for repository-specific branch naming.
 
