@@ -198,6 +198,24 @@ class TestGrapeGit(TestGrape):
         self.assertTrue("To /tmp/testRepo-origin" in push_output,
                         "expected push output to be returned unchanged")
 
+    def testPushCanQuietRemoteMessages(self):
+        process = CompletedProcess(
+            args="git push --porcelain origin master",
+            returncode=0,
+            stdout=b"To /tmp/testRepo-origin\n",
+            stderr=b"remote: Create a merge request for master:\n",
+        )
+        with patch("vine.grapeGit.vine_subprocess.executeSubProcess",
+                   return_value=process):
+            push_output = git.push("origin master", execution_path=self.repo,
+                                   quietRemoteMessages=True)
+
+        logs = self.get_output()
+        self.assertFalse("remote: Create a merge request for master:" in logs,
+                         "expected remote message logging to be suppressed")
+        self.assertTrue("remote: Create a merge request for master:" in push_output,
+                        "expected push output to still contain remote messages")
+
     def testBranch(self):
         try:
             git.branch(argstr="testBranch/newBranch HEAD", execution_path=self.repo)

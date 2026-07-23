@@ -557,11 +557,12 @@ def logRemoteMessages(output):
             seen.add(stripped)
 
 
-def push(args, throwOnFail=False, *, execution_path):
+def push(args, throwOnFail=False, quietRemoteMessages=False, *, execution_path):
     try:
         output = gitcmd(f"push --porcelain {args}", "Push failed",
                         execution_path=execution_path)
-        logRemoteMessages(output)
+        if not quietRemoteMessages:
+            logRemoteMessages(output)
         return output
     except grape_errors.GrapeGitError as e:
         if e.commError:

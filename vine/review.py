@@ -773,7 +773,8 @@ class Review(Option, WorkspaceDirHandler):
         #ensure branch is pushed
         if "--noLocal" not in args or not args["--noLocal"]:
             logging.info(f"Pushing {branch} to {codeReviews.url}...")
-            git.push(f"origin {branch}", execution_path=self.workspace_dir)
+            git.push(f"origin {branch}", execution_path=self.workspace_dir,
+                     quietRemoteMessages=True)
 
         # determine pull request title
         title = args["--title"]
@@ -1101,6 +1102,7 @@ class Review(Option, WorkspaceDirHandler):
             
             # top level was already pushed at the beginning
             pushArgs = ['push', '--noTopLevel']
+            pushArgs.append('--quietRemoteMessages')
             if not runInSubmodules:
                 pushArgs.append('--noRecurse')
             if args["--noRecurseSubprojects"]:
@@ -1335,7 +1337,8 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     # push branch
     if active and ("--noLocal" not in review_args or ("--noLocal" in review_args and not review_args["--noLocal"])):
         logging.info(f"Pushing {branch} to {codeReviews.url} in {repo}")
-        git.push(f"origin {branch}", execution_path=repo)
+        git.push(f"origin {branch}", execution_path=repo,
+                 quietRemoteMessages=True)
 
     if isNested:
         codeReview_repo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, proj)
@@ -1411,7 +1414,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     if utility.userInput(f"Target branch {target_branch} in {git_execution_path} is missing ... would you like to create and push it? [y/n]"):
                         start_branch = utility.userInput(f"Where should {target_branch} branch off of?")
                         git.branch(f"{target_branch} {start_branch}", execution_path=git_execution_path)
-                        git.push(f"origin {target_branch}", execution_path=git_execution_path)
+                        git.push(f"origin {target_branch}", execution_path=git_execution_path,
+                                 quietRemoteMessages=True)
                         postPullRequest(repo, title, branch, target_branch, descr, reviewers,
                                         args, git_execution_path,
                                         non_approver_list=non_approver_list, wip=wip,
