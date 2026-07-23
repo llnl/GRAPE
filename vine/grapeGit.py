@@ -547,7 +547,7 @@ def pull(args, throwOnFail=False, *, execution_path):
         raise e
 
 
-def logRemoteMessages(output):
+def _logRemoteMessages(output):
     """Surfaces git server messages that are normally written to stderr."""
     seen = set()
     for line in output.splitlines():
@@ -562,7 +562,7 @@ def push(args, throwOnFail=False, quietRemoteMessages=False, *, execution_path):
         output = gitcmd(f"push --porcelain {args}", "Push failed",
                         execution_path=execution_path)
         if not quietRemoteMessages:
-            logRemoteMessages(output)
+            _logRemoteMessages(output)
         return output
     except grape_errors.GrapeGitError as e:
         if e.commError:
