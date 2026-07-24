@@ -338,28 +338,13 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
         # Non-forced operation still allows the user to approve replacing a
         # dirty nested subproject before any workspace mutation happens.
         if not force:
-            default = 'n'
+            default = 'y'
 
             if not dirExists: # wasActive must be true or we would have this the continue
-                prompt = (
-                    f"Nested subproject {oldPrefix} is active but its "
-                    f"workspace directory is missing.\nIts URL is changing "
-                    f"from {oldUrl} to {newUrl} and GRAPE will recreate it"
-                    f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}."
-                    "\nProceed? [y/n]"
-                )
-            elif dirExists and not worktreeClean:
-                prompt = (
-                    f"Nested subproject {oldPrefix} has local changes.\nIts "
-                    f"URL is changing from {oldUrl} to {newUrl}, so GRAPE "
-                    "must remove the current checkout to continue. "
-                    "Local changes will be lost."
-                    "Proceed? [y/n]"
-                )
+                repo_status = "\nThe workspace directory is missing, so there is nothing to remove."
             else:
                 # Check to see if it is safe to remove the old repo by default
                 repo_status = ""
-                default = 'y'
                 # Check for clean workspace
                 if not worktreeClean:
                     repo_status += f"\nRepo contains local changes that will be lost!"
@@ -382,14 +367,15 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                         for line in diff.splitlines()[:10]:
                             repo_status += f"\n   {line}"
                         default = 'n'
-                prompt = (
-                    f"Nested subproject {oldPrefix} is changing URL from "
-                    f"{oldUrl} to {newUrl}.\nGRAPE must remove the current "
-                    f"checkout and recreate it"
-                    f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}."
-                    f"{repo_status}"
-                    "\nProceed? [y/n]"
-                )
+            prompt = (
+                f"Nested subproject {oldPrefix} is changing URL\n"
+                f"   from {oldUrl}\n   to {newUrl}.\nGRAPE must remove the current "
+                f"checkout and recreate it"
+                f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}.\n"
+                f"If your branch does not exist in the new repo, you will have to run grape uv afterwards."
+                f"{repo_status}"
+                "\nProceed? [y/n]"
+            )
 
             approved = utility.userInput(prompt, default)
             if not approved:
