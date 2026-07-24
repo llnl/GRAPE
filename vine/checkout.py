@@ -9,6 +9,7 @@ from collections import defaultdict
 from vine import config_parser_base
 from vine import config_parser_global
 from vine import config_parser_user
+from vine import config_parser_workspace
 from vine import grape_errors
 from vine import grapeGit as git
 from vine import multi_repo_cmd_launcher
@@ -300,7 +301,7 @@ def parseGrapeConfigNestedProjectDiffOutput(currentRevision, targetRevision,
 
 
 def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
-                                       replacedProjects, *, workspace_dir,
+                                       replacedProjects, *, workspace_dir, branch,
                                        force=False):
     """Collect approval for nested subprojects whose URL changed.
 
@@ -337,7 +338,9 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
         # Non-forced operation still allows the user to approve replacing a
         # dirty nested subproject before any workspace mutation happens.
         if not force:
-            if not dirExists and wasActive:
+            default = 'n'
+
+            if not dirExists: # wasActive must be true or we would have this the continue
                 prompt = (
                     f"Nested subproject {oldPrefix} is active but its "
                     f"workspace directory is missing.\nIts URL is changing "
@@ -354,15 +357,41 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                     "Proceed? [y/n]"
                 )
             else:
+                # Check to see if it is safe to remove the old repo by default
+                repo_status = ""
+                default = 'y'
+                # Check for clean workspace
+                if not worktreeClean:
+                    repo_status += f"\nRepo contains local changes that will be lost!"
+                    default = 'n'
+                # Check for branches that are ahead of their remote tracking branches.
+                # Note this will not detect branches that have never been pushed.
+                branchList = git.branch("-vv", execution_path=working_directory) 
+                if re.search(r"\[.*: ahead .*\]", branchList):
+                    repo_status += f"\nRepo contains some branches that are ahead of their tracking branches:"
+                    default = 'n'
+                    for line in branchList.splitlines():
+                        if re.search(r"\[.*: ahead .*\]", line):
+                            repo_status += f"\n   {line}"
+                # Check if this branch has diffs compared to the public branch
+                public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
+                if public != branch:
+                    diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
+                    if diff:
+                        repo_status += f"\n{branch} contains changes relative to {public}:"
+                        for line in diff.splitlines()[:10]:
+                            repo_status += f"\n   {line}"
+                        default = 'n'
                 prompt = (
                     f"Nested subproject {oldPrefix} is changing URL from "
                     f"{oldUrl} to {newUrl}.\nGRAPE must remove the current "
                     f"checkout and recreate it"
                     f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}."
+                    f"{repo_status}"
                     "\nProceed? [y/n]"
                 )
 
-            approved = utility.userInput(prompt, 'n')
+            approved = utility.userInput(prompt, default)
             if not approved:
                 logging.info(f"{oldPrefix} must be replaced before proceeding!")
                 return None
@@ -902,7 +931,7 @@ class Checkout(Option, WorkspaceDirHandler):
             if replacedProjects:
                 replacementPlan = preflightReplacedNestedSubprojects(
                     previousConfig, branchConfig, replacedProjects,
-                    workspace_dir=self.workspace_dir, force=args["-F"])
+                    workspace_dir=self.workspace_dir, branch=branch, force=args["-F"])
                 if replacementPlan is None:
                     return False
 

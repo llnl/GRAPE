@@ -345,7 +345,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
             if replacedProjects:
                 replacementPlan = checkout.preflightReplacedNestedSubprojects(
                     previousConfig, branchConfig, replacedProjects,
-                    workspace_dir=self.workspace_dir)
+                    workspace_dir=self.workspace_dir, branch=git.currentBranch(execution_path=self.workspace_dir))
                 if replacementPlan is None:
                     return False
                 self.progress["nestedReplacementPlan"] = replacementPlan
