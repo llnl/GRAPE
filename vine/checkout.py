@@ -340,7 +340,7 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
         if not force:
             default = 'y'
 
-            if not dirExists: # wasActive must be true or we would have this the continue
+            if not dirExists: # wasActive must be true or we would have hit the continue above
                 repo_status = "\nThe workspace directory is missing, so there is nothing to remove."
             else:
                 # Check to see if it is safe to remove the old repo by default
