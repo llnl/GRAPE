@@ -7,9 +7,10 @@ from vine import Atlassian
 from vine import Gitlab
 
 def makeCodeReviews(*args, **kwargs):
-    if "bitbucket" in kwargs["url"] or "stash" in kwargs["url"]:
+    url = kwargs["url"].lower()
+    if "bitbucket" in url or "stash" in url:
         return Atlassian.Atlassian(*args,**kwargs)
-    elif "gitlab" in kwargs["url"]:
+    elif "gitlab" in url:
         return Gitlab.GrapeGitlabAdapter(*args,**kwargs)
 
 # Return repo object given the nested subproject name (as used in grapeconfig [nestedProjects.names])
@@ -54,4 +55,3 @@ def repoObject(codeReviewsObject, repoName=None, projectName=None):
         projectName = config.get(Option.SECTION_PROJECT, "name")
     repo = codeReviewsObject.repo(projectName, repoName)
     return repo
-

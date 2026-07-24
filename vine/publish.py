@@ -17,6 +17,7 @@ from vine import config_parser_global
 from vine import config_parser_user
 from vine import grape_errors
 from vine import grapeGit as git
+from vine import Gitlab
 from vine import grapeMenu
 from vine import review
 from vine import utility
@@ -29,6 +30,13 @@ from vine.resumable import Resumable
 from vine.ReviewRule import ReviewRuleManager
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
+
+GitlabMRClosedError = getattr(getattr(Gitlab, "gitlab", None), "exceptions", None)
+GitlabMRClosedError = getattr(
+    GitlabMRClosedError,
+    "GitlabMRClosedError",
+    type("UnavailableGitlabMRClosedError", (Exception,), {}),
+)
 
 
 class PublishStepFailed(Exception):
@@ -66,11 +74,11 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                          [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                          [--tickVersion=<bool> [-T <arg>]...]
                          [--tickOnCascade=<slot> ]
-                         [--user=<BitbucketUserName>]
+                         [--user=<CodeReviewUserName>]
                          [--codeReviewsURL=<httpsURL>]
                          [--verifySSL=<bool>]
-                         [--project=<BitbucketProjectKey>]
-                         [--repo=<BitbucketRepoName>]
+                         [--project=<CodeReviewProject>]
+                         [--repo=<CodeReviewRepo>]
                          [-R <arg>]...
                          [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                          [--useBitbucket=<bool>]
@@ -85,7 +93,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             grape-publish --continue
             grape-publish --abort
             grape-publish --printSteps
-            grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+            grape-publish --quick -m <msg> [--user=<CodeReviewUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
             grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
             grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
                                      --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
@@ -185,21 +193,21 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                   Default behavior governed by the flow.topicCascadeTick mapping.
         -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
                                   and defaults. -T can be used multiple times to pass multiple arguments.
-        --user=<user>             Your Bitbucket/Gitlab username.
-        --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+        --user=<user>             Your code review username.
+        --codeReviewsURL=<url>    Your GitLab or Bitbucket URL, e.g. https://your.home.org/gitlab .
                                   [default: .grapeconfig.project.codeReviewsURL]
         --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
                                   [default: .grapeconfig.project.verifySSL]
-        --project=<project>       Your Bitbucket Project. See grape-review for more details.
+        --project=<project>       Your GitLab group/namespace or Bitbucket project key. See grape-review for more details.
                                   [default: .grapeconfig.project.name]
-        --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+        --repo=<repo>             Your GitLab project/repo or Bitbucket repo. See grape-review for more details.
                                   [default: .grapeconfig.repo.name]
         -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                                   Type grape review --help for valid options.
         --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
         --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
         --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
-        --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+        --useBitbucket=<bool>     Legacy name for whether or not to use code review pull/merge requests. [default: .grapeconfig.publish.useStash]
         --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                                   by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                                   if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -231,7 +239,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                   [default: .grapeconfig.publish.emailMaxFiles]
         --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                                   markInProgress, md2, publish, markAsDone, deleteTopic, done]
-        --remoteMerge             Perform the merge using the Bitbucket REST API.
+        --remoteMerge             Perform the merge using the code review provider REST API.
         --quiet                   Suppress output from custom build and test steps unless there is a failure.
         --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                                   REST API.
@@ -312,7 +320,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
         # tick the version?
         config.set(self.SECTION_PUBLISH, 'tickVersion', 'False')
-        # use Bitbucket for checking Pull Request status?
+        # use code reviews for checking Pull Request/Merge Request status?
         config.set(self.SECTION_PUBLISH, 'useStash', 'True')
         # delete when done
         config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
@@ -372,17 +380,18 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             public = config.getPublicBranchFor(topic)
         args["--public"] = public
         self.branchPrefix = prefix
-        # whether or not to use Bitbucket
+        # whether or not to use code reviews
         if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
         if not args["--noReview"] and not isinstance(args["--verifySSL"], bool):
             verify = args["--verifySSL"].lower() == "true"
             args["--verifySSL"] = verify
-        # get the Bitbucket Username
+        # get the code review username
         user = args["--user"]
 
         if not user and not args["--noReview"] and not args["--printSteps"]:
-            args["--user"] = utility.getUserName(service="Bitbucket")
+            service = "GitLab" if "gitlab" in args["--codeReviewsURL"].lower() else "Bitbucket"
+            args["--user"] = utility.getUserName(service=service)
 
 
         if args["--tickVersion"] is not False and args["--tickVersion"] is not True:
@@ -1906,7 +1915,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         return valid
 
     def remoteMerge(self, public, topic, subproject_name, args, isSubmodule, isNested):
-        codeReviews = self.codeReviews(args)
+        codeReviews = self.codeReviews
         if isNested:
             remoteRepo = CodeReviewsFactory.repoFromNestedSubprojectName(codeReviews, subproject_name)
         elif isSubmodule:
@@ -1917,8 +1926,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         pr = remoteRepo.getOpenPullRequest(topic, public)
         if pr is not None:
             logging.info(f"remotely merging {topic} into {public}")
-            if pr.merge():
-                git.checkout(execution_path=public)
+            if pr.merge(merge_commit_message=args["-m"],
+                        should_remove_source_branch=args["--deleteTopic"].lower() == "true",
+                        merge_when_pipeline_succeeds=False):
+                git.checkout(public, execution_path=self.workspace_dir)
                 git.pull("", execution_path=self.workspace_dir)
                 logging.info(f"{topic} merged successfully to {public}")
                 logging.info(f"You are currently on {public}")
@@ -2075,10 +2086,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         return
                     else:
                         logging.error(
-                            f"Bitbucket seems to think {topic} in {repo} " +
+                            f"The code review provider seems to think {topic} in {repo} " +
                             "is not mergeable... aborting")
                         raise Exception
-                except stashyErrors.GenericException as e:
+                except (stashyErrors.GenericException, GitlabMRClosedError) as e:
                     logging.warning("WARNING: Remote merge failed. Attempting local merge instead.")
                     self.merge(public, topic, repo, args)
             else:
