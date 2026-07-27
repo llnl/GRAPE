@@ -338,23 +338,18 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
         # Non-forced operation still allows the user to approve replacing a
         # dirty nested subproject before any workspace mutation happens.
         if not force:
-            default = 'y'
-
             if not dirExists: # wasActive must be true or we would have hit the continue above
                 repo_status = "\nThe workspace directory is missing, so there is nothing to remove."
             else:
-                # Check to see if it is safe to remove the old repo by default
                 repo_status = ""
                 # Check for clean workspace
                 if not worktreeClean:
                     repo_status += f"\nRepo contains local changes that will be lost!"
-                    default = 'n'
                 # Check for branches that are ahead of their remote tracking branches.
                 # Note this will not detect branches that have never been pushed.
                 branchList = git.branch("-vv", execution_path=working_directory) 
                 if re.search(r"\[.*: ahead .*\]", branchList):
                     repo_status += f"\nRepo contains some branches that are ahead of their tracking branches:"
-                    default = 'n'
                     for line in branchList.splitlines():
                         if re.search(r"\[.*: ahead .*\]", line):
                             repo_status += f"\n   {line}"
@@ -366,18 +361,17 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                         repo_status += f"\n{branch} contains changes relative to {public}:"
                         for line in diff.splitlines()[:10]:
                             repo_status += f"\n   {line}"
-                        default = 'n'
             prompt = (
                 f"Nested subproject {oldPrefix} is changing URL\n"
                 f"   from {oldUrl}\n   to {newUrl}.\nGRAPE must remove the current "
                 f"checkout and recreate it"
                 f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}.\n"
-                f"If your branch does not exist in the new repo, you will have to run grape uv afterwards."
+                f"*** If your branch does not exist in the new repo, you will have to run grape uv afterwards. ***"
                 f"{repo_status}"
                 "\nProceed? [y/n]"
             )
 
-            approved = utility.userInput(prompt, default)
+            approved = utility.userInput(prompt, 'n')
             if not approved:
                 logging.info(f"{oldPrefix} must be replaced before proceeding!")
                 return None
