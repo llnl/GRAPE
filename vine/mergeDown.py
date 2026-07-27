@@ -458,6 +458,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                         workspace_dir=self.workspace_dir):
                     return False
             self.progress["nestedReplacementsDone"] = True
+            ret = menu.applyMenuChoice("status", ['--failIfInconsistent'])
+            if ret is False:
+                self.dumpProgress(args, "GRAPE: Workspace inconsistent! Please resolve using grape uv " +
+                                        f"and then \n continue by calling 'grape {args['<<cmd>>']} --continue' .")
+                return False
             nested = config_parser_user.getAllActiveNestedSubprojectPrefixes(
                 workspaceDir=self.workspace_dir)
 

@@ -366,7 +366,7 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                 f"   from {oldUrl}\n   to {newUrl}.\nGRAPE must remove the current "
                 f"checkout and recreate it"
                 f"{' at ' + newPrefix if newPrefix != oldPrefix else ''}.\n"
-                f"*** If your branch does not exist in the new repo, you will have to run grape uv afterwards. ***"
+                f"*** If your branch does not exist in the new repo, you will have to run grape uv to create it. ***"
                 f"{repo_status}"
                 "\nProceed? [y/n]"
             )
