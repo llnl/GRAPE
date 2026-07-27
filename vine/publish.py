@@ -203,7 +203,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                                   [default: .grapeconfig.project.codeReviewsURL]
         --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
                                   [default: .grapeconfig.project.verifySSL]
-        --project=<project>       Your GitLab group/namespace or Bitbucket project key. See grape-review for more details.
+        --project=<project>       Your GitLab group/namespace or Bitbucket project. See grape-review for more details.
                                   [default: .grapeconfig.project.name]
         --repo=<repo>             Your GitLab project/repo or Bitbucket repo. See grape-review for more details.
                                   [default: .grapeconfig.repo.name]

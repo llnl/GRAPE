@@ -35,17 +35,23 @@ class TestPublishStartStop(PublishStartStopCase, PublishTestBase):
 
 
 class _ParseArgsConfig:
+    """Minimal grape config stub for Publish.parseArgs unit tests."""
+
     def getPublicBranchFor(self, topic):
+        """Return the public branch used by the parseArgs fixtures."""
         return "master"
 
     def getMapping(self, section, option):
+        """Return mappings needed by parseArgs without reading real config."""
         return {"topic/test": "0"}
 
     def get(self, section, option):
+        """Return disabled boolean config defaults used by parseArgs."""
         return "False"
 
 
 def _publish_args(code_reviews_url="https://example.org/gitlab", no_review=False):
+    """Build the subset of parsed publish args needed by parseArgs tests."""
     return {
         "--topic": "topic/test",
         "--startAt": None,
@@ -65,6 +71,7 @@ def _publish_args(code_reviews_url="https://example.org/gitlab", no_review=False
 
 
 def _parse_publish_args(args):
+    """Run Publish.parseArgs with git and config dependencies patched out."""
     publish = Publish()
     publish._workspace_dir = "/tmp"
     with patch("vine.publish.git.currentBranch", return_value="topic/test"), \
@@ -74,6 +81,7 @@ def _parse_publish_args(args):
 
 
 def test_parse_args_defaults_gitlab_user_from_gitlab_service():
+    """GitLab publish args delegate username resolution to utility."""
     args = _publish_args("https://example.org/gitlab")
     with patch("vine.publish.utility.getUserName", return_value="gitlab-user") as get_user_name:
         _parse_publish_args(args)
@@ -84,6 +92,7 @@ def test_parse_args_defaults_gitlab_user_from_gitlab_service():
 
 @pytest.mark.parametrize("url", ["https://example.org/bitbucket", "https://example.org/stash"])
 def test_parse_args_defaults_bitbucket_user_for_bitbucket_and_stash(url):
+    """Bitbucket and Stash publish args delegate username resolution to utility."""
     args = _publish_args(url)
     with patch("vine.publish.utility.getUserName", return_value="bitbucket-user") as get_user_name:
         _parse_publish_args(args)
@@ -93,6 +102,7 @@ def test_parse_args_defaults_bitbucket_user_for_bitbucket_and_stash(url):
 
 
 def test_parse_args_no_review_does_not_resolve_provider_user():
+    """--noReview skips username lookup because no provider calls are made."""
     args = _publish_args("https://example.org/gitlab", no_review=True)
     with patch("vine.publish.utility.getUserName") as get_user_name:
         _parse_publish_args(args)
@@ -102,6 +112,7 @@ def test_parse_args_no_review_does_not_resolve_provider_user():
 
 
 def test_parse_args_unknown_provider_uses_generic_username_resolution():
+    """Unknown provider URLs still delegate username resolution to utility."""
     args = _publish_args("https://example.org/reviews")
     with patch("vine.publish.utility.getUserName", return_value="env-user") as get_user_name:
         _parse_publish_args(args)
@@ -111,6 +122,7 @@ def test_parse_args_unknown_provider_uses_generic_username_resolution():
 
 
 def test_remote_merge_uses_code_reviews_property_and_provider_merge_signature():
+    """Remote merge uses the cached provider and the neutral merge arguments."""
     publish = Publish()
     publish._workspace_dir = "/tmp"
     publish._codeReviews = object()
