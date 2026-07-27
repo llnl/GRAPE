@@ -669,11 +669,11 @@ Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
                      [--noUpdateLog | [[--updateLogDir=<dir>] [--updateLogCmds=<cmds>] --updateLog=<file> --skipFirstLines=<int> --entryHeader=<string>]]
                      [--tickVersion=<bool> [-T <arg>]...]
                      [--tickOnCascade=<slot> ]
-                     [--user=<BitbucketUserName>]
+                     [--user=<CodeReviewUserName>]
                      [--codeReviewsURL=<httpsURL>]
                      [--verifySSL=<bool>]
-                     [--project=<BitbucketProjectKey>]
-                     [--repo=<BitbucketRepoName>]
+                     [--project=<CodeReviewProject>]
+                     [--repo=<CodeReviewRepo>]
                      [-R <arg>]...
                      [--noReview | [[--noReviewSubmodules] [--noReviewSubprojects]]]
                      [--useBitbucket=<bool>]
@@ -688,7 +688,7 @@ Usage:  grape-publish [--squash [--cascade=<branch>... ] | --merge |  --rebase]
         grape-publish --continue
         grape-publish --abort
         grape-publish --printSteps
-        grape-publish --quick -m <msg> [--user=<BitbucketUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
+        grape-publish --quick -m <msg> [--user=<CodeReviewUserName>] [--public=<public>] [--noReview] [--remoteMerge] [--ssh_pat_url=<url>] [--ssh_pat_port=<int>]
         grape-publish  --mergeUpdateLogs --mergedLog=<file> --startVersion=<ver> [--stopVersion=<ver>] [--updateLogDir=<dir>] [--updateLogCmds=<cmds>] [--tagPrefix=<str>] [--tagSuffix=<str>] [--updateLog=<file>]
         grape-publish --sendEmail [--emailNotification=<bool> [--emailHeader=<str> --emailFooter=<str> --emailSubject=<str> --emailSendTo=<addr>
                                  --emailServer=<smtpserver> --emailMaxFiles=<int>]] --topic=<branch> [--topLevelMergeSHA=<SHA>] [--recurse | --noRecurse] [--noRecurseSubprojects]
@@ -788,21 +788,21 @@ Options:
                               Default behavior governed by the flow.topicCascadeTick mapping.
     -T <arg>                  An argument to pass to grape-version tick. Type grape version --help for available options
                               and defaults. -T can be used multiple times to pass multiple arguments.
-    --user=<user>             Your Bitbucket/Gitlab username.
-    --codeReviewsURL=<url>    Your Bitbucket/Gitlab URL, e.g. https://your.home.org/bitbucket .
+    --user=<user>             Your code review username.
+    --codeReviewsURL=<url>    Your GitLab or Bitbucket URL, e.g. https://your.home.org/gitlab .
                               [default: .grapeconfig.project.codeReviewsURL]
     --verifySSL=<bool>        Set to False to ignore SSL certificate verification issues.
                               [default: .grapeconfig.project.verifySSL]
-    --project=<project>       Your Bitbucket Project. See grape-review for more details.
+    --project=<project>       Your GitLab group/namespace or Bitbucket project. See grape-review for more details.
                               [default: .grapeconfig.project.name]
-    --repo=<repo>             Your Bitbucket repo. See grape-review for more details.
+    --repo=<repo>             Your GitLab project/repo or Bitbucket repo. See grape-review for more details.
                               [default: .grapeconfig.repo.name]
     -R <arg>                  Argument(s) to pass to grape-review, in addition to --title="**IN PROGRESS**:" --prepend.
                               Type grape review --help for valid options.
     --noReview                Don't perform any actions that interact with pull requests. Overrides --useBitbucket.
     --noReviewSubmodules      Don't perform any actions that interact with pull requests in submodules.
     --noReviewSubprojects     Don't perform any actions that interact with pull requests in nested subprojects.
-    --useBitbucket=<bool>     Whether or not to use pull requests. [default: .grapeconfig.publish.useStash]
+    --useBitbucket=<bool>     Legacy name for whether or not to use code review pull/merge requests. [default: .grapeconfig.publish.useStash]
     --public=<public>         The branch to publish to. Defaults to the mapping for the current topic branch as described
                               by .grapeconfig.flow.topicDestinationMappings. .grapeconfig.flow.topicPrefixMappings is used
                               if no option for .grapeconfig.flow.topicDestinationMappings exists.
@@ -834,7 +834,7 @@ Options:
                               [default: .grapeconfig.publish.emailMaxFiles]
     --quick                   Perform the following steps only: md1, ensureModifiedSubmodulesAreActive, ensureReview,
                               markInProgress, md2, publish, markAsDone, deleteTopic, done]
-    --remoteMerge             Perform the merge using the Bitbucket REST API.
+    --remoteMerge             Perform the merge using the code review provider REST API.
     --quiet                   Suppress output from custom build and test steps unless there is a failure.
     --ssh_pat_url=<url>       SSH URL for generating Personal Access Tokens to authenticate into a Code Review service's
                               REST API.
