@@ -388,7 +388,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         self.branchPrefix = prefix
         # Historical CLI name. --useBitbucket is wired to .grapeconfig.publish.useStash,
         # but the switch gates all code review provider interactions, including
-        # GitLab merge requests. --noReview is the provider-neutral override.
+        # GitLab merge requests. --noReview can override.
         if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
         if not args["--noReview"] and not isinstance(args["--verifySSL"], bool):
