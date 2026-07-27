@@ -1937,7 +1937,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         if pr is not None:
             logging.info(f"remotely merging {topic} into {public}")
             if pr.merge(merge_commit_message=args["-m"],
-                        should_remove_source_branch=args["--deleteTopic"].lower() == "true",
+                        should_remove_source_branch=str(args["--deleteTopic"]).lower() == "true",
                         merge_when_pipeline_succeeds=False):
                 git.checkout(public, execution_path=self.workspace_dir)
                 git.pull("", execution_path=self.workspace_dir)
