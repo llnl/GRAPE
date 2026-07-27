@@ -347,7 +347,7 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                     repo_status += f"\nRepo contains local changes that will be lost!"
                 # Check for branches that are ahead of their remote tracking branches.
                 # Note this will not detect branches that have never been pushed.
-                branchList = git.branch("-vv", execution_path=working_directory) 
+                branchList = git.branch("-vv", execution_path=working_directory)
                 if re.search(r"\[.*: ahead .*\]", branchList):
                     repo_status += f"\nRepo contains some branches that are ahead of their tracking branches:"
                     for line in branchList.splitlines():
