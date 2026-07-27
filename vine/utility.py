@@ -36,6 +36,17 @@ def getDefaultName():
 
 
 def _serviceFromCodeReviewsURL(url):
+    """
+    Infer the saved username service key from a code review provider URL.
+
+    Args:
+        url: Code review provider URL.
+
+    Returns:
+        "GitLab" for GitLab URLs, "Bitbucket" for Bitbucket/Stash URLs, and
+        None when the URL is empty or does not identify a supported provider.
+        Callers can use None to preserve the generic LC username behavior.
+    """
     if not url:
         return None
     url = url.lower()
