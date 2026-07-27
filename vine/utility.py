@@ -49,12 +49,15 @@ def _serviceFromCodeReviewsURL(url):
     """
     if not url:
         return None
+
     url = url.lower()
+
     if "gitlab" in url:
         return "GitLab"
-    if "bitbucket" in url or "stash" in url:
+    elif "bitbucket" in url or "stash" in url:
         return "Bitbucket"
-    return None
+    else:
+        return None
 
 
 def getUserName(cliArgs=None, defaultName=None, service=None):
