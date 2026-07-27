@@ -35,13 +35,25 @@ def getDefaultName():
         return os.getenv("USER")
 
 
-def getUserName(cliArgs=None, defaultName=None, service="LC"):
+def _serviceFromCodeReviewsURL(url):
+    if not url:
+        return None
+    url = url.lower()
+    if "gitlab" in url:
+        return "GitLab"
+    if "bitbucket" in url or "stash" in url:
+        return "Bitbucket"
+    return None
+
+
+def getUserName(cliArgs=None, defaultName=None, service=None):
     """
     Resolve the username for a given service.
 
     Precedence:
       1) CLI argument: cliArgs['--user'] (if provided and non-empty)
-      2) Home grape config: $HOME/.grapeconfig [services] <service.lower()>
+      2) Home grape config: $HOME/.grapeconfig [services] <service.lower()>;
+         service is inferred from cliArgs['--codeReviewsURL'] when possible
       3) Interactive prompt (or default in non-interactive mode)
 
     If the user opts in, persist the username to:
@@ -50,7 +62,8 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
     Args:
         cliArgs: Parsed CLI args dict (e.g., from docopt) that may include '--user'.
         defaultName: Default username to present in prompt; if None, uses getDefaultName().
-        service: Service identifier (e.g., "LC"); stored/looked up as lowercase.
+        service: Service identifier (e.g., "GitLab"). If omitted, infer from
+                 cliArgs['--codeReviewsURL'] when possible, otherwise use "LC".
 
     Returns:
         The resolved username (str).
@@ -65,6 +78,9 @@ def getUserName(cliArgs=None, defaultName=None, service="LC"):
     # Use the CLI argument if provided
     if cliArgs and cliArgs.get('--user'):
         return cliArgs['--user']
+
+    if service is None:
+        service = _serviceFromCodeReviewsURL(cliArgs.get('--codeReviewsURL') if cliArgs else None) or "LC"
 
     # Check for a saved entry in the home grape config (not workspace/user config)
     home_dir = config_parser_global.get_env_config_path()

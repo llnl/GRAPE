@@ -78,7 +78,7 @@ def test_parse_args_defaults_gitlab_user_from_gitlab_service():
     with patch("vine.publish.utility.getUserName", return_value="gitlab-user") as get_user_name:
         _parse_publish_args(args)
 
-    get_user_name.assert_called_once_with(service="GitLab")
+    get_user_name.assert_called_once_with(args)
     assert args["--user"] == "gitlab-user"
 
 
@@ -88,7 +88,7 @@ def test_parse_args_defaults_bitbucket_user_for_bitbucket_and_stash(url):
     with patch("vine.publish.utility.getUserName", return_value="bitbucket-user") as get_user_name:
         _parse_publish_args(args)
 
-    get_user_name.assert_called_once_with(service="Bitbucket")
+    get_user_name.assert_called_once_with(args)
     assert args["--user"] == "bitbucket-user"
 
 
@@ -99,6 +99,15 @@ def test_parse_args_no_review_does_not_resolve_provider_user():
 
     get_user_name.assert_not_called()
     assert args["--user"] is None
+
+
+def test_parse_args_unknown_provider_uses_generic_username_resolution():
+    args = _publish_args("https://example.org/reviews")
+    with patch("vine.publish.utility.getUserName", return_value="env-user") as get_user_name:
+        _parse_publish_args(args)
+
+    get_user_name.assert_called_once_with(args)
+    assert args["--user"] == "env-user"
 
 
 def test_remote_merge_uses_code_reviews_property_and_provider_merge_signature():

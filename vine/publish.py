@@ -31,6 +31,11 @@ from vine.ReviewRule import ReviewRuleManager
 from vine.vine_logging import log_wrapper
 import stashy.stashy.errors as stashyErrors
 
+# python-gitlab defines this as gitlab.exceptions.GitlabMRClosedError.
+# The Gitlab module imports python-gitlab opportunistically because Bitbucket
+# users may not have that optional dependency installed. Resolve the exception
+# through vine.Gitlab when it exists, and use a private fallback exception class
+# so this module can still import in Bitbucket-only environments.
 GitlabMRClosedError = getattr(getattr(Gitlab, "gitlab", None), "exceptions", None)
 GitlabMRClosedError = getattr(
     GitlabMRClosedError,
@@ -320,7 +325,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         config.set(self.SECTION_PUBLISH, 'postpublishDir', '.')
         # tick the version?
         config.set(self.SECTION_PUBLISH, 'tickVersion', 'False')
-        # use code reviews for checking Pull Request/Merge Request status?
+        # Historical config name. useStash now means "use a code review
+        # provider" for both Bitbucket pull requests and GitLab merge requests.
         config.set(self.SECTION_PUBLISH, 'useStash', 'True')
         # delete when done
         config.set(self.SECTION_PUBLISH, 'deleteTopic', 'False')
@@ -380,7 +386,9 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             public = config.getPublicBranchFor(topic)
         args["--public"] = public
         self.branchPrefix = prefix
-        # whether or not to use code reviews
+        # Historical CLI name. --useBitbucket is wired to .grapeconfig.publish.useStash,
+        # but the switch gates all code review provider interactions, including
+        # GitLab merge requests. --noReview is the provider-neutral override.
         if args["--useBitbucket"].lower() == "false" and not args["--noReview"]:
             args["--noReview"] = True
         if not args["--noReview"] and not isinstance(args["--verifySSL"], bool):
@@ -390,8 +398,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         user = args["--user"]
 
         if not user and not args["--noReview"] and not args["--printSteps"]:
-            service = "GitLab" if "gitlab" in args["--codeReviewsURL"].lower() else "Bitbucket"
-            args["--user"] = utility.getUserName(service=service)
+            # getUserName infers GitLab or Bitbucket from --codeReviewsURL.
+            # Unknown providers use the generic LC service and default to
+            # $USER/$USERNAME when prompting or running non-interactively.
+            args["--user"] = utility.getUserName(args)
 
 
         if args["--tickVersion"] is not False and args["--tickVersion"] is not True:
