@@ -547,10 +547,23 @@ def pull(args, throwOnFail=False, *, execution_path):
         raise e
 
 
-def push(args, throwOnFail=False, *, execution_path):
+def _logRemoteMessages(output):
+    """Surfaces git server messages that are normally written to stderr."""
+    seen = set()
+    for line in output.splitlines():
+        stripped = line.strip()
+        if stripped.lower().startswith("remote:") and stripped not in seen:
+            logging.info(stripped)
+            seen.add(stripped)
+
+
+def push(args, throwOnFail=False, quietRemoteMessages=False, *, execution_path):
     try:
-        return gitcmd(f"push --porcelain {args}", "Push failed",
-                      execution_path=execution_path)
+        output = gitcmd(f"push --porcelain {args}", "Push failed",
+                        execution_path=execution_path)
+        if not quietRemoteMessages:
+            _logRemoteMessages(output)
+        return output
     except grape_errors.GrapeGitError as e:
         if e.commError:
             logging.warning("WARNING: Push failed due to connectivity issues.")

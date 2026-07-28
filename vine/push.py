@@ -13,13 +13,14 @@ class Push(Option, WorkspaceDirHandler):
     grape push pushes your current branch to origin for your outer level repo and all subprojects.
     it uses 'git push -u origin <branch>' for the git command.
 
-    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll]
+    Usage: grape-push [--noTopLevel] [--noRecurse] [--noRecurseSubprojects] [--pushAll] [--quietRemoteMessages]
 
     Options:
         --noTopLevel            Don't perform push in top level repo.
         --noRecurse             Don't perform pushes in submodules.
         --noRecurseSubprojects  Don't perform pushes in nested subprojects.
         --pushAll               Push all repositories regardless of whether local is ahead of origin.
+        --quietRemoteMessages   Suppress `remote: ...` messages from git push output.
 
     """
     def __init__(self):
@@ -57,10 +58,13 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
     If --pushAll is provided, always push (previous behavior).
     """
     push_all = args.get("--pushAll", False) if isinstance(args, dict) else False
+    quiet_remote_messages = args.get("--quietRemoteMessages", False) if isinstance(args, dict) else False
 
     if push_all:
         logging.info(f"Pushing {branch} in {repo} (pushAll)...")
-        git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
+        git.push(f"-u origin {branch}", throwOnFail=True,
+                 quietRemoteMessages=quiet_remote_messages,
+                 execution_path=repo)
         return True
 
     # Determine if local is ahead of origin; if not, skip
@@ -77,7 +81,9 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
         if not remote_ref_exists:
             # No remote tracking branch present locally; push to create it
             logging.info(f"Pushing {branch} in {repo} (no remote ref exists)...")
-            git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
+            git.push(f"-u origin {branch}", throwOnFail=True,
+                     quietRemoteMessages=quiet_remote_messages,
+                     execution_path=repo)
             return True
 
         local_contains_remote = git.branchUpToDateWith(branch, remote_ref, execution_path=repo)
@@ -85,7 +91,9 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
 
         if local_contains_remote and not remote_contains_local:
             logging.info(f"Pushing {branch} in {repo} (local ahead of origin)...")
-            git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
+            git.push(f"-u origin {branch}", throwOnFail=True,
+                     quietRemoteMessages=quiet_remote_messages,
+                     execution_path=repo)
             return True
         else:
             if remote_contains_local and local_contains_remote:
@@ -101,7 +109,9 @@ def push(repo='', branch='master', args={}, *, workspace_dir):
     except grape_errors.GrapeGitError as e:
         logging.error("Failed to determine push necessity; attempting push anyway.")
         logging.debug(e.gitOutput)
-        git.push(f"-u origin {branch}", throwOnFail=True, execution_path=repo)
+        git.push(f"-u origin {branch}", throwOnFail=True,
+                 quietRemoteMessages=quiet_remote_messages,
+                 execution_path=repo)
         return True
 
 def handlePushMRE(mre):

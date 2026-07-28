@@ -49,6 +49,23 @@ class FakeRequest:
         return self._url
 
 
+class FakeDescriptionModel:
+    """Minimal description model stub for review.execute unit tests."""
+
+    def __init__(self, text='test description'):
+        self.reviewRules = {}
+        self._text = text
+
+    def add_related_pull_request(self, _url):
+        return None
+
+    def clear_related_pull_requests(self):
+        return None
+
+    def to_text(self):
+        return self._text
+
+
 class TestReview(testGrape.TestGrape):
 
     def testReview(self):
@@ -372,3 +389,87 @@ class TestReview(testGrape.TestGrape):
 
         self.assertTrue(ret)
         print_comments.assert_called_once()
+
+    def testReviewUsesQuietRemoteMessagesForPushes(self):
+        """Review-triggered pushes should suppress surfaced remote notices."""
+
+        args = {
+            '--test': True,
+            '--verifySSL': 'true',
+            '--codeReviewsURL': 'https://example.org/gitlab',
+            '--ssh_pat_port': '7999',
+            '--ssh_pat_url': 'git@example.org',
+            '--project': 'grp',
+            '--repo': 'repo1',
+            '--source': 'topic/test',
+            '--target': 'master',
+            '--printUnresolvedComments': False,
+            '--noLocal': False,
+            '--state': 'open',
+            '--subprojectsOnly': False,
+            '--noRecurse': True,
+            '--recurse': False,
+            '--noRecurseSubprojects': True,
+            '--draft': False,
+            '--ready': False,
+            '--title': None,
+            '--descr': None,
+            '-m': None,
+            '--update': False,
+            '--add': False,
+            '--prepend': False,
+            '--append': False,
+            '--reviewers': None,
+            '--skiplabels': True,
+            '--label_ref': None,
+            '--pushModifiedOnly': False,
+            '--skipSubproject': [],
+            '--ignoreCommenter': [],
+            '--user': 'user',
+        }
+
+        review_option = review.Review()
+        review_option.workspace_dir = self.repo
+
+        fake_request = mock.Mock()
+        fake_request.link.return_value = 'https://gitlab.example/mr/1'
+        fake_request.description.return_value = 'test description'
+
+        fake_menu = mock.Mock()
+        fake_menu.applyMenuChoice.side_effect = lambda choice, argv: True
+
+        fake_review_rule_manager = mock.Mock()
+        fake_review_rule_manager.reviewRules = {}
+        fake_review_rule_manager.get_default_rule.return_value = mock.Mock(name='default', label='Default')
+
+        top_repo_context = {
+            'project_name': 'grp',
+            'repo_name': 'repo1',
+            'review_request': None,
+            'source_branch': 'topic/test',
+            'target_branch': 'master',
+            'grape_config': mock.Mock()
+        }
+
+        with mock.patch('vine.review.utility.getUserName', return_value='user'):
+            with mock.patch('vine.review.CodeReviewsFactory.makeCodeReviews', return_value=mock.Mock(url='https://example.org/gitlab')):
+                with mock.patch.object(review.Review, '_get_top_repo_context', return_value=top_repo_context):
+                    with mock.patch('vine.review.git.push') as git_push:
+                        with mock.patch('vine.review.ReviewRuleManager.from_config', return_value=fake_review_rule_manager):
+                            with mock.patch('vine.review.PullRequestDescriptionModel.from_text', return_value=FakeDescriptionModel()):
+                                with mock.patch('vine.review.parseReviewers', return_value={}):
+                                    with mock.patch('vine.review.CodeReviewsFactory.repoObject', return_value=mock.Mock()):
+                                        with mock.patch('vine.review.postPullRequest', return_value=fake_request):
+                                            with mock.patch('vine.review.git.hasBranch', return_value=True):
+                                                with mock.patch('vine.review.git.branchUpToDateWith', return_value=False):
+                                                    with mock.patch('vine.review.git.log', return_value='abc123 commit'):
+                                                        with mock.patch('vine.review.grapeMenu.menu', return_value=fake_menu):
+                                                            ret = review_option.execute(args)
+
+        self.assertTrue(ret)
+        git_push.assert_called_with('origin topic/test', execution_path=self.repo,
+                                    quietRemoteMessages=True)
+        fake_menu.applyMenuChoice.assert_any_call(
+            'push',
+            ['push', '--noTopLevel', '--quietRemoteMessages', '--noRecurse', '--noRecurseSubprojects']
+        )
