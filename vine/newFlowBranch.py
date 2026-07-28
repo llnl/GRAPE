@@ -119,7 +119,7 @@ class NewBranchOption(Option, WorkspaceDirHandler):
             if replacedProjects:
                 nestedReplacementPlan = checkout.preflightReplacedNestedSubprojects(
                     previousNestedConfig, targetNestedConfig, replacedProjects,
-                    workspace_dir=self.workspace_dir)
+                    workspace_dir=self.workspace_dir, branch=currentBranch)
                 if nestedReplacementPlan is None:
                     return False
                 if not checkout.applyReplacedNestedSubprojects(

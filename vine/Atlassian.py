@@ -405,7 +405,7 @@ class PullRequest(StashyNode):
                f"Reviewers: {all_reviewers}\n" + \
                f"Description: {self.description()}\n"
 
-    def merge(self):
+    def merge(self, merge_commit_message=None, should_remove_source_branch=False, merge_when_pipeline_succeeds=False):
         canMerge = self._stashy_pull_request.can_merge()
         if canMerge is True:
             response = self._stashy_pull_request.merge(version=self.node["version"])

@@ -1580,9 +1580,10 @@ class PullRequest:
                f"Reviewers: {all_reviewers}\n" + \
                f"Description: {self.description()}\n"
 
-    def merge(self, merge_commit_message, should_remove_source_branch, merge_when_pipeline_succeeds):
+    def merge(self, merge_commit_message=None, should_remove_source_branch=False, merge_when_pipeline_succeeds=False):
         try:
-            self.mergerequest.merge(merge_commit_message=merge_commit_message, should_remove_source_branch=False,
+            self.mergerequest.merge(merge_commit_message=merge_commit_message,
+                                    should_remove_source_branch=should_remove_source_branch,
                                     merge_when_pipeline_succeeds=merge_when_pipeline_succeeds)
             return True
         except gitlab.exceptions.GitlabMRClosedError as e:

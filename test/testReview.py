@@ -248,6 +248,48 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual('probinso', user_name)
         user_input.assert_any_call('Enter LC User Name:', 'probinso')
 
+    def testGetUserNameInfersGitLabServiceFromArgs(self):
+        """Parsed code review args select the GitLab service key."""
+
+        fake_home = os.path.join(self.repo, 'fake-home-gitlab')
+        os.makedirs(fake_home)
+
+        args = {'--user': None, '--codeReviewsURL': 'https://example.org/gitlab'}
+        with mock.patch('vine.utility.config_parser_global.get_env_config_path', return_value=fake_home):
+            with mock.patch('vine.utility.userInput', side_effect=['git-user', False]) as user_input:
+                user_name = utility.getUserName(args)
+
+        self.assertEqual('git-user', user_name)
+        user_input.assert_any_call('Enter GitLab User Name:', os.getenv('USER'))
+
+    def testGetUserNameInfersBitbucketServiceFromArgs(self):
+        """Bitbucket and Stash URLs continue to use the Bitbucket service key."""
+
+        fake_home = os.path.join(self.repo, 'fake-home-bitbucket')
+        os.makedirs(fake_home)
+
+        args = {'--user': None, '--codeReviewsURL': 'https://example.org/stash'}
+        with mock.patch('vine.utility.config_parser_global.get_env_config_path', return_value=fake_home):
+            with mock.patch('vine.utility.userInput', side_effect=['bb-user', False]) as user_input:
+                user_name = utility.getUserName(args)
+
+        self.assertEqual('bb-user', user_name)
+        user_input.assert_any_call('Enter Bitbucket User Name:', os.getenv('USER'))
+
+    def testGetUserNameUnknownProviderUsesGenericService(self):
+        """Unknown provider URLs keep the historical LC service behavior."""
+
+        fake_home = os.path.join(self.repo, 'fake-home-generic')
+        os.makedirs(fake_home)
+
+        args = {'--user': None, '--codeReviewsURL': 'https://example.org/reviews'}
+        with mock.patch('vine.utility.config_parser_global.get_env_config_path', return_value=fake_home):
+            with mock.patch('vine.utility.userInput', side_effect=['generic-user', False]) as user_input:
+                user_name = utility.getUserName(args)
+
+        self.assertEqual('generic-user', user_name)
+        user_input.assert_any_call('Enter LC User Name:', os.getenv('USER'))
+
     def testGetIgnoredCommenters(self):
         """Configured ignored commenters should be normalized to lowercase."""
 
