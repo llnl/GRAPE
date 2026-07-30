@@ -611,7 +611,7 @@ Options:
     --noRecurse             Don't perform pushes in submodules.
     --noRecurseSubprojects  Don't perform pushes in nested subprojects.
     --pushAll               Push all repositories regardless of whether local is ahead of origin.
-    --quietRemoteMessages   Suppress `remote: ...` messages from git push output.
+    --quietRemoteMessages   Suppress `remote: ...` messages and GitLab review hints from git push output.
 
 
 ## pull
