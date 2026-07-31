@@ -334,6 +334,21 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 logging.error("Workspace inconsistent! Aborting attempt to do the merge. Please address above issues and then try again.")
                 return False
 
+        if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
+            # make sure public branches are to date in outer level repo.
+            logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
+            upCmd = ['up', f'--public={args["--public"]}']
+            if not args["--forceUpdate"]:
+                upCmd.append("--noForce")
+            ret = menu.applyMenuChoice('up', upCmd)
+            if args["--ensureCleanUpdate"] and ret is False:
+                logging.error("Failed to update public branches! Please address above issues (or run with --noUpdate) and try again.")
+                return False
+            self.progress["updateLocalDone"] = True
+
+        # "utility.userInput" is a function
+        git.fixActiveSubmodules(self.workspace_dir, utility.userInput)
+
         if ("nestedReplacementPlan" not in self.progress and
                 not self.progress.get("outerLevelDone", False)):
             previousConfig, branchConfig, _, _, replacedProjects = (
@@ -349,21 +364,6 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                 if replacementPlan is None:
                     return False
                 self.progress["nestedReplacementPlan"] = replacementPlan
-
-        if "updateLocalDone" not in self.progress and not args["--noUpdate"]:
-            # make sure public branches are to date in outer level repo.
-            logging.info("Calling grape up to ensure topic and public branches are up-to-date. ")
-            upCmd = ['up', f'--public={args["--public"]}']
-            if not args["--forceUpdate"]:
-                upCmd.append("--noForce")
-            ret = menu.applyMenuChoice('up', upCmd)
-            if args["--ensureCleanUpdate"] and ret is False:
-                logging.error("Failed to update public branches! Please address above issues (or run with --noUpdate) and try again.")
-                return False
-            self.progress["updateLocalDone"] = True
-
-        # "utility.userInput" is a function
-        git.fixActiveSubmodules(self.workspace_dir, utility.userInput)
 
         addedModules = []
         removedModules = []
