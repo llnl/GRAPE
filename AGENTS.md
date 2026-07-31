@@ -1,3 +1,11 @@
+## Overview
+
+GRAPE is a python3 project for managing multiple git repos withing a single project of interconnected repositories.
+
+Use google style documentation for new code, except for where we use docopt strings to define CLI for commands.
+
+Do not modify README.md or README\_TPL.md - these are auto updated as part of our publish process.
+
 ## Skills
 A skill is a set of local instructions to follow that is stored in a `SKILL.md` file. Below is the list of skills that can be used. Each entry includes a name, description, and file path so you can open the source for full instructions when using a specific skill.
 
