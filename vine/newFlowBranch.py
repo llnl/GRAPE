@@ -90,6 +90,33 @@ class NewBranchOption(Option, WorkspaceDirHandler):
             return False
 
         currentBranch = git.currentBranch(execution_path=self.workspace_dir)
+
+        # Determine whether the public branch for the current branch is the
+        # same as the public branch for the new branch.
+        checkoutBeforeCreate = True
+        try:
+            if currentBranch in config.get(Option.SECTION_FLOW, 'publicBranches'):
+               currentPublic = currentBranch
+            else:
+               currentPublic = config.getPublicBranchFor(currentBranch)
+            if currentPublic == start:
+               checkoutBeforeCreate = False
+        except:
+            pass
+
+        # ensure public branches are up-to-date before proceeding
+        grapeMenu.menu().applyMenuChoice('up', ['--noRecurse'])
+
+        if checkoutBeforeCreate:
+            logging.info(f"Checking out public branch {start} before branch creation...")
+
+            updateView.safeSwitchWorkspaceToBranch(branch=start, checkoutArgs="", sync=True, workspace_dir=self.workspace_dir)
+            # Re-read the grape config from the new public branch
+            config_parser_global.resetGrapeConfig()
+            config_parser_global.read(workspace_dir=self.workspace_dir)
+            config = config_parser_global.grapeConfig()
+
+
         activeSubmodulesCheck = git.getActiveSubmodules(execution_path=self.workspace_dir)
 
         addedModules = []
@@ -128,32 +155,6 @@ class NewBranchOption(Option, WorkspaceDirHandler):
                         targetNestedConfig,
                         workspace_dir=self.workspace_dir):
                     return False
-
-        # Determine whether the public branch for the current branch is the
-        # same as the public branch for the new branch.
-        checkoutBeforeCreate = True
-        try:
-            if currentBranch in config.get(Option.SECTION_FLOW, 'publicBranches'):
-               currentPublic = currentBranch
-            else:
-               currentPublic = config.getPublicBranchFor(currentBranch)
-            if currentPublic == start:
-               checkoutBeforeCreate = False
-        except:
-            pass
-
-        # ensure public branches are up-to-date before proceeding
-        grapeMenu.menu().applyMenuChoice('up', ['--noRecurse'])
-
-        if checkoutBeforeCreate:
-            logging.info(f"Checking out public branch {start} before branch creation...")
-
-            updateView.safeSwitchWorkspaceToBranch(branch=start, checkoutArgs="", sync=True, workspace_dir=self.workspace_dir)
-            # Re-read the grape config from the new public branch
-            config_parser_global.resetGrapeConfig()
-            config_parser_global.read(workspace_dir=self.workspace_dir)
-            config = config_parser_global.grapeConfig()
-
 
         launcher = multi_repo_cmd_launcher.MultiRepoCommandLauncher(createBranch,
                                                    runInSubmodules=recurse,

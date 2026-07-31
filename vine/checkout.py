@@ -356,11 +356,17 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                 # Check if this branch has diffs compared to the public branch
                 public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
                 if public != branch:
-                    diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
+                    try:
+                        diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
+                    except grape_errors.GrapeGitError as e:
+                        if f"bad revision '{public}'" in e.gitOutput:
+                            git.fetch(f"origin {public}:{public}", execution_path=working_directory)
+                            diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
                     if diff:
                         repo_status += f"\n{branch} contains changes relative to {public}:"
                         for line in diff.splitlines()[:10]:
                             repo_status += f"\n   {line}"
+
             prompt = (
                 f"Nested subproject {oldPrefix} is changing URL\n"
                 f"   from {oldUrl}\n   to {newUrl}.\nGRAPE must remove the current "
