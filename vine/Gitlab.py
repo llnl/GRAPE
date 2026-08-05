@@ -1526,6 +1526,8 @@ class PullRequest:
                             self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
                         except gitlab.exceptions.GitlabUpdateError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}": {e}')
+                        except gitlab.exceptions.GitlabCreateError as e:
+                            logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}": {e}')
 
                     for reviewer_id in reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
