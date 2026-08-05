@@ -1517,8 +1517,8 @@ class PullRequest:
                             update = False 
                     elif not reviewer_ids and num_required == 0:
                         logging.info(
-                            f'Approval rule "{approval_rule_name}" has no approvers after filtering non-approvers; '
-                            "skipping empty rule creation."
+                            f'Approval rule "{approval_rule_name}" has no approvers after filtering non-approvers. '
+                            "Skipping empty rule creation."
                         )
                         update = False
                     if update:
