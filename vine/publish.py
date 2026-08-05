@@ -965,7 +965,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
                         for assignedReviewer in assignedReviewers:
                             approved = False
 
-                            if assignedReviewer.lower() in non_approver_list:
+                            if assignedReviewer in non_approver_list:
                                 continue
 
                             for reviewer in reviewers:

@@ -1500,7 +1500,7 @@ class PullRequest:
                         else:
                             logging.info(f"Could not find reviewer {r}.")
                             raise SystemExit("Abort")
-                        if non_approvers and r.lower() in non_approvers:
+                        if non_approvers and r in non_approvers:
                             logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
                             num_required -= 1
                             all_reviewer_ids.add(gitlab_reviewer.id)
