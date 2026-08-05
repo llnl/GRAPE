@@ -1515,6 +1515,12 @@ class PullRequest:
                         if eligible_approver_ids == set(reviewer_ids) and matching_rule.approvals_required == num_required:
                             logging.info(f'Approval rule "{approval_rule_name}" unchanged.')
                             update = False 
+                    elif not reviewer_ids and num_required == 0:
+                        logging.info(
+                            f'Approval rule "{approval_rule_name}" has no approvers after filtering non-approvers; '
+                            "skipping empty rule creation."
+                        )
+                        update = False
                     if update:
                         try:
                             self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
