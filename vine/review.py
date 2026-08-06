@@ -1368,10 +1368,36 @@ def cleanupLegacyApprovalRules(request, legacy_approval_rule_labels):
         request.cleanup_legacy_approval_rules(legacy_approval_rule_labels)
 
 
+def flattenReviewers(reviewers):
+    """Convert grouped GRAPE review-rule reviewers to a username list."""
+    if reviewers is None:
+        return None
+
+    if isinstance(reviewers, dict):
+        if not reviewers:
+            return None
+
+        reviewer_usernames = []
+        seen_reviewers = set()
+
+        for review_rule_name in reviewers:
+            reviewer_group = reviewers[review_rule_name]
+
+            for user in reviewer_group['reviewers']:
+                if user not in seen_reviewers:
+                    reviewer_usernames.append(user)
+                    seen_reviewers.add(user)
+
+        return reviewer_usernames
+
+    return list(dict.fromkeys(reviewers))
+
+
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path,
                     wip=None, add_labels=[], remove_labels=[], legacy_approval_rule_labels=None):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
+    reviewer_usernames = flattenReviewers(reviewers)
 
 
     # get the open pull requests outgoing from our public branch
@@ -1387,8 +1413,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                 logging.info(
                     f"Creating new pull request titled '{title}' " + "\n" +
                     f" for branch {branch} targeting {target_branch}. ")
-                logging.info(f"reviewers: {reviewers}, labels={add_labels}")
-                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers,
+                logging.info(f"reviewers: {reviewer_usernames}, labels={add_labels}")
+                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewer_usernames,
                                                  wip=wip, labels=add_labels)
                 if request:
                    url = request.link()
@@ -1418,7 +1444,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
             logging.info("Updating pull request...")
             try:
                 if reviewers:
-                    logging.info(f"Reviewer list is: {reviewers}")
+                    logging.info(f"Reviewer list is: {reviewer_usernames}")
 
                 ver = request.version()
 
@@ -1436,18 +1462,17 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                             title = currentTitle + title
 
                 author = request.author()
-                subReviewers = reviewers.copy()
+                subReviewers = None if reviewer_usernames is None else list(reviewer_usernames)
 
-                for reviewRuleName in subReviewers:
-                    if author in subReviewers[reviewRuleName]['reviewers']:
-                        logging.info(
-                                f"{author} is the author of the pull" +
-                                " request and cannot be a reviewer")
-                        subReviewers[reviewRuleName]['reviewers'].remove(author)
+                if subReviewers is not None and author in subReviewers:
+                    logging.info(
+                            f"{author} is the author of the pull" +
+                            " request and cannot be a reviewer")
+                    subReviewers.remove(author)
 
                 url = request.link()
 
-                if title is not None or descr is not None or subReviewers or add_labels or remove_labels or wip is not None:
+                if title is not None or descr is not None or subReviewers is not None or add_labels or remove_labels or wip is not None:
                     # Determine if any labels will be changing
                     have_changed_labels = False
                     if add_labels or remove_labels:
@@ -1471,7 +1496,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         updates.append(f"description=\n{descr_marker}\n{descr}\n{descr_marker}")
 
                     # Rely on request.update to determine if reviewers have actually changed.
-                    if subReviewers:
+                    if subReviewers is not None:
                         updates.append(f"reviewers={subReviewers}")
 
                     if have_changed_labels:

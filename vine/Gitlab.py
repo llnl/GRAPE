@@ -738,7 +738,7 @@ class Repo:
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
-    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, non_approvers=None, wip=None, labels=[]):
+    def createPullRequest(self, title, branch, target_branch, description=None, reviewers=None, wip=None, labels=[]):
          # GitLab can create merge requests with no commits, but we don't want those,
          # in the case that the branch is behind the target branch.
          # Check that the branch actually has new commits compared to the target.
@@ -1456,8 +1456,29 @@ class PullRequest:
 
         return new_title
 
-    # reviewers is a dict keyed by GRAPE review rule name, valued by reviewer groups.
-    def update(self, ver, title=None, description=None, reviewers=None, non_approvers=None, wip=None, add_labels=[], remove_labels=[]):
+    # reviewers is a list of usernames.
+    def update(self, ver, title=None, description=None, reviewers=None, wip=None, add_labels=[], remove_labels=[]):
+        """Update merge request metadata and reviewer assignments.
+
+        Args:
+            ver: Unused compatibility parameter for the shared pull request
+                adapter interface.
+            title: New merge request title. If omitted, the current title is
+                preserved except for draft-state updates.
+            description: New merge request description. If omitted, the
+                existing description is preserved.
+            reviewers: List of GitLab usernames to assign as merge request
+                reviewers. ``None`` leaves reviewers unchanged, while an empty
+                list clears reviewers.
+            wip: Optional draft-state override. ``True`` marks the merge
+                request as draft, ``False`` marks it ready, and ``None`` leaves
+                draft state unchanged.
+            add_labels: Labels to add to the merge request.
+            remove_labels: Labels to remove from the merge request.
+
+        Returns:
+            PullRequest: This updated pull request wrapper.
+        """
         if title is None:
             title = self.mergerequest.title
 
@@ -1466,23 +1487,19 @@ class PullRequest:
         if description:
             self.mergerequest.description = description
 
-        if reviewers:
+        if reviewers is not None:
             all_reviewer_ids = set()
 
-            for review_rule_name in reviewers:
-                reviewer_group = reviewers[review_rule_name]
-                users = reviewer_group['reviewers']
+            for r in reviewers:
+                matching_reviewers = self.gitlab.users.list(all=True, username=r)
 
-                for r in users:
-                    matching_reviewers = self.gitlab.users.list(all=True, username=r)
+                if matching_reviewers:
+                    gitlab_reviewer = matching_reviewers[0]
+                else:
+                    logging.info(f"Could not find reviewer {r}.")
+                    raise SystemExit("Abort")
 
-                    if matching_reviewers:
-                        gitlab_reviewer = matching_reviewers[0]
-                    else:
-                        logging.info(f"Could not find reviewer {r}.")
-                        raise SystemExit("Abort")
-
-                    all_reviewer_ids.add(gitlab_reviewer.id)
+                all_reviewer_ids.add(gitlab_reviewer.id)
 
             self.mergerequest.reviewer_ids = list(all_reviewer_ids)
 

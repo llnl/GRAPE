@@ -400,15 +400,36 @@ class TestReview(testGrape.TestGrape):
 
         pull_request.update(
             123,
-            reviewers={
-                'code': {'label': 'Code Review', 'reviewers': ['alice']},
-                'docs': {'label': 'Docs Review', 'reviewers': ['bob']},
-            }
+            reviewers=['alice', 'bob']
         )
 
         self.assertCountEqual([101, 102], merge_request.reviewer_ids)
         merge_request.approvals.set_approvers.assert_not_called()
         merge_request.save.assert_called_once()
+
+    def testGitlabUpdateClearsReviewersWithEmptyList(self):
+        """An empty reviewer list should clear GitLab MR reviewers."""
+
+        merge_request = FakeGitlabMergeRequest()
+        merge_request.reviewer_ids = [101]
+        gitlab = mock.Mock()
+        gitlab.users = FakeGitlabUsers({})
+        pull_request = Gitlab.PullRequest(merge_request, gitlab)
+
+        pull_request.update(123, reviewers=[])
+
+        self.assertEqual([], merge_request.reviewer_ids)
+        merge_request.save.assert_called_once()
+
+    def testFlattenReviewersConvertsReviewRuleGroupsToUserList(self):
+        """Provider adapters should receive usernames, not review-rule groups."""
+
+        reviewer_usernames = review.flattenReviewers({
+            'code': {'label': 'Code Review', 'reviewers': ['alice', 'bob']},
+            'docs': {'label': 'Docs Review', 'reviewers': ['alice', 'carol']},
+        })
+
+        self.assertEqual(['alice', 'bob', 'carol'], reviewer_usernames)
 
     def testGitlabCleanupLegacyApprovalRulesDeletesMatchingLabelsOnly(self):
         """Legacy cleanup should delete exact MR approval-rule name matches."""
