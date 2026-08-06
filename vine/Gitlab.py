@@ -1491,7 +1491,7 @@ class PullRequest:
                 # so only update them if they are changed and just warn if they cannot be updated.
 
                 if users:
-                    reviewer_ids = []
+                    rule_reviewer_ids = []
 
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
@@ -1505,17 +1505,17 @@ class PullRequest:
                             num_required -= 1
                             all_reviewer_ids.add(gitlab_reviewer.id)
                         else:
-                            reviewer_ids.append(gitlab_reviewer.id)
+                            rule_reviewer_ids.append(gitlab_reviewer.id)
 
                     update = True
                     if matching_rule is not None:
                         eligible_approver_ids = set()
                         for approver in matching_rule.eligible_approvers:
                             eligible_approver_ids.add(approver["id"]) 
-                        if eligible_approver_ids == set(reviewer_ids) and matching_rule.approvals_required == num_required:
+                        if eligible_approver_ids == set(rule_reviewer_ids) and matching_rule.approvals_required == num_required:
                             logging.info(f'Approval rule "{approval_rule_name}" unchanged.')
                             update = False 
-                    if not reviewer_ids and num_required == 0:
+                    if not rule_reviewer_ids and num_required == 0:
                         logging.info(
                             f'Approval rule "{approval_rule_name}" has no approvers after filtering non-approvers. '
                             "Skipping empty rule creation."
@@ -1523,13 +1523,13 @@ class PullRequest:
                         update = False
                     if update:
                         try:
-                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=rule_reviewer_ids, approval_rule_name=approval_rule_name)
                         except gitlab.exceptions.GitlabCreateError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}": {e}')
                         except gitlab.exceptions.GitlabUpdateError as e:
                             logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}": {e}')
 
-                    for reviewer_id in reviewer_ids:
+                    for reviewer_id in rule_reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
                 else:
                     if matching_rule is not None:
