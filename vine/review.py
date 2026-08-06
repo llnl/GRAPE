@@ -798,6 +798,7 @@ class Review(Option, WorkspaceDirHandler):
         reviewRuleManager = ReviewRuleManager.from_config()
         reviewRules = reviewRuleManager.reviewRules
         defaultReviewRule = reviewRuleManager.get_default_rule()
+        legacyApprovalRuleLabels = set(reviewRule.label for reviewRule in reviewRules.values())
 
         # determine pull request description
         descr = self.parseDescriptionArgs(args)
@@ -815,15 +816,6 @@ class Review(Option, WorkspaceDirHandler):
                 'label': reviewRules[defaultReviewRule.name].label,
                 'reviewers': [r[0] for r in existingOuterLevelRequest.reviewers()]
             }
-
-        non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
-
-        non_approver_list = set()
-        if non_approvers:
-            if len(non_approvers.split()) > 1:
-                logging.warning(f'GRAPE: WARNING: {self.SECTION_REVIEW}.non_approvers should be comma-delimited. Ignoring...')
-            else:
-                non_approver_list.update(non_approvers.lower().split(','))
 
         savedReviewers = ''
         reviewRuleModels = descriptionModel.reviewRules
@@ -868,16 +860,6 @@ class Review(Option, WorkspaceDirHandler):
                     if ruleLabel in reviewRuleModels:
                         if not reviewRuleModels[ruleLabel]['approvals']:
                             del reviewRuleModels[ruleLabel]
-
-        # Add inactive rules with empty reviewer lists in order to delete any
-        # outdated approval rules.
-        if reviewers:
-            for reviewRuleName in reviewRules:
-                if not reviewRules[reviewRuleName].active:
-                    reviewers[reviewRuleName] = {
-                        'label': reviewRules[reviewRuleName].label,
-                        'reviewers': []
-                    }
 
         # Store reviewers in args so that it can be added later to the
         # merge/pull request description.
@@ -974,7 +956,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                          "proj": submodule,
                                                                          "outerLevelURL": outerLevelURL,
                                                                          "reviewers": submoduleReviewers,
-                                                                         "non_approver_list" : non_approver_list,
+                                                                         "legacy_approval_rule_labels": legacyApprovalRuleLabels,
                                                                          "wip" : wip,
                                                                          "active": submodule in activeSubmodules }]))
 
@@ -999,7 +981,7 @@ class Review(Option, WorkspaceDirHandler):
                                                                     "proj": proj,
                                                                     "outerLevelURL": outerLevelURL,
                                                                     "reviewers": subprojectReviewers,
-                                                                    "non_approver_list" : non_approver_list,
+                                                                    "legacy_approval_rule_labels": legacyApprovalRuleLabels,
                                                                     "wip" : wip,
                                                                     "active": proj in activeNestedSubprojects}]))
 
@@ -1059,7 +1041,7 @@ class Review(Option, WorkspaceDirHandler):
 
             outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
-            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, args, self.workspace_dir, non_approver_list=non_approver_list, wip=wip, add_labels=add_labels, remove_labels=remove_labels)
+            request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, args, self.workspace_dir, wip=wip, add_labels=add_labels, remove_labels=remove_labels, legacy_approval_rule_labels=legacyApprovalRuleLabels)
 
             # Update related reviews
             outerLevelURL = request.link()
@@ -1092,8 +1074,9 @@ class Review(Option, WorkspaceDirHandler):
                                           outerReviewers,
                                           args,
                                           self.workspace_dir,
-                                          non_approver_list=non_approver_list, wip=wip,
-                                          add_labels=add_labels, remove_labels=remove_labels)
+                                          wip=wip,
+                                          add_labels=add_labels, remove_labels=remove_labels,
+                                          legacy_approval_rule_labels=legacyApprovalRuleLabels)
 
             logging.debug(f"Request generated/updated:\n\n{request}")
 
@@ -1122,7 +1105,6 @@ class Review(Option, WorkspaceDirHandler):
         config.set(self.SECTION_REPO, "ssh_pat_url", "git@gitlab.your.host.org")
         config.set(self.SECTION_REPO, "ssh_pat_port", "7999")
         config.ensureSection(self.SECTION_REVIEW)
-        config.set(self.SECTION_REVIEW, "non_approvers", "gitlabduo")
 
 
 def MRLinkText():
@@ -1330,7 +1312,7 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
     proj = kwargs["proj"]
     outerLevelURL = kwargs["outerLevelURL"]
     reviewers = kwargs["reviewers"]
-    non_approver_list  = kwargs["non_approver_list"]
+    legacy_approval_rule_labels = kwargs.get("legacy_approval_rule_labels")
     wip = kwargs["wip"]
     active = kwargs["active"]
 
@@ -1348,7 +1330,8 @@ def PostPullRequestForRepo(repo, branch, args, *, workspace_dir):
         codeReview_repo = CodeReviewsFactory.repoObject(codeReviews)
 
     newRequest = postPullRequest(codeReview_repo, title, branch, target_branch, descr, reviewers,
-                                 review_args, repo, non_approver_list=non_approver_list, wip=wip)
+                                 review_args, repo, wip=wip,
+                                 legacy_approval_rule_labels=legacy_approval_rule_labels)
     if newRequest:
         return newRequest.link()
     else:
@@ -1379,8 +1362,14 @@ def targetBranchMissing(errorMessage):
     return False
 
 
+def cleanupLegacyApprovalRules(request, legacy_approval_rule_labels):
+    """Run GitLab legacy approval-rule cleanup when the request supports it."""
+    if request and hasattr(request, "cleanup_legacy_approval_rules"):
+        request.cleanup_legacy_approval_rules(legacy_approval_rule_labels)
+
+
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path,
-                    non_approver_list=[], wip=None, add_labels=[], remove_labels=[]):
+                    wip=None, add_labels=[], remove_labels=[], legacy_approval_rule_labels=None):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
 
@@ -1400,8 +1389,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                     f" for branch {branch} targeting {target_branch}. ")
                 logging.info(f"reviewers: {reviewers}, labels={add_labels}")
                 request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers,
-                                                 non_approvers=non_approver_list, wip=wip,
-                                                 labels=add_labels)
+                                                 wip=wip, labels=add_labels)
                 if request:
                    url = request.link()
                    logging.info(f"Pull request created at {url} .")
@@ -1417,9 +1405,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         git.push(f"origin {target_branch}", execution_path=git_execution_path,
                                  quietRemoteMessages=True)
                         postPullRequest(repo, title, branch, target_branch, descr, reviewers,
-                                        args, git_execution_path,
-                                        non_approver_list=non_approver_list, wip=wip,
-                                        add_labels=add_labels, remove_labels=remove_labels)
+                                        args, git_execution_path, wip=wip,
+                                        add_labels=add_labels, remove_labels=remove_labels,
+                                        legacy_approval_rule_labels=legacy_approval_rule_labels)
         else:
             logging.info(
                 f"No pull request from {branch} to {target_branch} to update")
@@ -1497,8 +1485,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         update_string = '\n'.join(updates)
                         logging.info(f"Updating review request with the following changes:\n{update_string}")
                         request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
-                                                 non_approvers=non_approver_list, wip=wip,
-                                                 add_labels=add_labels, remove_labels=remove_labels)
+                                                 wip=wip, add_labels=add_labels, remove_labels=remove_labels)
                         if have_changed_labels:
                            logging.info("Regenerating pipeline...")
                            request.regeneratePipeline()
@@ -1516,6 +1503,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
             logging.info(f"Pull request from {branch} to " +
                          f"{target_branch} already exists, can't add a new one")
 
+    cleanupLegacyApprovalRules(request, legacy_approval_rule_labels)
     return request
 
 
