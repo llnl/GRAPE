@@ -1492,6 +1492,7 @@ class PullRequest:
 
                 if users:
                     rule_reviewer_ids = []
+                    rule_reviewer_usernames = []
 
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
@@ -1508,6 +1509,7 @@ class PullRequest:
                             all_reviewer_ids.add(gitlab_reviewer.id)
                         else:
                             rule_reviewer_ids.append(gitlab_reviewer.id)
+                            rule_reviewer_usernames.append(r)
 
                     update = True
 
@@ -1532,9 +1534,9 @@ class PullRequest:
                         try:
                             self.mergerequest.approvals.set_approvers(num_required,approver_ids=rule_reviewer_ids, approval_rule_name=approval_rule_name)
                         except gitlab.exceptions.GitlabCreateError as e:
-                            logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}": {e}')
+                            logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}" requiring {num_required} approvals from the set of reviewers {rule_reviewer_usernames} (ids: {rule_reviewer_ids}): {e}')
                         except gitlab.exceptions.GitlabUpdateError as e:
-                            logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}": {e}')
+                            logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}" requiring {num_required} approvals from the set of reviewers {rule_reviewer_usernames} (ids: {rule_reviewer_ids}): {e}')
 
                     for reviewer_id in rule_reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
