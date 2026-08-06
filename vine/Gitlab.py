@@ -1488,7 +1488,7 @@ class PullRequest:
             self.mergerequest.description = description
 
         if reviewers is not None:
-            all_reviewer_ids = set()
+            reviewer_ids = set()
 
             for r in reviewers:
                 matching_reviewers = self.gitlab.users.list(all=True, username=r)
@@ -1499,9 +1499,9 @@ class PullRequest:
                     logging.info(f"Could not find reviewer {r}.")
                     raise SystemExit("Abort")
 
-                all_reviewer_ids.add(gitlab_reviewer.id)
+                reviewer_ids.add(gitlab_reviewer.id)
 
-            self.mergerequest.reviewer_ids = list(all_reviewer_ids)
+            self.mergerequest.reviewer_ids = list(reviewer_ids)
 
         if self.mergerequest.description:
             self.mergerequest.description = re.sub(r"([^\n])\n([^\n])", r"\1\n\n\2", self.mergerequest.description)
