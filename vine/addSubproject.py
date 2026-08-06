@@ -68,7 +68,7 @@ class AddSubproject(Option, WorkspaceDirHandler):
                     # Fall back to public branch if branch is not found
                     git.clone(argstr=f"-b {public_branch} {filter_arg_str}", source_repo=url,
                               clone_repo=prefix, execution_path=workspace_dir,
-                              print_warnings=False)
+                              print_warnings=False, raiseOnCommError=True)
                     logging.warning(f"WARNING: {branch} not found when cloning into {prefix}, falling back to {public_branch}!")
                 except grape_errors.GrapeGitError as e:
                     if f"Remote branch {public_branch} not found" in e.gitOutput:
