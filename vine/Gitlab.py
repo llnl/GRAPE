@@ -1491,37 +1491,54 @@ class PullRequest:
                 # so only update them if they are changed and just warn if they cannot be updated.
 
                 if users:
-                    reviewer_ids = []
+                    rule_reviewer_ids = []
+                    rule_reviewer_usernames = []
 
                     for r in users:
                         matching_reviewers = self.gitlab.users.list(all=True, username=r)
+
                         if matching_reviewers:
                             gitlab_reviewer = matching_reviewers[0]
                         else:
                             logging.info(f"Could not find reviewer {r}.")
                             raise SystemExit("Abort")
+
                         if non_approvers and r in non_approvers:
                             logging.info(f"Reviewer {r} is a non-approver, not adding to {approval_rule_name}.")
                             num_required -= 1
                             all_reviewer_ids.add(gitlab_reviewer.id)
                         else:
-                            reviewer_ids.append(gitlab_reviewer.id)
+                            rule_reviewer_ids.append(gitlab_reviewer.id)
+                            rule_reviewer_usernames.append(r)
 
                     update = True
+
                     if matching_rule is not None:
                         eligible_approver_ids = set()
+
                         for approver in matching_rule.eligible_approvers:
                             eligible_approver_ids.add(approver["id"]) 
-                        if eligible_approver_ids == set(reviewer_ids) and matching_rule.approvals_required == num_required:
+
+                        if eligible_approver_ids == set(rule_reviewer_ids) and matching_rule.approvals_required == num_required:
                             logging.info(f'Approval rule "{approval_rule_name}" unchanged.')
                             update = False 
+
+                    if not rule_reviewer_ids and num_required == 0:
+                        logging.info(
+                            f'Approval rule "{approval_rule_name}" has no approvers after filtering non-approvers. '
+                            'Skipping empty rule creation.'
+                        )
+                        update = False
+
                     if update:
                         try:
-                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=reviewer_ids, approval_rule_name=approval_rule_name)
+                            self.mergerequest.approvals.set_approvers(num_required,approver_ids=rule_reviewer_ids, approval_rule_name=approval_rule_name)
+                        except gitlab.exceptions.GitlabCreateError as e:
+                            logging.warning(f'GRAPE: WARNING: Failed to create approval rule "{approval_rule_name}" requiring {num_required} approvals from the set of reviewers {rule_reviewer_usernames} (ids: {rule_reviewer_ids}): {e}')
                         except gitlab.exceptions.GitlabUpdateError as e:
-                            logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}": {e}')
+                            logging.warning(f'GRAPE: WARNING: Failed to update approval rule "{approval_rule_name}" requiring {num_required} approvals from the set of reviewers {rule_reviewer_usernames} (ids: {rule_reviewer_ids}): {e}')
 
-                    for reviewer_id in reviewer_ids:
+                    for reviewer_id in rule_reviewer_ids:
                         all_reviewer_ids.add(reviewer_id)
                 else:
                     if matching_rule is not None:
@@ -1538,13 +1555,16 @@ class PullRequest:
             self.mergerequest.description = re.sub(r"([^\n])\n([^\n])", r"\1\n\n\2", self.mergerequest.description)
 
         labels = set(self.mergerequest.labels)
+
         for label in add_labels:
             labels.add(label)
+
         for label in remove_labels:
             try:
                labels.remove(label)
             except KeyError:
                pass
+
         self.mergerequest.labels = list(labels)
 
         # Disable removal of source branch on merge (if this merge request was created by hand).
