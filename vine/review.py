@@ -270,66 +270,38 @@ class Review(Option, WorkspaceDirHandler):
 
 
     def getApplicableReviewers(self, repoName, allReviewers, reviewRules):
-        """
-        Retrieves applicable reviewers for a given repository based on defined review rules.
+        """Return reviewer usernames for GRAPE review rules that apply to a repository.
 
-        This function checks the provided review rules against the specified repository name
-        and returns a dictionary of reviewers that are applicable for that repository.
-
-        Parameters:
-        ----------
-        repoName : str
-            The name of the repository for which applicable reviewers are to be retrieved.
-
-        allReviewers : dict
-            A dictionary where each key is a review rule name and each value is a dictionary
-            containing a list of reviewers associated with that rule.
-
-        reviewRules : dict
-            A dictionary where each key is a review rule name and each value is another dictionary
-            containing:
-                - 'repositories': A list of repository patterns (str) that the rule applies to.
+        Args:
+            repoName: Repository name to check against the review rules.
+            allReviewers: Reviewer groups keyed by GRAPE review rule name.
+            reviewRules: GRAPE review rules keyed by review rule name.
 
         Returns:
-        -------
-        dict
-            A dictionary where each key is a review rule name and each value is a dictionary
-            containing a list of applicable reviewers for that rule. If no applicable reviewers are found, an empty dictionary is returned.
-
-        Example:
-        --------
-        repoName = 'example-repo'
-        allReviewers = {
-            'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']},
-            'documentation': {'label': 'Documentation Review', 'reviewers': ['Charlie']}
-        }
-        reviewRules = {
-            'code': {
-                'repositories': ['example-repo', 'another-repo']
-            },
-            'documentation': {
-                'repositories': ['example-docs']
-            }
-        }
-
-        result = self.getApplicableReviewers(repoName, allReviewers, reviewRules)
-        # result would be: {'code': {'label': 'Code Review', 'reviewers': ['Alice', 'Bob']}}
-
-        Notes:
-        -----
-        - The function uses regular expression matching to determine if the repository name matches
-          any of the patterns defined in the review rules.
-        - If no review rules match the given repository name, the function will return an empty dictionary.
+            A de-duplicated list of applicable reviewer usernames. Returns
+            ``None`` if no rules apply so existing reviewers are left unchanged.
+            Returns an empty list if one or more rules apply but none of those
+            rules has reviewers, allowing provider reviewers to be cleared.
         """
-        applicableReviewers = {}
+        if not allReviewers:
+            return None
+
+        applicableRuleFound = False
+        applicableReviewers = []
+        seenReviewers = set()
 
         for reviewRuleName in allReviewers:
             reviewRule = reviewRules[reviewRuleName]
 
             if reviewRule.matches_repository(repoName):
-                applicableReviewers[reviewRuleName] = allReviewers[reviewRuleName]
+                applicableRuleFound = True
 
-        return applicableReviewers
+                for reviewer in allReviewers[reviewRuleName]['reviewers']:
+                    if reviewer not in seenReviewers:
+                        applicableReviewers.append(reviewer)
+                        seenReviewers.add(reviewer)
+
+        return applicableReviewers if applicableRuleFound else None
 
     @staticmethod
     def _get_top_repo_context(git_host, user_name, project_name, repo_name, source_branch, target_branch, do_exit = True):
@@ -1368,36 +1340,10 @@ def cleanupLegacyApprovalRules(request, legacy_approval_rule_labels):
         request.cleanup_legacy_approval_rules(legacy_approval_rule_labels)
 
 
-def flattenReviewers(reviewers):
-    """Convert grouped GRAPE review-rule reviewers to a username list."""
-    if reviewers is None:
-        return None
-
-    if isinstance(reviewers, dict):
-        if not reviewers:
-            return None
-
-        reviewer_usernames = []
-        seen_reviewers = set()
-
-        for review_rule_name in reviewers:
-            reviewer_group = reviewers[review_rule_name]
-
-            for user in reviewer_group['reviewers']:
-                if user not in seen_reviewers:
-                    reviewer_usernames.append(user)
-                    seen_reviewers.add(user)
-
-        return reviewer_usernames
-
-    return list(dict.fromkeys(reviewers))
-
-
 def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, git_execution_path,
                     wip=None, add_labels=[], remove_labels=[], legacy_approval_rule_labels=None):
     config = config_parser_global.grapeConfig()
     repo_name = repo.project.name
-    reviewer_usernames = flattenReviewers(reviewers)
 
 
     # get the open pull requests outgoing from our public branch
@@ -1413,8 +1359,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                 logging.info(
                     f"Creating new pull request titled '{title}' " + "\n" +
                     f" for branch {branch} targeting {target_branch}. ")
-                logging.info(f"reviewers: {reviewer_usernames}, labels={add_labels}")
-                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewer_usernames,
+                logging.info(f"reviewers: {reviewers}, labels={add_labels}")
+                request = repo.createPullRequest(title, branch, target_branch, description=descr, reviewers=reviewers,
                                                  wip=wip, labels=add_labels)
                 if request:
                    url = request.link()
@@ -1444,7 +1390,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
             logging.info("Updating pull request...")
             try:
                 if reviewers:
-                    logging.info(f"Reviewer list is: {reviewer_usernames}")
+                    logging.info(f"Reviewer list is: {reviewers}")
 
                 ver = request.version()
 
@@ -1462,7 +1408,7 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                             title = currentTitle + title
 
                 author = request.author()
-                subReviewers = None if reviewer_usernames is None else list(reviewer_usernames)
+                subReviewers = None if reviewers is None else list(reviewers)
 
                 if subReviewers is not None and author in subReviewers:
                     logging.info(

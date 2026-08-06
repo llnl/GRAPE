@@ -165,6 +165,16 @@ class FakeRepoWithExistingRequest:
         return [self._request]
 
 
+class FakeReviewRule:
+    """Review-rule stub with configurable repository applicability."""
+
+    def __init__(self, applies):
+        self._applies = applies
+
+    def matches_repository(self, _repo_name):
+        return self._applies
+
+
 class TestReview(testGrape.TestGrape):
 
     def testReview(self):
@@ -421,15 +431,44 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual([], merge_request.reviewer_ids)
         merge_request.save.assert_called_once()
 
-    def testFlattenReviewersConvertsReviewRuleGroupsToUserList(self):
+    def testGetApplicableReviewersReturnsUserList(self):
         """Provider adapters should receive usernames, not review-rule groups."""
 
-        reviewer_usernames = review.flattenReviewers({
-            'code': {'label': 'Code Review', 'reviewers': ['alice', 'bob']},
-            'docs': {'label': 'Docs Review', 'reviewers': ['alice', 'carol']},
-        })
+        review_option = review.Review()
+        reviewer_usernames = review_option.getApplicableReviewers(
+            'repo1',
+            {
+                'code': {'label': 'Code Review', 'reviewers': ['alice', 'bob']},
+                'docs': {'label': 'Docs Review', 'reviewers': ['alice', 'carol']},
+                'other': {'label': 'Other Review', 'reviewers': ['dave']},
+            },
+            {
+                'code': FakeReviewRule(applies=True),
+                'docs': FakeReviewRule(applies=True),
+                'other': FakeReviewRule(applies=False),
+            }
+        )
 
         self.assertEqual(['alice', 'bob', 'carol'], reviewer_usernames)
+
+    def testGetApplicableReviewersDistinguishesNoMatchFromClearReviewers(self):
+        """No matching rule leaves reviewers alone; matching empty rules clear them."""
+
+        review_option = review.Review()
+
+        no_match = review_option.getApplicableReviewers(
+            'repo1',
+            {'code': {'label': 'Code Review', 'reviewers': ['alice']}},
+            {'code': FakeReviewRule(applies=False)}
+        )
+        clear_reviewers = review_option.getApplicableReviewers(
+            'repo1',
+            {'code': {'label': 'Code Review', 'reviewers': []}},
+            {'code': FakeReviewRule(applies=True)}
+        )
+
+        self.assertIsNone(no_match)
+        self.assertEqual([], clear_reviewers)
 
     def testGitlabCleanupLegacyApprovalRulesDeletesMatchingLabelsOnly(self):
         """Legacy cleanup should delete exact MR approval-rule name matches."""
@@ -492,7 +531,7 @@ class TestReview(testGrape.TestGrape):
             'topic/test',
             'master',
             'Existing description',
-            {},
+            None,
             args,
             self.repo,
             legacy_approval_rule_labels={'Code Review'},
