@@ -816,6 +816,44 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
+    def loadReviewMetadata(self, args):
+        """Load top-level review metadata needed by logs and notifications.
+
+        This intentionally avoids approval, review-rule, and tag validation.
+        Those checks are performed by the explicit verifyCompletedReview publish
+        step.
+
+        Args:
+            args (dict): Parsed publish arguments.
+
+        Returns:
+            bool: True when metadata has been loaded or defaulted.
+        """
+        if args["--noReview"]:
+            self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
+            return True
+
+        pullRequest = self.openPullRequest()
+        if pullRequest:
+            reviewers = pullRequest.reviewers()
+            if reviewers:
+                self.progress["reviewers"] = ", ".join(reviewer[2] for reviewer in reviewers)
+            else:
+                self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = pullRequest.authorName()
+            self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
+        else:
+            self.progress["reviewers"] = "No reviewers"
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
+
+        return True
+
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
             logging.info("Skipping verification of code review...")
@@ -1474,7 +1512,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             return self.loadCommitMessageFromRecentMergeRequest(args)
         if "reviewers" not in self.progress:
             # fill in the reviewers entry in progress, but don't check the review status.
-            self.verifyCompletedReview(args)
+            self.loadReviewMetadata(args)
         if "commitMsg" in self.progress:
             if not args["-m"]:
                 args["-m"] = self.progress["commitMsg"]
