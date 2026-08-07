@@ -1001,8 +1001,8 @@ class PullRequest:
 
 
     def approved(self):
-        approvals = self.mergerequest.approvals.get()
-        return approvals.approvals_required > 0 and approvals.approvals_left == 0
+        return self.mergerequest.approvals.get().approved
+
 
     def link(self):
         url = self.mergerequest.web_url
