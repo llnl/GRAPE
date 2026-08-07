@@ -8,6 +8,9 @@ import re
 from typing import List, Dict, Optional, Any
 
 
+DEFAULT_GRAPE_REVIEW_RULE_LABEL = "GRAPE Reviewers"
+
+
 class ApproveInputSpec:
     """
     Defines an input to be collected on approval applied to a review rule.
@@ -530,13 +533,10 @@ class ReviewRuleManager:
         :param active: Whether or not the GRAPE review rule is active
         :return: ReviewRule object representing the default GRAPE rule
         """
-        # Import here to avoid circular dependency
-        from vine import Gitlab
-
         return ReviewRule(
             name='grape',
             active=active,
-            label=Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME,
+            label=DEFAULT_GRAPE_REVIEW_RULE_LABEL,
             minNumReviewers=1,
             authorEligible=False,
             eligibleReviewers=['.+'],
@@ -555,10 +555,7 @@ class ReviewRuleManager:
 
         :return: List of reserved label strings
         """
-        # Import here to avoid circular dependency
-        from vine import Gitlab
-
-        return [Gitlab.GRAPE_GITLAB_APPROVAL_RULE_NAME]
+        return [DEFAULT_GRAPE_REVIEW_RULE_LABEL]
 
     @classmethod
     def from_config(cls, config=None) -> 'ReviewRuleManager':
@@ -675,4 +672,3 @@ class ReviewRuleManager:
                 exit(1)
 
         return cls(reviewRules, reviewRuleMap, defaultReviewRuleName)
-
