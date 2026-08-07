@@ -1286,20 +1286,7 @@ class PullRequest:
 
 
     def approved(self):
-        approvals = self.mergerequest.approvals.get()
-
-        print("Data:", getattr(approvals, "__dict__", approvals))
-
-        approved = getattr(approvals, "approved", None)
-        required = getattr(approvals, "approvals_required", None)
-        left = getattr(approvals, "approvals_left", None)
-
-        print("approved:", approved)
-        print("approvals_required:", required)
-        print("approvals_left:", left)
-
-        return approved
-        #return required > 0 and left == 0
+        return self.mergerequest.approvals.get().approved
 
 
     def link(self):
