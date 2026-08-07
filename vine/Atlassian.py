@@ -336,7 +336,7 @@ class PullRequest(StashyNode):
 
     def approved(self):
         reviewers = self.reviewers()
-        ret = True if len(reviewers) else False
+        ret = True
         for reviewer in reviewers:
             approved = reviewer[1]
             ret = ret and approved
