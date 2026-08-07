@@ -86,39 +86,17 @@ class FakeGitlabUsers:
         return []
 
 
-class FakeApprovalRule:
-    """Minimal GitLab approval-rule object."""
-
-    def __init__(self, rule_id, name):
-        self.id = rule_id
-        self.name = name
-
-
-class FakeApprovalRules:
-    """Approval-rule manager stub for legacy cleanup tests."""
-
-    def __init__(self, rules):
-        self._rules = rules
-        self.deleted_ids = []
-
-    def list(self):
-        return self._rules
-
-    def delete(self, rule_id):
-        self.deleted_ids.append(rule_id)
-
-
 class FakeGitlabMergeRequest:
-    """Merge-request stub for update and approval-rule cleanup tests."""
+    """Merge-request stub for update tests."""
 
-    def __init__(self, approval_rules=None):
+    def __init__(self):
         self.title = 'Existing title'
         self.description = 'Existing description'
         self.labels = []
         self.reviewer_ids = []
         self.approvals = mock.Mock()
         self.approvals.set_approvers.side_effect = AssertionError('approval rules should not be updated')
-        self.approval_rules = approval_rules or mock.Mock()
+        self.approval_rules = mock.Mock()
         self.save = mock.Mock()
 
 
@@ -126,7 +104,6 @@ class FakeExistingReviewRequest:
     """Existing review request stub for postPullRequest tests."""
 
     def __init__(self):
-        self.cleanup_legacy_approval_rules = mock.Mock()
         self.update = mock.Mock(side_effect=AssertionError('request should be unchanged'))
 
     def toRef(self):
@@ -470,49 +447,8 @@ class TestReview(testGrape.TestGrape):
         self.assertIsNone(no_match)
         self.assertEqual([], clear_reviewers)
 
-    def testGitlabCleanupLegacyApprovalRulesDeletesMatchingLabelsOnly(self):
-        """Legacy cleanup should delete exact MR approval-rule name matches."""
-
-        approval_rules = FakeApprovalRules([
-            FakeApprovalRule(1, 'Code Review'),
-            FakeApprovalRule(2, 'Unrelated Rule'),
-            FakeApprovalRule(3, 'Docs Review'),
-        ])
-        pull_request = Gitlab.PullRequest(FakeGitlabMergeRequest(approval_rules), gitlab=None)
-
-        pull_request.cleanup_legacy_approval_rules({'Code Review', 'Docs Review'})
-
-        self.assertEqual([1, 3], approval_rules.deleted_ids)
-
-    def testGitlabCleanupLegacyApprovalRulesWarnsAndContinuesOnListFailure(self):
-        """Legacy cleanup should not abort review updates when GitLab listing fails."""
-
-        approval_rules = mock.Mock()
-        approval_rules.list.side_effect = Gitlab.gitlab.exceptions.GitlabListError('list failed')
-        pull_request = Gitlab.PullRequest(FakeGitlabMergeRequest(approval_rules), gitlab=None)
-
-        with self.assertLogs(level='WARNING') as logs:
-            pull_request.cleanup_legacy_approval_rules({'Code Review'})
-
-        self.assertIn('Failed to list GitLab approval rules', '\n'.join(logs.output))
-        approval_rules.delete.assert_not_called()
-
-    def testGitlabCleanupLegacyApprovalRulesWarnsAndContinuesOnDeleteFailure(self):
-        """Legacy cleanup should not abort review updates when GitLab deletion fails."""
-
-        approval_rules = mock.Mock()
-        approval_rules.list.return_value = [FakeApprovalRule(1, 'Code Review')]
-        approval_rules.delete.side_effect = Gitlab.gitlab.exceptions.GitlabDeleteError('delete failed')
-        pull_request = Gitlab.PullRequest(FakeGitlabMergeRequest(approval_rules), gitlab=None)
-
-        with self.assertLogs(level='WARNING') as logs:
-            pull_request.cleanup_legacy_approval_rules({'Code Review'})
-
-        self.assertIn('Failed to delete legacy GitLab approval rule "Code Review"', '\n'.join(logs.output))
-        approval_rules.delete.assert_called_once_with(1)
-
-    def testPostPullRequestCleansLegacyApprovalRulesWhenUnchanged(self):
-        """Legacy cleanup should run even when the review request is otherwise unchanged."""
+    def testPostPullRequestLeavesUnchangedRequestAlone(self):
+        """Unchanged review requests should not be updated."""
 
         existing_request = FakeExistingReviewRequest()
         repo = FakeRepoWithExistingRequest(existing_request)
@@ -534,12 +470,10 @@ class TestReview(testGrape.TestGrape):
             None,
             args,
             self.repo,
-            legacy_approval_rule_labels={'Code Review'},
         )
 
         self.assertIs(existing_request, request)
         existing_request.update.assert_not_called()
-        existing_request.cleanup_legacy_approval_rules.assert_called_once_with({'Code Review'})
 
     def testDefaultGrapeReviewRuleLabelIsStable(self):
         """The built-in GRAPE review-rule label should remain backwards compatible."""

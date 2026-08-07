@@ -1528,29 +1528,6 @@ class PullRequest:
         self.mergerequest.save()
         return self
 
-    def cleanup_legacy_approval_rules(self, labels):
-        """Delete legacy MR approval rules whose names match GRAPE review labels."""
-        labels = set(labels or [])
-
-        if not labels:
-            return
-
-        try:
-            approval_rules = self.mergerequest.approval_rules.list()
-        except gitlab.exceptions.GitlabListError as e:
-            logging.warning(f"GRAPE: WARNING: Failed to list GitLab approval rules for legacy cleanup: {e}")
-            return
-
-        for rule in approval_rules:
-            if rule.name not in labels:
-                continue
-
-            try:
-                self.mergerequest.approval_rules.delete(rule.id)
-                logging.info(f'Deleted legacy GitLab approval rule "{rule.name}".')
-            except gitlab.exceptions.GitlabDeleteError as e:
-                logging.warning(f'GRAPE: WARNING: Failed to delete legacy GitLab approval rule "{rule.name}": {e}')
-
     def regeneratePipeline(self, raiseOnFailure=True):
         # Create a new pipeline to reflect any changes in labels
         try:
