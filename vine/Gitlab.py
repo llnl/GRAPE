@@ -1290,7 +1290,7 @@ class PullRequest:
 
         print("Data:", getattr(approvals, "__dict__", approvals))
 
-        required = getattr(approvals, "approved", None)
+        approved = getattr(approvals, "approved", None)
         required = getattr(approvals, "approvals_required", None)
         left = getattr(approvals, "approvals_left", None)
 
