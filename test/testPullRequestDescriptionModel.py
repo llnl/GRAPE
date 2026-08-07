@@ -16,13 +16,14 @@ class FakeReviewRuleManager:
 class TestPullRequestDescriptionModel(unittest.TestCase):
 
     def testToTextTrimsExtraBlankLinesBeforeGrapeSection(self):
+        """Verify generated descriptions keep one blank line before # GRAPE."""
         model = PullRequestDescriptionModel(
             userLines=[
-                "SUMMARY: Updated XML handling.",
+                "SUMMARY: Updated a generic feature.",
                 "",
                 "DETAILS:",
                 "",
-                "* Add Array and Column tags",
+                "* Add a generic implementation detail",
                 "",
                 "",
                 "",
@@ -34,15 +35,16 @@ class TestPullRequestDescriptionModel(unittest.TestCase):
         with mock.patch("vine.PullRequestDescriptionModel.version.grapeVersion", return_value="test"):
             description = model.to_text()
 
-        self.assertIn("* Add Array and Column tags\n\n# GRAPE", description)
-        self.assertNotIn("* Add Array and Column tags\n\n\n# GRAPE", description)
+        self.assertIn("* Add a generic implementation detail\n\n# GRAPE", description)
+        self.assertNotIn("* Add a generic implementation detail\n\n\n# GRAPE", description)
 
     def testFromTextRoundTripTrimsExtraBlankLinesBeforeGrapeSection(self):
-        original_description = """SUMMARY: Updated XML handling.
+        """Verify existing descriptions are normalized when regenerated."""
+        original_description = """SUMMARY: Updated a generic feature.
 
 DETAILS:
 
-* Add Array and Column tags
+* Add a generic implementation detail
 
 
 
@@ -64,5 +66,5 @@ None
         with mock.patch("vine.PullRequestDescriptionModel.version.grapeVersion", return_value="test"):
             description = model.to_text()
 
-        self.assertIn("* Add Array and Column tags\n\n# GRAPE", description)
-        self.assertNotIn("* Add Array and Column tags\n\n\n# GRAPE", description)
+        self.assertIn("* Add a generic implementation detail\n\n# GRAPE", description)
+        self.assertNotIn("* Add a generic implementation detail\n\n\n# GRAPE", description)
