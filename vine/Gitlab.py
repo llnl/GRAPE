@@ -1287,7 +1287,21 @@ class PullRequest:
 
     def approved(self):
         approvals = self.mergerequest.approvals.get()
-        return approvals.approvals_required > 0 and approvals.approvals_left == 0
+
+        print("Data:", getattr(approvals, "__dict__", approvals))
+
+        required = getattr(approvals, "approved", None)
+        required = getattr(approvals, "approvals_required", None)
+        left = getattr(approvals, "approvals_left", None)
+
+        print("approved:", approved)
+        print("approvals_required:", required)
+        print("approvals_left:", left)
+
+        return False
+
+        #return required > 0 and left == 0
+
 
     def link(self):
         url = self.mergerequest.web_url
