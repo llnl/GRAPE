@@ -902,7 +902,10 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             descriptionModel = PullRequestDescriptionModel.from_text(description, reviewRuleManager)
 
             # Omit non-approvers from the unfinished reviewers reported
-            non_approvers = config_parser_global.grapeConfig().get(self.SECTION_REVIEW, "non_approvers")
+            config = config_parser_global.grapeConfig()
+            non_approvers = ""
+            if config.has_option(self.SECTION_REVIEW, "non_approvers"):
+                non_approvers = config.get(self.SECTION_REVIEW, "non_approvers")
 
             non_approver_list = set()
             if non_approvers:
