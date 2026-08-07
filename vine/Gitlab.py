@@ -1298,8 +1298,7 @@ class PullRequest:
         print("approvals_required:", required)
         print("approvals_left:", left)
 
-        return False
-
+        return approved
         #return required > 0 and left == 0
 
 
