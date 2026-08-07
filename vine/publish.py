@@ -857,10 +857,8 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         """
         if args["--noReview"]:
             self._storeReviewMetadata()
-            return True
-
-        self._storeReviewMetadata(self.openPullRequest())
-        return True
+        else:
+            self._storeReviewMetadata(self.openPullRequest())
 
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
