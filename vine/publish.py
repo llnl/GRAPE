@@ -816,6 +816,32 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             logging.warning("WARNING: No Open or Merged IN PROGRESS pull request found. Continuing...")
         return True
 
+    def _storeReviewMetadata(self, pullRequest=None, reviewerNames=None):
+        """Store review metadata in progress.
+
+        Args:
+            pullRequest: Pull request to use for author metadata. If
+                reviewerNames is not provided, reviewers are read from this
+                pull request too.
+            reviewerNames (list): Display names to store as reviewers.
+        """
+        if pullRequest and reviewerNames is None:
+            reviewerNames = [reviewer[2] for reviewer in pullRequest.reviewers()]
+
+        if reviewerNames:
+            self.progress["reviewers"] = ", ".join(reviewerNames)
+        else:
+            self.progress["reviewers"] = "No reviewers"
+
+        if pullRequest:
+            self.progress["author"] = pullRequest.authorName()
+            self.progress["author_username"] = pullRequest.author()
+            self.progress["author_email"] = pullRequest.authorEmail()
+        else:
+            self.progress["author"] = ""
+            self.progress["author_username"] = ""
+            self.progress["author_email"] = ""
+
     def loadReviewMetadata(self, args):
         """Load top-level review metadata needed by logs and notifications.
 
@@ -830,37 +856,16 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
             bool: True when metadata has been loaded or defaulted.
         """
         if args["--noReview"]:
-            self.progress["reviewers"] = "No reviewers"
-            self.progress["author"] = ""
-            self.progress["author_username"] = ""
-            self.progress["author_email"] = ""
+            self._storeReviewMetadata()
             return True
 
-        pullRequest = self.openPullRequest()
-        if pullRequest:
-            reviewers = pullRequest.reviewers()
-            if reviewers:
-                self.progress["reviewers"] = ", ".join(reviewer[2] for reviewer in reviewers)
-            else:
-                self.progress["reviewers"] = "No reviewers"
-            self.progress["author"] = pullRequest.authorName()
-            self.progress["author_username"] = pullRequest.author()
-            self.progress["author_email"] = pullRequest.authorEmail()
-        else:
-            self.progress["reviewers"] = "No reviewers"
-            self.progress["author"] = ""
-            self.progress["author_username"] = ""
-            self.progress["author_email"] = ""
-
+        self._storeReviewMetadata(self.openPullRequest())
         return True
 
     def verifyCompletedReview(self, args):
         if args["--noReview"]:
             logging.info("Skipping verification of code review...")
-            self.progress["reviewers"] = "No reviewers"
-            self.progress["author"] = ""
-            self.progress["author_username"] = ""
-            self.progress["author_email"] = ""
+            self._storeReviewMetadata()
             return True
 
         # Get review rules
@@ -1173,19 +1178,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
 
         # TODO: Consider reporting review rule groupings in self.progress
 
-        if topPullRequest:
-            self.progress["author"] = pullRequest.authorName()
-            self.progress["author_username"] = pullRequest.author()
-            self.progress["author_email"] = pullRequest.authorEmail()
-        else:
-            self.progress["author"] = ""
-            self.progress["author_username"] = ""
-            self.progress["author_email"] = ""
-
-        if len(finishedReviewers) > 0:
-            self.progress["reviewers"] = ", ".join(finishedReviewers)
-        else:
-            self.progress["reviewers"] = "No reviewers"
+        self._storeReviewMetadata(topPullRequest, reviewerNames=list(finishedReviewers))
 
         if userMessage:
             logging.info(f"Code reviews are not completed in the following repo(s):{userMessage}")
