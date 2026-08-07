@@ -1151,8 +1151,7 @@ class Publish(Resumable, Option, WorkspaceDirHandler):
         else:
             logging.info("All code reviews have been completed.")
 
-        return False
-        #return verified
+        return verified
 
     def testForCleanWorkspace(self, args):
         logging.info("Checking to make sure workspace has a clean status.")
