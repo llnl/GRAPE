@@ -165,7 +165,7 @@ def checkout(argstr, *, execution_path):
                   execution_path=execution_path)
 
 
-def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=True):
+def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=True, raiseOnCommError=False):
     if not os.path.isabs(clone_repo):
         clone_repo = os.path.join(execution_path, clone_repo)
     try:
@@ -179,7 +179,10 @@ def clone(argstr='', *, source_repo, clone_repo, execution_path, print_warnings=
         if e.commError:
             if print_warnings:
                 logging.warning("GRAPE: clone failed due to connectivity issues.")
-            return e.gitOutput
+            if raiseOnCommError:
+                raise e
+            else:
+                return e.gitOutput
         if print_warnings:
             logging.warning("GRAPE: Clone failed. Maybe you ran out of disk space?")
             logging.warning(e.gitOutput)
