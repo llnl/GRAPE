@@ -356,6 +356,7 @@ def preflightReplacedNestedSubprojects(previousConfig, targetConfig,
                 # Check if this branch has diffs compared to the public branch
                 public = config_parser_workspace.GrapeConfigParserWorkspace(workspace_dir).getPublicBranchFor(branch)
                 if public != branch:
+                    diff = None
                     try:
                         diff = git.diff(f"--name-only {branch} {public} --", execution_path=working_directory)
                     except grape_errors.GrapeGitError as e:
