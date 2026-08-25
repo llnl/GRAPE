@@ -27,6 +27,36 @@ def mergeSubmoduleCandidates(submodules, movedActiveSubmodules):
     return list(dict.fromkeys(submodules + movedActiveSubmodules))
 
 
+def filterSubmodulesForMergedWorkspace(submodules, *, workspace_dir):
+    """Return merge candidates that still exist in the merged workspace.
+
+    The active-submodule query can include stale registrations after an
+    outer-level merge removes a submodule. Such a path cannot be used as a
+    working directory for a submodule merge.
+
+    Args:
+        submodules: Candidate submodule paths selected before the outer merge.
+        workspace_dir: Top-level workspace directory.
+
+    Returns:
+        Candidate paths that remain configured and have a working directory.
+    """
+    mergedSubmodules = set(git.getAllSubmodules(execution_path=workspace_dir))
+    availableSubmodules = [
+        sub for sub in submodules
+        if sub in mergedSubmodules and
+        os.path.isdir(os.path.join(workspace_dir, sub))
+    ]
+    removedSubmodules = [
+        sub for sub in submodules if sub not in availableSubmodules
+    ]
+    if removedSubmodules:
+        logging.info(
+            "Skipping submodule merge candidates no longer available after "
+            "the outer-level merge: " + ", ".join(removedSubmodules))
+    return availableSubmodules
+
+
 def filterSubmodulesRemovedByMerge(currentRevision, targetRevision,
                                    removedModules, *, workspace_dir):
     """Keep only submodules the target side actually removed.
@@ -438,6 +468,15 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
                     # this will reset the branch.
                     git.checkout(f"-B {currentBranch} HEAD",
                                  execution_path=sub_dir)
+
+        # A submodule may have been removed by the outer-level merge after
+        # it was selected as a merge candidate. Perform this check after
+        # reinitializing changed or added submodules so valid candidates are
+        # not discarded before their worktrees are restored.
+        submodules = filterSubmodulesForMergedWorkspace(
+            submodules, workspace_dir=self.workspace_dir)
+        recurse = recurseSubmoduleChanges and len(submodules) > 0
+        args["--recurse"] = recurse
 
         # outerLevelMerge returns False if there was a non-conflict related issue
         if conflictedFiles is False:
