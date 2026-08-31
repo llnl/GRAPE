@@ -505,6 +505,7 @@ class StackOption(Option, WorkspaceDirHandler):
                        [--noFetch]
                        [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
                        [-- <path>...]
+           grape-stack validate [<stack>] [--remote] [--repair]
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -528,6 +529,7 @@ class StackOption(Option, WorkspaceDirHandler):
         --push              Push synchronized levels after all local updates succeed.
         --noFetch           Do not fetch before validating recorded remote tips.
         --remote            Fetch before reporting local/remote stack status.
+        --repair            Refresh safely advanced recorded local tips.
         --incremental       Compare the selected level with its immediate parent.
         --cumulative        Compare the publication destination with the level.
         --patch             Print patch output. This is the default.
@@ -593,6 +595,9 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._checkout(args["<level>"])
             if args["diff"]:
                 return self._diff(args)
+            if args["validate"]:
+                return self._validate(
+                    args["<stack>"], args["--remote"], args["--repair"])
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -939,6 +944,16 @@ class StackOption(Option, WorkspaceDirHandler):
         logging.info(
             f"Stack {manifest.name}: {mode} diff {base} -> {level.branch}")
         return grapeMenu.menu().applyMenuChoice("diff", diff_args)
+
+    def _validate(self, selector, fetch_remote, repair):
+        """Validate stack identity, branches, ancestry, tips, and remotes."""
+        from vine.stack_validate import StackValidator
+
+        manifest = self._selected_stack(selector)
+        repositories = WorkspaceInventory(self.workspace_dir).repositories()
+        return StackValidator(
+            self.workspace_dir, manifest, repositories).run(
+                fetch_remote=fetch_remote, repair=repair)
 
     def _adopt(self, args):
         """Register an existing linear branch chain without rewriting it."""

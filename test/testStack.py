@@ -340,3 +340,39 @@ class TestStack(testGrape.TestGrape):
         self.assertIn(f"master {top}", rendered_diff)
         self.assertIn("bottom.txt", rendered_diff)
         self.assertIn("top.txt", rendered_diff)
+
+    def testValidateRepairsOnlySafelyAdvancedRecordedTips(self):
+        """Validation repairs a stale tip when its branch only advanced."""
+        _, top = self._createCommittedTwoLevelStack()
+
+        self.assertFalse(self.menu.applyMenuChoice(
+            "stack", ["validate", "widgets"]))
+        self.assertIn("recorded tip is stale", self.get_output())
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["validate", "widgets", "--repair"]))
+
+        manifest = stack.StackStore(self.repo).find("widgets")
+        self.assertEqual(
+            git.SHA(top, execution_path=self.repo),
+            manifest.level(top).repositories["."].tip)
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["validate", "widgets"]))
+
+    def testValidateRejectsMissingParentBranch(self):
+        """Validation reports a missing lower branch used as a parent."""
+        bottom, _ = self._createCommittedTwoLevelStack()
+        git.branch(f"-D {bottom}", execution_path=self.repo)
+
+        self.assertFalse(self.menu.applyMenuChoice(
+            "stack", ["validate", "widgets"]))
+        self.assertIn("missing local branch", self.get_output())
+        self.assertIn("missing target", self.get_output())
+
+    def testValidateRemoteRejectsAnUnexpectedPublishedBranch(self):
+        """Remote validation detects a branch created outside the manifest."""
+        _, top = self._createCommittedTwoLevelStack()
+        git.push(f"origin {top}", execution_path=self.repo)
+
+        self.assertFalse(self.menu.applyMenuChoice(
+            "stack", ["validate", "widgets", "--remote"]))
+        self.assertIn("unrecorded remote branch", self.get_output())
