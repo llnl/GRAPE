@@ -498,6 +498,7 @@ class StackOption(Option, WorkspaceDirHandler):
                        [--dry-run] [--recurse | --noRecurse]
            grape-stack list
            grape-stack show [<stack>]
+           grape-stack status [<stack>] [--remote]
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -520,6 +521,7 @@ class StackOption(Option, WorkspaceDirHandler):
         --merge             Merge each updated parent into its child.
         --push              Push synchronized levels after all local updates succeed.
         --noFetch           Do not fetch before validating recorded remote tips.
+        --remote            Fetch before reporting local/remote stack status.
         --continue          Continue a synchronization stopped by conflicts.
         --draft-descendants  Submit upper levels as drafts.
         --ready-descendants  Submit every level as ready for review.
@@ -567,6 +569,8 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._list()
             if args["show"]:
                 return self._show(args["<stack>"])
+            if args["status"]:
+                return self._status(args["<stack>"], args["--remote"])
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -807,6 +811,16 @@ class StackOption(Option, WorkspaceDirHandler):
                     f"   {key}: tip {state.tip}, remote {remote}, "
                     f"target {resolver.target(level.id, key)}")
         return True
+
+    def _status(self, selector, fetch_remote):
+        """Report parent-relative and local/remote state for every level."""
+        from vine.stack_status import StackStatus
+
+        manifest = self._selected_stack(selector)
+        repositories = WorkspaceInventory(self.workspace_dir).repositories()
+        return StackStatus(
+            self.workspace_dir, manifest, repositories).report(
+                fetch_remote=fetch_remote)
 
     def _adopt(self, args):
         """Register an existing linear branch chain without rewriting it."""

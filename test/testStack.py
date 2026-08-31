@@ -275,3 +275,19 @@ class TestStack(testGrape.TestGrape):
         self.assertIn(f"1. model: {bottom} -> master", output)
         self.assertIn(f"2. api *: {top} -> {bottom}", output)
         self.assertIn("remote unpushed", output)
+
+    def testStatusReportsParentRelativeAndRecordedTipState(self):
+        """Status distinguishes valid ancestry from stale local metadata."""
+        bottom, top = self._createCommittedTwoLevelStack()
+
+        self.assertFalse(self.menu.applyMenuChoice(
+            "stack", ["status", "widgets"]))
+        self.assertIn("recorded tip stale", self.get_output())
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["sync", "--from=api", "--rebase", "--noFetch"]))
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["status", "widgets"]))
+        output = self.get_output()
+        self.assertIn(f"1. {bottom} -> master", output)
+        self.assertIn(f"2. {top} (*) -> {bottom}", output)
