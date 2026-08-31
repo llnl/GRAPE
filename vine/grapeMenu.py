@@ -32,6 +32,7 @@ from vine import resumable
 from vine import review
 from vine import stash
 from vine import status
+from vine import stack
 from vine import grapeTest as test
 from vine import updateLocal
 from vine import updateView
@@ -92,7 +93,7 @@ class _Menu(WorkspaceDirHandler):
         self._options = [
             addSubproject.AddSubproject(), approve.Approve(), bundle.Bundle(),
             bundle.Unbundle(), branches.Branches(), status.Status(), stash.Stash(),
-            checkout.Checkout(), push.Push(), pull.Pull(), commit.Commit(),
+            checkout.Checkout(), stack.StackOption(), push.Push(), pull.Pull(), commit.Commit(),
             publish.Publish(), clone.Clone(), config.Config(),
             diff.Diff(),
             writeConfig.WriteConfig(), foreach.ForEach(), merge.Merge(),

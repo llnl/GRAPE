@@ -16,6 +16,7 @@ class Option(ABC):
     SECTION_WORKSPACE = 'workspace'
     SECTION_WALKTHROUGH = "walkthrough"
     SECTION_SERVICES = 'services'
+    SECTION_STACK = 'stack'
 
     def __init__(self):
         self._key = "UNSET KEY"

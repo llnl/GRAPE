@@ -270,6 +270,7 @@ def main(argv, debug=False):
     from test import testCO
     from test import testNestedSubproject
     from test import testStatus
+    from test import testStack
     from test import testUpdateLocal
 
     testClasses = {"Branches":testBranches.TestBranches,
@@ -286,6 +287,7 @@ def main(argv, debug=False):
                    "Version":testVersion.TestVersion,
                    "Publish":testPublish.TestPublish,
                    "CO":testCO.TestCheckout,
+                   "Stack":testStack.TestStack,
                    "NestedSubproject":testNestedSubproject.TestNestedSubproject}
 
 
