@@ -493,6 +493,9 @@ class StackOption(Option, WorkspaceDirHandler):
                        [--nopush] [--dry-run] [--recurse | --noRecurse]
            grape-stack add <level> [--stack=<stack>] [--nopush] [--dry-run]
                        [--recurse | --noRecurse]
+           grape-stack adopt <stack> <branch>... [--type=<type>]
+                       [--start=<branch>] [--target=<branch>] [--user=<user>]
+                       [--dry-run] [--recurse | --noRecurse]
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -556,6 +559,8 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._start(args)
             if args["add"]:
                 return self._add(args)
+            if args["adopt"]:
+                return self._adopt(args)
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -757,6 +762,85 @@ class StackOption(Option, WorkspaceDirHandler):
         if not manifest:
             raise StackError("No current or active stack was found.")
         return manifest
+
+    def _adopt(self, args):
+        """Register an existing linear branch chain without rewriting it."""
+        config = config_parser_global.grapeConfig()
+        name = _require_slug(args["<stack>"], "stack name")
+        branches = args["<branch>"]
+        if len(branches) < 1:
+            raise StackError("Adoption requires at least one branch.")
+        branch_type = _require_slug(
+            args["--type"] or git.branchPrefix(branches[0]), "branch type")
+        owner = _require_slug(
+            args["--user"] or utility.getUserName(), "user")
+        destination = args["--target"] or config.getPublicBranchFor(branches[0])
+        start = args["--start"] or destination
+        store = StackStore(self.workspace_dir)
+        manifests = store.list()
+        if any(candidate.name == name for candidate in manifests):
+            raise StackError(f"Stack {name!r} already exists.")
+        recorded_branches = {
+            level.branch for candidate in manifests for level in candidate.levels}
+        duplicates = recorded_branches.intersection(branches)
+        if duplicates:
+            raise StackError(
+                "Branches already belong to a stack: " +
+                ", ".join(sorted(duplicates)))
+
+        recurse = self._recurse(args, config)
+        repositories = WorkspaceInventory(self.workspace_dir).repositories(
+            include_submodules=recurse, include_nested=recurse)
+        manifest = StackManifest.create(
+            name, owner, branch_type, start, destination)
+        previous_by_repo = {}
+        level_names = set()
+        for position, branch in enumerate(branches):
+            level_name = _require_slug(
+                branch.rsplit("/", 1)[-1], "adopted level name")
+            if level_name in level_names:
+                raise StackError(
+                    f"Adopted branches produce duplicate level {level_name!r}.")
+            level_names.add(level_name)
+            level = StackLevel(_new_id(), level_name, branch)
+            for repo in repositories:
+                if not _branch_exists(repo.path, branch):
+                    if repo.kind == "outer":
+                        raise StackError(
+                            f"Branch {branch!r} does not exist in {repo.key}.")
+                    continue
+                repo_start, repo_destination = _repo_start_and_destination(
+                    repo, config, start, destination, branch_type)
+                target = previous_by_repo.get(repo.key, repo_start)
+                if not _branch_exists(repo.path, target):
+                    raise StackError(
+                        f"Adoption target {target!r} does not exist in {repo.key}.")
+                if not git.branchUpToDateWith(
+                        branch, target, execution_path=repo.path):
+                    raise StackError(
+                        f"Branch {branch!r} does not contain its expected "
+                        f"parent {target!r} in {repo.key}.")
+                level.repositories[repo.key] = StackRepository(
+                    branch=branch,
+                    target=(repo_destination if position == 0 else target),
+                    tip=git.SHA(branch, execution_path=repo.path),
+                    remote_tip=_remote_tip(repo.path, branch),
+                )
+                previous_by_repo[repo.key] = branch
+            manifest.levels.append(level)
+
+        logging.info(
+            f"Stack {name}: adopt {len(manifest.levels)} existing level(s)")
+        resolver = IntegrationTargetResolver(manifest)
+        for position, level in enumerate(manifest.levels, start=1):
+            logging.info(
+                f"  {position}. {level.branch} from {resolver.target(level.id)}")
+        if args["--dry-run"]:
+            return True
+        with store.locked():
+            store.save(manifest)
+        logging.info(f"Adopted stack {name!r} without rewriting branches.")
+        return True
 
     def _sync(self, args):
         from vine.stack_sync import StackSynchronizer

@@ -206,3 +206,50 @@ class TestStack(testGrape.TestGrape):
         self.assertEqual(
             bottom,
             mergeDown.MergeDown.lookupPublicBranch(execution_path=self.repo))
+
+    def testAdoptRecordsExistingLinearBranchesWithoutRewriting(self):
+        """Adoption validates a branch chain and preserves every tip."""
+        bottom = "feature/alice/widgets/model"
+        top = "feature/alice/widgets/api"
+        git.checkout(f"-b {bottom} master", execution_path=self.repo)
+        with open(os.path.join(self.repo, "model.txt"), "w") as stream:
+            stream.write("model\n")
+        git.add("model.txt", execution_path=self.repo)
+        git.commit('-m "model"', execution_path=self.repo)
+        bottom_tip = git.SHA(execution_path=self.repo)
+        git.checkout(f"-b {top}", execution_path=self.repo)
+        with open(os.path.join(self.repo, "api.txt"), "w") as stream:
+            stream.write("api\n")
+        git.add("api.txt", execution_path=self.repo)
+        git.commit('-m "api"', execution_path=self.repo)
+        top_tip = git.SHA(execution_path=self.repo)
+
+        result = self.menu.applyMenuChoice(
+            "stack", ["adopt", "widgets", bottom, top,
+                      "--target=master", "--user=alice", "--noRecurse"])
+
+        self.assertTrue(result)
+        manifest = stack.StackStore(self.repo).find("widgets")
+        self.assertEqual([bottom, top], [level.branch for level in manifest.levels])
+        self.assertEqual(bottom_tip, git.SHA(bottom, execution_path=self.repo))
+        self.assertEqual(top_tip, git.SHA(top, execution_path=self.repo))
+        self.assertEqual(bottom, stack.IntegrationTargetResolver(
+            manifest).target(top))
+
+    def testAdoptRejectsBranchesThatAreNotLinear(self):
+        """Adoption does not silently record a divergent branch chain."""
+        bottom = "feature/alice/widgets/model"
+        top = "feature/alice/widgets/api"
+        git.checkout(f"-b {bottom} master", execution_path=self.repo)
+        with open(os.path.join(self.repo, "only-bottom.txt"), "w") as stream:
+            stream.write("bottom only\n")
+        git.add("only-bottom.txt", execution_path=self.repo)
+        git.commit('-m "bottom only"', execution_path=self.repo)
+        git.branch(f"{top} develop", execution_path=self.repo)
+
+        result = self.menu.applyMenuChoice(
+            "stack", ["adopt", "widgets", bottom, top,
+                      "--target=master", "--user=alice", "--noRecurse"])
+
+        self.assertFalse(result)
+        self.assertEqual([], stack.StackStore(self.repo).list())
