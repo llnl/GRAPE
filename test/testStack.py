@@ -262,3 +262,16 @@ class TestStack(testGrape.TestGrape):
 
         output = self.get_output()
         self.assertIn("* widgets (2 levels) -> master active", output)
+
+    def testShowPrintsOrderedGraphAndRepositoryTips(self):
+        """Stack details include stable identity, targets, and repository state."""
+        bottom, top = self._createCommittedTwoLevelStack()
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["show", "widgets"]))
+
+        output = self.get_output()
+        self.assertIn("Stack: widgets (", output)
+        self.assertIn(f"1. model: {bottom} -> master", output)
+        self.assertIn(f"2. api *: {top} -> {bottom}", output)
+        self.assertIn("remote unpushed", output)

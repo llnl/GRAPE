@@ -497,6 +497,7 @@ class StackOption(Option, WorkspaceDirHandler):
                        [--start=<branch>] [--target=<branch>] [--user=<user>]
                        [--dry-run] [--recurse | --noRecurse]
            grape-stack list
+           grape-stack show [<stack>]
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -564,6 +565,8 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._adopt(args)
             if args["list"]:
                 return self._list()
+            if args["show"]:
+                return self._show(args["<stack>"])
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -782,6 +785,27 @@ class StackOption(Option, WorkspaceDirHandler):
             logging.info(
                 f"{marker} {manifest.name} ({len(manifest.levels)} {noun}) "
                 f"-> {manifest.destination}{active_marker}")
+        return True
+
+    def _show(self, selector):
+        """Print the ordered branch graph and recorded repository tips."""
+        manifest = self._selected_stack(selector)
+        resolver = IntegrationTargetResolver(manifest)
+        current = git.currentBranch(execution_path=self.workspace_dir)
+        logging.info(f"Stack: {manifest.name} ({manifest.id})")
+        logging.info(f"Start: {manifest.start}")
+        logging.info(f"Destination: {manifest.destination}")
+        for position, level in enumerate(manifest.levels, start=1):
+            marker = " *" if level.branch == current else ""
+            logging.info(
+                f"{position}. {level.name}{marker}: {level.branch} -> "
+                f"{resolver.target(level.id)}")
+            for key in sorted(level.repositories):
+                state = level.repositories[key]
+                remote = state.remote_tip or "unpushed"
+                logging.info(
+                    f"   {key}: tip {state.tip}, remote {remote}, "
+                    f"target {resolver.target(level.id, key)}")
         return True
 
     def _adopt(self, args):
