@@ -312,3 +312,17 @@ class TestStack(testGrape.TestGrape):
         self.assertTrue(self.menu.applyMenuChoice(
             "stack", ["checkout", "api"]))
         self.assertEqual(top, git.currentBranch(execution_path=self.repo))
+
+    def testIncrementalDiffComparesLevelWithImmediateParent(self):
+        """Incremental diff contains only the selected level's changes."""
+        _, top = self._createCommittedTwoLevelStack()
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["diff", "api", "--incremental", "--name-only",
+                      "--noSubmodules", "--noNestedSubprojects"]))
+
+        output = self.get_output()
+        rendered_diff = output[output.index("[workspace]"):]
+        self.assertIn(f"{top}", rendered_diff)
+        self.assertIn("top.txt", rendered_diff)
+        self.assertNotIn("bottom.txt", rendered_diff)

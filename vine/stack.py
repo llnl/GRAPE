@@ -500,6 +500,11 @@ class StackOption(Option, WorkspaceDirHandler):
            grape-stack show [<stack>]
            grape-stack status [<stack>] [--remote]
            grape-stack checkout <level>
+           grape-stack diff [<level>] [--incremental]
+                       [--patch | --stat | --name-only | --name-status]
+                       [--noFetch]
+                       [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
+                       [-- <path>...]
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -523,7 +528,17 @@ class StackOption(Option, WorkspaceDirHandler):
         --push              Push synchronized levels after all local updates succeed.
         --noFetch           Do not fetch before validating recorded remote tips.
         --remote            Fetch before reporting local/remote stack status.
+        --incremental       Compare the selected level with its immediate parent.
+        --patch             Print patch output. This is the default.
+        --stat              Print diffstat output instead of patches.
+        --name-only         Print only changed file names.
+        --name-status       Print changed file names with status letters.
+        --noTopLevel        Do not diff the outer level project.
+        --noSubmodules      Do not diff active submodules.
+        --noNestedSubprojects
+                            Do not diff active nested subprojects.
         <level>             Level name, branch, stable ID, or navigation keyword.
+        <path>              Workspace-relative path to diff after ``--``.
         --continue          Continue a synchronization stopped by conflicts.
         --draft-descendants  Submit upper levels as drafts.
         --ready-descendants  Submit every level as ready for review.
@@ -575,6 +590,8 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._status(args["<stack>"], args["--remote"])
             if args["checkout"]:
                 return self._checkout(args["<level>"])
+            if args["diff"]:
+                return self._diff(args)
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -873,6 +890,52 @@ class StackOption(Option, WorkspaceDirHandler):
         logging.info(
             f"Stack {manifest.name}: checkout {level.name} ({level.branch})")
         return grapeMenu.menu().applyMenuChoice("checkout", [level.branch])
+
+    def _diff(self, args):
+        """Show an incremental diff for one stack level.
+
+        Args:
+            args: Parsed stack command arguments.
+
+        Returns:
+            bool: Whether the workspace diff completed successfully.
+
+        Raises:
+            StackError: If the selected stack has no matching level.
+        """
+        from vine import grapeMenu
+
+        manifest = self._selected_stack(None)
+        selector = args["<level>"]
+        if selector:
+            level = manifest.level(selector)
+        else:
+            current = git.currentBranch(execution_path=self.workspace_dir)
+            level = manifest.level(current)
+            if not level and manifest.levels:
+                level = manifest.levels[-1]
+        if not level:
+            requested = selector or "current branch"
+            raise StackError(
+                f"No level for {requested!r} exists in stack {manifest.name!r}.")
+
+        resolver = IntegrationTargetResolver(manifest)
+        base = resolver.target(level.id)
+        diff_args = []
+        for option in (
+                "--patch", "--stat", "--name-only", "--name-status",
+                "--noFetch", "--noTopLevel", "--noSubmodules",
+                "--noNestedSubprojects"):
+            if args[option]:
+                diff_args.append(option)
+        diff_args.extend([base, level.branch])
+        paths = list(args.get("<path>") or [])
+        if paths:
+            diff_args.append("--")
+            diff_args.extend(paths)
+        logging.info(
+            f"Stack {manifest.name}: incremental diff {base} -> {level.branch}")
+        return grapeMenu.menu().applyMenuChoice("diff", diff_args)
 
     def _adopt(self, args):
         """Register an existing linear branch chain without rewriting it."""
