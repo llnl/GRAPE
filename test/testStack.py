@@ -326,3 +326,17 @@ class TestStack(testGrape.TestGrape):
         self.assertIn(f"{top}", rendered_diff)
         self.assertIn("top.txt", rendered_diff)
         self.assertNotIn("bottom.txt", rendered_diff)
+
+    def testCumulativeDiffComparesLevelWithPublicationDestination(self):
+        """Cumulative diff contains changes from every level through selection."""
+        _, top = self._createCommittedTwoLevelStack()
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["diff", "api", "--cumulative", "--name-only",
+                      "--noSubmodules", "--noNestedSubprojects"]))
+
+        output = self.get_output()
+        rendered_diff = output[output.index("[workspace]"):]
+        self.assertIn(f"master {top}", rendered_diff)
+        self.assertIn("bottom.txt", rendered_diff)
+        self.assertIn("top.txt", rendered_diff)

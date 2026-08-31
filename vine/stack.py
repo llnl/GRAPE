@@ -500,7 +500,7 @@ class StackOption(Option, WorkspaceDirHandler):
            grape-stack show [<stack>]
            grape-stack status [<stack>] [--remote]
            grape-stack checkout <level>
-           grape-stack diff [<level>] [--incremental]
+           grape-stack diff [<level>] [--incremental | --cumulative]
                        [--patch | --stat | --name-only | --name-status]
                        [--noFetch]
                        [--noTopLevel] [--noSubmodules] [--noNestedSubprojects]
@@ -529,6 +529,7 @@ class StackOption(Option, WorkspaceDirHandler):
         --noFetch           Do not fetch before validating recorded remote tips.
         --remote            Fetch before reporting local/remote stack status.
         --incremental       Compare the selected level with its immediate parent.
+        --cumulative        Compare the publication destination with the level.
         --patch             Print patch output. This is the default.
         --stat              Print diffstat output instead of patches.
         --name-only         Print only changed file names.
@@ -920,7 +921,9 @@ class StackOption(Option, WorkspaceDirHandler):
                 f"No level for {requested!r} exists in stack {manifest.name!r}.")
 
         resolver = IntegrationTargetResolver(manifest)
-        base = resolver.target(level.id)
+        base = (manifest.destination if args["--cumulative"]
+                else resolver.target(level.id))
+        mode = "cumulative" if args["--cumulative"] else "incremental"
         diff_args = []
         for option in (
                 "--patch", "--stat", "--name-only", "--name-status",
@@ -934,7 +937,7 @@ class StackOption(Option, WorkspaceDirHandler):
             diff_args.append("--")
             diff_args.extend(paths)
         logging.info(
-            f"Stack {manifest.name}: incremental diff {base} -> {level.branch}")
+            f"Stack {manifest.name}: {mode} diff {base} -> {level.branch}")
         return grapeMenu.menu().applyMenuChoice("diff", diff_args)
 
     def _adopt(self, args):
