@@ -4,6 +4,7 @@ import os
 import logging
 import re
 import urllib
+import json
 from configparser import NoSectionError, NoOptionError
 from stashy import errors as stashy_errors
 from vine import CodeReviewsFactory
@@ -56,6 +57,7 @@ class Review(Option, WorkspaceDirHandler):
                         [--noLocal | --pushModifiedOnly]
                         [--label_ref=<ref>]
                         [--skiplabels]
+                        [--stackMetadata=<json>]
 
     Options:
         --update                    Update an existing pull request with a new description, set of reviewers, etc.
@@ -119,6 +121,7 @@ class Review(Option, WorkspaceDirHandler):
         --label_ref=<ref>           Reference SHA or branch to use for changedfilelabelmapping. This may be useful to set to a
                                     the merged result SHA to reflect the merged result diff. Defaults to current (source) branch.
         --skiplabels                Skip labeling based on changedfilelabelmapping.
+        --stackMetadata=<json>      Internal structured metadata for a stack level.
 
 
     """
@@ -719,7 +722,15 @@ class Review(Option, WorkspaceDirHandler):
         #target branch for outer level repo
         target_branch = args["--target"]
         if not target_branch:
-            target_branch = config.getPublicBranchFor(branch)
+            from vine import stack
+            target_branch = stack.integration_target_for_branch(
+                branch, self.workspace_dir)
+            if target_branch:
+                args["--stackRetarget"] = True
+            else:
+                target_branch = config.getPublicBranchFor(branch)
+        elif args.get("--stackMetadata"):
+            args["--stackRetarget"] = True
 
         try:
             top_repo_context = self._get_top_repo_context(
@@ -734,6 +745,18 @@ class Review(Option, WorkspaceDirHandler):
                 existingOuterLevelRequest = None
             else:
                 raise
+
+        if (top_repo_context and not existingOuterLevelRequest and
+                args.get("--stackRetarget")):
+            candidates = getOpenPullRequestsBySource(
+                top_repo_context['repo'], branch, args)
+            if len(candidates) == 1:
+                existingOuterLevelRequest = candidates[0]
+            elif len(candidates) > 1:
+                logging.error(
+                    f"GRAPE: Multiple open reviews use source {branch!r}; "
+                    "close duplicates before stack review can retarget one.")
+                return False
 
         if args["--printUnresolvedComments"]:
             if not top_repo_context:
@@ -778,6 +801,21 @@ class Review(Option, WorkspaceDirHandler):
             descr = existingOuterLevelRequest.description()
 
         descriptionModel = PullRequestDescriptionModel.from_text(descr, reviewRuleManager)
+        stack_metadata = args.get("--stackMetadata")
+        if stack_metadata:
+            try:
+                stack_metadata = json.loads(stack_metadata)
+            except ValueError as exc:
+                logging.error(f"GRAPE: Invalid stack review metadata: {exc}")
+                return False
+            parent_source = stack_metadata.get("parent_source")
+            parent_target = stack_metadata.get("parent_target")
+            if parent_source and parent_target and top_repo_context:
+                parent_request = top_repo_context['repo'].getOpenPullRequest(
+                    parent_source, parent_target)
+                if parent_request:
+                    stack_metadata["depends_on"] = parent_request.link()
+            descriptionModel.set_stack_metadata(stack_metadata)
 
         # Determine merge/pull request reviewers
         reviewers = {}
@@ -886,6 +924,8 @@ class Review(Option, WorkspaceDirHandler):
             # determine branch prefix
             prefix = git.branchPrefix(branch)
             sub_target_branch = submoduleBranchMappings[prefix]
+            if stack_metadata and stack_metadata.get("position", 1) > 1:
+                sub_target_branch = target_branch
 
             for submodule in modifiedSubmodules:
                 if not submodule:
@@ -1011,6 +1051,40 @@ class Review(Option, WorkspaceDirHandler):
             outerReviewers = self.getApplicableReviewers(repo_name, reviewers, reviewRules)
 
             request = postPullRequest(repo, title, branch, target_branch, updatedDescription, outerReviewers, args, self.workspace_dir, wip=wip, add_labels=add_labels, remove_labels=remove_labels)
+
+            use_dependencies = config.getboolean(
+                Option.SECTION_STACK, "useProviderDependencies", fallback=True)
+            if (request and stack_metadata and use_dependencies and
+                    stack_metadata.get("parent_source")):
+                parent_request = repo.getOpenPullRequest(
+                    stack_metadata["parent_source"],
+                    stack_metadata["parent_target"])
+                if parent_request and hasattr(request, "add_dependency"):
+                    try:
+                        request.add_dependency(parent_request)
+                    except Exception as exc:
+                        logging.warning(
+                            "GRAPE: Could not mirror the optional provider "
+                            f"dependency: {exc}")
+
+            if request and stack_metadata:
+                try:
+                    pipeline = (request.pipelineStatus()
+                                if hasattr(request, "pipelineStatus") else None)
+                    approval = (request.approved()
+                                if hasattr(request, "approved") else None)
+                except Exception as exc:
+                    logging.warning(
+                        f"GRAPE: Could not read stack review state: {exc}")
+                    pipeline = None
+                    approval = None
+                logging.info(
+                    f"Stack review state for {branch}: "
+                    f"pipeline={pipeline or 'unknown'}, "
+                    f"approved={approval if approval is not None else 'unknown'}")
+
+            if not request:
+                return False
 
             # Update related reviews
             outerLevelURL = request.link()
@@ -1315,6 +1389,18 @@ def getReposPullRequest(repo, branch, target_branch, args):
     return request
 
 
+def getOpenPullRequestsBySource(repo, branch, args):
+    """Return open review requests for a source branch, regardless of target."""
+    if hasattr(repo, "getOpenPullRequestsBySource"):
+        return repo.getOpenPullRequestsBySource(branch)
+    return [
+        request for request in repo.pullRequests(
+            direction="OUTGOING", at=f"refs/heads/{branch}",
+            state=args["--state"])
+        if request.fromRef() == branch
+    ]
+
+
 def pullRequestAlreadyMerged(errorMessage):
     if "already up-to-date with branch" in errorMessage or \
             "This pull request has already been merged" in errorMessage:
@@ -1337,6 +1423,23 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
     # get the open pull requests outgoing from our public branch
     logging.info(f"Gathering active pull requests on {branch} for repo {args['--repo']}")
     request = getReposPullRequest(repo, branch, target_branch, args)
+    retarget = False
+    if not request and args.get("--stackRetarget"):
+        candidates = getOpenPullRequestsBySource(repo, branch, args)
+        if len(candidates) > 1:
+            logging.error(
+                f"GRAPE: Multiple open reviews use source {branch!r}; "
+                "refusing to create or retarget another review.")
+            return None
+        if candidates:
+            request = candidates[0]
+            retarget = request.toRef() != target_branch
+            if (retarget and hasattr(request, "supportsTargetUpdate") and
+                    not request.supportsTargetUpdate()):
+                logging.error(
+                    f"GRAPE: The review provider cannot retarget {branch!r} "
+                    f"from {request.toRef()!r} to {target_branch!r}.")
+                return None
 
     if not request:
         if not args["--update"]:
@@ -1423,6 +1526,8 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         updates.append(f"title={title}")
                     if wip is not None:
                         updates.append(f"draft={wip}")
+                    if retarget:
+                        updates.append(f"target={target_branch}")
                     if descr.strip() != request.description().strip():
                         # Note that the description will change whenever the reviewers change.
                         descr_marker = "=" * 70
@@ -1443,7 +1548,9 @@ def postPullRequest(repo, title, branch, target_branch, descr, reviewers, args, 
                         update_string = '\n'.join(updates)
                         logging.info(f"Updating review request with the following changes:\n{update_string}")
                         request = request.update(ver, title=title, description=descr, reviewers=subReviewers,
-                                                 wip=wip, add_labels=add_labels, remove_labels=remove_labels)
+                                                 wip=wip, add_labels=add_labels,
+                                                 remove_labels=remove_labels,
+                                                 target_branch=(target_branch if retarget else None))
                         if have_changed_labels:
                            logging.info("Regenerating pipeline...")
                            request.regeneratePipeline()

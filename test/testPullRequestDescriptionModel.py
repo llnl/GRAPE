@@ -68,3 +68,30 @@ None
 
         self.assertIn("* Add a generic implementation detail\n\n# GRAPE", description)
         self.assertNotIn("* Add a generic implementation detail\n\n\n# GRAPE", description)
+
+    def testStackMetadataRoundTripsWithoutReplacingUserText(self):
+        """Generated vertical relationships retain stable machine metadata."""
+        metadata = {
+            "stack_id": "stack-1",
+            "stack": "widgets",
+            "level_id": "level-2",
+            "level": "api",
+            "position": 2,
+            "total": 3,
+            "destination": "develop",
+            "depends_on": "https://example.test/mr/1",
+        }
+        model = PullRequestDescriptionModel(
+            userLines=["Keep this user-authored summary."],
+            stackMetadata=metadata)
+
+        with mock.patch(
+                "vine.PullRequestDescriptionModel.version.grapeVersion",
+                return_value="test"):
+            description = model.to_text()
+        parsed = PullRequestDescriptionModel.from_text(
+            description, FakeReviewRuleManager())
+
+        self.assertEqual(metadata, parsed.stackMetadata)
+        self.assertEqual(
+            "Keep this user-authored summary.", parsed.userLines[0])

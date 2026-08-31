@@ -493,6 +493,14 @@ class StackOption(Option, WorkspaceDirHandler):
                        [--nopush] [--dry-run] [--recurse | --noRecurse]
            grape-stack add <level> [--stack=<stack>] [--nopush] [--dry-run]
                        [--recurse | --noRecurse]
+           grape-stack sync [--stack=<stack>] [--from=<level>]
+                       [--rebase] [--merge] [--push] [--noFetch]
+                       [--dry-run] [--continue]
+           grape-stack review [--stack=<stack>] [--from=<level>]
+                       [--draft-descendants] [--ready-descendants]
+                       [--noLocal] [--noRecurse] [--noRecurseSubprojects]
+                       [--printUnresolvedComments] [--ignoreCommenter=<user>...]
+                       [--dry-run]
 
     Options:
         --type=<type>       Topic prefix for generated branches. [default: feature]
@@ -502,6 +510,21 @@ class StackOption(Option, WorkspaceDirHandler):
         --stack=<stack>     Stack name or stable ID. Defaults to current/active stack.
         --nopush            Do not push newly created branches.
         --dry-run           Print the complete repository plan without changing state.
+        --from=<level>      Start at this level (inclusive for review, parent for sync).
+        --rebase            Replay each descendant onto its updated parent.
+        --merge             Merge each updated parent into its child.
+        --push              Push synchronized levels after all local updates succeed.
+        --noFetch           Do not fetch before validating recorded remote tips.
+        --continue          Continue a synchronization stopped by conflicts.
+        --draft-descendants  Submit upper levels as drafts.
+        --ready-descendants  Submit every level as ready for review.
+        --noLocal           Do not push branches while submitting reviews.
+        --noRecurseSubprojects
+                            Do not submit reviews for nested subprojects.
+        --printUnresolvedComments
+                            Print unresolved comments for every stack level.
+        --ignoreCommenter=<user>
+                            Ignore a commenter in unresolved-thread output.
         --recurse           Include active submodules and nested subprojects.
         --noRecurse         Only operate on the outer repository.
     """
@@ -533,6 +556,10 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._start(args)
             if args["add"]:
                 return self._add(args)
+            if args["sync"]:
+                return self._sync(args)
+            if args["review"]:
+                return self._review(args)
         except StackError as exc:
             logging.error(f"GRAPE: STACK ERROR: {exc}")
             return False
@@ -722,6 +749,69 @@ class StackOption(Option, WorkspaceDirHandler):
             store.save(manifest)
         logging.info(f"Added {level_name!r} to stack {manifest.name!r}.")
         return True
+
+    def _selected_stack(self, selector):
+        store = StackStore(self.workspace_dir)
+        current = git.currentBranch(execution_path=self.workspace_dir)
+        manifest = store.find(selector, branch=current)
+        if not manifest:
+            raise StackError("No current or active stack was found.")
+        return manifest
+
+    def _sync(self, args):
+        from vine.stack_sync import StackSynchronizer
+
+        manifest = self._selected_stack(args["--stack"])
+        if args["--rebase"] and args["--merge"]:
+            raise StackError("Choose only one of --rebase or --merge.")
+        config = config_parser_global.grapeConfig()
+        strategy = config.get(
+            self.SECTION_STACK, "syncStrategy", fallback="rebase")
+        if args["--rebase"]:
+            strategy = "rebase"
+        elif args["--merge"]:
+            strategy = "merge"
+        start_index = manifest.index(args["--from"]) if args["--from"] else 0
+        repositories = WorkspaceInventory(self.workspace_dir).repositories()
+        if not args["--continue"]:
+            WorkspaceInventory.require_clean(repositories, allow_untracked=True)
+        synchronizer = StackSynchronizer(
+            self.workspace_dir, manifest, repositories)
+        return synchronizer.run(
+            start_index=start_index,
+            strategy=strategy,
+            no_fetch=args["--noFetch"],
+            push=args["--push"],
+            dry_run=args["--dry-run"],
+            continue_operation=args["--continue"],
+        )
+
+    def _review(self, args):
+        from vine.stack_review import StackReviewer
+
+        manifest = self._selected_stack(args["--stack"])
+        if args["--draft-descendants"] and args["--ready-descendants"]:
+            raise StackError(
+                "Choose only one of --draft-descendants or --ready-descendants.")
+        config = config_parser_global.grapeConfig()
+        draft_descendants = config.getboolean(
+            self.SECTION_STACK, "submitDescendantsForReviewAsDraft",
+            fallback=True)
+        if args["--draft-descendants"]:
+            draft_descendants = True
+        elif args["--ready-descendants"]:
+            draft_descendants = False
+        reviewer = StackReviewer(self.workspace_dir, manifest)
+        return reviewer.run(
+            from_level=args["--from"],
+            dry_run=args["--dry-run"],
+            no_local=args["--noLocal"],
+            no_recurse=args["--noRecurse"],
+            no_recurse_subprojects=args["--noRecurseSubprojects"],
+            draft_descendants=draft_descendants,
+            print_comments=args["--printUnresolvedComments"],
+            ignore_commenters=args["--ignoreCommenter"],
+        )
 
 
 def main():

@@ -408,6 +408,17 @@ class TestReview(testGrape.TestGrape):
         self.assertEqual([], merge_request.reviewer_ids)
         merge_request.save.assert_called_once()
 
+    def testGitlabUpdateRetargetsMergeRequest(self):
+        """GitLab target updates are persisted with other MR metadata."""
+        merge_request = FakeGitlabMergeRequest()
+        merge_request.target_branch = 'master'
+        pull_request = Gitlab.PullRequest(merge_request, mock.Mock())
+
+        pull_request.update(123, target_branch='topic/parent')
+
+        self.assertEqual('topic/parent', merge_request.target_branch)
+        merge_request.save.assert_called_once()
+
     def testGetApplicableReviewersReturnsUserList(self):
         """Provider adapters should receive usernames, not review-rule groups."""
 
@@ -474,6 +485,33 @@ class TestReview(testGrape.TestGrape):
 
         self.assertIs(existing_request, request)
         existing_request.update.assert_not_called()
+
+    def testPostPullRequestRetargetsStackReviewInsteadOfDuplicating(self):
+        """A source-matched stack MR is repaired when its target changed."""
+        existing_request = FakeExistingReviewRequest()
+        existing_request.toRef = mock.Mock(return_value='master')
+        existing_request.supportsTargetUpdate = mock.Mock(return_value=True)
+        existing_request.update = mock.Mock(return_value=existing_request)
+        repo = FakeRepoWithExistingRequest(existing_request)
+        args = {
+            '--state': 'open',
+            '--update': False,
+            '--add': False,
+            '--prepend': False,
+            '--append': False,
+            '--repo': 'repo1',
+            '--stackRetarget': True,
+        }
+
+        request = review.postPullRequest(
+            repo, 'Existing title', 'topic/test', 'topic/parent',
+            'Existing description', None, args, self.repo)
+
+        self.assertIs(existing_request, request)
+        existing_request.update.assert_called_once_with(
+            123, title='Existing title', description='Existing description',
+            reviewers=None, wip=None, add_labels=[], remove_labels=[],
+            target_branch='topic/parent')
 
     def testDefaultGrapeReviewRuleLabelIsStable(self):
         """The built-in GRAPE review-rule label should remain backwards compatible."""

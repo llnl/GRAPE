@@ -1,10 +1,13 @@
 """Tests for local stacked-branch foundations."""
 
 import os
+from unittest import mock
 
 from vine import config_parser_global
 from vine import grapeGit as git
+from vine import mergeDown
 from vine import stack
+from vine import stack_review
 from vine.option import Option
 from test import testGrape
 
@@ -86,3 +89,120 @@ class TestStack(testGrape.TestGrape):
         self.assertFalse(git.hasBranch(
             "feature/alice/widgets/model", execution_path=self.repo))
         self.assertEqual(stack.StackStore(self.repo).list(), [])
+
+    def _createCommittedTwoLevelStack(self):
+        """Create two non-empty levels and return their branch names."""
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["start", "widgets", "model", "--type=feature",
+                      "--start=master", "--user=alice", "--nopush",
+                      "--noRecurse"]))
+        bottom = "feature/alice/widgets/model"
+        bottom_file = os.path.join(self.repo, "bottom.txt")
+        with open(bottom_file, "w") as stream:
+            stream.write("bottom\n")
+        git.add("bottom.txt", execution_path=self.repo)
+        git.commit('-m "bottom change"', execution_path=self.repo)
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["add", "api", "--nopush", "--noRecurse"]))
+        top = "feature/alice/widgets/api"
+        top_file = os.path.join(self.repo, "top.txt")
+        with open(top_file, "w") as stream:
+            stream.write("top\n")
+        git.add("top.txt", execution_path=self.repo)
+        git.commit('-m "top change"', execution_path=self.repo)
+        return bottom, top
+
+    def testSyncRebasesDescendantAfterParentChanges(self):
+        """A changed lower level is replayed through every descendant."""
+        bottom, top = self._createCommittedTwoLevelStack()
+        old_top = git.SHA(top, execution_path=self.repo)
+        git.checkout(bottom, execution_path=self.repo)
+        with open(os.path.join(self.repo, "later.txt"), "w") as stream:
+            stream.write("later parent edit\n")
+        git.add("later.txt", execution_path=self.repo)
+        git.commit('-m "later parent change"', execution_path=self.repo)
+
+        result = self.menu.applyMenuChoice(
+            "stack", ["sync", "--from=model", "--rebase", "--noFetch"])
+
+        self.assertTrue(result)
+        self.assertEqual(top, git.currentBranch(execution_path=self.repo))
+        self.assertTrue(git.branchUpToDateWith(
+            top, bottom, execution_path=self.repo))
+        self.assertNotEqual(old_top, git.SHA(top, execution_path=self.repo))
+        manifest = stack.StackStore(self.repo).find("widgets")
+        self.assertEqual(
+            git.SHA(top, execution_path=self.repo),
+            manifest.level(top).repositories["."].tip)
+
+    def testSyncMergeIncorporatesChangedParent(self):
+        """Merge strategy preserves the child and merges the latest parent."""
+        bottom, top = self._createCommittedTwoLevelStack()
+        git.checkout(bottom, execution_path=self.repo)
+        with open(os.path.join(self.repo, "merge-parent.txt"), "w") as stream:
+            stream.write("merge parent edit\n")
+        git.add("merge-parent.txt", execution_path=self.repo)
+        git.commit('-m "merge parent change"', execution_path=self.repo)
+
+        result = self.menu.applyMenuChoice(
+            "stack", ["sync", "--from=model", "--merge", "--noFetch"])
+
+        self.assertTrue(result)
+        self.assertTrue(git.branchUpToDateWith(
+            top, bottom, execution_path=self.repo))
+        self.assertEqual(
+            2, int(git.gitcmd(
+                "rev-list --parents -n 1 HEAD", "inspect merge",
+                execution_path=self.repo).count(" ")))
+
+    def testSyncRejectsUnexpectedRemoteMovement(self):
+        """Recorded leases stop synchronization after a remote branch moves."""
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["start", "widgets", "model", "--type=feature",
+                      "--start=master", "--user=alice", "--noRecurse"]))
+        bottom = "feature/alice/widgets/model"
+        with open(os.path.join(self.repo, "remote-move.txt"), "w") as stream:
+            stream.write("local parent commit\n")
+        git.add("remote-move.txt", execution_path=self.repo)
+        git.commit('-m "local parent commit"', execution_path=self.repo)
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["add", "api", "--noRecurse"]))
+        git.gitcmd(
+            f"update-ref refs/remotes/origin/{bottom} {bottom}",
+            "move remote tracking ref", execution_path=self.repo)
+
+        result = self.menu.applyMenuChoice(
+            "stack", ["sync", "--from=model", "--rebase", "--noFetch"])
+
+        self.assertFalse(result)
+        self.assertIn("moved", self.get_output())
+
+    def testStackReviewPlansBottomToTopWithStructuredMetadata(self):
+        """Review orchestration uses immediate targets and stable metadata."""
+        bottom, top = self._createCommittedTwoLevelStack()
+        manifest = stack.StackStore(self.repo).find("widgets")
+        reviewer = stack_review.StackReviewer(self.repo, manifest)
+
+        with mock.patch(
+                "vine.stack_review.grapeMenu.menu") as menu_factory:
+            apply_choice = menu_factory.return_value.applyMenuChoice
+            apply_choice.return_value = True
+            self.assertTrue(reviewer.run(no_local=True, no_recurse=True))
+
+        calls = apply_choice.call_args_list
+        self.assertEqual(2, len(calls))
+        self.assertIn(f"--source={bottom}", calls[0].args[1])
+        self.assertIn("--target=master", calls[0].args[1])
+        self.assertIn(f"--source={top}", calls[1].args[1])
+        self.assertIn(f"--target={bottom}", calls[1].args[1])
+        self.assertIn("--draft", calls[1].args[1])
+
+    def testMergeDownDefaultsToStackIntegrationTarget(self):
+        """``grape md`` uses the immediate parent unless --public is explicit."""
+        bottom, top = self._createCommittedTwoLevelStack()
+
+        self.assertEqual(top, git.currentBranch(execution_path=self.repo))
+        self.assertEqual(
+            bottom,
+            mergeDown.MergeDown.lookupPublicBranch(execution_path=self.repo))

@@ -180,6 +180,11 @@ class Repo(StashyNode):
                 break
         return ret
 
+    def getOpenPullRequestsBySource(self, source):
+        """Return open pull requests for ``source`` across all targets."""
+        return [request for request in self.pullRequests()
+                if request.fromRef() == source]
+
     def getMergedPullRequests(self, source, target):
         ret = []
         requests = self.pullRequests(state="MERGED")
@@ -343,7 +348,8 @@ class PullRequest(StashyNode):
         return self.node["version"]
 
     # reviewers is a list of usernames
-    def update(self, ver, title=None, description=None, reviewers=None, wip=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, wip=None,
+               add_labels=[], remove_labels=[], target_branch=None):
         #Bitbucket REST API for reviewer definition snippet:
         # "reviewers": [
         #     {
@@ -362,9 +368,18 @@ class PullRequest(StashyNode):
            logging.warning("GRAPE: WARNING: labels are not implemented for Bitbucket Pull Requests")
         if wip is not None:
            logging.warning("GRAPE: WARNING: wip not implemented Bitbucket Pull Requests")
+        if target_branch is not None and target_branch != self.toRef():
+           logging.warning(
+               "GRAPE: WARNING: target updates are not implemented for "
+               "Bitbucket pull requests")
 
         stashy_request = self._stashy_pull_requests[str(self.node["id"])]
         return PullRequest(stashy_request.update(ver,title=title,description=description,reviewers=reviewers), self._stashy_pull_requests)
+
+    @staticmethod
+    def supportsTargetUpdate():
+        """Return whether this provider can retarget an open review."""
+        return False
 
     def regeneratePipeline(self):
         pass

@@ -735,6 +735,10 @@ class Repo:
         requests = self.pullRequests(state="opened", target_branch=target, source_branch=source)
         return requests[0] if requests else None
 
+    def getOpenPullRequestsBySource(self, source):
+        """Return all open merge requests for ``source`` across targets."""
+        return self.pullRequests(state="opened", source_branch=source)
+
     def getMergedPullRequests(self, source, target):
         return self.pullRequests(state="merged", target_branch=target, source_branch=source)
 
@@ -1457,7 +1461,8 @@ class PullRequest:
         return new_title
 
     # reviewers is a list of usernames.
-    def update(self, ver, title=None, description=None, reviewers=None, wip=None, add_labels=[], remove_labels=[]):
+    def update(self, ver, title=None, description=None, reviewers=None, wip=None,
+               add_labels=[], remove_labels=[], target_branch=None):
         """Update merge request metadata and reviewer assignments.
 
         Args:
@@ -1475,6 +1480,7 @@ class PullRequest:
                 draft state unchanged.
             add_labels: Labels to add to the merge request.
             remove_labels: Labels to remove from the merge request.
+            target_branch: New target branch, or ``None`` to preserve it.
 
         Returns:
             PullRequest: This updated pull request wrapper.
@@ -1486,6 +1492,9 @@ class PullRequest:
 
         if description:
             self.mergerequest.description = description
+
+        if target_branch is not None:
+            self.mergerequest.target_branch = target_branch
 
         if reviewers is not None:
             gitlab_reviewer_ids = set()
@@ -1527,6 +1536,31 @@ class PullRequest:
         self.mergerequest.remove_source_branch = False
         self.mergerequest.save()
         return self
+
+    def pipelineStatus(self):
+        """Return the current head-pipeline status when GitLab provides it."""
+        pipeline = getattr(self.mergerequest, "head_pipeline", None)
+        if isinstance(pipeline, dict):
+            return pipeline.get("status")
+        return getattr(pipeline, "status", None)
+
+    @staticmethod
+    def supportsTargetUpdate():
+        """Return whether this provider can retarget an open review."""
+        return True
+
+    def add_dependency(self, parent):
+        """Mirror a stack dependency through GitLab's MR-block API if available."""
+        blocks = getattr(self.mergerequest, "blocks", None)
+        if blocks is None:
+            return False
+        parent_iid = parent.iid()
+        for block in blocks.list(all=True):
+            blocking = getattr(block, "blocking_merge_request", {}) or {}
+            if blocking.get("iid") == parent_iid:
+                return True
+        blocks.create({"blocking_merge_request_id": parent_iid})
+        return True
 
     def regeneratePipeline(self, raiseOnFailure=True):
         # Create a new pipeline to reflect any changes in labels

@@ -255,6 +255,11 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
             return 'unknown'
         if currentBranch in config.get(Option.SECTION_FLOW, 'publicBranches'):
             return currentBranch
+        from vine import stack
+        integration_target = stack.integration_target_for_branch(
+            currentBranch, execution_path)
+        if integration_target:
+            return integration_target
         try:
             branch = config.getPublicBranchFor(currentBranch)
         except KeyError:
@@ -293,7 +298,7 @@ class MergeDown(Resumable, Option, WorkspaceDirHandler):
             args["<<cmd>>"] = "md"
         branch = args["--public"]
         if not branch:
-            branch = config_parser_global.grapeConfig().getPublicBranchFor(git.currentBranch(execution_path=self.workspace_dir))
+            branch = self.lookupPublicBranch(execution_path=self.workspace_dir)
             if not branch:
                 logging.error("ERROR: public branches must be configured for grape md to work.")
         args["--public"] = branch
