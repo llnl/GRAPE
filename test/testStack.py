@@ -253,3 +253,12 @@ class TestStack(testGrape.TestGrape):
 
         self.assertFalse(result)
         self.assertEqual([], stack.StackStore(self.repo).list())
+
+    def testListShowsCurrentStackAndDestination(self):
+        """Stack listing identifies the current local stack concisely."""
+        self._createCommittedTwoLevelStack()
+
+        self.assertTrue(self.menu.applyMenuChoice("stack", ["list"]))
+
+        output = self.get_output()
+        self.assertIn("* widgets (2 levels) -> master active", output)

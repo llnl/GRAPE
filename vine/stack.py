@@ -496,6 +496,7 @@ class StackOption(Option, WorkspaceDirHandler):
            grape-stack adopt <stack> <branch>... [--type=<type>]
                        [--start=<branch>] [--target=<branch>] [--user=<user>]
                        [--dry-run] [--recurse | --noRecurse]
+           grape-stack list
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -561,6 +562,8 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._add(args)
             if args["adopt"]:
                 return self._adopt(args)
+            if args["list"]:
+                return self._list()
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -762,6 +765,24 @@ class StackOption(Option, WorkspaceDirHandler):
         if not manifest:
             raise StackError("No current or active stack was found.")
         return manifest
+
+    def _list(self):
+        """Print locally known stacks with active and current indicators."""
+        store = StackStore(self.workspace_dir)
+        manifests = store.list()
+        if not manifests:
+            logging.info("No local stacks.")
+            return True
+        current = git.currentBranch(execution_path=self.workspace_dir)
+        active = store.active()
+        for manifest in manifests:
+            marker = "*" if manifest.level(current) else " "
+            active_marker = " active" if active and active.id == manifest.id else ""
+            noun = "level" if len(manifest.levels) == 1 else "levels"
+            logging.info(
+                f"{marker} {manifest.name} ({len(manifest.levels)} {noun}) "
+                f"-> {manifest.destination}{active_marker}")
+        return True
 
     def _adopt(self, args):
         """Register an existing linear branch chain without rewriting it."""
