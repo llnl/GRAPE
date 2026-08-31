@@ -499,6 +499,7 @@ class StackOption(Option, WorkspaceDirHandler):
            grape-stack list
            grape-stack show [<stack>]
            grape-stack status [<stack>] [--remote]
+           grape-stack checkout <level>
            grape-stack sync [--stack=<stack>] [--from=<level>]
                        [--rebase] [--merge] [--push] [--noFetch]
                        [--dry-run] [--continue]
@@ -522,6 +523,7 @@ class StackOption(Option, WorkspaceDirHandler):
         --push              Push synchronized levels after all local updates succeed.
         --noFetch           Do not fetch before validating recorded remote tips.
         --remote            Fetch before reporting local/remote stack status.
+        <level>             Level name, branch, stable ID, or navigation keyword.
         --continue          Continue a synchronization stopped by conflicts.
         --draft-descendants  Submit upper levels as drafts.
         --ready-descendants  Submit every level as ready for review.
@@ -571,6 +573,8 @@ class StackOption(Option, WorkspaceDirHandler):
                 return self._show(args["<stack>"])
             if args["status"]:
                 return self._status(args["<stack>"], args["--remote"])
+            if args["checkout"]:
+                return self._checkout(args["<level>"])
             if args["sync"]:
                 return self._sync(args)
             if args["review"]:
@@ -821,6 +825,54 @@ class StackOption(Option, WorkspaceDirHandler):
         return StackStatus(
             self.workspace_dir, manifest, repositories).report(
                 fetch_remote=fetch_remote)
+
+    def _checkout(self, selector):
+        """Check out a stack level through the workspace-aware command.
+
+        Args:
+            selector: Level name, branch, stable ID, or one of the navigation
+                keywords ``previous``, ``next``, ``bottom``, and ``top``.
+
+        Returns:
+            bool: Whether the workspace checkout completed successfully.
+
+        Raises:
+            StackError: If no stack or requested relative level is available.
+        """
+        from vine import grapeMenu
+
+        manifest = self._selected_stack(None)
+        current = git.currentBranch(execution_path=self.workspace_dir)
+        current_level = manifest.level(current)
+        if selector in ("previous", "next"):
+            if not current_level:
+                raise StackError(
+                    f"Current branch {current!r} is not a level in stack "
+                    f"{manifest.name!r}.")
+            offset = -1 if selector == "previous" else 1
+            index = manifest.index(current_level.id) + offset
+            if index < 0 or index >= len(manifest.levels):
+                raise StackError(
+                    f"Already at the {('bottom' if offset < 0 else 'top')} "
+                    f"of stack {manifest.name!r}.")
+            level = manifest.levels[index]
+        elif selector == "bottom":
+            if not manifest.levels:
+                raise StackError(f"Stack {manifest.name!r} has no levels.")
+            level = manifest.levels[0]
+        elif selector == "top":
+            if not manifest.levels:
+                raise StackError(f"Stack {manifest.name!r} has no levels.")
+            level = manifest.levels[-1]
+        else:
+            level = manifest.level(selector)
+            if not level:
+                raise StackError(
+                    f"No level {selector!r} exists in stack {manifest.name!r}.")
+
+        logging.info(
+            f"Stack {manifest.name}: checkout {level.name} ({level.branch})")
+        return grapeMenu.menu().applyMenuChoice("checkout", [level.branch])
 
     def _adopt(self, args):
         """Register an existing linear branch chain without rewriting it."""

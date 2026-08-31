@@ -291,3 +291,24 @@ class TestStack(testGrape.TestGrape):
         output = self.get_output()
         self.assertIn(f"1. {bottom} -> master", output)
         self.assertIn(f"2. {top} (*) -> {bottom}", output)
+
+    def testCheckoutNavigatesLevelsAndRejectsStackBoundaries(self):
+        """Stack checkout delegates level changes to workspace checkout."""
+        bottom, top = self._createCommittedTwoLevelStack()
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["checkout", "previous"]))
+        self.assertEqual(bottom, git.currentBranch(execution_path=self.repo))
+        self.assertFalse(self.menu.applyMenuChoice(
+            "stack", ["checkout", "previous"]))
+        self.assertIn("Already at the bottom", self.get_output())
+
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["checkout", "next"]))
+        self.assertEqual(top, git.currentBranch(execution_path=self.repo))
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["checkout", "bottom"]))
+        self.assertEqual(bottom, git.currentBranch(execution_path=self.repo))
+        self.assertTrue(self.menu.applyMenuChoice(
+            "stack", ["checkout", "api"]))
+        self.assertEqual(top, git.currentBranch(execution_path=self.repo))
