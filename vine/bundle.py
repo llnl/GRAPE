@@ -20,8 +20,8 @@ class Bundle(Option, WorkspaceDirHandler):
     which can then be sent over a sneakernet to a mirror of your grape project.
     The history range that is extracted is defined in the following way:
         start point:
-            for each branch in <list> as defined by --branches, start at the commit tagged by
-            <tagprefix>/<branch>.
+            if --tag is provided, start at that tag. Otherwise, for each branch in <list> as
+            defined by --branches, start at the commit tagged by <tagprefix>/<public branch>.
         end point:
             the tip of each branch in <list> as defined by --branches.
     By default, grape bundle bundles up all active submodules in your repository, according to their
@@ -31,6 +31,7 @@ class Bundle(Option, WorkspaceDirHandler):
     Usage:
        grape-bundle [--noRecurse] [--branches=<config.patch.branches>]
                     [--tagprefix=<config.patch.tagprefix>]
+                    [--tag=<tag>]
                     [--describePattern=<config.patch.describePattern>]
                     [--name=<config.repo.name>]
                     [--outfile=<fname>]
@@ -44,6 +45,8 @@ class Bundle(Option, WorkspaceDirHandler):
                                         [default: .grapeconfig.patch.branches]
        --tagprefix=<str>                the prefix used to tag start points to bundle
                                         [default: .grapeconfig.patch.tagprefix]
+       --tag=<tag>                      an exact tag to use as the start point for every branch.
+                                        Overrides --tagprefix.
        --describePattern=<pattern>      passed to git describe to aid in naming the bundle.
                                         [default: .grapeconfig.patch.describePattern]
        --name=<str>                     Name used as a prefix to the bundle file.
@@ -87,13 +90,14 @@ class Bundle(Option, WorkspaceDirHandler):
         # whereas grape typically has full workspace semantics.
         name = self.config().get(self.SECTION_PATCH, "tagprefix")
         description = "Create a bundle of branches listed in " + \
-                      f"patch.branches since the '{name}/<branch>' tags"
+                      f"patch.branches since the '{name}/<public branch>' tags"
         return description
 
     @log_wrapper
     def execute(self, args):
 
         tagprefix = args["--tagprefix"]
+        tag = args["--tag"]
         branches = args["--branches"]
 
         reponame = args["--name"]
@@ -107,6 +111,13 @@ class Bundle(Option, WorkspaceDirHandler):
         # Fetch only tags, so the workspace is consistent with last grape up
         git.fetch("origin '+refs/tags/*:refs/tags/*'", execution_path=self.workspace_dir)
         branchlist = branches.split()
+        workspace_config = self.config()
+        branchToPublicBranchMap = {}
+        if not tag:
+            branchToPublicBranchMap = {
+                branch: workspace_config.getPublicBranchFor(branch)
+                for branch in branchlist
+            }
 
         branchToTagMap = {}
         for branch in branchlist:
@@ -116,6 +127,8 @@ class Bundle(Option, WorkspaceDirHandler):
         launchArgs["branchList"] = branchlist
         launchArgs["tags"] = tagsToBundle
         launchArgs["prefix"] = tagprefix
+        launchArgs["tag"] = tag
+        launchArgs["branchToPublicBranchMap"] = branchToPublicBranchMap
         launchArgs["describePattern"] = describePattern
         launchArgs["submoduleReverseBranchMap"] = None
         launchArgs["nestedSubprojectBranchToTagMap"] = branchToTagMap
@@ -130,7 +143,9 @@ class Bundle(Option, WorkspaceDirHandler):
 
         if recurse:
             subbranchlist = args["--submoduleBranches"].split()
-            subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(self.workspace_dir).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
+            subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(
+                self.workspace_dir
+            ).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")
             submoduleReverseBranchMap = {}
             found = False
             for branch in subbranchlist:
@@ -144,6 +159,13 @@ class Bundle(Option, WorkspaceDirHandler):
                              " and will not be checked for consistency!")
 
             launchArgs["branchList"] = subbranchlist
+            launchArgs["branchToPublicBranchMap"] = {}
+            if not tag:
+                launchArgs["branchToPublicBranchMap"] = {
+                    branch: branch if branch in submoduleReverseBranchMap else
+                    subpublicmapping[workspace_config.getPublicBranchFor(branch)]
+                    for branch in subbranchlist
+                }
             launchArgs["submoduleReverseBranchMap"] = submoduleReverseBranchMap
             launchArgs["nestedSubprojectBranchToTagMap"] = None
 
@@ -173,6 +195,8 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
     branchlist = args["branchList"]
     tagsToBundle = args["tags"]
     tagprefix = args["prefix"]
+    tag = args.get("tag")
+    branchToPublicBranchMap = args.get("branchToPublicBranchMap", {})
     describePattern = args["describePattern"]
     submoduleReverseBranchMap = args["submoduleReverseBranchMap"]
     nestedSubprojectBranchToTagMap = args["nestedSubprojectBranchToTagMap"]
@@ -207,7 +231,8 @@ def bundlecmd(repo='', branch='', args={}, *, workspace_dir):
                     logging.info(f"Submodule gitlink {rel_path} does not exist on {top_branch}. " +
                                  f"This is only ok if {repo} was added after or removed before {branch}.")
 
-        tagname = f"{tagprefix}/{branch}"
+        publicBranch = branchToPublicBranchMap.get(branch, branch)
+        tagname = tag or f"{tagprefix}/{publicBranch}"
         try:
             previousLocation = git.describe(
                 f"--always --match '{describePattern}' {tagname}",
