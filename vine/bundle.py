@@ -59,8 +59,9 @@ class Bundle(Option, WorkspaceDirHandler):
        --bundleTags=<mapping>           A list of branch:tagPattern tags to bundle. Note that a broadly defined tag
                                         pattern may yield larger bundle files than you might expect.
                                         [default: .grapeconfig.patch.branchToTagPatternMapping]
-       --submoduleBranches=<list>       space delimited list of submodule branches to bundle.
-                                        [default: .grapeconfig.patch.submodulebranches]
+       --submoduleBranches=<list>       Space-delimited list of submodule branches to bundle.
+                                        Defaults to topic branches from --branches when present,
+                                        otherwise .grapeconfig.patch.submodulebranches.
 
 
     .grapeConfig Defaults:
@@ -142,7 +143,16 @@ class Bundle(Option, WorkspaceDirHandler):
         otherCommandLauncher.launchFromWorkspaceDir(handleMRE=bundlecmdMRE)
 
         if recurse:
-            subbranchlist = args["--submoduleBranches"].split()
+            if args["--submoduleBranches"]:
+                subbranchlist = args["--submoduleBranches"].split()
+            else:
+                topic_branches = [
+                    branch for branch in branchlist
+                    if branch not in workspace_config.getPublicBranchList()
+                ]
+                subbranchlist = topic_branches or workspace_config.getList(
+                    self.SECTION_PATCH, "submodulebranches"
+                )
             subpublicmapping = config_parser_workspace.GrapeConfigParserWorkspace(
                 self.workspace_dir
             ).getMapping(Option.SECTION_WORKSPACE, "submodulepublicmappings")

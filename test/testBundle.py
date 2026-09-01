@@ -102,6 +102,61 @@ class TestBundle(testGrape.TestGrape):
                 bundle_args = create_bundle.call_args[0][0]
                 self.assertIn(f"{expected_tag}..{branch}", bundle_args)
 
+    @patch("vine.bundle.config_parser_workspace.GrapeConfigParserWorkspace")
+    @patch("vine.bundle.multi_repo_cmd_launcher.MultiRepoCommandLauncher")
+    @patch("vine.bundle.git.describe", return_value="v1.0")
+    @patch("vine.bundle.git.fetch")
+    def test_bundle_selects_submodule_branches(
+            self, _fetch, _describe, launcher_cls, workspace_config_cls):
+        """Topic branches should become the default recursive branch list."""
+        topic_branch = "feature/user/example"
+        config = config_parser_global.grapeConfig()
+        config.set(Option.SECTION_FLOW, "publicBranches", "master develop")
+        config.set(
+            Option.SECTION_FLOW,
+            "topicPrefixMappings",
+            "feature:develop ?:develop",
+        )
+        config.set(Option.SECTION_PATCH, "submoduleBranches", "ale3d")
+        workspace_config_cls.return_value.getMapping.return_value = {
+            "master": "master",
+            "develop": "ale3d",
+        }
+
+        result = self.menu.applyMenuChoice(
+            "bundle",
+            [f"--branches={topic_branch}"],
+        )
+
+        self.assertTrue(result)
+        self.assertEqual(2, launcher_cls.call_count)
+        submodule_launch_args = launcher_cls.call_args_list[1].kwargs["globalArgs"]
+        self.assertEqual([topic_branch], submodule_launch_args["branchList"])
+        self.assertEqual(
+            {topic_branch: "ale3d"},
+            submodule_launch_args["branchToPublicBranchMap"],
+        )
+
+        launcher_cls.reset_mock()
+        result = self.menu.applyMenuChoice(
+            "bundle",
+            ["--branches=develop"],
+        )
+
+        self.assertTrue(result)
+        submodule_launch_args = launcher_cls.call_args_list[1].kwargs["globalArgs"]
+        self.assertEqual(["ale3d"], submodule_launch_args["branchList"])
+
+        launcher_cls.reset_mock()
+        result = self.menu.applyMenuChoice(
+            "bundle",
+            [f"--branches={topic_branch}", "--submoduleBranches=ale3d"],
+        )
+
+        self.assertTrue(result)
+        submodule_launch_args = launcher_cls.call_args_list[1].kwargs["globalArgs"]
+        self.assertEqual(["ale3d"], submodule_launch_args["branchList"])
+
 
 if __name__ == "__main__":
     import unittest
